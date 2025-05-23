@@ -1,0 +1,61 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+logs/
+*.log
+logs/**/*.log
+
+# dotenv environment variables
+.env
+.env.*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Coverage & build
+coverage/
+dist/
+build/
+
+# Test output
+*.tsbuildinfo
+
+# HTTP client files (JetBrains etc.)
+httpRequests/
+
+# Database files (если вдруг есть, не добавляй дампы в репу!)
+*.sqlite
+*.db
+
+# Misc
+.sass-cache/
+.cache/
+tmp/
+*.swp
+
+# Ignore secrets/keys
+*.pem
+*.key
+
+# Local datasources (JetBrains)
+dataSources/
+dataSources.local.xml
+
+# Project-specific
+shelf/
+.idea/workspace.xml
