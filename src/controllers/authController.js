@@ -47,7 +47,9 @@ export default {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
-    return res.json({ access_token: accessToken, user });
+    const { password: _ignored, ...safeUser } = user.get({ plain: true });
+
+    return res.json({ access_token: accessToken, user: safeUser });
   },
 
   /* POST /auth/logout */
