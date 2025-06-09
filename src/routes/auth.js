@@ -2,32 +2,81 @@ import express from 'express';
 
 import authController from '../controllers/authController.js';
 import auth from '../middlewares/auth.js';
-import {loginRules, refreshRules} from '../validators/authValidators.js';
+import { loginRules, refreshRules } from '../validators/authValidators.js';
 
 const router = express.Router();
 
-/* --------------------------------------------------------------------------
- * POST /auth/login
- * Body: { email, password }
- * -------------------------------------------------------------------------*/
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Log in a user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful login
+ */
 router.post('/login', loginRules, authController.login);
-/* --------------------------------------------------------------------------
- * POST /auth/logout
- * Requires valid access token
- * -------------------------------------------------------------------------*/
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Log out the current user
+ *     responses:
+ *       200:
+ *         description: Logged out
+ */
 router.post('/logout', auth, authController.logout);
 
-/* --------------------------------------------------------------------------
- * GET /auth/me
- * Returns current user info
- * -------------------------------------------------------------------------*/
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Get current user info
+ *     responses:
+ *       200:
+ *         description: Current user info
+ */
 router.get('/me', auth, authController.me);
 
-/* --------------------------------------------------------------------------
- * POST /auth/refresh
- * Body: { refresh_token }
- * Returns new access & refresh tokens
- * -------------------------------------------------------------------------*/
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refresh_token
+ *             properties:
+ *               refresh_token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New access token
+ */
 router.post('/refresh', refreshRules, authController.refresh);
 
 export default router;
