@@ -1,5 +1,6 @@
 import {expect, test} from '@jest/globals';
 
+// eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 const { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } = await import('../src/utils/jwt.js');
 

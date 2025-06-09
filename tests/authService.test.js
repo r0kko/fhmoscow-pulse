@@ -16,6 +16,7 @@ jest.unstable_mockModule('bcryptjs', () => ({
   compare: compareMock,
 }));
 
+// eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 const { default: authService } = await import('../src/services/authService.js');
 import jwt from 'jsonwebtoken';
