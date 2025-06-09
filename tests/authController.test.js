@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import {expect, jest, test} from '@jest/globals';
 
 const findOneMock = jest.fn();
 const scopeMock = jest.fn(() => ({ findOne: findOneMock }));
@@ -21,6 +21,7 @@ jest.unstable_mockModule('express-validator', () => ({
 
 const { default: authController } = await import('../src/controllers/authController.js');
 
+// eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 
 test('login does not include password in response', async () => {
