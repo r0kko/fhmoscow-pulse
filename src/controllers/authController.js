@@ -92,6 +92,7 @@ export default {
       });
 
       return res.json({ access_token: accessToken });
+      // eslint-disable-next-line no-unused-vars
     } catch (err) {
       return res
         .status(401)
