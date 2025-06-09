@@ -1,25 +1,12 @@
 import { validationResult } from 'express-validator';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
-import User from '../models/user.js';
-
-const ACCESS_TTL = '15m';
-const REFRESH_TTL = '30d';
-const SECURE_COOKIE = process.env.NODE_ENV === 'production';
-
-/* ---------- helpers ------------------------------------------------------- */
-function generateAccessToken(user) {
-  return jwt.sign({ sub: user.id }, process.env.JWT_SECRET, {
-    expiresIn: ACCESS_TTL,
-  });
-}
-
-function generateRefreshToken(user) {
-  return jwt.sign({ sub: user.id, type: 'refresh' }, process.env.JWT_SECRET, {
-    expiresIn: REFRESH_TTL,
-  });
-}
+import authService from '../services/authService.js';
+import userMapper from '../mappers/userMapper.js';
+import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
+import {
+  signAccessToken,
+  signRefreshToken,
+} from '../utils/jwt.js';
 
 /* ---------- controller ---------------------------------------------------- */
 export default {
@@ -31,36 +18,33 @@ export default {
     }
 
     const { email, password } = req.body;
-    const user = await User.scope('withPassword').findOne({ where: { email } });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    try {
+      const user = await authService.verifyCredentials(email, password);
+      const accessToken = signAccessToken(user);
+      const refreshToken = signRefreshToken(user);
+
+      setRefreshCookie(res, refreshToken);
+
+      return res.json({
+        access_token: accessToken,
+        user: userMapper.toPublic(user),
+      });
+    } catch (_err) {
+      void _err;
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: SECURE_COOKIE,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
-
-    const userData = user.get ? user.get({ plain: true }) : { ...user };
-    delete userData.password;
-    return res.json({ access_token: accessToken, user: userData });
   },
 
   /* POST /auth/logout */
   async logout(_req, res) {
-    res.clearCookie('refresh_token');
+    clearRefreshCookie(res);
     return res.status(200).json({ message: 'Logged out' });
   },
 
   /* GET /auth/me */
   async me(req, res) {
-    return res.json({ user: req.user });
+    return res.json({ user: userMapper.toPublic(req.user) });
   },
 
   /* POST /auth/refresh */
@@ -71,29 +55,17 @@ export default {
     }
 
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      if (payload.type !== 'refresh') {
-        throw new Error('Invalid token type');
-      }
+      const { user, accessToken, refreshToken } =
+        await authService.rotateTokens(token);
 
-      const user = await User.findByPk(payload.sub);
-      if (!user) {
-        throw new Error('User not found');
-      }
+      setRefreshCookie(res, refreshToken);
 
-      const accessToken = generateAccessToken(user);
-      const newRefreshToken = generateRefreshToken(user);
-
-      res.cookie('refresh_token', newRefreshToken, {
-        httpOnly: true,
-        sameSite: 'strict',
-        secure: SECURE_COOKIE,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
+      return res.json({
+        access_token: accessToken,
+        user: userMapper.toPublic(user),
       });
-
-      return res.json({ access_token: accessToken });
-      // eslint-disable-next-line no-unused-vars
-    } catch (err) {
+    } catch (_err) {
+      void _err;
       return res
         .status(401)
         .json({ error: 'Invalid or expired refresh token' });
