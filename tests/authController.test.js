@@ -1,18 +1,35 @@
 import {expect, jest, test} from '@jest/globals';
 
-const findOneMock = jest.fn();
-const scopeMock = jest.fn(() => ({ findOne: findOneMock }));
+const verifyCredentialsMock = jest.fn();
 
-jest.unstable_mockModule('../src/models/user.js', () => ({
+jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
-  default: { scope: scopeMock },
+  default: { verifyCredentials: verifyCredentialsMock },
 }));
 
-const compareMock = jest.fn();
-jest.unstable_mockModule('bcryptjs', () => ({
+const setRefreshCookieMock = jest.fn();
+jest.unstable_mockModule('../src/utils/cookie.js', () => ({
   __esModule: true,
-  default: { compare: compareMock },
-  compare: compareMock,
+  setRefreshCookie: setRefreshCookieMock,
+  clearRefreshCookie: jest.fn(),
+}));
+
+const signAccessTokenMock = jest.fn(() => 'access');
+const signRefreshTokenMock = jest.fn(() => 'refresh');
+jest.unstable_mockModule('../src/utils/jwt.js', () => ({
+  __esModule: true,
+  signAccessToken: signAccessTokenMock,
+  signRefreshToken: signRefreshTokenMock,
+}));
+
+const toPublicMock = jest.fn((u) => {
+  // eslint-disable-next-line no-unused-vars
+  const { password, ...rest } = u;
+  return rest;
+});
+jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: toPublicMock },
 }));
 
 jest.unstable_mockModule('express-validator', () => ({
@@ -25,15 +42,20 @@ const { default: authController } = await import('../src/controllers/authControl
 process.env.JWT_SECRET = 'secret';
 
 test('login does not include password in response', async () => {
-  const user = { id: '1', email: 'a@b.c', password: 'hash', get() { return { id: this.id, email: this.email, password: this.password }; } };
-  findOneMock.mockResolvedValue(user);
-  compareMock.mockResolvedValue(true);
+  const user = {
+    id: '1',
+    email: 'a@b.c',
+    password: 'hash',
+  };
+  verifyCredentialsMock.mockResolvedValue(user);
 
   const req = { body: { email: 'a@b.c', password: 'pass' }, cookies: {} };
-  const res = { json: jest.fn(), cookie: jest.fn(), status: jest.fn().mockReturnThis() };
+  const res = { json: jest.fn() };
 
   await authController.login(req, res);
 
   const response = res.json.mock.calls[0][0];
   expect(response.user.password).toBeUndefined();
+  expect(verifyCredentialsMock).toHaveBeenCalledWith('a@b.c', 'pass');
+  expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
 });

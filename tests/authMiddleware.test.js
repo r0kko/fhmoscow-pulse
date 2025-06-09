@@ -3,10 +3,9 @@ import {expect, jest, test} from '@jest/globals';
 const verifyMock = jest.fn();
 const findByPkMock = jest.fn();
 
-jest.unstable_mockModule('jsonwebtoken', () => ({
+jest.unstable_mockModule('../src/utils/jwt.js', () => ({
   __esModule: true,
-  default: { verify: verifyMock },
-  verify: verifyMock,
+  verifyAccessToken: verifyMock,
 }));
 
 jest.unstable_mockModule('../src/models/user.js', () => ({
