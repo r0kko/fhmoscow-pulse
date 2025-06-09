@@ -1,24 +1,24 @@
 import jwt from 'jsonwebtoken';
 
-const {
+import {
   JWT_SECRET,
-  JWT_ACCESS_TTL = '15m',
-  JWT_REFRESH_TTL = '30d',
-  JWT_ALG = 'HS256',
-} = process.env;
+  ACCESS_TTL,
+  REFRESH_TTL,
+  JWT_ALG,
+} from '../config/auth.js';
 
 /* ---------- sign helpers -------------------------------------------------- */
 export function signAccessToken(user) {
   return jwt.sign({ sub: user.id }, JWT_SECRET, {
     algorithm: JWT_ALG,
-    expiresIn: JWT_ACCESS_TTL,
+    expiresIn: ACCESS_TTL,
   });
 }
 
 export function signRefreshToken(user) {
   return jwt.sign({ sub: user.id, type: 'refresh' }, JWT_SECRET, {
     algorithm: JWT_ALG,
-    expiresIn: JWT_REFRESH_TTL,
+    expiresIn: REFRESH_TTL,
   });
 }
 
