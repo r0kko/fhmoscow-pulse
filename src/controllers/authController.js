@@ -47,7 +47,9 @@ export default {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
-    return res.json({ access_token: accessToken, user });
+    const userData = user.get ? user.get({ plain: true }) : { ...user };
+    delete userData.password;
+    return res.json({ access_token: accessToken, user: userData });
   },
 
   /* POST /auth/logout */
