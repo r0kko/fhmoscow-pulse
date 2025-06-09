@@ -7,6 +7,7 @@ import {
   signAccessToken,
   signRefreshToken,
 } from '../utils/jwt.js';
+import { COOKIE_NAME } from '../config/auth.js';
 
 /* ---------- controller ---------------------------------------------------- */
 export default {
@@ -49,7 +50,10 @@ export default {
 
   /* POST /auth/refresh */
   async refresh(req, res) {
-    const token = req.cookies?.refresh_token || req.body.refresh_token;
+    const token =
+      req.cookies?.[COOKIE_NAME] ??
+      req.body?.[COOKIE_NAME] ??
+      req.body?.['refresh_token'];
     if (!token) {
       return res.status(401).json({ error: 'Refresh token missing' });
     }
