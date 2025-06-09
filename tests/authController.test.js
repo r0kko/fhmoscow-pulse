@@ -1,10 +1,11 @@
 import {expect, jest, test} from '@jest/globals';
 
 const verifyCredentialsMock = jest.fn();
+const issueTokensMock = jest.fn(() => ({ accessToken: 'access', refreshToken: 'refresh' }));
 
 jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
-  default: { verifyCredentials: verifyCredentialsMock },
+  default: { verifyCredentials: verifyCredentialsMock, issueTokens: issueTokensMock },
 }));
 
 const setRefreshCookieMock = jest.fn();

@@ -3,7 +3,6 @@ import { validationResult } from 'express-validator';
 import authService from '../services/authService.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
-import { signAccessToken, signRefreshToken } from '../utils/jwt.js';
 import { COOKIE_NAME } from '../config/auth.js';
 
 /* ---------- controller ---------------------------------------------------- */
@@ -19,8 +18,7 @@ export default {
 
     try {
       const user = await authService.verifyCredentials(email, password);
-      const accessToken = signAccessToken(user);
-      const refreshToken = signRefreshToken(user);
+      const { accessToken, refreshToken } = authService.issueTokens(user);
 
       setRefreshCookie(res, refreshToken);
 
