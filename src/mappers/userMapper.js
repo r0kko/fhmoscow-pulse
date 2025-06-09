@@ -26,7 +26,8 @@ function sanitize(userObj) {
 
 function toPublic(user) {
   if (!user) return null;
-  const plain = typeof user.get === 'function' ? user.get({ plain: true }) : user;
+  const plain =
+    typeof user.get === 'function' ? user.get({ plain: true }) : user;
   return sanitize(plain);
 }
 
