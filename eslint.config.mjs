@@ -9,6 +9,9 @@ import eslintPluginImport from 'eslint-plugin-import';
  * npm i -D prettier eslint-plugin-prettier (для отдельного pre-commit format)
  */
 export default [
+  {
+    ignores: ['client/**'],
+  },
   js.configs.recommended,
   prettier,
   {
@@ -65,6 +68,7 @@ export default [
       '**/*.test.js',
       '**/*.spec.js',
       '**/logs/**',
+      '**/client/**',
     ],
   },
 ];
