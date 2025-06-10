@@ -8,8 +8,27 @@ function sanitize(userObj) {
     phone,
     birth_date,
     status_id,
-    ...rest
+    ...technical
   } = userObj;
+
+  const {
+    password,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    created_at,
+    updated_at,
+    deleted_at,
+    ...rest
+  } = technical;
+
+  void password;
+  void createdAt;
+  void updatedAt;
+  void deletedAt;
+  void created_at;
+  void updated_at;
+  void deleted_at;
 
   return {
     id,
