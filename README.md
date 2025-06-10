@@ -52,6 +52,7 @@ docker-compose up --build
 ```
 
 The API will be available at `http://localhost:3000` and Swagger docs at `http://localhost:3000/api-docs`.
+The frontend will be served at `http://localhost:5173`.
 
 On container start, migrations and seeders are run automatically.
 
@@ -84,10 +85,12 @@ MIT
 
 ### Frontend development
 
-A Vue 3 application lives in the `client` directory. Install its dependencies and run the development server:
+A Vue 3 application lives in the `client` directory. During development you can start it manually or rely on Docker Compose:
 
 ```bash
 cd client
 npm install
 npm run dev
 ```
+
+Running `docker-compose up` will also build the frontend image and serve it on port `5173`.

@@ -16,6 +16,17 @@ services:
       - .:/usr/src/app
       - /usr/src/app/node_modules
 
+  client:
+    build:
+      context: ./client
+    container_name: client
+    depends_on:
+      - app
+    ports:
+      - "5173:4173"
+    networks:
+      - backend
+
   db:
     image: postgres:17
     container_name: db

@@ -18,3 +18,7 @@ logs
 # тесты
 *.test.js
 *.spec.js
+# Frontend
+client/node_modules
+client/dist
+
