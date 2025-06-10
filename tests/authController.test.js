@@ -1,13 +1,18 @@
-import {expect, jest, test} from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 
 const verifyCredentialsMock = jest.fn();
 const rotateTokensMock = jest.fn();
+const issueTokensMock = jest.fn(() => ({
+  accessToken: 'access',
+  refreshToken: 'refresh',
+}));
 
 jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
   default: {
     verifyCredentials: verifyCredentialsMock,
     rotateTokens: rotateTokensMock,
+    issueTokens: issueTokensMock,
   },
 }));
 
@@ -28,8 +33,17 @@ jest.unstable_mockModule('../src/utils/jwt.js', () => ({
 }));
 
 const toPublicMock = jest.fn((u) => {
-  // eslint-disable-next-line no-unused-vars
-  const { password, ...rest } = u;
+  const {
+    password: _p,
+    createdAt: _ca,
+    updatedAt: _ua,
+    deletedAt: _da,
+    ...rest
+  } = u;
+  void _p;
+  void _ca;
+  void _ua;
+  void _da;
   return rest;
 });
 jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
@@ -50,21 +64,29 @@ const { default: authController } = await import('../src/controllers/authControl
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 
-test('login does not include password processin response', async () => {
+describe('authController', () => {
+
+test('login does not include sensitive fields in response', async () => {
   const user = {
     id: '1',
     email: 'a@b.c',
     password: 'hash',
+    createdAt: 't',
+    updatedAt: 't',
+    deletedAt: null,
   };
   verifyCredentialsMock.mockResolvedValue(user);
 
   const req = { body: { email: 'a@b.c', password: 'pass' }, cookies: {} };
-  const res = { json: jest.fn() };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
   await authController.login(req, res);
 
   const response = res.json.mock.calls[0][0];
   expect(response.user.password).toBeUndefined();
+  expect(response.user.createdAt).toBeUndefined();
+  expect(response.user.updatedAt).toBeUndefined();
+  expect(response.user.deletedAt).toBeUndefined();
   expect(verifyCredentialsMock).toHaveBeenCalledWith('a@b.c', 'pass');
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
 });
@@ -140,4 +162,5 @@ test('refresh invalid token returns 401', async () => {
   await authController.refresh(req, res);
 
   expect(res.status).toHaveBeenCalledWith(401);
+});
 });
