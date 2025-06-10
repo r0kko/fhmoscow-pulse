@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiFetch } from '../api.js'
 
 const router = useRouter()
 const email = ref('')
@@ -10,15 +11,10 @@ const error = ref('')
 async function login() {
   error.value = ''
   try {
-    const res = await fetch('/auth/login', {
+    const data = await apiFetch('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ email: email.value, password: password.value })
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Login failed')
-
     localStorage.setItem('access_token', data.access_token)
     router.push('/')
   } catch (err) {

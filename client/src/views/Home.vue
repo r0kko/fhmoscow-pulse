@@ -1,31 +1,22 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiFetch } from '../api.js'
 
 const router = useRouter()
 const user = ref(null)
 
 async function fetchUser() {
-  const token = localStorage.getItem('access_token')
-  const res = await fetch('/auth/me', {
-    headers: { Authorization: `Bearer ${token}` },
-    credentials: 'include'
-  })
-  if (res.ok) {
-    const data = await res.json()
+  try {
+    const data = await apiFetch('/auth/me')
     user.value = data.user
-  } else {
+  } catch (_err) {
     router.push('/login')
   }
 }
 
 function logout() {
-  const token = localStorage.getItem('access_token')
-  fetch('/auth/logout', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    credentials: 'include'
-  }).finally(() => {
+  apiFetch('/auth/logout', { method: 'POST' }).finally(() => {
     localStorage.removeItem('access_token')
     router.push('/login')
   })

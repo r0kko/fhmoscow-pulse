@@ -1,0 +1,20 @@
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
+export async function apiFetch(path, options = {}) {
+  const opts = { credentials: 'include', ...options };
+  opts.headers = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+  };
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    opts.headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Request failed with status ${res.status}`);
+  }
+  return data;
+}
