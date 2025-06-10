@@ -50,7 +50,7 @@ const { default: authController } = await import('../src/controllers/authControl
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 
-test('login does not include password in response', async () => {
+test('login does not include password processin response', async () => {
   const user = {
     id: '1',
     email: 'a@b.c',
