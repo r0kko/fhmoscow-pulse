@@ -81,3 +81,13 @@ npm test
 ## License
 
 MIT
+
+### Frontend development
+
+A Vue 3 application lives in the `client` directory. Install its dependencies and run the development server:
+
+```bash
+cd client
+npm install
+npm run dev
+```
