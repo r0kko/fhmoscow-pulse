@@ -13,6 +13,13 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - ESLint and Prettier for code quality
 - Jest unit tests
 
+## Branching strategy
+
+Active development takes place on the `dev` branch. Stable releases are
+pushed to the `main` branch, which represents the pro version. Pull
+requests should target `dev` first, and changes are later merged into
+`main` once they are production ready.
+
 ## Requirements
 
 - Node.js 20+
