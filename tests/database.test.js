@@ -17,10 +17,15 @@ jest.unstable_mockModule('dotenv', () => ({
   default: { config: jest.fn() },
 }));
 
+// eslint-disable-next-line no-undef
 process.env.DB_NAME = 'db';
+// eslint-disable-next-line no-undef
 process.env.DB_USER = 'user';
+// eslint-disable-next-line no-undef
 process.env.DB_PASS = 'pass';
+// eslint-disable-next-line no-undef
 process.env.DB_HOST = 'localhost';
+// eslint-disable-next-line no-undef
 process.env.DB_PORT = '5432';
 
 const {
@@ -35,6 +40,7 @@ test('connectToDatabase authenticates', async () => {
 
 test('connectToDatabase exits on failure', async () => {
   authenticateMock.mockRejectedValueOnce(new Error('fail'));
+  // eslint-disable-next-line no-undef
   const exitMock = jest.spyOn(process, 'exit').mockImplementation(() => {});
   await connectToDatabase();
   expect(exitMock).toHaveBeenCalledWith(1);
