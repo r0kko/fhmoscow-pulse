@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build & verify stage #
 ############################
-FROM --platform=$BUILDPLATFORM node:20-slim AS build
+FROM --platform=$BUILDPLATFORM node:latest AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -15,7 +15,7 @@ RUN npm run lint
 ###########################
 # 2️⃣  Production stage   #
 ###########################
-FROM --platform=$TARGETPLATFORM node:20-slim AS prod
+FROM --platform=$TARGETPLATFORM node:latest AS prod
 
 RUN apt-get update &&  apt-get upgrade -y && npm install -g npm && apt-get install -y --no-install-recommends postgresql-client && rm -rf /var/lib/apt/lists/*
 

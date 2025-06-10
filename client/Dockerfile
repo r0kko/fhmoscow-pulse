@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build stage          #
 ############################
-FROM node:20-slim AS build
+FROM node:latest AS build
 WORKDIR /usr/src/app
 
 # Install build deps for optional native addons (rollup, esbuild, etc.)
@@ -20,7 +20,7 @@ RUN npm run build
 ############################
 # 2️⃣ Production stage     #
 ############################
-FROM node:20-slim AS prod
+FROM node:latest AS prod
 WORKDIR /usr/src/app
 
 # Copy only runtime files
