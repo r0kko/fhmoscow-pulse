@@ -2,7 +2,9 @@ services:
   app:
     build:
       context: .
+      dockerfile: Dockerfile
     container_name: app
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
     env_file:
       - .env
     ports:
@@ -19,7 +21,9 @@ services:
   client:
     build:
       context: ./client
+      dockerfile: Dockerfile
     container_name: client
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
     depends_on:
       - app
     ports:

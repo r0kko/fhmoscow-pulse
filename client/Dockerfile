@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build stage          #
 ############################
-FROM node:latest AS build
+FROM --platform=$BUILDPLATFORM node:20-slim AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -13,7 +13,7 @@ RUN npm run build
 ############################
 # 2️⃣ Production stage     #
 ############################
-FROM node:latest AS prod
+FROM --platform=$TARGETPLATFORM node:20-slim AS prod
 WORKDIR /usr/src/app
 
 COPY --from=build /usr/src/app/node_modules ./node_modules
