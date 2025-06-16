@@ -69,7 +69,7 @@ describe('authController', () => {
 test('login does not include sensitive fields in response', async () => {
   const user = {
     id: '1',
-    email: 'a@b.c',
+    phone: '123',
     password: 'hash',
     createdAt: 't',
     updatedAt: 't',
@@ -77,7 +77,7 @@ test('login does not include sensitive fields in response', async () => {
   };
   verifyCredentialsMock.mockResolvedValue(user);
 
-  const req = { body: { email: 'a@b.c', password: 'pass' }, cookies: {} };
+  const req = { body: { phone: '123', password: 'pass' }, cookies: {} };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
   await authController.login(req, res);
@@ -87,7 +87,7 @@ test('login does not include sensitive fields in response', async () => {
   expect(response.user.createdAt).toBeUndefined();
   expect(response.user.updatedAt).toBeUndefined();
   expect(response.user.deletedAt).toBeUndefined();
-  expect(verifyCredentialsMock).toHaveBeenCalledWith('a@b.c', 'pass');
+  expect(verifyCredentialsMock).toHaveBeenCalledWith('123', 'pass');
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
 });
 

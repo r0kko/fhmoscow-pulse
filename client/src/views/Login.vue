@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
 
 const router = useRouter()
-const email = ref('')
+const phone = ref('')
 const password = ref('')
 const error = ref('')
 
@@ -13,7 +13,7 @@ async function login() {
   try {
     const data = await apiFetch('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: email.value, password: password.value })
+      body: JSON.stringify({ phone: phone.value, password: password.value })
     })
     localStorage.setItem('access_token', data.access_token)
     router.push('/')
@@ -30,8 +30,8 @@ async function login() {
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <form @submit.prevent="login">
         <div class="mb-3">
-          <label class="form-label">Email</label>
-          <input v-model="email" type="email" class="form-control" required />
+          <label class="form-label">Phone</label>
+          <input v-model="phone" type="tel" class="form-control" required />
         </div>
         <div class="mb-3">
           <label class="form-label">Password</label>

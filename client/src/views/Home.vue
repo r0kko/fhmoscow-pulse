@@ -26,10 +26,14 @@ onMounted(fetchUser)
 </script>
 
 <template>
-  <div class="container mt-5">
-    <div v-if="user">
-      <h1 class="mb-4">Welcome {{ user.email }}</h1>
-      <button class="btn btn-secondary" @click="logout">Logout</button>
-    </div>
+  <div class="container mt-5" v-if="user">
+    <nav class="mb-3">
+      <!-- menu items will be added here -->
+      <ul class="nav">
+        <li class="nav-item"><a class="nav-link" href="#">Menu</a></li>
+      </ul>
+    </nav>
+    <h1 class="mb-4">Welcome {{ user.phone }}</h1>
+    <button class="btn btn-secondary" @click="logout">Logout</button>
   </div>
 </template>

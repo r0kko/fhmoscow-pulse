@@ -18,10 +18,10 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - phone
  *               - password
  *             properties:
- *               email:
+ *               phone:
  *                 type: string
  *               password:
  *                 type: string

@@ -23,19 +23,19 @@ import jwt from 'jsonwebtoken';
 
 const user = { id: '1', password: 'hash' };
 
- test('verifyCredentials returns user when valid', async () => {
+test('verifyCredentials returns user when valid', async () => {
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(true);
-  const res = await authService.verifyCredentials('a@b.c', 'pass');
+  const res = await authService.verifyCredentials('123', 'pass');
   expect(res).toBe(user);
 });
 
- test('verifyCredentials throws for unknown email', async () => {
+test('verifyCredentials throws for unknown phone', async () => {
   findOneMock.mockResolvedValue(null);
   await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
 });
 
- test('verifyCredentials throws for bad password', async () => {
+test('verifyCredentials throws for bad password', async () => {
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(false);
   await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');

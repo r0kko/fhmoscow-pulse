@@ -1,10 +1,13 @@
 import { body } from 'express-validator';
 
 /* --------------------------------------------------------------------------
- * /auth/login  – email + password
+ * /auth/login  – phone + password
  * -------------------------------------------------------------------------*/
 export const loginRules = [
-  body('email').isEmail().withMessage('Must be a valid email').normalizeEmail(),
+  body('phone')
+    .isMobilePhone()
+    .withMessage('Must be a valid phone number')
+    .trim(),
   body('password').isString().notEmpty().withMessage('Password is required'),
 ];
 

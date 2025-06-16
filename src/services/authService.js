@@ -8,8 +8,8 @@ import {
 } from '../utils/jwt.js';
 
 /* ------------------- service implementation ------------------------------ */
-async function verifyCredentials(email, password) {
-  const user = await User.scope('withPassword').findOne({ where: { email } });
+async function verifyCredentials(phone, password) {
+  const user = await User.scope('withPassword').findOne({ where: { phone } });
   if (!user) throw new Error('invalid_credentials');
 
   const ok = await bcrypt.compare(password, user.password);

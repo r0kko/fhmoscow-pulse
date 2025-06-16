@@ -14,10 +14,10 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
     try {
-      const user = await authService.verifyCredentials(email, password);
+      const user = await authService.verifyCredentials(phone, password);
       const { accessToken, refreshToken } = authService.issueTokens(user);
 
       setRefreshCookie(res, refreshToken);
