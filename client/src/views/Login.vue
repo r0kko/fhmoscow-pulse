@@ -5,11 +5,34 @@ import { apiFetch } from '../api.js'
 
 const router = useRouter()
 const phone = ref('')
+const phoneInput = ref('')
 const password = ref('')
 const error = ref('')
 
+function formatPhone(digits) {
+  let out = '+7'
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4)
+  if (digits.length >= 4) out += ') '
+  if (digits.length >= 4) out += digits.slice(4, 7)
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9)
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11)
+  return out
+}
+
+function onPhoneInput(e) {
+  let digits = e.target.value.replace(/\D/g, '')
+  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '')
+  digits = digits.slice(0, 11)
+  phone.value = digits
+  phoneInput.value = formatPhone(digits)
+}
+
 async function login() {
   error.value = ''
+  if (phone.value.length !== 11) {
+    error.value = 'Invalid phone number'
+    return
+  }
   try {
     const data = await apiFetch('/auth/login', {
       method: 'POST',
@@ -31,7 +54,14 @@ async function login() {
       <form @submit.prevent="login">
         <div class="mb-3">
           <label class="form-label">Phone</label>
-          <input v-model="phone" type="tel" class="form-control" required />
+          <input
+            v-model="phoneInput"
+            @input="onPhoneInput"
+            type="tel"
+            class="form-control"
+            placeholder="+7 (___) ___-__-__"
+            required
+          />
         </div>
         <div class="mb-3">
           <label class="form-label">Password</label>

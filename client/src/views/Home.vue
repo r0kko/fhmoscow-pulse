@@ -28,9 +28,19 @@ onMounted(fetchUser)
 <template>
   <div class="container mt-5" v-if="user">
     <nav class="mb-3">
-      <!-- menu items will be added here -->
-      <ul class="nav">
-        <li class="nav-item"><a class="nav-link" href="#">Menu</a></li>
+      <ul class="nav nav-pills gap-2 flex-wrap">
+        <li class="nav-item">
+          <a class="nav-link" href="#">My appointments</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Reports</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Fees</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Personal information</a>
+        </li>
       </ul>
     </nav>
     <h1 class="mb-4">Welcome {{ user.phone }}</h1>
