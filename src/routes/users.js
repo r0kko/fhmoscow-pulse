@@ -1,6 +1,7 @@
 import express from 'express';
 
 import userController from '../controllers/userController.js';
+import auth from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ const router = express.Router();
  *       200:
  *         description: Array of users
  */
-router.get('/', userController.list);
+router.get('/', auth, userController.list);
 
 /**
  * @swagger
@@ -32,6 +33,6 @@ router.get('/', userController.list);
  *       404:
  *         description: User not found
  */
-router.get('/:id', userController.get);
+router.get('/:id', auth, userController.get);
 
 export default router;
