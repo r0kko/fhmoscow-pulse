@@ -1,3 +1,12 @@
+<script setup>
+import NavBar from './components/NavBar.vue'
+import AppFooter from './components/AppFooter.vue'
+</script>
+
 <template>
-  <router-view />
+  <div class="d-flex flex-column min-vh-100">
+    <NavBar />
+    <router-view class="flex-grow-1" />
+    <AppFooter />
+  </div>
 </template>
