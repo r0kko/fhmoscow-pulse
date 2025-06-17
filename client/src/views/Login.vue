@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
@@ -9,6 +9,15 @@ const phone = ref('')
 const phoneInput = ref('')
 const password = ref('')
 const error = ref('')
+const loading = ref(false)
+
+watch(error, (val) => {
+  if (val) {
+    setTimeout(() => {
+      error.value = ''
+    }, 4000)
+  }
+})
 
 function formatPhone(digits) {
   let out = '+7'
@@ -28,12 +37,21 @@ function onPhoneInput(e) {
   phoneInput.value = formatPhone(digits)
 }
 
+function onPhoneKeydown(e) {
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault()
+    phone.value = phone.value.slice(0, -1)
+    phoneInput.value = formatPhone(phone.value)
+  }
+}
+
 async function login() {
   error.value = ''
-  if (phone.value.length !== 11) {
+  if (phone.value.length !== 11 || !phone.value.startsWith('7')) {
     error.value = 'Неверный номер телефона'
     return
   }
+  loading.value = true
   try {
     const data = await apiFetch('/auth/login', {
       method: 'POST',
@@ -45,7 +63,9 @@ async function login() {
     auth.roles = data.roles || []
     router.push('/')
   } catch (err) {
-    error.value = err.message
+    error.value = err.message || 'Ошибка авторизации'
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -54,24 +74,30 @@ async function login() {
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
       <h1 class="mb-4 text-center">Вход</h1>
-      <div v-if="error" class="alert alert-danger">{{ error }}</div>
+      <transition name="fade">
+        <div v-if="error" class="alert alert-danger">{{ error }}</div>
+      </transition>
       <form @submit.prevent="login">
-        <div class="mb-3">
-          <label class="form-label">Телефон</label>
+        <div class="mb-3 input-group">
+          <span class="input-group-text"><i class="bi bi-phone"></i></span>
           <input
             v-model="phoneInput"
             @input="onPhoneInput"
+            @keydown="onPhoneKeydown"
             type="tel"
             class="form-control"
             placeholder="+7 (___) ___-__-__"
             required
           />
         </div>
-        <div class="mb-3">
-          <label class="form-label">Пароль</label>
+        <div class="mb-3 input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
           <input v-model="password" type="password" class="form-control" required />
         </div>
-        <button type="submit" class="btn btn-primary w-100">Войти</button>
+        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+          <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+          Войти
+        </button>
       </form>
     </div>
   </div>
@@ -80,6 +106,15 @@ async function login() {
 <style scoped>
 .login-card {
   animation: fade-in 0.4s ease-out;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 @keyframes fade-in {

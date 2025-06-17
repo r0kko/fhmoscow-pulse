@@ -5,8 +5,8 @@ import { body } from 'express-validator';
  * -------------------------------------------------------------------------*/
 export const loginRules = [
   body('phone')
-    .isMobilePhone()
-    .withMessage('Must be a valid phone number')
+    .isMobilePhone('ru-RU')
+    .withMessage('Must be a valid Russian phone number')
     .trim(),
   body('password').isString().notEmpty().withMessage('Password is required'),
 ];

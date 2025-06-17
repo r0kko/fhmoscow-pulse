@@ -1,19 +1,37 @@
 import bcrypt from 'bcryptjs';
 
 import User from '../models/user.js';
+import { UserStatus } from '../models/index.js';
 import {
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
 } from '../utils/jwt.js';
 
+import * as attempts from './loginAttempts.js';
+
 /* ------------------- service implementation ------------------------------ */
 async function verifyCredentials(phone, password) {
   const user = await User.scope('withPassword').findOne({ where: { phone } });
   if (!user) throw new Error('invalid_credentials');
 
+  const inactive = await UserStatus.findOne({ where: { alias: 'INACTIVE' } });
+  if (inactive && user.status_id === inactive.id) {
+    throw new Error('account_locked');
+  }
+
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) throw new Error('invalid_credentials');
+  if (!ok) {
+    const count = attempts.markFailed(user.id);
+    if (count >= 5 && inactive) {
+      await user.update({ status_id: inactive.id });
+      attempts.clear(user.id);
+      throw new Error('account_locked');
+    }
+    throw new Error('invalid_credentials');
+  }
+
+  attempts.clear(user.id);
 
   return user;
 }
