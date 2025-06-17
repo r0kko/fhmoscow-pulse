@@ -163,16 +163,14 @@ function copy(text) {
               ФИО
             </th>
             <th
-              class="d-none d-md-table-cell"
+              class="sortable d-none d-md-table-cell"
               @click="toggleSort('phone')"
-              class="sortable"
             >
               Телефон
             </th>
             <th
-              class="d-none d-lg-table-cell"
+              class="sortable d-none d-lg-table-cell"
               @click="toggleSort('email')"
-              class="sortable"
             >
               Email
             </th>
