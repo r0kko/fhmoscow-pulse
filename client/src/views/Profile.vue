@@ -18,35 +18,35 @@ onMounted(fetchProfile)
 
 <template>
   <div class="container mt-5">
-    <h1 class="mb-4">Personal information</h1>
+    <h1 class="mb-4">Личная информация</h1>
     <table class="table table-striped" v-if="user">
       <tbody>
         <tr>
-          <th>Last name</th>
+          <th>Фамилия</th>
           <td>{{ user.last_name }}</td>
         </tr>
         <tr>
-          <th>First name</th>
+          <th>Имя</th>
           <td>{{ user.first_name }}</td>
         </tr>
         <tr>
-          <th>Patronymic</th>
+          <th>Отчество</th>
           <td>{{ user.patronymic }}</td>
         </tr>
         <tr>
-          <th>Birth date</th>
+          <th>Дата рождения</th>
           <td>{{ user.birth_date }}</td>
         </tr>
         <tr>
-          <th>Phone</th>
+          <th>Телефон</th>
           <td>{{ user.phone }}</td>
         </tr>
         <tr>
-          <th>Email</th>
+          <th>Эл. почта</th>
           <td>{{ user.email }}</td>
         </tr>
       </tbody>
     </table>
-    <p v-else>No user data found.</p>
+    <p v-else>Данные пользователя не найдены.</p>
   </div>
 </template>

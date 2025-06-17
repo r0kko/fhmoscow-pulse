@@ -30,20 +30,20 @@ onMounted(fetchUser)
     <nav class="mb-3">
       <ul class="nav nav-pills gap-2 flex-wrap">
         <li class="nav-item">
-          <a class="nav-link" href="#">My appointments</a>
+          <a class="nav-link" href="#">Мои назначения</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#">Reports</a>
+          <a class="nav-link" href="#">Отчеты</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#">Fees</a>
+          <a class="nav-link" href="#">Взносы</a>
         </li>
         <li class="nav-item">
-          <RouterLink class="nav-link" to="/profile">Personal information</RouterLink>
+          <RouterLink class="nav-link" to="/profile">Личная информация</RouterLink>
         </li>
       </ul>
     </nav>
-    <h1 class="mb-4">Welcome {{ user.phone }}</h1>
-    <button class="btn btn-secondary" @click="logout">Logout</button>
+    <h1 class="mb-4">Добро пожаловать {{ user.phone }}</h1>
+    <button class="btn btn-secondary" @click="logout">Выйти</button>
   </div>
 </template>

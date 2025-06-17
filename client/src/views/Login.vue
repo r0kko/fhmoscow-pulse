@@ -30,7 +30,7 @@ function onPhoneInput(e) {
 async function login() {
   error.value = ''
   if (phone.value.length !== 11) {
-    error.value = 'Invalid phone number'
+    error.value = 'Неверный номер телефона'
     return
   }
   try {
@@ -49,11 +49,11 @@ async function login() {
 <template>
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
-      <h1 class="mb-4 text-center">Login</h1>
+      <h1 class="mb-4 text-center">Вход</h1>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <form @submit.prevent="login">
         <div class="mb-3">
-          <label class="form-label">Phone</label>
+          <label class="form-label">Телефон</label>
           <input
             v-model="phoneInput"
             @input="onPhoneInput"
@@ -64,10 +64,10 @@ async function login() {
           />
         </div>
         <div class="mb-3">
-          <label class="form-label">Password</label>
+          <label class="form-label">Пароль</label>
           <input v-model="password" type="password" class="form-control" required />
         </div>
-        <button type="submit" class="btn btn-primary w-100">Login</button>
+        <button type="submit" class="btn btn-primary w-100">Войти</button>
       </form>
     </div>
   </div>
