@@ -1,47 +1,43 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
-import { Toast } from 'bootstrap'
-import { apiFetch } from '../api.js'
+import { ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
+import { Toast } from 'bootstrap';
+import { apiFetch } from '../api.js';
 
-const placeholderGroups = [
-  [
-    { title: 'Паспорт' },
-    { title: 'ИНН и СНИЛС' },
-    { title: 'Банковские реквизиты' }
-  ],
-  [
-    { title: 'Тип налогообложения' },
-    { title: 'Выданный инвентарь' }
-  ]
-]
+const placeholderSections = [
+  'Паспорт',
+  'ИНН и СНИЛС',
+  'Банковские реквизиты',
+  'Тип налогообложения',
+  'Выданный инвентарь',
+];
 
-const user = ref(null)
-const toastRef = ref(null)
-let toast
+const user = ref(null);
+const toastRef = ref(null);
+let toast;
 
 function showToast() {
   if (!toast) {
-    toast = new Toast(toastRef.value)
+    toast = new Toast(toastRef.value);
   }
-  toast.show()
+  toast.show();
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text)
-  showToast()
+  navigator.clipboard.writeText(text);
+  showToast();
 }
 
 async function fetchProfile() {
   try {
-    const data = await apiFetch('/users/me')
-    user.value = data.user
+    const data = await apiFetch('/users/me');
+    user.value = data.user;
   } catch (_err) {
-    user.value = null
+    user.value = null;
   }
 }
 
-onMounted(fetchProfile)
+onMounted(fetchProfile);
 </script>
 
 <template>
@@ -49,77 +45,111 @@ onMounted(fetchProfile)
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
-        <li class="breadcrumb-item active" aria-current="page">Персональные данные</li>
+        <li class="breadcrumb-item active" aria-current="page">
+          Персональные данные
+        </li>
       </ol>
     </nav>
     <h1 class="mb-4">Личная информация</h1>
     <div v-if="user">
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mb-4">
-        <div class="col">
-          <div class="card h-100 tile fade-in">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Основные данные</h5>
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
-                  <div class="col">
-                    <label class="form-label">Фамилия</label>
-                    <input type="text" class="form-control" :value="user.last_name" readonly />
-                  </div>
-                  <div class="col">
-                    <label class="form-label">Имя</label>
-                    <input type="text" class="form-control" :value="user.first_name" readonly />
-                  </div>
-                  <div class="col">
-                    <label class="form-label">Отчество</label>
-                    <input type="text" class="form-control" :value="user.patronymic" readonly />
-                  </div>
-                  <div class="col">
-                    <label class="form-label">Дата рождения</label>
-                    <input type="text" class="form-control" :value="user.birth_date" readonly />
-                  </div>
-                </div>
+      <div class="mb-4">
+        <div class="card tile fade-in">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Основные данные</h5>
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+              <div class="col">
+                <label class="form-label">Фамилия</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="user.last_name"
+                  readonly
+                />
               </div>
-          </div>
-        </div>
-        <div class="col">
-          <div class="card h-100 tile fade-in">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Контакты</h5>
-                <div class="row row-cols-1 row-cols-sm-2 g-3">
-                  <div class="col">
-                    <label class="form-label">Телефон</label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" :value="user.phone" readonly />
-                      <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.phone)">
-                        <i class="bi bi-clipboard"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <label class="form-label">Email</label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" :value="user.email" readonly />
-                      <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.email)">
-                        <i class="bi bi-clipboard"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <div class="col">
+                <label class="form-label">Имя</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="user.first_name"
+                  readonly
+                />
               </div>
+              <div class="col">
+                <label class="form-label">Отчество</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="user.patronymic"
+                  readonly
+                />
+              </div>
+              <div class="col">
+                <label class="form-label">Дата рождения</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="user.birth_date"
+                  readonly
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div
-        v-for="(group, index) in placeholderGroups"
-        :key="index"
-        class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mb-4"
-      >
-        <div class="col" v-for="block in group" :key="block.title">
-          <div class="card h-100 tile text-center">
-            <div class="card-body d-flex flex-column align-items-center justify-content-center">
-              <i class="bi bi-clock mb-2 fs-2"></i>
-              <h5 class="card-title mb-2">{{ block.title }}</h5>
-              <p class="text-muted mb-0">Информация будет доступна позже</p>
+      <div class="mb-4">
+        <div class="card tile fade-in">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Контакты</h5>
+            <div class="row row-cols-1 row-cols-sm-2 g-3">
+              <div class="col">
+                <label class="form-label">Телефон</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="form-control"
+                    :value="user.phone"
+                    readonly
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    @click="copyToClipboard(user.phone)"
+                  >
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col">
+                <label class="form-label">Email</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="form-control"
+                    :value="user.email"
+                    readonly
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    @click="copyToClipboard(user.email)"
+                  >
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+      <div v-for="section in placeholderSections" :key="section" class="mb-4">
+        <div class="card tile placeholder-card text-center">
+          <div
+            class="card-body d-flex flex-column align-items-center justify-content-center"
+          >
+            <i class="bi bi-clock mb-2 fs-2"></i>
+            <h5 class="card-title mb-1">{{ section }}</h5>
+            <p class="mb-0">Информация будет доступна позже</p>
           </div>
         </div>
       </div>
@@ -141,7 +171,9 @@ onMounted(fetchProfile)
 
 <style scoped>
 .tile {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
 }
 .tile:hover {
   transform: translateY(-2px) scale(1.02);
@@ -149,6 +181,10 @@ onMounted(fetchProfile)
 }
 .fade-in {
   animation: fadeIn 0.4s ease-out;
+}
+
+.placeholder-card {
+  opacity: 0.6;
 }
 
 @keyframes fadeIn {
