@@ -1,18 +1,22 @@
 import express from 'express';
+import auth from '../middlewares/auth.js';
+import userMapper from '../mappers/userMapper.js';
 
 const router = express.Router();
 
 /**
  * @swagger
- * /users:
+ * /users/me:
  *   get:
- *     summary: List all users
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Get current user data
  *     responses:
  *       200:
- *         description: Array of users
+ *         description: Current user info
  */
-router.get('/', async (req, res) => {
-  const response = { users: [] }; // TODO: fetch from DB later
+router.get('/me', auth, (req, res) => {
+  const response = { user: userMapper.toPublic(req.user) };
   res.locals.body = response;
   res.json(response);
 });

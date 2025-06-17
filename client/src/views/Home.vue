@@ -39,7 +39,7 @@ onMounted(fetchUser)
           <a class="nav-link" href="#">Fees</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#">Personal information</a>
+          <RouterLink class="nav-link" to="/profile">Personal information</RouterLink>
         </li>
       </ul>
     </nav>
