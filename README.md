@@ -12,7 +12,7 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - Docker and docker-compose setup for local development
 - ESLint and Prettier for code quality
 - Jest unit tests
-- Admin panel for managing users and roles
+- Admin panel for managing users and roles (create, edit, block)
 
 ## Branching strategy
 
