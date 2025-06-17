@@ -18,6 +18,4 @@ export const updateUserRules = [
   body('email').optional().isEmail(),
 ];
 
-export const resetPasswordRules = [
-  body('password').isString().notEmpty(),
-];
+export const resetPasswordRules = [body('password').isString().notEmpty()];

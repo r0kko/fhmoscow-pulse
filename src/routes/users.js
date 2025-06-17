@@ -4,7 +4,11 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import userMapper from '../mappers/userMapper.js';
 import admin from '../controllers/userAdminController.js';
-import { createUserRules, updateUserRules, resetPasswordRules } from '../validators/userValidators.js';
+import {
+  createUserRules,
+  updateUserRules,
+  resetPasswordRules,
+} from '../validators/userValidators.js';
 
 const router = express.Router();
 
@@ -59,8 +63,24 @@ router.put('/:id', auth, authorize('ADMIN'), updateUserRules, admin.update);
 
 router.post('/:id/block', auth, authorize('ADMIN'), admin.block);
 router.post('/:id/unblock', auth, authorize('ADMIN'), admin.unblock);
-router.post('/:id/reset-password', auth, authorize('ADMIN'), resetPasswordRules, admin.resetPassword);
-router.post('/:id/roles/:roleAlias', auth, authorize('ADMIN'), admin.assignRole);
-router.delete('/:id/roles/:roleAlias', auth, authorize('ADMIN'), admin.removeRole);
+router.post(
+  '/:id/reset-password',
+  auth,
+  authorize('ADMIN'),
+  resetPasswordRules,
+  admin.resetPassword
+);
+router.post(
+  '/:id/roles/:roleAlias',
+  auth,
+  authorize('ADMIN'),
+  admin.assignRole
+);
+router.delete(
+  '/:id/roles/:roleAlias',
+  auth,
+  authorize('ADMIN'),
+  admin.removeRole
+);
 
 export default router;
