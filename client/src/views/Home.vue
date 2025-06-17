@@ -1,5 +1,6 @@
 <script setup>
 import { auth } from '../auth.js'
+import { computed } from 'vue'
 
 const sections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
@@ -12,6 +13,8 @@ const sections = [
   { title: 'Документы', icon: 'bi-folder2-open' },
   { title: 'Персональные данные', icon: 'bi-person-circle' }
 ]
+
+const isAdmin = computed(() => auth.roles.includes('ADMIN'))
 </script>
 
 <template>
@@ -26,6 +29,14 @@ const sections = [
             <p class="text-muted small mb-0">Раздел в разработке</p>
           </div>
         </div>
+      </div>
+      <div v-if="isAdmin" class="col-6 col-md-4">
+        <RouterLink to="/admin" class="card h-100 text-center tile fade-in text-decoration-none text-body">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center">
+            <i class="bi bi-shield-lock fs-1 mb-3"></i>
+            <h5 class="card-title">Администрирование</h5>
+          </div>
+        </RouterLink>
       </div>
     </div>
   </div>

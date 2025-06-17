@@ -14,21 +14,7 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item" v-if="roles.includes('REFEREE') || roles.includes('ADMIN')">
-            <RouterLink class="nav-link" to="/">Назначения</RouterLink>
-          </li>
-        <li class="nav-item" v-if="roles.includes('ADMIN')">
-          <RouterLink class="nav-link" to="/users">Пользователи</RouterLink>
-        </li>
-        <li class="nav-item" v-if="roles.includes('ADMIN')">
-          <a class="nav-link" href="#">Взносы</a>
-        </li>
-          <li class="nav-item">
-            <RouterLink class="nav-link" to="/profile">Профиль</RouterLink>
-          </li>
-        </ul>
-        <span class="navbar-text me-3" v-if="user">{{ user.phone }}</span>
+        <span class="navbar-text me-auto" v-if="user">{{ user.phone }}</span>
         <button class="btn btn-outline-light" @click="logout">Выйти</button>
       </div>
     </div>
@@ -42,7 +28,7 @@ import { auth, fetchCurrentUser, clearAuth } from '../auth.js'
 import { apiFetch } from '../api.js'
 
 const router = useRouter()
-const { user, roles } = auth
+const { user } = auth
 
 onMounted(async () => {
   if (!auth.user) {

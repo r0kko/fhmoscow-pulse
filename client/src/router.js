@@ -3,10 +3,12 @@ import Login from './views/Login.vue'
 import Home from './views/Home.vue'
 import Profile from './views/Profile.vue'
 import AdminUsers from './views/AdminUsers.vue'
+import AdminHome from './views/AdminHome.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
+  { path: '/admin', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users', component: AdminUsers, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/login', component: Login }
 ]
