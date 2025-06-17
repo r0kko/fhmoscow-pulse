@@ -57,50 +57,54 @@ onMounted(fetchProfile)
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mb-4">
         <div class="col">
           <div class="card h-100 tile fade-in">
-            <div class="card-body">
-              <h5 class="card-title mb-3">Основные данные</h5>
-              <div class="mb-3">
-                <label class="form-label">Фамилия</label>
-                <input type="text" class="form-control" :value="user.last_name" readonly />
+              <div class="card-body">
+                <h5 class="card-title mb-3">Основные данные</h5>
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+                  <div class="col">
+                    <label class="form-label">Фамилия</label>
+                    <input type="text" class="form-control" :value="user.last_name" readonly />
+                  </div>
+                  <div class="col">
+                    <label class="form-label">Имя</label>
+                    <input type="text" class="form-control" :value="user.first_name" readonly />
+                  </div>
+                  <div class="col">
+                    <label class="form-label">Отчество</label>
+                    <input type="text" class="form-control" :value="user.patronymic" readonly />
+                  </div>
+                  <div class="col">
+                    <label class="form-label">Дата рождения</label>
+                    <input type="text" class="form-control" :value="user.birth_date" readonly />
+                  </div>
+                </div>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Имя</label>
-                <input type="text" class="form-control" :value="user.first_name" readonly />
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Отчество</label>
-                <input type="text" class="form-control" :value="user.patronymic" readonly />
-              </div>
-              <div>
-                <label class="form-label">Дата рождения</label>
-                <input type="text" class="form-control" :value="user.birth_date" readonly />
-              </div>
-            </div>
           </div>
         </div>
         <div class="col">
           <div class="card h-100 tile fade-in">
-            <div class="card-body">
-              <h5 class="card-title mb-3">Контакты</h5>
-              <div class="mb-3">
-                <label class="form-label">Телефон</label>
-                <div class="input-group">
-                  <input type="text" class="form-control" :value="user.phone" readonly />
-                  <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.phone)">
-                    <i class="bi bi-clipboard"></i>
-                  </button>
+              <div class="card-body">
+                <h5 class="card-title mb-3">Контакты</h5>
+                <div class="row row-cols-1 row-cols-sm-2 g-3">
+                  <div class="col">
+                    <label class="form-label">Телефон</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" :value="user.phone" readonly />
+                      <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.phone)">
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <label class="form-label">Email</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" :value="user.email" readonly />
+                      <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.email)">
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label class="form-label">Email</label>
-                <div class="input-group">
-                  <input type="text" class="form-control" :value="user.email" readonly />
-                  <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.email)">
-                    <i class="bi bi-clipboard"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -111,8 +115,9 @@ onMounted(fetchProfile)
       >
         <div class="col" v-for="block in group" :key="block.title">
           <div class="card h-100 tile text-center">
-            <div class="card-body d-flex flex-column justify-content-center">
-              <h5 class="card-title mb-3">{{ block.title }}</h5>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+              <i class="bi bi-clock mb-2 fs-2"></i>
+              <h5 class="card-title mb-2">{{ block.title }}</h5>
               <p class="text-muted mb-0">Информация будет доступна позже</p>
             </div>
           </div>
