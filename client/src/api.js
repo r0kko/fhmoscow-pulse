@@ -18,3 +18,40 @@ export async function apiFetch(path, options = {}) {
   }
   return data;
 }
+
+export function createUser(data) {
+  return apiFetch('/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateUser(id, data) {
+  return apiFetch(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export function blockUser(id) {
+  return apiFetch(`/users/${id}/block`, { method: 'POST' });
+}
+
+export function unblockUser(id) {
+  return apiFetch(`/users/${id}/unblock`, { method: 'POST' });
+}
+
+export function resetPassword(id, password) {
+  return apiFetch(`/users/${id}/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  });
+}
+
+export function assignRole(id, roleAlias) {
+  return apiFetch(`/users/${id}/roles/${roleAlias}`, { method: 'POST' });
+}
+
+export function removeRole(id, roleAlias) {
+  return apiFetch(`/users/${id}/roles/${roleAlias}`, { method: 'DELETE' });
+}

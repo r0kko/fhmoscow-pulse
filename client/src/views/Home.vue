@@ -41,6 +41,9 @@ onMounted(fetchUser)
         <li class="nav-item">
           <RouterLink class="nav-link" to="/profile">Личная информация</RouterLink>
         </li>
+        <li class="nav-item">
+          <RouterLink class="nav-link" to="/admin">Администрирование</RouterLink>
+        </li>
       </ul>
     </nav>
     <h1 class="mb-4">Добро пожаловать {{ user.phone }}</h1>
