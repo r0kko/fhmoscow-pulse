@@ -39,7 +39,10 @@ async function assignRole(userId, alias) {
   ]);
   if (!user) throw new Error('user_not_found');
   if (!role) throw new Error('role_not_found');
-  await user.addRole(role);
+  const existing = await user.getRoles({ where: { id: role.id } });
+  if (existing.length === 0) {
+    await user.addRole(role);
+  }
   return user;
 }
 
@@ -50,7 +53,10 @@ async function removeRole(userId, alias) {
   ]);
   if (!user) throw new Error('user_not_found');
   if (!role) throw new Error('role_not_found');
-  await user.removeRole(role);
+  const existing = await user.getRoles({ where: { id: role.id } });
+  if (existing.length > 0) {
+    await user.removeRole(role);
+  }
   return user;
 }
 

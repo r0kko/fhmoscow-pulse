@@ -36,6 +36,10 @@ User.init(
       type: DataTypes.STRING(255), // хранит bcrypt-hash!
       allowNull: false,
     },
+    status_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
   },
   {
     sequelize,

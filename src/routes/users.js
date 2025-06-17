@@ -61,7 +61,42 @@ router.post('/', auth, authorize('ADMIN'), createUserRules, admin.create);
  */
 router.put('/:id', auth, authorize('ADMIN'), updateUserRules, admin.update);
 
+/**
+ * @swagger
+ * /users/{id}/block:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Block user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated user status
+ */
 router.post('/:id/block', auth, authorize('ADMIN'), admin.block);
+
+/**
+ * @swagger
+ * /users/{id}/unblock:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Unblock user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated user status
+ */
 router.post('/:id/unblock', auth, authorize('ADMIN'), admin.unblock);
 router.post(
   '/:id/reset-password',
@@ -70,17 +105,78 @@ router.post(
   resetPasswordRules,
   admin.resetPassword
 );
+/**
+ * @swagger
+ * /users/{id}/reset-password:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Reset user password
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated user password
+ */
 router.post(
   '/:id/roles/:roleAlias',
   auth,
   authorize('ADMIN'),
   admin.assignRole
 );
+/**
+ * @swagger
+ * /users/{id}/roles/{roleAlias}:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Assign role to user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: roleAlias
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated user roles
+ */
 router.delete(
   '/:id/roles/:roleAlias',
   auth,
   authorize('ADMIN'),
   admin.removeRole
 );
+/**
+ * @swagger
+ * /users/{id}/roles/{roleAlias}:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Remove role from user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: roleAlias
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated user roles
+ */
 
 export default router;
