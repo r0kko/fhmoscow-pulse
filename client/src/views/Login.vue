@@ -36,9 +36,17 @@ function onPhoneInput(e) {
   phoneInput.value = formatPhone(digits)
 }
 
+function onPhoneKeydown(e) {
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault()
+    phone.value = phone.value.slice(0, -1)
+    phoneInput.value = formatPhone(phone.value)
+  }
+}
+
 async function login() {
   error.value = ''
-  if (phone.value.length !== 11) {
+  if (phone.value.length !== 11 || !phone.value.startsWith('7')) {
     error.value = 'Неверный номер телефона'
     return
   }
@@ -71,6 +79,7 @@ async function login() {
           <input
             v-model="phoneInput"
             @input="onPhoneInput"
+            @keydown="onPhoneKeydown"
             type="tel"
             class="form-control"
             placeholder="+7 (___) ___-__-__"

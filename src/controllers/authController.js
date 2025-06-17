@@ -31,6 +31,11 @@ export default {
         roles,
       });
     } catch (_err) {
+      if (_err.message === 'account_locked') {
+        return res
+          .status(401)
+          .json({ error: 'Account locked due to multiple failed login attempts' });
+      }
       void _err;
       return res.status(401).json({ error: 'Invalid credentials' });
     }

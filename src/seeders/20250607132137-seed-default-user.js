@@ -45,6 +45,7 @@ module.exports = {
         password:
           '$2y$10$QRGlP7C.Ezw7Gbg3nLOAi..IV2UnRqy.DbGQ9TQ9v7IuM6xuK11Mi',
         status_id: status.id,
+        login_attempts: 0,
         created_at: now,
         updated_at: now,
       },
