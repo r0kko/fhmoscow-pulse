@@ -19,12 +19,16 @@ export default {
     try {
       const user = await authService.verifyCredentials(phone, password);
       const { accessToken, refreshToken } = authService.issueTokens(user);
+      const roles = (await user.getRoles({ attributes: ['alias'] })).map(
+        (r) => r.alias
+      );
 
       setRefreshCookie(res, refreshToken);
 
       return res.json({
         access_token: accessToken,
         user: userMapper.toPublic(user),
+        roles,
       });
     } catch (_err) {
       void _err;
@@ -40,7 +44,10 @@ export default {
 
   /* GET /auth/me */
   async me(req, res) {
-    return res.json({ user: userMapper.toPublic(req.user) });
+    const roles = (await req.user.getRoles({ attributes: ['alias'] })).map(
+      (r) => r.alias
+    );
+    return res.json({ user: userMapper.toPublic(req.user), roles });
   },
 
   /* POST /auth/refresh */
@@ -56,12 +63,16 @@ export default {
     try {
       const { user, accessToken, refreshToken } =
         await authService.rotateTokens(token);
+      const roles = (await user.getRoles({ attributes: ['alias'] })).map(
+        (r) => r.alias
+      );
 
       setRefreshCookie(res, refreshToken);
 
       return res.json({
         access_token: accessToken,
         user: userMapper.toPublic(user),
+        roles,
       });
     } catch (_err) {
       void _err;

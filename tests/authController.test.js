@@ -38,12 +38,14 @@ const toPublicMock = jest.fn((u) => {
     createdAt: _ca,
     updatedAt: _ua,
     deletedAt: _da,
+    getRoles: _gr,
     ...rest
   } = u;
   void _p;
   void _ca;
   void _ua;
   void _da;
+  void _gr;
   return rest;
 });
 jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
@@ -74,6 +76,7 @@ test('login does not include sensitive fields in response', async () => {
     createdAt: 't',
     updatedAt: 't',
     deletedAt: null,
+    getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
   };
   verifyCredentialsMock.mockResolvedValue(user);
 
@@ -87,6 +90,7 @@ test('login does not include sensitive fields in response', async () => {
   expect(response.user.createdAt).toBeUndefined();
   expect(response.user.updatedAt).toBeUndefined();
   expect(response.user.deletedAt).toBeUndefined();
+  expect(Array.isArray(response.roles)).toBe(true);
   expect(verifyCredentialsMock).toHaveBeenCalledWith('123', 'pass');
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
 });
@@ -115,17 +119,19 @@ test('logout clears refresh cookie', async () => {
 });
 
 test('me returns sanitized user', async () => {
-  const req = { user: { id: '1', password: 'hash' } };
+  const req = {
+    user: { id: '1', password: 'hash', getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]) },
+  };
   const res = { json: jest.fn() };
 
   await authController.me(req, res);
 
   expect(toPublicMock).toHaveBeenCalledWith(req.user);
-  expect(res.json).toHaveBeenCalledWith({ user: { id: '1' } });
+  expect(res.json).toHaveBeenCalledWith({ user: { id: '1' }, roles: ['ADMIN'] });
 });
 
 test('refresh returns new tokens when valid', async () => {
-  const user = { id: '1' };
+  const user = { id: '1', getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]) };
   rotateTokensMock.mockResolvedValue({
     user,
     accessToken: 'a',
@@ -142,6 +148,7 @@ test('refresh returns new tokens when valid', async () => {
   expect(res.json).toHaveBeenCalledWith({
     access_token: 'a',
     user: { id: '1' },
+    roles: ['ADMIN'],
   });
 });
 
