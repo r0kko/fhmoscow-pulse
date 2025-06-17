@@ -32,6 +32,38 @@ router.get('/me', auth, (req, res) => {
 /**
  * @swagger
  * /users:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List users
+ *     responses:
+ *       200:
+ *         description: Array of users
+ */
+router.get('/', auth, authorize('ADMIN'), admin.list);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Get user by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User data
+ */
+router.get('/:id', auth, authorize('ADMIN'), admin.get);
+
+/**
+ * @swagger
+ * /users:
  *   post:
  *     security:
  *       - bearerAuth: []

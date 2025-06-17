@@ -32,4 +32,19 @@ describe('userMapper', () => {
     ];
     expect(mapper.toPublicArray(users)).toEqual([{ id: '1' }, { id: '2' }]);
   });
+
+  test('toPublic includes roles and status', () => {
+    const user = {
+      get: () => ({
+        id: '1',
+        Roles: [{ alias: 'ADMIN' }],
+        UserStatus: { alias: 'ACTIVE' },
+      }),
+    };
+    expect(mapper.toPublic(user)).toMatchObject({
+      id: '1',
+      roles: ['ADMIN'],
+      status: 'ACTIVE',
+    });
+  });
 });

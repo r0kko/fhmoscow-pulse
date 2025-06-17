@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
+import { auth } from '../auth.js'
 
 const router = useRouter()
 const phone = ref('')
@@ -39,6 +40,9 @@ async function login() {
       body: JSON.stringify({ phone: phone.value, password: password.value })
     })
     localStorage.setItem('access_token', data.access_token)
+    localStorage.setItem('roles', JSON.stringify(data.roles || []))
+    auth.user = data.user
+    auth.roles = data.roles || []
     router.push('/')
   } catch (err) {
     error.value = err.message

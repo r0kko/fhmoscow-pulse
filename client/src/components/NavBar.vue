@@ -18,12 +18,12 @@
           <li class="nav-item" v-if="roles.includes('REFEREE') || roles.includes('ADMIN')">
             <RouterLink class="nav-link" to="/">Назначения</RouterLink>
           </li>
-          <li class="nav-item" v-if="roles.includes('ADMIN')">
-            <a class="nav-link" href="#">Отчеты</a>
-          </li>
-          <li class="nav-item" v-if="roles.includes('ADMIN')">
-            <a class="nav-link" href="#">Взносы</a>
-          </li>
+        <li class="nav-item" v-if="roles.includes('ADMIN')">
+          <RouterLink class="nav-link" to="/users">Пользователи</RouterLink>
+        </li>
+        <li class="nav-item" v-if="roles.includes('ADMIN')">
+          <a class="nav-link" href="#">Взносы</a>
+        </li>
           <li class="nav-item">
             <RouterLink class="nav-link" to="/profile">Профиль</RouterLink>
           </li>

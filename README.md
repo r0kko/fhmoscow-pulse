@@ -12,6 +12,7 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - Docker and docker-compose setup for local development
 - ESLint and Prettier for code quality
 - Jest unit tests
+- Admin panel for managing users and roles
 
 ## Branching strategy
 
@@ -78,6 +79,18 @@ npm run format      # format with Prettier
 ```bash
 npm test
 ```
+
+### User management API
+
+Administrators can manage users via the following endpoints:
+
+- `GET /users` – list all users
+- `GET /users/{id}` – fetch single user
+- `POST /users` – create user
+- `PUT /users/{id}` – update user
+- `POST /users/{id}/block` and `/unblock` – change status
+- `POST /users/{id}/roles/{roleAlias}` – assign role
+- `DELETE /users/{id}/roles/{roleAlias}` – remove role
 
 ## License
 

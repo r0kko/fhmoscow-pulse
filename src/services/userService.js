@@ -6,6 +6,16 @@ async function createUser(data) {
   return user;
 }
 
+async function listUsers() {
+  return User.findAll({ include: [Role, UserStatus] });
+}
+
+async function getUser(id) {
+  const user = await User.findByPk(id, { include: [Role, UserStatus] });
+  if (!user) throw new Error('user_not_found');
+  return user;
+}
+
 async function updateUser(id, data) {
   const user = await User.findByPk(id);
   if (!user) throw new Error('user_not_found');
@@ -55,6 +65,8 @@ async function removeRole(userId, alias) {
 }
 
 export default {
+  listUsers,
+  getUser,
   createUser,
   updateUser,
   setStatus,

@@ -47,7 +47,10 @@ function toPublic(user) {
   if (!user) return null;
   const plain =
     typeof user.get === 'function' ? user.get({ plain: true }) : user;
-  return sanitize(plain);
+  const sanitized = sanitize(plain);
+  if (plain.Roles) sanitized.roles = plain.Roles.map((r) => r.alias);
+  if (plain.UserStatus) sanitized.status = plain.UserStatus.alias;
+  return sanitized;
 }
 
 function toPublicArray(users = []) {

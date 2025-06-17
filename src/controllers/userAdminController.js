@@ -4,6 +4,19 @@ import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 
 export default {
+  async list(_req, res) {
+    const users = await userService.listUsers();
+    return res.json({ users: userMapper.toPublicArray(users) });
+  },
+
+  async get(req, res) {
+    try {
+      const user = await userService.getUser(req.params.id);
+      return res.json({ user: userMapper.toPublic(user) });
+    } catch (err) {
+      return res.status(404).json({ error: err.message });
+    }
+  },
   async create(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
