@@ -4,9 +4,25 @@ import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 
 export default {
-  async list(_req, res) {
-    const users = await userService.listUsers();
-    return res.json({ users: userMapper.toPublicArray(users) });
+  async list(req, res) {
+    const {
+      search = '',
+      page = '1',
+      limit = '20',
+      sort = 'last_name',
+      order = 'asc',
+    } = req.query;
+    const { rows, count } = await userService.listUsers({
+      search,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort,
+      order,
+    });
+    return res.json({
+      users: userMapper.toPublicArray(rows),
+      total: count,
+    });
   },
 
   async get(req, res) {
