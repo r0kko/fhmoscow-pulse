@@ -8,6 +8,8 @@ import {
   verifyRefreshToken,
 } from '../utils/jwt.js';
 
+import * as attempts from './loginAttempts.js';
+
 /* ------------------- service implementation ------------------------------ */
 async function verifyCredentials(phone, password) {
   const user = await User.scope('withPassword').findOne({ where: { phone } });
@@ -20,21 +22,16 @@ async function verifyCredentials(phone, password) {
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) {
-    const attempts = (user.login_attempts || 0) + 1;
-    const updates = { login_attempts: attempts };
-    if (attempts >= 3 && inactive) {
-      updates.status_id = inactive.id;
-    }
-    await user.update(updates);
-    if (attempts >= 3 && inactive) {
+    const count = attempts.markFailed(user.id);
+    if (count >= 5 && inactive) {
+      await user.update({ status_id: inactive.id });
+      attempts.clear(user.id);
       throw new Error('account_locked');
     }
     throw new Error('invalid_credentials');
   }
 
-  if (user.login_attempts) {
-    await user.update({ login_attempts: 0 });
-  }
+  attempts.clear(user.id);
 
   return user;
 }

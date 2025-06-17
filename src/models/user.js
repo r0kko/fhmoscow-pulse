@@ -36,11 +36,6 @@ User.init(
       type: DataTypes.STRING(255), // хранит bcrypt-hash!
       allowNull: false,
     },
-    login_attempts: {
-      type: DataTypes.SMALLINT,
-      allowNull: false,
-      defaultValue: 0,
-    },
   },
   {
     sequelize,

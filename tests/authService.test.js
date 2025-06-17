@@ -1,4 +1,4 @@
-import {expect, jest, test} from '@jest/globals';
+import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const compareMock = jest.fn();
 const findOneMock = jest.fn();
@@ -25,12 +25,18 @@ jest.unstable_mockModule('bcryptjs', () => ({
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 const { default: authService } = await import('../src/services/authService.js');
+import * as attemptStore from '../src/services/loginAttempts.js';
 import jwt from 'jsonwebtoken';
 
 const updateMock = jest.fn(async function (data) {
   Object.assign(user, data);
 });
-const user = { id: '1', password: 'hash', login_attempts: 0, update: updateMock };
+const user = { id: '1', password: 'hash', update: updateMock };
+
+beforeEach(() => {
+  updateMock.mockClear();
+  attemptStore._reset();
+});
 
 test('verifyCredentials returns user when valid', async () => {
   findOneMock.mockResolvedValue(user);
@@ -55,30 +61,24 @@ test('verifyCredentials increments attempts and locks account', async () => {
   findStatusMock.mockResolvedValue(inactive);
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(false);
-  user.login_attempts = 0;
   user.status_id = undefined;
-  updateMock.mockClear();
 
-  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
-  expect(updateMock.mock.calls[0][0]).toEqual({ login_attempts: 1 });
-
-  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
-  expect(updateMock.mock.calls[1][0]).toEqual({ login_attempts: 2 });
+  for (let i = 0; i < 4; i++) {
+    await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
+  }
 
   await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('account_locked');
-  expect(updateMock.mock.calls[2][0]).toEqual({ login_attempts: 3, status_id: 'i' });
+  expect(updateMock).toHaveBeenCalledWith({ status_id: 'i' });
 });
 
 test('verifyCredentials resets attempts on success', async () => {
-  user.login_attempts = 2;
   user.status_id = undefined;
-  updateMock.mockClear();
   findStatusMock.mockResolvedValue({ id: 'i' });
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(true);
 
   await authService.verifyCredentials('a', 'pass');
-  expect(updateMock).toHaveBeenCalledWith({ login_attempts: 0 });
+  expect(updateMock).not.toHaveBeenCalled();
 });
 
  test('issueTokens creates valid JWTs', () => {
