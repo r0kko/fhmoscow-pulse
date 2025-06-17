@@ -1,7 +1,10 @@
 import express from 'express';
 
 import auth from '../middlewares/auth.js';
+import authorize from '../middlewares/authorize.js';
 import userMapper from '../mappers/userMapper.js';
+import admin from '../controllers/userAdminController.js';
+import { createUserRules, updateUserRules, resetPasswordRules } from '../validators/userValidators.js';
 
 const router = express.Router();
 
@@ -21,5 +24,43 @@ router.get('/me', auth, (req, res) => {
   res.locals.body = response;
   res.json(response);
 });
+
+/**
+ * @swagger
+ * /users:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Create user
+ *     responses:
+ *       201:
+ *         description: Created user
+ */
+router.post('/', auth, authorize('ADMIN'), createUserRules, admin.create);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Update user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated user
+ */
+router.put('/:id', auth, authorize('ADMIN'), updateUserRules, admin.update);
+
+router.post('/:id/block', auth, authorize('ADMIN'), admin.block);
+router.post('/:id/unblock', auth, authorize('ADMIN'), admin.unblock);
+router.post('/:id/reset-password', auth, authorize('ADMIN'), resetPasswordRules, admin.resetPassword);
+router.post('/:id/roles/:roleAlias', auth, authorize('ADMIN'), admin.assignRole);
+router.delete('/:id/roles/:roleAlias', auth, authorize('ADMIN'), admin.removeRole);
 
 export default router;
