@@ -137,6 +137,12 @@ function formatPhone(digits) {
   return out
 }
 
+function formatDate(str) {
+  if (!str) return ''
+  const [year, month, day] = str.split('-')
+  return `${day}.${month}.${year}`
+}
+
 function copy(text) {
   navigator.clipboard.writeText(text)
 }
@@ -145,23 +151,22 @@ function copy(text) {
 <template>
   <div class="container mt-4">
     <h1 class="mb-4">Пользователи</h1>
-    <div class="d-flex flex-wrap align-items-center mb-3">
-      <button class="btn btn-primary me-3" @click="openCreate">Добавить</button>
+    <div class="input-group mb-3">
       <input
         type="text"
-        class="form-control flex-grow-1"
+        class="form-control"
         placeholder="Поиск"
         v-model="search"
       />
+      <button class="btn btn-primary" @click="openCreate">Добавить</button>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div class="table-responsive" v-if="users.length">
       <table class="table table-hover align-middle">
         <thead>
           <tr>
-            <th @click="toggleSort('last_name')" class="sortable">
-              ФИО
-            </th>
+            <th @click="toggleSort('last_name')" class="sortable">ФИО</th>
+            <th class="d-none d-lg-table-cell">Отчество</th>
             <th
               class="sortable d-none d-md-table-cell"
               @click="toggleSort('phone')"
@@ -174,6 +179,12 @@ function copy(text) {
             >
               Email
             </th>
+            <th
+              class="sortable d-none d-lg-table-cell"
+              @click="toggleSort('birth_date')"
+            >
+              Дата рождения
+            </th>
             <th class="d-none d-lg-table-cell">Роли</th>
             <th @click="toggleSort('status')" class="sortable">Статус</th>
             <th></th>
@@ -182,16 +193,18 @@ function copy(text) {
         <tbody>
           <tr v-for="u in users" :key="u.id">
             <td>{{ u.last_name }} {{ u.first_name }}</td>
+            <td class="d-none d-lg-table-cell">{{ u.patronymic }}</td>
             <td class="d-none d-md-table-cell">
               <span>{{ formatPhone(u.phone) }}</span>
               <button
-                class="btn btn-sm btn-outline-secondary ms-1"
+                class="btn btn-sm btn-outline-secondary ms-1 px-1 py-0 align-baseline"
                 @click="copy(u.phone)"
               >
-                📋
+                <i class="bi bi-clipboard"></i>
               </button>
             </td>
             <td class="d-none d-lg-table-cell">{{ u.email }}</td>
+            <td class="d-none d-lg-table-cell">{{ formatDate(u.birth_date) }}</td>
             <td class="d-none d-lg-table-cell">
               <span
                 class="badge bg-info me-1"

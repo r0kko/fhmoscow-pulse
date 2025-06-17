@@ -18,6 +18,7 @@ async function listUsers(options = {}) {
     'first_name',
     'email',
     'phone',
+    'birth_date',
     'createdAt',
   ].includes(options.sort)
     ? options.sort
