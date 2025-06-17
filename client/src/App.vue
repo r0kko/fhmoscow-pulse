@@ -9,7 +9,11 @@ const showLayout = computed(() => route.path !== '/login')
 </script>
 
 <template>
-  <NavBar v-if="showLayout" />
-  <router-view />
-  <FooterBar v-if="showLayout" />
+  <div class="d-flex flex-column min-vh-100">
+    <NavBar v-if="showLayout" />
+    <main class="flex-grow-1 container py-3">
+      <router-view />
+    </main>
+    <FooterBar v-if="showLayout" />
+  </div>
 </template>

@@ -1,7 +1,7 @@
 <template>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <nav class="navbar navbar-expand-md navbar-dark bg-primary">
     <div class="container-fluid">
-      <RouterLink class="navbar-brand" to="/">Pulse Panel</RouterLink>
+      <RouterLink class="navbar-brand" to="/">Федерация хоккея Москвы</RouterLink>
       <button
         class="navbar-toggler"
         type="button"

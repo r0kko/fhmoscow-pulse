@@ -1,7 +1,7 @@
 <template>
-  <footer class="footer mt-auto py-3 bg-light">
-    <div class="container text-center">
-      <span class="text-muted">&copy; 2024 FH Moscow</span>
+  <footer class="footer mt-auto py-2 bg-light fixed-bottom">
+    <div class="container text-center small">
+      <span class="text-muted">&copy; 2024 Федерация хоккея Москвы</span>
     </div>
   </footer>
 </template>
