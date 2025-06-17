@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { Toast } from 'bootstrap'
 import { apiFetch } from '../api.js'
 
 const placeholderGroups = [
@@ -16,6 +17,20 @@ const placeholderGroups = [
 ]
 
 const user = ref(null)
+const toastRef = ref(null)
+let toast
+
+function showToast() {
+  if (!toast) {
+    toast = new Toast(toastRef.value)
+  }
+  toast.show()
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text)
+  showToast()
+}
 
 async function fetchProfile() {
   try {
@@ -41,22 +56,50 @@ onMounted(fetchProfile)
     <div v-if="user">
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mb-4">
         <div class="col">
-          <div class="card h-100 tile">
+          <div class="card h-100 tile fade-in">
             <div class="card-body">
-              <h5 class="card-title">Основные данные</h5>
-              <p class="mb-1"><strong>Фамилия:</strong> {{ user.last_name }}</p>
-              <p class="mb-1"><strong>Имя:</strong> {{ user.first_name }}</p>
-              <p class="mb-1"><strong>Отчество:</strong> {{ user.patronymic }}</p>
-              <p class="mb-0"><strong>Дата рождения:</strong> {{ user.birth_date }}</p>
+              <h5 class="card-title mb-3">Основные данные</h5>
+              <div class="mb-3">
+                <label class="form-label">Фамилия</label>
+                <input type="text" class="form-control" :value="user.last_name" readonly />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Имя</label>
+                <input type="text" class="form-control" :value="user.first_name" readonly />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Отчество</label>
+                <input type="text" class="form-control" :value="user.patronymic" readonly />
+              </div>
+              <div>
+                <label class="form-label">Дата рождения</label>
+                <input type="text" class="form-control" :value="user.birth_date" readonly />
+              </div>
             </div>
           </div>
         </div>
         <div class="col">
-          <div class="card h-100 tile">
+          <div class="card h-100 tile fade-in">
             <div class="card-body">
-              <h5 class="card-title">Контакты</h5>
-              <p class="mb-1"><strong>Телефон:</strong> {{ user.phone }}</p>
-              <p class="mb-0"><strong>Email:</strong> {{ user.email }}</p>
+              <h5 class="card-title mb-3">Контакты</h5>
+              <div class="mb-3">
+                <label class="form-label">Телефон</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" :value="user.phone" readonly />
+                  <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.phone)">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="form-label">Email</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" :value="user.email" readonly />
+                  <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(user.email)">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -77,6 +120,17 @@ onMounted(fetchProfile)
       </div>
     </div>
     <p v-else>Данные пользователя не найдены.</p>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div
+        ref="toastRef"
+        class="toast text-bg-secondary"
+        role="status"
+        data-bs-delay="1500"
+        data-bs-autohide="true"
+      >
+        <div class="toast-body">Скопировано</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -87,5 +141,19 @@ onMounted(fetchProfile)
 .tile:hover {
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
