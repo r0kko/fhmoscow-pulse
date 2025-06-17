@@ -3,7 +3,7 @@ import { apiFetch } from './api.js'
 
 export const auth = reactive({
   user: null,
-  roles: []
+  roles: JSON.parse(localStorage.getItem('roles') || '[]')
 })
 
 export async function fetchCurrentUser() {
