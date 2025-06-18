@@ -7,6 +7,7 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - Express server with modular routing
 - PostgreSQL database managed with Sequelize
 - JSON Web Token authentication and refresh tokens
+- CSRF protection using `csurf` middleware
 - Request/response logging persisted to the `logs` table
 - Swagger documentation available at `/api-docs`
 - Docker and docker-compose setup for local development
@@ -83,6 +84,14 @@ npm run format      # format with Prettier
 
 ```bash
 npm test
+```
+
+### CSRF token
+
+Fetch a token for state-changing requests:
+
+```bash
+GET /csrf-token
 ```
 
 ### User management API

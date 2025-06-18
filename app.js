@@ -2,6 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import csrfProtection from './src/middlewares/csrf.js';
 
 import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
@@ -14,11 +15,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(cors({ origin: true, credentials: true }));
+app.use(csrfProtection);
 app.use(rateLimiter);
 app.use(requestLogger);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/', indexRouter);
+
+app.use((err, req, res, next) => {
+  if (err.code !== 'EBADCSRFTOKEN') return next(err);
+  return res.status(403).json({ error: 'Invalid CSRF token' });
+});
 
 export default app;
