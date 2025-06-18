@@ -3,7 +3,7 @@
     <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2" to="/">
         <img :src="logo" alt="FHM" height="30" />
-        Федерация хоккея Москвы
+        Отдел организации судейства
       </RouterLink>
       <button
         class="navbar-toggler"
@@ -18,7 +18,7 @@
       </button>
       <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
         <span class="navbar-text me-3" v-if="user">
-          {{ user.last_name }} {{ user.patronymic }}
+          {{ user.last_name }} {{ user.first_name }} {{ user.patronymic }}
         </span>
         <button class="btn btn-outline-light" @click="logout">Выйти</button>
       </div>
