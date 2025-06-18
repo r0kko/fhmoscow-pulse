@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = {
   async up(queryInterface) {
     const [existing] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS cnt FROM user_statuses WHERE alias = \'EMAIL_UNCONFIRMED\';'
+      "SELECT COUNT(*) AS cnt FROM user_statuses WHERE alias = 'EMAIL_UNCONFIRMED';"
     );
     if (Number(existing[0].cnt) > 0) return;
     const now = new Date();
