@@ -14,19 +14,6 @@ router.use('/email', emailRouter);
 
 /**
  * @swagger
- * /csrf-token:
- *   get:
- *     summary: Retrieve CSRF token
- *     responses:
- *       200:
- *         description: Returns a CSRF token
- */
-router.get('/csrf-token', (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
-
-/**
- * @swagger
  * /:
  *   get:
  *     security:
