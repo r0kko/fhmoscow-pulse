@@ -48,8 +48,14 @@ function toPublic(user) {
   const plain =
     typeof user.get === 'function' ? user.get({ plain: true }) : user;
   const sanitized = sanitize(plain);
-  if (plain.Roles) sanitized.roles = plain.Roles.map((r) => r.alias);
-  if (plain.UserStatus) sanitized.status = plain.UserStatus.alias;
+  if (plain.Roles) {
+    sanitized.roles = plain.Roles.map((r) => r.alias);
+    sanitized.role_names = plain.Roles.map((r) => r.name);
+  }
+  if (plain.UserStatus) {
+    sanitized.status = plain.UserStatus.alias;
+    sanitized.status_name = plain.UserStatus.name;
+  }
   return sanitized;
 }
 

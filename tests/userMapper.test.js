@@ -37,14 +37,16 @@ describe('userMapper', () => {
     const user = {
       get: () => ({
         id: '1',
-        Roles: [{ alias: 'ADMIN' }],
-        UserStatus: { alias: 'ACTIVE' },
+        Roles: [{ alias: 'ADMIN', name: 'Administrator' }],
+        UserStatus: { alias: 'ACTIVE', name: 'Active' },
       }),
     };
     expect(mapper.toPublic(user)).toMatchObject({
       id: '1',
       roles: ['ADMIN'],
+      role_names: ['Administrator'],
       status: 'ACTIVE',
+      status_name: 'Active',
     });
   });
 });

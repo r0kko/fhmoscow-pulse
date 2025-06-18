@@ -202,12 +202,12 @@ function copy(text) {
             <td class="d-none d-lg-table-cell">
               <span
                 class="badge bg-info me-1"
-                v-for="r in u.roles"
-                :key="r"
-                >{{ r }}</span
+                v-for="(name, idx) in u.role_names"
+                :key="u.roles[idx]"
+                >{{ name }}</span
               >
             </td>
-            <td><span class="badge bg-secondary">{{ u.status }}</span></td>
+            <td><span class="badge bg-secondary">{{ u.status_name }}</span></td>
             <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(u)">
                 Редактировать
