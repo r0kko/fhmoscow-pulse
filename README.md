@@ -42,6 +42,11 @@ JWT_SECRET=your_jwt_secret
 # JWT_ACCESS_TTL=15m
 # JWT_REFRESH_TTL=30d
 # JWT_ALG=HS256
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=587
+# SMTP_USER=user@example.com
+# SMTP_PASS=secret
+# EMAIL_FROM=no-reply@example.com
 ```
 
 ## Running with Docker

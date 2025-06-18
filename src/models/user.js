@@ -32,6 +32,11 @@ User.init(
       unique: true,
       validate: { isEmail: true },
     },
+    email_confirmed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     password: {
       type: DataTypes.STRING(255), // хранит bcrypt-hash!
       allowNull: false,

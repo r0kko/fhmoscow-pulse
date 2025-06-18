@@ -7,6 +7,7 @@ function sanitize(userObj) {
     email,
     phone,
     birth_date,
+    email_confirmed,
     status_id,
     ...technical
   } = userObj;
@@ -38,6 +39,7 @@ function sanitize(userObj) {
     email,
     phone,
     birth_date,
+    email_confirmed,
     status_id,
     ...rest,
   };

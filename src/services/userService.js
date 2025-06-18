@@ -3,7 +3,11 @@ import { Op } from 'sequelize';
 import { User, Role, UserStatus } from '../models/index.js';
 
 async function createUser(data) {
-  const status = await UserStatus.findOne({ where: { alias: 'ACTIVE' } });
+  const unconfirmed = await UserStatus.findOne({
+    where: { alias: 'EMAIL_UNCONFIRMED' },
+  });
+  const fallback = await UserStatus.findOne({ where: { alias: 'ACTIVE' } });
+  const status = unconfirmed || fallback;
   const user = await User.create({ ...data, status_id: status.id });
   return user;
 }

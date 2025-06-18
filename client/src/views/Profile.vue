@@ -14,6 +14,9 @@ const placeholderSections = [
 
 const user = ref(null);
 const toastRef = ref(null);
+const code = ref('');
+const codeSent = ref(false);
+const verifyError = ref('');
 let toast;
 
 function showToast() {
@@ -26,6 +29,31 @@ function showToast() {
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text);
   showToast();
+}
+
+async function sendCode() {
+  try {
+    await apiFetch('/email/send-code', { method: 'POST' });
+    codeSent.value = true;
+    verifyError.value = '';
+  } catch (e) {
+    verifyError.value = e.message;
+  }
+}
+
+async function confirmCode() {
+  try {
+    await apiFetch('/email/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code: code.value }),
+    });
+    code.value = '';
+    codeSent.value = false;
+    verifyError.value = '';
+    await fetchProfile();
+  } catch (e) {
+    verifyError.value = e.message;
+  }
 }
 
 async function fetchProfile() {
@@ -138,6 +166,27 @@ onMounted(fetchProfile);
                   </button>
                 </div>
               </div>
+            </div>
+            <div v-if="!user.email_confirmed" class="mt-3">
+              <div class="alert alert-warning p-2">
+                Email не подтверждён.
+                <button class="btn btn-sm btn-primary ms-2" @click="sendCode">
+                  Отправить код
+                </button>
+              </div>
+              <div v-if="codeSent" class="input-group mt-2">
+                <input
+                  type="text"
+                  class="form-control"
+                  v-model="code"
+                  maxlength="6"
+                  placeholder="Код из письма"
+                />
+                <button class="btn btn-primary" @click="confirmCode">
+                  Подтвердить
+                </button>
+              </div>
+              <div v-if="verifyError" class="text-danger mt-1">{{ verifyError }}</div>
             </div>
           </div>
         </div>

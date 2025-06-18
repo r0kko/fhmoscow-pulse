@@ -3,6 +3,7 @@ import Role from './role.js';
 import UserRole from './userRole.js';
 import UserStatus from './userStatus.js';
 import Log from './log.js';
+import EmailCode from './emailCode.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -16,4 +17,7 @@ Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id' });
 User.hasMany(Log, { foreignKey: 'user_id' });
 Log.belongsTo(User, { foreignKey: 'user_id' });
 
-export { User, Role, UserRole, UserStatus, Log };
+/* email verification codes */
+User.hasMany(EmailCode, { foreignKey: 'user_id' });
+EmailCode.belongsTo(User, { foreignKey: 'user_id' });
+export { User, Role, UserRole, UserStatus, Log, EmailCode };
