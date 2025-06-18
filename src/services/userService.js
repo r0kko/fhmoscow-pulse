@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import { User, Role, UserStatus } from '../models/index.js';
 
 async function createUser(data) {
@@ -6,8 +8,41 @@ async function createUser(data) {
   return user;
 }
 
-async function listUsers() {
-  return User.findAll({ include: [Role, UserStatus] });
+async function listUsers(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1));
+  const limit = Math.max(1, parseInt(options.limit || 20));
+  const offset = (page - 1) * limit;
+
+  const sortField = [
+    'last_name',
+    'first_name',
+    'email',
+    'phone',
+    'birth_date',
+    'createdAt',
+  ].includes(options.sort)
+    ? options.sort
+    : 'last_name';
+  const sortOrder = options.order === 'desc' ? 'DESC' : 'ASC';
+
+  const where = {};
+  if (options.search) {
+    const term = `%${options.search}%`;
+    where[Op.or] = [
+      { last_name: { [Op.iLike]: term } },
+      { first_name: { [Op.iLike]: term } },
+      { phone: { [Op.iLike]: term } },
+      { email: { [Op.iLike]: term } },
+    ];
+  }
+
+  return User.findAndCountAll({
+    include: [Role, UserStatus],
+    where,
+    order: [[sortField, sortOrder]],
+    limit,
+    offset,
+  });
 }
 
 async function getUser(id) {

@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
 import { Modal } from 'bootstrap'
 
 const users = ref([])
+const total = ref(0)
 const error = ref('')
 const editUser = ref(null)
 const modalRef = ref(null)
@@ -17,31 +18,20 @@ let passwordModal
 const search = ref('')
 const currentPage = ref(1)
 const pageSize = 8
-
-const filteredUsers = computed(() => {
-  if (!search.value) return users.value
-  return users.value.filter((u) => {
-    const term = search.value.toLowerCase()
-    return (
-      u.last_name.toLowerCase().includes(term) ||
-      u.first_name.toLowerCase().includes(term) ||
-      u.phone.includes(term) ||
-      u.email.toLowerCase().includes(term)
-    )
-  })
-})
+const sortField = ref('last_name')
+const sortOrder = ref('asc')
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredUsers.value.length / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize))
 )
 
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredUsers.value.slice(start, start + pageSize)
+watch([search, sortField, sortOrder], () => {
+  currentPage.value = 1
+  loadUsers()
 })
 
-watch(search, () => {
-  currentPage.value = 1
+watch(currentPage, () => {
+  loadUsers()
 })
 
 function generatePassword(len = 8) {
@@ -55,8 +45,16 @@ function generatePassword(len = 8) {
 
 async function loadUsers() {
   try {
-    const data = await apiFetch('/users')
+    const params = new URLSearchParams({
+      search: search.value,
+      page: currentPage.value,
+      limit: pageSize,
+      sort: sortField.value,
+      order: sortOrder.value,
+    })
+    const data = await apiFetch(`/users?${params}`)
     users.value = data.users
+    total.value = data.total
   } catch (e) {
     error.value = e.message
   }
@@ -118,32 +116,105 @@ async function unblockUser(id) {
   await apiFetch(`/users/${id}/unblock`, { method: 'POST' })
   await loadUsers()
 }
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortOrder.value = 'asc'
+  }
+}
+
+function formatPhone(digits) {
+  if (!digits) return ''
+  let out = '+7'
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4)
+  if (digits.length >= 4) out += ') '
+  if (digits.length >= 4) out += digits.slice(4, 7)
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9)
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11)
+  return out
+}
+
+function formatDate(str) {
+  if (!str) return ''
+  const [year, month, day] = str.split('-')
+  return `${day}.${month}.${year}`
+}
+
+function copy(text) {
+  navigator.clipboard.writeText(text)
+}
 </script>
 
 <template>
   <div class="container mt-4">
     <h1 class="mb-4">Пользователи</h1>
-    <div class="d-flex flex-wrap align-items-center mb-3">
-      <button class="btn btn-primary me-3" @click="openCreate">Добавить</button>
+    <div class="input-group mb-3">
       <input
         type="text"
-        class="form-control flex-grow-1"
+        class="form-control"
         placeholder="Поиск"
         v-model="search"
       />
+      <button class="btn btn-primary" @click="openCreate">Добавить</button>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <div v-if="paginatedUsers.length" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-      <div class="col" v-for="u in paginatedUsers" :key="u.id">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title mb-1">{{ u.last_name }} {{ u.first_name }}</h5>
-            <p class="text-muted mb-1">{{ u.phone }}</p>
-            <p class="mb-1"><span class="badge bg-secondary">{{ u.status }}</span></p>
-            <p class="mb-3" v-if="u.roles && u.roles.length">
-              <span class="badge bg-info me-1" v-for="r in u.roles" :key="r">{{ r }}</span>
-            </p>
-            <div class="mt-auto text-end">
+    <div class="table-responsive" v-if="users.length">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th @click="toggleSort('last_name')" class="sortable">ФИО</th>
+            <th class="d-none d-lg-table-cell">Отчество</th>
+            <th
+              class="sortable d-none d-md-table-cell"
+              @click="toggleSort('phone')"
+            >
+              Телефон
+            </th>
+            <th
+              class="sortable d-none d-lg-table-cell"
+              @click="toggleSort('email')"
+            >
+              Email
+            </th>
+            <th
+              class="sortable d-none d-lg-table-cell"
+              @click="toggleSort('birth_date')"
+            >
+              Дата рождения
+            </th>
+            <th class="d-none d-lg-table-cell">Роли</th>
+            <th @click="toggleSort('status')" class="sortable">Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="u in users" :key="u.id">
+            <td>{{ u.last_name }} {{ u.first_name }}</td>
+            <td class="d-none d-lg-table-cell">{{ u.patronymic }}</td>
+            <td class="d-none d-md-table-cell">
+              <span>{{ formatPhone(u.phone) }}</span>
+              <button
+                class="btn btn-sm btn-outline-secondary ms-1 px-1 py-0 align-baseline"
+                @click="copy(u.phone)"
+              >
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </td>
+            <td class="d-none d-lg-table-cell">{{ u.email }}</td>
+            <td class="d-none d-lg-table-cell">{{ formatDate(u.birth_date) }}</td>
+            <td class="d-none d-lg-table-cell">
+              <span
+                class="badge bg-info me-1"
+                v-for="r in u.roles"
+                :key="r"
+                >{{ r }}</span
+              >
+            </td>
+            <td><span class="badge bg-secondary">{{ u.status }}</span></td>
+            <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(u)">
                 Редактировать
               </button>
@@ -161,10 +232,10 @@ async function unblockUser(id) {
               >
                 Разблокировать
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <p v-else>Нет пользователей.</p>
     <nav class="mt-3" v-if="totalPages > 1">
@@ -232,9 +303,7 @@ async function unblockUser(id) {
 </template>
 
 <style scoped>
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+.sortable {
+  cursor: pointer;
 }
 </style>
