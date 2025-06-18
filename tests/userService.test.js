@@ -4,7 +4,7 @@ const addRoleMock = jest.fn();
 const removeRoleMock = jest.fn();
 
 const createMock = jest.fn();
-const findAllMock = jest.fn();
+const findAndCountAllMock = jest.fn();
 const findByPkMock = jest.fn();
 const updateMock = jest.fn();
 const user = { addRole: addRoleMock, removeRole: removeRoleMock, update: updateMock };
@@ -16,7 +16,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: {
     create: createMock,
     findByPk: findByPkMock,
-    findAll: findAllMock,
+    findAndCountAll: findAndCountAllMock,
   },
   Role: { findOne: findRoleMock },
   UserStatus: { findOne: statusFindMock },
@@ -38,11 +38,11 @@ test('removeRole removes role from user', async () => {
   expect(removeRoleMock).toHaveBeenCalled();
 });
 
-test('listUsers calls model findAll', async () => {
-  findAllMock.mockResolvedValue([]);
-  const result = await service.listUsers();
-  expect(result).toEqual([]);
-  expect(findAllMock).toHaveBeenCalled();
+test('listUsers calls model findAndCountAll', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  const result = await service.listUsers({});
+  expect(result).toEqual({ rows: [], count: 0 });
+  expect(findAndCountAllMock).toHaveBeenCalled();
 });
 
 test('getUser throws on missing user', async () => {
