@@ -20,7 +20,12 @@ export async function sendMail(to, subject, text) {
     console.warn('Email not configured');
     return;
   }
-  await transporter.sendMail({ from: EMAIL_FROM || SMTP_USER, to, subject, text });
+  await transporter.sendMail({
+    from: EMAIL_FROM || SMTP_USER,
+    to,
+    subject,
+    text,
+  });
 }
 
 export async function sendVerificationEmail(user, code) {
