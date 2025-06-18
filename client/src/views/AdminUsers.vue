@@ -166,7 +166,6 @@ function copy(text) {
         <thead>
           <tr>
             <th @click="toggleSort('last_name')" class="sortable">ФИО</th>
-            <th class="d-none d-lg-table-cell">Отчество</th>
             <th
               class="sortable d-none d-md-table-cell"
               @click="toggleSort('phone')"
@@ -192,16 +191,11 @@ function copy(text) {
         </thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
-            <td>{{ u.last_name }} {{ u.first_name }}</td>
-            <td class="d-none d-lg-table-cell">{{ u.patronymic }}</td>
+            <td>{{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}</td>
             <td class="d-none d-md-table-cell">
-              <span>{{ formatPhone(u.phone) }}</span>
-              <button
-                class="btn btn-sm btn-outline-secondary ms-1 px-1 py-0 align-baseline"
-                @click="copy(u.phone)"
-              >
-                <i class="bi bi-clipboard"></i>
-              </button>
+              <span class="cursor-pointer" @click="copy(u.phone)">
+                {{ formatPhone(u.phone) }}
+              </span>
             </td>
             <td class="d-none d-lg-table-cell">{{ u.email }}</td>
             <td class="d-none d-lg-table-cell">{{ formatDate(u.birth_date) }}</td>
