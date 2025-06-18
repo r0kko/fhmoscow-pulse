@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import helmet from 'helmet';
+import { csrf } from 'lusca';
 
 import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
@@ -14,6 +15,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(csrf());
 app.use(cors({ origin: true, credentials: true }));
 app.use(helmet());
 app.use(rateLimiter);
