@@ -1,37 +1,27 @@
+import { apiFetch } from './api.js';
+
 export async function suggestFio(query) {
-  const token = import.meta.env.VITE_DADATA_TOKEN;
-  if (!token || !query) return [];
-  const res = await fetch(
-    'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/fio',
-    {
+  if (!query) return [];
+  try {
+    const { suggestions } = await apiFetch('/dadata/suggest-fio', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Token ${token}`,
-      },
       body: JSON.stringify({ query }),
-    }
-  );
-  if (!res.ok) return [];
-  const data = await res.json().catch(() => ({}));
-  return data.suggestions || [];
+    });
+    return suggestions;
+  } catch (_err) {
+    return [];
+  }
 }
 
 export async function cleanFio(fio) {
-  const token = import.meta.env.VITE_DADATA_TOKEN;
-  if (!token || !fio) return null;
-  const res = await fetch(
-    'https://suggestions.dadata.ru/suggestions/api/4_1/rs/clean/name',
-    {
+  if (!fio) return null;
+  try {
+    const { result } = await apiFetch('/dadata/clean-fio', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Token ${token}`,
-      },
-      body: JSON.stringify([fio]),
-    }
-  );
-  if (!res.ok) return null;
-  const data = await res.json().catch(() => null);
-  return Array.isArray(data) ? data[0] : null;
+      body: JSON.stringify({ fio }),
+    });
+    return result;
+  } catch (_err) {
+    return null;
+  }
 }
