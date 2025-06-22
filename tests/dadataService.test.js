@@ -19,8 +19,13 @@ test('suggestFio returns array from API', async () => {
     ok: true,
     json: () => Promise.resolve({ suggestions: [{ value: 'x' }] }),
   });
-  const res = await suggestFio('x');
-  expect(fetch).toHaveBeenCalled();
+  const res = await suggestFio('x', ['SURNAME']);
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/suggest/fio'),
+    expect.objectContaining({
+      body: JSON.stringify({ query: 'x', parts: ['SURNAME'] }),
+    })
+  );
   expect(res).toEqual([{ value: 'x' }]);
 });
 

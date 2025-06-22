@@ -19,8 +19,16 @@ const form = reactive({
 
 const phoneInput = ref('')
 const errors = reactive({})
-const fioSuggestions = ref([])
-let fioTimeout
+const suggestions = reactive({
+  last_name: [],
+  first_name: [],
+  patronymic: []
+})
+const timeouts = {
+  last_name: null,
+  first_name: null,
+  patronymic: null
+}
 
 watch(
   () => props.modelValue,
@@ -35,17 +43,23 @@ watch(form, (val) => {
   emit('update:modelValue', { ...val })
 })
 
-watch([() => form.last_name, () => form.first_name, () => form.patronymic], () => {
-  clearTimeout(fioTimeout)
-  const query = `${form.last_name} ${form.first_name} ${form.patronymic}`.trim()
-  if (query.length < 3) {
-    fioSuggestions.value = []
+
+function updateSuggestions(field, part) {
+  clearTimeout(timeouts[field])
+  const value = form[field]
+  if (!value || value.length < 2) {
+    suggestions[field] = []
     return
   }
-  fioTimeout = setTimeout(async () => {
-    fioSuggestions.value = await suggestFio(query)
+  const query = `${form.last_name} ${form.first_name} ${form.patronymic}`.trim()
+  timeouts[field] = setTimeout(async () => {
+    suggestions[field] = await suggestFio(query, [part])
   }, 300)
-})
+}
+
+watch(() => form.last_name, () => updateSuggestions('last_name', 'SURNAME'))
+watch(() => form.first_name, () => updateSuggestions('first_name', 'NAME'))
+watch(() => form.patronymic, () => updateSuggestions('patronymic', 'PATRONYMIC'))
 
 function formatPhone(digits) {
   if (!digits) return ''
@@ -82,13 +96,18 @@ async function onFioBlur() {
     if (cleaned.name) form.first_name = cleaned.name
     if (cleaned.patronymic) form.patronymic = cleaned.patronymic
   }
+  suggestions.last_name = []
+  suggestions.first_name = []
+  suggestions.patronymic = []
 }
 
 function applySuggestion(sug) {
   if (sug.data.surname) form.last_name = sug.data.surname
   if (sug.data.name) form.first_name = sug.data.name
   if (sug.data.patronymic) form.patronymic = sug.data.patronymic
-  fioSuggestions.value = []
+  suggestions.last_name = []
+  suggestions.first_name = []
+  suggestions.patronymic = []
 }
 
 function validate() {
@@ -127,8 +146,21 @@ defineExpose({ validate })
                 required
               />
               <div class="invalid-feedback">{{ errors.last_name }}</div>
+              <ul
+                v-if="suggestions.last_name.length"
+                class="list-group position-absolute w-100"
+              >
+                <li
+                  v-for="s in suggestions.last_name"
+                  :key="s.value"
+                  class="list-group-item list-group-item-action"
+                  @mousedown.prevent="applySuggestion(s)"
+                >
+                  {{ s.data.surname }}
+                </li>
+              </ul>
             </div>
-            <div class="col">
+            <div class="col position-relative">
               <label class="form-label">Имя</label>
               <input
                 v-model="form.first_name"
@@ -138,10 +170,36 @@ defineExpose({ validate })
                 required
               />
               <div class="invalid-feedback">{{ errors.first_name }}</div>
+              <ul
+                v-if="suggestions.first_name.length"
+                class="list-group position-absolute w-100"
+              >
+                <li
+                  v-for="s in suggestions.first_name"
+                  :key="s.value"
+                  class="list-group-item list-group-item-action"
+                  @mousedown.prevent="applySuggestion(s)"
+                >
+                  {{ s.data.name }}
+                </li>
+              </ul>
             </div>
-            <div class="col">
+            <div class="col position-relative">
               <label class="form-label">Отчество</label>
               <input v-model="form.patronymic" @blur="onFioBlur" class="form-control" />
+              <ul
+                v-if="suggestions.patronymic.length"
+                class="list-group position-absolute w-100"
+              >
+                <li
+                  v-for="s in suggestions.patronymic"
+                  :key="s.value"
+                  class="list-group-item list-group-item-action"
+                  @mousedown.prevent="applySuggestion(s)"
+                >
+                  {{ s.data.patronymic }}
+                </li>
+              </ul>
             </div>
             <div class="col">
               <label class="form-label">Дата рождения</label>
@@ -193,18 +251,7 @@ defineExpose({ validate })
       </div>
     </div>
 
-    <div v-if="fioSuggestions.length" class="mb-3">
-      <ul class="list-group">
-        <li
-          v-for="s in fioSuggestions"
-          :key="s.value"
-          class="list-group-item list-group-item-action"
-          @mousedown.prevent="applySuggestion(s)"
-        >
-          {{ s.value }}
-        </li>
-      </ul>
-    </div>
+
 
     <p v-if="isNew" class="text-muted">Пароль будет сгенерирован автоматически</p>
   </div>

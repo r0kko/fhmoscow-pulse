@@ -34,9 +34,13 @@ async function request(endpoint, body) {
   }
 }
 
-export async function suggestFio(query) {
+export async function suggestFio(query, parts) {
   if (!query) return [];
-  const data = await request('/suggest/fio', { query });
+  const body = { query };
+  if (Array.isArray(parts) && parts.length) {
+    body.parts = parts;
+  }
+  const data = await request('/suggest/fio', body);
   return data?.suggestions || [];
 }
 
