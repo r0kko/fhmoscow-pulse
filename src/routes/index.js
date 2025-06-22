@@ -5,12 +5,14 @@ import auth from '../middlewares/auth.js';
 import authRouter from './auth.js';
 import usersRouter from './users.js';
 import emailRouter from './email.js';
+import passportsRouter from './passports.js';
 
 const router = express.Router();
 
 router.use('/auth', authRouter);
 router.use('/users', usersRouter);
 router.use('/email', emailRouter);
+router.use('/passports', passportsRouter);
 
 /**
  * @swagger
