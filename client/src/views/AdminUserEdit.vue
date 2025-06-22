@@ -11,6 +11,13 @@ const user = ref(null)
 const isLoading = ref(false)
 const error = ref('')
 const formRef = ref(null)
+const placeholderSections = [
+  'Паспорт',
+  'ИНН и СНИЛС',
+  'Банковские реквизиты',
+  'Тип налогообложения',
+  'Выданный инвентарь'
+]
 
 async function loadUser() {
   isLoading.value = true
@@ -63,5 +70,20 @@ async function save() {
       </div>
     </form>
     <p v-else-if="isLoading">Загрузка...</p>
+    <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
+      <div class="card placeholder-card text-center">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+          <i class="bi bi-clock mb-2 fs-2"></i>
+          <h5 class="card-title mb-1">{{ section }}</h5>
+          <p class="mb-0">Информация будет доступна позже</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.placeholder-card {
+  opacity: 0.6;
+}
+</style>

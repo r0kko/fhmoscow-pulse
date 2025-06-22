@@ -40,6 +40,8 @@ DB_USER=postgres
 DB_PASS=secret
 JWT_SECRET=your_jwt_secret
 # optional overrides
+# token for DaData suggestions
+VITE_DADATA_TOKEN=your_dadata_api_token
 # JWT_ACCESS_TTL=15m
 # JWT_REFRESH_TTL=30d
 # JWT_ALG=HS256
