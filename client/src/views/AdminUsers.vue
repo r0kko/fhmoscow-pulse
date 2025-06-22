@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
 import { Modal } from 'bootstrap'
@@ -14,6 +15,7 @@ const passwordModalRef = ref(null)
 const generatedPassword = ref('')
 let modal
 let passwordModal
+const router = useRouter()
 
 const search = ref('')
 const currentPage = ref(1)
@@ -80,29 +82,17 @@ function openCreate() {
 }
 
 function openEdit(user) {
-  editUser.value = { ...user }
-  generatedPassword.value = ''
-  modal.show()
+  router.push(`/users/${user.id}`)
 }
 
 async function saveUser() {
   if (!formRef.value.validate()) return
   const payload = { ...editUser.value }
-  const id = payload.id
-  if (!id) {
-    const pass = generatePassword()
-    payload.password = pass
-    await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) })
-    generatedPassword.value = pass
-    passwordModal.show()
-  } else {
-    delete payload.roles
-    delete payload.status
-    await apiFetch(`/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    })
-  }
+  const pass = generatePassword()
+  payload.password = pass
+  await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) })
+  generatedPassword.value = pass
+  passwordModal.show()
   modal.hide()
   await loadUsers()
 }
@@ -256,13 +246,11 @@ function copy(text) {
         <div class="modal-content">
           <form @submit.prevent="saveUser">
             <div class="modal-header">
-              <h5 class="modal-title">
-                {{ editUser?.id ? 'Редактирование' : 'Новый пользователь' }}
-              </h5>
+              <h5 class="modal-title">Новый пользователь</h5>
               <button type="button" class="btn-close" @click="modal.hide()"></button>
             </div>
             <div class="modal-body">
-              <UserForm ref="formRef" v-model="editUser" :isNew="!editUser?.id" />
+              <UserForm ref="formRef" v-model="editUser" :isNew="true" />
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
