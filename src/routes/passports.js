@@ -1,4 +1,5 @@
 import express from 'express';
+
 import auth from '../middlewares/auth.js';
 import passportController from '../controllers/passportController.js';
 

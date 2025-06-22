@@ -45,7 +45,9 @@ function sanitize(obj) {
 function toPublic(passport) {
   if (!passport) return null;
   const plain =
-    typeof passport.get === 'function' ? passport.get({ plain: true }) : passport;
+    typeof passport.get === 'function'
+      ? passport.get({ plain: true })
+      : passport;
   return sanitize(plain);
 }
 
