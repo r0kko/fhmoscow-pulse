@@ -51,7 +51,7 @@ function updateSuggestions(field, part) {
     suggestions[field] = []
     return
   }
-  const query = `${form.last_name} ${form.first_name} ${form.patronymic}`.trim()
+  const query = value.trim()
   timeouts[field] = setTimeout(async () => {
     suggestions[field] = await suggestFio(query, [part])
   }, 300)
@@ -149,6 +149,7 @@ defineExpose({ validate })
               <ul
                 v-if="suggestions.last_name.length"
                 class="list-group position-absolute w-100"
+                style="z-index: 1050"
               >
                 <li
                   v-for="s in suggestions.last_name"
@@ -173,6 +174,7 @@ defineExpose({ validate })
               <ul
                 v-if="suggestions.first_name.length"
                 class="list-group position-absolute w-100"
+                style="z-index: 1050"
               >
                 <li
                   v-for="s in suggestions.first_name"
@@ -190,6 +192,7 @@ defineExpose({ validate })
               <ul
                 v-if="suggestions.patronymic.length"
                 class="list-group position-absolute w-100"
+                style="z-index: 1050"
               >
                 <li
                   v-for="s in suggestions.patronymic"
