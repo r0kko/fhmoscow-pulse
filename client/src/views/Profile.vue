@@ -5,7 +5,6 @@ import { Toast } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
 const placeholderSections = [
-  'Паспорт',
   'ИНН и СНИЛС',
   'Банковские реквизиты',
   'Тип налогообложения',
@@ -17,6 +16,8 @@ const toastRef = ref(null);
 const code = ref('');
 const codeSent = ref(false);
 const verifyError = ref('');
+const passport = ref(null);
+const passportError = ref('');
 let toast;
 
 function showToast() {
@@ -65,7 +66,20 @@ async function fetchProfile() {
   }
 }
 
-onMounted(fetchProfile);
+async function fetchPassport() {
+  try {
+    const data = await apiFetch('/passports/me');
+    passport.value = data.passport;
+    passportError.value = '';
+  } catch (e) {
+    passportError.value = e.message;
+    passport.value = null;
+  }
+}
+onMounted(() => {
+  fetchProfile();
+  fetchPassport();
+});
 </script>
 
 <template>
@@ -188,6 +202,52 @@ onMounted(fetchProfile);
               </div>
               <div v-if="verifyError" class="text-danger mt-1">{{ verifyError }}</div>
             </div>
+          </div>
+        </div>
+      </div>
+      <div class="mb-4" v-if="passport || passportError">
+        <div class="card tile fade-in">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Паспорт</h5>
+            <div v-if="passport" class="row row-cols-1 row-cols-sm-2 g-3">
+              <div class="col">
+                <label class="form-label">Тип документа</label>
+                <input type="text" class="form-control" :value="passport.document_type_name" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Страна</label>
+                <input type="text" class="form-control" :value="passport.country_name" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Серия</label>
+                <input type="text" class="form-control" :value="passport.series" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Номер</label>
+                <input type="text" class="form-control" :value="passport.number" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Дата выдачи</label>
+                <input type="text" class="form-control" :value="passport.issue_date" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Действителен до</label>
+                <input type="text" class="form-control" :value="passport.valid_until" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Кем выдан</label>
+                <input type="text" class="form-control" :value="passport.issuing_authority" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Код подразделения</label>
+                <input type="text" class="form-control" :value="passport.issuing_authority_code" readonly />
+              </div>
+              <div class="col">
+                <label class="form-label">Место рождения</label>
+                <input type="text" class="form-control" :value="passport.place_of_birth" readonly />
+              </div>
+            </div>
+            <p v-else class="mb-0 text-muted">{{ passportError || 'Паспортные данные не найдены.' }}</p>
           </div>
         </div>
       </div>
