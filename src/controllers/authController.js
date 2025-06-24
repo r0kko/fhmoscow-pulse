@@ -33,11 +33,11 @@ export default {
     } catch (_err) {
       if (_err.message === 'account_locked') {
         return res.status(401).json({
-          error: 'Account locked due to multiple failed login attempts',
+          error: 'Аккаунт заблокирован из-за многократных неудачных попыток входа',
         });
       }
       void _err;
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Неверные учётные данные' });
     }
   },
 
@@ -62,7 +62,7 @@ export default {
       req.body?.[COOKIE_NAME] ??
       req.body?.['refresh_token'];
     if (!token) {
-      return res.status(401).json({ error: 'Refresh token missing' });
+      return res.status(401).json({ error: 'Отсутствует токен обновления' });
     }
 
     try {
@@ -83,7 +83,7 @@ export default {
       void _err;
       return res
         .status(401)
-        .json({ error: 'Invalid or expired refresh token' });
+        .json({ error: 'Некорректный или истёкший токен обновления' });
     }
   },
 };

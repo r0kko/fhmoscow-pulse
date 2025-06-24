@@ -14,7 +14,7 @@ export async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `Request failed with status ${res.status}`);
+    throw new Error(data.error || `Ошибка запроса, код ${res.status}`);
   }
   return data;
 }
