@@ -167,6 +167,8 @@ router.delete(
 router.get('/:id/bank-account', auth, authorize('ADMIN'), bankAccountAdmin.get);
 
 router.get('/:id/taxation', auth, authorize('ADMIN'), taxationAdmin.get);
+router.post('/:id/taxation/check', auth, authorize('ADMIN'), taxationAdmin.check);
+router.post('/:id/taxation', auth, authorize('ADMIN'), taxationAdmin.update);
 
 router.post(
   '/:id/passport',

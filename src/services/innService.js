@@ -13,7 +13,6 @@ async function create(userId, number, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  await taxationService.updateByInn(userId, number, actorId);
   return inn;
 }
 
@@ -21,7 +20,6 @@ async function update(userId, number, actorId) {
   const inn = await Inn.findOne({ where: { user_id: userId } });
   if (!inn) throw new Error('inn_not_found');
   await inn.update({ number, updated_by: actorId });
-  await taxationService.updateByInn(userId, number, actorId);
   return inn;
 }
 
