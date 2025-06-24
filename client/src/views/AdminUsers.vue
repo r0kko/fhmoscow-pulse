@@ -2,32 +2,39 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
-import UserForm from '../components/UserForm.vue'
-import { Modal } from 'bootstrap'
+import { Toast } from 'bootstrap'
 
 const users = ref([])
 const total = ref(0)
 const error = ref('')
-const editUser = ref(null)
-const modalRef = ref(null)
-const formRef = ref(null)
-const passwordModalRef = ref(null)
-const generatedPassword = ref('')
-let modal
-let passwordModal
 const router = useRouter()
 
+const isLoading = ref(false)
 const search = ref('')
+const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = 8
 const sortField = ref('last_name')
 const sortOrder = ref('asc')
 
+const toastRef = ref(null)
+let toast
+
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize))
 )
 
-watch([search, sortField, sortOrder], () => {
+
+let searchTimeout
+watch(search, () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1
+    loadUsers()
+  }, 300)
+})
+
+watch([sortField, sortOrder, statusFilter], () => {
   currentPage.value = 1
   loadUsers()
 })
@@ -36,73 +43,47 @@ watch(currentPage, () => {
   loadUsers()
 })
 
-function generatePassword(len = 8) {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-  let out = ''
-  for (let i = 0; i < len; i++) {
-    out += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return out
-}
 
 async function loadUsers() {
   try {
     const params = new URLSearchParams({
       search: search.value,
+      status: statusFilter.value,
       page: currentPage.value,
       limit: pageSize,
       sort: sortField.value,
       order: sortOrder.value,
     })
+    isLoading.value = true
     const data = await apiFetch(`/users?${params}`)
     users.value = data.users
     total.value = data.total
   } catch (e) {
     error.value = e.message
+  } finally {
+    isLoading.value = false
   }
 }
 
-onMounted(() => {
-  modal = new Modal(modalRef.value)
-  passwordModal = new Modal(passwordModalRef.value)
-  loadUsers()
-})
+onMounted(loadUsers)
 
 function openCreate() {
-  editUser.value = {
-    last_name: '',
-    first_name: '',
-    patronymic: '',
-    birth_date: '',
-    phone: '',
-    email: ''
-  }
-  generatedPassword.value = ''
-  modal.show()
+  router.push('/users/new')
 }
 
 function openEdit(user) {
   router.push(`/users/${user.id}`)
 }
 
-async function saveUser() {
-  if (!formRef.value.validate()) return
-  const payload = { ...editUser.value }
-  const pass = generatePassword()
-  payload.password = pass
-  await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) })
-  generatedPassword.value = pass
-  passwordModal.show()
-  modal.hide()
-  await loadUsers()
-}
 
 async function blockUser(id) {
+  if (!confirm('Заблокировать пользователя?')) return
   await apiFetch(`/users/${id}/block`, { method: 'POST' })
   await loadUsers()
 }
 
 async function unblockUser(id) {
+  if (!confirm('Разблокировать пользователя?')) return
   await apiFetch(`/users/${id}/unblock`, { method: 'POST' })
   await loadUsers()
 }
@@ -133,49 +114,95 @@ function formatDate(str) {
   return `${day}.${month}.${year}`
 }
 
+function showToast() {
+  if (!toast) {
+    toast = new Toast(toastRef.value)
+  }
+  toast.show()
+}
+
 function copy(text) {
   navigator.clipboard.writeText(text)
+  showToast()
 }
 </script>
 
 <template>
   <div class="container mt-4">
     <h1 class="mb-4">Пользователи</h1>
-    <div class="input-group mb-3">
-      <input
-        type="text"
-        class="form-control"
-        placeholder="Поиск"
-        v-model="search"
-      />
-      <button class="btn btn-primary" @click="openCreate">Добавить</button>
+    <div class="row g-2 mb-3">
+      <div class="col">
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Поиск"
+          v-model="search"
+        />
+      </div>
+      <div class="col-auto">
+        <select v-model="statusFilter" class="form-select">
+          <option value="">Все статусы</option>
+          <option value="ACTIVE">Активные</option>
+          <option value="INACTIVE">Заблокированные</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary w-100" @click="openCreate">Добавить</button>
+      </div>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
+    <div v-if="isLoading" class="text-center my-3">
+      <div class="spinner-border" role="status"></div>
+    </div>
     <div class="table-responsive" v-if="users.length">
       <table class="table table-hover align-middle">
         <thead>
           <tr>
-            <th @click="toggleSort('last_name')" class="sortable">ФИО</th>
+            <th @click="toggleSort('last_name')" class="sortable">
+              ФИО
+              <i
+                v-if="sortField === 'last_name'"
+                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+              ></i>
+            </th>
             <th
               class="sortable d-none d-md-table-cell"
               @click="toggleSort('phone')"
             >
               Телефон
+              <i
+                v-if="sortField === 'phone'"
+                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+              ></i>
             </th>
             <th
               class="sortable d-none d-lg-table-cell"
               @click="toggleSort('email')"
             >
               Email
+              <i
+                v-if="sortField === 'email'"
+                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+              ></i>
             </th>
             <th
               class="sortable d-none d-lg-table-cell"
               @click="toggleSort('birth_date')"
             >
               Дата рождения
+              <i
+                v-if="sortField === 'birth_date'"
+                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+              ></i>
             </th>
             <th class="d-none d-lg-table-cell">Роли</th>
-            <th @click="toggleSort('status')" class="sortable">Статус</th>
+            <th @click="toggleSort('status')" class="sortable">
+              Статус
+              <i
+                v-if="sortField === 'status'"
+                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+              ></i>
+            </th>
             <th></th>
           </tr>
         </thead>
@@ -240,45 +267,15 @@ function copy(text) {
         </li>
       </ul>
     </nav>
-
-    <div ref="modalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form @submit.prevent="saveUser">
-            <div class="modal-header">
-              <h5 class="modal-title">Новый пользователь</h5>
-              <button type="button" class="btn-close" @click="modal.hide()"></button>
-            </div>
-            <div class="modal-body">
-              <UserForm ref="formRef" v-model="editUser" :isNew="true" />
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div ref="passwordModalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Пароль пользователя</h5>
-            <button type="button" class="btn-close" @click="passwordModal.hide()"></button>
-          </div>
-          <div class="modal-body">
-            <p>Сгенерированный пароль:</p>
-            <div class="input-group">
-              <input type="text" class="form-control" :value="generatedPassword" readonly />
-              <button type="button" class="btn btn-outline-secondary" @click="navigator.clipboard.writeText(generatedPassword)">Копировать</button>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" @click="passwordModal.hide()">OK</button>
-          </div>
-        </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div
+        ref="toastRef"
+        class="toast text-bg-secondary"
+        role="status"
+        data-bs-delay="1500"
+        data-bs-autohide="true"
+      >
+        <div class="toast-body">Скопировано</div>
       </div>
     </div>
   </div>
@@ -287,5 +284,8 @@ function copy(text) {
 <style scoped>
 .sortable {
   cursor: pointer;
+}
+.sortable i {
+  margin-left: 4px;
 }
 </style>
