@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Toast } from 'bootstrap';
+import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
 const placeholderSections = [
@@ -71,6 +71,10 @@ async function fetchProfile() {
   try {
     const data = await apiFetch('/users/me');
     user.value = data.user;
+    await nextTick();
+    document
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
   } catch (_err) {
     user.value = null;
   } finally {
@@ -139,30 +143,24 @@ onMounted(() => {
     </nav>
     <h1 class="mb-4">Личная информация</h1>
     <div v-if="loading.user" class="text-center my-5">
-      <div class="spinner-border" role="status" aria-label="Загрузка"></div>
+      <div class="spinner-border" role="status" aria-label="Загрузка">
+        <span class="visually-hidden">Загрузка…</span>
+      </div>
     </div>
     <div v-else-if="user">
       <div class="mb-4">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные</h5>
-            <dl class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-0">
-              <div class="col">
-                <dt class="form-label">Фамилия</dt>
-                <dd>{{ user.last_name }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Имя</dt>
-                <dd>{{ user.first_name }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Отчество</dt>
-                <dd>{{ user.patronymic }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Дата рождения</dt>
-                <dd>{{ user.birth_date }}</dd>
-              </div>
+            <dl class="definition-list mb-0">
+              <dt>Фамилия</dt>
+              <dd>{{ user.last_name }}</dd>
+              <dt>Имя</dt>
+              <dd>{{ user.first_name }}</dd>
+              <dt>Отчество</dt>
+              <dd>{{ user.patronymic }}</dd>
+              <dt>Дата рождения</dt>
+              <dd>{{ user.birth_date }}</dd>
             </dl>
           </div>
         </div>
@@ -182,6 +180,7 @@ onMounted(() => {
                     @click="copyToClipboard(user.phone)"
                     title="Скопировать"
                     aria-label="Скопировать телефон"
+                    data-bs-toggle="tooltip"
                   >
                     <i class="bi bi-clipboard"></i>
                   </button>
@@ -197,6 +196,7 @@ onMounted(() => {
                     @click="copyToClipboard(user.email)"
                     title="Скопировать"
                     aria-label="Скопировать email"
+                    data-bs-toggle="tooltip"
                   >
                     <i class="bi bi-clipboard"></i>
                   </button>
@@ -232,45 +232,31 @@ onMounted(() => {
           <div class="card-body">
             <h5 class="card-title mb-3">Паспорт</h5>
             <div v-if="loading.passport" class="text-center py-4">
-              <div class="spinner-border" role="status" aria-label="Загрузка"></div>
+              <div class="spinner-border" role="status" aria-label="Загрузка">
+                <span class="visually-hidden">Загрузка…</span>
+              </div>
             </div>
-            <div v-else-if="passport" class="row row-cols-1 row-cols-sm-2 g-3">
-              <div class="col">
-                <dt class="form-label">Тип документа</dt>
+            <div v-else-if="passport">
+              <dl class="definition-list mb-0">
+                <dt>Тип документа</dt>
                 <dd>{{ passport.document_type_name }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Страна</dt>
+                <dt>Страна</dt>
                 <dd>{{ passport.country_name }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Серия</dt>
+                <dt>Серия</dt>
                 <dd>{{ passport.series }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Номер</dt>
+                <dt>Номер</dt>
                 <dd>{{ passport.number }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Дата выдачи</dt>
+                <dt>Дата выдачи</dt>
                 <dd>{{ passport.issue_date }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Действителен до</dt>
+                <dt>Действителен до</dt>
                 <dd>{{ passport.valid_until }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Кем выдан</dt>
+                <dt>Кем выдан</dt>
                 <dd>{{ passport.issuing_authority }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Код подразделения</dt>
+                <dt>Код подразделения</dt>
                 <dd>{{ passport.issuing_authority_code }}</dd>
-              </div>
-              <div class="col">
-                <dt class="form-label">Место рождения</dt>
+                <dt>Место рождения</dt>
                 <dd>{{ passport.place_of_birth }}</dd>
-              </div>
+              </dl>
             </div>
             <p v-else class="mb-0 text-muted">{{ passportError || 'Паспортные данные не найдены.' }}</p>
           </div>
@@ -281,17 +267,21 @@ onMounted(() => {
           <div class="card-body">
             <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
             <div v-if="loading.inn || loading.snils" class="text-center py-4">
-              <div class="spinner-border" role="status" aria-label="Загрузка"></div>
+              <div class="spinner-border" role="status" aria-label="Загрузка">
+                <span class="visually-hidden">Загрузка…</span>
+              </div>
             </div>
-            <div v-else-if="inn || snils" class="row row-cols-1 row-cols-sm-2 g-3">
-              <div class="col" v-if="inn">
-                <dt class="form-label">ИНН</dt>
-                <dd>{{ inn.number }}</dd>
-              </div>
-              <div class="col" v-if="snils">
-                <dt class="form-label">СНИЛС</dt>
-                <dd>{{ snils.number }}</dd>
-              </div>
+            <div v-else-if="inn || snils">
+              <dl class="definition-list mb-0">
+                <template v-if="inn">
+                  <dt>ИНН</dt>
+                  <dd>{{ inn.number }}</dd>
+                </template>
+                <template v-if="snils">
+                  <dt>СНИЛС</dt>
+                  <dd>{{ snils.number }}</dd>
+                </template>
+              </dl>
             </div>
             <p v-else class="mb-0 text-muted">{{ innError || snilsError || 'Данные отсутствуют.' }}</p>
           </div>
@@ -342,11 +332,16 @@ onMounted(() => {
   opacity: 0.6;
 }
 
-dt {
+.definition-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+.definition-list dt {
   font-weight: 600;
 }
-dd {
-  margin-bottom: 0;
+.definition-list dd {
+  margin: 0;
 }
 
 @keyframes fadeIn {
