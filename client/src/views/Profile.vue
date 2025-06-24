@@ -29,6 +29,23 @@ const loading = reactive({
 });
 let toast;
 
+function formatPhone(digits) {
+  if (!digits) return ''
+  let out = '+7'
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4)
+  if (digits.length >= 4) out += ') '
+  if (digits.length >= 4) out += digits.slice(4, 7)
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9)
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11)
+  return out
+}
+
+function formatDate(str) {
+  if (!str) return ''
+  const [year, month, day] = str.split('-')
+  return `${day}.${month}.${year}`
+}
+
 function showToast() {
   if (!toast) {
     toast = new Toast(toastRef.value);
@@ -200,7 +217,7 @@ onMounted(() => {
                       id="birthDate"
                       type="text"
                       class="form-control"
-                      :value="user.birth_date"
+                      :value="formatDate(user.birth_date)"
                       readonly
                       placeholder="Дата рождения"
                     />
@@ -225,7 +242,7 @@ onMounted(() => {
                       id="userPhone"
                       type="text"
                       class="form-control"
-                      :value="user.phone"
+                      :value="formatPhone(user.phone)"
                       readonly
                       placeholder="Телефон"
                     />
@@ -339,65 +356,33 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                    <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
                     <div class="form-floating flex-grow-1">
                       <input
-                        id="passportSeries"
+                        id="passportSerial"
                         type="text"
                         class="form-control"
-                        :value="passport.series"
+                        :value="passport.series + ' ' + passport.number"
                         readonly
-                        placeholder="Серия"
+                        placeholder="Серия и номер"
                       />
-                      <label for="passportSeries">Серия</label>
+                      <label for="passportSerial">Серия и номер</label>
                     </div>
                   </div>
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                    <span class="input-group-text"><i class="bi bi-calendar"></i></span>
                     <div class="form-floating flex-grow-1">
                       <input
-                        id="passportNumber"
+                        id="passportValidity"
                         type="text"
                         class="form-control"
-                        :value="passport.number"
+                        :value="formatDate(passport.issue_date) + ' - ' + formatDate(passport.valid_until)"
                         readonly
-                        placeholder="Номер"
+                        placeholder="Срок действия"
                       />
-                      <label for="passportNumber">Номер</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportIssue"
-                        type="text"
-                        class="form-control"
-                        :value="passport.issue_date"
-                        readonly
-                        placeholder="Дата выдачи"
-                      />
-                      <label for="passportIssue">Дата выдачи</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportValid"
-                        type="text"
-                        class="form-control"
-                        :value="passport.valid_until"
-                        readonly
-                        placeholder="Действителен до"
-                      />
-                      <label for="passportValid">Действителен до</label>
+                      <label for="passportValidity">Срок действия</label>
                     </div>
                   </div>
                 </div>
@@ -409,27 +394,11 @@ onMounted(() => {
                         id="passportAuthority"
                         type="text"
                         class="form-control"
-                        :value="passport.issuing_authority"
+                        :value="passport.issuing_authority + ' (' + passport.issuing_authority_code + ')'"
                         readonly
                         placeholder="Кем выдан"
                       />
                       <label for="passportAuthority">Кем выдан</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-123"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportCode"
-                        type="text"
-                        class="form-control"
-                        :value="passport.issuing_authority_code"
-                        readonly
-                        placeholder="Код подразделения"
-                      />
-                      <label for="passportCode">Код подразделения</label>
                     </div>
                   </div>
                 </div>
