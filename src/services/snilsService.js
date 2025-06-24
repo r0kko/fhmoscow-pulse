@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import { Snils } from '../models/index.js';
 
 async function getByUser(userId) {
@@ -5,6 +7,8 @@ async function getByUser(userId) {
 }
 
 async function create(userId, number, actorId) {
+  const existing = await Snils.findOne({ where: { number } });
+  if (existing) throw new Error('snils_exists');
   return Snils.create({
     user_id: userId,
     number,
@@ -14,8 +18,14 @@ async function create(userId, number, actorId) {
 }
 
 async function update(userId, number, actorId) {
-  const snils = await Snils.findOne({ where: { user_id: userId } });
+  const [snils, duplicate] = await Promise.all([
+    Snils.findOne({ where: { user_id: userId } }),
+    Snils.findOne({
+      where: { number, user_id: { [Op.ne]: userId } },
+    }),
+  ]);
   if (!snils) throw new Error('snils_not_found');
+  if (duplicate) throw new Error('snils_exists');
   await snils.update({ number, updated_by: actorId });
   return snils;
 }
