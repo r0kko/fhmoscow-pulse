@@ -1,5 +1,8 @@
 <template>
-  <nav class="navbar navbar-expand-md navbar-dark" :style="{ backgroundColor: 'var(--brand-color)' }">
+  <nav
+    class="navbar navbar-expand-md navbar-dark"
+    :style="{ backgroundColor: 'var(--brand-color)' }"
+  >
     <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2" to="/">
         <img :src="logo" alt="FHM" height="30" />
@@ -27,30 +30,30 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { auth, fetchCurrentUser, clearAuth } from '../auth.js'
-import { apiFetch } from '../api.js'
-import logo from '../assets/fhm-logo.svg'
+import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { auth, fetchCurrentUser, clearAuth } from '../auth.js';
+import { apiFetch } from '../api.js';
+import logo from '../assets/fhm-logo.svg';
 
-const router = useRouter()
-const { user } = auth
+const router = useRouter();
+const { user } = auth;
 
 onMounted(async () => {
   if (!auth.user) {
     try {
-      await fetchCurrentUser()
+      await fetchCurrentUser();
     } catch (e) {
-      logout()
+      logout();
     }
   }
-})
+});
 
 function logout() {
   apiFetch('/auth/logout', { method: 'POST' }).finally(() => {
-    localStorage.removeItem('access_token')
-    clearAuth()
-    router.push('/login')
-  })
+    localStorage.removeItem('access_token');
+    clearAuth();
+    router.push('/login');
+  });
 }
 </script>
