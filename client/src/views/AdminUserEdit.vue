@@ -22,6 +22,12 @@ const placeholderSections = [
   'Выданный инвентарь'
 ]
 
+function formatDate(str) {
+  if (!str) return ''
+  const [y, m, d] = str.split('-')
+  return `${d}.${m}.${y}`
+}
+
 async function loadUser() {
   isLoading.value = true
   error.value = ''
@@ -71,6 +77,7 @@ async function savePassport(data) {
 }
 
 async function deletePassport() {
+  if (!confirm('Удалить паспортные данные?')) return
   try {
     await apiFetch(`/users/${route.params.id}/passport`, { method: 'DELETE' })
     passport.value = null
@@ -128,66 +135,57 @@ async function save() {
           <h5 class="card-title mb-3">Паспорт</h5>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <div class="col">
-              <label class="form-label">Тип документа</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.document_type_name" readonly />
+                <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                <div class="form-floating flex-grow-1">
+                  <input id="admDocType" type="text" class="form-control" :value="passport.document_type_name" readonly placeholder="Тип документа" />
+                  <label for="admDocType">Тип документа</label>
+                </div>
               </div>
             </div>
             <div class="col">
-              <label class="form-label">Страна</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.country_name" readonly />
+                <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                <div class="form-floating flex-grow-1">
+                  <input id="admCountry" type="text" class="form-control" :value="passport.country_name" readonly placeholder="Страна" />
+                  <label for="admCountry">Страна</label>
+                </div>
               </div>
             </div>
             <div class="col">
-              <label class="form-label">Серия</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.series" readonly />
+                <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
+                <div class="form-floating flex-grow-1">
+                  <input id="admSeries" type="text" class="form-control" :value="passport.series + ' ' + passport.number" readonly placeholder="Серия и номер" />
+                  <label for="admSeries">Серия и номер</label>
+                </div>
               </div>
             </div>
             <div class="col">
-              <label class="form-label">Номер</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.number" readonly />
+                <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                <div class="form-floating flex-grow-1">
+                  <input id="admValidity" type="text" class="form-control" :value="formatDate(passport.issue_date) + ' - ' + formatDate(passport.valid_until)" readonly placeholder="Срок действия" />
+                  <label for="admValidity">Срок действия</label>
+                </div>
               </div>
             </div>
             <div class="col">
-              <label class="form-label">Дата выдачи</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.issue_date" readonly />
+                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                <div class="form-floating flex-grow-1">
+                  <input id="admAuthority" type="text" class="form-control" :value="passport.issuing_authority + ' (' + passport.issuing_authority_code + ')'" readonly placeholder="Кем выдан" />
+                  <label for="admAuthority">Кем выдан</label>
+                </div>
               </div>
             </div>
             <div class="col">
-              <label class="form-label">Действителен до</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.valid_until" readonly />
-              </div>
-            </div>
-            <div class="col">
-              <label class="form-label">Кем выдан</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.issuing_authority" readonly />
-              </div>
-            </div>
-            <div class="col">
-              <label class="form-label">Код подразделения</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.issuing_authority_code" readonly />
-              </div>
-            </div>
-            <div class="col">
-              <label class="form-label">Место рождения</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="text" class="form-control" :value="passport.place_of_birth" readonly />
+                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                <div class="form-floating flex-grow-1">
+                  <input id="admBirthplace" type="text" class="form-control" :value="passport.place_of_birth" readonly placeholder="Место рождения" />
+                  <label for="admBirthplace">Место рождения</label>
+                </div>
               </div>
             </div>
           </div>

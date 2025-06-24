@@ -137,15 +137,19 @@ defineExpose({ validate })
           <h5 class="card-title mb-3">Основные данные</h5>
           <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
             <div class="col position-relative">
-              <label class="form-label">Фамилия</label>
-              <input
-                v-model="form.last_name"
-                @blur="onFioBlur"
-                class="form-control"
-                :class="{ 'is-invalid': errors.last_name }"
-                required
-              />
-              <div class="invalid-feedback">{{ errors.last_name }}</div>
+              <div class="form-floating">
+                <input
+                  id="lastName"
+                  v-model="form.last_name"
+                  @blur="onFioBlur"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.last_name }"
+                  placeholder="Фамилия"
+                  required
+                />
+                <label for="lastName">Фамилия</label>
+                <div class="invalid-feedback">{{ errors.last_name }}</div>
+              </div>
               <ul
                 v-if="suggestions.last_name.length"
                 class="list-group position-absolute w-100"
@@ -162,15 +166,19 @@ defineExpose({ validate })
               </ul>
             </div>
             <div class="col position-relative">
-              <label class="form-label">Имя</label>
-              <input
-                v-model="form.first_name"
-                @blur="onFioBlur"
-                class="form-control"
-                :class="{ 'is-invalid': errors.first_name }"
-                required
-              />
-              <div class="invalid-feedback">{{ errors.first_name }}</div>
+              <div class="form-floating">
+                <input
+                  id="firstName"
+                  v-model="form.first_name"
+                  @blur="onFioBlur"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.first_name }"
+                  placeholder="Имя"
+                  required
+                />
+                <label for="firstName">Имя</label>
+                <div class="invalid-feedback">{{ errors.first_name }}</div>
+              </div>
               <ul
                 v-if="suggestions.first_name.length"
                 class="list-group position-absolute w-100"
@@ -187,8 +195,16 @@ defineExpose({ validate })
               </ul>
             </div>
             <div class="col position-relative">
-              <label class="form-label">Отчество</label>
-              <input v-model="form.patronymic" @blur="onFioBlur" class="form-control" />
+              <div class="form-floating">
+                <input
+                  id="patronymic"
+                  v-model="form.patronymic"
+                  @blur="onFioBlur"
+                  class="form-control"
+                  placeholder="Отчество"
+                />
+                <label for="patronymic">Отчество</label>
+              </div>
               <ul
                 v-if="suggestions.patronymic.length"
                 class="list-group position-absolute w-100"
@@ -205,15 +221,19 @@ defineExpose({ validate })
               </ul>
             </div>
             <div class="col">
-              <label class="form-label">Дата рождения</label>
-              <input
-                type="date"
-                v-model="form.birth_date"
-                class="form-control"
-                :class="{ 'is-invalid': errors.birth_date }"
-                required
-              />
-              <div class="invalid-feedback">{{ errors.birth_date }}</div>
+              <div class="form-floating">
+                <input
+                  id="birthDate"
+                  type="date"
+                  v-model="form.birth_date"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.birth_date }"
+                  placeholder="Дата рождения"
+                  required
+                />
+                <label for="birthDate">Дата рождения</label>
+                <div class="invalid-feedback">{{ errors.birth_date }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -226,28 +246,35 @@ defineExpose({ validate })
           <h5 class="card-title mb-3">Контакты</h5>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <div class="col">
-              <label class="form-label">Телефон</label>
-              <input
-                v-model="phoneInput"
-                @input="onPhoneInput"
-                @keydown="onPhoneKeydown"
-                class="form-control"
-                :class="{ 'is-invalid': errors.phone }"
-                placeholder="+7 (___) ___-__-__"
-                required
-              />
-              <div class="invalid-feedback">{{ errors.phone }}</div>
+              <div class="form-floating">
+                <input
+                  id="phone"
+                  v-model="phoneInput"
+                  @input="onPhoneInput"
+                  @keydown="onPhoneKeydown"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.phone }"
+                  placeholder="Телефон"
+                  required
+                />
+                <label for="phone">Телефон</label>
+                <div class="invalid-feedback">{{ errors.phone }}</div>
+              </div>
             </div>
             <div class="col">
-              <label class="form-label">Email</label>
-              <input
-                type="email"
-                v-model="form.email"
-                class="form-control"
-                :class="{ 'is-invalid': errors.email }"
-                required
-              />
-              <div class="invalid-feedback">{{ errors.email }}</div>
+              <div class="form-floating">
+                <input
+                  id="email"
+                  type="email"
+                  v-model="form.email"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.email }"
+                  placeholder="Email"
+                  required
+                />
+                <label for="email">Email</label>
+                <div class="invalid-feedback">{{ errors.email }}</div>
+              </div>
             </div>
           </div>
         </div>

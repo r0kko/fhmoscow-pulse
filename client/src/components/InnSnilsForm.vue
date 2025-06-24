@@ -97,6 +97,7 @@ async function save() {
 }
 
 async function removeItem() {
+  if (!confirm('Удалить данные?')) return
   if (mode.value === 'inn') {
     try {
       await apiFetch(`/users/${props.userId}/inn`, { method: 'DELETE' })
