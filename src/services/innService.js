@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import { Inn } from '../models/index.js';
 
 import taxationService from './taxationService.js';
@@ -7,6 +9,8 @@ async function getByUser(userId) {
 }
 
 async function create(userId, number, actorId) {
+  const existing = await Inn.findOne({ where: { number } });
+  if (existing) throw new Error('inn_exists');
   const inn = await Inn.create({
     user_id: userId,
     number,
@@ -17,8 +21,14 @@ async function create(userId, number, actorId) {
 }
 
 async function update(userId, number, actorId) {
-  const inn = await Inn.findOne({ where: { user_id: userId } });
+  const [inn, duplicate] = await Promise.all([
+    Inn.findOne({ where: { user_id: userId } }),
+    Inn.findOne({
+      where: { number, user_id: { [Op.ne]: userId } },
+    }),
+  ]);
   if (!inn) throw new Error('inn_not_found');
+  if (duplicate) throw new Error('inn_exists');
   await inn.update({ number, updated_by: actorId });
   return inn;
 }
