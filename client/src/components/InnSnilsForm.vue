@@ -97,6 +97,7 @@ async function save() {
 }
 
 async function removeItem() {
+  if (!confirm('Удалить данные?')) return
   if (mode.value === 'inn') {
     try {
       await apiFetch(`/users/${props.userId}/inn`, { method: 'DELETE' })
@@ -124,19 +125,19 @@ async function removeItem() {
       <div class="row row-cols-1 row-cols-sm-2 g-3">
         <div class="col">
           <label class="form-label">ИНН</label>
-          <input type="text" class="form-control" :value="inn ? inn.number : ''" readonly />
-          <div class="mt-2">
-            <button class="btn btn-outline-primary" @click="openEdit('inn')">
-              {{ inn ? 'Изменить' : 'Добавить' }}
+          <div class="input-group">
+            <input type="text" class="form-control" :value="inn ? inn.number : ''" readonly />
+            <button class="btn btn-outline-secondary" @click="openEdit('inn')">
+              <i class="bi text-muted" :class="inn ? 'bi-pencil' : 'bi-plus'"></i>
             </button>
           </div>
         </div>
         <div class="col">
           <label class="form-label">СНИЛС</label>
-          <input type="text" class="form-control" :value="snils ? snils.number : ''" readonly />
-          <div class="mt-2">
-            <button class="btn btn-outline-primary" @click="openEdit('snils')">
-              {{ snils ? 'Изменить' : 'Добавить' }}
+          <div class="input-group">
+            <input type="text" class="form-control" :value="snils ? snils.number : ''" readonly />
+            <button class="btn btn-outline-secondary" @click="openEdit('snils')">
+              <i class="bi text-muted" :class="snils ? 'bi-pencil' : 'bi-plus'"></i>
             </button>
           </div>
         </div>
