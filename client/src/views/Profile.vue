@@ -353,7 +353,7 @@ onMounted(() => {
       >
         <div class="card tile fade-in">
           <div class="card-body">
-            <h5 class="card-title mb-3">Паспорт</h5>
+            <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
             <div v-if="loading.passport" class="text-center py-4">
               <div class="spinner-border" role="status" aria-label="Загрузка">
                 <span class="visually-hidden">Загрузка…</span>
@@ -510,7 +510,7 @@ onMounted(() => {
       >
         <div class="card tile fade-in">
           <div class="card-body">
-            <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
+            <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
             <div v-if="loading.inn || loading.snils" class="text-center py-4">
               <div class="spinner-border" role="status" aria-label="Загрузка">
                 <span class="visually-hidden">Загрузка…</span>
