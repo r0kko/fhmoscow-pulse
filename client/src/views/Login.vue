@@ -80,30 +80,32 @@ async function login() {
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
       </transition>
       <form @submit.prevent="login">
-        <div class="mb-3">
-          <label for="phone" class="form-label">Телефон</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-phone"></i></span>
-            <input
-              id="phone"
-              v-model="phoneInput"
-              @input="onPhoneInput"
-              @keydown="onPhoneKeydown"
-              type="tel"
-              class="form-control"
-              placeholder="+7 (___) ___-__-__"
-              autocomplete="tel"
-              autofocus
-              required
-            />
-          </div>
+        <div class="form-floating mb-3">
+          <input
+            id="phone"
+            v-model="phoneInput"
+            @input="onPhoneInput"
+            @keydown="onPhoneKeydown"
+            type="tel"
+            class="form-control"
+            placeholder="+7 (___) ___-__-__"
+            autocomplete="tel"
+            autofocus
+            required
+          />
+          <label for="phone">Телефон</label>
         </div>
-        <div class="mb-3">
-          <label for="password" class="form-label">Пароль</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-lock"></i></span>
-            <input id="password" v-model="password" type="password" class="form-control" autocomplete="current-password" required />
-          </div>
+        <div class="form-floating mb-3">
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            class="form-control"
+            placeholder="Пароль"
+            autocomplete="current-password"
+            required
+          />
+          <label for="password">Пароль</label>
         </div>
         <button type="submit" class="btn btn-primary w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
