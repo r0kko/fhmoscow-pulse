@@ -19,7 +19,7 @@ export default {
     }
     const { code } = req.body;
     try {
-      await emailVerificationService.verifyCode(req.user, code);
+      await emailVerificationService.verifyCode(req.user, code, 'ACTIVE');
       const user = await req.user.reload();
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {

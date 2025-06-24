@@ -2,9 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
+import { auth } from '../auth.js'
 
 const router = useRouter()
-const step = ref(1)
+const step = ref(
+  auth.user?.status === 'REGISTRATION_STEP_2' ? 2 : 1
+)
 const total = 2
 const snils = ref('')
 const inn = ref('')
@@ -16,9 +19,20 @@ async function saveStep() {
   error.value = ''
   try {
     if (step.value === 1) {
-      await apiFetch('/snils', { method: 'POST', body: JSON.stringify({ number: snils.value }) })
+      await apiFetch('/snils', {
+        method: 'POST',
+        body: JSON.stringify({ number: snils.value })
+      })
+      await apiFetch('/profile/progress', {
+        method: 'POST',
+        body: JSON.stringify({ status: 'REGISTRATION_STEP_2' })
+      })
+      auth.user.status = 'REGISTRATION_STEP_2'
     } else if (step.value === 2) {
-      await apiFetch('/inns', { method: 'POST', body: JSON.stringify({ number: inn.value }) })
+      await apiFetch('/inns', {
+        method: 'POST',
+        body: JSON.stringify({ number: inn.value })
+      })
     }
     if (step.value < total) {
       step.value++
@@ -26,6 +40,7 @@ async function saveStep() {
       return
     }
     await apiFetch('/profile/complete', { method: 'POST' })
+    auth.user.status = 'AWAITING_CONFIRMATION'
     router.push('/login')
   } catch (e) {
     error.value = e.message

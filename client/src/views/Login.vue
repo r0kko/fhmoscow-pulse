@@ -62,7 +62,11 @@ async function login() {
     localStorage.setItem('roles', JSON.stringify(data.roles || []))
     auth.user = data.user
     auth.roles = data.roles || []
-    router.push('/')
+    if (auth.user.status && auth.user.status.startsWith('REGISTRATION_STEP')) {
+      router.push('/complete-profile')
+    } else {
+      router.push('/')
+    }
   } catch (err) {
     error.value = err.message || 'Ошибка авторизации'
   } finally {

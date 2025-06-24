@@ -22,7 +22,7 @@ export async function sendCode(user) {
   await emailService.sendVerificationEmail(user, code);
 }
 
-export async function verifyCode(user, code) {
+export async function verifyCode(user, code, statusAlias = 'ACTIVE') {
   const rec = await EmailCode.findOne({
     where: {
       user_id: user.id,
@@ -31,9 +31,10 @@ export async function verifyCode(user, code) {
     },
   });
   if (!rec) throw new Error('invalid_code');
-  const active = await UserStatus.findOne({ where: { alias: 'ACTIVE' } });
+  const status = await UserStatus.findOne({ where: { alias: statusAlias } });
+  if (!status) throw new Error('status_not_found');
   await Promise.all([
-    user.update({ email_confirmed: true, status_id: active.id }),
+    user.update({ email_confirmed: true, status_id: status.id }),
     EmailCode.destroy({ where: { user_id: user.id } }),
   ]);
 }

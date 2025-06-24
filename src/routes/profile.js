@@ -6,5 +6,6 @@ import controller from '../controllers/profileCompletionController.js';
 const router = express.Router();
 
 router.post('/complete', auth, controller.complete);
+router.post('/progress', auth, controller.setStep);
 
 export default router;
