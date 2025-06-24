@@ -3,8 +3,8 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     const [active] = await queryInterface.sequelize.query(
-        // eslint-disable-next-line
-        "SELECT id FROM user_statuses WHERE alias = 'ACTIVE' LIMIT 1;",
+      // eslint-disable-next-line
+      "SELECT id FROM user_statuses WHERE alias = 'ACTIVE' LIMIT 1;",
       { type: Sequelize.QueryTypes.SELECT }
     );
     await queryInterface.addIndex(
