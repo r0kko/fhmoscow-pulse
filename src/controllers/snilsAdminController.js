@@ -4,6 +4,17 @@ import snilsService from '../services/snilsService.js';
 import snilsMapper from '../mappers/snilsMapper.js';
 
 export default {
+  async get(req, res) {
+    try {
+      const snils = await snilsService.getByUser(req.params.id);
+      if (!snils) {
+        return res.status(404).json({ error: 'snils_not_found' });
+      }
+      return res.json({ snils: snilsMapper.toPublic(snils) });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  },
   async create(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

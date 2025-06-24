@@ -4,6 +4,17 @@ import innService from '../services/innService.js';
 import innMapper from '../mappers/innMapper.js';
 
 export default {
+  async get(req, res) {
+    try {
+      const inn = await innService.getByUser(req.params.id);
+      if (!inn) {
+        return res.status(404).json({ error: 'inn_not_found' });
+      }
+      return res.json({ inn: innMapper.toPublic(inn) });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  },
   async create(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

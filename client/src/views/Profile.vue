@@ -5,7 +5,6 @@ import { Toast } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
 const placeholderSections = [
-  'ИНН и СНИЛС',
   'Банковские реквизиты',
   'Тип налогообложения',
   'Выданный инвентарь',
@@ -18,6 +17,10 @@ const codeSent = ref(false);
 const verifyError = ref('');
 const passport = ref(null);
 const passportError = ref('');
+const inn = ref(null);
+const snils = ref(null);
+const innError = ref('');
+const snilsError = ref('');
 let toast;
 
 function showToast() {
@@ -76,9 +79,33 @@ async function fetchPassport() {
     passport.value = null;
   }
 }
+
+async function fetchInn() {
+  try {
+    const data = await apiFetch('/inns/me');
+    inn.value = data.inn;
+    innError.value = '';
+  } catch (e) {
+    innError.value = e.message;
+    inn.value = null;
+  }
+}
+
+async function fetchSnils() {
+  try {
+    const data = await apiFetch('/snils/me');
+    snils.value = data.snils;
+    snilsError.value = '';
+  } catch (e) {
+    snilsError.value = e.message;
+    snils.value = null;
+  }
+}
 onMounted(() => {
   fetchProfile();
   fetchPassport();
+  fetchInn();
+  fetchSnils();
 });
 </script>
 
@@ -248,6 +275,24 @@ onMounted(() => {
               </div>
             </div>
             <p v-else class="mb-0 text-muted">{{ passportError || 'Паспортные данные не найдены.' }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="mb-4" v-if="inn || snils || innError || snilsError">
+        <div class="card tile fade-in">
+          <div class="card-body">
+            <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
+            <div v-if="inn || snils" class="row row-cols-1 row-cols-sm-2 g-3">
+              <div class="col" v-if="inn">
+                <label class="form-label">ИНН</label>
+                <input type="text" class="form-control" :value="inn.number" readonly />
+              </div>
+              <div class="col" v-if="snils">
+                <label class="form-label">СНИЛС</label>
+                <input type="text" class="form-control" :value="snils.number" readonly />
+              </div>
+            </div>
+            <p v-else class="mb-0 text-muted">{{ innError || snilsError || 'Данные отсутствуют.' }}</p>
           </div>
         </div>
       </div>

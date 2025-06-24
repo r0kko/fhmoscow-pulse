@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
+import InnSnilsForm from '../components/InnSnilsForm.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,7 +14,6 @@ const error = ref('')
 const formRef = ref(null)
 const placeholderSections = [
   'Паспорт',
-  'ИНН и СНИЛС',
   'Банковские реквизиты',
   'Тип налогообложения',
   'Выданный инвентарь'
@@ -70,6 +70,7 @@ async function save() {
       </div>
     </form>
     <p v-else-if="isLoading">Загрузка...</p>
+    <InnSnilsForm v-if="user" :userId="route.params.id" />
     <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
       <div class="card placeholder-card text-center">
         <div class="card-body d-flex flex-column align-items-center justify-content-center">
