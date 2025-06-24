@@ -133,6 +133,16 @@ export default {
     }
   },
 
+  async getPassport(req, res) {
+    try {
+      const passport = await passportService.getByUser(req.params.id)
+      if (!passport) return res.status(404).json({ error: 'passport_not_found' })
+      return res.json({ passport: passportMapper.toPublic(passport) })
+    } catch (err) {
+      return res.status(404).json({ error: err.message })
+    }
+  },
+
   async deletePassport(req, res) {
     try {
       await passportService.removeByUser(req.params.id);

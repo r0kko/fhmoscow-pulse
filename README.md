@@ -105,6 +105,7 @@ Administrators can manage users via the following endpoints:
 - `DELETE /users/{id}/roles/{roleAlias}` – remove role
 - `POST /users/{id}/passport` – add passport for user
 - `DELETE /users/{id}/passport` – delete passport
+- `GET /users/{id}/passport` – fetch passport
 
 ## License
 

@@ -27,3 +27,31 @@ export async function cleanFio(fio) {
     return null;
   }
 }
+
+export async function suggestFmsUnit(query, filters) {
+  if (!query) return []
+  try {
+    const body = { query }
+    if (Array.isArray(filters) && filters.length) body.filters = filters
+    const { suggestions } = await apiFetch('/dadata/suggest-fms-unit', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    })
+    return suggestions
+  } catch (_err) {
+    return []
+  }
+}
+
+export async function cleanPassport(passport) {
+  if (!passport) return null
+  try {
+    const { result } = await apiFetch('/dadata/clean-passport', {
+      method: 'POST',
+      body: JSON.stringify({ passport })
+    })
+    return result
+  } catch (_err) {
+    return null
+  }
+}

@@ -123,6 +123,7 @@ router.post(
   createPassportRules,
   admin.addPassport
 );
+router.get('/:id/passport', auth, authorize('ADMIN'), admin.getPassport);
 router.delete('/:id/passport', auth, authorize('ADMIN'), admin.deletePassport);
 
 export default router;
