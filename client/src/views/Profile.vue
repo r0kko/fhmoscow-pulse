@@ -4,15 +4,10 @@ import { RouterLink } from 'vue-router';
 import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
-import { auth } from '../auth.js';
 
-const placeholderSections = [
-  'Выданный инвентарь',
-];
+const placeholderSections = ['Выданный инвентарь'];
 
-const isAdmin = computed(() => auth.roles.includes('ADMIN'));
-
-const noDataPlaceholder = '—'
+const noDataPlaceholder = '—';
 
 const user = ref(null);
 const toastRef = ref(null);
@@ -29,7 +24,6 @@ const bankAccount = ref();
 const bankAccountError = ref('');
 const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
-  if (isAdmin.value) return bankAccount.value.number;
   const num = bankAccount.value.number;
   return '....' + (num.length > 4 ? num.slice(-4) : num);
 });
@@ -43,27 +37,27 @@ const loading = reactive({
 let toast;
 
 function formatPhone(digits) {
-  if (!digits) return ''
-  let out = '+7'
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4)
-  if (digits.length >= 4) out += ') '
-  if (digits.length >= 4) out += digits.slice(4, 7)
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9)
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11)
-  return out
+  if (!digits) return '';
+  let out = '+7';
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
+  if (digits.length >= 4) out += ') ';
+  if (digits.length >= 4) out += digits.slice(4, 7);
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
+  return out;
 }
 
 function formatDate(str) {
-  if (!str) return ''
-  const [year, month, day] = str.split('-')
-  return `${day}.${month}.${year}`
+  if (!str) return '';
+  const [year, month, day] = str.split('-');
+  return `${day}.${month}.${year}`;
 }
 
 function maskPassportNumber(num) {
-  if (!num) return ''
-  const start = num.slice(0, 1)
-  const end = num.slice(-1)
-  return start + '*'.repeat(num.length - 2) + end
+  if (!num) return '';
+  const start = num.slice(0, 1);
+  const end = num.slice(-1);
+  return start + '*'.repeat(num.length - 2) + end;
 }
 
 function showToast() {
@@ -246,13 +240,19 @@ onMounted(() => {
               </div>
               <div class="col">
                 <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                  <span class="input-group-text"
+                    ><i class="bi bi-calendar-event"></i
+                  ></span>
                   <div class="form-floating flex-grow-1">
                     <input
                       id="birthDate"
                       type="text"
                       class="form-control"
-                      :value="user.birth_date ? formatDate(user.birth_date) : noDataPlaceholder"
+                      :value="
+                        user.birth_date
+                          ? formatDate(user.birth_date)
+                          : noDataPlaceholder
+                      "
                       readonly
                       placeholder="Дата рождения"
                     />
@@ -271,13 +271,17 @@ onMounted(() => {
             <div class="row row-cols-1 row-cols-sm-2 g-3">
               <div class="col">
                 <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                  <span class="input-group-text"
+                    ><i class="bi bi-telephone"></i
+                  ></span>
                   <div class="form-floating flex-grow-1">
                     <input
                       id="userPhone"
                       type="text"
                       class="form-control"
-                      :value="user.phone ? formatPhone(user.phone) : noDataPlaceholder"
+                      :value="
+                        user.phone ? formatPhone(user.phone) : noDataPlaceholder
+                      "
                       readonly
                       placeholder="Телефон"
                     />
@@ -297,7 +301,9 @@ onMounted(() => {
               </div>
               <div class="col">
                 <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <span class="input-group-text"
+                    ><i class="bi bi-envelope"></i
+                  ></span>
                   <div class="form-floating flex-grow-1">
                     <input
                       id="userEmail"
@@ -341,12 +347,17 @@ onMounted(() => {
                   Подтвердить
                 </button>
               </div>
-              <div v-if="verifyError" class="text-danger mt-1">{{ verifyError }}</div>
+              <div v-if="verifyError" class="text-danger mt-1">
+                {{ verifyError }}
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="passport !== undefined || passportError || loading.passport">
+      <div
+        class="mb-4"
+        v-if="passport !== undefined || passportError || loading.passport"
+      >
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Паспорт</h5>
@@ -359,13 +370,17 @@ onMounted(() => {
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-card-text"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="docType"
                         type="text"
                         class="form-control"
-                        :value="passport.document_type_name || noDataPlaceholder"
+                        :value="
+                          passport.document_type_name || noDataPlaceholder
+                        "
                         readonly
                         placeholder="Тип документа"
                       />
@@ -375,7 +390,9 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-globe"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="passportCountry"
@@ -391,13 +408,19 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-file-earmark-text"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="passportSerial"
                         type="text"
                         class="form-control"
-                        :value="passport.series + ' ' + maskPassportNumber(passport.number)"
+                        :value="
+                          passport.series +
+                          ' ' +
+                          maskPassportNumber(passport.number)
+                        "
                         readonly
                         placeholder="Серия и номер"
                       />
@@ -407,13 +430,21 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-calendar"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="passportValidity"
                         type="text"
                         class="form-control"
-                        :value="passport.issue_date && passport.valid_until ? formatDate(passport.issue_date) + ' - ' + formatDate(passport.valid_until) : noDataPlaceholder"
+                        :value="
+                          passport.issue_date && passport.valid_until
+                            ? formatDate(passport.issue_date) +
+                              ' - ' +
+                              formatDate(passport.valid_until)
+                            : noDataPlaceholder
+                        "
                         readonly
                         placeholder="Срок действия"
                       />
@@ -423,13 +454,23 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-building"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="passportAuthority"
                         type="text"
                         class="form-control"
-                        :value="(passport.issuing_authority && passport.issuing_authority_code) ? passport.issuing_authority + ' (' + passport.issuing_authority_code + ')' : noDataPlaceholder"
+                        :value="
+                          passport.issuing_authority &&
+                          passport.issuing_authority_code
+                            ? passport.issuing_authority +
+                              ' (' +
+                              passport.issuing_authority_code +
+                              ')'
+                            : noDataPlaceholder
+                        "
                         readonly
                         placeholder="Кем выдан"
                       />
@@ -439,7 +480,9 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-geo-alt"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="passportBirthplace"
@@ -455,11 +498,23 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <p v-else class="mb-0 text-muted">{{ passportError || 'Паспортные данные не найдены.' }}</p>
+            <p v-else class="mb-0 text-muted">
+              {{ passportError || 'Паспортные данные не найдены.' }}
+            </p>
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="inn !== undefined || snils !== undefined || innError || snilsError || loading.inn || loading.snils">
+      <div
+        class="mb-4"
+        v-if="
+          inn !== undefined ||
+          snils !== undefined ||
+          innError ||
+          snilsError ||
+          loading.inn ||
+          loading.snils
+        "
+      >
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
@@ -472,7 +527,9 @@ onMounted(() => {
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col" v-if="inn">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-briefcase"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="innNumber"
@@ -488,7 +545,9 @@ onMounted(() => {
                 </div>
                 <div class="col" v-if="snils">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-card-checklist"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-card-checklist"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="snilsNumber"
@@ -504,11 +563,18 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <p v-else class="mb-0 text-muted">{{ innError || snilsError || 'Данные отсутствуют.' }}</p>
+            <p v-else class="mb-0 text-muted">
+              {{ innError || snilsError || 'Данные отсутствуют.' }}
+            </p>
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="bankAccount !== undefined || bankAccountError || loading.bankAccount">
+      <div
+        class="mb-4"
+        v-if="
+          bankAccount !== undefined || bankAccountError || loading.bankAccount
+        "
+      >
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Банковские реквизиты</h5>
@@ -521,7 +587,9 @@ onMounted(() => {
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-credit-card"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
                       <input
                         id="accNumber"
@@ -537,74 +605,69 @@ onMounted(() => {
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-123"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-123"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
-                      <input id="accBic" type="text" class="form-control" :value="bankAccount.bic || noDataPlaceholder" readonly placeholder="БИК" />
+                      <input
+                        id="accBic"
+                        type="text"
+                        class="form-control"
+                        :value="bankAccount.bic || noDataPlaceholder"
+                        readonly
+                        placeholder="БИК"
+                      />
                       <label for="accBic">БИК</label>
                     </div>
                   </div>
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-bank"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-bank"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
-                      <input id="accBank" type="text" class="form-control" :value="bankAccount.bank_name || noDataPlaceholder" readonly placeholder="Банк" />
+                      <input
+                        id="accBank"
+                        type="text"
+                        class="form-control"
+                        :value="bankAccount.bank_name || noDataPlaceholder"
+                        readonly
+                        placeholder="Банк"
+                      />
                       <label for="accBank">Банк</label>
                     </div>
                   </div>
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                    <span class="input-group-text"
+                      ><i class="bi bi-building"></i
+                    ></span>
                     <div class="form-floating flex-grow-1">
-                      <input id="accCorr" type="text" class="form-control" :value="bankAccount.correspondent_account || noDataPlaceholder" readonly placeholder="Корсчёт" />
+                      <input
+                        id="accCorr"
+                        type="text"
+                        class="form-control"
+                        :value="
+                          bankAccount.correspondent_account || noDataPlaceholder
+                        "
+                        readonly
+                        placeholder="Корсчёт"
+                      />
                       <label for="accCorr">Корсчёт</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col" v-if="isAdmin">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-globe"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <input id="accSwift" type="text" class="form-control" :value="bankAccount.swift || noDataPlaceholder" readonly placeholder="SWIFT" />
-                      <label for="accSwift">SWIFT</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col" v-if="isAdmin">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <input id="accInn" type="text" class="form-control" :value="bankAccount.inn || noDataPlaceholder" readonly placeholder="ИНН" />
-                      <label for="accInn">ИНН</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col" v-if="isAdmin">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <input id="accKpp" type="text" class="form-control" :value="bankAccount.kpp || noDataPlaceholder" readonly placeholder="КПП" />
-                      <label for="accKpp">КПП</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-12" v-if="isAdmin">
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                    <div class="form-floating flex-grow-1">
-                      <textarea id="accAddr" class="form-control" rows="2" :value="bankAccount.address || noDataPlaceholder" readonly placeholder="Адрес"></textarea>
-                      <label for="accAddr">Адрес</label>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <p v-else class="mb-0 text-muted">{{ bankAccountError || 'Банковский счёт не найден.' }}</p>
+            <p v-else class="mb-0 text-muted">
+              {{ bankAccountError || 'Банковский счёт не найден.' }}
+            </p>
           </div>
         </div>
       </div>
-      <TaxationInfo class="mb-4" :editable="isAdmin" :showOkved="isAdmin" />
+      <TaxationInfo class="mb-4" :editable="false" :showOkved="false" />
       <div v-for="section in placeholderSections" :key="section" class="mb-4">
         <div class="card tile placeholder-card text-center">
           <div
@@ -649,7 +712,6 @@ onMounted(() => {
 .placeholder-card {
   opacity: 0.6;
 }
-
 
 @keyframes fadeIn {
   from {
