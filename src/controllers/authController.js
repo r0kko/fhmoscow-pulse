@@ -33,7 +33,8 @@ export default {
     } catch (_err) {
       if (_err.message === 'account_locked') {
         return res.status(401).json({
-          error: 'Аккаунт заблокирован из-за многократных неудачных попыток входа',
+          error:
+            'Аккаунт заблокирован из-за многократных неудачных попыток входа',
         });
       }
       void _err;
