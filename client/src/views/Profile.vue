@@ -5,7 +5,6 @@ import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
 const placeholderSections = [
-  'Банковские реквизиты',
   'Тип налогообложения',
   'Выданный инвентарь',
 ];
@@ -23,11 +22,14 @@ const inn = ref();
 const snils = ref();
 const innError = ref('');
 const snilsError = ref('');
+const bankAccount = ref();
+const bankAccountError = ref('');
 const loading = reactive({
   user: false,
   passport: false,
   inn: false,
   snils: false,
+  bankAccount: false,
 });
 let toast;
 
@@ -149,11 +151,26 @@ async function fetchSnils() {
     loading.snils = false;
   }
 }
+
+async function fetchBankAccount() {
+  loading.bankAccount = true;
+  try {
+    const data = await apiFetch('/bank-accounts/me');
+    bankAccount.value = data.account;
+    bankAccountError.value = '';
+  } catch (e) {
+    bankAccountError.value = e.message;
+    bankAccount.value = null;
+  } finally {
+    loading.bankAccount = false;
+  }
+}
 onMounted(() => {
   fetchProfile();
   fetchPassport();
   fetchInn();
   fetchSnils();
+  fetchBankAccount();
 });
 </script>
 
@@ -479,6 +496,95 @@ onMounted(() => {
               </div>
             </div>
             <p v-else class="mb-0 text-muted">{{ innError || snilsError || 'Данные отсутствуют.' }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="mb-4" v-if="bankAccount !== undefined || bankAccountError || loading.bankAccount">
+        <div class="card tile fade-in">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Банковские реквизиты</h5>
+            <div v-if="loading.bankAccount" class="text-center py-4">
+              <div class="spinner-border" role="status" aria-label="Загрузка">
+                <span class="visually-hidden">Загрузка…</span>
+              </div>
+            </div>
+            <div v-else-if="bankAccount">
+              <div class="row row-cols-1 row-cols-sm-2 g-3">
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accNumber" type="text" class="form-control" :value="bankAccount.number || noDataPlaceholder" readonly placeholder="Счёт" />
+                      <label for="accNumber">Счёт</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-123"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accBic" type="text" class="form-control" :value="bankAccount.bic || noDataPlaceholder" readonly placeholder="БИК" />
+                      <label for="accBic">БИК</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-bank"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accBank" type="text" class="form-control" :value="bankAccount.bank_name || noDataPlaceholder" readonly placeholder="Банк" />
+                      <label for="accBank">Банк</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accCorr" type="text" class="form-control" :value="bankAccount.correspondent_account || noDataPlaceholder" readonly placeholder="Корсчёт" />
+                      <label for="accCorr">Корсчёт</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accSwift" type="text" class="form-control" :value="bankAccount.swift || noDataPlaceholder" readonly placeholder="SWIFT" />
+                      <label for="accSwift">SWIFT</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accInn" type="text" class="form-control" :value="bankAccount.inn || noDataPlaceholder" readonly placeholder="ИНН" />
+                      <label for="accInn">ИНН</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input id="accKpp" type="text" class="form-control" :value="bankAccount.kpp || noDataPlaceholder" readonly placeholder="КПП" />
+                      <label for="accKpp">КПП</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <textarea id="accAddr" class="form-control" rows="2" :value="bankAccount.address || noDataPlaceholder" readonly placeholder="Адрес"></textarea>
+                      <label for="accAddr">Адрес</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p v-else class="mb-0 text-muted">{{ bankAccountError || 'Банковский счёт не найден.' }}</p>
           </div>
         </div>
       </div>

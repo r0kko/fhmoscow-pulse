@@ -9,6 +9,7 @@ import passportsRouter from './passports.js';
 import dadataRouter from './dadata.js';
 import innsRouter from './inns.js';
 import snilsRouter from './snils.js';
+import bankAccountsRouter from './bankAccounts.js';
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.use('/passports', passportsRouter);
 router.use('/dadata', dadataRouter);
 router.use('/inns', innsRouter);
 router.use('/snils', snilsRouter);
+router.use('/bank-accounts', bankAccountsRouter);
 
 /**
  * @swagger
