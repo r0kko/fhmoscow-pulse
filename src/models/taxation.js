@@ -11,7 +11,7 @@ Taxation.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    user_id: { type: DataTypes.UUID, allowNull: false, unique: true },
+    user_id: { type: DataTypes.UUID, allowNull: false },
     taxation_type_id: { type: DataTypes.UUID, allowNull: false },
     check_date: { type: DataTypes.DATEONLY },
     registration_date: { type: DataTypes.DATEONLY },
