@@ -108,15 +108,6 @@ async function login() {
   animation: fade-in 0.4s ease-out;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
 @keyframes fade-in {
   from {
     opacity: 0;

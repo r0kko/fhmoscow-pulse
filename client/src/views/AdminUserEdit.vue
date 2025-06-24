@@ -132,7 +132,7 @@ async function save() {
     <div v-if="passport !== undefined" class="mt-4">
       <div v-if="passport" class="card">
         <div class="card-body">
-          <h5 class="card-title mb-3">Паспорт</h5>
+          <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <div class="col">
               <div class="input-group">
@@ -189,7 +189,7 @@ async function save() {
               </div>
             </div>
           </div>
-          <button class="btn btn-danger mt-3" @click="deletePassport">Удалить</button>
+          <button class="btn btn-danger mt-3" @click="deletePassport">Удалить данные документа</button>
         </div>
       </div>
       <div v-else class="mt-3">
@@ -214,8 +214,5 @@ async function save() {
 <style scoped>
 .placeholder-card {
   opacity: 0.6;
-}
-.input-group-text.bg-light {
-  color: #6c757d;
 }
 </style>
