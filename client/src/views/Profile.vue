@@ -152,16 +152,56 @@ onMounted(() => {
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные</h5>
-            <dl class="definition-list mb-0">
-              <dt>Фамилия</dt>
-              <dd>{{ user.last_name }}</dd>
-              <dt>Имя</dt>
-              <dd>{{ user.first_name }}</dd>
-              <dt>Отчество</dt>
-              <dd>{{ user.patronymic }}</dd>
-              <dt>Дата рождения</dt>
-              <dd>{{ user.birth_date }}</dd>
-            </dl>
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+              <div class="col">
+                <label class="form-label">Фамилия</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :value="user.last_name"
+                    readonly
+                  />
+                </div>
+              </div>
+              <div class="col">
+                <label class="form-label">Имя</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :value="user.first_name"
+                    readonly
+                  />
+                </div>
+              </div>
+              <div class="col">
+                <label class="form-label">Отчество</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :value="user.patronymic"
+                    readonly
+                  />
+                </div>
+              </div>
+              <div class="col">
+                <label class="form-label">Дата рождения</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :value="user.birth_date"
+                    readonly
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -173,7 +213,8 @@ onMounted(() => {
               <div class="col">
                 <label class="form-label">Телефон</label>
                 <div class="input-group">
-                  <span class="form-control">{{ user.phone }}</span>
+                  <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                  <input type="text" class="form-control" :value="user.phone" readonly />
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
@@ -189,7 +230,8 @@ onMounted(() => {
               <div class="col">
                 <label class="form-label">Email</label>
                 <div class="input-group">
-                  <span class="form-control">{{ user.email }}</span>
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="text" class="form-control" :value="user.email" readonly />
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
@@ -237,26 +279,116 @@ onMounted(() => {
               </div>
             </div>
             <div v-else-if="passport">
-              <dl class="definition-list mb-0">
-                <dt>Тип документа</dt>
-                <dd>{{ passport.document_type_name }}</dd>
-                <dt>Страна</dt>
-                <dd>{{ passport.country_name }}</dd>
-                <dt>Серия</dt>
-                <dd>{{ passport.series }}</dd>
-                <dt>Номер</dt>
-                <dd>{{ passport.number }}</dd>
-                <dt>Дата выдачи</dt>
-                <dd>{{ passport.issue_date }}</dd>
-                <dt>Действителен до</dt>
-                <dd>{{ passport.valid_until }}</dd>
-                <dt>Кем выдан</dt>
-                <dd>{{ passport.issuing_authority }}</dd>
-                <dt>Код подразделения</dt>
-                <dd>{{ passport.issuing_authority_code }}</dd>
-                <dt>Место рождения</dt>
-                <dd>{{ passport.place_of_birth }}</dd>
-              </dl>
+              <div class="row row-cols-1 row-cols-sm-2 g-3">
+                <div class="col">
+                  <label class="form-label">Тип документа</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.document_type_name"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Страна</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.country_name"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Серия</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.series"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Номер</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.number"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Дата выдачи</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.issue_date"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Действителен до</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.valid_until"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Кем выдан</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.issuing_authority"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Код подразделения</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-123"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.issuing_authority_code"
+                      readonly
+                    />
+                  </div>
+                </div>
+                <div class="col">
+                  <label class="form-label">Место рождения</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                    <input
+                      type="text"
+                      class="form-control"
+                      :value="passport.place_of_birth"
+                      readonly
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
             <p v-else class="mb-0 text-muted">{{ passportError || 'Паспортные данные не найдены.' }}</p>
           </div>
@@ -272,16 +404,22 @@ onMounted(() => {
               </div>
             </div>
             <div v-else-if="inn || snils">
-              <dl class="definition-list mb-0">
-                <template v-if="inn">
-                  <dt>ИНН</dt>
-                  <dd>{{ inn.number }}</dd>
-                </template>
-                <template v-if="snils">
-                  <dt>СНИЛС</dt>
-                  <dd>{{ snils.number }}</dd>
-                </template>
-              </dl>
+              <div class="row row-cols-1 row-cols-sm-2 g-3">
+                <div class="col" v-if="inn">
+                  <label class="form-label">ИНН</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+                    <input type="text" class="form-control" :value="inn.number" readonly />
+                  </div>
+                </div>
+                <div class="col" v-if="snils">
+                  <label class="form-label">СНИЛС</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-card-checklist"></i></span>
+                    <input type="text" class="form-control" :value="snils.number" readonly />
+                  </div>
+                </div>
+              </div>
             </div>
             <p v-else class="mb-0 text-muted">{{ innError || snilsError || 'Данные отсутствуют.' }}</p>
           </div>
@@ -332,17 +470,6 @@ onMounted(() => {
   opacity: 0.6;
 }
 
-.definition-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 1rem;
-}
-.definition-list dt {
-  font-weight: 600;
-}
-.definition-list dd {
-  margin: 0;
-}
 
 @keyframes fadeIn {
   from {
