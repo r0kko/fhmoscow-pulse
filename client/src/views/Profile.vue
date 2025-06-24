@@ -31,7 +31,7 @@ const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
   if (isAdmin.value) return bankAccount.value.number;
   const num = bankAccount.value.number;
-  return '....' + num.slice(-4);
+  return '....' + (num.length > 4 ? num.slice(-4) : num);
 });
 const loading = reactive({
   user: false,
