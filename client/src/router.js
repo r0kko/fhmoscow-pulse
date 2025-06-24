@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from './views/Login.vue'
 import Register from './views/Register.vue'
+import ProfileWizard from './views/ProfileWizard.vue'
 import Home from './views/Home.vue'
 import Profile from './views/Profile.vue'
 import AdminUsers from './views/AdminUsers.vue'
@@ -16,7 +17,8 @@ const routes = [
   { path: '/users/new', component: AdminUserCreate, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/:id', component: AdminUserEdit, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/login', component: Login },
-  { path: '/register', component: Register }
+  { path: '/register', component: Register },
+  { path: '/complete-profile', component: ProfileWizard, meta: { requiresAuth: true } }
 ]
 
 const router = createRouter({

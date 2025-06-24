@@ -9,4 +9,17 @@ export default {
     }
     return res.json({ snils: snilsMapper.toPublic(snils) });
   },
+
+  async create(req, res) {
+    try {
+      const snils = await snilsService.create(
+        req.user.id,
+        req.body.number,
+        req.user.id
+      );
+      return res.status(201).json({ snils: snilsMapper.toPublic(snils) });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  },
 };

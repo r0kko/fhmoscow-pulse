@@ -52,7 +52,7 @@ async function finish() {
         password: password.value
       })
     })
-    router.push('/login')
+    router.push('/complete-profile')
   } catch (err) {
     error.value = err.message || 'Ошибка регистрации'
   } finally {

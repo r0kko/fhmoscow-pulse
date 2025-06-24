@@ -9,4 +9,13 @@ export default {
     }
     return res.json({ inn: innMapper.toPublic(inn) });
   },
+
+  async create(req, res) {
+    try {
+      const inn = await innService.create(req.user.id, req.body.number, req.user.id);
+      return res.status(201).json({ inn: innMapper.toPublic(inn) });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  },
 };
