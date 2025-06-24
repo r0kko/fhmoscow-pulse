@@ -161,7 +161,7 @@ onMounted(() => {
         </div>
       </div>
       <p v-else class="mb-0 text-muted">
-        {{ error || 'Налоговая информация отсутствует.' }}
+        {{ error || 'Tax information is missing' }}
       </p>
     </div>
   </div>
