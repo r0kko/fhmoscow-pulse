@@ -1,13 +1,16 @@
 <script setup>
-import { ref, onMounted, reactive, nextTick } from 'vue';
+import { ref, onMounted, reactive, nextTick, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
+import { auth } from '../auth.js';
 
 const placeholderSections = [
   'Выданный инвентарь',
 ];
+
+const isAdmin = computed(() => auth.roles.includes('ADMIN'));
 
 const noDataPlaceholder = '—'
 
@@ -24,6 +27,12 @@ const innError = ref('');
 const snilsError = ref('');
 const bankAccount = ref();
 const bankAccountError = ref('');
+const maskedAccountNumber = computed(() => {
+  if (!bankAccount.value?.number) return noDataPlaceholder;
+  if (isAdmin.value) return bankAccount.value.number;
+  const num = bankAccount.value.number;
+  return '....' + num.slice(-4);
+});
 const loading = reactive({
   user: false,
   passport: false,
@@ -514,7 +523,14 @@ onMounted(() => {
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
                     <div class="form-floating flex-grow-1">
-                      <input id="accNumber" type="text" class="form-control" :value="bankAccount.number || noDataPlaceholder" readonly placeholder="Счёт" />
+                      <input
+                        id="accNumber"
+                        type="text"
+                        class="form-control"
+                        :value="maskedAccountNumber"
+                        readonly
+                        placeholder="Счёт"
+                      />
                       <label for="accNumber">Счёт</label>
                     </div>
                   </div>
@@ -546,7 +562,7 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
-                <div class="col">
+                <div class="col" v-if="isAdmin">
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-globe"></i></span>
                     <div class="form-floating flex-grow-1">
@@ -555,7 +571,7 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
-                <div class="col">
+                <div class="col" v-if="isAdmin">
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
                     <div class="form-floating flex-grow-1">
@@ -564,7 +580,7 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
-                <div class="col">
+                <div class="col" v-if="isAdmin">
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-card-text"></i></span>
                     <div class="form-floating flex-grow-1">
@@ -573,7 +589,7 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
-                <div class="col-12">
+                <div class="col-12" v-if="isAdmin">
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
                     <div class="form-floating flex-grow-1">
@@ -588,7 +604,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <TaxationInfo class="mb-4" />
+      <TaxationInfo class="mb-4" :editable="isAdmin" :showOkved="isAdmin" />
       <div v-for="section in placeholderSections" :key="section" class="mb-4">
         <div class="card tile placeholder-card text-center">
           <div

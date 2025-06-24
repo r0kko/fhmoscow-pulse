@@ -3,7 +3,11 @@ import { ref, onMounted, computed } from 'vue';
 import { Modal } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
-const props = defineProps({ userId: String });
+const props = defineProps({
+  userId: String,
+  editable: { type: Boolean, default: true },
+  showOkved: { type: Boolean, default: true },
+});
 
 const taxation = ref(null);
 const error = ref('');
@@ -55,6 +59,7 @@ async function load() {
 }
 
 function openModal() {
+  if (!props.editable) return;
   preview.value = null;
   checkStatus.value = '';
   checkError.value = '';
@@ -81,6 +86,7 @@ async function runCheck(source = 'all') {
 }
 
 async function save() {
+  if (!props.editable) return;
   const path = props.userId ? `/users/${props.userId}/taxation` : '/taxations/me';
   try {
     const data = await apiFetch(path, { method: 'POST' });
@@ -92,7 +98,9 @@ async function save() {
 }
 
 onMounted(() => {
-  modal = new Modal(modalRef.value);
+  if (props.editable) {
+    modal = new Modal(modalRef.value);
+  }
   load();
 });
 </script>
@@ -102,7 +110,12 @@ onMounted(() => {
     <div class="card-body">
       <div class="d-flex justify-content-between mb-3">
         <h5 class="card-title mb-0">Налоговый статус</h5>
-        <button type="button" class="btn btn-link p-0" @click="openModal">
+        <button
+          v-if="props.editable"
+          type="button"
+          class="btn btn-link p-0"
+          @click="openModal"
+        >
           <i class="bi bi-arrow-clockwise"></i>
         </button>
       </div>
@@ -149,7 +162,7 @@ onMounted(() => {
               </div>
             </div>
           </div>
-          <div class="col" v-if="taxation.okved">
+          <div class="col" v-if="props.showOkved && taxation.okved">
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
               <div class="form-floating flex-grow-1">
@@ -166,7 +179,7 @@ onMounted(() => {
     </div>
   </div>
 
-  <div ref="modalRef" class="modal fade" tabindex="-1">
+  <div v-if="props.editable" ref="modalRef" class="modal fade" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -217,7 +230,7 @@ onMounted(() => {
                   <label for="prevOgrn">ОГРН</label>
                 </div>
               </div>
-              <div class="col" v-if="preview.okved">
+              <div class="col" v-if="props.showOkved && preview.okved">
                 <div class="form-floating">
                   <input id="prevOkved" type="text" class="form-control" :value="preview.okved" readonly placeholder="ОКВЭД" />
                   <label for="prevOkved">ОКВЭД</label>
