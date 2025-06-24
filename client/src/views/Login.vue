@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
+import logo from '../assets/fhm-logo.svg'
 
 const router = useRouter()
 const phone = ref('')
@@ -73,7 +74,8 @@ async function login() {
 
 <template>
   <div class="d-flex align-items-center justify-content-center vh-100">
-    <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
+    <div class="card p-4 shadow login-card w-100">
+      <img :src="logo" alt="FHM Pulse logo" class="login-logo mb-3 mx-auto d-block" />
       <h1 class="mb-4 text-center">Вход</h1>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -138,6 +140,12 @@ async function login() {
 <style scoped>
 .login-card {
   animation: fade-in 0.4s ease-out;
+  max-width: 400px;
+}
+
+.login-logo {
+  max-width: 120px;
+  height: auto;
 }
 
 .fade-enter-active,
