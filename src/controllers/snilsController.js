@@ -1,3 +1,5 @@
+import { validationResult } from 'express-validator';
+
 import snilsService from '../services/snilsService.js';
 import snilsMapper from '../mappers/snilsMapper.js';
 
@@ -11,6 +13,10 @@ export default {
   },
 
   async create(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try {
       const snils = await snilsService.create(
         req.user.id,
