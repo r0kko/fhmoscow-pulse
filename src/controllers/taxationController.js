@@ -27,10 +27,7 @@ export default {
 
   async update(req, res) {
     try {
-      const tax = await taxationService.updateForUser(
-        req.user.id,
-        req.user.id
-      );
+      const tax = await taxationService.updateForUser(req.user.id, req.user.id);
       return res.json({ taxation: taxationMapper.toPublic(tax) });
     } catch (err) {
       const status = err.message === 'inn_not_found' ? 404 : 400;

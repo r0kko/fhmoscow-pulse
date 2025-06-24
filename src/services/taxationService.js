@@ -1,8 +1,4 @@
-import {
-  Taxation,
-  TaxationType,
-  Inn,
-} from '../models/index.js';
+import { Taxation, TaxationType, Inn } from '../models/index.js';
 
 import dadataService from './dadataService.js';
 import fnsService from './fnsService.js';

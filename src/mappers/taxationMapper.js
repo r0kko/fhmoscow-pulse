@@ -15,7 +15,11 @@ function sanitize(obj) {
     ogrn,
     okved,
     type: TaxationType
-      ? { id: TaxationType.id, name: TaxationType.name, alias: TaxationType.alias }
+      ? {
+          id: TaxationType.id,
+          name: TaxationType.name,
+          alias: TaxationType.alias,
+        }
       : undefined,
     statuses,
   };
@@ -23,7 +27,10 @@ function sanitize(obj) {
 
 function toPublic(taxation) {
   if (!taxation) return null;
-  const plain = typeof taxation.get === 'function' ? taxation.get({ plain: true }) : taxation;
+  const plain =
+    typeof taxation.get === 'function'
+      ? taxation.get({ plain: true })
+      : taxation;
   return sanitize(plain);
 }
 
