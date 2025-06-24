@@ -293,6 +293,9 @@ defineExpose({ validate, unlock, lock, editing })
             </div>
           </div>
         </fieldset>
+        <div v-if="editing" class="mt-3">
+          <slot name="actions"></slot>
+        </div>
       </div>
     </div>
 

@@ -116,7 +116,6 @@ async function save() {
     })
     formRef.value.lock()
     originalUser = { ...user.value }
-    router.push('/users')
   } catch (e) {
     error.value = e.message
   }
@@ -140,13 +139,14 @@ async function save() {
         v-model="user"
         :locked="true"
         @editing-changed="onEditingChanged"
-      />
-      <div v-if="editing" class="mt-3">
-        <button type="submit" class="btn btn-primary me-2">Сохранить</button>
-        <button type="button" class="btn btn-secondary" @click="cancelEdit">
-          Отмена
-        </button>
-      </div>
+      >
+        <template #actions>
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          <button type="button" class="btn btn-secondary" @click="cancelEdit">
+            Отмена
+          </button>
+        </template>
+      </UserForm>
     </form>
     <p v-else-if="isLoading">Загрузка...</p>
     <InnSnilsForm v-if="user" :userId="route.params.id" />
