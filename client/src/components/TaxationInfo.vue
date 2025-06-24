@@ -21,6 +21,12 @@ function statusIcon(code) {
   return 'bi-question-circle text-muted';
 }
 
+function statusText(code) {
+  if (code === 200) return 'OK';
+  if (code) return 'Error';
+  return '—';
+}
+
 const canSave = computed(
   () => statuses.value.dadata === 200 && statuses.value.fns === 200
 );
@@ -154,7 +160,9 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <p v-else class="mb-0 text-muted">{{ error || 'Информация недоступна.' }}</p>
+      <p v-else class="mb-0 text-muted">
+        {{ error || 'Налоговая информация отсутствует.' }}
+      </p>
     </div>
   </div>
 
@@ -166,21 +174,18 @@ onMounted(() => {
           <button type="button" class="btn-close" @click="modal.hide()"></button>
         </div>
         <div class="modal-body">
-          <div class="d-flex justify-content-between mb-3">
+          <div class="d-flex align-items-center mb-3 gap-3">
             <div class="d-flex align-items-center">
               <i :class="statusIcon(statuses.dadata)" class="me-1"></i>
-              <span class="me-2">DaData - {{ statuses.dadata || '—' }}</span>
-              <button class="btn btn-link p-0" @click="runCheck('dadata')">
-                <i class="bi bi-arrow-repeat"></i>
-              </button>
+              <span>DaData - {{ statusText(statuses.dadata) }}</span>
             </div>
             <div class="d-flex align-items-center">
               <i :class="statusIcon(statuses.fns)" class="me-1"></i>
-              <span class="me-2">ФНС - {{ statuses.fns || '—' }}</span>
-              <button class="btn btn-link p-0" @click="runCheck('fns')">
-                <i class="bi bi-arrow-repeat"></i>
-              </button>
+              <span>ФНС - {{ statusText(statuses.fns) }}</span>
             </div>
+            <button class="btn btn-link p-0 ms-auto" @click="runCheck()">
+              <i class="bi bi-arrow-repeat"></i>
+            </button>
           </div>
           <div v-if="checkStatus === 'pending'">Проверка...</div>
           <div v-if="checkStatus === 'error'" class="text-danger mb-2">
