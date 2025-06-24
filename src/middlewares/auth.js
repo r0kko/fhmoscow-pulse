@@ -10,14 +10,14 @@ export default async function auth(req, res, next) {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
-      return res.status(401).json({ error: 'Authorization token missing' });
+      return res.status(401).json({ error: 'Отсутствует токен авторизации' });
     }
 
     const payload = verifyAccessToken(token);
     const user = await User.findByPk(payload.sub);
 
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ error: 'Пользователь не найден' });
     }
 
     // Attach user to request object for later handlers
@@ -25,6 +25,6 @@ export default async function auth(req, res, next) {
     next();
   } catch (err) {
     void err;
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Некорректный или истёкший токен' });
   }
 }
