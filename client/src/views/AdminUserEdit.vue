@@ -18,6 +18,9 @@ const formRef = ref(null)
 const passportModalRef = ref(null)
 const passport = ref(null)
 const passportError = ref('')
+const roleError = ref('')
+const selectedRole = ref('')
+const allRoles = ref([])
 const placeholderSections = [
   'Выданный инвентарь'
 ]
@@ -62,6 +65,18 @@ async function loadPassport() {
 }
 
 onMounted(loadPassport)
+
+async function loadRoles() {
+  try {
+    const data = await apiFetch('/roles');
+    allRoles.value = data.roles;
+    roleError.value = '';
+  } catch (e) {
+    roleError.value = e.message;
+  }
+}
+
+onMounted(loadRoles)
 
 async function savePassport(data) {
   try {
@@ -120,6 +135,29 @@ async function save() {
     error.value = e.message
   }
 }
+
+async function assignSelectedRole() {
+  if (!selectedRole.value) return
+  try {
+    await apiFetch(`/users/${route.params.id}/roles/${selectedRole.value}`, {
+      method: 'POST'
+    })
+    selectedRole.value = ''
+    await loadUser()
+  } catch (e) {
+    roleError.value = e.message
+  }
+}
+
+async function removeRole(alias) {
+  if (!confirm('Удалить роль?')) return
+  try {
+    await apiFetch(`/users/${route.params.id}/roles/${alias}`, { method: 'DELETE' })
+    await loadUser()
+  } catch (e) {
+    roleError.value = e.message
+  }
+}
 </script>
 
 <template>
@@ -149,6 +187,47 @@ async function save() {
       </UserForm>
     </form>
     <p v-else-if="isLoading">Загрузка...</p>
+    <div v-if="user" class="card mt-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Роли</h5>
+        <div v-if="user.roles && user.roles.length" class="mb-3">
+          <span
+            class="badge bg-info me-1"
+            v-for="(name, idx) in user.role_names"
+            :key="user.roles[idx]"
+          >
+            {{ name }}
+            <button
+              type="button"
+              class="btn-close btn-close-white ms-1"
+              @click="removeRole(user.roles[idx])"
+            ></button>
+          </span>
+        </div>
+        <p v-else class="text-muted mb-3">Ролей нет.</p>
+        <div class="input-group" v-if="allRoles.length">
+          <select class="form-select" v-model="selectedRole">
+            <option disabled value="">Выберите роль</option>
+            <option
+              v-for="r in allRoles"
+              :key="r.alias"
+              :value="r.alias"
+              v-if="!user.roles.includes(r.alias)"
+            >
+              {{ r.name }}
+            </option>
+          </select>
+          <button
+            class="btn btn-primary"
+            @click="assignSelectedRole"
+            :disabled="!selectedRole"
+          >
+            Добавить
+          </button>
+        </div>
+        <div v-if="roleError" class="text-danger mt-2">{{ roleError }}</div>
+      </div>
+    </div>
     <div v-if="passport !== undefined" class="mt-4">
       <div v-if="passport" class="card">
         <div class="card-body position-relative">
