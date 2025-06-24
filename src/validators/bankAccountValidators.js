@@ -9,5 +9,7 @@ export const bankAccountRules = [
     .bail()
     .custom((val, { req }) => isValidAccountNumber(val, req.body.bic))
     .withMessage('invalid_number'),
-  body('bic').matches(/^\d{9}$/).withMessage('invalid_bic'),
+  body('bic')
+    .matches(/^\d{9}$/)
+    .withMessage('invalid_bic'),
 ];
