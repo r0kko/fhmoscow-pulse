@@ -3,8 +3,8 @@ import logger from '../../logger.js';
 
 const STATUS_URL = 'https://statusnpd.nalog.ru/api/v1/tracker/taxpayer_status';
 
-export async function checkSelfEmployed(inn, date = new Date()) {
-  if (!inn) return null;
+async function checkSelfEmployedWithStatus(inn, date = new Date()) {
+  if (!inn) return { data: null, status: 400 };
   const body = {
     inn,
     requestDate: date.toISOString().substring(0, 10),
@@ -21,14 +21,19 @@ export async function checkSelfEmployed(inn, date = new Date()) {
     clearTimeout(timer);
     if (!res.ok) {
       logger.warn('FNS request failed with status %s', res.status);
-      return null;
+      return { data: null, status: res.status };
     }
-    return await res.json();
+    return { data: await res.json(), status: res.status };
   } catch (err) {
     clearTimeout(timer);
     logger.warn('FNS request error: %s', err.message);
-    return null;
+    return { data: null, status: 0 };
   }
 }
 
-export default { checkSelfEmployed };
+export async function checkSelfEmployed(inn, date = new Date()) {
+  const { data } = await checkSelfEmployedWithStatus(inn, date);
+  return data;
+}
+
+export default { checkSelfEmployed, checkSelfEmployedWithStatus };

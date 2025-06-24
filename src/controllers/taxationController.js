@@ -12,7 +12,12 @@ export default {
 
   async check(req, res) {
     try {
-      const preview = await taxationService.previewForUser(req.user.id);
+      const source = req.query.source;
+      const opts = {
+        dadata: !source || source === 'dadata' || source === 'all',
+        fns: !source || source === 'fns' || source === 'all',
+      };
+      const preview = await taxationService.previewForUser(req.user.id, opts);
       return res.json({ preview: taxationMapper.toPublic(preview) });
     } catch (err) {
       const status = err.message === 'inn_not_found' ? 404 : 400;

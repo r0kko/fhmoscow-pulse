@@ -20,11 +20,15 @@ function parseDate(ms) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().substring(0, 10);
 }
 
-async function fetchByInn(inn) {
-  const [party, npd] = await Promise.all([
-    dadataService.findPartyByInn(inn),
-    fnsService.checkSelfEmployed(inn),
+async function fetchByInn(inn, opts = { dadata: true, fns: true }) {
+  const results = await Promise.all([
+    opts.dadata ? dadataService.findPartyByInnWithStatus(inn) : null,
+    opts.fns ? fnsService.checkSelfEmployedWithStatus(inn) : null,
   ]);
+  const partyRes = results[0] || { data: null, status: null };
+  const fnsRes = results[1] || { data: null, status: null };
+  const party = partyRes.data;
+  const npd = fnsRes.data;
 
   let typeAlias = 'PERSON';
   let registrationDate = null;
@@ -53,6 +57,7 @@ async function fetchByInn(inn) {
     registration_date: registrationDate,
     ogrn,
     okved,
+    statuses: { dadata: partyRes.status, fns: fnsRes.status },
   };
 }
 
@@ -85,10 +90,10 @@ async function removeByUser(userId) {
   if (taxation) await taxation.destroy();
 }
 
-async function previewForUser(userId) {
+async function previewForUser(userId, opts) {
   const inn = await Inn.findOne({ where: { user_id: userId } });
   if (!inn) throw new Error('inn_not_found');
-  return fetchByInn(inn.number);
+  return fetchByInn(inn.number, opts);
 }
 
 async function updateForUser(userId, actorId) {

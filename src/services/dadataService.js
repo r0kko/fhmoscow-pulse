@@ -8,14 +8,14 @@ import logger from '../../logger.js';
 const API_BASE = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs';
 const CLEANER_BASE = 'https://cleaner.dadata.ru/api/v1';
 
-async function request(endpoint, body, useSecret = false, base = API_BASE) {
+async function requestRaw(endpoint, body, useSecret = false, base = API_BASE) {
   if (!DADATA_TOKEN) {
     logger.warn('DaData token not configured');
-    return null;
+    return { data: null, status: 0 };
   }
   if (useSecret && !DADATA_SECRET) {
     logger.warn('DaData secret not configured');
-    return null;
+    return { data: null, status: 0 };
   }
 
   const controller = new AbortController();
@@ -34,14 +34,19 @@ async function request(endpoint, body, useSecret = false, base = API_BASE) {
     clearTimeout(timer);
     if (!res.ok) {
       logger.warn('DaData request failed with status %s', res.status);
-      return null;
+      return { data: null, status: res.status };
     }
-    return await res.json();
+    return { data: await res.json(), status: res.status };
   } catch (err) {
     clearTimeout(timer);
     logger.warn('DaData request error: %s', err.message);
-    return null;
+    return { data: null, status: 0 };
   }
+}
+
+async function request(endpoint, body, useSecret = false, base = API_BASE) {
+  const { data } = await requestRaw(endpoint, body, useSecret, base);
+  return data;
 }
 
 export async function suggestFio(query, parts) {
@@ -93,6 +98,16 @@ export async function findPartyByInn(inn) {
   return data.suggestions[0];
 }
 
+export async function findPartyByInnWithStatus(inn) {
+  if (!inn) return { data: null, status: 400 };
+  const { data, status } = await requestRaw('/findById/party', {
+    query: inn,
+    type: 'INDIVIDUAL',
+  });
+  const suggestion = data?.suggestions?.length ? data.suggestions[0] : null;
+  return { data: suggestion, status };
+}
+
 export default {
   suggestFio,
   cleanFio,
@@ -100,4 +115,5 @@ export default {
   cleanPassport,
   findBankByBic,
   findPartyByInn,
+  findPartyByInnWithStatus,
 };

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { Modal } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
@@ -13,6 +13,17 @@ let modal;
 const preview = ref(null);
 const checkStatus = ref('');
 const checkError = ref('');
+const statuses = ref({ dadata: null, fns: null });
+
+function statusIcon(code) {
+  if (code === 200) return 'bi-check-circle text-success';
+  if (code) return 'bi-exclamation-circle text-danger';
+  return 'bi-question-circle text-muted';
+}
+
+const canSave = computed(
+  () => statuses.value.dadata === 200 && statuses.value.fns === 200
+);
 
 function formatDate(str) {
   if (!str) return '';
@@ -41,18 +52,21 @@ function openModal() {
   preview.value = null;
   checkStatus.value = '';
   checkError.value = '';
+  statuses.value = { dadata: null, fns: null };
   modal.show();
   runCheck();
 }
 
-async function runCheck() {
+async function runCheck(source = 'all') {
   checkStatus.value = 'pending';
   const path = props.userId
     ? `/users/${props.userId}/taxation/check`
     : '/taxations/me/check';
+  const url = source && source !== 'all' ? `${path}?source=${source}` : path;
   try {
-    const data = await apiFetch(path, { method: 'POST' });
+    const data = await apiFetch(url, { method: 'POST' });
     preview.value = data.preview;
+    statuses.value = data.preview.statuses || { dadata: null, fns: null };
     checkStatus.value = 'success';
   } catch (e) {
     checkStatus.value = 'error';
@@ -78,7 +92,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="card">
+  <div class="card mt-4">
     <div class="card-body">
       <div class="d-flex justify-content-between mb-3">
         <h5 class="card-title mb-0">Налоговый статус</h5>
@@ -152,12 +166,28 @@ onMounted(() => {
           <button type="button" class="btn-close" @click="modal.hide()"></button>
         </div>
         <div class="modal-body">
+          <div class="d-flex justify-content-between mb-3">
+            <div class="d-flex align-items-center">
+              <i :class="statusIcon(statuses.dadata)" class="me-1"></i>
+              <span class="me-2">DaData - {{ statuses.dadata || '—' }}</span>
+              <button class="btn btn-link p-0" @click="runCheck('dadata')">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </div>
+            <div class="d-flex align-items-center">
+              <i :class="statusIcon(statuses.fns)" class="me-1"></i>
+              <span class="me-2">ФНС - {{ statuses.fns || '—' }}</span>
+              <button class="btn btn-link p-0" @click="runCheck('fns')">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </div>
+          </div>
           <div v-if="checkStatus === 'pending'">Проверка...</div>
           <div v-if="checkStatus === 'error'" class="text-danger mb-2">
             {{ checkError }}
           </div>
           <div v-if="checkStatus === 'success' && preview">
-            <div class="row row-cols-1 row-cols-sm-2 g-3">
+            <div class="row row-cols-1 g-3">
               <div class="col">
                 <div class="form-floating">
                   <input id="prevType" type="text" class="form-control" :value="preview.type?.name" readonly placeholder="Тип" />
@@ -193,7 +223,7 @@ onMounted(() => {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-          <button type="button" class="btn btn-primary" @click="save" :disabled="checkStatus !== 'success'">Сохранить</button>
+          <button type="button" class="btn btn-primary" @click="save" :disabled="!canSave">Сохранить</button>
         </div>
       </div>
     </div>

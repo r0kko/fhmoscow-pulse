@@ -225,7 +225,7 @@ async function save() {
 
     <InnSnilsForm v-if="user" :userId="route.params.id" />
     <BankAccountForm v-if="user" :userId="route.params.id" />
-    <TaxationInfo v-if="user" :userId="route.params.id" class="mt-4" />
+    <TaxationInfo v-if="user" :userId="route.params.id" />
 
     <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
       <div class="card placeholder-card text-center">

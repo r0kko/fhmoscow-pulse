@@ -1,5 +1,13 @@
 function sanitize(obj) {
-  const { id, check_date, registration_date, ogrn, okved, TaxationType } = obj;
+  const {
+    id,
+    check_date,
+    registration_date,
+    ogrn,
+    okved,
+    TaxationType,
+    statuses,
+  } = obj;
   return {
     id,
     check_date,
@@ -9,6 +17,7 @@ function sanitize(obj) {
     type: TaxationType
       ? { id: TaxationType.id, name: TaxationType.name, alias: TaxationType.alias }
       : undefined,
+    statuses,
   };
 }
 
