@@ -128,39 +128,66 @@ async function save() {
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <div class="col">
               <label class="form-label">Тип документа</label>
-              <input type="text" class="form-control" :value="passport.document_type_name" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.document_type_name" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Страна</label>
-              <input type="text" class="form-control" :value="passport.country_name" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.country_name" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Серия</label>
-              <input type="text" class="form-control" :value="passport.series" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.series" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Номер</label>
-              <input type="text" class="form-control" :value="passport.number" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.number" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Дата выдачи</label>
-              <input type="text" class="form-control" :value="passport.issue_date" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.issue_date" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Действителен до</label>
-              <input type="text" class="form-control" :value="passport.valid_until" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.valid_until" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Кем выдан</label>
-              <input type="text" class="form-control" :value="passport.issuing_authority" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.issuing_authority" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Код подразделения</label>
-              <input type="text" class="form-control" :value="passport.issuing_authority_code" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.issuing_authority_code" readonly />
+              </div>
             </div>
             <div class="col">
               <label class="form-label">Место рождения</label>
-              <input type="text" class="form-control" :value="passport.place_of_birth" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="text" class="form-control" :value="passport.place_of_birth" readonly />
+              </div>
             </div>
           </div>
           <button class="btn btn-danger mt-3" @click="deletePassport">Удалить</button>
@@ -188,5 +215,8 @@ async function save() {
 <style scoped>
 .placeholder-card {
   opacity: 0.6;
+}
+.input-group-text.bg-light {
+  color: #6c757d;
 }
 </style>

@@ -22,7 +22,7 @@ async function createForUser(userId, data, adminId) {
   if (!type) throw new Error('document_type_not_found');
   if (!country) throw new Error('country_not_found');
 
-  const passport = await Passport.create({
+  await Passport.create({
     user_id: userId,
     document_type_id: type.id,
     country_id: country.id,

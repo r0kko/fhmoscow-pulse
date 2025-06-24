@@ -28,7 +28,7 @@ const form = reactive({
 const errors = reactive({})
 const suggestions = ref([])
 const searchTimeout = ref(null)
-const checkStatus = ref('')
+const checkStatus = reactive({ status: '', message: '' })
 const seriesNumber = ref('')
 
 onMounted(() => {
@@ -41,6 +41,8 @@ function open() {
   form.document_type = 'CIVIL'
   form.country = 'RU'
   seriesNumber.value = ''
+  checkStatus.status = ''
+  checkStatus.message = ''
   modal.show()
 }
 
@@ -50,7 +52,11 @@ function next() {
   if (step.value === 1) {
     step.value = 2
   } else if (step.value === 2) {
-    if (form.document_type === 'CIVIL' && form.country === 'RU' && !checkStatus.value) {
+    if (
+      form.document_type === 'CIVIL' &&
+      form.country === 'RU' &&
+      checkStatus.status !== 'valid'
+    ) {
       errors.series = 'Проверьте паспорт'
       return
     }
@@ -63,19 +69,23 @@ function prev() {
 }
 
 async function checkPassport() {
-  checkStatus.value = 'Проверка...'
+  checkStatus.status = 'pending'
+  checkStatus.message = 'Проверка...'
   const query = seriesNumber.value
   const data = await cleanPassport(query)
   if (data && data.qc === 0) {
     form.series = data.series.replace(/\s+/g, '')
     form.number = data.number
-    checkStatus.value = 'Паспорт действителен'
+    checkStatus.status = 'valid'
+    checkStatus.message = 'Паспорт действителен'
     errors.series = ''
   } else if (data && data.qc === 10) {
-    checkStatus.value = 'Паспорт недействителен'
+    checkStatus.status = 'invalid'
+    checkStatus.message = 'Паспорт недействителен'
     errors.series = 'Паспорт недействителен'
   } else {
-    checkStatus.value = 'Ошибка проверки'
+    checkStatus.status = 'error'
+    checkStatus.message = 'Ошибка проверки'
     errors.series = 'Ошибка проверки'
   }
 }
@@ -121,7 +131,23 @@ function calcValid() {
 
 watch(() => form.issue_date, calcValid)
 
+function validate() {
+  if (form.document_type === 'CIVIL' && form.country === 'RU') {
+    errors.series = form.series ? '' : 'Введите серию'
+    errors.number = form.number ? '' : 'Введите номер'
+    errors.issue_date = form.issue_date ? '' : 'Введите дату'
+    errors.issuing_authority_code = form.issuing_authority_code
+      ? ''
+      : 'Укажите код'
+    errors.issuing_authority = form.issuing_authority
+      ? ''
+      : 'Выберите подразделение'
+  }
+  return !Object.values(errors).some(Boolean)
+}
+
 async function save() {
+  if (!validate()) return
   emit('saved', { ...form })
   modal.hide()
 }
@@ -161,12 +187,27 @@ async function save() {
             <button type="button" class="btn btn-outline-secondary" @click="checkPassport" v-if="form.document_type==='CIVIL' && form.country==='RU'">
               Проверить паспорт
             </button>
-            <div class="mt-2" v-if="checkStatus">{{ checkStatus }}</div>
+            <div class="mt-2" v-if="checkStatus.message">
+              <i
+                :class="{
+                  'bi bi-check-circle text-success': checkStatus.status === 'valid',
+                  'bi bi-x-circle text-danger': checkStatus.status === 'invalid',
+                  'bi bi-exclamation-circle text-warning': checkStatus.status === 'error',
+                }"
+                class="me-1"
+              ></i>
+              {{ checkStatus.message }}
+            </div>
           </div>
           <div v-else>
             <div class="mb-3 position-relative">
               <label class="form-label">Код подразделения</label>
-              <input v-model="form.issuing_authority_code" class="form-control" />
+              <input
+                v-model="form.issuing_authority_code"
+                class="form-control"
+                :class="{ 'is-invalid': errors.issuing_authority_code }"
+              />
+              <div class="invalid-feedback">{{ errors.issuing_authority_code }}</div>
               <ul v-if="suggestions.length" class="list-group position-absolute w-100" style="z-index: 1050">
                 <li v-for="s in suggestions" :key="s.value" class="list-group-item list-group-item-action" @mousedown.prevent="applySuggestion(s)">
                   {{ s.value }}
@@ -175,11 +216,16 @@ async function save() {
             </div>
             <div class="mb-3">
               <label class="form-label">Кем выдан</label>
-              <input v-model="form.issuing_authority" class="form-control" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input v-model="form.issuing_authority" class="form-control" readonly />
+              </div>
+              <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Дата выдачи</label>
-              <input type="date" v-model="form.issue_date" class="form-control" />
+              <input type="date" v-model="form.issue_date" class="form-control" :class="{ 'is-invalid': errors.issue_date }" />
+              <div class="invalid-feedback">{{ errors.issue_date }}</div>
             </div>
             <div class="mb-3" v-if="form.country!=='RU' || form.document_type!=='CIVIL'">
               <label class="form-label">Действителен до</label>
@@ -187,7 +233,10 @@ async function save() {
             </div>
             <div class="mb-3" v-else>
               <label class="form-label">Действителен до</label>
-              <input type="date" class="form-control" :value="form.valid_until" readonly />
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                <input type="date" class="form-control" :value="form.valid_until" readonly />
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label">Место рождения</label>
@@ -204,3 +253,9 @@ async function save() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.input-group-text.bg-light {
+  color: #6c757d;
+}
+</style>
