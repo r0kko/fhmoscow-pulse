@@ -9,6 +9,7 @@ import debugLib from 'debug';
 
 import app from '../app.js';
 import { connectToDatabase } from '../src/config/database.js';
+import { connectLegacyDatabase } from '../src/config/legacyDatabase.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -30,6 +31,7 @@ const server = http.createServer(app);
  // Wait for a successful DB connection before accepting traffic
 (async () => {
   await connectToDatabase();
+  await connectLegacyDatabase();
   server.listen(port);
 })();
 

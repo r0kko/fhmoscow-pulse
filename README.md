@@ -38,6 +38,12 @@ DB_PORT=5432
 DB_NAME=fhpulse
 DB_USER=postgres
 DB_PASS=secret
+# connection to legacy MySQL database
+LEGACY_DB_HOST=legacy-host
+LEGACY_DB_PORT=3306
+LEGACY_DB_NAME=legacydb
+LEGACY_DB_USER=root
+LEGACY_DB_PASS=secret
 JWT_SECRET=your_jwt_secret
 # optional overrides
 # token for DaData suggestions

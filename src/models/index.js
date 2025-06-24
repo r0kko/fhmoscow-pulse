@@ -12,6 +12,8 @@ import Snils from './snils.js';
 import BankAccount from './bankAccount.js';
 import TaxationType from './taxationType.js';
 import Taxation from './taxation.js';
+import ExternalSystem from './externalSystem.js';
+import UserExternalId from './userExternalId.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -39,6 +41,12 @@ Taxation.belongsTo(User, { foreignKey: 'user_id' });
 TaxationType.hasMany(Taxation, { foreignKey: 'taxation_type_id' });
 Taxation.belongsTo(TaxationType, { foreignKey: 'taxation_type_id' });
 
+/* external systems */
+User.hasMany(UserExternalId, { foreignKey: 'user_id' });
+UserExternalId.belongsTo(User, { foreignKey: 'user_id' });
+ExternalSystem.hasMany(UserExternalId, { foreignKey: 'external_system_id' });
+UserExternalId.belongsTo(ExternalSystem, { foreignKey: 'external_system_id' });
+
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
 Passport.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
@@ -65,4 +73,6 @@ export {
   BankAccount,
   TaxationType,
   Taxation,
+  ExternalSystem,
+  UserExternalId,
 };

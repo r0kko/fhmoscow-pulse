@@ -11,6 +11,7 @@ import innsRouter from './inns.js';
 import snilsRouter from './snils.js';
 import bankAccountsRouter from './bankAccounts.js';
 import taxationsRouter from './taxations.js';
+import registerRouter from './register.js';
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ router.use('/inns', innsRouter);
 router.use('/snils', snilsRouter);
 router.use('/bank-accounts', bankAccountsRouter);
 router.use('/taxations', taxationsRouter);
+router.use('/register', registerRouter);
 
 /**
  * @swagger
