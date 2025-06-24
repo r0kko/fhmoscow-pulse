@@ -76,9 +76,17 @@ export async function cleanPassport(passport) {
   return Array.isArray(data) ? data[0] : null;
 }
 
+export async function findBankByBic(bic) {
+  if (!bic) return null;
+  const data = await request('/findById/bank', { query: bic });
+  if (!data?.suggestions?.length) return null;
+  return data.suggestions[0];
+}
+
 export default {
   suggestFio,
   cleanFio,
   suggestFmsUnit,
   cleanPassport,
+  findBankByBic,
 };

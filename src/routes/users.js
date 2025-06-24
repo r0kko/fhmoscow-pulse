@@ -6,12 +6,14 @@ import userMapper from '../mappers/userMapper.js';
 import admin from '../controllers/userAdminController.js';
 import innAdmin from '../controllers/innAdminController.js';
 import snilsAdmin from '../controllers/snilsAdminController.js';
+import bankAccountAdmin from '../controllers/bankAccountAdminController.js';
 import {
   createUserRules,
   updateUserRules,
   resetPasswordRules,
 } from '../validators/userValidators.js';
 import { innRules, snilsRules } from '../validators/personalValidators.js';
+import { bankAccountRules } from '../validators/bankAccountValidators.js';
 import { createPassportRules } from '../validators/passportValidators.js';
 
 const router = express.Router();
@@ -140,6 +142,28 @@ router.put(
 );
 router.delete('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.remove);
 router.get('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.get);
+
+router.post(
+  '/:id/bank-account',
+  auth,
+  authorize('ADMIN'),
+  bankAccountRules,
+  bankAccountAdmin.create
+);
+router.put(
+  '/:id/bank-account',
+  auth,
+  authorize('ADMIN'),
+  bankAccountRules,
+  bankAccountAdmin.update
+);
+router.delete(
+  '/:id/bank-account',
+  auth,
+  authorize('ADMIN'),
+  bankAccountAdmin.remove
+);
+router.get('/:id/bank-account', auth, authorize('ADMIN'), bankAccountAdmin.get);
 
 router.post(
   '/:id/passport',

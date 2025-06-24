@@ -55,3 +55,16 @@ export async function cleanPassport(passport) {
     return null
   }
 }
+
+export async function findBankByBic(bic) {
+  if (!bic) return null
+  try {
+    const { bank } = await apiFetch('/dadata/find-bank', {
+      method: 'POST',
+      body: JSON.stringify({ bic })
+    })
+    return bank
+  } catch (_err) {
+    return null
+  }
+}

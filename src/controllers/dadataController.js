@@ -23,4 +23,9 @@ export default {
     const result = await dadata.cleanPassport(req.body.passport);
     return res.json({ result });
   },
+
+  async findBank(req, res) {
+    const bank = await dadata.findBankByBic(req.body.bic);
+    return res.json({ bank });
+  },
 };
