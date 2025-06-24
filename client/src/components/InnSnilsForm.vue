@@ -121,21 +121,39 @@ async function removeItem() {
 <template>
   <div class="card mt-4">
     <div class="card-body">
-      <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
+      <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
       <div class="row row-cols-1 row-cols-sm-2 g-3">
         <div class="col">
-          <label class="form-label">ИНН</label>
           <div class="input-group">
-            <input type="text" class="form-control" :value="inn ? inn.number : ''" readonly />
+            <div class="form-floating flex-grow-1">
+              <input
+                id="innField"
+                type="text"
+                class="form-control"
+                :value="inn ? inn.number : ''"
+                readonly
+                placeholder="ИНН"
+              />
+              <label for="innField">ИНН</label>
+            </div>
             <button class="btn btn-outline-secondary" @click="openEdit('inn')">
               <i class="bi text-muted" :class="inn ? 'bi-pencil' : 'bi-plus'"></i>
             </button>
           </div>
         </div>
         <div class="col">
-          <label class="form-label">СНИЛС</label>
           <div class="input-group">
-            <input type="text" class="form-control" :value="snils ? snils.number : ''" readonly />
+            <div class="form-floating flex-grow-1">
+              <input
+                id="snilsField"
+                type="text"
+                class="form-control"
+                :value="snils ? snils.number : ''"
+                readonly
+                placeholder="СНИЛС"
+              />
+              <label for="snilsField">СНИЛС</label>
+            </div>
             <button class="btn btn-outline-secondary" @click="openEdit('snils')">
               <i class="bi text-muted" :class="snils ? 'bi-pencil' : 'bi-plus'"></i>
             </button>
@@ -157,21 +175,25 @@ async function removeItem() {
           </div>
           <div class="modal-body">
             <div v-if="error" class="alert alert-danger">{{ error }}</div>
-            <div v-if="mode === 'inn'">
+            <div v-if="mode === 'inn'" class="form-floating">
               <input
+                id="innModal"
                 v-model="innInput"
                 @input="onInnInput"
                 class="form-control"
-                placeholder="12 цифр"
+                placeholder="ИНН"
               />
+              <label for="innModal">ИНН (12 цифр)</label>
             </div>
-            <div v-else>
+            <div v-else class="form-floating">
               <input
+                id="snilsModal"
                 v-model="snilsInput"
                 @input="onSnilsInput"
                 class="form-control"
-                placeholder="XXX-XXX-XXX YY"
+                placeholder="СНИЛС"
               />
+              <label for="snilsModal">СНИЛС</label>
             </div>
           </div>
           <div class="modal-footer">

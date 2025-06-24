@@ -111,47 +111,65 @@ async function removeAccount() {
 <template>
   <div class="card mt-4">
     <div class="card-body">
-      <h5 class="card-title mb-3">Банковский счёт</h5>
+      <div class="d-flex justify-content-between mb-3">
+        <h5 class="card-title mb-0">Банковский счёт</h5>
+        <button type="button" class="btn btn-link p-0" @click="open">
+          <i class="bi bi-pencil"></i>
+        </button>
+      </div>
       <div v-if="account">
         <div class="row row-cols-1 row-cols-sm-2 g-3 mb-3">
           <div class="col">
-            <label class="form-label">Счёт</label>
-            <input type="text" class="form-control" :value="account.number" readonly />
+            <div class="form-floating">
+              <input id="accountNumber" type="text" class="form-control" :value="account.number" readonly placeholder="Счёт" />
+              <label for="accountNumber">Счёт</label>
+            </div>
           </div>
           <div class="col">
-            <label class="form-label">БИК</label>
-            <input type="text" class="form-control" :value="account.bic" readonly />
+            <div class="form-floating">
+              <input id="accountBic" type="text" class="form-control" :value="account.bic" readonly placeholder="БИК" />
+              <label for="accountBic">БИК</label>
+            </div>
           </div>
           <div class="col">
-            <label class="form-label">Банк</label>
-            <input type="text" class="form-control" :value="account.bank_name" readonly />
+            <div class="form-floating">
+              <input id="bankName" type="text" class="form-control" :value="account.bank_name" readonly placeholder="Банк" />
+              <label for="bankName">Банк</label>
+            </div>
           </div>
           <div class="col">
-            <label class="form-label">Корсчёт</label>
-            <input type="text" class="form-control" :value="account.correspondent_account" readonly />
+            <div class="form-floating">
+              <input id="corrAcc" type="text" class="form-control" :value="account.correspondent_account" readonly placeholder="Корсчёт" />
+              <label for="corrAcc">Корсчёт</label>
+            </div>
           </div>
           <div class="col">
-            <label class="form-label">SWIFT</label>
-            <input type="text" class="form-control" :value="account.swift" readonly />
+            <div class="form-floating">
+              <input id="swift" type="text" class="form-control" :value="account.swift" readonly placeholder="SWIFT" />
+              <label for="swift">SWIFT</label>
+            </div>
           </div>
           <div class="col">
-            <label class="form-label">ИНН</label>
-            <input type="text" class="form-control" :value="account.inn" readonly />
+            <div class="form-floating">
+              <input id="bankInn" type="text" class="form-control" :value="account.inn" readonly placeholder="ИНН" />
+              <label for="bankInn">ИНН</label>
+            </div>
           </div>
           <div class="col">
-            <label class="form-label">КПП</label>
-            <input type="text" class="form-control" :value="account.kpp" readonly />
+            <div class="form-floating">
+              <input id="bankKpp" type="text" class="form-control" :value="account.kpp" readonly placeholder="КПП" />
+              <label for="bankKpp">КПП</label>
+            </div>
           </div>
           <div class="col-12">
-            <label class="form-label">Адрес</label>
-            <textarea class="form-control" rows="2" :value="account.address" readonly />
+            <div class="form-floating">
+              <textarea id="bankAddress" class="form-control" rows="2" :value="account.address" readonly placeholder="Адрес"></textarea>
+              <label for="bankAddress">Адрес</label>
+            </div>
           </div>
         </div>
       </div>
       <p v-else class="mb-2 text-muted">Счёт не указан.</p>
-      <button class="btn btn-outline-primary" @click="open">
-        {{ account ? 'Изменить' : 'Добавить' }}
-      </button>
       <div v-if="error" class="text-danger mt-2">{{ error }}</div>
     </div>
   </div>
@@ -166,13 +184,24 @@ async function removeAccount() {
           </div>
           <div class="modal-body">
             <div v-if="error" class="alert alert-danger">{{ error }}</div>
-            <div class="mb-3">
-              <label class="form-label">Расчётный счёт</label>
-              <input v-model="form.number" class="form-control" placeholder="20 цифр" />
+            <div class="form-floating mb-3">
+              <input
+                id="modalAccNumber"
+                v-model="form.number"
+                class="form-control"
+                placeholder="Счёт"
+              />
+              <label for="modalAccNumber">Расчётный счёт</label>
             </div>
-            <div class="mb-3">
-              <label class="form-label">БИК</label>
-              <input v-model="form.bic" class="form-control" placeholder="9 цифр" />
+            <div class="form-floating mb-3">
+              <input
+                id="modalBic"
+                v-model="form.bic"
+                class="form-control"
+                placeholder="БИК"
+                :disabled="!form.number"
+              />
+              <label for="modalBic">БИК</label>
             </div>
             <button type="button" class="btn btn-outline-secondary" @click="checkBank">
               Проверить
@@ -180,29 +209,29 @@ async function removeAccount() {
             <div v-if="checkStatus === 'pending'" class="mt-2">Проверка...</div>
             <div v-if="checkStatus === 'not_found'" class="text-danger mt-2">Банк не найден</div>
             <div v-if="checkStatus === 'found' && bank" class="mt-3">
-              <div class="mb-2">
-                <label class="form-label">Банк</label>
-                <input type="text" class="form-control" :value="bank.bank_name" readonly />
+              <div class="mb-2 form-floating">
+                <input id="checkBankName" type="text" class="form-control" :value="bank.bank_name" readonly placeholder="Банк" />
+                <label for="checkBankName">Банк</label>
               </div>
-              <div class="mb-2">
-                <label class="form-label">Корсчёт</label>
-                <input type="text" class="form-control" :value="bank.correspondent_account" readonly />
+              <div class="mb-2 form-floating">
+                <input id="checkCorr" type="text" class="form-control" :value="bank.correspondent_account" readonly placeholder="Корсчёт" />
+                <label for="checkCorr">Корсчёт</label>
               </div>
-              <div class="mb-2">
-                <label class="form-label">SWIFT</label>
-                <input type="text" class="form-control" :value="bank.swift" readonly />
+              <div class="mb-2 form-floating">
+                <input id="checkSwift" type="text" class="form-control" :value="bank.swift" readonly placeholder="SWIFT" />
+                <label for="checkSwift">SWIFT</label>
               </div>
-              <div class="mb-2">
-                <label class="form-label">ИНН</label>
-                <input type="text" class="form-control" :value="bank.inn" readonly />
+              <div class="mb-2 form-floating">
+                <input id="checkInn" type="text" class="form-control" :value="bank.inn" readonly placeholder="ИНН" />
+                <label for="checkInn">ИНН</label>
               </div>
-              <div class="mb-2">
-                <label class="form-label">КПП</label>
-                <input type="text" class="form-control" :value="bank.kpp" readonly />
+              <div class="mb-2 form-floating">
+                <input id="checkKpp" type="text" class="form-control" :value="bank.kpp" readonly placeholder="КПП" />
+                <label for="checkKpp">КПП</label>
               </div>
-              <div class="mb-2">
-                <label class="form-label">Адрес</label>
-                <textarea class="form-control" rows="2" :value="bank.address" readonly />
+              <div class="mb-2 form-floating">
+                <textarea id="checkAddress" class="form-control" rows="2" :value="bank.address" readonly placeholder="Адрес"></textarea>
+                <label for="checkAddress">Адрес</label>
               </div>
             </div>
           </div>
