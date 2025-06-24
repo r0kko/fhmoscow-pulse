@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar navbar-expand-md navbar-dark" :style="{ backgroundColor: '#113867' }">
+  <nav class="navbar navbar-expand-md navbar-dark" :style="{ backgroundColor: 'var(--brand-color)' }">
     <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2" to="/">
         <img :src="logo" alt="FHM" height="30" />

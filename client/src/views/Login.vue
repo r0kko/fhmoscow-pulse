@@ -76,12 +76,20 @@ async function login() {
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4 shadow login-card w-100">
       <img :src="logo" alt="FHM Pulse logo" class="login-logo mb-3 mx-auto d-block" />
-      <h2 class="mb-4 text-center">Авторизация</h2>
-      <transition name="fade">
-        <div v-if="error" class="alert alert-danger">{{ error }}</div>
-      </transition>
-      <form @submit.prevent="login">
-        <div class="mb-3 input-group">
+        <div class="mb-3 input-group" style="border-radius: 8px; overflow: hidden">
+          <span class="input-group-text" style="background-color: var(--brand-color); color: #fff"><i class="bi bi-phone"></i></span>
+        <div class="mb-3 input-group" style="border-radius: 8px; overflow: hidden">
+          <span class="input-group-text" style="background-color: var(--brand-color); color: #fff"><i class="bi bi-lock"></i></span>
+            style="accent-color: var(--brand-color)"
+        <button
+          type="submit"
+          class="btn btn-primary w-100"
+          :disabled="loading"
+          style="background-color: var(--brand-color); border-color: var(--brand-color)"
+        >
+          <router-link to="/forgot-password" style="color: var(--brand-color)">Забыли пароль?</router-link>
+  border-radius: 8px;
+  border: 1px solid var(--brand-color);
           <label for="phoneInput" class="form-label visually-hidden">Телефон</label>
           <span class="input-group-text"><i class="bi bi-phone"></i></span>
           <input
