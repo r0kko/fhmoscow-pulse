@@ -154,51 +154,58 @@ onMounted(() => {
             <h5 class="card-title mb-3">Основные данные</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
               <div class="col">
-                <label class="form-label">Фамилия</label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                <div class="form-floating">
                   <input
+                    id="lastName"
                     type="text"
                     class="form-control"
                     :value="user.last_name"
                     readonly
+                    placeholder="Фамилия"
                   />
+                  <label for="lastName">Фамилия</label>
                 </div>
               </div>
               <div class="col">
-                <label class="form-label">Имя</label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                <div class="form-floating">
                   <input
+                    id="firstName"
                     type="text"
                     class="form-control"
                     :value="user.first_name"
                     readonly
+                    placeholder="Имя"
                   />
+                  <label for="firstName">Имя</label>
                 </div>
               </div>
               <div class="col">
-                <label class="form-label">Отчество</label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                <div class="form-floating">
                   <input
+                    id="patronymic"
                     type="text"
                     class="form-control"
                     :value="user.patronymic"
                     readonly
+                    placeholder="Отчество"
                   />
+                  <label for="patronymic">Отчество</label>
                 </div>
               </div>
               <div class="col">
-                <label class="form-label">Дата рождения</label>
                 <div class="input-group">
                   <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-                  <input
-                    type="text"
-                    class="form-control"
-                    :value="user.birth_date"
-                    readonly
-                  />
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      id="birthDate"
+                      type="text"
+                      class="form-control"
+                      :value="user.birth_date"
+                      readonly
+                      placeholder="Дата рождения"
+                    />
+                    <label for="birthDate">Дата рождения</label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -211,10 +218,19 @@ onMounted(() => {
             <h5 class="card-title mb-3">Контакты</h5>
             <div class="row row-cols-1 row-cols-sm-2 g-3">
               <div class="col">
-                <label class="form-label">Телефон</label>
                 <div class="input-group">
                   <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                  <input type="text" class="form-control" :value="user.phone" readonly />
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      id="userPhone"
+                      type="text"
+                      class="form-control"
+                      :value="user.phone"
+                      readonly
+                      placeholder="Телефон"
+                    />
+                    <label for="userPhone">Телефон</label>
+                  </div>
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
@@ -228,10 +244,19 @@ onMounted(() => {
                 </div>
               </div>
               <div class="col">
-                <label class="form-label">Email</label>
                 <div class="input-group">
                   <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                  <input type="text" class="form-control" :value="user.email" readonly />
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      id="userEmail"
+                      type="text"
+                      class="form-control"
+                      :value="user.email"
+                      readonly
+                      placeholder="Email"
+                    />
+                    <label for="userEmail">Email</label>
+                  </div>
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
@@ -281,111 +306,147 @@ onMounted(() => {
             <div v-else-if="passport">
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col">
-                  <label class="form-label">Тип документа</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-card-text"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.document_type_name"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="docType"
+                        type="text"
+                        class="form-control"
+                        :value="passport.document_type_name"
+                        readonly
+                        placeholder="Тип документа"
+                      />
+                      <label for="docType">Тип документа</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Страна</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-globe"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.country_name"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportCountry"
+                        type="text"
+                        class="form-control"
+                        :value="passport.country_name"
+                        readonly
+                        placeholder="Страна"
+                      />
+                      <label for="passportCountry">Страна</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Серия</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-hash"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.series"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportSeries"
+                        type="text"
+                        class="form-control"
+                        :value="passport.series"
+                        readonly
+                        placeholder="Серия"
+                      />
+                      <label for="passportSeries">Серия</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Номер</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-file-text"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.number"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportNumber"
+                        type="text"
+                        class="form-control"
+                        :value="passport.number"
+                        readonly
+                        placeholder="Номер"
+                      />
+                      <label for="passportNumber">Номер</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Дата выдачи</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.issue_date"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportIssue"
+                        type="text"
+                        class="form-control"
+                        :value="passport.issue_date"
+                        readonly
+                        placeholder="Дата выдачи"
+                      />
+                      <label for="passportIssue">Дата выдачи</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Действителен до</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.valid_until"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportValid"
+                        type="text"
+                        class="form-control"
+                        :value="passport.valid_until"
+                        readonly
+                        placeholder="Действителен до"
+                      />
+                      <label for="passportValid">Действителен до</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Кем выдан</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-building"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.issuing_authority"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportAuthority"
+                        type="text"
+                        class="form-control"
+                        :value="passport.issuing_authority"
+                        readonly
+                        placeholder="Кем выдан"
+                      />
+                      <label for="passportAuthority">Кем выдан</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Код подразделения</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-123"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.issuing_authority_code"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportCode"
+                        type="text"
+                        class="form-control"
+                        :value="passport.issuing_authority_code"
+                        readonly
+                        placeholder="Код подразделения"
+                      />
+                      <label for="passportCode">Код подразделения</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col">
-                  <label class="form-label">Место рождения</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                    <input
-                      type="text"
-                      class="form-control"
-                      :value="passport.place_of_birth"
-                      readonly
-                    />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportBirthplace"
+                        type="text"
+                        class="form-control"
+                        :value="passport.place_of_birth"
+                        readonly
+                        placeholder="Место рождения"
+                      />
+                      <label for="passportBirthplace">Место рождения</label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -406,17 +467,35 @@ onMounted(() => {
             <div v-else-if="inn || snils">
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col" v-if="inn">
-                  <label class="form-label">ИНН</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
-                    <input type="text" class="form-control" :value="inn.number" readonly />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="innNumber"
+                        type="text"
+                        class="form-control"
+                        :value="inn.number"
+                        readonly
+                        placeholder="ИНН"
+                      />
+                      <label for="innNumber">ИНН</label>
+                    </div>
                   </div>
                 </div>
                 <div class="col" v-if="snils">
-                  <label class="form-label">СНИЛС</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-card-checklist"></i></span>
-                    <input type="text" class="form-control" :value="snils.number" readonly />
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="snilsNumber"
+                        type="text"
+                        class="form-control"
+                        :value="snils.number"
+                        readonly
+                        placeholder="СНИЛС"
+                      />
+                      <label for="snilsNumber">СНИЛС</label>
+                    </div>
                   </div>
                 </div>
               </div>
