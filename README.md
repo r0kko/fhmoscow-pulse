@@ -44,6 +44,8 @@ JWT_SECRET=your_jwt_secret
 VITE_DADATA_TOKEN=your_dadata_api_token
 # server-side DaData token
 DADATA_TOKEN=your_dadata_api_token
+# secret key for passport validation
+DADATA_SECRET=your_dadata_secret
 # JWT_ACCESS_TTL=15m
 # JWT_REFRESH_TTL=30d
 # JWT_ALG=HS256
@@ -101,6 +103,8 @@ Administrators can manage users via the following endpoints:
 - `POST /users/{id}/block` and `/unblock` – change status
 - `POST /users/{id}/roles/{roleAlias}` – assign role
 - `DELETE /users/{id}/roles/{roleAlias}` – remove role
+- `POST /users/{id}/passport` – add passport for user
+- `DELETE /users/{id}/passport` – delete passport
 
 ## License
 

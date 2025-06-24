@@ -31,4 +31,7 @@ router.post('/suggest-fio', auth, controller.suggestFio);
  */
 router.post('/clean-fio', auth, controller.cleanFio);
 
+router.post('/suggest-fms-unit', auth, controller.suggestFmsUnit);
+router.post('/clean-passport', auth, controller.cleanPassport);
+
 export default router;

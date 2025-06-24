@@ -10,4 +10,17 @@ export default {
     const result = await dadata.cleanFio(req.body.fio);
     return res.json({ result });
   },
+
+  async suggestFmsUnit(req, res) {
+    const suggestions = await dadata.suggestFmsUnit(
+      req.body.query,
+      req.body.filters
+    );
+    return res.json({ suggestions });
+  },
+
+  async cleanPassport(req, res) {
+    const result = await dadata.cleanPassport(req.body.passport);
+    return res.json({ result });
+  },
 };

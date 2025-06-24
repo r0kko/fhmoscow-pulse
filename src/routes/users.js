@@ -9,6 +9,7 @@ import {
   updateUserRules,
   resetPasswordRules,
 } from '../validators/userValidators.js';
+import { createPassportRules } from '../validators/passportValidators.js';
 
 const router = express.Router();
 
@@ -114,5 +115,14 @@ router.delete(
   authorize('ADMIN'),
   admin.removeRole
 );
+
+router.post(
+  '/:id/passport',
+  auth,
+  authorize('ADMIN'),
+  createPassportRules,
+  admin.addPassport
+);
+router.delete('/:id/passport', auth, authorize('ADMIN'), admin.deletePassport);
 
 export default router;
