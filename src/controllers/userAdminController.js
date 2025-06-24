@@ -126,7 +126,9 @@ export default {
         req.body,
         req.user.id
       );
-      return res.status(201).json({ passport: passportMapper.toPublic(passport) });
+      return res
+        .status(201)
+        .json({ passport: passportMapper.toPublic(passport) });
     } catch (err) {
       const status = err.message === 'user_not_found' ? 404 : 400;
       return res.status(status).json({ error: err.message });
@@ -136,7 +138,8 @@ export default {
   async getPassport(req, res) {
     try {
       const passport = await passportService.getByUser(req.params.id);
-      if (!passport) return res.status(404).json({ error: 'passport_not_found' });
+      if (!passport)
+        return res.status(404).json({ error: 'passport_not_found' });
       return res.json({ passport: passportMapper.toPublic(passport) });
     } catch (err) {
       return res.status(404).json({ error: err.message });

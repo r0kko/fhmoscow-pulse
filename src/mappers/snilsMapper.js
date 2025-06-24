@@ -5,7 +5,8 @@ function sanitize(obj) {
 
 function toPublic(snils) {
   if (!snils) return null;
-  const plain = typeof snils.get === 'function' ? snils.get({ plain: true }) : snils;
+  const plain =
+    typeof snils.get === 'function' ? snils.get({ plain: true }) : snils;
   return sanitize(plain);
 }
 

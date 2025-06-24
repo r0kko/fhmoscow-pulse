@@ -15,7 +15,10 @@ module.exports = {
   },
 
   down: async (queryInterface, _Sequelize) => {
-    await queryInterface.removeIndex('passports', 'uq_passports_user_id_not_deleted');
+    await queryInterface.removeIndex(
+      'passports',
+      'uq_passports_user_id_not_deleted'
+    );
     await queryInterface.addConstraint('passports', {
       fields: ['user_id'],
       type: 'unique',

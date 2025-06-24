@@ -1,4 +1,8 @@
-import { DADATA_TOKEN, DADATA_TIMEOUT, DADATA_SECRET } from '../config/dadata.js';
+import {
+  DADATA_TOKEN,
+  DADATA_TIMEOUT,
+  DADATA_SECRET,
+} from '../config/dadata.js';
 import logger from '../../logger.js';
 
 const API_BASE = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs';

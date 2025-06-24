@@ -124,8 +124,20 @@ router.put('/:id/inn', auth, authorize('ADMIN'), innRules, innAdmin.update);
 router.delete('/:id/inn', auth, authorize('ADMIN'), innAdmin.remove);
 router.get('/:id/inn', auth, authorize('ADMIN'), innAdmin.get);
 
-router.post('/:id/snils', auth, authorize('ADMIN'), snilsRules, snilsAdmin.create);
-router.put('/:id/snils', auth, authorize('ADMIN'), snilsRules, snilsAdmin.update);
+router.post(
+  '/:id/snils',
+  auth,
+  authorize('ADMIN'),
+  snilsRules,
+  snilsAdmin.create
+);
+router.put(
+  '/:id/snils',
+  auth,
+  authorize('ADMIN'),
+  snilsRules,
+  snilsAdmin.update
+);
 router.delete('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.remove);
 router.get('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.get);
 

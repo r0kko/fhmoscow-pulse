@@ -6,7 +6,11 @@ class Snils extends Model {}
 
 Snils.init(
   {
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
     user_id: { type: DataTypes.UUID, allowNull: false },
     number: { type: DataTypes.STRING(14), allowNull: false },
   },
