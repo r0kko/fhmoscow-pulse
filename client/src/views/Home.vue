@@ -17,19 +17,24 @@ const sections = [
 
 const isAdmin = computed(() => auth.roles.includes('ADMIN'))
 
-const fullName = computed(() => {
+const shortName = computed(() => {
   if (!auth.user) return ''
-  return [auth.user.last_name, auth.user.first_name, auth.user.patronymic]
-    .filter(Boolean)
-    .join(' ')
+  return [auth.user.first_name, auth.user.patronymic].filter(Boolean).join(' ')
+})
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return 'Доброе утро'
+  if (hour >= 12 && hour < 18) return 'Добрый день'
+  if (hour >= 18 && hour < 23) return 'Добрый вечер'
+  return 'Доброй ночи'
 })
 </script>
 
 <template>
   <div class="container mt-4">
-    <h1 class="mb-4 text-center">
-      Добро пожаловать
-      {{ fullName || auth.user?.phone }}
+    <h1 class="mb-4 text-start">
+      {{ greeting }}, {{ shortName || auth.user?.phone }}
     </h1>
     <div class="row g-4">
       <div class="col-6 col-md-4 col-lg-3" v-for="section in sections" :key="section.title">
