@@ -127,8 +127,8 @@ async function removeItem() {
           <label class="form-label">ИНН</label>
           <div class="input-group">
             <input type="text" class="form-control" :value="inn ? inn.number : ''" readonly />
-            <button class="btn btn-outline-primary" @click="openEdit('inn')">
-              <i class="bi" :class="inn ? 'bi-pencil' : 'bi-plus'"></i>
+            <button class="btn btn-outline-secondary" @click="openEdit('inn')">
+              <i class="bi text-muted" :class="inn ? 'bi-pencil' : 'bi-plus'"></i>
             </button>
           </div>
         </div>
@@ -136,8 +136,8 @@ async function removeItem() {
           <label class="form-label">СНИЛС</label>
           <div class="input-group">
             <input type="text" class="form-control" :value="snils ? snils.number : ''" readonly />
-            <button class="btn btn-outline-primary" @click="openEdit('snils')">
-              <i class="bi" :class="snils ? 'bi-pencil' : 'bi-plus'"></i>
+            <button class="btn btn-outline-secondary" @click="openEdit('snils')">
+              <i class="bi text-muted" :class="snils ? 'bi-pencil' : 'bi-plus'"></i>
             </button>
           </div>
         </div>

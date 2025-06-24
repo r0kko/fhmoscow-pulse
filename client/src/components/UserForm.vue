@@ -7,7 +7,7 @@ const props = defineProps({
   isNew: Boolean,
   locked: Boolean
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'editing-changed'])
 
 const form = reactive({
   last_name: '',
@@ -129,11 +129,17 @@ function validate() {
 
 const editing = ref(!props.locked)
 
+watch(editing, (val) => emit('editing-changed', val))
+
 function unlock() {
   editing.value = true
 }
 
-defineExpose({ validate, unlock })
+function lock() {
+  editing.value = false
+}
+
+defineExpose({ validate, unlock, lock, editing })
 </script>
 
 <template>
