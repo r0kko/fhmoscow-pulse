@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, reactive, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Toast } from 'bootstrap';
+import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 
 const placeholderSections = [
@@ -21,6 +21,12 @@ const inn = ref(null);
 const snils = ref(null);
 const innError = ref('');
 const snilsError = ref('');
+const loading = reactive({
+  user: false,
+  passport: false,
+  inn: false,
+  snils: false,
+});
 let toast;
 
 function showToast() {
@@ -61,15 +67,23 @@ async function confirmCode() {
 }
 
 async function fetchProfile() {
+  loading.user = true;
   try {
     const data = await apiFetch('/users/me');
     user.value = data.user;
+    await nextTick();
+    document
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
   } catch (_err) {
     user.value = null;
+  } finally {
+    loading.user = false;
   }
 }
 
 async function fetchPassport() {
+  loading.passport = true;
   try {
     const data = await apiFetch('/passports/me');
     passport.value = data.passport;
@@ -77,10 +91,13 @@ async function fetchPassport() {
   } catch (e) {
     passportError.value = e.message;
     passport.value = null;
+  } finally {
+    loading.passport = false;
   }
 }
 
 async function fetchInn() {
+  loading.inn = true;
   try {
     const data = await apiFetch('/inns/me');
     inn.value = data.inn;
@@ -88,10 +105,13 @@ async function fetchInn() {
   } catch (e) {
     innError.value = e.message;
     inn.value = null;
+  } finally {
+    loading.inn = false;
   }
 }
 
 async function fetchSnils() {
+  loading.snils = true;
   try {
     const data = await apiFetch('/snils/me');
     snils.value = data.snils;
@@ -99,6 +119,8 @@ async function fetchSnils() {
   } catch (e) {
     snilsError.value = e.message;
     snils.value = null;
+  } finally {
+    loading.snils = false;
   }
 }
 onMounted(() => {
@@ -120,47 +142,71 @@ onMounted(() => {
       </ol>
     </nav>
     <h1 class="mb-4">Личная информация</h1>
-    <div v-if="user">
+    <div v-if="loading.user" class="text-center my-5">
+      <div class="spinner-border" role="status" aria-label="Загрузка">
+        <span class="visually-hidden">Загрузка…</span>
+      </div>
+    </div>
+    <div v-else-if="user">
       <div class="mb-4">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
               <div class="col">
-                <label class="form-label">Фамилия</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  :value="user.last_name"
-                  readonly
-                />
+                <div class="form-floating">
+                  <input
+                    id="lastName"
+                    type="text"
+                    class="form-control"
+                    :value="user.last_name"
+                    readonly
+                    placeholder="Фамилия"
+                  />
+                  <label for="lastName">Фамилия</label>
+                </div>
               </div>
               <div class="col">
-                <label class="form-label">Имя</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  :value="user.first_name"
-                  readonly
-                />
+                <div class="form-floating">
+                  <input
+                    id="firstName"
+                    type="text"
+                    class="form-control"
+                    :value="user.first_name"
+                    readonly
+                    placeholder="Имя"
+                  />
+                  <label for="firstName">Имя</label>
+                </div>
               </div>
               <div class="col">
-                <label class="form-label">Отчество</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  :value="user.patronymic"
-                  readonly
-                />
+                <div class="form-floating">
+                  <input
+                    id="patronymic"
+                    type="text"
+                    class="form-control"
+                    :value="user.patronymic"
+                    readonly
+                    placeholder="Отчество"
+                  />
+                  <label for="patronymic">Отчество</label>
+                </div>
               </div>
               <div class="col">
-                <label class="form-label">Дата рождения</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  :value="user.birth_date"
-                  readonly
-                />
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      id="birthDate"
+                      type="text"
+                      class="form-control"
+                      :value="user.birth_date"
+                      readonly
+                      placeholder="Дата рождения"
+                    />
+                    <label for="birthDate">Дата рождения</label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -172,36 +218,52 @@ onMounted(() => {
             <h5 class="card-title mb-3">Контакты</h5>
             <div class="row row-cols-1 row-cols-sm-2 g-3">
               <div class="col">
-                <label class="form-label">Телефон</label>
                 <div class="input-group">
-                  <input
-                    type="text"
-                    class="form-control"
-                    :value="user.phone"
-                    readonly
-                  />
+                  <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      id="userPhone"
+                      type="text"
+                      class="form-control"
+                      :value="user.phone"
+                      readonly
+                      placeholder="Телефон"
+                    />
+                    <label for="userPhone">Телефон</label>
+                  </div>
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
                     @click="copyToClipboard(user.phone)"
+                    title="Скопировать"
+                    aria-label="Скопировать телефон"
+                    data-bs-toggle="tooltip"
                   >
                     <i class="bi bi-clipboard"></i>
                   </button>
                 </div>
               </div>
               <div class="col">
-                <label class="form-label">Email</label>
                 <div class="input-group">
-                  <input
-                    type="text"
-                    class="form-control"
-                    :value="user.email"
-                    readonly
-                  />
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      id="userEmail"
+                      type="text"
+                      class="form-control"
+                      :value="user.email"
+                      readonly
+                      placeholder="Email"
+                    />
+                    <label for="userEmail">Email</label>
+                  </div>
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
                     @click="copyToClipboard(user.email)"
+                    title="Скопировать"
+                    aria-label="Скопировать email"
+                    data-bs-toggle="tooltip"
                   >
                     <i class="bi bi-clipboard"></i>
                   </button>
@@ -232,64 +294,210 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="passport || passportError">
+      <div class="mb-4" v-if="passport || passportError || loading.passport">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Паспорт</h5>
-            <div v-if="passport" class="row row-cols-1 row-cols-sm-2 g-3">
-              <div class="col">
-                <label class="form-label">Тип документа</label>
-                <input type="text" class="form-control" :value="passport.document_type_name" readonly />
+            <div v-if="loading.passport" class="text-center py-4">
+              <div class="spinner-border" role="status" aria-label="Загрузка">
+                <span class="visually-hidden">Загрузка…</span>
               </div>
-              <div class="col">
-                <label class="form-label">Страна</label>
-                <input type="text" class="form-control" :value="passport.country_name" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Серия</label>
-                <input type="text" class="form-control" :value="passport.series" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Номер</label>
-                <input type="text" class="form-control" :value="passport.number" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Дата выдачи</label>
-                <input type="text" class="form-control" :value="passport.issue_date" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Действителен до</label>
-                <input type="text" class="form-control" :value="passport.valid_until" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Кем выдан</label>
-                <input type="text" class="form-control" :value="passport.issuing_authority" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Код подразделения</label>
-                <input type="text" class="form-control" :value="passport.issuing_authority_code" readonly />
-              </div>
-              <div class="col">
-                <label class="form-label">Место рождения</label>
-                <input type="text" class="form-control" :value="passport.place_of_birth" readonly />
+            </div>
+            <div v-else-if="passport">
+              <div class="row row-cols-1 row-cols-sm-2 g-3">
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="docType"
+                        type="text"
+                        class="form-control"
+                        :value="passport.document_type_name"
+                        readonly
+                        placeholder="Тип документа"
+                      />
+                      <label for="docType">Тип документа</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportCountry"
+                        type="text"
+                        class="form-control"
+                        :value="passport.country_name"
+                        readonly
+                        placeholder="Страна"
+                      />
+                      <label for="passportCountry">Страна</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportSeries"
+                        type="text"
+                        class="form-control"
+                        :value="passport.series"
+                        readonly
+                        placeholder="Серия"
+                      />
+                      <label for="passportSeries">Серия</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportNumber"
+                        type="text"
+                        class="form-control"
+                        :value="passport.number"
+                        readonly
+                        placeholder="Номер"
+                      />
+                      <label for="passportNumber">Номер</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportIssue"
+                        type="text"
+                        class="form-control"
+                        :value="passport.issue_date"
+                        readonly
+                        placeholder="Дата выдачи"
+                      />
+                      <label for="passportIssue">Дата выдачи</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportValid"
+                        type="text"
+                        class="form-control"
+                        :value="passport.valid_until"
+                        readonly
+                        placeholder="Действителен до"
+                      />
+                      <label for="passportValid">Действителен до</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportAuthority"
+                        type="text"
+                        class="form-control"
+                        :value="passport.issuing_authority"
+                        readonly
+                        placeholder="Кем выдан"
+                      />
+                      <label for="passportAuthority">Кем выдан</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-123"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportCode"
+                        type="text"
+                        class="form-control"
+                        :value="passport.issuing_authority_code"
+                        readonly
+                        placeholder="Код подразделения"
+                      />
+                      <label for="passportCode">Код подразделения</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="passportBirthplace"
+                        type="text"
+                        class="form-control"
+                        :value="passport.place_of_birth"
+                        readonly
+                        placeholder="Место рождения"
+                      />
+                      <label for="passportBirthplace">Место рождения</label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <p v-else class="mb-0 text-muted">{{ passportError || 'Паспортные данные не найдены.' }}</p>
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="inn || snils || innError || snilsError">
+      <div class="mb-4" v-if="inn || snils || innError || snilsError || loading.inn || loading.snils">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
-            <div v-if="inn || snils" class="row row-cols-1 row-cols-sm-2 g-3">
-              <div class="col" v-if="inn">
-                <label class="form-label">ИНН</label>
-                <input type="text" class="form-control" :value="inn.number" readonly />
+            <div v-if="loading.inn || loading.snils" class="text-center py-4">
+              <div class="spinner-border" role="status" aria-label="Загрузка">
+                <span class="visually-hidden">Загрузка…</span>
               </div>
-              <div class="col" v-if="snils">
-                <label class="form-label">СНИЛС</label>
-                <input type="text" class="form-control" :value="snils.number" readonly />
+            </div>
+            <div v-else-if="inn || snils">
+              <div class="row row-cols-1 row-cols-sm-2 g-3">
+                <div class="col" v-if="inn">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="innNumber"
+                        type="text"
+                        class="form-control"
+                        :value="inn.number"
+                        readonly
+                        placeholder="ИНН"
+                      />
+                      <label for="innNumber">ИНН</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col" v-if="snils">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-card-checklist"></i></span>
+                    <div class="form-floating flex-grow-1">
+                      <input
+                        id="snilsNumber"
+                        type="text"
+                        class="form-control"
+                        :value="snils.number"
+                        readonly
+                        placeholder="СНИЛС"
+                      />
+                      <label for="snilsNumber">СНИЛС</label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <p v-else class="mb-0 text-muted">{{ innError || snilsError || 'Данные отсутствуют.' }}</p>
@@ -340,6 +548,7 @@ onMounted(() => {
 .placeholder-card {
   opacity: 0.6;
 }
+
 
 @keyframes fadeIn {
   from {
