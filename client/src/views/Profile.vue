@@ -10,15 +10,17 @@ const placeholderSections = [
   'Выданный инвентарь',
 ];
 
+const noDataPlaceholder = '—'
+
 const user = ref(null);
 const toastRef = ref(null);
 const code = ref('');
 const codeSent = ref(false);
 const verifyError = ref('');
-const passport = ref(null);
+const passport = ref();
 const passportError = ref('');
-const inn = ref(null);
-const snils = ref(null);
+const inn = ref();
+const snils = ref();
 const innError = ref('');
 const snilsError = ref('');
 const loading = reactive({
@@ -44,6 +46,13 @@ function formatDate(str) {
   if (!str) return ''
   const [year, month, day] = str.split('-')
   return `${day}.${month}.${year}`
+}
+
+function maskPassportNumber(num) {
+  if (!num) return ''
+  const start = num.slice(0, 1)
+  const end = num.slice(-1)
+  return start + '*'.repeat(num.length - 2) + end
 }
 
 function showToast() {
@@ -176,7 +185,7 @@ onMounted(() => {
                     id="lastName"
                     type="text"
                     class="form-control"
-                    :value="user.last_name"
+                    :value="user.last_name || noDataPlaceholder"
                     readonly
                     placeholder="Фамилия"
                   />
@@ -189,7 +198,7 @@ onMounted(() => {
                     id="firstName"
                     type="text"
                     class="form-control"
-                    :value="user.first_name"
+                    :value="user.first_name || noDataPlaceholder"
                     readonly
                     placeholder="Имя"
                   />
@@ -202,7 +211,7 @@ onMounted(() => {
                     id="patronymic"
                     type="text"
                     class="form-control"
-                    :value="user.patronymic"
+                    :value="user.patronymic || noDataPlaceholder"
                     readonly
                     placeholder="Отчество"
                   />
@@ -217,7 +226,7 @@ onMounted(() => {
                       id="birthDate"
                       type="text"
                       class="form-control"
-                      :value="formatDate(user.birth_date)"
+                      :value="user.birth_date ? formatDate(user.birth_date) : noDataPlaceholder"
                       readonly
                       placeholder="Дата рождения"
                     />
@@ -242,7 +251,7 @@ onMounted(() => {
                       id="userPhone"
                       type="text"
                       class="form-control"
-                      :value="formatPhone(user.phone)"
+                      :value="user.phone ? formatPhone(user.phone) : noDataPlaceholder"
                       readonly
                       placeholder="Телефон"
                     />
@@ -251,7 +260,7 @@ onMounted(() => {
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
-                    @click="copyToClipboard(user.phone)"
+                    @click="user.phone && copyToClipboard(user.phone)"
                     title="Скопировать"
                     aria-label="Скопировать телефон"
                     data-bs-toggle="tooltip"
@@ -268,7 +277,7 @@ onMounted(() => {
                       id="userEmail"
                       type="text"
                       class="form-control"
-                      :value="user.email"
+                      :value="user.email || noDataPlaceholder"
                       readonly
                       placeholder="Email"
                     />
@@ -277,7 +286,7 @@ onMounted(() => {
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
-                    @click="copyToClipboard(user.email)"
+                    @click="user.email && copyToClipboard(user.email)"
                     title="Скопировать"
                     aria-label="Скопировать email"
                     data-bs-toggle="tooltip"
@@ -311,7 +320,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="passport || passportError || loading.passport">
+      <div class="mb-4" v-if="passport !== undefined || passportError || loading.passport">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Паспорт</h5>
@@ -330,7 +339,7 @@ onMounted(() => {
                         id="docType"
                         type="text"
                         class="form-control"
-                        :value="passport.document_type_name"
+                        :value="passport.document_type_name || noDataPlaceholder"
                         readonly
                         placeholder="Тип документа"
                       />
@@ -346,7 +355,7 @@ onMounted(() => {
                         id="passportCountry"
                         type="text"
                         class="form-control"
-                        :value="passport.country_name"
+                        :value="passport.country_name || noDataPlaceholder"
                         readonly
                         placeholder="Страна"
                       />
@@ -362,7 +371,7 @@ onMounted(() => {
                         id="passportSerial"
                         type="text"
                         class="form-control"
-                        :value="passport.series + ' ' + passport.number"
+                        :value="passport.series + ' ' + maskPassportNumber(passport.number)"
                         readonly
                         placeholder="Серия и номер"
                       />
@@ -378,7 +387,7 @@ onMounted(() => {
                         id="passportValidity"
                         type="text"
                         class="form-control"
-                        :value="formatDate(passport.issue_date) + ' - ' + formatDate(passport.valid_until)"
+                        :value="passport.issue_date && passport.valid_until ? formatDate(passport.issue_date) + ' - ' + formatDate(passport.valid_until) : noDataPlaceholder"
                         readonly
                         placeholder="Срок действия"
                       />
@@ -394,7 +403,7 @@ onMounted(() => {
                         id="passportAuthority"
                         type="text"
                         class="form-control"
-                        :value="passport.issuing_authority + ' (' + passport.issuing_authority_code + ')'"
+                        :value="(passport.issuing_authority && passport.issuing_authority_code) ? passport.issuing_authority + ' (' + passport.issuing_authority_code + ')' : noDataPlaceholder"
                         readonly
                         placeholder="Кем выдан"
                       />
@@ -410,7 +419,7 @@ onMounted(() => {
                         id="passportBirthplace"
                         type="text"
                         class="form-control"
-                        :value="passport.place_of_birth"
+                        :value="passport.place_of_birth || noDataPlaceholder"
                         readonly
                         placeholder="Место рождения"
                       />
@@ -424,7 +433,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <div class="mb-4" v-if="inn || snils || innError || snilsError || loading.inn || loading.snils">
+      <div class="mb-4" v-if="inn !== undefined || snils !== undefined || innError || snilsError || loading.inn || loading.snils">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">ИНН и СНИЛС</h5>
@@ -443,7 +452,7 @@ onMounted(() => {
                         id="innNumber"
                         type="text"
                         class="form-control"
-                        :value="inn.number"
+                        :value="inn.number || noDataPlaceholder"
                         readonly
                         placeholder="ИНН"
                       />
@@ -459,7 +468,7 @@ onMounted(() => {
                         id="snilsNumber"
                         type="text"
                         class="form-control"
-                        :value="snils.number"
+                        :value="snils.number || noDataPlaceholder"
                         readonly
                         placeholder="СНИЛС"
                       />
