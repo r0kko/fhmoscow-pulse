@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import userMapper from '../mappers/userMapper.js';
 import admin from '../controllers/userAdminController.js';
+import selfController from '../controllers/userSelfController.js';
 import innAdmin from '../controllers/innAdminController.js';
 import snilsAdmin from '../controllers/snilsAdminController.js';
 import bankAccountAdmin from '../controllers/bankAccountAdminController.js';
@@ -35,6 +36,8 @@ router.get('/me', auth, (req, res) => {
   res.locals.body = response;
   res.json(response);
 });
+
+router.put('/me', auth, updateUserRules, selfController.update);
 
 /**
  * @swagger

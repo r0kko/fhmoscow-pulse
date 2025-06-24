@@ -24,6 +24,15 @@ onMounted(async () => {
     const data = await apiFetch('/users/me')
     user.value = data.user
   } catch (_) {}
+  try {
+    const data = await apiFetch('/inns/me')
+    inn.value = data.inn.number
+  } catch (_) {}
+  try {
+    const data = await apiFetch('/snils/me')
+    snilsInput.value = data.snils.number
+    snilsDigits.value = data.snils.number.replace(/\D/g, '')
+  } catch (_) {}
 })
 
 function onInnInput(e) {
@@ -45,6 +54,18 @@ async function saveStep() {
         loading.value = false
         return
       }
+      const payload = {
+        first_name: user.value.first_name,
+        last_name: user.value.last_name,
+        patronymic: user.value.patronymic,
+        birth_date: user.value.birth_date,
+        phone: user.value.phone,
+        email: user.value.email
+      }
+      await apiFetch('/users/me', {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      })
       await apiFetch('/profile/progress', {
         method: 'POST',
         body: JSON.stringify({ status: 'REGISTRATION_STEP_2' })
