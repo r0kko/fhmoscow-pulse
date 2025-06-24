@@ -31,7 +31,12 @@ export default {
       birth_date: legacy.b_date,
       phone: `7${legacy.phone_cod}${legacy.phone_number}`,
     };
-    const user = await userService.createUser(data);
+    let user;
+    try {
+      user = await userService.createUser(data);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
 
     const system = await ExternalSystem.findOne({
       where: { alias: 'HOCKEYMOS' },
