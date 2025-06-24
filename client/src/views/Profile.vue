@@ -197,7 +197,7 @@ onMounted(() => {
       <div class="mb-4">
         <div class="card tile fade-in">
           <div class="card-body">
-            <h5 class="card-title mb-3">Основные данные</h5>
+            <h5 class="card-title mb-3">Основные данные и контакты</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
               <div class="col">
                 <div class="form-floating">
@@ -261,14 +261,7 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-      <div class="mb-4">
-        <div class="card tile fade-in">
-          <div class="card-body">
-            <h5 class="card-title mb-3">Контакты</h5>
-            <div class="row row-cols-1 row-cols-sm-2 g-3">
+            <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">
               <div class="col">
                 <div class="input-group">
                   <span class="input-group-text"
