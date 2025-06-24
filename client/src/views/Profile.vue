@@ -25,7 +25,7 @@ const bankAccountError = ref('');
 const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
   const num = bankAccount.value.number;
-  return '....' + (num.length > 4 ? num.slice(-4) : num);
+  return '···· ' + (num.length > 4 ? num.slice(-4) : num);
 });
 const loading = reactive({
   user: false,
