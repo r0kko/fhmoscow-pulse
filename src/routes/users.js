@@ -4,11 +4,14 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import userMapper from '../mappers/userMapper.js';
 import admin from '../controllers/userAdminController.js';
+import innAdmin from '../controllers/innAdminController.js';
+import snilsAdmin from '../controllers/snilsAdminController.js';
 import {
   createUserRules,
   updateUserRules,
   resetPasswordRules,
 } from '../validators/userValidators.js';
+import { innRules, snilsRules } from '../validators/personalValidators.js';
 
 const router = express.Router();
 
@@ -114,5 +117,13 @@ router.delete(
   authorize('ADMIN'),
   admin.removeRole
 );
+
+router.post('/:id/inn', auth, authorize('ADMIN'), innRules, innAdmin.create);
+router.put('/:id/inn', auth, authorize('ADMIN'), innRules, innAdmin.update);
+router.delete('/:id/inn', auth, authorize('ADMIN'), innAdmin.remove);
+
+router.post('/:id/snils', auth, authorize('ADMIN'), snilsRules, snilsAdmin.create);
+router.put('/:id/snils', auth, authorize('ADMIN'), snilsRules, snilsAdmin.update);
+router.delete('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.remove);
 
 export default router;

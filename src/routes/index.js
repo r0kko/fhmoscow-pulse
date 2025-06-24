@@ -7,6 +7,8 @@ import usersRouter from './users.js';
 import emailRouter from './email.js';
 import passportsRouter from './passports.js';
 import dadataRouter from './dadata.js';
+import innsRouter from './inns.js';
+import snilsRouter from './snils.js';
 
 const router = express.Router();
 
@@ -15,6 +17,8 @@ router.use('/users', usersRouter);
 router.use('/email', emailRouter);
 router.use('/passports', passportsRouter);
 router.use('/dadata', dadataRouter);
+router.use('/inns', innsRouter);
+router.use('/snils', snilsRouter);
 
 /**
  * @swagger

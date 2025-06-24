@@ -7,6 +7,8 @@ import EmailCode from './emailCode.js';
 import DocumentType from './documentType.js';
 import Country from './country.js';
 import Passport from './passport.js';
+import Inn from './inn.js';
+import Snils from './snils.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -23,6 +25,10 @@ Log.belongsTo(User, { foreignKey: 'user_id' });
 /* паспорт ↔ пользователь 1-ко-1 */
 User.hasOne(Passport, { foreignKey: 'user_id' });
 Passport.belongsTo(User, { foreignKey: 'user_id' });
+User.hasOne(Inn, { foreignKey: 'user_id' });
+Inn.belongsTo(User, { foreignKey: 'user_id' });
+User.hasOne(Snils, { foreignKey: 'user_id' });
+Snils.belongsTo(User, { foreignKey: 'user_id' });
 
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
@@ -45,4 +51,6 @@ export {
   DocumentType,
   Country,
   Passport,
+  Inn,
+  Snils,
 };
