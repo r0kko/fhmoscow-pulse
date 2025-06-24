@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
@@ -8,16 +8,12 @@ const router = useRouter()
 const phone = ref('')
 const phoneInput = ref('')
 const password = ref('')
+const showPassword = ref(false)
+const rememberMe = ref(false)
 const error = ref('')
 const loading = ref(false)
-
-watch(error, (val) => {
-  if (val) {
-    setTimeout(() => {
-      error.value = ''
-    }, 4000)
-  }
-})
+const phoneTouched = ref(false)
+const phoneValid = computed(() => phone.value.length === 11 && phone.value.startsWith('7'))
 
 function formatPhone(digits) {
   let out = '+7'
@@ -35,6 +31,7 @@ function onPhoneInput(e) {
   digits = digits.slice(0, 11)
   phone.value = digits
   phoneInput.value = formatPhone(digits)
+  phoneTouched.value = true
 }
 
 function onPhoneKeydown(e) {
@@ -42,6 +39,7 @@ function onPhoneKeydown(e) {
     e.preventDefault()
     phone.value = phone.value.slice(0, -1)
     phoneInput.value = formatPhone(phone.value)
+    phoneTouched.value = true
   }
 }
 
@@ -57,8 +55,11 @@ async function login() {
       method: 'POST',
       body: JSON.stringify({ phone: phone.value, password: password.value })
     })
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('roles', JSON.stringify(data.roles || []))
+    const storage = rememberMe.value ? localStorage : sessionStorage
+    storage.setItem('access_token', data.access_token)
+    storage.setItem('roles', JSON.stringify(data.roles || []))
+    ;(rememberMe.value ? sessionStorage : localStorage).removeItem('access_token')
+    ;(rememberMe.value ? sessionStorage : localStorage).removeItem('roles')
     auth.user = data.user
     auth.roles = data.roles || []
     router.push('/')
@@ -79,25 +80,56 @@ async function login() {
       </transition>
       <form @submit.prevent="login">
         <div class="mb-3 input-group">
+          <label for="phoneInput" class="form-label visually-hidden">Телефон</label>
           <span class="input-group-text"><i class="bi bi-phone"></i></span>
           <input
+            id="phoneInput"
             v-model="phoneInput"
             @input="onPhoneInput"
             @keydown="onPhoneKeydown"
             type="tel"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': phoneTouched && !phoneValid }]"
             placeholder="+7 (___) ___-__-__"
             required
+            :aria-invalid="phoneTouched && !phoneValid"
           />
+          <div class="invalid-feedback">Введите корректный номер</div>
         </div>
         <div class="mb-3 input-group">
+          <label for="password" class="form-label visually-hidden">Пароль</label>
           <span class="input-group-text"><i class="bi bi-lock"></i></span>
-          <input v-model="password" type="password" class="form-control" required />
+          <input
+            id="password"
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            class="form-control"
+            required
+          />
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="showPassword = !showPassword"
+            :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+          >
+            <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+          </button>
+        </div>
+        <div class="form-check mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="rememberMe"
+            v-model="rememberMe"
+          />
+          <label class="form-check-label" for="rememberMe">Запомнить меня</label>
         </div>
         <button type="submit" class="btn btn-primary w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Войти
         </button>
+        <div class="text-center mt-2">
+          <router-link to="/forgot-password">Забыли пароль?</router-link>
+        </div>
       </form>
     </div>
   </div>
