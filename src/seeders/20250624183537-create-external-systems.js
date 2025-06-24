@@ -6,7 +6,8 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS cnt FROM external_systems WHERE alias = "HOCKEYMOS";'
+        // eslint-disable-next-line
+        "SELECT COUNT(*) AS cnt FROM external_systems WHERE alias = 'HOCKEYMOS';"
     );
     if (Number(existing[0].cnt) > 0) return;
 

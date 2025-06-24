@@ -33,7 +33,9 @@ export default {
     };
     const user = await userService.createUser(data);
 
-    const system = await ExternalSystem.findOne({ where: { alias: 'HOCKEYMOS' } });
+    const system = await ExternalSystem.findOne({
+      where: { alias: 'HOCKEYMOS' },
+    });
     if (system) {
       await UserExternalId.create({
         id: uuidv4(),
