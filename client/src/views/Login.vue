@@ -75,7 +75,7 @@ async function login() {
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
       <img :src="logo" alt="FHM" class="mx-auto d-block mb-3" style="max-height: 80px" />
-      <h1 class="mb-4 text-center">Вход</h1>
+      <h2 class="mb-4 text-center">Авторизация</h2>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
       </transition>
@@ -122,15 +122,6 @@ async function login() {
 <style scoped>
 .login-card {
   animation: fade-in 0.4s ease-out;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 
 @keyframes fade-in {
