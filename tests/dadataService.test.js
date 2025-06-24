@@ -12,7 +12,13 @@ jest.unstable_mockModule('../logger.js', () => ({
 
 process.env.DADATA_TOKEN = 'token';
 
-const { suggestFio, cleanFio } = await import('../src/services/dadataService.js');
+process.env.DADATA_SECRET = 'secret';
+const {
+  suggestFio,
+  cleanFio,
+  suggestFmsUnit,
+  cleanPassport,
+} = await import('../src/services/dadataService.js');
 
 test('suggestFio returns array from API', async () => {
   fetch.mockResolvedValueOnce({
@@ -34,4 +40,35 @@ test('cleanFio logs warning on failure', async () => {
   const res = await cleanFio('x');
   expect(res).toBeNull();
   expect(warnMock).toHaveBeenCalled();
+});
+
+test('suggestFmsUnit passes filters', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: () => Promise.resolve({ suggestions: [{ value: 'dept' }] }),
+  });
+  const res = await suggestFmsUnit('772-053', [{ region_code: '77' }]);
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/suggest/fms_unit'),
+    expect.objectContaining({
+      body: JSON.stringify({ query: '772-053', filters: [{ region_code: '77' }] }),
+    })
+  );
+  expect(res).toEqual([{ value: 'dept' }]);
+});
+
+test('cleanPassport returns first element', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: () => Promise.resolve([{ number: '123' }]),
+  });
+  const res = await cleanPassport('4509 235857');
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringContaining('cleaner.dadata.ru'),
+    expect.objectContaining({
+      body: JSON.stringify(['4509 235857']),
+      headers: expect.objectContaining({ 'X-Secret': 'secret' }),
+    })
+  );
+  expect(res).toEqual({ number: '123' });
 });

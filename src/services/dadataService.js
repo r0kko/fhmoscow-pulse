@@ -1,22 +1,28 @@
-import { DADATA_TOKEN, DADATA_TIMEOUT } from '../config/dadata.js';
+import { DADATA_TOKEN, DADATA_TIMEOUT, DADATA_SECRET } from '../config/dadata.js';
 import logger from '../../logger.js';
 
 const API_BASE = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs';
+const CLEANER_BASE = 'https://cleaner.dadata.ru/api/v1';
 
-async function request(endpoint, body) {
+async function request(endpoint, body, useSecret = false, base = API_BASE) {
   if (!DADATA_TOKEN) {
     logger.warn('DaData token not configured');
+    return null;
+  }
+  if (useSecret && !DADATA_SECRET) {
+    logger.warn('DaData secret not configured');
     return null;
   }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DADATA_TIMEOUT);
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(`${base}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Token ${DADATA_TOKEN}`,
+        ...(useSecret && DADATA_SECRET ? { 'X-Secret': DADATA_SECRET } : {}),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -50,4 +56,25 @@ export async function cleanFio(fio) {
   return Array.isArray(data) ? data[0] : null;
 }
 
-export default { suggestFio, cleanFio };
+export async function suggestFmsUnit(query, filters) {
+  if (!query) return [];
+  const body = { query };
+  if (Array.isArray(filters) && filters.length) {
+    body.filters = filters;
+  }
+  const data = await request('/suggest/fms_unit', body);
+  return data?.suggestions || [];
+}
+
+export async function cleanPassport(passport) {
+  if (!passport) return null;
+  const data = await request('/clean/passport', [passport], true, CLEANER_BASE);
+  return Array.isArray(data) ? data[0] : null;
+}
+
+export default {
+  suggestFio,
+  cleanFio,
+  suggestFmsUnit,
+  cleanPassport,
+};

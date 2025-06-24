@@ -12,6 +12,7 @@ import {
   resetPasswordRules,
 } from '../validators/userValidators.js';
 import { innRules, snilsRules } from '../validators/personalValidators.js';
+import { createPassportRules } from '../validators/passportValidators.js';
 
 const router = express.Router();
 
@@ -127,5 +128,15 @@ router.post('/:id/snils', auth, authorize('ADMIN'), snilsRules, snilsAdmin.creat
 router.put('/:id/snils', auth, authorize('ADMIN'), snilsRules, snilsAdmin.update);
 router.delete('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.remove);
 router.get('/:id/snils', auth, authorize('ADMIN'), snilsAdmin.get);
+
+router.post(
+  '/:id/passport',
+  auth,
+  authorize('ADMIN'),
+  createPassportRules,
+  admin.addPassport
+);
+router.get('/:id/passport', auth, authorize('ADMIN'), admin.getPassport);
+router.delete('/:id/passport', auth, authorize('ADMIN'), admin.deletePassport);
 
 export default router;

@@ -1,7 +1,9 @@
 import { validationResult } from 'express-validator';
 
 import userService from '../services/userService.js';
+import passportService from '../services/passportService.js';
 import userMapper from '../mappers/userMapper.js';
+import passportMapper from '../mappers/passportMapper.js';
 
 export default {
   async list(req, res) {
@@ -108,6 +110,43 @@ export default {
         req.params.roleAlias
       );
       return res.json({ user: userMapper.toPublic(user) });
+    } catch (err) {
+      return res.status(404).json({ error: err.message });
+    }
+  },
+
+  async addPassport(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const passport = await passportService.createForUser(
+        req.params.id,
+        req.body,
+        req.user.id
+      );
+      return res.status(201).json({ passport: passportMapper.toPublic(passport) });
+    } catch (err) {
+      const status = err.message === 'user_not_found' ? 404 : 400;
+      return res.status(status).json({ error: err.message });
+    }
+  },
+
+  async getPassport(req, res) {
+    try {
+      const passport = await passportService.getByUser(req.params.id);
+      if (!passport) return res.status(404).json({ error: 'passport_not_found' });
+      return res.json({ passport: passportMapper.toPublic(passport) });
+    } catch (err) {
+      return res.status(404).json({ error: err.message });
+    }
+  },
+
+  async deletePassport(req, res) {
+    try {
+      await passportService.removeByUser(req.params.id);
+      return res.status(204).send();
     } catch (err) {
       return res.status(404).json({ error: err.message });
     }
