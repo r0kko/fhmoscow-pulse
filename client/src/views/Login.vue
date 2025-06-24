@@ -76,7 +76,7 @@ async function login() {
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4 shadow login-card w-100">
       <img :src="logo" alt="FHM Pulse logo" class="login-logo mb-3 mx-auto d-block" />
-      <h1 class="mb-4 text-center">Вход</h1>
+      <h2 class="mb-4 text-center">Авторизация</h2>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
       </transition>
@@ -129,9 +129,6 @@ async function login() {
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Войти
         </button>
-        <div class="text-center mt-2">
-          <router-link to="/forgot-password">Забыли пароль?</router-link>
-        </div>
       </form>
     </div>
   </div>
@@ -146,15 +143,6 @@ async function login() {
 .login-logo {
   max-width: 120px;
   height: auto;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 
 @keyframes fade-in {
