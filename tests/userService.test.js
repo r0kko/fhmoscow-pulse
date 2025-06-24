@@ -6,6 +6,7 @@ const removeRoleMock = jest.fn();
 const createMock = jest.fn();
 const findAndCountAllMock = jest.fn();
 const findByPkMock = jest.fn();
+const findOneMock = jest.fn();
 const updateMock = jest.fn();
 const user = { addRole: addRoleMock, removeRole: removeRoleMock, update: updateMock };
 const findRoleMock = jest.fn();
@@ -16,6 +17,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: {
     create: createMock,
     findByPk: findByPkMock,
+    findOne: findOneMock,
     findAndCountAll: findAndCountAllMock,
   },
   Role: { findOne: findRoleMock },
@@ -59,12 +61,59 @@ test('getUser returns user', async () => {
 
 test('createUser passes data to model', async () => {
   createMock.mockResolvedValue(user);
-  const statusMock = { id: 's1' };
-  statusFindMock.mockResolvedValue(statusMock);
-  const data = { first_name: 'A' };
+  const active = { id: 'a1' };
+  const unconfirmed = { id: 'u1' };
+  statusFindMock.mockResolvedValueOnce(active); // ACTIVE
+  statusFindMock.mockResolvedValueOnce(unconfirmed); // EMAIL_UNCONFIRMED
+  findOneMock.mockResolvedValueOnce(null); // phone
+  findOneMock.mockResolvedValueOnce(null); // email
+  findOneMock.mockResolvedValueOnce(null); // name + birthdate
+  const data = {
+    first_name: 'A',
+    last_name: 'B',
+    patronymic: 'C',
+    birth_date: '2000-01-01',
+    phone: '123',
+    email: 'test@example.com',
+    password: 'pass',
+  };
   const res = await service.createUser(data);
-  expect(createMock).toHaveBeenCalledWith({ ...data, status_id: statusMock.id });
+  expect(createMock).toHaveBeenCalledWith({ ...data, status_id: unconfirmed.id });
   expect(res).toBe(user);
+  expect(findOneMock).toHaveBeenCalledTimes(3);
+});
+
+test('createUser throws if phone exists', async () => {
+  statusFindMock.mockResolvedValueOnce({ id: 'a1' });
+  statusFindMock.mockResolvedValueOnce(null);
+  findOneMock.mockResolvedValueOnce({}); // phone
+  findOneMock.mockResolvedValueOnce(null); // email
+  findOneMock.mockResolvedValueOnce(null); // name
+  await expect(
+    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p' })
+  ).rejects.toThrow('phone_exists');
+});
+
+test('createUser throws if email exists', async () => {
+  statusFindMock.mockResolvedValueOnce({ id: 'a1' });
+  statusFindMock.mockResolvedValueOnce(null);
+  findOneMock.mockResolvedValueOnce(null); // phone
+  findOneMock.mockResolvedValueOnce({}); // email
+  findOneMock.mockResolvedValueOnce(null); // name
+  await expect(
+    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p' })
+  ).rejects.toThrow('email_exists');
+});
+
+test('createUser throws if user exists by name', async () => {
+  statusFindMock.mockResolvedValueOnce({ id: 'a1' });
+  statusFindMock.mockResolvedValueOnce(null);
+  findOneMock.mockResolvedValueOnce(null); // phone
+  findOneMock.mockResolvedValueOnce(null); // email
+  findOneMock.mockResolvedValueOnce({}); // name
+  await expect(
+    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p' })
+  ).rejects.toThrow('user_exists');
 });
 
 test('updateUser updates found user', async () => {

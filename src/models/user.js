@@ -62,6 +62,14 @@ User.init(
         }
       },
     },
+    indexes: [
+      {
+        unique: true,
+        fields: ['last_name', 'first_name', 'patronymic', 'birth_date'],
+        name: 'uq_users_fullname_birth_date_active',
+        where: { deleted_at: null },
+      },
+    ],
   }
 );
 

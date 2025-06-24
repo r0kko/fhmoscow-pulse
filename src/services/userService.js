@@ -3,11 +3,31 @@ import { Op } from 'sequelize';
 import { User, Role, UserStatus } from '../models/index.js';
 
 async function createUser(data) {
-  const unconfirmed = await UserStatus.findOne({
-    where: { alias: 'EMAIL_UNCONFIRMED' },
-  });
-  const fallback = await UserStatus.findOne({ where: { alias: 'ACTIVE' } });
-  const status = unconfirmed || fallback;
+  const [activeStatus, unconfirmedStatus] = await Promise.all([
+    UserStatus.findOne({ where: { alias: 'ACTIVE' } }),
+    UserStatus.findOne({ where: { alias: 'EMAIL_UNCONFIRMED' } }),
+  ]);
+
+  const activeWhere = { deleted_at: null, status_id: activeStatus.id };
+
+  const [phoneExisting, emailExisting, personalExisting] = await Promise.all([
+    User.findOne({ where: { phone: data.phone, ...activeWhere } }),
+    User.findOne({ where: { email: data.email, ...activeWhere } }),
+    User.findOne({
+      where: {
+        last_name: data.last_name,
+        first_name: data.first_name,
+        patronymic: data.patronymic,
+        birth_date: data.birth_date,
+        ...activeWhere,
+      },
+    }),
+  ]);
+  if (phoneExisting) throw new Error('phone_exists');
+  if (emailExisting) throw new Error('email_exists');
+  if (personalExisting) throw new Error('user_exists');
+
+  const status = unconfirmedStatus || activeStatus;
   const user = await User.create({ ...data, status_id: status.id });
   return user;
 }
