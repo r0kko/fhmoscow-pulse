@@ -149,13 +149,15 @@ async function save() {
       </UserForm>
     </form>
     <p v-else-if="isLoading">Загрузка...</p>
-    <InnSnilsForm v-if="user" :userId="route.params.id" />
-    <BankAccountForm v-if="user" :userId="route.params.id" />
-
     <div v-if="passport !== undefined" class="mt-4">
       <div v-if="passport" class="card">
-        <div class="card-body">
-          <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
+        <div class="card-body position-relative">
+          <div class="d-flex justify-content-between mb-3">
+            <h5 class="card-title mb-0">Документ, удостоверяющий личность</h5>
+            <button type="button" class="btn btn-link text-danger p-0" @click="deletePassport">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <div class="col">
               <div class="input-group">
@@ -212,7 +214,6 @@ async function save() {
               </div>
             </div>
           </div>
-          <button class="btn btn-danger mt-3" @click="deletePassport">Удалить данные документа</button>
         </div>
       </div>
       <div v-else class="mt-3">
@@ -221,6 +222,9 @@ async function save() {
       <AddPassportModal ref="passportModalRef" :user="user" @saved="savePassport" />
       <div v-if="passportError" class="text-danger mt-2">{{ passportError }}</div>
     </div>
+
+    <InnSnilsForm v-if="user" :userId="route.params.id" />
+    <BankAccountForm v-if="user" :userId="route.params.id" />
 
     <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
       <div class="card placeholder-card text-center">
