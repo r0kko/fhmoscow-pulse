@@ -18,6 +18,7 @@ const {
   cleanFio,
   suggestFmsUnit,
   cleanPassport,
+  findBankByBic,
 } = await import('../src/services/dadataService.js');
 
 test('suggestFio returns array from API', async () => {
@@ -71,4 +72,19 @@ test('cleanPassport returns first element', async () => {
     })
   );
   expect(res).toEqual({ number: '123' });
+});
+
+test('findBankByBic returns first suggestion', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: () => Promise.resolve({ suggestions: [{ value: 'bank' }] }),
+  });
+  const res = await findBankByBic('044525225');
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/findById/bank'),
+    expect.objectContaining({
+      body: JSON.stringify({ query: '044525225' }),
+    })
+  );
+  expect(res).toEqual({ value: 'bank' });
 });

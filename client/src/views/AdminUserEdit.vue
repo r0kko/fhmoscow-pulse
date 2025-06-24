@@ -5,6 +5,7 @@ import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
 import AddPassportModal from '../components/AddPassportModal.vue'
 import InnSnilsForm from '../components/InnSnilsForm.vue'
+import BankAccountForm from '../components/BankAccountForm.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,7 +18,6 @@ const passportModalRef = ref(null)
 const passport = ref(null)
 const passportError = ref('')
 const placeholderSections = [
-  'Банковские реквизиты',
   'Тип налогообложения',
   'Выданный инвентарь'
 ]
@@ -121,6 +121,7 @@ async function save() {
     </form>
     <p v-else-if="isLoading">Загрузка...</p>
     <InnSnilsForm v-if="user" :userId="route.params.id" />
+    <BankAccountForm v-if="user" :userId="route.params.id" />
 
     <div v-if="passport !== undefined" class="mt-4">
       <div v-if="passport" class="card">

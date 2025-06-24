@@ -9,6 +9,7 @@ import Country from './country.js';
 import Passport from './passport.js';
 import Inn from './inn.js';
 import Snils from './snils.js';
+import BankAccount from './bankAccount.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -29,6 +30,8 @@ User.hasOne(Inn, { foreignKey: 'user_id' });
 Inn.belongsTo(User, { foreignKey: 'user_id' });
 User.hasOne(Snils, { foreignKey: 'user_id' });
 Snils.belongsTo(User, { foreignKey: 'user_id' });
+User.hasOne(BankAccount, { foreignKey: 'user_id' });
+BankAccount.belongsTo(User, { foreignKey: 'user_id' });
 
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
@@ -53,4 +56,5 @@ export {
   Passport,
   Inn,
   Snils,
+  BankAccount,
 };
