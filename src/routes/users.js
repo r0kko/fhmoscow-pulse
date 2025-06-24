@@ -7,6 +7,7 @@ import admin from '../controllers/userAdminController.js';
 import innAdmin from '../controllers/innAdminController.js';
 import snilsAdmin from '../controllers/snilsAdminController.js';
 import bankAccountAdmin from '../controllers/bankAccountAdminController.js';
+import taxationAdmin from '../controllers/taxationAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -164,6 +165,8 @@ router.delete(
   bankAccountAdmin.remove
 );
 router.get('/:id/bank-account', auth, authorize('ADMIN'), bankAccountAdmin.get);
+
+router.get('/:id/taxation', auth, authorize('ADMIN'), taxationAdmin.get);
 
 router.post(
   '/:id/passport',

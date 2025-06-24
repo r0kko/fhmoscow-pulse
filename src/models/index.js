@@ -10,6 +10,8 @@ import Passport from './passport.js';
 import Inn from './inn.js';
 import Snils from './snils.js';
 import BankAccount from './bankAccount.js';
+import TaxationType from './taxationType.js';
+import Taxation from './taxation.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -32,6 +34,10 @@ User.hasOne(Snils, { foreignKey: 'user_id' });
 Snils.belongsTo(User, { foreignKey: 'user_id' });
 User.hasOne(BankAccount, { foreignKey: 'user_id' });
 BankAccount.belongsTo(User, { foreignKey: 'user_id' });
+User.hasOne(Taxation, { foreignKey: 'user_id' });
+Taxation.belongsTo(User, { foreignKey: 'user_id' });
+TaxationType.hasMany(Taxation, { foreignKey: 'taxation_type_id' });
+Taxation.belongsTo(TaxationType, { foreignKey: 'taxation_type_id' });
 
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
@@ -57,4 +63,6 @@ export {
   Inn,
   Snils,
   BankAccount,
+  TaxationType,
+  Taxation,
 };

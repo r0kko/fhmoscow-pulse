@@ -6,6 +6,7 @@ import UserForm from '../components/UserForm.vue'
 import AddPassportModal from '../components/AddPassportModal.vue'
 import InnSnilsForm from '../components/InnSnilsForm.vue'
 import BankAccountForm from '../components/BankAccountForm.vue'
+import TaxationInfo from '../components/TaxationInfo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,7 +19,6 @@ const passportModalRef = ref(null)
 const passport = ref(null)
 const passportError = ref('')
 const placeholderSections = [
-  'Тип налогообложения',
   'Выданный инвентарь'
 ]
 
@@ -225,6 +225,7 @@ async function save() {
 
     <InnSnilsForm v-if="user" :userId="route.params.id" />
     <BankAccountForm v-if="user" :userId="route.params.id" />
+    <TaxationInfo v-if="user" :userId="route.params.id" class="mt-4" />
 
     <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
       <div class="card placeholder-card text-center">

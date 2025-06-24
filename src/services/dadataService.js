@@ -83,10 +83,21 @@ export async function findBankByBic(bic) {
   return data.suggestions[0];
 }
 
+export async function findPartyByInn(inn) {
+  if (!inn) return null;
+  const data = await request('/findById/party', {
+    query: inn,
+    type: 'INDIVIDUAL',
+  });
+  if (!data?.suggestions?.length) return null;
+  return data.suggestions[0];
+}
+
 export default {
   suggestFio,
   cleanFio,
   suggestFmsUnit,
   cleanPassport,
   findBankByBic,
+  findPartyByInn,
 };

@@ -3,9 +3,9 @@ import { ref, onMounted, reactive, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
+import TaxationInfo from '../components/TaxationInfo.vue';
 
 const placeholderSections = [
-  'Тип налогообложения',
   'Выданный инвентарь',
 ];
 
@@ -588,6 +588,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
+      <TaxationInfo class="mb-4" />
       <div v-for="section in placeholderSections" :key="section" class="mb-4">
         <div class="card tile placeholder-card text-center">
           <div
