@@ -24,7 +24,17 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize))
 )
 
-watch([search, sortField, sortOrder, statusFilter], () => {
+
+let searchTimeout
+watch(search, () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1
+    loadUsers()
+  }, 300)
+})
+
+watch([sortField, sortOrder, statusFilter], () => {
   currentPage.value = 1
   loadUsers()
 })
