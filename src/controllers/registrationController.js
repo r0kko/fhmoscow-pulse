@@ -65,7 +65,11 @@ export default {
     if (!user) return res.status(404).json({ error: 'not_found' });
 
     try {
-      await emailVerificationService.verifyCode(user, code, 'REGISTRATION_STEP_1');
+      await emailVerificationService.verifyCode(
+        user,
+        code,
+        'REGISTRATION_STEP_1'
+      );
       await userService.resetPassword(user.id, password);
       const updated = await user.reload();
       return res.json({ user: userMapper.toPublic(updated) });

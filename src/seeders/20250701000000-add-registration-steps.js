@@ -13,8 +13,20 @@ module.exports = {
     await queryInterface.bulkInsert(
       'user_statuses',
       [
-        { id: uuidv4(), name: 'Registration step 1', alias: 'REGISTRATION_STEP_1', created_at: now, updated_at: now },
-        { id: uuidv4(), name: 'Registration step 2', alias: 'REGISTRATION_STEP_2', created_at: now, updated_at: now },
+        {
+          id: uuidv4(),
+          name: 'Registration step 1',
+          alias: 'REGISTRATION_STEP_1',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: uuidv4(),
+          name: 'Registration step 2',
+          alias: 'REGISTRATION_STEP_2',
+          created_at: now,
+          updated_at: now,
+        },
       ],
       { ignoreDuplicates: true }
     );
