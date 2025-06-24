@@ -1,8 +1,9 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
+import logo from '../assets/fhm-logo.svg'
 
 const router = useRouter()
 const phone = ref('')
@@ -73,31 +74,44 @@ async function login() {
 <template>
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
+      <img :src="logo" alt="FHM" class="mx-auto d-block mb-3" style="max-height: 80px" />
       <h1 class="mb-4 text-center">Вход</h1>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
       </transition>
       <form @submit.prevent="login">
-        <div class="mb-3 input-group">
-          <span class="input-group-text"><i class="bi bi-phone"></i></span>
-          <input
-            v-model="phoneInput"
-            @input="onPhoneInput"
-            @keydown="onPhoneKeydown"
-            type="tel"
-            class="form-control"
-            placeholder="+7 (___) ___-__-__"
-            required
-          />
+        <div class="mb-3">
+          <label for="phone" class="form-label">Телефон</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-phone"></i></span>
+            <input
+              id="phone"
+              v-model="phoneInput"
+              @input="onPhoneInput"
+              @keydown="onPhoneKeydown"
+              type="tel"
+              class="form-control"
+              placeholder="+7 (___) ___-__-__"
+              autocomplete="tel"
+              autofocus
+              required
+            />
+          </div>
         </div>
-        <div class="mb-3 input-group">
-          <span class="input-group-text"><i class="bi bi-lock"></i></span>
-          <input v-model="password" type="password" class="form-control" required />
+        <div class="mb-3">
+          <label for="password" class="form-label">Пароль</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input id="password" v-model="password" type="password" class="form-control" autocomplete="current-password" required />
+          </div>
         </div>
         <button type="submit" class="btn btn-primary w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Войти
         </button>
+        <div class="text-center mt-3">
+          <RouterLink to="/register" class="link-secondary">Регистрация</RouterLink>
+        </div>
       </form>
     </div>
   </div>
