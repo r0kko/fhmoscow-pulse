@@ -50,9 +50,9 @@ function formatDate(str) {
 
 function maskPassportNumber(num) {
   if (!num) return ''
-  const start = num.slice(0, 2)
-  const end = num.slice(-2)
-  return start + '*'.repeat(num.length - 4) + end
+  const start = num.slice(0, 1)
+  const end = num.slice(-1)
+  return start + '*'.repeat(num.length - 2) + end
 }
 
 function showToast() {
