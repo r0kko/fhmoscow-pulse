@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
-import PassportForm from '../components/PassportForm.vue'
+import AddPassportModal from '../components/AddPassportModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,9 +12,8 @@ const user = ref(null)
 const isLoading = ref(false)
 const error = ref('')
 const formRef = ref(null)
-const passportFormRef = ref(null)
+const passportModalRef = ref(null)
 const passport = ref(null)
-const newPassport = ref({})
 const passportError = ref('')
 const placeholderSections = [
   'ИНН и СНИЛС',
@@ -55,18 +54,16 @@ async function loadPassport() {
 
 onMounted(loadPassport)
 
-async function savePassport() {
-  if (!passportFormRef.value.validate()) return
+async function savePassport(data) {
   try {
     const { passport: saved } = await apiFetch(
       `/users/${route.params.id}/passport`,
       {
         method: 'POST',
-        body: JSON.stringify(newPassport.value)
+        body: JSON.stringify(data)
       }
     )
     passport.value = saved
-    newPassport.value = {}
     passportError.value = ''
   } catch (e) {
     passportError.value = e.message
@@ -81,6 +78,10 @@ async function deletePassport() {
   } catch (e) {
     passportError.value = e.message
   }
+}
+
+function openPassportModal() {
+  passportModalRef.value.open()
 }
 
 async function save() {
@@ -121,12 +122,7 @@ async function save() {
     <p v-else-if="isLoading">Загрузка...</p>
 
     <div v-if="passport !== undefined" class="mt-4">
-      <PassportForm
-        v-if="passport === null"
-        ref="passportFormRef"
-        v-model="newPassport"
-      />
-      <div v-else class="card">
+      <div v-if="passport" class="card">
         <div class="card-body">
           <h5 class="card-title mb-3">Паспорт</h5>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
@@ -170,9 +166,10 @@ async function save() {
           <button class="btn btn-danger mt-3" @click="deletePassport">Удалить</button>
         </div>
       </div>
-      <div v-if="passport === null" class="mt-3">
-        <button class="btn btn-primary" @click="savePassport">Добавить паспорт</button>
+      <div v-else class="mt-3">
+        <button class="btn btn-primary" @click="openPassportModal">Добавить паспорт</button>
       </div>
+      <AddPassportModal ref="passportModalRef" :user="user" @saved="savePassport" />
       <div v-if="passportError" class="text-danger mt-2">{{ passportError }}</div>
     </div>
 

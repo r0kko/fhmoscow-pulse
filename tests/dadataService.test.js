@@ -64,8 +64,11 @@ test('cleanPassport returns first element', async () => {
   });
   const res = await cleanPassport('4509 235857');
   expect(fetch).toHaveBeenCalledWith(
-    expect.stringContaining('/clean/passport'),
-    expect.objectContaining({ headers: expect.objectContaining({ 'X-Secret': 'secret' }) })
+    expect.stringContaining('cleaner.dadata.ru'),
+    expect.objectContaining({
+      body: JSON.stringify(['4509 235857']),
+      headers: expect.objectContaining({ 'X-Secret': 'secret' }),
+    })
   );
   expect(res).toEqual({ number: '123' });
 });

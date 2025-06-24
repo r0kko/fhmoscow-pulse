@@ -2,8 +2,9 @@ import { DADATA_TOKEN, DADATA_TIMEOUT, DADATA_SECRET } from '../config/dadata.js
 import logger from '../../logger.js';
 
 const API_BASE = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs';
+const CLEANER_BASE = 'https://cleaner.dadata.ru/api/v1';
 
-async function request(endpoint, body, useSecret = false) {
+async function request(endpoint, body, useSecret = false, base = API_BASE) {
   if (!DADATA_TOKEN) {
     logger.warn('DaData token not configured');
     return null;
@@ -16,7 +17,7 @@ async function request(endpoint, body, useSecret = false) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DADATA_TIMEOUT);
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(`${base}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +68,7 @@ export async function suggestFmsUnit(query, filters) {
 
 export async function cleanPassport(passport) {
   if (!passport) return null;
-  const data = await request('/clean/passport', [passport], true);
+  const data = await request('/clean/passport', [passport], true, CLEANER_BASE);
   return Array.isArray(data) ? data[0] : null;
 }
 
