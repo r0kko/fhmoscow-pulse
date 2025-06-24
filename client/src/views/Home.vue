@@ -34,7 +34,7 @@ const greeting = computed(() => {
 <template>
   <div class="container mt-4">
     <h1 class="mb-4 text-start">
-      {{ greeting }}, {{ shortName || auth.user?.phone }}
+      {{ greeting }}, {{ shortName || auth.user?.phone }}!
     </h1>
     <div class="row g-4">
       <div class="col-6 col-md-4 col-lg-3" v-for="section in sections" :key="section.title">
