@@ -120,7 +120,7 @@ async function save() {
     <h1 class="mb-4">Редактирование пользователя</h1>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <form v-if="user" @submit.prevent="save">
-      <UserForm ref="formRef" v-model="user" />
+      <UserForm ref="formRef" v-model="user" :locked="true" />
       <div class="mt-3">
         <button type="submit" class="btn btn-primary me-2">Сохранить</button>
         <RouterLink to="/users" class="btn btn-secondary">Отмена</RouterLink>

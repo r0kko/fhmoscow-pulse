@@ -4,7 +4,8 @@ import { suggestFio, cleanFio } from '../dadata.js'
 
 const props = defineProps({
   modelValue: Object,
-  isNew: Boolean
+  isNew: Boolean,
+  locked: Boolean
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -126,15 +127,31 @@ function validate() {
   return !Object.values(errors).some(Boolean)
 }
 
-defineExpose({ validate })
+const editing = ref(!props.locked)
+
+function unlock() {
+  editing.value = true
+}
+
+defineExpose({ validate, unlock })
 </script>
 
 <template>
   <div>
-    <div class="mb-4">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="card-title mb-3">Основные данные</h5>
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-3">
+          <h5 class="card-title mb-0">Основные данные и контакты</h5>
+          <button
+            v-if="!editing"
+            type="button"
+            class="btn btn-link p-0"
+            @click="unlock"
+          >
+            <i class="bi bi-pencil"></i>
+          </button>
+        </div>
+        <fieldset :disabled="!editing">
           <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
             <div class="col position-relative">
               <div class="form-floating">
@@ -236,15 +253,7 @@ defineExpose({ validate })
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="mb-4">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="card-title mb-3">Контакты</h5>
-          <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">
             <div class="col">
               <div class="form-floating">
                 <input
@@ -277,10 +286,9 @@ defineExpose({ validate })
               </div>
             </div>
           </div>
-        </div>
+        </fieldset>
       </div>
     </div>
-
 
 
     <p v-if="isNew" class="text-muted">Пароль будет сгенерирован автоматически</p>
