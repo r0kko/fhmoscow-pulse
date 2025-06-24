@@ -13,12 +13,24 @@ const findOneMock = jest.fn();
 const verifyCodeMock = jest.fn();
 const resetPasswordMock = jest.fn();
 const toPublicMock = jest.fn(() => ({ id: '1' }));
+const issueTokensMock = jest.fn(() => ({ accessToken: 'a', refreshToken: 'r' }));
+const setRefreshCookieMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   User: { findOne: findOneMock },
   ExternalSystem: {},
   UserExternalId: {},
+}));
+
+jest.unstable_mockModule('../src/services/authService.js', () => ({
+  __esModule: true,
+  default: { issueTokens: issueTokensMock },
+}));
+
+jest.unstable_mockModule('../src/utils/cookie.js', () => ({
+  __esModule: true,
+  setRefreshCookie: setRefreshCookieMock,
 }));
 
 jest.unstable_mockModule('../src/services/emailVerificationService.js', () => ({
@@ -49,7 +61,14 @@ test('finish validation failure returns 400', async () => {
 });
 
 test('finish verifies code and resets password', async () => {
-  const user = { id: '1', reload: jest.fn().mockResolvedValue({ id: '1' }) };
+  const user = {
+    id: '1',
+    reload: jest.fn().mockResolvedValue({
+      id: '1',
+      getRoles: jest.fn().mockResolvedValue([]),
+    }),
+    getRoles: jest.fn().mockResolvedValue([]),
+  };
   findOneMock.mockResolvedValue(user);
   const req = { body: { email: 'e', code: 'c', password: 'Pa55word' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
@@ -59,6 +78,14 @@ test('finish verifies code and resets password', async () => {
   expect(findOneMock).toHaveBeenCalledWith({ where: { email: 'e' } });
   expect(verifyCodeMock).toHaveBeenCalledWith(user, 'c', 'REGISTRATION_STEP_1');
   expect(resetPasswordMock).toHaveBeenCalledWith('1', 'Pa55word');
+  expect(issueTokensMock).toHaveBeenCalledWith(
+    expect.objectContaining({ id: '1' })
+  );
+  expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'r');
   expect(toPublicMock).toHaveBeenCalled();
-  expect(res.json).toHaveBeenCalledWith({ user: { id: '1' } });
+  expect(res.json).toHaveBeenCalledWith({
+    access_token: 'a',
+    user: { id: '1' },
+    roles: [],
+  });
 });

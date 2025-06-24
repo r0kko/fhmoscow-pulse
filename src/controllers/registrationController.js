@@ -5,8 +5,10 @@ import { User } from '../models/index.js';
 import emailVerificationService from '../services/emailVerificationService.js';
 import legacyService from '../services/legacyUserService.js';
 import userService from '../services/userService.js';
+import authService from '../services/authService.js';
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
+import { setRefreshCookie } from '../utils/cookie.js';
 
 export default {
   async start(req, res) {
@@ -72,7 +74,16 @@ export default {
       );
       await userService.resetPassword(user.id, password);
       const updated = await user.reload();
-      return res.json({ user: userMapper.toPublic(updated) });
+      const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
+        (r) => r.alias
+      );
+      const { accessToken, refreshToken } = authService.issueTokens(updated);
+      setRefreshCookie(res, refreshToken);
+      return res.json({
+        access_token: accessToken,
+        user: userMapper.toPublic(updated),
+        roles,
+      });
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }

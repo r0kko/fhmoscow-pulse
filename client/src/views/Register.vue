@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
+import { auth } from '../auth.js'
 
 const router = useRouter()
 const step = ref(1)
@@ -44,7 +45,7 @@ async function finish() {
   }
   loading.value = true
   try {
-    await apiFetch('/register/finish', {
+    const data = await apiFetch('/register/finish', {
       method: 'POST',
       body: JSON.stringify({
         email: email.value,
@@ -52,6 +53,10 @@ async function finish() {
         password: password.value
       })
     })
+    localStorage.setItem('access_token', data.access_token)
+    localStorage.setItem('roles', JSON.stringify(data.roles || []))
+    auth.user = data.user
+    auth.roles = data.roles || []
     router.push('/complete-profile')
   } catch (err) {
     error.value = err.message || 'Ошибка регистрации'
