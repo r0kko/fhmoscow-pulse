@@ -59,6 +59,9 @@ test('createForUser validates and creates passport', async () => {
     qc: 0,
     series: '45 12',
     number: '123456',
+    issue_date: '2020-01-01',
+    issue_org: 'OVD',
+    issue_code: '770-000',
   });
   const data = {
     document_type: 'CIVIL',
@@ -74,6 +77,13 @@ test('createForUser validates and creates passport', async () => {
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({ user_id: 'u1', document_type_id: 't1', country_id: 'c1' })
   );
+  expect(createMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      issue_date: '2020-01-01',
+      issuing_authority: 'OVD',
+      issuing_authority_code: '770-000',
+    })
+  );
   expect(res).toBe(passportInstance);
 });
 
@@ -88,6 +98,9 @@ test('createForUser calculates valid_until for RU CIVIL passport', async () => {
     qc: 0,
     series: '4512',
     number: '123456',
+    issue_date: '2010-02-03',
+    issue_org: 'OVD',
+    issue_code: '770-000',
   });
 
   const data = {
@@ -139,9 +152,13 @@ test('importFromLegacy creates passport from legacy data', async () => {
     qc: 0,
     series: '11',
     number: '000022',
+    issue_date: '2000-01-01',
+    issue_org: 'OVD',
+    issue_code: '770-000',
   });
 
   const res = await service.importFromLegacy('u1');
   expect(createMock).toHaveBeenCalled();
   expect(res).toBe(passportInstance);
 });
+

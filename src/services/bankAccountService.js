@@ -22,6 +22,12 @@ async function createForUser(userId, data, actorId) {
 async function updateForUser(userId, data, actorId) {
   const acc = await BankAccount.findOne({ where: { user_id: userId } });
   if (!acc) throw new Error('bank_account_not_found');
+  if (
+    (data.number && data.number !== acc.number) ||
+    (data.bic && data.bic !== acc.bic)
+  ) {
+    throw new Error('bank_account_locked');
+  }
   await acc.update({ ...data, updated_by: actorId });
   return acc;
 }
