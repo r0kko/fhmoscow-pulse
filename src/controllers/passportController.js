@@ -9,7 +9,9 @@ export default {
     if (passport) {
       return res.json({ passport: passportMapper.toPublic(passport) });
     }
-    const ext = await UserExternalId.findOne({ where: { user_id: req.user.id } });
+    const ext = await UserExternalId.findOne({
+      where: { user_id: req.user.id },
+    });
     if (!ext) {
       return res.status(404).json({ error: 'passport_not_found' });
     }

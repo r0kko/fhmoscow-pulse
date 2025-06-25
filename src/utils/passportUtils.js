@@ -2,7 +2,8 @@ export function calculateValidUntil(birthDate, issueDate) {
   if (!birthDate || !issueDate) return null;
   const birth = new Date(birthDate);
   const issue = new Date(issueDate);
-  if (Number.isNaN(birth.getTime()) || Number.isNaN(issue.getTime())) return null;
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(issue.getTime()))
+    return null;
   const age = (issue - birth) / (365.25 * 24 * 3600 * 1000);
   let until;
   if (age < 20) {

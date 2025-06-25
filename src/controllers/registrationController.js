@@ -40,8 +40,6 @@ export default {
       return res.status(400).json({ error: err.message });
     }
 
-
-
     const system = await ExternalSystem.findOne({
       where: { alias: 'HOCKEYMOS' },
     });

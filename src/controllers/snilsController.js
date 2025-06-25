@@ -7,11 +7,13 @@ import { UserExternalId } from '../models/index.js';
 
 export default {
   async me(req, res) {
-    let snils = await snilsService.getByUser(req.user.id);
+    const snils = await snilsService.getByUser(req.user.id);
     if (snils) {
       return res.json({ snils: snilsMapper.toPublic(snils) });
     }
-    const ext = await UserExternalId.findOne({ where: { user_id: req.user.id } });
+    const ext = await UserExternalId.findOne({
+      where: { user_id: req.user.id },
+    });
     if (!ext) {
       return res.status(404).json({ error: 'snils_not_found' });
     }

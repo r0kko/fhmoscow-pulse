@@ -7,11 +7,13 @@ import { UserExternalId } from '../models/index.js';
 
 export default {
   async me(req, res) {
-    let inn = await innService.getByUser(req.user.id);
+    const inn = await innService.getByUser(req.user.id);
     if (inn) {
       return res.json({ inn: innMapper.toPublic(inn) });
     }
-    const ext = await UserExternalId.findOne({ where: { user_id: req.user.id } });
+    const ext = await UserExternalId.findOne({
+      where: { user_id: req.user.id },
+    });
     if (!ext) {
       return res.status(404).json({ error: 'inn_not_found' });
     }
