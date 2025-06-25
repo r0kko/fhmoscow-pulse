@@ -23,6 +23,24 @@ export default {
     }
   },
 
+  async update(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const passport = await passportService.updateForUser(
+        req.user.id,
+        req.body,
+        req.user.id
+      );
+      return res.json({ passport: passportMapper.toPublic(passport) });
+    } catch (err) {
+      const status = err.message === 'passport_not_found' ? 404 : 400;
+      return res.status(status).json({ error: err.message });
+    }
+  },
+
   async remove(req, res) {
     try {
       await passportService.removeByUser(req.user.id);

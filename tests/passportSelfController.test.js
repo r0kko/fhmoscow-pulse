@@ -11,11 +11,16 @@ jest.unstable_mockModule('express-validator', () => ({
 
 const createMock = jest.fn();
 const removeMock = jest.fn();
+const updateMock = jest.fn();
 const toPublicMock = jest.fn(() => ({ id: 'p1' }));
 
 jest.unstable_mockModule('../src/services/passportService.js', () => ({
   __esModule: true,
-  default: { createForUser: createMock, removeByUser: removeMock },
+  default: {
+    createForUser: createMock,
+    removeByUser: removeMock,
+    updateForUser: updateMock,
+  },
 }));
 
 jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
@@ -44,5 +49,36 @@ test('create stores new passport', async () => {
   expect(res.status).toHaveBeenCalledWith(201);
   expect(toPublicMock).toHaveBeenCalled();
   expect(res.json).toHaveBeenCalledWith({ passport: { id: 'p1' } });
+});
+
+test('update returns 400 on validation errors', async () => {
+  validationOk = false;
+  const req = { user: { id: '1' }, body: {} };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  await controller.update(req, res);
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(res.json).toHaveBeenCalledWith({ errors: [{ msg: 'bad' }] });
+  validationOk = true;
+});
+
+test('update saves passport changes', async () => {
+  updateMock.mockResolvedValue({ id: 'p1' });
+  const req = {
+    user: { id: '1' },
+    body: { series: '12', number: '34' },
+  };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  await controller.update(req, res);
+  expect(updateMock).toHaveBeenCalledWith('1', { series: '12', number: '34' }, '1');
+  expect(res.json).toHaveBeenCalledWith({ passport: { id: 'p1' } });
+});
+
+test('update returns 404 when not found', async () => {
+  updateMock.mockRejectedValue(new Error('passport_not_found'));
+  const req = { user: { id: '1' }, body: { series: '12' } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  await controller.update(req, res);
+  expect(res.status).toHaveBeenCalledWith(404);
+  expect(res.json).toHaveBeenCalledWith({ error: 'passport_not_found' });
 });
 
