@@ -9,7 +9,9 @@ export default {
     if (acc) {
       return res.json({ account: bankAccountMapper.toPublic(acc) });
     }
-    const ext = await UserExternalId.findOne({ where: { user_id: req.user.id } });
+    const ext = await UserExternalId.findOne({
+      where: { user_id: req.user.id },
+    });
     if (!ext) {
       return res.status(404).json({ error: 'bank_account_not_found' });
     }

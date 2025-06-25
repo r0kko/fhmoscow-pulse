@@ -24,10 +24,7 @@ export default {
           series: String(legacy.ps_ser),
           number: String(legacy.ps_num).padStart(6, '0'),
           issue_date: legacy.ps_date,
-          valid_until: calculateValidUntil(
-            req.user.birth_date,
-            legacy.ps_date,
-          ),
+          valid_until: calculateValidUntil(req.user.birth_date, legacy.ps_date),
           issuing_authority: legacy.ps_org,
           issuing_authority_code: legacy.ps_pdrz,
           document_type: 'CIVIL',
