@@ -6,6 +6,7 @@ import {
   UserExternalId,
 } from '../models/index.js';
 import { calculateValidUntil } from '../utils/passportUtils.js';
+
 import legacyUserService from './legacyUserService.js';
 
 async function getByUser(userId) {
@@ -68,15 +69,20 @@ async function importFromLegacy(userId) {
   if (!legacy?.ps_ser || !legacy?.ps_num) return null;
 
   try {
-    return await createForUser(userId, {
-      document_type: 'CIVIL',
-      country: 'RU',
-      series: String(legacy.ps_ser),
-      number: String(legacy.ps_num).padStart(6, '0'),
-      issue_date: legacy.ps_date,
-      issuing_authority: legacy.ps_org,
-      issuing_authority_code: legacy.ps_pdrz,
-    }, userId);
+    return await createForUser(
+      userId,
+      {
+        document_type: 'CIVIL',
+        country: 'RU',
+        series: String(legacy.ps_ser),
+        number: String(legacy.ps_num).padStart(6, '0'),
+        issue_date: legacy.ps_date,
+        issuing_authority: legacy.ps_org,
+        issuing_authority_code: legacy.ps_pdrz,
+      },
+      userId
+    );
+    // eslint-disable-next-line no-unused-vars
   } catch (err) {
     return null;
   }
