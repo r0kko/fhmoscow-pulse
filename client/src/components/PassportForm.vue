@@ -122,17 +122,15 @@ defineExpose({ validate })
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
         <div class="col">
           <label class="form-label">Тип документа</label>
-          <select v-model="form.document_type" class="form-select">
-            <option value="CIVIL">Паспорт гражданина</option>
-            <option value="FOREIGN">Заграничный паспорт</option>
-            <option value="RESIDENCE_PERMIT">Вид на жительство</option>
-          </select>
+          <input
+            class="form-control"
+            value="Паспорт гражданина"
+            readonly
+          />
         </div>
         <div class="col">
           <label class="form-label">Страна</label>
-          <select v-model="form.country" class="form-select">
-            <option value="RU">Российская Федерация</option>
-          </select>
+          <input class="form-control" value="Российская Федерация" readonly />
         </div>
         <div class="col">
           <label class="form-label">Серия</label>

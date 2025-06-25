@@ -5,7 +5,7 @@ import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
 import UserForm from '../components/UserForm.vue'
 import PassportForm from '../components/PassportForm.vue'
-import { cleanPassport } from '../dadata.js'
+import { cleanPassport, findBankByBic } from '../dadata.js'
 import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js'
 import { isValidAccountNumber } from '../utils/bank.js'
 
@@ -23,6 +23,8 @@ function isExpired(p) {
   return new Date(p.valid_until) < new Date()
 }
 const bank = ref({ number: '', bic: '' })
+const bankInfo = ref(null)
+const bankCheckStatus = ref('')
 const error = ref('')
 const loading = ref(false)
 const formRef = ref(null)
@@ -54,6 +56,14 @@ onMounted(async () => {
     const data = await apiFetch('/bank-accounts/me')
     bank.value.number = data.account.number
     bank.value.bic = data.account.bic
+    const info = await findBankByBic(bank.value.bic)
+    if (info) {
+      bankInfo.value = {
+        bank_name: info.value,
+        correspondent_account: info.data.correspondent_account,
+      }
+      bankCheckStatus.value = 'found'
+    }
   } catch (_) {}
 })
 
@@ -65,6 +75,21 @@ function onSnilsInput(e) {
   let digits = e.target.value.replace(/\D/g, '').slice(0, 11)
   snilsDigits.value = digits
   snilsInput.value = formatSnils(digits)
+}
+
+async function checkBank() {
+  bankCheckStatus.value = 'pending'
+  bankInfo.value = null
+  const info = await findBankByBic(bank.value.bic)
+  if (info) {
+    bankInfo.value = {
+      bank_name: info.value,
+      correspondent_account: info.data.correspondent_account,
+    }
+    bankCheckStatus.value = 'found'
+  } else {
+    bankCheckStatus.value = 'not_found'
+  }
 }
 
 async function saveStep() {
@@ -149,6 +174,13 @@ async function saveStep() {
       error.value = 'Неверные банковские данные'
       return
     }
+    if (bankCheckStatus.value !== 'found') {
+      await checkBank()
+      if (bankCheckStatus.value !== 'found') {
+        error.value = 'Банк не найден'
+        return
+      }
+    }
     if (!bank.value.id) {
       await apiFetch('/bank-accounts', {
         method: 'POST',
@@ -226,6 +258,19 @@ async function saveStep() {
             placeholder="БИК"
           />
           <label for="bic">БИК</label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary mt-3" @click="checkBank">Проверить</button>
+        <div v-if="bankCheckStatus === 'pending'" class="mt-2">Проверка...</div>
+        <div v-if="bankCheckStatus === 'not_found'" class="text-danger mt-2">Банк не найден</div>
+        <div v-if="bankCheckStatus === 'found' && bankInfo" class="mt-3">
+          <div class="form-floating mb-2">
+            <input class="form-control" :value="bankInfo.bank_name" readonly placeholder="Банк" />
+            <label>Банк</label>
+          </div>
+          <div class="form-floating">
+            <input class="form-control" :value="bankInfo.correspondent_account" readonly placeholder="Корсчёт" />
+            <label>Корсчёт</label>
+          </div>
         </div>
       </div>
       <button type="submit" class="btn btn-primary w-100" :disabled="loading">
