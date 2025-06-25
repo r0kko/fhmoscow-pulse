@@ -4,7 +4,8 @@ import { suggestFmsUnit, cleanPassport } from '../dadata.js'
 
 const props = defineProps({
   modelValue: Object,
-  locked: Boolean
+  locked: Boolean,
+  birthDate: String
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -78,6 +79,31 @@ function applySuggestion(s) {
   suggestions.value = []
 }
 
+function calcValid() {
+  if (props.locked) return
+  if (form.country !== 'RU' || form.document_type !== 'CIVIL') return
+  if (!props.birthDate || !form.issue_date) return
+  const birth = new Date(props.birthDate)
+  const issue = new Date(form.issue_date)
+  const age = (issue - birth) / (365.25 * 24 * 3600 * 1000)
+  let until
+  if (age < 20) {
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 20)
+  } else if (age < 45) {
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 45)
+  } else {
+    until = ''
+  }
+  form.valid_until = until ? until.toISOString().slice(0, 10) : ''
+}
+
+watch(
+  () => [form.issue_date, form.country, form.document_type, props.birthDate],
+  calcValid
+)
+
 function validate() {
   errors.series = form.series ? '' : 'Введите серию'
   errors.number = form.number ? '' : 'Введите номер'
@@ -91,6 +117,7 @@ defineExpose({ validate })
   <div class="card">
     <div class="card-body">
       <h5 class="card-title mb-3">Паспорт</h5>
+      <div v-if="props.locked" class="alert alert-success">Паспорт подтвержден</div>
       <fieldset :disabled="props.locked">
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
         <div class="col">

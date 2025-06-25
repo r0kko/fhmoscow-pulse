@@ -18,6 +18,10 @@ const snilsDigits = ref('')
 const snilsInput = ref('')
 const passport = ref({})
 const passportLocked = ref(false)
+function isExpired(p) {
+  if (!p.valid_until) return false
+  return new Date(p.valid_until) < new Date()
+}
 const bank = ref({ number: '', bic: '' })
 const error = ref('')
 const loading = ref(false)
@@ -43,7 +47,7 @@ onMounted(async () => {
     passport.value = data.passport
     if (passport.value.series && passport.value.number) {
       const cleaned = await cleanPassport(`${passport.value.series} ${passport.value.number}`)
-      passportLocked.value = cleaned && cleaned.qc === 0
+      passportLocked.value = cleaned && cleaned.qc === 0 && !isExpired(passport.value)
     }
   } catch (_) {}
   try {
@@ -136,7 +140,7 @@ async function saveStep() {
         method: 'POST',
         body: JSON.stringify(passport.value)
       })
-      passportLocked.value = true
+      passportLocked.value = !isExpired(passport.value)
       step.value = 4
       loading.value = false
       return
@@ -196,7 +200,13 @@ async function saveStep() {
         </div>
       </div>
       <div v-else-if="step === 3" class="mb-4">
-        <PassportForm ref="passportRef" v-model="passport" :locked="passportLocked" />
+        <PassportForm
+          ref="passportRef"
+          v-model="passport"
+          :locked="passportLocked"
+          :birth-date="user.birth_date"
+        />
+        <div v-if="passportLocked" class="alert alert-success mt-3">Паспорт проверен</div>
       </div>
       <div v-else-if="step === 4" class="mb-4">
         <div class="form-floating mb-3">
