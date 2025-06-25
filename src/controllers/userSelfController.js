@@ -1,5 +1,6 @@
 import { validationResult } from 'express-validator';
 
+
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 

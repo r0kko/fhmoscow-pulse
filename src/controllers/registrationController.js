@@ -58,7 +58,7 @@ import passportService from '../services/passportService.js';
 import bankAccountService from '../services/bankAccountService.js';
 import dadataService from '../services/dadataService.js';
 import authService from '../services/authService.js';
-import { ExternalSystem, UserExternalId } from '../models/index.js';
+    } catch {
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie } from '../utils/cookie.js';
 

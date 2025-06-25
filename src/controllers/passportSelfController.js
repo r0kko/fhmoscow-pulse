@@ -1,5 +1,6 @@
 import { validationResult } from 'express-validator';
 
+
 import passportService from '../services/passportService.js';
 import passportMapper from '../mappers/passportMapper.js';
 
