@@ -49,6 +49,21 @@ test('createForUser validates and creates passport', async () => {
   expect(res).toBe(passportInstance);
 });
 
+test('createForUser calculates valid_until for RU CIVIL passport', async () => {
+  findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '1990-01-01' });
+  findOneMock.mockResolvedValueOnce(null);
+  findTypeMock.mockResolvedValue({ id: 't1' });
+  findCountryMock.mockResolvedValue({ id: 'c1' });
+  createMock.mockResolvedValue(passportInstance);
+  findOneMock.mockResolvedValueOnce(passportInstance);
+
+  const data = { document_type: 'CIVIL', country: 'RU', issue_date: '2010-02-03' };
+  await service.createForUser('u1', data, 'admin');
+  expect(createMock).toHaveBeenCalledWith(
+    expect.objectContaining({ valid_until: '2035-01-01' })
+  );
+});
+
 test('removeByUser destroys passport', async () => {
   findOneMock.mockResolvedValue(passportInstance);
   await service.removeByUser('u1');

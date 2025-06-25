@@ -1,4 +1,5 @@
 import { Passport, DocumentType, Country, User } from '../models/index.js';
+import { calculateValidUntil } from '../utils/passportUtils.js';
 
 async function getByUser(userId) {
   return Passport.findOne({
@@ -22,6 +23,11 @@ async function createForUser(userId, data, adminId) {
   if (!type) throw new Error('document_type_not_found');
   if (!country) throw new Error('country_not_found');
 
+  let validUntil = data.valid_until;
+  if (data.document_type === 'CIVIL' && data.country === 'RU') {
+    validUntil = calculateValidUntil(user.birth_date, data.issue_date);
+  }
+
   await Passport.create({
     user_id: userId,
     document_type_id: type.id,
@@ -29,7 +35,7 @@ async function createForUser(userId, data, adminId) {
     series: data.series,
     number: data.number,
     issue_date: data.issue_date,
-    valid_until: data.valid_until,
+    valid_until: validUntil,
     issuing_authority: data.issuing_authority,
     issuing_authority_code: data.issuing_authority_code,
     place_of_birth: data.place_of_birth,
