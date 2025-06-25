@@ -4,7 +4,8 @@ import { suggestFmsUnit, cleanPassport } from '../dadata.js'
 
 const props = defineProps({
   modelValue: Object,
-  locked: Boolean,
+  locked: { type: Boolean, default: false },
+  lockedFields: Object,
   birthDate: String
 })
 const emit = defineEmits(['update:modelValue'])
@@ -25,6 +26,10 @@ const errors = reactive({})
 const suggestions = ref([])
 const timeout = ref(null)
 
+function isLocked(field) {
+  return props.locked || (props.lockedFields && props.lockedFields[field])
+}
+
 watch(
   () => props.modelValue,
   (val) => {
@@ -38,7 +43,7 @@ watch(form, (val) => {
 })
 
 function updateSuggestions() {
-  if (props.locked) return
+  if (isLocked('issuing_authority') && isLocked('issuing_authority_code')) return
   clearTimeout(timeout.value)
   const q = form.issuing_authority_code || form.issuing_authority
   if (!q || q.length < 3) {
@@ -56,7 +61,7 @@ watch(
 )
 
 async function onPassportBlur() {
-  if (props.locked) return
+  if (isLocked('series') && isLocked('number')) return
   const query = `${form.series} ${form.number}`.trim()
   if (!query) return
   const cleaned = await cleanPassport(query)
@@ -80,7 +85,7 @@ function applySuggestion(s) {
 }
 
 function calcValid() {
-  if (props.locked) return
+  if (isLocked('issue_date')) return
   if (form.country !== 'RU' || form.document_type !== 'CIVIL') return
   if (!props.birthDate || !form.issue_date) return
   const birth = new Date(props.birthDate)
@@ -117,8 +122,7 @@ defineExpose({ validate })
   <div class="card">
     <div class="card-body">
       <h5 class="card-title mb-3">Паспорт</h5>
-      <div v-if="props.locked" class="alert alert-success">Паспорт подтвержден</div>
-      <fieldset :disabled="props.locked">
+      <div v-if="props.locked || Object.keys(props.lockedFields || {}).length" class="alert alert-success">Паспорт подтвержден</div>
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
         <div class="col">
           <label class="form-label">Тип документа</label>
@@ -139,6 +143,7 @@ defineExpose({ validate })
             @blur="onPassportBlur"
             class="form-control"
             :class="{ 'is-invalid': errors.series }"
+            :disabled="isLocked('series')"
           />
           <div class="invalid-feedback">{{ errors.series }}</div>
         </div>
@@ -149,12 +154,13 @@ defineExpose({ validate })
             @blur="onPassportBlur"
             class="form-control"
             :class="{ 'is-invalid': errors.number }"
+            :disabled="isLocked('number')"
           />
           <div class="invalid-feedback">{{ errors.number }}</div>
         </div>
         <div class="col">
           <label class="form-label">Дата выдачи</label>
-          <input type="date" v-model="form.issue_date" class="form-control" />
+          <input type="date" v-model="form.issue_date" class="form-control" :disabled="isLocked('issue_date')" />
         </div>
         <div class="col">
           <label class="form-label">Действителен до</label>
@@ -166,7 +172,7 @@ defineExpose({ validate })
         </div>
         <div class="col position-relative">
           <label class="form-label">Код подразделения</label>
-          <input v-model="form.issuing_authority_code" class="form-control" />
+          <input v-model="form.issuing_authority_code" class="form-control" :disabled="isLocked('issuing_authority_code')" />
           <ul
             v-if="suggestions.length"
             class="list-group position-absolute w-100"
@@ -187,7 +193,6 @@ defineExpose({ validate })
           <input v-model="form.place_of_birth" class="form-control" />
         </div>
       </div>
-      </fieldset>
     </div>
   </div>
 </template>

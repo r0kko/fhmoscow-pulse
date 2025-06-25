@@ -7,6 +7,9 @@ import { UserExternalId } from '../models/index.js';
 
 export default {
   async me(req, res) {
+    if (req.query.prefill !== '1') {
+      return res.status(404).json({ error: 'inn_not_found' });
+    }
     const inn = await innService.getByUser(req.user.id);
     if (inn) {
       return res.json({ inn: innMapper.toPublic(inn) });

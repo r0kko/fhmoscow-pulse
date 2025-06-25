@@ -34,11 +34,11 @@ test('me returns stored account', async () => {
   expect(res.json).toHaveBeenCalled();
 });
 
-test('me returns legacy account when not stored', async () => {
+test('me returns legacy account when prefill requested', async () => {
   service.default.getByUser.mockResolvedValue(null);
   findOneExtMock.mockResolvedValue({ external_id: '8' });
   legacyFindMock.mockResolvedValue({ bank_rs: '40702810', bik_bank: '044525225' });
-  const req = { user: { id: 'u1' } };
+  const req = { user: { id: 'u1' }, query: { prefill: '1' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.me(req, res);
   expect(res.json).toHaveBeenCalledWith({

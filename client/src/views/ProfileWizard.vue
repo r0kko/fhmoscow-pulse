@@ -18,6 +18,7 @@ const snilsDigits = ref('')
 const snilsInput = ref('')
 const passport = ref({})
 const passportLocked = ref(false)
+const passportLockFields = ref({})
 function isExpired(p) {
   if (!p.valid_until) return false
   return new Date(p.valid_until) < new Date()
@@ -36,24 +37,32 @@ onMounted(async () => {
     user.value = data.user
   } catch (_) {}
   try {
-    const data = await apiFetch('/inns/me')
+    const data = await apiFetch('/inns/me?prefill=1')
     inn.value = data.inn.number.replace(/\D/g, '')
   } catch (_) {}
   try {
-    const data = await apiFetch('/snils/me')
+    const data = await apiFetch('/snils/me?prefill=1')
     snilsInput.value = formatSnils(data.snils.number.replace(/\D/g, ''))
     snilsDigits.value = data.snils.number.replace(/\D/g, '')
   } catch (_) {}
   try {
-    const data = await apiFetch('/passports/me')
+    const data = await apiFetch('/passports/me?prefill=1')
     passport.value = data.passport
     if (passport.value.series && passport.value.number) {
       const cleaned = await cleanPassport(`${passport.value.series} ${passport.value.number}`)
       passportLocked.value = cleaned && cleaned.qc === 0 && !isExpired(passport.value)
+      if (passportLocked.value) {
+        passportLockFields.value = {
+          series: true,
+          number: true,
+          issue_date: true,
+          issuing_authority_code: !!passport.value.issuing_authority_code,
+        }
+      }
     }
   } catch (_) {}
   try {
-    const data = await apiFetch('/bank-accounts/me')
+    const data = await apiFetch('/bank-accounts/me?prefill=1')
     bank.value.number = data.account.number
     bank.value.bic = data.account.bic
     const info = await findBankByBic(bank.value.bic)
@@ -166,6 +175,14 @@ async function saveStep() {
         body: JSON.stringify(passport.value)
       })
       passportLocked.value = !isExpired(passport.value)
+      if (passportLocked.value) {
+        passportLockFields.value = {
+          series: true,
+          number: true,
+          issue_date: true,
+          issuing_authority_code: !!passport.value.issuing_authority_code,
+        }
+      }
       step.value = 4
       loading.value = false
       return
@@ -235,8 +252,8 @@ async function saveStep() {
         <PassportForm
           ref="passportRef"
           v-model="passport"
-          :locked="passportLocked"
           :birth-date="user.birth_date"
+          :locked-fields="passportLockFields"
         />
         <div v-if="passportLocked" class="alert alert-success mt-3">Паспорт проверен</div>
       </div>

@@ -58,8 +58,8 @@ test('create stores new inn', async () => {
   expect(res.json).toHaveBeenCalledWith({ inn: { id: 'n1' } });
 });
 
-test('me returns legacy inn when not stored', async () => {
-  const req = { user: { id: 'u1' } };
+test('me returns legacy inn when prefill requested', async () => {
+  const req = { user: { id: 'u1' }, query: { prefill: '1' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const service = await import('../src/services/innService.js');
   service.default.getByUser.mockResolvedValue(null);
