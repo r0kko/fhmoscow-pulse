@@ -5,11 +5,6 @@ import { User } from '../models/index.js';
 import emailVerificationService from '../services/emailVerificationService.js';
 import legacyService from '../services/legacyUserService.js';
 import userService from '../services/userService.js';
-import innService from '../services/innService.js';
-import snilsService from '../services/snilsService.js';
-import passportService from '../services/passportService.js';
-import bankAccountService from '../services/bankAccountService.js';
-import dadataService from '../services/dadataService.js';
 import authService from '../services/authService.js';
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
@@ -45,45 +40,7 @@ export default {
       return res.status(400).json({ error: err.message });
     }
 
-    try {
-      if (legacy.sv_ops) {
-        await snilsService.create(user.id, legacy.sv_ops, user.id);
-      }
-      if (legacy.sv_inn) {
-        await innService.create(user.id, legacy.sv_inn, user.id);
-      }
-      if (legacy.ps_ser && legacy.ps_num) {
-        await passportService.createForUser(
-          user.id,
-          {
-            document_type: 'CIVIL',
-            country: 'RU',
-            series: String(legacy.ps_ser),
-            number: String(legacy.ps_num).padStart(6, '0'),
-            issue_date: legacy.ps_date,
-            issuing_authority: legacy.ps_org,
-            issuing_authority_code: legacy.ps_pdrz,
-          },
-          user.id
-        );
-      }
-      if (legacy.bank_rs && legacy.bik_bank) {
-        const bank = await dadataService.findBankByBic(String(legacy.bik_bank));
-        const accData = {
-          number: String(legacy.bank_rs),
-          bic: String(legacy.bik_bank).padStart(9, '0'),
-          bank_name: bank?.value,
-          correspondent_account: bank?.data.correspondent_account,
-          swift: bank?.data.swift,
-          inn: bank?.data.inn,
-          kpp: bank?.data.kpp,
-          address: bank?.data.address?.unrestricted_value,
-        };
-        await bankAccountService.createForUser(user.id, accData, user.id);
-      }
-    } catch {
-      // ignore import errors
-    }
+
 
     const system = await ExternalSystem.findOne({
       where: { alias: 'HOCKEYMOS' },

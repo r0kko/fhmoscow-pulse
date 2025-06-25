@@ -8,4 +8,12 @@ export async function findByEmail(email) {
   return rows[0] || null;
 }
 
-export default { findByEmail };
+export async function findById(id) {
+  const [rows] = await legacyDb.query(
+    'SELECT * FROM a_player WHERE id = ? LIMIT 1',
+    [id]
+  );
+  return rows[0] || null;
+}
+
+export default { findByEmail, findById };
