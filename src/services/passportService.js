@@ -1,5 +1,12 @@
-import { Passport, DocumentType, Country, User } from '../models/index.js';
+import {
+  Passport,
+  DocumentType,
+  Country,
+  User,
+  UserExternalId,
+} from '../models/index.js';
 import { calculateValidUntil } from '../utils/passportUtils.js';
+import legacyUserService from './legacyUserService.js';
 
 async function getByUser(userId) {
   return Passport.findOne({
@@ -51,4 +58,28 @@ async function removeByUser(userId) {
   return true;
 }
 
-export default { getByUser, createForUser, removeByUser };
+async function importFromLegacy(userId) {
+  const existing = await Passport.findOne({ where: { user_id: userId } });
+  if (existing) return existing;
+
+  const ext = await UserExternalId.findOne({ where: { user_id: userId } });
+  if (!ext) return null;
+  const legacy = await legacyUserService.findById(ext.external_id);
+  if (!legacy?.ps_ser || !legacy?.ps_num) return null;
+
+  try {
+    return await createForUser(userId, {
+      document_type: 'CIVIL',
+      country: 'RU',
+      series: String(legacy.ps_ser),
+      number: String(legacy.ps_num).padStart(6, '0'),
+      issue_date: legacy.ps_date,
+      issuing_authority: legacy.ps_org,
+      issuing_authority_code: legacy.ps_pdrz,
+    }, userId);
+  } catch (err) {
+    return null;
+  }
+}
+
+export default { getByUser, createForUser, removeByUser, importFromLegacy };

@@ -6,6 +6,8 @@ const destroyMock = jest.fn();
 const findByPkMock = jest.fn();
 const findTypeMock = jest.fn();
 const findCountryMock = jest.fn();
+const findExtMock = jest.fn();
+const legacyFindMock = jest.fn();
 
 const passportInstance = { destroy: destroyMock };
 
@@ -18,6 +20,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   DocumentType: { findOne: findTypeMock },
   Country: { findOne: findCountryMock },
   User: { findByPk: findByPkMock },
+  UserExternalId: { findOne: findExtMock },
+}));
+
+jest.unstable_mockModule('../src/services/legacyUserService.js', () => ({
+  __esModule: true,
+  default: { findById: legacyFindMock },
 }));
 
 const { default: service } = await import('../src/services/passportService.js');
@@ -68,4 +76,33 @@ test('removeByUser destroys passport', async () => {
   findOneMock.mockResolvedValue(passportInstance);
   await service.removeByUser('u1');
   expect(destroyMock).toHaveBeenCalled();
+});
+
+test('importFromLegacy returns existing passport', async () => {
+  findOneMock.mockResolvedValue(passportInstance);
+  const res = await service.importFromLegacy('u1');
+  expect(res).toBe(passportInstance);
+  expect(findExtMock).not.toHaveBeenCalled();
+});
+
+test('importFromLegacy creates passport from legacy data', async () => {
+  findOneMock.mockResolvedValueOnce(null); // initial check
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    ps_ser: '11',
+    ps_num: '22',
+    ps_date: '2000-01-01',
+    ps_org: 'OVD',
+    ps_pdrz: '770-000',
+  });
+  findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '1990-01-01' });
+  findOneMock.mockResolvedValueOnce(null); // createForUser existing check
+  findTypeMock.mockResolvedValue({ id: 't1' });
+  findCountryMock.mockResolvedValue({ id: 'c1' });
+  createMock.mockResolvedValue(passportInstance);
+  findOneMock.mockResolvedValueOnce(passportInstance); // getByUser after create
+
+  const res = await service.importFromLegacy('u1');
+  expect(createMock).toHaveBeenCalled();
+  expect(res).toBe(passportInstance);
 });
