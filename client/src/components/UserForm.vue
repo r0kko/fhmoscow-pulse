@@ -46,6 +46,7 @@ watch(form, (val) => {
 
 
 function updateSuggestions(field, part) {
+  if (!editing.value) return
   clearTimeout(timeouts[field])
   const value = form[field]
   if (!value || value.length < 2) {
@@ -132,7 +133,7 @@ const editing = ref(!props.locked)
 watch(editing, (val) => emit('editing-changed', val))
 
 function unlock() {
-  editing.value = true
+  if (!props.locked) editing.value = true
 }
 
 function lock() {
@@ -149,7 +150,7 @@ defineExpose({ validate, unlock, lock, editing })
         <div class="d-flex justify-content-between mb-3">
           <h5 class="card-title mb-0">Основные данные и контакты</h5>
           <button
-            v-if="!editing"
+            v-if="!editing && !props.locked"
             type="button"
             class="btn btn-link p-0"
             @click="unlock"

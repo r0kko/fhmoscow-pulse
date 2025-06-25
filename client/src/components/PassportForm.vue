@@ -3,7 +3,8 @@ import { reactive, watch, ref } from 'vue'
 import { suggestFmsUnit, cleanPassport } from '../dadata.js'
 
 const props = defineProps({
-  modelValue: Object
+  modelValue: Object,
+  locked: Boolean
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -36,6 +37,7 @@ watch(form, (val) => {
 })
 
 function updateSuggestions() {
+  if (props.locked) return
   clearTimeout(timeout.value)
   const q = form.issuing_authority_code || form.issuing_authority
   if (!q || q.length < 3) {
@@ -53,6 +55,7 @@ watch(
 )
 
 async function onPassportBlur() {
+  if (props.locked) return
   const query = `${form.series} ${form.number}`.trim()
   if (!query) return
   const cleaned = await cleanPassport(query)
@@ -88,6 +91,7 @@ defineExpose({ validate })
   <div class="card">
     <div class="card-body">
       <h5 class="card-title mb-3">Паспорт</h5>
+      <fieldset :disabled="props.locked">
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
         <div class="col">
           <label class="form-label">Тип документа</label>
@@ -158,6 +162,7 @@ defineExpose({ validate })
           <input v-model="form.place_of_birth" class="form-control" />
         </div>
       </div>
+      </fieldset>
     </div>
   </div>
 </template>

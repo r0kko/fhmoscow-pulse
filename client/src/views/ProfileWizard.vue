@@ -5,6 +5,7 @@ import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
 import UserForm from '../components/UserForm.vue'
 import PassportForm from '../components/PassportForm.vue'
+import { cleanPassport } from '../dadata.js'
 import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js'
 import { isValidAccountNumber } from '../utils/bank.js'
 
@@ -16,6 +17,7 @@ const inn = ref('')
 const snilsDigits = ref('')
 const snilsInput = ref('')
 const passport = ref({})
+const passportLocked = ref(false)
 const bank = ref({ number: '', bic: '' })
 const error = ref('')
 const loading = ref(false)
@@ -29,16 +31,20 @@ onMounted(async () => {
   } catch (_) {}
   try {
     const data = await apiFetch('/inns/me')
-    inn.value = data.inn.number
+    inn.value = data.inn.number.replace(/\D/g, '')
   } catch (_) {}
   try {
     const data = await apiFetch('/snils/me')
-    snilsInput.value = data.snils.number
+    snilsInput.value = formatSnils(data.snils.number.replace(/\D/g, ''))
     snilsDigits.value = data.snils.number.replace(/\D/g, '')
   } catch (_) {}
   try {
     const data = await apiFetch('/passports/me')
     passport.value = data.passport
+    if (passport.value.series && passport.value.number) {
+      const cleaned = await cleanPassport(`${passport.value.series} ${passport.value.number}`)
+      passportLocked.value = cleaned && cleaned.qc === 0
+    }
   } catch (_) {}
   try {
     const data = await apiFetch('/bank-accounts/me')
@@ -109,16 +115,28 @@ async function saveStep() {
       return
     }
     if (step.value === 3) {
+      if (passportLocked.value) {
+        step.value = 4
+        loading.value = false
+        return
+      }
       if (passportRef.value && !passportRef.value.validate()) {
         loading.value = false
         return
       }
-      if (!passport.value.id) {
-        await apiFetch('/passports', {
-          method: 'POST',
-          body: JSON.stringify(passport.value)
-        })
+      const cleaned = await cleanPassport(`${passport.value.series} ${passport.value.number}`)
+      if (!cleaned || cleaned.qc !== 0) {
+        error.value = 'Паспорт недействителен'
+        return
       }
+      if (passport.value.id) {
+        await apiFetch('/passports', { method: 'DELETE' })
+      }
+      await apiFetch('/passports', {
+        method: 'POST',
+        body: JSON.stringify(passport.value)
+      })
+      passportLocked.value = true
       step.value = 4
       loading.value = false
       return
@@ -153,7 +171,7 @@ async function saveStep() {
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <form @submit.prevent="saveStep">
       <div v-if="step === 1" class="mb-4">
-        <UserForm ref="formRef" v-model="user" />
+        <UserForm ref="formRef" v-model="user" :locked="true" />
       </div>
       <div v-else-if="step === 2" class="mb-4">
         <div class="form-floating mb-3">
@@ -178,7 +196,7 @@ async function saveStep() {
         </div>
       </div>
       <div v-else-if="step === 3" class="mb-4">
-        <PassportForm ref="passportRef" v-model="passport" />
+        <PassportForm ref="passportRef" v-model="passport" :locked="passportLocked" />
       </div>
       <div v-else-if="step === 4" class="mb-4">
         <div class="form-floating mb-3">
