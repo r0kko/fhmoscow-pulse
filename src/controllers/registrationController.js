@@ -83,7 +83,7 @@ export default {
         };
         await bankAccountService.createForUser(user.id, accData, user.id);
       }
-    } catch (err) {
+    } catch {
       // ignore import errors
     }
 

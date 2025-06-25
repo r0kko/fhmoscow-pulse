@@ -5,86 +5,21 @@ import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
 import UserForm from '../components/UserForm.vue'
 import PassportForm from '../components/PassportForm.vue'
+import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js'
 import { isValidAccountNumber } from '../utils/bank.js'
+
+const router = useRouter()
 const step = ref(auth.user?.status === 'REGISTRATION_STEP_2' ? 2 : 1)
 const total = 4
+const user = ref({})
+const inn = ref('')
+const snilsDigits = ref('')
+const snilsInput = ref('')
 const passport = ref({})
 const bank = ref({ number: '', bic: '' })
-const passportRef = ref(null)
-  try {
-    const data = await apiFetch('/passports/me')
-    passport.value = data.passport
-  } catch (_) {}
-  try {
-    const data = await apiFetch('/bank-accounts/me')
-    bank.value.number = data.account.number
-    bank.value.bic = data.account.bic
-  } catch (_) {}
-    if (step.value === 2) {
-      if (!isValidSnils(snilsInput.value)) {
-        error.value = 'Неверный СНИЛС'
-        return
-      }
-      if (!isValidInn(inn.value)) {
-        error.value = 'Неверный ИНН'
-        return
-      }
-      await apiFetch('/snils', {
-        method: 'POST',
-        body: JSON.stringify({ number: snilsInput.value })
-      })
-      await apiFetch('/inns', {
-        method: 'POST',
-        body: JSON.stringify({ number: inn.value })
-      })
-      step.value = 3
-      loading.value = false
-    if (step.value === 3) {
-      if (passportRef.value && !passportRef.value.validate()) {
-        loading.value = false
-        return
-      }
-      if (!passport.value.id) {
-        await apiFetch('/passports', {
-          method: 'POST',
-          body: JSON.stringify(passport.value)
-        })
-      }
-      step.value = 4
-      loading.value = false
-    if (!isValidAccountNumber(bank.value.number, bank.value.bic)) {
-      error.value = 'Неверные банковские данные'
-      return
-    }
-    if (!bank.value.id) {
-      await apiFetch('/bank-accounts', {
-        method: 'POST',
-        body: JSON.stringify(bank.value)
-      })
-    }
-      <div v-else-if="step === 3" class="mb-4">
-        <PassportForm ref="passportRef" v-model="passport" />
-      </div>
-      <div v-else-if="step === 4" class="mb-4">
-        <div class="form-floating mb-3">
-          <input
-            id="accNum"
-            v-model="bank.number"
-            class="form-control"
-            placeholder="Счёт"
-          />
-          <label for="accNum">Расчётный счёт</label>
-        </div>
-        <div class="form-floating">
-          <input
-            id="bic"
-            v-model="bank.bic"
-            class="form-control"
-            placeholder="БИК"
-          />
-          <label for="bic">БИК</label>
-        </div>
-      </div>
+const error = ref('')
+const loading = ref(false)
+const formRef = ref(null)
 const passportRef = ref(null)
 
 onMounted(async () => {
