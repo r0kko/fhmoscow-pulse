@@ -53,9 +53,9 @@ onMounted(async () => {
       passportLocked.value = cleaned && cleaned.qc === 0 && !isExpired(passport.value)
       if (passportLocked.value) {
         passportLockFields.value = {
-          series: true,
-          number: true,
-          issue_date: true,
+          series: !!passport.value.series,
+          number: !!passport.value.number,
+          issue_date: !!passport.value.issue_date,
           issuing_authority_code: !!passport.value.issuing_authority_code,
         }
       }
@@ -177,9 +177,9 @@ async function saveStep() {
       passportLocked.value = !isExpired(passport.value)
       if (passportLocked.value) {
         passportLockFields.value = {
-          series: true,
-          number: true,
-          issue_date: true,
+          series: !!passport.value.series,
+          number: !!passport.value.number,
+          issue_date: !!passport.value.issue_date,
           issuing_authority_code: !!passport.value.issuing_authority_code,
         }
       }

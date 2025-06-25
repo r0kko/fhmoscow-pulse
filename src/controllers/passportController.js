@@ -2,6 +2,7 @@ import passportService from '../services/passportService.js';
 import passportMapper from '../mappers/passportMapper.js';
 import legacyService from '../services/legacyUserService.js';
 import { UserExternalId } from '../models/index.js';
+import { calculateValidUntil } from '../utils/passportUtils.js';
 
 export default {
   async me(req, res) {
@@ -9,6 +10,7 @@ export default {
     if (passport) {
       return res.json({ passport: passportMapper.toPublic(passport) });
     }
+          valid_until: calculateValidUntil(req.user.birth_date, legacy.ps_date),
     const ext = await UserExternalId.findOne({
       where: { user_id: req.user.id },
     });

@@ -85,7 +85,6 @@ function applySuggestion(s) {
 }
 
 function calcValid() {
-  if (isLocked('issue_date')) return
   if (form.country !== 'RU' || form.document_type !== 'CIVIL') return
   if (!props.birthDate || !form.issue_date) return
   const birth = new Date(props.birthDate)

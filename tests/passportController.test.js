@@ -38,7 +38,7 @@ test('me returns legacy passport when none stored', async () => {
   service.default.getByUser.mockResolvedValue(null);
   findOneExtMock.mockResolvedValue({ external_id: '5' });
   legacyFindMock.mockResolvedValue({ ps_ser: '11', ps_num: '22', ps_date: '2000-01-01', ps_org: 'OVD', ps_pdrz: '770-000' });
-  const req = { user: { id: 'u1' } };
+  const req = { user: { id: 'u1', birth_date: '1990-01-01' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.me(req, res);
   expect(res.json).toHaveBeenCalledWith({
@@ -46,6 +46,7 @@ test('me returns legacy passport when none stored', async () => {
       series: '11',
       number: '000022',
       issue_date: '2000-01-01',
+      valid_until: '2010-01-01',
       issuing_authority: 'OVD',
       issuing_authority_code: '770-000',
       document_type: 'CIVIL',
