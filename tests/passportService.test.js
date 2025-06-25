@@ -162,3 +162,18 @@ test('importFromLegacy creates passport from legacy data', async () => {
   expect(res).toBe(passportInstance);
 });
 
+test('createForUser ignores DaData failure', async () => {
+  findByPkMock.mockResolvedValue({ id: 'u2' });
+  findOneMock.mockResolvedValueOnce(null);
+  findTypeMock.mockResolvedValue({ id: 't1' });
+  findCountryMock.mockResolvedValue({ id: 'c1' });
+  cleanPassportMock.mockResolvedValue(null);
+  createMock.mockResolvedValue(passportInstance);
+  findOneMock.mockResolvedValueOnce(passportInstance);
+
+  const data = { document_type: 'CIVIL', country: 'RU', series: '45', number: '12' };
+  const res = await service.createForUser('u2', data, 'admin');
+  expect(cleanPassportMock).toHaveBeenCalled();
+  expect(res).toBe(passportInstance);
+});
+
