@@ -10,15 +10,15 @@ import snilsService from '../services/snilsService.js';
 import passportService from '../services/passportService.js';
 import bankAccountService from '../services/bankAccountService.js';
 import dadataService from '../services/dadataService.js';
-    try {
-      if (legacy.sv_ops) {
-        await snilsService.create(user.id, legacy.sv_ops, user.id);
-      }
-      if (legacy.sv_inn) {
-        await innService.create(user.id, legacy.sv_inn, user.id);
-      }
-      if (legacy.ps_ser && legacy.ps_num) {
-        await passportService.createForUser(
+      const data = {
+        email,
+        password,
+        last_name: legacy.last_name,
+        first_name: legacy.first_name,
+        patronymic: legacy.second_name,
+        birth_date: legacy.b_date,
+        phone: `7${legacy.phone_cod}${legacy.phone_number}`,
+      };
           user.id,
           {
             document_type: 'CIVIL',
