@@ -8,6 +8,7 @@ import {
 import { calculateValidUntil } from '../utils/passportUtils.js';
 
 import legacyUserService from './legacyUserService.js';
+import dadataService from './dadataService.js';
 
 async function getByUser(userId) {
   return Passport.findOne({
@@ -34,6 +35,14 @@ async function createForUser(userId, data, adminId) {
   let validUntil = data.valid_until;
   if (data.document_type === 'CIVIL' && data.country === 'RU') {
     validUntil = calculateValidUntil(user.birth_date, data.issue_date);
+    if (data.series && data.number) {
+      const cleaned = await dadataService.cleanPassport(
+        `${data.series} ${data.number}`
+      );
+      if (!cleaned || cleaned.qc !== 0) throw new Error('passport_invalid');
+      data.series = cleaned.series.replace(/\s+/g, '');
+      data.number = cleaned.number;
+    }
   }
 
   await Passport.create({

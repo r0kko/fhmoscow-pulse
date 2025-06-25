@@ -8,6 +8,7 @@ const findTypeMock = jest.fn();
 const findCountryMock = jest.fn();
 const findExtMock = jest.fn();
 const legacyFindMock = jest.fn();
+const cleanPassportMock = jest.fn();
 
 const passportInstance = { destroy: destroyMock };
 
@@ -26,6 +27,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 jest.unstable_mockModule('../src/services/legacyUserService.js', () => ({
   __esModule: true,
   default: { findById: legacyFindMock },
+}));
+
+jest.unstable_mockModule('../src/services/dadataService.js', () => ({
+  __esModule: true,
+  default: { cleanPassport: cleanPassportMock },
 }));
 
 const { default: service } = await import('../src/services/passportService.js');
@@ -49,8 +55,22 @@ test('createForUser validates and creates passport', async () => {
   createMock.mockResolvedValue(passportInstance);
   findOneMock.mockResolvedValueOnce(passportInstance); // for getByUser after create
 
-  const data = { document_type: 'CIVIL', country: 'RU', series: '45' };
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '45 12',
+    number: '123456',
+  });
+  const data = {
+    document_type: 'CIVIL',
+    country: 'RU',
+    series: '4512',
+    number: '123456',
+    issue_date: '2020-01-01',
+    issuing_authority: 'OVD',
+    issuing_authority_code: '770-000',
+  };
   const res = await service.createForUser('u1', data, 'admin');
+  expect(cleanPassportMock).toHaveBeenCalledWith('4512 123456');
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({ user_id: 'u1', document_type_id: 't1', country_id: 'c1' })
   );
@@ -64,9 +84,23 @@ test('createForUser calculates valid_until for RU CIVIL passport', async () => {
   findCountryMock.mockResolvedValue({ id: 'c1' });
   createMock.mockResolvedValue(passportInstance);
   findOneMock.mockResolvedValueOnce(passportInstance);
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '4512',
+    number: '123456',
+  });
 
-  const data = { document_type: 'CIVIL', country: 'RU', issue_date: '2010-02-03' };
+  const data = {
+    document_type: 'CIVIL',
+    country: 'RU',
+    series: '4512',
+    number: '123456',
+    issue_date: '2010-02-03',
+    issuing_authority: 'OVD',
+    issuing_authority_code: '770-000',
+  };
   await service.createForUser('u1', data, 'admin');
+  expect(cleanPassportMock).toHaveBeenCalledWith('4512 123456');
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({ valid_until: '2035-01-01' })
   );
@@ -101,6 +135,11 @@ test('importFromLegacy creates passport from legacy data', async () => {
   findCountryMock.mockResolvedValue({ id: 'c1' });
   createMock.mockResolvedValue(passportInstance);
   findOneMock.mockResolvedValueOnce(passportInstance); // getByUser after create
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '11',
+    number: '000022',
+  });
 
   const res = await service.importFromLegacy('u1');
   expect(createMock).toHaveBeenCalled();
