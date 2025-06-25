@@ -10,55 +10,8 @@ import snilsService from '../services/snilsService.js';
 import passportService from '../services/passportService.js';
 import bankAccountService from '../services/bankAccountService.js';
 import dadataService from '../services/dadataService.js';
-      const data = {
-        email,
-        password,
-        last_name: legacy.last_name,
-        first_name: legacy.first_name,
-        patronymic: legacy.second_name,
-        birth_date: legacy.b_date,
-        phone: `7${legacy.phone_cod}${legacy.phone_number}`,
-      };
-          user.id,
-          {
-            document_type: 'CIVIL',
-            country: 'RU',
-            series: String(legacy.ps_ser),
-            number: String(legacy.ps_num).padStart(6, '0'),
-            issue_date: legacy.ps_date,
-            issuing_authority: legacy.ps_org,
-            issuing_authority_code: legacy.ps_pdrz,
-          },
-          user.id
-        );
-      }
-      if (legacy.bank_rs && legacy.bik_bank) {
-        const bank = await dadataService.findBankByBic(
-          String(legacy.bik_bank)
-        );
-        const accData = {
-          number: String(legacy.bank_rs),
-          bic: String(legacy.bik_bank).padStart(9, '0'),
-          bank_name: bank?.value,
-          correspondent_account: bank?.data.correspondent_account,
-          swift: bank?.data.swift,
-          inn: bank?.data.inn,
-          kpp: bank?.data.kpp,
-          address: bank?.data.address?.unrestricted_value,
-        };
-        await bankAccountService.createForUser(user.id, accData, user.id);
-      }
-    } catch (err) {
-      // ignore import errors
-    }
-
-import innService from '../services/innService.js';
-import snilsService from '../services/snilsService.js';
-import passportService from '../services/passportService.js';
-import bankAccountService from '../services/bankAccountService.js';
-import dadataService from '../services/dadataService.js';
 import authService from '../services/authService.js';
-    } catch {
+import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie } from '../utils/cookie.js';
 
@@ -79,7 +32,7 @@ export default {
     const data = {
       email,
       password,
-      last_name: legacy.last_name || legacy.last_name,
+      last_name: legacy.last_name,
       first_name: legacy.first_name,
       patronymic: legacy.second_name,
       birth_date: legacy.b_date,

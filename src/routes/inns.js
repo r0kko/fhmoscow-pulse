@@ -2,6 +2,7 @@ import express from 'express';
 
 import innController from '../controllers/innController.js';
 import { innRules } from '../validators/personalValidators.js';
+import auth from '../middlewares/auth.js';
 
 const router = express.Router();
 
