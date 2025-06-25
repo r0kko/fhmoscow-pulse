@@ -68,9 +68,7 @@ export default {
         );
       }
       if (legacy.bank_rs && legacy.bik_bank) {
-        const bank = await dadataService.findBankByBic(
-          String(legacy.bik_bank)
-        );
+        const bank = await dadataService.findBankByBic(String(legacy.bik_bank));
         const accData = {
           number: String(legacy.bank_rs),
           bic: String(legacy.bik_bank).padStart(9, '0'),

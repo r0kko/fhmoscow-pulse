@@ -1,6 +1,5 @@
 import { validationResult } from 'express-validator';
 
-
 import bankAccountService from '../services/bankAccountService.js';
 import dadataService from '../services/dadataService.js';
 import bankAccountMapper from '../mappers/bankAccountMapper.js';
