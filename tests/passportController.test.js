@@ -34,11 +34,11 @@ test('me returns stored passport', async () => {
   expect(res.json).toHaveBeenCalled();
 });
 
-test('me returns legacy passport when prefill requested', async () => {
+test('me returns legacy passport when none stored', async () => {
   service.default.getByUser.mockResolvedValue(null);
   findOneExtMock.mockResolvedValue({ external_id: '5' });
   legacyFindMock.mockResolvedValue({ ps_ser: '11', ps_num: '22', ps_date: '2000-01-01', ps_org: 'OVD', ps_pdrz: '770-000' });
-  const req = { user: { id: 'u1' }, query: { prefill: '1' } };
+  const req = { user: { id: 'u1' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.me(req, res);
   expect(res.json).toHaveBeenCalledWith({

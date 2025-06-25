@@ -9,9 +9,6 @@ export default {
     if (passport) {
       return res.json({ passport: passportMapper.toPublic(passport) });
     }
-    if (req.query.prefill !== '1') {
-      return res.status(404).json({ error: 'passport_not_found' });
-    }
     const ext = await UserExternalId.findOne({
       where: { user_id: req.user.id },
     });

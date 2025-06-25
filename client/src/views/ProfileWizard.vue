@@ -37,16 +37,16 @@ onMounted(async () => {
     user.value = data.user
   } catch (_) {}
   try {
-    const data = await apiFetch('/inns/me?prefill=1')
+    const data = await apiFetch('/inns/me')
     inn.value = data.inn.number.replace(/\D/g, '')
   } catch (_) {}
   try {
-    const data = await apiFetch('/snils/me?prefill=1')
+    const data = await apiFetch('/snils/me')
     snilsInput.value = formatSnils(data.snils.number.replace(/\D/g, ''))
     snilsDigits.value = data.snils.number.replace(/\D/g, '')
   } catch (_) {}
   try {
-    const data = await apiFetch('/passports/me?prefill=1')
+    const data = await apiFetch('/passports/me')
     passport.value = data.passport
     if (passport.value.series && passport.value.number) {
       const cleaned = await cleanPassport(`${passport.value.series} ${passport.value.number}`)
@@ -62,7 +62,7 @@ onMounted(async () => {
     }
   } catch (_) {}
   try {
-    const data = await apiFetch('/bank-accounts/me?prefill=1')
+    const data = await apiFetch('/bank-accounts/me')
     bank.value.number = data.account.number
     bank.value.bic = data.account.bic
     const info = await findBankByBic(bank.value.bic)

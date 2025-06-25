@@ -7,9 +7,6 @@ import { UserExternalId } from '../models/index.js';
 
 export default {
   async me(req, res) {
-    if (req.query.prefill !== '1') {
-      return res.status(404).json({ error: 'snils_not_found' });
-    }
     const snils = await snilsService.getByUser(req.user.id);
     if (snils) {
       return res.json({ snils: snilsMapper.toPublic(snils) });

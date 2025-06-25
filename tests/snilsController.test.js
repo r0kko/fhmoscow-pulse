@@ -58,8 +58,8 @@ test('create stores new snils', async () => {
   expect(res.json).toHaveBeenCalledWith({ snils: { id: 's1' } });
 });
 
-test('me returns legacy snils when prefill requested', async () => {
-  const req = { user: { id: 'u1' }, query: { prefill: '1' } };
+test('me returns legacy snils when none stored', async () => {
+  const req = { user: { id: 'u1' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const service = await import('../src/services/snilsService.js');
   service.default.getByUser.mockResolvedValue(null);
