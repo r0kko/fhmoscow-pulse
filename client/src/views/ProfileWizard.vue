@@ -319,7 +319,7 @@ async function saveStep() {
         </button>
         <div v-if="bankCheckStatus === 'pending'" class="mt-2">Проверка...</div>
         <div v-if="bankCheckStatus === 'not_found'" class="text-danger mt-2">Банк не найден</div>
-        <div v-if="bankLocked && bankInfo" class="alert alert-success mt-3">Банк найден</div>
+        <div v-if="bankLocked && bankInfo" class="alert alert-success mt-3">Данные импортированы корректно</div>
         <div v-else-if="bankCheckStatus === 'found' && bankInfo" class="mt-3">
           <div class="form-floating mb-2">
             <input class="form-control" :value="bankInfo.bank_name" readonly placeholder="Банк" />
