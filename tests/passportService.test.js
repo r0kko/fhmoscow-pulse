@@ -71,6 +71,7 @@ test('createForUser validates and creates passport', async () => {
     issue_date: '2020-01-01',
     issuing_authority: 'OVD',
     issuing_authority_code: '770-000',
+    place_of_birth: 'Москва',
   };
   const res = await service.createForUser('u1', data, 'admin');
   expect(cleanPassportMock).toHaveBeenCalledWith('4512 123456');
@@ -82,6 +83,7 @@ test('createForUser validates and creates passport', async () => {
       issue_date: '2020-01-01',
       issuing_authority: 'OVD',
       issuing_authority_code: '770-000',
+      place_of_birth: 'Москва',
     })
   );
   expect(res).toBe(passportInstance);

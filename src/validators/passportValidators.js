@@ -39,5 +39,11 @@ export const createPassportRules = [
     )
     .notEmpty()
     .isString(),
-  body('place_of_birth').optional().isString(),
+  body('place_of_birth')
+    .if(
+      (value, { req }) =>
+        req.body.document_type === 'CIVIL' && req.body.country === 'RU'
+    )
+    .notEmpty()
+    .isString(),
 ];

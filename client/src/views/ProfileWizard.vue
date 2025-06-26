@@ -57,6 +57,7 @@ onMounted(async () => {
           series: !!passport.value.series,
           number: !!passport.value.number,
           issue_date: !!passport.value.issue_date,
+          issuing_authority: !!passport.value.issuing_authority,
           issuing_authority_code: !!passport.value.issuing_authority_code,
           place_of_birth: !!passport.value.place_of_birth,
         }
@@ -208,6 +209,7 @@ async function saveStep() {
           series: !!passport.value.series,
           number: !!passport.value.number,
           issue_date: !!passport.value.issue_date,
+          issuing_authority: !!passport.value.issuing_authority,
           issuing_authority_code: !!passport.value.issuing_authority_code,
           place_of_birth: !!passport.value.place_of_birth,
         }
