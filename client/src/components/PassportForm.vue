@@ -25,6 +25,9 @@ const form = reactive({
 const errors = reactive({
   series: '',
   number: '',
+  issue_date: '',
+  issuing_authority: '',
+  issuing_authority_code: '',
   place_of_birth: '',
 })
 const suggestions = ref([])
@@ -115,6 +118,13 @@ watch(
 function validate() {
   errors.series = form.series ? '' : 'Введите серию'
   errors.number = form.number ? '' : 'Введите номер'
+  errors.issue_date = form.issue_date ? '' : 'Введите дату'
+  errors.issuing_authority_code = form.issuing_authority_code
+    ? ''
+    : 'Укажите код'
+  errors.issuing_authority = form.issuing_authority
+    ? ''
+    : 'Выберите подразделение'
   errors.place_of_birth = form.place_of_birth ? '' : 'Введите место рождения'
   return !Object.values(errors).some(Boolean)
 }
@@ -164,7 +174,14 @@ defineExpose({ validate })
         </div>
         <div class="col">
           <label class="form-label">Дата выдачи</label>
-          <input type="date" v-model="form.issue_date" class="form-control" :disabled="isLocked('issue_date')" />
+          <input
+            type="date"
+            v-model="form.issue_date"
+            class="form-control"
+            :class="{ 'is-invalid': errors.issue_date }"
+            :disabled="isLocked('issue_date')"
+          />
+          <div class="invalid-feedback">{{ errors.issue_date }}</div>
         </div>
         <div class="col">
           <label class="form-label">Действителен до</label>
@@ -172,11 +189,23 @@ defineExpose({ validate })
         </div>
         <div class="col position-relative">
           <label class="form-label">Кем выдан</label>
-          <input v-model="form.issuing_authority" class="form-control" />
+          <input
+            v-model="form.issuing_authority"
+            class="form-control"
+            :class="{ 'is-invalid': errors.issuing_authority }"
+            :disabled="isLocked('issuing_authority')"
+          />
+          <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
         </div>
         <div class="col position-relative">
           <label class="form-label">Код подразделения</label>
-          <input v-model="form.issuing_authority_code" class="form-control" :disabled="isLocked('issuing_authority_code')" />
+          <input
+            v-model="form.issuing_authority_code"
+            class="form-control"
+            :class="{ 'is-invalid': errors.issuing_authority_code }"
+            :disabled="isLocked('issuing_authority_code')"
+          />
+          <div class="invalid-feedback">{{ errors.issuing_authority_code }}</div>
           <ul
             v-if="suggestions.length"
             class="list-group position-absolute w-100"
