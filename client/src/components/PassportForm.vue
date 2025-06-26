@@ -22,7 +22,11 @@ const form = reactive({
   place_of_birth: ''
 })
 
-const errors = reactive({})
+const errors = reactive({
+  series: '',
+  number: '',
+  place_of_birth: '',
+})
 const suggestions = ref([])
 const timeout = ref(null)
 
@@ -111,6 +115,7 @@ watch(
 function validate() {
   errors.series = form.series ? '' : 'Введите серию'
   errors.number = form.number ? '' : 'Введите номер'
+  errors.place_of_birth = form.place_of_birth ? '' : 'Введите место рождения'
   return !Object.values(errors).some(Boolean)
 }
 
@@ -189,7 +194,13 @@ defineExpose({ validate })
         </div>
         <div class="col">
           <label class="form-label">Место рождения</label>
-          <input v-model="form.place_of_birth" class="form-control" />
+          <input
+            v-model="form.place_of_birth"
+            class="form-control"
+            :class="{ 'is-invalid': errors.place_of_birth }"
+            :disabled="isLocked('place_of_birth')"
+          />
+          <div class="invalid-feedback">{{ errors.place_of_birth }}</div>
         </div>
       </div>
     </div>
