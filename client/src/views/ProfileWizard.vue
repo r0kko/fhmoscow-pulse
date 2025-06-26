@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
@@ -26,6 +26,7 @@ function isExpired(p) {
 const bank = ref({ number: '', bic: '' })
 const bankInfo = ref(null)
 const bankCheckStatus = ref('')
+const bankLocked = ref(false)
 const error = ref('')
 const loading = ref(false)
 const formRef = ref(null)
@@ -72,6 +73,7 @@ onMounted(async () => {
         correspondent_account: info.data.correspondent_account,
       }
       bankCheckStatus.value = 'found'
+      bankLocked.value = true
     }
   } catch (_) {}
 })
@@ -86,6 +88,28 @@ function onSnilsInput(e) {
   snilsInput.value = formatSnils(digits)
 }
 
+watch(
+  () => bank.value.bic,
+  async (val) => {
+    if (bankLocked.value) return
+    if (val && val.length === 9) {
+      await checkBank()
+    } else {
+      bankCheckStatus.value = ''
+      bankInfo.value = null
+    }
+  }
+)
+
+watch(
+  () => bank.value.number,
+  (val) => {
+    if (!bankLocked.value && bankCheckStatus.value === 'found' && isValidAccountNumber(val, bank.value.bic)) {
+      bankLocked.value = true
+    }
+  }
+)
+
 async function checkBank() {
   bankCheckStatus.value = 'pending'
   bankInfo.value = null
@@ -96,6 +120,9 @@ async function checkBank() {
       correspondent_account: info.data.correspondent_account,
     }
     bankCheckStatus.value = 'found'
+    if (isValidAccountNumber(bank.value.number, bank.value.bic)) {
+      bankLocked.value = true
+    }
   } else {
     bankCheckStatus.value = 'not_found'
   }
@@ -264,6 +291,7 @@ async function saveStep() {
             v-model="bank.number"
             class="form-control"
             placeholder="Счёт"
+            :disabled="bankLocked"
           />
           <label for="accNum">Расчётный счёт</label>
         </div>
@@ -273,13 +301,22 @@ async function saveStep() {
             v-model="bank.bic"
             class="form-control"
             placeholder="БИК"
+            :disabled="bankLocked"
           />
           <label for="bic">БИК</label>
         </div>
-        <button type="button" class="btn btn-outline-secondary mt-3" @click="checkBank">Проверить</button>
+        <button
+          v-if="!bankLocked"
+          type="button"
+          class="btn btn-outline-secondary mt-3"
+          @click="checkBank"
+        >
+          Проверить
+        </button>
         <div v-if="bankCheckStatus === 'pending'" class="mt-2">Проверка...</div>
         <div v-if="bankCheckStatus === 'not_found'" class="text-danger mt-2">Банк не найден</div>
-        <div v-if="bankCheckStatus === 'found' && bankInfo" class="mt-3">
+        <div v-if="bankLocked && bankInfo" class="alert alert-success mt-3">Банк найден</div>
+        <div v-else-if="bankCheckStatus === 'found' && bankInfo" class="mt-3">
           <div class="form-floating mb-2">
             <input class="form-control" :value="bankInfo.bank_name" readonly placeholder="Банк" />
             <label>Банк</label>
