@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, watch, ref } from 'vue'
-import { suggestFmsUnit, cleanPassport } from '../dadata.js'
+import { suggestFmsUnit } from '../dadata.js'
 
 const props = defineProps({
   modelValue: Object,
@@ -67,22 +67,12 @@ watch(
   updateSuggestions
 )
 
-async function onPassportBlur() {
-  if (isLocked('series') && isLocked('number')) return
-  const query = `${form.series} ${form.number}`.trim()
-  if (!query) return
-  const cleaned = await cleanPassport(query)
-  if (cleaned) {
-    if (cleaned.qc === 0) {
-      form.series = cleaned.series.replace(/\s+/g, '')
-      form.number = cleaned.number
-      errors.number = ''
-    } else if (cleaned.qc === 10) {
-      errors.number = 'Паспорт недействителен'
-    } else if (cleaned.qc === 1) {
-      errors.number = 'Неверный формат'
-    }
-  }
+function onSeriesInput(e) {
+  form.series = e.target.value.replace(/\D/g, '').slice(0, 4)
+}
+
+function onNumberInput(e) {
+  form.number = e.target.value.replace(/\D/g, '').slice(0, 6)
 }
 
 function applySuggestion(s) {
@@ -154,7 +144,7 @@ defineExpose({ validate })
           <label class="form-label">Серия</label>
           <input
             v-model="form.series"
-            @blur="onPassportBlur"
+            @input="onSeriesInput"
             class="form-control"
             :class="{ 'is-invalid': errors.series }"
             :disabled="isLocked('series')"
@@ -165,7 +155,7 @@ defineExpose({ validate })
           <label class="form-label">Номер</label>
           <input
             v-model="form.number"
-            @blur="onPassportBlur"
+            @input="onNumberInput"
             class="form-control"
             :class="{ 'is-invalid': errors.number }"
             :disabled="isLocked('number')"
