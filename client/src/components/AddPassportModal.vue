@@ -104,6 +104,14 @@ function updateSuggestions() {
 
 watch(() => form.issuing_authority_code, updateSuggestions)
 
+function onIssuingCodeInput(e) {
+  let digits = e.target.value.replace(/\D/g, '').slice(0, 6)
+  if (digits.length > 3) {
+    digits = digits.slice(0, 3) + '-' + digits.slice(3)
+  }
+  form.issuing_authority_code = digits
+}
+
 function applySuggestion(s) {
   form.issuing_authority = s.data.name
   form.issuing_authority_code = s.data.code
@@ -209,6 +217,8 @@ async function save() {
               <label class="form-label">Код подразделения</label>
               <input
                 v-model="form.issuing_authority_code"
+                @input="onIssuingCodeInput"
+                maxlength="7"
                 class="form-control"
                 :class="{ 'is-invalid': errors.issuing_authority_code }"
               />

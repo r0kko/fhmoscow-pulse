@@ -108,6 +108,14 @@ function onNumberInput(e) {
   form.number = e.target.value.replace(/\D/g, '').slice(0, 6)
 }
 
+function onIssuingCodeInput(e) {
+  let digits = e.target.value.replace(/\D/g, '').slice(0, 6)
+  if (digits.length > 3) {
+    digits = digits.slice(0, 3) + '-' + digits.slice(3)
+  }
+  form.issuing_authority_code = digits
+}
+
 function applySuggestion(s) {
   form.issuing_authority = s.data.name
   form.issuing_authority_code = s.data.code
@@ -248,6 +256,8 @@ defineExpose({ validate })
             <input
               id="issuingCode"
               v-model="form.issuing_authority_code"
+              @input="onIssuingCodeInput"
+              maxlength="7"
               class="form-control"
               :class="{ 'is-invalid': errors.issuing_authority_code }"
               :disabled="isLocked('issuing_authority_code')"

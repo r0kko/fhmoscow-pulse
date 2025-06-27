@@ -82,7 +82,9 @@ onMounted(async () => {
           user.value.birth_date,
           passport.value.issue_date
         ) === passport.value.valid_until,
-      issuing_authority: !!passport.value.issuing_authority,
+      issuing_authority:
+        !!passport.value.issuing_authority &&
+        !!passport.value.issuing_authority_code,
       issuing_authority_code: !!passport.value.issuing_authority_code,
       place_of_birth: !!passport.value.place_of_birth,
     }
@@ -258,7 +260,9 @@ async function saveStep() {
             user.value.birth_date,
             passport.value.issue_date
           ) === passport.value.valid_until,
-        issuing_authority: !!passport.value.issuing_authority,
+        issuing_authority:
+          !!passport.value.issuing_authority &&
+          !!passport.value.issuing_authority_code,
         issuing_authority_code: !!passport.value.issuing_authority_code,
         place_of_birth: !!passport.value.place_of_birth,
       }
