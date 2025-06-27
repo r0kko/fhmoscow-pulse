@@ -1,67 +1,66 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { apiFetch } from '../api.js'
-import UserForm from '../components/UserForm.vue'
-import AddPassportModal from '../components/AddPassportModal.vue'
-import InnSnilsForm from '../components/InnSnilsForm.vue'
-import BankAccountForm from '../components/BankAccountForm.vue'
-import TaxationInfo from '../components/TaxationInfo.vue'
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
+import { apiFetch } from '../api.js';
+import UserForm from '../components/UserForm.vue';
+import AddPassportModal from '../components/AddPassportModal.vue';
+import InnSnilsForm from '../components/InnSnilsForm.vue';
+import BankAccountForm from '../components/BankAccountForm.vue';
+import TaxationInfo from '../components/TaxationInfo.vue';
+import UserAddressForm from '../components/UserAddressForm.vue';
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
-const user = ref(null)
-const isLoading = ref(false)
-const error = ref('')
-const formRef = ref(null)
-const passportModalRef = ref(null)
-const passport = ref(null)
-const passportError = ref('')
-const placeholderSections = [
-  'Выданный инвентарь'
-]
+const user = ref(null);
+const isLoading = ref(false);
+const error = ref('');
+const formRef = ref(null);
+const passportModalRef = ref(null);
+const passport = ref(null);
+const passportError = ref('');
+const placeholderSections = ['Выданный инвентарь'];
 
-const editing = ref(false)
-let originalUser = null
+const editing = ref(false);
+let originalUser = null;
 
 function formatDate(str) {
-  if (!str) return ''
-  const [y, m, d] = str.split('-')
-  return `${d}.${m}.${y}`
+  if (!str) return '';
+  const [y, m, d] = str.split('-');
+  return `${d}.${m}.${y}`;
 }
 
 async function loadUser() {
-  isLoading.value = true
-  error.value = ''
+  isLoading.value = true;
+  error.value = '';
   try {
-    const data = await apiFetch(`/users/${route.params.id}`)
-    user.value = data.user
+    const data = await apiFetch(`/users/${route.params.id}`);
+    user.value = data.user;
   } catch (e) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
-onMounted(loadUser)
+onMounted(loadUser);
 
 async function loadPassport() {
   try {
-    const data = await apiFetch(`/users/${route.params.id}/passport`)
-    passport.value = data.passport
-    passportError.value = ''
+    const data = await apiFetch(`/users/${route.params.id}/passport`);
+    passport.value = data.passport;
+    passportError.value = '';
   } catch (e) {
     if (e.message === 'passport_not_found') {
-      passport.value = null
-      passportError.value = ''
+      passport.value = null;
+      passportError.value = '';
     } else {
-      passportError.value = e.message
+      passportError.value = e.message;
     }
   }
 }
 
-onMounted(loadPassport)
+onMounted(loadPassport);
 
 async function savePassport(data) {
   try {
@@ -69,55 +68,55 @@ async function savePassport(data) {
       `/users/${route.params.id}/passport`,
       {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       }
-    )
-    passport.value = saved
-    passportError.value = ''
+    );
+    passport.value = saved;
+    passportError.value = '';
   } catch (e) {
-    passportError.value = e.message
+    passportError.value = e.message;
   }
 }
 
 async function deletePassport() {
-  if (!confirm('Удалить паспортные данные?')) return
+  if (!confirm('Удалить паспортные данные?')) return;
   try {
-    await apiFetch(`/users/${route.params.id}/passport`, { method: 'DELETE' })
-    passport.value = null
-    passportError.value = ''
+    await apiFetch(`/users/${route.params.id}/passport`, { method: 'DELETE' });
+    passport.value = null;
+    passportError.value = '';
   } catch (e) {
-    passportError.value = e.message
+    passportError.value = e.message;
   }
 }
 
 function openPassportModal() {
-  passportModalRef.value.open()
+  passportModalRef.value.open();
 }
 
 function onEditingChanged(val) {
-  editing.value = val
-  if (val) originalUser = { ...user.value }
+  editing.value = val;
+  if (val) originalUser = { ...user.value };
 }
 
 function cancelEdit() {
-  if (originalUser) user.value = { ...originalUser }
-  formRef.value.lock()
+  if (originalUser) user.value = { ...originalUser };
+  formRef.value.lock();
 }
 
 async function save() {
-  if (!formRef.value?.validate || !formRef.value.validate()) return
-  const payload = { ...user.value }
-  delete payload.roles
-  delete payload.status
+  if (!formRef.value?.validate || !formRef.value.validate()) return;
+  const payload = { ...user.value };
+  delete payload.roles;
+  delete payload.status;
   try {
     await apiFetch(`/users/${route.params.id}`, {
       method: 'PUT',
-      body: JSON.stringify(payload)
-    })
-    formRef.value.lock()
-    originalUser = { ...user.value }
+      body: JSON.stringify(payload),
+    });
+    formRef.value.lock();
+    originalUser = { ...user.value };
   } catch (e) {
-    error.value = e.message
+    error.value = e.message;
   }
 }
 </script>
@@ -126,9 +125,15 @@ async function save() {
   <div class="container mt-4">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><RouterLink to="/admin">Администрирование</RouterLink></li>
-        <li class="breadcrumb-item"><RouterLink to="/users">Пользователи</RouterLink></li>
-        <li class="breadcrumb-item active" aria-current="page">Редактирование</li>
+        <li class="breadcrumb-item">
+          <RouterLink to="/admin">Администрирование</RouterLink>
+        </li>
+        <li class="breadcrumb-item">
+          <RouterLink to="/users">Пользователи</RouterLink>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+          Редактирование
+        </li>
       </ol>
     </nav>
     <h1 class="mb-4">Редактирование пользователя</h1>
@@ -154,61 +159,128 @@ async function save() {
         <div class="card-body position-relative">
           <div class="d-flex justify-content-between mb-3">
             <h5 class="card-title mb-0">Документ, удостоверяющий личность</h5>
-            <button type="button" class="btn btn-link text-danger p-0" @click="deletePassport">
+            <button
+              type="button"
+              class="btn btn-link text-danger p-0"
+              @click="deletePassport"
+            >
               <i class="bi bi-trash"></i>
             </button>
           </div>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-card-text"></i
+                ></span>
                 <div class="form-floating flex-grow-1">
-                  <input id="admDocType" type="text" class="form-control" :value="passport.document_type_name" readonly placeholder="Тип документа" />
+                  <input
+                    id="admDocType"
+                    type="text"
+                    class="form-control"
+                    :value="passport.document_type_name"
+                    readonly
+                    placeholder="Тип документа"
+                  />
                   <label for="admDocType">Тип документа</label>
                 </div>
               </div>
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-globe"></i
+                ></span>
                 <div class="form-floating flex-grow-1">
-                  <input id="admCountry" type="text" class="form-control" :value="passport.country_name" readonly placeholder="Страна" />
+                  <input
+                    id="admCountry"
+                    type="text"
+                    class="form-control"
+                    :value="passport.country_name"
+                    readonly
+                    placeholder="Страна"
+                  />
                   <label for="admCountry">Страна</label>
                 </div>
               </div>
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-file-earmark-text"></i
+                ></span>
                 <div class="form-floating flex-grow-1">
-                  <input id="admSeries" type="text" class="form-control" :value="passport.series + ' ' + passport.number" readonly placeholder="Серия и номер" />
+                  <input
+                    id="admSeries"
+                    type="text"
+                    class="form-control"
+                    :value="passport.series + ' ' + passport.number"
+                    readonly
+                    placeholder="Серия и номер"
+                  />
                   <label for="admSeries">Серия и номер</label>
                 </div>
               </div>
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-calendar"></i
+                ></span>
                 <div class="form-floating flex-grow-1">
-                  <input id="admValidity" type="text" class="form-control" :value="formatDate(passport.issue_date) + ' - ' + formatDate(passport.valid_until)" readonly placeholder="Срок действия" />
+                  <input
+                    id="admValidity"
+                    type="text"
+                    class="form-control"
+                    :value="
+                      formatDate(passport.issue_date) +
+                      ' - ' +
+                      formatDate(passport.valid_until)
+                    "
+                    readonly
+                    placeholder="Срок действия"
+                  />
                   <label for="admValidity">Срок действия</label>
                 </div>
               </div>
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-building"></i
+                ></span>
                 <div class="form-floating flex-grow-1">
-                  <input id="admAuthority" type="text" class="form-control" :value="passport.issuing_authority + ' (' + passport.issuing_authority_code + ')'" readonly placeholder="Кем выдан" />
+                  <input
+                    id="admAuthority"
+                    type="text"
+                    class="form-control"
+                    :value="
+                      passport.issuing_authority +
+                      ' (' +
+                      passport.issuing_authority_code +
+                      ')'
+                    "
+                    readonly
+                    placeholder="Кем выдан"
+                  />
                   <label for="admAuthority">Кем выдан</label>
                 </div>
               </div>
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-geo-alt"></i
+                ></span>
                 <div class="form-floating flex-grow-1">
-                  <input id="admBirthplace" type="text" class="form-control" :value="passport.place_of_birth" readonly placeholder="Место рождения" />
+                  <input
+                    id="admBirthplace"
+                    type="text"
+                    class="form-control"
+                    :value="passport.place_of_birth"
+                    readonly
+                    placeholder="Место рождения"
+                  />
                   <label for="admBirthplace">Место рождения</label>
                 </div>
               </div>
@@ -217,19 +289,35 @@ async function save() {
         </div>
       </div>
       <div v-else class="mt-3">
-        <button class="btn btn-primary" @click="openPassportModal">Добавить паспорт</button>
+        <button class="btn btn-primary" @click="openPassportModal">
+          Добавить паспорт
+        </button>
       </div>
-      <AddPassportModal ref="passportModalRef" :user="user" @saved="savePassport" />
-      <div v-if="passportError" class="text-danger mt-2">{{ passportError }}</div>
+      <AddPassportModal
+        ref="passportModalRef"
+        :user="user"
+        @saved="savePassport"
+      />
+      <div v-if="passportError" class="text-danger mt-2">
+        {{ passportError }}
+      </div>
     </div>
 
     <InnSnilsForm v-if="user" :userId="route.params.id" />
     <BankAccountForm v-if="user" :userId="route.params.id" />
+    <UserAddressForm v-if="user" :userId="route.params.id" />
     <TaxationInfo v-if="user" :userId="route.params.id" />
 
-    <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
+    <div
+      v-if="user"
+      class="mt-4"
+      v-for="section in placeholderSections"
+      :key="section"
+    >
       <div class="card placeholder-card text-center">
-        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <div
+          class="card-body d-flex flex-column align-items-center justify-content-center"
+        >
           <i class="bi bi-clock mb-2 fs-2"></i>
           <h5 class="card-title mb-1">{{ section }}</h5>
           <p class="mb-0">Информация будет доступна позже</p>
