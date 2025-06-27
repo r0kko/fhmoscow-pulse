@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
+import crypto from 'crypto';
 
 import { EmailCode, UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
@@ -8,7 +9,7 @@ import emailService from './emailService.js';
 import * as attempts from './emailCodeAttempts.js';
 
 function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 1000000));
 }
 
 export async function sendCode(user) {
