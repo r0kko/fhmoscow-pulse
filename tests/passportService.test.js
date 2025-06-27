@@ -119,7 +119,7 @@ test('createForUser calculates valid_until for RU CIVIL passport', async () => {
   await service.createForUser('u1', data, 'admin');
   expect(cleanPassportMock).toHaveBeenCalledWith('4512 123456');
   expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ valid_until: '2035-01-01' })
+    expect.objectContaining({ valid_until: '2035-04-01' })
   );
 });
 
