@@ -1,3 +1,4 @@
+import { translateError } from './errors.js';
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 export async function apiFetch(path, options = {}) {
@@ -11,10 +12,17 @@ export async function apiFetch(path, options = {}) {
     opts.headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, opts);
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, opts);
+  } catch (_err) {
+    throw new Error('Сетевая ошибка');
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `Ошибка запроса, код ${res.status}`);
+    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    throw new Error(message);
   }
   return data;
 }
