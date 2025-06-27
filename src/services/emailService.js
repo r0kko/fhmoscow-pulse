@@ -8,9 +8,7 @@ import {
   SMTP_PASS,
   EMAIL_FROM,
 } from '../config/email.js';
-import {
-  renderVerificationEmail,
-} from '../templates/verificationEmail.js';
+import { renderVerificationEmail } from '../templates/verificationEmail.js';
 import { renderPasswordResetEmail } from '../templates/passwordResetEmail.js';
 
 const transporter = nodemailer.createTransport({
