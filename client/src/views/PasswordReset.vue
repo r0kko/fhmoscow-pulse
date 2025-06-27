@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue'
 
 const router = useRouter()
 const step = ref(1)
@@ -113,6 +114,7 @@ async function finish() {
           />
           <label for="password">Новый пароль</label>
         </div>
+        <PasswordStrengthMeter class="mb-3" :password="password" />
         <div class="form-floating mb-3">
           <input
             id="confirm"
