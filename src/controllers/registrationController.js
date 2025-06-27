@@ -7,6 +7,7 @@ import legacyService from '../services/legacyUserService.js';
 import userService from '../services/userService.js';
 import authService from '../services/authService.js';
 import passportService from '../services/passportService.js';
+import bankAccountService from '../services/bankAccountService.js';
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie } from '../utils/cookie.js';
@@ -74,6 +75,8 @@ export default {
         'REGISTRATION_STEP_1'
       );
       await userService.resetPassword(user.id, password);
+      const account = await bankAccountService.importFromLegacy(user.id);
+      if (!account) throw new Error('bank_account_invalid');
       await passportService.importFromLegacy(user.id);
       const updated = await user.reload();
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
