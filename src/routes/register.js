@@ -30,10 +30,10 @@ const router = express.Router();
  *         description: Verification code sent
  */
 router.post(
-    '/start',
-    registrationRateLimiter,
-    startRegistrationRules,
-    controller.start
+  '/start',
+  registrationRateLimiter,
+  startRegistrationRules,
+  controller.start
 );
 
 /**
