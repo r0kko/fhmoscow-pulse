@@ -5,7 +5,9 @@ import NavBar from './components/NavBar.vue'
 import FooterBar from './components/FooterBar.vue'
 
 const route = useRoute()
-const showLayout = computed(() => !['/login', '/register'].includes(route.path))
+const showLayout = computed(() =>
+  !['/login', '/register', '/password-reset'].includes(route.path)
+)
 const mainClass = computed(() =>
   showLayout.value ? 'flex-grow-1 container py-3' : 'flex-grow-1'
 )
