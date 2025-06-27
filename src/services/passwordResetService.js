@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 
 import { EmailCode } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+
 import emailService from './emailService.js';
 import * as attempts from './emailCodeAttempts.js';
 

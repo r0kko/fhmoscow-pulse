@@ -29,7 +29,12 @@ const router = express.Router();
  *       200:
  *         description: Code sent
  */
-router.post('/start', passwordResetRateLimiter, passwordResetStartRules, controller.start);
+router.post(
+  '/start',
+  passwordResetRateLimiter,
+  passwordResetStartRules,
+  controller.start
+);
 
 /**
  * @swagger
@@ -57,6 +62,11 @@ router.post('/start', passwordResetRateLimiter, passwordResetStartRules, control
  *       200:
  *         description: Password updated
  */
-router.post('/finish', passwordResetRateLimiter, passwordResetFinishRules, controller.finish);
+router.post(
+  '/finish',
+  passwordResetRateLimiter,
+  passwordResetFinishRules,
+  controller.finish
+);
 
 export default router;
