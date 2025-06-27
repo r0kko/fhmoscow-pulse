@@ -32,31 +32,18 @@ jest.unstable_mockModule('../src/services/userService.js', () => ({
   default: { createUser: createUserMock, resetPassword: resetPasswordMock },
 }));
 
-const importPassportMock = jest.fn();
+const fetchPassportMock = jest.fn();
 
-const importBankMock = jest.fn();
-
-const importInnMock = jest.fn();
-const importSnilsMock = jest.fn();
+const fetchBankMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/passportService.js', () => ({
   __esModule: true,
-  default: { importFromLegacy: importPassportMock },
+  default: { fetchFromLegacy: fetchPassportMock },
 }));
 
 jest.unstable_mockModule('../src/services/bankAccountService.js', () => ({
   __esModule: true,
-  default: { importFromLegacy: importBankMock },
-}));
-
-jest.unstable_mockModule('../src/services/innService.js', () => ({
-  __esModule: true,
-  default: { importFromLegacy: importInnMock },
-}));
-
-jest.unstable_mockModule('../src/services/snilsService.js', () => ({
-  __esModule: true,
-  default: { importFromLegacy: importSnilsMock },
+  default: { fetchFromLegacy: fetchBankMock },
 }));
 
 
@@ -144,8 +131,8 @@ test('finish issues tokens after valid code', async () => {
   user.reload.mockResolvedValue(updated);
   findUserMock.mockResolvedValueOnce(user);
   verifyCodeMock.mockResolvedValueOnce();
-  importPassportMock.mockResolvedValueOnce({});
-  importBankMock.mockResolvedValueOnce({});
+  fetchPassportMock.mockResolvedValueOnce({});
+  fetchBankMock.mockResolvedValueOnce({});
   const req = {
     body: { email: 't@example.com', code: '123', password: 'Passw0rd' },
   };
@@ -157,10 +144,8 @@ test('finish issues tokens after valid code', async () => {
     'REGISTRATION_STEP_1'
   );
   expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd');
-  expect(importBankMock).toHaveBeenCalledWith('u1');
-  expect(importPassportMock).toHaveBeenCalledWith('u1');
-  expect(importInnMock).toHaveBeenCalledWith('u1');
-  expect(importSnilsMock).toHaveBeenCalledWith('u1');
+  expect(fetchBankMock).toHaveBeenCalledWith('u1');
+  expect(fetchPassportMock).toHaveBeenCalledWith('u1');
   expect(issueTokensMock).toHaveBeenCalledWith(updated);
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'r');
   expect(res.json).toHaveBeenCalledWith({

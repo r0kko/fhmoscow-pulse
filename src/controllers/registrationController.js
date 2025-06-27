@@ -8,8 +8,7 @@ import userService from '../services/userService.js';
 import authService from '../services/authService.js';
 import passportService from '../services/passportService.js';
 import bankAccountService from '../services/bankAccountService.js';
-import innService from '../services/innService.js';
-import snilsService from '../services/snilsService.js';
+// legacy data is fetched but not stored automatically
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie } from '../utils/cookie.js';
@@ -77,10 +76,8 @@ export default {
         'REGISTRATION_STEP_1'
       );
       await userService.resetPassword(user.id, password);
-      await bankAccountService.importFromLegacy(user.id);
-      await passportService.importFromLegacy(user.id);
-      await innService.importFromLegacy(user.id);
-      await snilsService.importFromLegacy(user.id);
+      await bankAccountService.fetchFromLegacy(user.id);
+      await passportService.fetchFromLegacy(user.id);
       const updated = await user.reload();
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias
