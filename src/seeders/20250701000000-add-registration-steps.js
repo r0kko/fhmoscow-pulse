@@ -4,11 +4,6 @@ const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   async up(queryInterface) {
-    const [existing] = await queryInterface.sequelize.query(
-      // eslint-disable-next-line
-      "SELECT COUNT(*) AS cnt FROM user_statuses WHERE alias IN ('REGISTRATION_STEP_1','REGISTRATION_STEP_2');"
-    );
-    if (Number(existing[0].cnt) > 0) return;
     const now = new Date();
     await queryInterface.bulkInsert(
       'user_statuses',
@@ -27,6 +22,13 @@ module.exports = {
           created_at: now,
           updated_at: now,
         },
+        {
+          id: uuidv4(),
+          name: 'Registration step 3',
+          alias: 'REGISTRATION_STEP_3',
+          created_at: now,
+          updated_at: now,
+        },
       ],
       { ignoreDuplicates: true }
     );
@@ -34,7 +36,7 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.bulkDelete('user_statuses', {
-      alias: ['REGISTRATION_STEP_1', 'REGISTRATION_STEP_2'],
+      alias: ['REGISTRATION_STEP_1', 'REGISTRATION_STEP_2', 'REGISTRATION_STEP_3'],
     });
   },
 };
