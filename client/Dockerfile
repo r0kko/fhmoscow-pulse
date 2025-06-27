@@ -1,13 +1,11 @@
 ############################
 # 1️⃣ Build stage          #
 ############################
-FROM node:latest AS build
+FROM node:20-alpine AS build
 WORKDIR /usr/src/app
 
 # Install build deps for optional native addons (rollup, esbuild, etc.)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 make g++ && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache python3 make g++
 
 # Install dependencies
 COPY package*.json ./
@@ -20,7 +18,7 @@ RUN npm run build
 ############################
 # 2️⃣ Production stage     #
 ############################
-FROM node:latest AS prod
+FROM node:20-alpine AS prod
 WORKDIR /usr/src/app
 
 # Copy only runtime files
