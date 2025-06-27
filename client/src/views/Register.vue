@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
-import { auth } from '../auth.js'
+import { auth, setAuthToken } from '../auth.js'
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue'
 
 const router = useRouter()
@@ -55,8 +55,7 @@ async function finish() {
         password: password.value
       })
     })
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('roles', JSON.stringify(data.roles || []))
+    setAuthToken(data.access_token)
     auth.user = data.user
     auth.roles = data.roles || []
     router.push('/complete-profile')

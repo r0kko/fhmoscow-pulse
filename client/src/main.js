@@ -4,5 +4,8 @@ import router from './router'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap'
 import './brand.css'
+import { refreshFromCookie } from './auth.js'
 
-createApp(App).use(router).mount('#app')
+refreshFromCookie().finally(() => {
+  createApp(App).use(router).mount('#app')
+})

@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import CookieNotice from '../components/CookieNotice.vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
-import { auth } from '../auth.js'
+import { auth, setAuthToken } from '../auth.js'
 import logo from '../assets/fhm-logo.svg'
 
 const router = useRouter()
@@ -59,8 +59,7 @@ async function login() {
       method: 'POST',
       body: JSON.stringify({ phone: phone.value, password: password.value })
     })
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('roles', JSON.stringify(data.roles || []))
+    setAuthToken(data.access_token)
     auth.user = data.user
     auth.roles = data.roles || []
     if (data.awaiting_confirmation || auth.user.status === 'AWAITING_CONFIRMATION') {
