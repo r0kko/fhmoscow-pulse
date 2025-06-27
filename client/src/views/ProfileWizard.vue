@@ -30,7 +30,11 @@ function calculateValidUntil(birthDate, issueDate) {
 }
 
 const router = useRouter()
-const step = ref(auth.user?.status === 'REGISTRATION_STEP_2' ? 2 : 1)
+const step = ref(
+  auth.user?.status?.startsWith('REGISTRATION_STEP_')
+    ? parseInt(auth.user.status.split('_').pop()) || 1
+    : 1
+)
 const total = 4
 const user = ref({})
 const inn = ref('')
@@ -219,6 +223,11 @@ async function saveStep() {
         method: 'POST',
         body: JSON.stringify({ number: inn.value })
       })
+      await apiFetch('/profile/progress', {
+        method: 'POST',
+        body: JSON.stringify({ status: 'REGISTRATION_STEP_3' })
+      })
+      auth.user.status = 'REGISTRATION_STEP_3'
       snilsLocked.value = true
       innLocked.value = true
       step.value = 3

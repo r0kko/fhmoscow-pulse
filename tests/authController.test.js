@@ -124,7 +124,7 @@ test('login returns next_step when registration not complete', async () => {
     reload: jest.fn().mockResolvedValue({
       id: '1',
       getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
-      UserStatus: { alias: 'REGISTRATION_STEP_2' },
+      UserStatus: { alias: 'REGISTRATION_STEP_3' },
     }),
   };
   verifyCredentialsMock.mockResolvedValue(user);
@@ -136,9 +136,9 @@ test('login returns next_step when registration not complete', async () => {
 
   expect(res.json).toHaveBeenCalledWith({
     access_token: 'access',
-    user: { id: '1', status: 'REGISTRATION_STEP_2' },
+    user: { id: '1', status: 'REGISTRATION_STEP_3' },
     roles: ['USER'],
-    next_step: 2,
+    next_step: 3,
   });
 });
 
