@@ -105,6 +105,7 @@ router.put('/:id', auth, authorize('ADMIN'), updateUserRules, admin.update);
 
 router.post('/:id/block', auth, authorize('ADMIN'), admin.block);
 router.post('/:id/unblock', auth, authorize('ADMIN'), admin.unblock);
+router.post('/:id/approve', auth, authorize('ADMIN'), admin.approve);
 router.post(
   '/:id/reset-password',
   auth,

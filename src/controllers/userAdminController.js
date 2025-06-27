@@ -75,6 +75,15 @@ export default {
     }
   },
 
+  async approve(req, res) {
+    try {
+      const user = await userService.setStatus(req.params.id, 'ACTIVE');
+      return res.json({ user: userMapper.toPublic(user) });
+    } catch (err) {
+      return res.status(404).json({ error: err.message });
+    }
+  },
+
   async resetPassword(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

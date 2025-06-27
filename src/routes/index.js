@@ -1,6 +1,7 @@
 import express from 'express';
 
 import auth from '../middlewares/auth.js';
+import requireActive from '../middlewares/requireActive.js';
 
 import authRouter from './auth.js';
 import usersRouter from './users.js';
@@ -39,7 +40,7 @@ router.use('/profile', profileRouter);
  *       200:
  *         description: Returns authenticated user info
  */
-router.get('/', auth, (req, res) => {
+router.get('/', auth, requireActive, (req, res) => {
   const response = { user: req.user };
   res.locals.body = response;
   res.json(response);

@@ -4,6 +4,7 @@ import authService from '../services/authService.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 import { COOKIE_NAME } from '../config/auth.js';
+import { UserStatus } from '../models/index.js';
 
 /* ---------- controller ---------------------------------------------------- */
 export default {
@@ -16,20 +17,30 @@ export default {
 
     const { phone, password } = req.body;
 
-    try {
-      const user = await authService.verifyCredentials(phone, password);
-      const { accessToken, refreshToken } = authService.issueTokens(user);
-      const roles = (await user.getRoles({ attributes: ['alias'] })).map(
-        (r) => r.alias
-      );
+      try {
+        const user = await authService.verifyCredentials(phone, password);
+        const updated = await user.reload({ include: [UserStatus] });
+        const { accessToken, refreshToken } = authService.issueTokens(updated);
+        const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
+          (r) => r.alias
+        );
 
-      setRefreshCookie(res, refreshToken);
+        setRefreshCookie(res, refreshToken);
 
-      return res.json({
-        access_token: accessToken,
-        user: userMapper.toPublic(user),
-        roles,
-      });
+        const extra = {};
+        const alias = updated.UserStatus?.alias;
+        if (alias?.startsWith('REGISTRATION_STEP_')) {
+          extra.next_step = parseInt(alias.split('_').pop(), 10);
+        } else if (alias === 'AWAITING_CONFIRMATION') {
+          extra.awaiting_confirmation = true;
+        }
+
+        return res.json({
+          access_token: accessToken,
+          user: userMapper.toPublic(updated),
+          roles,
+          ...extra,
+        });
     } catch (_err) {
       if (_err.message === 'account_locked') {
         return res.status(401).json({
