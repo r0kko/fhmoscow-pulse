@@ -14,6 +14,7 @@ import bankAccountsRouter from './bankAccounts.js';
 import taxationsRouter from './taxations.js';
 import registerRouter from './register.js';
 import profileRouter from './profile.js';
+import passwordResetRouter from './passwordReset.js';
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.use('/bank-accounts', bankAccountsRouter);
 router.use('/taxations', taxationsRouter);
 router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
+router.use('/password-reset', passwordResetRouter);
 
 /**
  * @swagger

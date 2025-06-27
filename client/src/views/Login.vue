@@ -119,7 +119,8 @@ async function login() {
           Войти
         </button>
         <div class="text-center mt-3">
-          <RouterLink to="/register" class="link-secondary">Регистрация</RouterLink>
+          <RouterLink to="/register" class="link-secondary me-3">Регистрация</RouterLink>
+          <RouterLink to="/password-reset" class="link-secondary">Забыли пароль?</RouterLink>
         </div>
       </form>
     </div>

@@ -10,6 +10,7 @@ import AdminUsers from './views/AdminUsers.vue'
 import AdminHome from './views/AdminHome.vue'
 import AdminUserEdit from './views/AdminUserEdit.vue'
 import AdminUserCreate from './views/AdminUserCreate.vue'
+import PasswordReset from './views/PasswordReset.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -18,6 +19,7 @@ const routes = [
   { path: '/users', component: AdminUsers, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/new', component: AdminUserCreate, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/:id', component: AdminUserEdit, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/password-reset', component: PasswordReset },
   { path: '/login', component: Login, meta: { hideLayout: true } },
   { path: '/register', component: Register, meta: { hideLayout: true } },
   { path: '/complete-profile', component: ProfileWizard, meta: { requiresAuth: true } },
