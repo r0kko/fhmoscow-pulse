@@ -110,15 +110,6 @@ onMounted(async () => {
     }
   } catch (_) {}
   if (
-    step.value === 2 &&
-    snilsLocked.value &&
-    innLocked.value &&
-    passport.value.series &&
-    passport.value.number
-  ) {
-    step.value = 3
-  }
-  if (
     step.value === 3 &&
     passportLocked.value &&
     Object.values(passportLockFields.value).every(Boolean) &&
