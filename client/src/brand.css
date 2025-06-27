@@ -1,0 +1,20 @@
+:root {
+  --brand-color: #113867;
+}
+
+.btn-brand {
+  color: #fff;
+  background-color: var(--brand-color);
+  border-color: var(--brand-color);
+}
+.btn-brand:hover,
+.btn-brand:focus {
+  color: #fff;
+  background-color: #0d2747;
+  border-color: #0d2747;
+}
+
+.icon-brand {
+  color: var(--brand-color);
+}
+

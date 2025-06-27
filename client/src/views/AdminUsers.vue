@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { Toast } from 'bootstrap'
 
@@ -94,6 +94,19 @@ async function approveUser(id) {
   await loadUsers()
 }
 
+function statusClass(status) {
+  switch (status) {
+    case 'ACTIVE':
+      return 'bg-success'
+    case 'INACTIVE':
+      return 'bg-danger'
+    case 'AWAITING_CONFIRMATION':
+      return 'bg-warning text-dark'
+    default:
+      return 'bg-secondary'
+  }
+}
+
 function toggleSort(field) {
   if (sortField.value === field) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -135,6 +148,12 @@ function copy(text) {
 
 <template>
   <div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><RouterLink to="/admin">Администрирование</RouterLink></li>
+        <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
+      </ol>
+    </nav>
     <h1 class="mb-4">Пользователи</h1>
     <div class="row g-2 mb-3">
       <div class="col">
@@ -153,8 +172,10 @@ function copy(text) {
           <option value="AWAITING_CONFIRMATION">Требуют подтверждения</option>
         </select>
       </div>
-      <div class="col-auto">
-        <button class="btn btn-primary w-100" @click="openCreate">Добавить</button>
+      <div class="col-auto order-md-last">
+        <button class="btn btn-brand w-100" @click="openCreate">
+          <i class="bi bi-plus-lg me-1"></i>Добавить
+        </button>
       </div>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -162,14 +183,17 @@ function copy(text) {
       <div class="spinner-border" role="status"></div>
     </div>
     <div class="table-responsive" v-if="users.length">
-      <table class="table table-hover align-middle">
+      <table class="table table-hover table-striped align-middle">
         <thead>
           <tr>
             <th @click="toggleSort('last_name')" class="sortable">
               ФИО
               <i
                 v-if="sortField === 'last_name'"
-                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+                :class="[
+                  sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill',
+                  'icon-brand'
+                ]"
               ></i>
             </th>
             <th
@@ -179,7 +203,10 @@ function copy(text) {
               Телефон
               <i
                 v-if="sortField === 'phone'"
-                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+                :class="[
+                  sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill',
+                  'icon-brand'
+                ]"
               ></i>
             </th>
             <th
@@ -189,7 +216,10 @@ function copy(text) {
               Email
               <i
                 v-if="sortField === 'email'"
-                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+                :class="[
+                  sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill',
+                  'icon-brand'
+                ]"
               ></i>
             </th>
             <th
@@ -199,7 +229,10 @@ function copy(text) {
               Дата рождения
               <i
                 v-if="sortField === 'birth_date'"
-                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+                :class="[
+                  sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill',
+                  'icon-brand'
+                ]"
               ></i>
             </th>
             <th class="d-none d-lg-table-cell">Роли</th>
@@ -207,7 +240,10 @@ function copy(text) {
               Статус
               <i
                 v-if="sortField === 'status'"
-                :class="sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"
+                :class="[
+                  sortOrder === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill',
+                  'icon-brand'
+                ]"
               ></i>
             </th>
             <th></th>
@@ -231,7 +267,7 @@ function copy(text) {
                 >{{ name }}</span
               >
             </td>
-            <td><span class="badge bg-secondary">{{ u.status_name }}</span></td>
+            <td><span class="badge" :class="statusClass(u.status)">{{ u.status_name }}</span></td>
             <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(u)">
                 Редактировать
@@ -298,6 +334,9 @@ function copy(text) {
 <style scoped>
 .sortable {
   cursor: pointer;
+}
+.sortable:hover {
+  color: var(--brand-color);
 }
 .sortable i {
   margin-left: 4px;
