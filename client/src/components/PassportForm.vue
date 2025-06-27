@@ -33,6 +33,38 @@ const errors = reactive({
 const suggestions = ref([])
 const timeout = ref(null)
 
+function calculateValidUntil(birthDate, issueDate) {
+  if (!birthDate || !issueDate) return ''
+  const birth = new Date(birthDate)
+  const issue = new Date(issueDate)
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(issue.getTime())) return ''
+  const age = (issue - birth) / (365.25 * 24 * 3600 * 1000)
+  let until
+  if (age < 20) {
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 20)
+  } else if (age < 45) {
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 45)
+  } else {
+    return ''
+  }
+  return until.toISOString().slice(0, 10)
+}
+
+const autoValidUntil = computed(() =>
+  calculateValidUntil(props.birthDate, form.issue_date)
+)
+
+const validUntilLocked = computed(
+  () =>
+    isLocked('valid_until') ||
+    (form.country === 'RU' &&
+      form.document_type === 'CIVIL' &&
+      autoValidUntil.value &&
+      autoValidUntil.value === form.valid_until)
+)
+
 function isLocked(field) {
   return props.locked || (props.lockedFields && props.lockedFields[field])
 }
@@ -83,21 +115,7 @@ function applySuggestion(s) {
 
 function calcValid() {
   if (form.country !== 'RU' || form.document_type !== 'CIVIL') return
-  if (!props.birthDate || !form.issue_date) return
-  const birth = new Date(props.birthDate)
-  const issue = new Date(form.issue_date)
-  const age = (issue - birth) / (365.25 * 24 * 3600 * 1000)
-  let until
-  if (age < 20) {
-    until = new Date(birth)
-    until.setFullYear(until.getFullYear() + 20)
-  } else if (age < 45) {
-    until = new Date(birth)
-    until.setFullYear(until.getFullYear() + 45)
-  } else {
-    until = ''
-  }
-  form.valid_until = until ? until.toISOString().slice(0, 10) : ''
+  form.valid_until = calculateValidUntil(props.birthDate, form.issue_date)
 }
 
 watch(
@@ -204,6 +222,7 @@ defineExpose({ validate })
               type="date"
               v-model="form.valid_until"
               class="form-control"
+              :disabled="validUntilLocked"
               placeholder="Действителен до"
             />
             <label for="validUntil">Действителен до</label>

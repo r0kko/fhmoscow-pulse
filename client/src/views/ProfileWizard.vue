@@ -9,6 +9,25 @@ import { cleanPassport, findBankByBic } from '../dadata.js'
 import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js'
 import { isValidAccountNumber } from '../utils/bank.js'
 
+function calculateValidUntil(birthDate, issueDate) {
+  if (!birthDate || !issueDate) return ''
+  const birth = new Date(birthDate)
+  const issue = new Date(issueDate)
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(issue.getTime())) return ''
+  const age = (issue - birth) / (365.25 * 24 * 3600 * 1000)
+  let until
+  if (age < 20) {
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 20)
+  } else if (age < 45) {
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 45)
+  } else {
+    return ''
+  }
+  return until.toISOString().slice(0, 10)
+}
+
 const router = useRouter()
 const step = ref(auth.user?.status === 'REGISTRATION_STEP_2' ? 2 : 1)
 const total = 4
@@ -57,6 +76,11 @@ onMounted(async () => {
       series: !!passport.value.series,
       number: !!passport.value.number,
       issue_date: !!passport.value.issue_date,
+      valid_until:
+        calculateValidUntil(
+          user.value.birth_date,
+          passport.value.issue_date
+        ) === passport.value.valid_until,
       issuing_authority: !!passport.value.issuing_authority,
       issuing_authority_code: !!passport.value.issuing_authority_code,
       place_of_birth: !!passport.value.place_of_birth,
@@ -219,6 +243,11 @@ async function saveStep() {
         series: !!passport.value.series,
         number: !!passport.value.number,
         issue_date: !!passport.value.issue_date,
+        valid_until:
+          calculateValidUntil(
+            user.value.birth_date,
+            passport.value.issue_date
+          ) === passport.value.valid_until,
         issuing_authority: !!passport.value.issuing_authority,
         issuing_authority_code: !!passport.value.issuing_authority_code,
         place_of_birth: !!passport.value.place_of_birth,
