@@ -1,8 +1,9 @@
 import { Op } from 'sequelize';
 
 import { Snils, UserExternalId } from '../models/index.js';
-import legacyUserService from './legacyUserService.js';
 import { isValidSnils } from '../utils/personal.js';
+
+import legacyUserService from './legacyUserService.js';
 
 async function getByUser(userId) {
   return Snils.findOne({ where: { user_id: userId } });

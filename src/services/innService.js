@@ -1,10 +1,10 @@
 import { Op } from 'sequelize';
 
 import { Inn, UserExternalId } from '../models/index.js';
+import { isValidInn } from '../utils/personal.js';
 
 import taxationService from './taxationService.js';
 import legacyUserService from './legacyUserService.js';
-import { isValidInn } from '../utils/personal.js';
 
 async function getByUser(userId) {
   return Inn.findOne({ where: { user_id: userId } });
