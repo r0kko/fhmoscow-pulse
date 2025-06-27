@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
@@ -12,6 +12,33 @@ const password = ref('')
 const confirm = ref('')
 const error = ref('')
 const loading = ref(false)
+
+const strength = computed(() => {
+  const val = password.value
+  let score = 0
+  if (val.length >= 8) score++
+  if (/[A-Z]/.test(val)) score++
+  if (/[0-9]/.test(val)) score++
+  if (/[^A-Za-z0-9]/.test(val)) score++
+  if (val.length >= 12) score++
+  return score
+})
+
+const strengthPercent = computed(() => (strength.value / 5) * 100)
+
+const strengthLabel = computed(() => {
+  if (strength.value <= 1) return 'Слабый'
+  if (strength.value === 2) return 'Средний'
+  if (strength.value === 3) return 'Хороший'
+  return 'Сильный'
+})
+
+const strengthClass = computed(() => {
+  if (strength.value <= 1) return 'bg-danger'
+  if (strength.value === 2) return 'bg-warning'
+  if (strength.value === 3) return 'bg-info'
+  return 'bg-success'
+})
 
 watch(error, (val) => {
   if (val) {
@@ -119,6 +146,16 @@ async function finish() {
           />
           <label for="password">Пароль</label>
         </div>
+        <div class="mb-3">
+          <div class="progress" style="height: 6px;">
+            <div
+              class="progress-bar"
+              :class="strengthClass"
+              :style="{ width: strengthPercent + '%' }"
+            ></div>
+          </div>
+          <small class="text-muted password-strength-label">{{ strengthLabel }}</small>
+        </div>
         <div class="form-floating mb-3">
           <input
             id="confirm"
@@ -143,6 +180,10 @@ async function finish() {
 <style scoped>
 .login-card {
   animation: fade-in 0.4s ease-out;
+}
+
+.password-strength-label {
+  font-size: 0.875rem;
 }
 
 @keyframes fade-in {
