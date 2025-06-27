@@ -35,4 +35,9 @@ export async function sendVerificationEmail(user, code) {
   await sendMail(user.email, 'Email verification', text);
 }
 
-export default { sendMail, sendVerificationEmail };
+export async function sendPasswordResetEmail(user, code) {
+  const text = `Your password reset code: ${code}`;
+  await sendMail(user.email, 'Password reset', text);
+}
+
+export default { sendMail, sendVerificationEmail, sendPasswordResetEmail };
