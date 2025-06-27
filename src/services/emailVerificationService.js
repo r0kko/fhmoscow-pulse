@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 
 import { EmailCode, UserStatus } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
 import * as attempts from './emailCodeAttempts.js';
@@ -35,13 +36,13 @@ export async function verifyCode(user, code, statusAlias = 'ACTIVE') {
   if (!rec) {
     const count = attempts.markFailed(user.id);
     if (count >= 5) {
-      throw new Error('too_many_attempts');
+      throw new ServiceError('too_many_attempts');
     }
-    throw new Error('invalid_code');
+    throw new ServiceError('invalid_code');
   }
   attempts.clear(user.id);
   const status = await UserStatus.findOne({ where: { alias: statusAlias } });
-  if (!status) throw new Error('status_not_found');
+  if (!status) throw new ServiceError('status_not_found', 404);
   await Promise.all([
     user.update({ email_confirmed: true, status_id: status.id }),
     EmailCode.destroy({ where: { user_id: user.id } }),

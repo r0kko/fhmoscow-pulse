@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 
 import emailVerificationService from '../services/emailVerificationService.js';
 import userMapper from '../mappers/userMapper.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async send(req, res) {
@@ -23,12 +24,7 @@ export default {
       const user = await req.user.reload();
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      if (err.message === 'too_many_attempts') {
-        return res.status(400).json({
-          error: 'Слишком много неверных попыток подтверждения',
-        });
-      }
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

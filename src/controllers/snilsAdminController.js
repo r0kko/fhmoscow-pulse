@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 
 import snilsService from '../services/snilsService.js';
 import snilsMapper from '../mappers/snilsMapper.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async get(req, res) {
@@ -12,7 +13,7 @@ export default {
       }
       return res.json({ snils: snilsMapper.toPublic(snils) });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
   async create(req, res) {
@@ -28,7 +29,7 @@ export default {
       );
       return res.status(201).json({ snils: snilsMapper.toPublic(snils) });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 
@@ -45,7 +46,7 @@ export default {
       );
       return res.json({ snils: snilsMapper.toPublic(snils) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -54,7 +55,7 @@ export default {
       await snilsService.remove(req.params.id);
       return res.status(204).end();
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 };

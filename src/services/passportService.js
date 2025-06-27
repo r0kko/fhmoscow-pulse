@@ -12,6 +12,7 @@ import {
 
 import legacyUserService from './legacyUserService.js';
 import dadataService from './dadataService.js';
+import ServiceError from '../errors/ServiceError.js';
 
 async function getByUser(userId) {
   return Passport.findOne({
@@ -26,7 +27,7 @@ async function createForUser(userId, data, adminId) {
   if (data.issue_date) {
     const issue = new Date(data.issue_date);
     if (Number.isNaN(issue.getTime()) || issue < new Date('2000-01-01')) {
-      throw new Error('invalid_issue_date');
+      throw new ServiceError('invalid_issue_date');
     }
   }
 
@@ -34,15 +35,15 @@ async function createForUser(userId, data, adminId) {
     User.findByPk(userId),
     Passport.findOne({ where: { user_id: userId } }),
   ]);
-  if (!user) throw new Error('user_not_found');
-  if (existing) throw new Error('passport_exists');
+  if (!user) throw new ServiceError('user_not_found', 404);
+  if (existing) throw new ServiceError('passport_exists');
 
   const [type, country] = await Promise.all([
     DocumentType.findOne({ where: { alias: data.document_type } }),
     Country.findOne({ where: { alias: data.country } }),
   ]);
-  if (!type) throw new Error('document_type_not_found');
-  if (!country) throw new Error('country_not_found');
+  if (!type) throw new ServiceError('document_type_not_found', 404);
+  if (!country) throw new ServiceError('country_not_found', 404);
 
   let validUntil = data.valid_until;
   if (data.document_type === 'CIVIL' && data.country === 'RU') {
@@ -51,7 +52,7 @@ async function createForUser(userId, data, adminId) {
         `${data.series} ${data.number}`
       );
       if (!cleaned || cleaned.qc !== 0) {
-        throw new Error('invalid_passport');
+        throw new ServiceError('invalid_passport');
       }
       data.series = cleaned.series;
       data.number = cleaned.number;
@@ -82,7 +83,7 @@ async function createForUser(userId, data, adminId) {
 
 async function removeByUser(userId) {
   const passport = await Passport.findOne({ where: { user_id: userId } });
-  if (!passport) throw new Error('passport_not_found');
+  if (!passport) throw new ServiceError('passport_not_found', 404);
   await passport.destroy();
   return true;
 }

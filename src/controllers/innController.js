@@ -4,6 +4,7 @@ import innService from '../services/innService.js';
 import innMapper from '../mappers/innMapper.js';
 import legacyService from '../services/legacyUserService.js';
 import { UserExternalId } from '../models/index.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async me(req, res) {
@@ -37,7 +38,7 @@ export default {
       );
       return res.status(201).json({ inn: innMapper.toPublic(inn) });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

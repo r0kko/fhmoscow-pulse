@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 
 import { Inn } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
 
 import taxationService from './taxationService.js';
 
@@ -10,7 +11,7 @@ async function getByUser(userId) {
 
 async function create(userId, number, actorId) {
   const existing = await Inn.findOne({ where: { number } });
-  if (existing) throw new Error('inn_exists');
+  if (existing) throw new ServiceError('inn_exists');
   const inn = await Inn.create({
     user_id: userId,
     number,
@@ -27,15 +28,15 @@ async function update(userId, number, actorId) {
       where: { number, user_id: { [Op.ne]: userId } },
     }),
   ]);
-  if (!inn) throw new Error('inn_not_found');
-  if (duplicate) throw new Error('inn_exists');
+  if (!inn) throw new ServiceError('inn_not_found', 404);
+  if (duplicate) throw new ServiceError('inn_exists');
   await inn.update({ number, updated_by: actorId });
   return inn;
 }
 
 async function remove(userId) {
   const inn = await Inn.findOne({ where: { user_id: userId } });
-  if (!inn) throw new Error('inn_not_found');
+  if (!inn) throw new ServiceError('inn_not_found', 404);
   await inn.destroy();
   await taxationService.removeByUser(userId);
 }

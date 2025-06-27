@@ -1,5 +1,6 @@
 import { BankAccount, User, UserExternalId } from '../models/index.js';
 import { isValidAccountNumber } from '../utils/bank.js';
+import ServiceError from '../errors/ServiceError.js';
 
 import legacyUserService from './legacyUserService.js';
 import dadataService from './dadataService.js';
@@ -13,8 +14,8 @@ async function createForUser(userId, data, actorId) {
     User.findByPk(userId),
     BankAccount.findOne({ where: { user_id: userId } }),
   ]);
-  if (!user) throw new Error('user_not_found');
-  if (existing) throw new Error('bank_account_exists');
+  if (!user) throw new ServiceError('user_not_found', 404);
+  if (existing) throw new ServiceError('bank_account_exists');
   return BankAccount.create({
     user_id: userId,
     ...data,
@@ -25,12 +26,12 @@ async function createForUser(userId, data, actorId) {
 
 async function updateForUser(userId, data, actorId) {
   const acc = await BankAccount.findOne({ where: { user_id: userId } });
-  if (!acc) throw new Error('bank_account_not_found');
+  if (!acc) throw new ServiceError('bank_account_not_found', 404);
   if (
     (data.number && data.number !== acc.number) ||
     (data.bic && data.bic !== acc.bic)
   ) {
-    throw new Error('bank_account_locked');
+    throw new ServiceError('bank_account_locked');
   }
   await acc.update({ ...data, updated_by: actorId });
   return acc;
@@ -38,7 +39,7 @@ async function updateForUser(userId, data, actorId) {
 
 async function removeForUser(userId) {
   const acc = await BankAccount.findOne({ where: { user_id: userId } });
-  if (!acc) throw new Error('bank_account_not_found');
+  if (!acc) throw new ServiceError('bank_account_not_found', 404);
   await acc.destroy();
 }
 

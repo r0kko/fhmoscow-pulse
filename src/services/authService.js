@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 
 import User from '../models/user.js';
 import { UserStatus } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
 import {
   signAccessToken,
   signRefreshToken,
@@ -13,11 +14,11 @@ import * as attempts from './loginAttempts.js';
 /* ------------------- service implementation ------------------------------ */
 async function verifyCredentials(phone, password) {
   const user = await User.scope('withPassword').findOne({ where: { phone } });
-  if (!user) throw new Error('invalid_credentials');
+  if (!user) throw new ServiceError('invalid_credentials', 401);
 
   const inactive = await UserStatus.findOne({ where: { alias: 'INACTIVE' } });
   if (inactive && user.status_id === inactive.id) {
-    throw new Error('account_locked');
+    throw new ServiceError('account_locked', 401);
   }
 
   const ok = await bcrypt.compare(password, user.password);
@@ -26,9 +27,9 @@ async function verifyCredentials(phone, password) {
     if (count >= 5 && inactive) {
       await user.update({ status_id: inactive.id });
       attempts.clear(user.id);
-      throw new Error('account_locked');
+      throw new ServiceError('account_locked', 401);
     }
-    throw new Error('invalid_credentials');
+    throw new ServiceError('invalid_credentials', 401);
   }
 
   attempts.clear(user.id);
@@ -46,7 +47,7 @@ async function rotateTokens(refreshToken) {
   const payload = verifyRefreshToken(refreshToken);
 
   const user = await User.findByPk(payload.sub);
-  if (!user) throw new Error('user_not_found');
+  if (!user) throw new ServiceError('user_not_found', 401);
 
   const tokens = issueTokens(user);
   return { user, ...tokens };

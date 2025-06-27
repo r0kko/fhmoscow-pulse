@@ -1,4 +1,5 @@
 import { Taxation, TaxationType, Inn } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
 
 import dadataService from './dadataService.js';
 import fnsService from './fnsService.js';
@@ -88,13 +89,13 @@ async function removeByUser(userId) {
 
 async function previewForUser(userId, opts) {
   const inn = await Inn.findOne({ where: { user_id: userId } });
-  if (!inn) throw new Error('inn_not_found');
+  if (!inn) throw new ServiceError('inn_not_found', 404);
   return fetchByInn(inn.number, opts);
 }
 
 async function updateForUser(userId, actorId) {
   const inn = await Inn.findOne({ where: { user_id: userId } });
-  if (!inn) throw new Error('inn_not_found');
+  if (!inn) throw new ServiceError('inn_not_found', 404);
   return updateByInn(userId, inn.number, actorId);
 }
 
