@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from './views/Login.vue'
 import Register from './views/Register.vue'
 import ProfileWizard from './views/ProfileWizard.vue'
+import AwaitingConfirmation from './views/AwaitingConfirmation.vue'
 import { auth, fetchCurrentUser } from './auth.js'
 import Home from './views/Home.vue'
 import Profile from './views/Profile.vue'
@@ -19,7 +20,8 @@ const routes = [
   { path: '/users/:id', component: AdminUserEdit, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/complete-profile', component: ProfileWizard, meta: { requiresAuth: true } }
+  { path: '/complete-profile', component: ProfileWizard, meta: { requiresAuth: true } },
+  { path: '/awaiting-confirmation', component: AwaitingConfirmation, meta: { requiresAuth: true } }
 ]
 
 const router = createRouter({
@@ -49,6 +51,12 @@ router.beforeEach(async (to, _from, next) => {
     to.path !== '/complete-profile'
   ) {
     next('/complete-profile')
+  } else if (
+    isAuthenticated &&
+    auth.user?.status === 'AWAITING_CONFIRMATION' &&
+    to.path !== '/awaiting-confirmation'
+  ) {
+    next('/awaiting-confirmation')
   } else {
     next()
   }

@@ -47,6 +47,16 @@ test('listUsers calls model findAndCountAll', async () => {
   expect(findAndCountAllMock).toHaveBeenCalled();
 });
 
+test('listUsers applies status filter', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({ status: 'ACTIVE' });
+  expect(findAndCountAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({ '$UserStatus.alias$': 'ACTIVE' })
+    })
+  );
+});
+
 test('getUser throws on missing user', async () => {
   findByPkMock.mockResolvedValue(null);
   await expect(service.getUser('1')).rejects.toThrow('user_not_found');

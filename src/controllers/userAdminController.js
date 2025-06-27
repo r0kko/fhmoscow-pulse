@@ -13,6 +13,7 @@ export default {
       limit = '20',
       sort = 'last_name',
       order = 'asc',
+      status = '',
     } = req.query;
     const { rows, count } = await userService.listUsers({
       search,
@@ -20,6 +21,7 @@ export default {
       limit: parseInt(limit),
       sort,
       order,
+      status,
     });
     return res.json({
       users: userMapper.toPublicArray(rows),

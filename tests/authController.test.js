@@ -142,6 +142,31 @@ test('login returns next_step when registration not complete', async () => {
   });
 });
 
+test('login returns awaiting_confirmation flag', async () => {
+  const user = {
+    id: '2',
+    getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+    reload: jest.fn().mockResolvedValue({
+      id: '2',
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+      UserStatus: { alias: 'AWAITING_CONFIRMATION' },
+    }),
+  };
+  verifyCredentialsMock.mockResolvedValue(user);
+
+  const req = { body: { phone: '2', password: 'p' }, cookies: {} };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+  await authController.login(req, res);
+
+  expect(res.json).toHaveBeenCalledWith({
+    access_token: 'access',
+    user: { id: '2', status: 'AWAITING_CONFIRMATION' },
+    roles: ['USER'],
+    awaiting_confirmation: true,
+  });
+});
+
 test('logout clears refresh cookie', async () => {
   const req = {};
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };

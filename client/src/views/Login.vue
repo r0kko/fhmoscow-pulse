@@ -63,7 +63,9 @@ async function login() {
     localStorage.setItem('roles', JSON.stringify(data.roles || []))
     auth.user = data.user
     auth.roles = data.roles || []
-    if (auth.user.status && auth.user.status.startsWith('REGISTRATION_STEP')) {
+    if (data.awaiting_confirmation || auth.user.status === 'AWAITING_CONFIRMATION') {
+      router.push('/awaiting-confirmation')
+    } else if (auth.user.status && auth.user.status.startsWith('REGISTRATION_STEP')) {
       router.push('/complete-profile')
     } else {
       router.push('/')
