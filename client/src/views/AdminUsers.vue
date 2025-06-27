@@ -88,6 +88,12 @@ async function unblockUser(id) {
   await loadUsers()
 }
 
+async function approveUser(id) {
+  if (!confirm('Подтвердить пользователя?')) return
+  await apiFetch(`/users/${id}/approve`, { method: 'POST' })
+  await loadUsers()
+}
+
 function toggleSort(field) {
   if (sortField.value === field) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -144,6 +150,7 @@ function copy(text) {
           <option value="">Все статусы</option>
           <option value="ACTIVE">Активные</option>
           <option value="INACTIVE">Заблокированные</option>
+          <option value="AWAITING_CONFIRMATION">Требуют подтверждения</option>
         </select>
       </div>
       <div class="col-auto">
@@ -239,9 +246,16 @@ function copy(text) {
               <button
                 v-if="u.status === 'INACTIVE'"
                 @click="unblockUser(u.id)"
-                class="btn btn-sm btn-success"
+                class="btn btn-sm btn-success me-2"
               >
                 Разблокировать
+              </button>
+              <button
+                v-if="u.status === 'AWAITING_CONFIRMATION'"
+                @click="approveUser(u.id)"
+                class="btn btn-sm btn-success"
+              >
+                Подтвердить
               </button>
             </td>
           </tr>

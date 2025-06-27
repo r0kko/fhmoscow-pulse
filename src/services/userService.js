@@ -59,6 +59,9 @@ async function listUsers(options = {}) {
       { email: { [Op.iLike]: term } },
     ];
   }
+  if (options.status) {
+    where['$UserStatus.alias$'] = options.status;
+  }
 
   return User.findAndCountAll({
     include: [Role, UserStatus],
