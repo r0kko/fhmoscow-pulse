@@ -55,6 +55,8 @@ DADATA_SECRET=your_dadata_secret
 # JWT_ACCESS_TTL=15m
 # JWT_REFRESH_TTL=30d
 # JWT_ALG=HS256
+# PASSWORD_MIN_LENGTH=8
+# PASSWORD_PATTERN="(?=.*[A-Za-z])(?=.*\\d)"
 # SMTP_HOST=smtp.example.com
 # SMTP_PORT=587
 # SMTP_USER=user@example.com
@@ -63,6 +65,10 @@ DADATA_SECRET=your_dadata_secret
 # REGISTRATION_RATE_WINDOW_MS=3600000
 # REGISTRATION_RATE_MAX=5
 ```
+
+`PASSWORD_MIN_LENGTH` and `PASSWORD_PATTERN` allow customizing the
+password policy for user registration. By default passwords must be at
+least eight characters long and contain both letters and numbers.
 
 ## Running with Docker
 
