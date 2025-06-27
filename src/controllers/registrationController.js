@@ -11,6 +11,7 @@ import bankAccountService from '../services/bankAccountService.js';
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie } from '../utils/cookie.js';
+import sequelize from '../config/database.js';
 
 export default {
   async start(req, res) {
@@ -35,28 +36,35 @@ export default {
       birth_date: legacy.b_date,
       phone: `7${legacy.phone_cod}${legacy.phone_number}`,
     };
-    let user;
+
+    const t = await sequelize.transaction();
     try {
-      user = await userService.createUser(data);
+      const user = await userService.createUser(data, { transaction: t });
+
+      const system = await ExternalSystem.findOne({
+        where: { alias: 'HOCKEYMOS' },
+        transaction: t,
+      });
+      if (system) {
+        await UserExternalId.create(
+          {
+            id: uuidv4(),
+            user_id: user.id,
+            external_system_id: system.id,
+            external_id: String(legacy.id),
+          },
+          { transaction: t },
+        );
+      }
+
+      await emailVerificationService.sendCode(user, t);
+      await t.commit();
+
+      return res.json({ message: 'code_sent' });
     } catch (err) {
+      await t.rollback();
       return res.status(400).json({ error: err.message });
     }
-
-    const system = await ExternalSystem.findOne({
-      where: { alias: 'HOCKEYMOS' },
-    });
-    if (system) {
-      await UserExternalId.create({
-        id: uuidv4(),
-        user_id: user.id,
-        external_system_id: system.id,
-        external_id: String(legacy.id),
-      });
-    }
-
-    await emailVerificationService.sendCode(user);
-
-    return res.json({ message: 'code_sent' });
   },
 
   async finish(req, res) {

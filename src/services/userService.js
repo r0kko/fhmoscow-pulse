@@ -2,7 +2,7 @@ import { Op } from 'sequelize';
 
 import { User, Role, UserStatus } from '../models/index.js';
 
-async function createUser(data) {
+async function createUser(data, options = {}) {
   const [activeStatus, unconfirmedStatus] = await Promise.all([
     UserStatus.findOne({ where: { alias: 'ACTIVE' } }),
     UserStatus.findOne({ where: { alias: 'EMAIL_UNCONFIRMED' } }),
@@ -28,7 +28,10 @@ async function createUser(data) {
   if (personalExisting) throw new Error('user_exists');
 
   const status = unconfirmedStatus || activeStatus;
-  const user = await User.create({ ...data, status_id: status.id });
+  const createOpts = options.transaction ? { transaction: options.transaction } : null;
+  const args = [{ ...data, status_id: status.id }];
+  if (createOpts) args.push(createOpts);
+  const user = await User.create(...args);
   return user;
 }
 

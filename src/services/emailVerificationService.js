@@ -9,16 +9,19 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-export async function sendCode(user) {
+export async function sendCode(user, transaction) {
   const code = generateCode();
   const expires = new Date(Date.now() + 15 * 60 * 1000);
-  await EmailCode.destroy({ where: { user_id: user.id } });
-  await EmailCode.create({
-    id: uuidv4(),
-    user_id: user.id,
-    code,
-    expires_at: expires,
-  });
+  await EmailCode.destroy({ where: { user_id: user.id }, transaction });
+  await EmailCode.create(
+    {
+      id: uuidv4(),
+      user_id: user.id,
+      code,
+      expires_at: expires,
+    },
+    { transaction },
+  );
   await emailService.sendVerificationEmail(user, code);
 }
 
