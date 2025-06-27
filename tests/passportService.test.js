@@ -57,21 +57,21 @@ test('createForUser validates and creates passport', async () => {
 
   cleanPassportMock.mockResolvedValue({
     qc: 0,
-    series: '45 12',
-    number: '123456',
+    series: '45 12  ',
+    number: '123456 ' ,
     issue_date: '2020-01-01',
-    issue_org: 'OVD',
-    issue_code: '770-000',
+    issue_org: ' OVD ',
+    issue_code: ' 770-000 ',
   });
   const data = {
     document_type: 'CIVIL',
     country: 'RU',
-    series: '4512',
-    number: '123456',
+    series: ' 4512 ',
+    number: ' 123456 ',
     issue_date: '2020-01-01',
-    issuing_authority: 'OVD',
-    issuing_authority_code: '770-000',
-    place_of_birth: 'Москва',
+    issuing_authority: '  OVD  ',
+    issuing_authority_code: ' 770-000 ',
+    place_of_birth: ' Москва ',
   };
   const res = await service.createForUser('u1', data, 'admin');
   expect(cleanPassportMock).toHaveBeenCalledWith('4512 123456');
@@ -80,6 +80,8 @@ test('createForUser validates and creates passport', async () => {
   );
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({
+      series: '4512',
+      number: '123456',
       issue_date: '2020-01-01',
       issuing_authority: 'OVD',
       issuing_authority_code: '770-000',
@@ -138,11 +140,11 @@ test('importFromLegacy creates passport from legacy data', async () => {
   findOneMock.mockResolvedValueOnce(null); // initial check
   findExtMock.mockResolvedValue({ external_id: '5' });
   legacyFindMock.mockResolvedValue({
-    ps_ser: '11',
-    ps_num: '22',
+    ps_ser: '11 ',
+    ps_num: ' 22',
     ps_date: '2000-01-01',
-    ps_org: 'OVD',
-    ps_pdrz: '770-000',
+    ps_org: ' OVD ',
+    ps_pdrz: ' 770-000 ',
   });
   findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '1990-01-01' });
   findOneMock.mockResolvedValueOnce(null); // createForUser existing check
@@ -160,22 +162,25 @@ test('importFromLegacy creates passport from legacy data', async () => {
   });
 
   const res = await service.importFromLegacy('u1');
+  expect(createMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      series: '11',
+      number: '000022',
+      issuing_authority: 'OVD',
+      issuing_authority_code: '770-000',
+    })
+  );
   expect(createMock).toHaveBeenCalled();
   expect(res).toBe(passportInstance);
 });
 
-test('createForUser ignores DaData failure', async () => {
+test('createForUser throws error on DaData failure', async () => {
   findByPkMock.mockResolvedValue({ id: 'u2' });
   findOneMock.mockResolvedValueOnce(null);
   findTypeMock.mockResolvedValue({ id: 't1' });
   findCountryMock.mockResolvedValue({ id: 'c1' });
   cleanPassportMock.mockResolvedValue(null);
-  createMock.mockResolvedValue(passportInstance);
-  findOneMock.mockResolvedValueOnce(passportInstance);
-
   const data = { document_type: 'CIVIL', country: 'RU', series: '45', number: '12' };
-  const res = await service.createForUser('u2', data, 'admin');
-  expect(cleanPassportMock).toHaveBeenCalled();
-  expect(res).toBe(passportInstance);
+  await expect(service.createForUser('u2', data, 'admin')).rejects.toThrow('invalid_passport');
 });
 

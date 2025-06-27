@@ -9,14 +9,16 @@ export const createPassportRules = [
         req.body.document_type === 'CIVIL' && req.body.country === 'RU'
     )
     .notEmpty()
-    .isString(),
+    .matches(/^\d{4}$/)
+    .withMessage('invalid_format'),
   body('number')
     .if(
       (value, { req }) =>
         req.body.document_type === 'CIVIL' && req.body.country === 'RU'
     )
     .notEmpty()
-    .isString(),
+    .matches(/^\d{6}$/)
+    .withMessage('invalid_format'),
   body('issue_date')
     .if(
       (value, { req }) =>
@@ -38,7 +40,8 @@ export const createPassportRules = [
         req.body.document_type === 'CIVIL' && req.body.country === 'RU'
     )
     .notEmpty()
-    .isString(),
+    .matches(/^\d{3}-\d{3}$/)
+    .withMessage('invalid_format'),
   body('place_of_birth')
     .if(
       (value, { req }) =>

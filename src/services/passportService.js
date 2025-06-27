@@ -5,7 +5,7 @@ import {
   User,
   UserExternalId,
 } from '../models/index.js';
-import { calculateValidUntil } from '../utils/passportUtils.js';
+import { calculateValidUntil, sanitizePassportData } from '../utils/passportUtils.js';
 
 import legacyUserService from './legacyUserService.js';
 import dadataService from './dadataService.js';
@@ -18,6 +18,8 @@ async function getByUser(userId) {
 }
 
 async function createForUser(userId, data, adminId) {
+  data = sanitizePassportData(data);
+
   const [user, existing] = await Promise.all([
     User.findByPk(userId),
     Passport.findOne({ where: { user_id: userId } }),
@@ -38,14 +40,15 @@ async function createForUser(userId, data, adminId) {
       const cleaned = await dadataService.cleanPassport(
         `${data.series} ${data.number}`
       );
-      if (cleaned && cleaned.qc === 0) {
-        data.series = cleaned.series.replace(/\s+/g, '');
-        data.number = cleaned.number;
-        data.issue_date = cleaned.issue_date || data.issue_date;
-        data.issuing_authority = cleaned.issue_org || data.issuing_authority;
-        data.issuing_authority_code =
-          cleaned.issue_code || data.issuing_authority_code;
+      if (!cleaned || cleaned.qc !== 0) {
+        throw new Error('invalid_passport');
       }
+      data.series = cleaned.series;
+      data.number = cleaned.number;
+      data.issue_date = cleaned.issue_date || data.issue_date;
+      data.issuing_authority = cleaned.issue_org || data.issuing_authority;
+      data.issuing_authority_code = cleaned.issue_code || data.issuing_authority_code;
+      data = sanitizePassportData(data);
     }
     validUntil = calculateValidUntil(user.birth_date, data.issue_date);
   }
@@ -83,19 +86,16 @@ async function importFromLegacy(userId) {
   if (!legacy?.ps_ser || !legacy?.ps_num) return null;
 
   try {
-    return await createForUser(
-      userId,
-      {
-        document_type: 'CIVIL',
-        country: 'RU',
-        series: String(legacy.ps_ser),
-        number: String(legacy.ps_num).padStart(6, '0'),
-        issue_date: legacy.ps_date,
-        issuing_authority: legacy.ps_org,
-        issuing_authority_code: legacy.ps_pdrz,
-      },
-      userId
-    );
+    const data = sanitizePassportData({
+      document_type: 'CIVIL',
+      country: 'RU',
+      series: legacy.ps_ser,
+      number: String(legacy.ps_num).padStart(6, '0'),
+      issue_date: legacy.ps_date,
+      issuing_authority: legacy.ps_org,
+      issuing_authority_code: legacy.ps_pdrz,
+    });
+    return await createForUser(userId, data, userId);
     // eslint-disable-next-line no-unused-vars
   } catch (err) {
     return null;
