@@ -25,6 +25,7 @@ function calculateValidUntil(birthDate, issueDate) {
   } else {
     return ''
   }
+  until.setDate(until.getDate() + 90)
   return until.toISOString().slice(0, 10)
 }
 

@@ -126,7 +126,12 @@ function calcValid() {
   } else {
     until = ''
   }
-  form.valid_until = until ? until.toISOString().slice(0,10) : ''
+  if (until) {
+    until.setDate(until.getDate() + 90)
+    form.valid_until = until.toISOString().slice(0, 10)
+  } else {
+    form.valid_until = ''
+  }
 }
 
 watch(() => form.issue_date, calcValid)
