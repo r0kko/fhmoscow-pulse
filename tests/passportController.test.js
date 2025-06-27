@@ -50,7 +50,7 @@ test('me returns legacy passport when none stored', async () => {
       series: '11',
       number: '000022',
       issue_date: '2000-01-01',
-      valid_until: '2010-01-01',
+      valid_until: '2010-04-01',
       issuing_authority: 'OVD',
       issuing_authority_code: '770-000',
       document_type: 'CIVIL',
