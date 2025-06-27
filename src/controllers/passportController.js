@@ -4,7 +4,7 @@ import { calculateValidUntil } from '../utils/passportUtils.js';
 
 export default {
   async me(req, res) {
-    let passport = await passportService.getByUser(req.user.id);
+    const passport = await passportService.getByUser(req.user.id);
     if (passport) {
       return res.json({ passport: passportMapper.toPublic(passport) });
     }
