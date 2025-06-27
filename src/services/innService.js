@@ -1,10 +1,8 @@
 import { Op } from 'sequelize';
 
-import { Inn, UserExternalId } from '../models/index.js';
-import { isValidInn } from '../utils/personal.js';
+import { Inn } from '../models/index.js';
 
 import taxationService from './taxationService.js';
-import legacyUserService from './legacyUserService.js';
 
 async function getByUser(userId) {
   return Inn.findOne({ where: { user_id: userId } });
@@ -42,25 +40,4 @@ async function remove(userId) {
   await taxationService.removeByUser(userId);
 }
 
-async function importFromLegacy(userId) {
-  const existing = await Inn.findOne({ where: { user_id: userId } });
-  if (existing) return existing;
-
-  const ext = await UserExternalId.findOne({ where: { user_id: userId } });
-  if (!ext) return null;
-
-  const legacy = await legacyUserService.findById(ext.external_id);
-  if (!legacy?.sv_inn) return null;
-
-  const number = String(legacy.sv_inn).replace(/\D/g, '');
-  if (!isValidInn(number)) return null;
-
-  try {
-    return await create(userId, number, userId);
-    // eslint-disable-next-line no-unused-vars
-  } catch (err) {
-    return null;
-  }
-}
-
-export default { getByUser, create, update, remove, importFromLegacy };
+export default { getByUser, create, update, remove };

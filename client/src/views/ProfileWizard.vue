@@ -62,13 +62,13 @@ onMounted(async () => {
   try {
     const data = await apiFetch('/inns/me')
     inn.value = data.inn.number.replace(/\D/g, '')
-    innLocked.value = isValidInn(inn.value)
+    innLocked.value = Boolean(data.inn.id)
   } catch (_) {}
   try {
     const data = await apiFetch('/snils/me')
     snilsInput.value = formatSnils(data.snils.number.replace(/\D/g, ''))
     snilsDigits.value = data.snils.number.replace(/\D/g, '')
-    snilsLocked.value = isValidSnils(snilsInput.value)
+    snilsLocked.value = Boolean(data.snils.id)
   } catch (_) {}
   try {
     const data = await apiFetch('/passports/me')

@@ -4,9 +4,6 @@ const findOneMock = jest.fn();
 const createMock = jest.fn();
 const updateMock = jest.fn();
 
-const findExtMock = jest.fn();
-const legacyFindMock = jest.fn();
-
 const innInstance = { update: updateMock };
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -15,11 +12,6 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findOne: findOneMock,
     create: createMock,
   },
-  UserExternalId: { findOne: findExtMock },
-}));
-jest.unstable_mockModule('../src/services/legacyUserService.js', () => ({
-  __esModule: true,
-  default: { findById: legacyFindMock },
 }));
 jest.unstable_mockModule('../src/services/taxationService.js', () => ({
   __esModule: true,
@@ -80,38 +72,3 @@ test('remove throws when record not found', async () => {
   await expect(service.remove('u1')).rejects.toThrow('inn_not_found');
 });
 
-test('importFromLegacy returns existing record', async () => {
-  findOneMock.mockResolvedValue(innInstance);
-  const res = await service.importFromLegacy('u1');
-  expect(res).toBe(innInstance);
-  expect(findExtMock).not.toHaveBeenCalled();
-});
-
-test('importFromLegacy creates inn from legacy data', async () => {
-  findOneMock.mockReset();
-  createMock.mockClear();
-  findExtMock.mockClear();
-  legacyFindMock.mockClear();
-  findOneMock.mockResolvedValueOnce(null); // check existing
-  findExtMock.mockResolvedValue({ external_id: '5' });
-  legacyFindMock.mockResolvedValue({ sv_inn: '500100732259' });
-  const created = { id: 'n2' };
-  createMock.mockResolvedValue(created);
-
-  const res = await service.importFromLegacy('u1');
-  expect(createMock).toHaveBeenCalledWith({
-    user_id: 'u1',
-    number: '500100732259',
-    created_by: 'u1',
-    updated_by: 'u1',
-  });
-  expect(res).toBe(created);
-});
-
-test('importFromLegacy returns null on invalid data', async () => {
-  findOneMock.mockResolvedValueOnce(null);
-  findExtMock.mockResolvedValue({ external_id: '7' });
-  legacyFindMock.mockResolvedValue({ sv_inn: 'bad' });
-  const res = await service.importFromLegacy('u1');
-  expect(res).toBeNull();
-});

@@ -1,9 +1,6 @@
 import { Op } from 'sequelize';
 
-import { Snils, UserExternalId } from '../models/index.js';
-import { isValidSnils } from '../utils/personal.js';
-
-import legacyUserService from './legacyUserService.js';
+import { Snils } from '../models/index.js';
 
 async function getByUser(userId) {
   return Snils.findOne({ where: { user_id: userId } });
@@ -39,25 +36,4 @@ async function remove(userId) {
   await snils.destroy();
 }
 
-async function importFromLegacy(userId) {
-  const existing = await Snils.findOne({ where: { user_id: userId } });
-  if (existing) return existing;
-
-  const ext = await UserExternalId.findOne({ where: { user_id: userId } });
-  if (!ext) return null;
-
-  const legacy = await legacyUserService.findById(ext.external_id);
-  if (!legacy?.sv_ops) return null;
-
-  const number = String(legacy.sv_ops);
-  if (!isValidSnils(number)) return null;
-
-  try {
-    return await create(userId, number, userId);
-    // eslint-disable-next-line no-unused-vars
-  } catch (err) {
-    return null;
-  }
-}
-
-export default { getByUser, create, update, remove, importFromLegacy };
+export default { getByUser, create, update, remove };
