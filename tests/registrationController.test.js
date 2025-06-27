@@ -32,11 +32,11 @@ jest.unstable_mockModule('../src/services/userService.js', () => ({
   default: { createUser: createUserMock, resetPassword: resetPasswordMock },
 }));
 
-const importPassportMock = jest.fn();
+const fetchPassportMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/passportService.js', () => ({
   __esModule: true,
-  default: { importFromLegacy: importPassportMock },
+  default: { fetchFromLegacy: fetchPassportMock },
 }));
 
 const importBankMock = jest.fn();
@@ -46,7 +46,10 @@ jest.unstable_mockModule('../src/services/bankAccountService.js', () => ({
   default: { importFromLegacy: importBankMock },
 }));
 
-const issueTokensMock = jest.fn(() => ({ accessToken: 'a', refreshToken: 'r' }));
+const issueTokensMock = jest.fn(() => ({
+  accessToken: 'a',
+  refreshToken: 'r',
+}));
 
 jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
@@ -78,7 +81,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserExternalId: { create: createExtMock },
 }));
 
-const { default: controller } = await import('../src/controllers/registrationController.js');
+const { default: controller } = await import(
+  '../src/controllers/registrationController.js'
+);
 
 function createRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -118,17 +123,27 @@ test('start returns 400 on validation errors', async () => {
 
 test('finish issues tokens after valid code', async () => {
   const user = { id: 'u1', reload: jest.fn() };
-  const updated = { id: 'u1', getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]) };
+  const updated = {
+    id: 'u1',
+    getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+  };
   user.reload.mockResolvedValue(updated);
   findUserMock.mockResolvedValueOnce(user);
   verifyCodeMock.mockResolvedValueOnce();
   importBankMock.mockResolvedValueOnce({});
-  importPassportMock.mockResolvedValueOnce({});
-  const req = { body: { email: 't@example.com', code: '123', password: 'Passw0rd' } };
+  fetchPassportMock.mockResolvedValueOnce({});
+  const req = {
+    body: { email: 't@example.com', code: '123', password: 'Passw0rd' },
+  };
   const res = createRes();
   await controller.finish(req, res);
-  expect(verifyCodeMock).toHaveBeenCalledWith(user, '123', 'REGISTRATION_STEP_1');
+  expect(verifyCodeMock).toHaveBeenCalledWith(
+    user,
+    '123',
+    'REGISTRATION_STEP_1'
+  );
   expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd');
+  expect(fetchPassportMock).toHaveBeenCalledWith('u1');
   expect(issueTokensMock).toHaveBeenCalledWith(updated);
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'r');
   expect(res.json).toHaveBeenCalledWith({
@@ -142,10 +157,11 @@ test('finish returns error when code invalid or expired', async () => {
   const user = { id: 'u1' };
   findUserMock.mockResolvedValueOnce(user);
   verifyCodeMock.mockRejectedValueOnce(new Error('invalid_code'));
-  const req = { body: { email: 't@example.com', code: 'bad', password: 'Pass' } };
+  const req = {
+    body: { email: 't@example.com', code: 'bad', password: 'Pass' },
+  };
   const res = createRes();
   await controller.finish(req, res);
   expect(res.status).toHaveBeenCalledWith(400);
   expect(res.json).toHaveBeenCalledWith({ error: 'invalid_code' });
 });
-

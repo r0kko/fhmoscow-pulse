@@ -58,7 +58,7 @@ test('createForUser validates and creates passport', async () => {
   cleanPassportMock.mockResolvedValue({
     qc: 0,
     series: '45 12  ',
-    number: '123456 ' ,
+    number: '123456 ',
     issue_date: '2020-01-01',
     issue_org: ' OVD ',
     issue_code: ' 770-000 ',
@@ -76,7 +76,11 @@ test('createForUser validates and creates passport', async () => {
   const res = await service.createForUser('u1', data, 'admin');
   expect(cleanPassportMock).toHaveBeenCalledWith('4512 123456');
   expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ user_id: 'u1', document_type_id: 't1', country_id: 'c1' })
+    expect.objectContaining({
+      user_id: 'u1',
+      document_type_id: 't1',
+      country_id: 'c1',
+    })
   );
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -129,8 +133,38 @@ test('removeByUser destroys passport', async () => {
   expect(destroyMock).toHaveBeenCalled();
 });
 
+test('fetchFromLegacy returns null when user not linked', async () => {
+  findExtMock.mockResolvedValue(null);
+  const res = await service.fetchFromLegacy('u1');
+  expect(res).toBeNull();
+  expect(legacyFindMock).not.toHaveBeenCalled();
+});
+
+test('fetchFromLegacy returns sanitized data', async () => {
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    ps_ser: '11 ',
+    ps_num: ' 22',
+    ps_date: '2000-01-01',
+    ps_org: ' OVD ',
+    ps_pdrz: ' 770-000 ',
+  });
+
+  const res = await service.fetchFromLegacy('u1');
+  expect(res).toEqual({
+    document_type: 'CIVIL',
+    country: 'RU',
+    series: '11',
+    number: '000022',
+    issue_date: '2000-01-01',
+    issuing_authority: 'OVD',
+    issuing_authority_code: '770-000',
+  });
+});
+
 test('importFromLegacy returns existing passport', async () => {
   findOneMock.mockResolvedValue(passportInstance);
+  findExtMock.mockClear();
   const res = await service.importFromLegacy('u1');
   expect(res).toBe(passportInstance);
   expect(findExtMock).not.toHaveBeenCalled();
@@ -138,6 +172,7 @@ test('importFromLegacy returns existing passport', async () => {
 
 test('importFromLegacy creates passport from legacy data', async () => {
   findOneMock.mockResolvedValueOnce(null); // initial check
+  findExtMock.mockClear();
   findExtMock.mockResolvedValue({ external_id: '5' });
   legacyFindMock.mockResolvedValue({
     ps_ser: '11 ',
@@ -180,7 +215,13 @@ test('createForUser throws error on DaData failure', async () => {
   findTypeMock.mockResolvedValue({ id: 't1' });
   findCountryMock.mockResolvedValue({ id: 'c1' });
   cleanPassportMock.mockResolvedValue(null);
-  const data = { document_type: 'CIVIL', country: 'RU', series: '45', number: '12' };
-  await expect(service.createForUser('u2', data, 'admin')).rejects.toThrow('invalid_passport');
+  const data = {
+    document_type: 'CIVIL',
+    country: 'RU',
+    series: '45',
+    number: '12',
+  };
+  await expect(service.createForUser('u2', data, 'admin')).rejects.toThrow(
+    'invalid_passport'
+  );
 });
-
