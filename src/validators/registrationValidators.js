@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN } from '../config/auth.js';
 
 export const startRegistrationRules = [body('email').isEmail()];
