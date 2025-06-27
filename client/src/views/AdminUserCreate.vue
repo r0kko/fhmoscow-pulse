@@ -34,7 +34,7 @@ onMounted(() => {
 })
 
 async function save() {
-  if (!formRef.value.validate()) return
+  if (!formRef.value?.validate || !formRef.value.validate()) return
   const payload = { ...user.value }
   const pass = generatePassword()
   payload.password = pass

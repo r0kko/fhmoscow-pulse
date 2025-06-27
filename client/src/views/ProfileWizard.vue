@@ -165,7 +165,7 @@ async function saveStep() {
   error.value = ''
   try {
     if (step.value === 1) {
-      if (!formRef.value.validate()) {
+      if (!formRef.value?.validate || !formRef.value.validate()) {
         loading.value = false
         return
       }
@@ -222,7 +222,7 @@ async function saveStep() {
         loading.value = false
         return
       }
-      if (passportRef.value && !passportRef.value.validate()) {
+      if (passportRef.value && (!passportRef.value.validate || !passportRef.value.validate())) {
         loading.value = false
         return
       }
