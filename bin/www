@@ -10,6 +10,7 @@ import debugLib from 'debug';
 import app from '../app.js';
 import { connectToDatabase } from '../src/config/database.js';
 import { connectLegacyDatabase } from '../src/config/legacyDatabase.js';
+import { connectRedis } from '../src/config/redis.js';
 import validateEnv from '../src/config/validateEnv.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
@@ -35,6 +36,7 @@ const server = http.createServer(app);
 (async () => {
   await connectToDatabase();
   await connectLegacyDatabase();
+  await connectRedis();
   server.listen(port);
 })();
 

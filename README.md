@@ -11,6 +11,7 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - Request/response logging persisted to the `logs` table
 - Swagger documentation available at `/api-docs`
 - Docker and docker-compose setup for local development
+- Redis-backed login attempt tracking
 - ESLint and Prettier for code quality
 - Jest unit tests
 - Admin panel for managing users and roles (create, edit, block)
@@ -26,6 +27,7 @@ requests should target `dev` first, and changes are later merged into
 
 - Node.js 20+
 - PostgreSQL 15+
+- Redis 7+
 - npm
 
 ## Environment variables
@@ -38,6 +40,10 @@ DB_PORT=5432
 DB_NAME=fhpulse
 DB_USER=postgres
 DB_PASS=secret
+# Redis connection
+REDIS_HOST=localhost
+REDIS_PORT=6379
+# Alternatively you can set REDIS_URL=redis://host:port
 # connection to legacy MySQL database
 LEGACY_DB_HOST=legacy-host
 LEGACY_DB_PORT=3306
@@ -78,7 +84,7 @@ least eight characters long and contain both letters and numbers.
 
 ## Running with Docker
 
-The easiest way to start the application together with PostgreSQL is using Docker Compose:
+The easiest way to start the application together with PostgreSQL and Redis is using Docker Compose:
 
 ```bash
 docker-compose up --build

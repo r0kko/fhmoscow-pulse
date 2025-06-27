@@ -23,16 +23,16 @@ async function verifyCredentials(phone, password) {
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) {
-    const count = attempts.markFailed(user.id);
+    const count = await attempts.markFailed(user.id);
     if (count >= 5 && inactive) {
       await user.update({ status_id: inactive.id });
-      attempts.clear(user.id);
+      await attempts.clear(user.id);
       throw new ServiceError('account_locked', 401);
     }
     throw new ServiceError('invalid_credentials', 401);
   }
 
-  attempts.clear(user.id);
+  await attempts.clear(user.id);
 
   return user;
 }

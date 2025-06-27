@@ -1,5 +1,29 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
+const store = new Map();
+jest.unstable_mockModule('../src/config/redis.js', () => ({
+  __esModule: true,
+  default: {
+    async get(k) {
+      return store.has(k) ? store.get(k) : null;
+    },
+    async set(k, v) {
+      store.set(k, v);
+    },
+    async del(keys) {
+      if (Array.isArray(keys)) {
+        keys.forEach((x) => store.delete(x));
+      } else {
+        store.delete(keys);
+      }
+    },
+    async keys(pattern) {
+      const prefix = pattern.replace('*', '');
+      return [...store.keys()].filter((k) => k.startsWith(prefix));
+    },
+  },
+}));
+
 const compareMock = jest.fn();
 const findOneMock = jest.fn();
 const scopeMock = jest.fn(() => ({ findOne: findOneMock }));
@@ -25,7 +49,7 @@ jest.unstable_mockModule('bcryptjs', () => ({
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 const { default: authService } = await import('../src/services/authService.js');
-import * as attemptStore from '../src/services/loginAttempts.js';
+const attemptStore = await import('../src/services/loginAttempts.js');
 import jwt from 'jsonwebtoken';
 
 const updateMock = jest.fn(async function (data) {
@@ -33,9 +57,9 @@ const updateMock = jest.fn(async function (data) {
 });
 const user = { id: '1', password: 'hash', update: updateMock };
 
-beforeEach(() => {
+beforeEach(async () => {
   updateMock.mockClear();
-  attemptStore._reset();
+  await attemptStore._reset();
 });
 
 test('verifyCredentials returns user when valid', async () => {
