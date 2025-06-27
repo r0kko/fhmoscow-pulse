@@ -5,10 +5,21 @@ import {
   startRegistrationRules,
   finishRegistrationRules,
 } from '../validators/registrationValidators.js';
+import registrationRateLimiter from '../middlewares/registrationRateLimiter.js';
 
 const router = express.Router();
 
-router.post('/start', startRegistrationRules, controller.start);
-router.post('/finish', finishRegistrationRules, controller.finish);
+router.post(
+  '/start',
+  registrationRateLimiter,
+  startRegistrationRules,
+  controller.start
+);
+router.post(
+  '/finish',
+  registrationRateLimiter,
+  finishRegistrationRules,
+  controller.finish
+);
 
 export default router;
