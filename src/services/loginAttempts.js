@@ -11,12 +11,16 @@ export async function markFailed(id, now = Date.now()) {
   const k = key(id);
   const data = await redis.get(k);
   if (!data) {
-    await redis.set(k, JSON.stringify({ count: 1, first: now }), { PX: WINDOW_MS });
+    await redis.set(k, JSON.stringify({ count: 1, first: now }), {
+      PX: WINDOW_MS,
+    });
     return 1;
   }
   const entry = JSON.parse(data);
   if (now - entry.first > WINDOW_MS) {
-    await redis.set(k, JSON.stringify({ count: 1, first: now }), { PX: WINDOW_MS });
+    await redis.set(k, JSON.stringify({ count: 1, first: now }), {
+      PX: WINDOW_MS,
+    });
     return 1;
   }
   entry.count += 1;
