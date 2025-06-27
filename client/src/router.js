@@ -3,7 +3,7 @@ import Login from './views/Login.vue'
 import Register from './views/Register.vue'
 import ProfileWizard from './views/ProfileWizard.vue'
 import AwaitingConfirmation from './views/AwaitingConfirmation.vue'
-import { auth, fetchCurrentUser } from './auth.js'
+import { auth, fetchCurrentUser, clearAuth } from './auth.js'
 import Home from './views/Home.vue'
 import Profile from './views/Profile.vue'
 import AdminUsers from './views/AdminUsers.vue'
@@ -36,13 +36,13 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, _from, next) => {
-  const isAuthenticated = !!localStorage.getItem('access_token')
-  const roles = JSON.parse(localStorage.getItem('roles') || '[]')
+  const isAuthenticated = !!auth.token
+  const roles = auth.roles
   if (isAuthenticated && !auth.user) {
     try {
       await fetchCurrentUser()
     } catch (_) {
-      localStorage.removeItem('access_token')
+      clearAuth()
       return next('/login')
     }
   }

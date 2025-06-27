@@ -1,20 +1,37 @@
 import { reactive } from 'vue'
-import { apiFetch } from './api.js'
+import { apiFetch, setAccessToken, clearAccessToken } from './api.js'
 
 export const auth = reactive({
   user: null,
-  roles: JSON.parse(localStorage.getItem('roles') || '[]')
+  roles: [],
+  token: null,
 })
+
+export function setAuthToken(token) {
+  auth.token = token
+  setAccessToken(token)
+}
 
 export async function fetchCurrentUser() {
   const data = await apiFetch('/auth/me')
   auth.user = data.user
   auth.roles = data.roles || []
-  localStorage.setItem('roles', JSON.stringify(auth.roles))
+}
+
+export async function refreshFromCookie() {
+  try {
+    const data = await apiFetch('/auth/refresh', { method: 'POST', body: '{}' })
+    setAuthToken(data.access_token)
+    auth.user = data.user
+    auth.roles = data.roles || []
+  } catch (_) {
+    // ignore errors
+  }
 }
 
 export function clearAuth() {
   auth.user = null
   auth.roles = []
-  localStorage.removeItem('roles')
+  auth.token = null
+  clearAccessToken()
 }

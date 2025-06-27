@@ -7,6 +7,7 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - Express server with modular routing
 - PostgreSQL database managed with Sequelize
 - JSON Web Token authentication and refresh tokens
+- Access token kept only in memory and refreshed on startup when a refresh cookie is present
 - Security headers using `helmet`
 - Request/response logging persisted to the `logs` table
 - Swagger documentation available at `/api-docs`

@@ -25,7 +25,6 @@ async function checkStatus() {
 
 function logout() {
   apiFetch('/auth/logout', { method: 'POST' }).finally(() => {
-    localStorage.removeItem('access_token')
     clearAuth()
     router.push('/login')
   })
