@@ -14,11 +14,12 @@ const legacyPool = mysql.createPool({
 });
 
 export async function connectLegacyDatabase() {
+  const { default: logger } = await import('../../logger.js');
   try {
     await legacyPool.query('SELECT 1');
-    console.log('✅ Legacy DB connection established');
+    logger.info('✅ Legacy DB connection established');
   } catch (err) {
-    console.error('❌ Unable to connect to legacy DB:', err);
+    logger.error('❌ Unable to connect to legacy DB:', err);
     process.exit(1);
   }
 }
