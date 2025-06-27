@@ -59,12 +59,19 @@ async function listUsers(options = {}) {
       { email: { [Op.iLike]: term } },
     ];
   }
+  const include = [Role];
   if (options.status) {
-    where['$UserStatus.alias$'] = options.status;
+    include.push({
+      model: UserStatus,
+      where: { alias: options.status },
+      required: true,
+    });
+  } else {
+    include.push(UserStatus);
   }
 
   return User.findAndCountAll({
-    include: [Role, UserStatus],
+    include,
     where,
     order: [[sortField, sortOrder]],
     limit,
