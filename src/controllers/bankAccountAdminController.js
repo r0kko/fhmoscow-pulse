@@ -3,6 +3,7 @@ import { validationResult } from 'express-validator';
 import bankAccountService from '../services/bankAccountService.js';
 import dadataService from '../services/dadataService.js';
 import bankAccountMapper from '../mappers/bankAccountMapper.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async get(req, res) {
@@ -13,7 +14,7 @@ export default {
       }
       return res.json({ account: bankAccountMapper.toPublic(acc) });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 
@@ -42,8 +43,7 @@ export default {
       );
       return res.status(201).json({ account: bankAccountMapper.toPublic(acc) });
     } catch (err) {
-      const status = err.message === 'user_not_found' ? 404 : 400;
-      return res.status(status).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 
@@ -72,7 +72,7 @@ export default {
       );
       return res.json({ account: bankAccountMapper.toPublic(acc) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -81,7 +81,7 @@ export default {
       await bankAccountService.removeForUser(req.params.id);
       return res.status(204).end();
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 };

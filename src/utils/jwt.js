@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import ServiceError from '../errors/ServiceError.js';
 
 import {
   JWT_SECRET,
@@ -30,7 +31,7 @@ export function verifyAccessToken(token) {
 export function verifyRefreshToken(token) {
   const payload = jwt.verify(token, JWT_SECRET, { algorithms: [JWT_ALG] });
   if (payload.type !== 'refresh') {
-    throw new Error('invalid_token_type');
+    throw new ServiceError('invalid_token_type', 401);
   }
   return payload;
 }

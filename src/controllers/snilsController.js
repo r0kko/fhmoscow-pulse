@@ -4,6 +4,7 @@ import snilsService from '../services/snilsService.js';
 import snilsMapper from '../mappers/snilsMapper.js';
 import legacyService from '../services/legacyUserService.js';
 import { UserExternalId } from '../models/index.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async me(req, res) {
@@ -37,7 +38,7 @@ export default {
       );
       return res.status(201).json({ snils: snilsMapper.toPublic(snils) });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

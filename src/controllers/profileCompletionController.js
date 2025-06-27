@@ -1,4 +1,5 @@
 import userService from '../services/userService.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async complete(req, res) {
@@ -11,7 +12,7 @@ export default {
         user: { id: user.id, status: 'AWAITING_CONFIRMATION' },
       });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 
@@ -24,7 +25,7 @@ export default {
       const user = await userService.setStatus(req.user.id, status);
       return res.json({ user: { id: user.id, status } });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 
 import { Snils } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
 
 async function getByUser(userId) {
   return Snils.findOne({ where: { user_id: userId } });
@@ -8,7 +9,7 @@ async function getByUser(userId) {
 
 async function create(userId, number, actorId) {
   const existing = await Snils.findOne({ where: { number } });
-  if (existing) throw new Error('snils_exists');
+  if (existing) throw new ServiceError('snils_exists');
   return Snils.create({
     user_id: userId,
     number,
@@ -24,15 +25,15 @@ async function update(userId, number, actorId) {
       where: { number, user_id: { [Op.ne]: userId } },
     }),
   ]);
-  if (!snils) throw new Error('snils_not_found');
-  if (duplicate) throw new Error('snils_exists');
+  if (!snils) throw new ServiceError('snils_not_found', 404);
+  if (duplicate) throw new ServiceError('snils_exists');
   await snils.update({ number, updated_by: actorId });
   return snils;
 }
 
 async function remove(userId) {
   const snils = await Snils.findOne({ where: { user_id: userId } });
-  if (!snils) throw new Error('snils_not_found');
+  if (!snils) throw new ServiceError('snils_not_found', 404);
   await snils.destroy();
 }
 

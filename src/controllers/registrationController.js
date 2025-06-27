@@ -12,6 +12,7 @@ import bankAccountService from '../services/bankAccountService.js';
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie } from '../utils/cookie.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async start(req, res) {
@@ -40,7 +41,7 @@ export default {
     try {
       user = await userService.createUser(data);
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
 
     const system = await ExternalSystem.findOne({
@@ -90,12 +91,7 @@ export default {
         roles,
       });
     } catch (err) {
-      if (err.message === 'too_many_attempts') {
-        return res.status(400).json({
-          error: 'Слишком много неверных попыток подтверждения',
-        });
-      }
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

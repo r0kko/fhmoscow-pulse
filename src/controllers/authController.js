@@ -5,6 +5,7 @@ import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 import { COOKIE_NAME } from '../config/auth.js';
 import { UserStatus } from '../models/index.js';
+import { sendError } from '../utils/api.js';
 
 /* ---------- controller ---------------------------------------------------- */
 export default {
@@ -41,15 +42,8 @@ export default {
         roles,
         ...extra,
       });
-    } catch (_err) {
-      if (_err.message === 'account_locked') {
-        return res.status(401).json({
-          error:
-            'Аккаунт заблокирован из-за многократных неудачных попыток входа',
-        });
-      }
-      void _err;
-      return res.status(401).json({ error: 'Неверные учётные данные' });
+    } catch (err) {
+      return sendError(res, err, 401);
     }
   },
 
@@ -92,11 +86,8 @@ export default {
         user: userMapper.toPublic(user),
         roles,
       });
-    } catch (_err) {
-      void _err;
-      return res
-        .status(401)
-        .json({ error: 'Некорректный или истёкший токен обновления' });
+    } catch (err) {
+      return sendError(res, err, 401);
     }
   },
 };

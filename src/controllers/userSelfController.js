@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async update(req, res) {
@@ -13,7 +14,7 @@ export default {
       const user = await userService.updateUser(req.user.id, req.body);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

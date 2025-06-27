@@ -1,5 +1,6 @@
 import taxationService from '../services/taxationService.js';
 import taxationMapper from '../mappers/taxationMapper.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async me(req, res) {
@@ -20,8 +21,7 @@ export default {
       const preview = await taxationService.previewForUser(req.user.id, opts);
       return res.json({ preview: taxationMapper.toPublic(preview) });
     } catch (err) {
-      const status = err.message === 'inn_not_found' ? 404 : 400;
-      return res.status(status).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 
@@ -30,8 +30,7 @@ export default {
       const tax = await taxationService.updateForUser(req.user.id, req.user.id);
       return res.json({ taxation: taxationMapper.toPublic(tax) });
     } catch (err) {
-      const status = err.message === 'inn_not_found' ? 404 : 400;
-      return res.status(status).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 };

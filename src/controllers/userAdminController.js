@@ -4,6 +4,7 @@ import userService from '../services/userService.js';
 import passportService from '../services/passportService.js';
 import userMapper from '../mappers/userMapper.js';
 import passportMapper from '../mappers/passportMapper.js';
+import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
@@ -34,7 +35,7 @@ export default {
       const user = await userService.getUser(req.params.id);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
   async create(req, res) {
@@ -55,7 +56,7 @@ export default {
       const user = await userService.updateUser(req.params.id, req.body);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -64,7 +65,7 @@ export default {
       const user = await userService.setStatus(req.params.id, 'INACTIVE');
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -73,7 +74,7 @@ export default {
       const user = await userService.setStatus(req.params.id, 'ACTIVE');
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -82,7 +83,7 @@ export default {
       const user = await userService.setStatus(req.params.id, 'ACTIVE');
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -98,7 +99,7 @@ export default {
       );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -110,7 +111,7 @@ export default {
       );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -122,7 +123,7 @@ export default {
       );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -141,8 +142,7 @@ export default {
         .status(201)
         .json({ passport: passportMapper.toPublic(passport) });
     } catch (err) {
-      const status = err.message === 'user_not_found' ? 404 : 400;
-      return res.status(status).json({ error: err.message });
+      return sendError(res, err);
     }
   },
 
@@ -153,7 +153,7 @@ export default {
         return res.status(404).json({ error: 'passport_not_found' });
       return res.json({ passport: passportMapper.toPublic(passport) });
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 
@@ -162,7 +162,7 @@ export default {
       await passportService.removeByUser(req.params.id);
       return res.status(204).send();
     } catch (err) {
-      return res.status(404).json({ error: err.message });
+      return sendError(res, err, 404);
     }
   },
 };
