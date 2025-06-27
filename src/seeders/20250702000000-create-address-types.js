@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = {
   async up(queryInterface) {
     const [existing] = await queryInterface.sequelize.query(
+      // eslint-disable-next-line
       "SELECT COUNT(*) AS cnt FROM address_types WHERE alias IN ('REGISTRATION','RESIDENCE');"
     );
     if (Number(existing[0].cnt) > 0) return;
