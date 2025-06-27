@@ -138,3 +138,17 @@ test('updateUser throws when missing', async () => {
   findByPkMock.mockResolvedValue(null);
   await expect(service.updateUser('1', {})).rejects.toThrow('user_not_found');
 });
+
+test('createUser rejects birth date before 1945', async () => {
+  await expect(
+    service.createUser({
+      phone: '123',
+      email: 'e',
+      last_name: 'L',
+      first_name: 'F',
+      patronymic: 'P',
+      birth_date: '1940-01-01',
+      password: 'p',
+    })
+  ).rejects.toThrow('invalid_birth_date');
+});

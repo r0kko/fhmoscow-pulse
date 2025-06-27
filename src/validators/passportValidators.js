@@ -27,8 +27,9 @@ export const createPassportRules = [
     .notEmpty()
     .custom((v) => {
       const d = new Date(v);
-      return !Number.isNaN(d.getTime());
-    }),
+      return !Number.isNaN(d.getTime()) && d >= new Date('2000-01-01');
+    })
+    .withMessage('invalid_issue_date'),
   body('valid_until').optional().isISO8601(),
   body('issuing_authority')
     .if(

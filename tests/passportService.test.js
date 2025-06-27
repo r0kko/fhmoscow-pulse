@@ -225,3 +225,30 @@ test('createForUser throws error on DaData failure', async () => {
     'invalid_passport'
   );
 });
+
+test('createForUser rejects issue_date before 2000', async () => {
+  findByPkMock.mockResolvedValue({ id: 'u2' });
+  findOneMock.mockResolvedValueOnce(null);
+  findTypeMock.mockResolvedValue({ id: 't1' });
+  findCountryMock.mockResolvedValue({ id: 'c1' });
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '4512',
+    number: '123456',
+    issue_date: '1990-01-01',
+    issue_org: 'OVD',
+    issue_code: '770-000',
+  });
+  const data = {
+    document_type: 'CIVIL',
+    country: 'RU',
+    series: '4512',
+    number: '123456',
+    issue_date: '1990-01-01',
+    issuing_authority: 'OVD',
+    issuing_authority_code: '770-000',
+  };
+  await expect(service.createForUser('u2', data, 'admin')).rejects.toThrow(
+    'invalid_issue_date'
+  );
+});
