@@ -48,6 +48,43 @@ test('persists log entry on finish', async () => {
   }));
 });
 
+test('omits sensitive fields from request body', async () => {
+  const req = {
+    method: 'POST',
+    originalUrl: '/login',
+    ip: '::1',
+    get: () => 'ua',
+    body: { foo: 'bar', password: 'secret', refresh_token: 'r' },
+  };
+  const res = { statusCode: 200, locals: {} };
+
+  await requestLogger(req, res, () => {});
+
+  expect(createMock).toHaveBeenCalledWith(
+    expect.objectContaining({ request_body: { foo: 'bar' } })
+  );
+  expect(req.body.password).toBe('secret');
+  expect(req.body.refresh_token).toBe('r');
+});
+
+test('stores null when only sensitive fields present', async () => {
+  createMock.mockClear();
+  const req = {
+    method: 'POST',
+    originalUrl: '/login',
+    ip: '::1',
+    get: () => 'ua',
+    body: { password: 'secret', refresh_token: 'r' },
+  };
+  const res = { statusCode: 200, locals: {} };
+
+  await requestLogger(req, res, () => {});
+
+  expect(createMock).toHaveBeenCalledWith(
+    expect.objectContaining({ request_body: null })
+  );
+});
+
 test('logs warning when create fails', async () => {
   createMock.mockRejectedValueOnce(new Error('fail'));
   const req = { method: 'GET', originalUrl: '/x', ip: '::1', get: () => 'ua', body: {} };
