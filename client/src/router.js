@@ -18,10 +18,14 @@ const routes = [
   { path: '/users', component: AdminUsers, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/new', component: AdminUserCreate, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/:id', component: AdminUserEdit, meta: { requiresAuth: true, requiresAdmin: true } },
-  { path: '/login', component: Login },
-  { path: '/register', component: Register },
+  { path: '/login', component: Login, meta: { hideLayout: true } },
+  { path: '/register', component: Register, meta: { hideLayout: true } },
   { path: '/complete-profile', component: ProfileWizard, meta: { requiresAuth: true } },
-  { path: '/awaiting-confirmation', component: AwaitingConfirmation, meta: { requiresAuth: true } }
+  {
+    path: '/awaiting-confirmation',
+    component: AwaitingConfirmation,
+    meta: { requiresAuth: true, hideLayout: true }
+  }
 ]
 
 const router = createRouter({
