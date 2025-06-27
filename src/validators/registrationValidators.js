@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN } from '../config/auth.js';
 
 export const startRegistrationRules = [body('email').isEmail()];
 
@@ -7,8 +8,7 @@ export const finishRegistrationRules = [
   body('code').isString().notEmpty(),
   body('password')
     .isString()
-    .isLength({ min: 8 })
-    .matches(/[a-z]/i)
-    .matches(/[0-9]/)
+    .isLength({ min: PASSWORD_MIN_LENGTH })
+    .matches(PASSWORD_PATTERN)
     .custom((val) => !['password', '123456', 'qwerty'].includes(val)),
 ];
