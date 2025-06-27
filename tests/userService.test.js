@@ -52,7 +52,13 @@ test('listUsers applies status filter', async () => {
   await service.listUsers({ status: 'ACTIVE' });
   expect(findAndCountAllMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      where: expect.objectContaining({ '$UserStatus.alias$': 'ACTIVE' })
+      include: expect.arrayContaining([
+        expect.objectContaining({
+          model: expect.anything(),
+          where: { alias: 'ACTIVE' },
+          required: true,
+        }),
+      ]),
     })
   );
 });
