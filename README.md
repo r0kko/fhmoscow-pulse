@@ -60,6 +60,8 @@ DADATA_SECRET=your_dadata_secret
 # SMTP_USER=user@example.com
 # SMTP_PASS=secret
 # EMAIL_FROM=no-reply@example.com
+# REGISTRATION_RATE_WINDOW_MS=3600000
+# REGISTRATION_RATE_MAX=5
 ```
 
 ## Running with Docker

@@ -5,6 +5,7 @@ import {
   startRegistrationRules,
   finishRegistrationRules,
 } from '../validators/registrationValidators.js';
+import registrationRateLimiter from '../middlewares/registrationRateLimiter.js';
 
 const router = express.Router();
 
@@ -28,7 +29,12 @@ const router = express.Router();
  *       200:
  *         description: Verification code sent
  */
-router.post('/start', startRegistrationRules, controller.start);
+router.post(
+    '/start',
+    registrationRateLimiter,
+    startRegistrationRules,
+    controller.start
+);
 
 /**
  * @swagger
@@ -56,6 +62,11 @@ router.post('/start', startRegistrationRules, controller.start);
  *       200:
  *         description: Registration completed
  */
-router.post('/finish', finishRegistrationRules, controller.finish);
+router.post(
+  '/finish',
+  registrationRateLimiter,
+  finishRegistrationRules,
+  controller.finish
+);
 
 export default router;
