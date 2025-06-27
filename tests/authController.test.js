@@ -39,6 +39,7 @@ const toPublicMock = jest.fn((u) => {
     updatedAt: _ua,
     deletedAt: _da,
     getRoles: _gr,
+    UserStatus: us,
     ...rest
   } = u;
   void _p;
@@ -46,6 +47,9 @@ const toPublicMock = jest.fn((u) => {
   void _ua;
   void _da;
   void _gr;
+  if (us) {
+    rest.status = us.alias;
+  }
   return rest;
 });
 jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
@@ -77,6 +81,11 @@ test('login does not include sensitive fields in response', async () => {
     updatedAt: 't',
     deletedAt: null,
     getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
+    reload: jest.fn().mockResolvedValue({
+      id: '1',
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
+      UserStatus: { alias: 'ACTIVE' },
+    }),
   };
   verifyCredentialsMock.mockResolvedValue(user);
 
@@ -92,6 +101,7 @@ test('login does not include sensitive fields in response', async () => {
   expect(response.user.deletedAt).toBeUndefined();
   expect(Array.isArray(response.roles)).toBe(true);
   expect(verifyCredentialsMock).toHaveBeenCalledWith('123', 'pass');
+  expect(user.reload).toHaveBeenCalled();
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
 });
 
@@ -105,6 +115,31 @@ test('login validation failure returns 400', async () => {
   expect(res.status).toHaveBeenCalledWith(400);
   expect(res.json).toHaveBeenCalledWith({ errors: [{ msg: 'bad' }] });
   validationOk = true;
+});
+
+test('login returns next_step when registration not complete', async () => {
+  const user = {
+    id: '1',
+    getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+    reload: jest.fn().mockResolvedValue({
+      id: '1',
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+      UserStatus: { alias: 'REGISTRATION_STEP_2' },
+    }),
+  };
+  verifyCredentialsMock.mockResolvedValue(user);
+
+  const req = { body: { phone: '1', password: 'p' }, cookies: {} };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+  await authController.login(req, res);
+
+  expect(res.json).toHaveBeenCalledWith({
+    access_token: 'access',
+    user: { id: '1', status: 'REGISTRATION_STEP_2' },
+    roles: ['USER'],
+    next_step: 2,
+  });
 });
 
 test('logout clears refresh cookie', async () => {
