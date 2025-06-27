@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
-import bcrypt from 'bcryptjs';
 
 import { EmailCode, UserStatus } from '../models/index.js';
 
@@ -15,11 +14,10 @@ export async function sendCode(user) {
   const code = generateCode();
   const expires = new Date(Date.now() + 15 * 60 * 1000);
   await EmailCode.destroy({ where: { user_id: user.id } });
-  const hash = await bcrypt.hash(code, 10);
   await EmailCode.create({
     id: uuidv4(),
     user_id: user.id,
-    code: hash,
+    code,
     expires_at: expires,
   });
   attempts.clear(user.id);
@@ -30,12 +28,11 @@ export async function verifyCode(user, code, statusAlias = 'ACTIVE') {
   const rec = await EmailCode.findOne({
     where: {
       user_id: user.id,
+      code,
       expires_at: { [Op.gt]: new Date() },
     },
   });
-  if (!rec) throw new Error('invalid_code');
-  const ok = await bcrypt.compare(code, rec.code);
-  if (!ok) {
+  if (!rec) {
     const count = attempts.markFailed(user.id);
     if (count >= 5) {
       throw new Error('too_many_attempts');
