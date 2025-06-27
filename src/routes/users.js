@@ -9,6 +9,7 @@ import innAdmin from '../controllers/innAdminController.js';
 import snilsAdmin from '../controllers/snilsAdminController.js';
 import bankAccountAdmin from '../controllers/bankAccountAdminController.js';
 import taxationAdmin from '../controllers/taxationAdminController.js';
+import addressAdmin from '../controllers/addressAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -16,6 +17,7 @@ import {
 } from '../validators/userValidators.js';
 import { innRules, snilsRules } from '../validators/personalValidators.js';
 import { bankAccountRules } from '../validators/bankAccountValidators.js';
+import { addressRules } from '../validators/addressValidators.js';
 import { createPassportRules } from '../validators/passportValidators.js';
 
 const router = express.Router();
@@ -187,5 +189,27 @@ router.post(
 );
 router.get('/:id/passport', auth, authorize('ADMIN'), admin.getPassport);
 router.delete('/:id/passport', auth, authorize('ADMIN'), admin.deletePassport);
+
+router.post(
+  '/:id/address/:type',
+  auth,
+  authorize('ADMIN'),
+  addressRules,
+  addressAdmin.create
+);
+router.put(
+  '/:id/address/:type',
+  auth,
+  authorize('ADMIN'),
+  addressRules,
+  addressAdmin.update
+);
+router.delete(
+  '/:id/address/:type',
+  auth,
+  authorize('ADMIN'),
+  addressAdmin.remove
+);
+router.get('/:id/address/:type', auth, authorize('ADMIN'), addressAdmin.get);
 
 export default router;
