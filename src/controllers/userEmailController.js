@@ -23,6 +23,11 @@ export default {
       const user = await req.user.reload();
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
+      if (err.message === 'too_many_attempts') {
+        return res.status(400).json({
+          error: 'Слишком много неверных попыток подтверждения',
+        });
+      }
       return res.status(400).json({ error: err.message });
     }
   },

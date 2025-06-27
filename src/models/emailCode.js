@@ -12,7 +12,8 @@ EmailCode.init(
       primaryKey: true,
     },
     user_id: { type: DataTypes.UUID, allowNull: false },
-    code: { type: DataTypes.STRING(6), allowNull: false },
+    // store bcrypt hash of 6 digit code
+    code: { type: DataTypes.STRING(100), allowNull: false },
     expires_at: { type: DataTypes.DATE, allowNull: false },
   },
   {

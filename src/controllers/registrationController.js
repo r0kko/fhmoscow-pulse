@@ -90,6 +90,11 @@ export default {
         roles,
       });
     } catch (err) {
+      if (err.message === 'too_many_attempts') {
+        return res.status(400).json({
+          error: 'Слишком много неверных попыток подтверждения',
+        });
+      }
       return res.status(400).json({ error: err.message });
     }
   },
