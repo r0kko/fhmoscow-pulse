@@ -105,7 +105,7 @@ function cancelEdit() {
 }
 
 async function save() {
-  if (!formRef.value.validate()) return
+  if (!formRef.value?.validate || !formRef.value.validate()) return
   const payload = { ...user.value }
   delete payload.roles
   delete payload.status
