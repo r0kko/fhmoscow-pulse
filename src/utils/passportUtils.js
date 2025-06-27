@@ -28,10 +28,16 @@ export function sanitizePassportData(data = {}) {
     out.number = String(out.number).replace(/\s+/g, '').trim();
   }
   if (out.issue_date !== undefined && out.issue_date !== null) {
-    out.issue_date = String(out.issue_date).trim();
+    const d = new Date(out.issue_date);
+    out.issue_date = Number.isNaN(d.getTime())
+      ? String(out.issue_date).trim()
+      : d.toISOString().slice(0, 10);
   }
   if (out.valid_until !== undefined && out.valid_until !== null) {
-    out.valid_until = String(out.valid_until).trim();
+    const d = new Date(out.valid_until);
+    out.valid_until = Number.isNaN(d.getTime())
+      ? String(out.valid_until).trim()
+      : d.toISOString().slice(0, 10);
   }
   if (out.issuing_authority !== undefined) {
     out.issuing_authority = String(out.issuing_authority).trim();
