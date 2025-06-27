@@ -8,13 +8,27 @@ import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
 import rateLimiter from './src/middlewares/rateLimiter.js';
 import swaggerSpec from './src/docs/swagger.js';
+import { ALLOWED_ORIGINS } from './src/config/cors.js';
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(cors({ origin: true, credentials: true }));
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(helmet());
 app.use(rateLimiter);
 app.use(requestLogger);

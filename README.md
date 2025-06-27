@@ -66,6 +66,7 @@ DADATA_SECRET=your_dadata_secret
 # REGISTRATION_RATE_MAX=5
 # RATE_LIMIT_WINDOW_MS=900000
 # RATE_LIMIT_MAX=100
+# ALLOWED_ORIGINS=http://localhost:5173,http://example.com
 ```
 
 Приложение отправляет HTML-письма для подтверждения электронной почты и сброса
