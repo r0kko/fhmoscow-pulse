@@ -1,4 +1,5 @@
 import { Address, AddressType, UserAddress, User } from '../models/index.js';
+import dadataService from './dadataService.js';
 
 async function getForUser(userId, alias) {
   const type = await AddressType.findOne({ where: { alias } });
@@ -24,8 +25,10 @@ async function createForUser(userId, alias, data, actorId) {
     where: { user_id: userId, address_type_id: type.id },
   });
   if (existing) throw new Error('address_exists');
+  const cleaned = await dadataService.cleanAddress(data.result);
+  if (!cleaned) throw new Error('invalid_address');
   const address = await Address.create({
-    ...data,
+    ...cleaned,
     created_by: actorId,
     updated_by: actorId,
   });
@@ -48,7 +51,9 @@ async function updateForUser(userId, alias, data, actorId) {
     include: [Address],
   });
   if (!ua) throw new Error('address_not_found');
-  await ua.Address.update({ ...data, updated_by: actorId });
+  const cleaned = await dadataService.cleanAddress(data.result);
+  if (!cleaned) throw new Error('invalid_address');
+  await ua.Address.update({ ...cleaned, updated_by: actorId });
   await ua.update({ updated_by: actorId });
   const addr = await Address.findByPk(ua.address_id);
   addr.AddressType = type;

@@ -31,6 +31,9 @@ router.post('/suggest-fio', auth, controller.suggestFio);
  */
 router.post('/clean-fio', auth, controller.cleanFio);
 
+router.post('/suggest-address', auth, controller.suggestAddress);
+router.post('/clean-address', auth, controller.cleanAddress);
+
 router.post('/suggest-fms-unit', auth, controller.suggestFmsUnit);
 router.post('/clean-passport', auth, controller.cleanPassport);
 router.post('/find-bank', auth, controller.findBank);

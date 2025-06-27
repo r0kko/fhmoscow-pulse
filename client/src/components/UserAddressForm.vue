@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { Modal } from 'bootstrap';
 import { apiFetch } from '../api.js';
+import { suggestAddress, cleanAddress } from '../dadata.js';
 
 const props = defineProps({ userId: { type: String, required: true } });
 
@@ -11,6 +12,8 @@ const modalRef = ref(null);
 let modal;
 const current = ref('REGISTRATION');
 const form = ref({ result: '' });
+const suggestions = ref([]);
+let timeout;
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -34,6 +37,7 @@ function open(type) {
   current.value = type;
   form.value.result = addresses.value[type]?.result || '';
   error.value = '';
+  suggestions.value = [];
   modal.show();
 }
 
@@ -70,6 +74,34 @@ async function removeAddress() {
   } catch (e) {
     error.value = e.message;
   }
+}
+
+watch(
+  () => form.value.result,
+  (val) => {
+    clearTimeout(timeout);
+    if (!val || val.length < 3) {
+      suggestions.value = [];
+      return;
+    }
+    const query = val.trim();
+    timeout = setTimeout(async () => {
+      suggestions.value = await suggestAddress(query);
+    }, 300);
+  }
+);
+
+async function onBlur() {
+  const cleaned = await cleanAddress(form.value.result);
+  if (cleaned && cleaned.result) {
+    form.value.result = cleaned.result;
+  }
+  suggestions.value = [];
+}
+
+function applySuggestion(sug) {
+  form.value.result = sug.value;
+  suggestions.value = [];
 }
 </script>
 
@@ -127,15 +159,30 @@ async function removeAddress() {
             </div>
             <div class="modal-body">
               <div v-if="error" class="alert alert-danger">{{ error }}</div>
-              <div class="form-floating">
+              <div class="form-floating position-relative">
                 <textarea
                   id="addrInput"
                   v-model="form.result"
+                  @blur="onBlur"
                   class="form-control"
                   rows="3"
                   placeholder="Адрес"
                 ></textarea>
                 <label for="addrInput">Стандартизованный адрес</label>
+                <ul
+                  v-if="suggestions.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
+                >
+                  <li
+                    v-for="s in suggestions"
+                    :key="s.value"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.value }}
+                  </li>
+                </ul>
               </div>
             </div>
             <div class="modal-footer">
