@@ -88,9 +88,6 @@ const greeting = computed(() => {
   transform: none;
   box-shadow: none;
 }
-.icon-brand {
-  color: #113867;
-}
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
