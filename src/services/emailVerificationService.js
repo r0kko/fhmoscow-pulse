@@ -1,6 +1,7 @@
+import crypto from 'crypto';
+
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
-import crypto from 'crypto';
 
 import { EmailCode, UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
