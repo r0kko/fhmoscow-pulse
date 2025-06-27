@@ -178,16 +178,27 @@ test('logout clears refresh cookie', async () => {
   expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' });
 });
 
-test('me returns sanitized user', async () => {
+test('me returns sanitized user with status', async () => {
+  const loaded = {
+    id: '1',
+    getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
+    UserStatus: { alias: 'AWAITING_CONFIRMATION' },
+  };
   const req = {
-    user: { id: '1', password: 'hash', getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]) },
+    user: {
+      reload: jest.fn().mockResolvedValue(loaded),
+    },
   };
   const res = { json: jest.fn() };
 
   await authController.me(req, res);
 
-  expect(toPublicMock).toHaveBeenCalledWith(req.user);
-  expect(res.json).toHaveBeenCalledWith({ user: { id: '1' }, roles: ['ADMIN'] });
+  expect(req.user.reload).toHaveBeenCalled();
+  expect(toPublicMock).toHaveBeenCalledWith(loaded);
+  expect(res.json).toHaveBeenCalledWith({
+    user: { id: '1', status: 'AWAITING_CONFIRMATION' },
+    roles: ['ADMIN'],
+  });
 });
 
 test('refresh returns new tokens when valid', async () => {

@@ -61,10 +61,11 @@ export default {
 
   /* GET /auth/me */
   async me(req, res) {
-    const roles = (await req.user.getRoles({ attributes: ['alias'] })).map(
+    const user = await req.user.reload({ include: [UserStatus] });
+    const roles = (await user.getRoles({ attributes: ['alias'] })).map(
       (r) => r.alias
     );
-    return res.json({ user: userMapper.toPublic(req.user), roles });
+    return res.json({ user: userMapper.toPublic(user), roles });
   },
 
   /* POST /auth/refresh */
