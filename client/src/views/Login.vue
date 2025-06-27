@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
+import CookieNotice from '../components/CookieNotice.vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth } from '../auth.js'
@@ -120,6 +121,7 @@ async function login() {
         </div>
       </form>
     </div>
+    <CookieNotice />
   </div>
 </template>
 
