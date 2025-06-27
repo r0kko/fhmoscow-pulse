@@ -108,6 +108,24 @@ onMounted(async () => {
       bankLocked.value = true
     }
   } catch (_) {}
+  if (
+    step.value === 2 &&
+    snilsLocked.value &&
+    innLocked.value &&
+    passport.value.series &&
+    passport.value.number
+  ) {
+    step.value = 3
+  }
+  if (
+    step.value === 3 &&
+    passportLocked.value &&
+    Object.values(passportLockFields.value).every(Boolean) &&
+    bank.value.number &&
+    bank.value.bic
+  ) {
+    step.value = 4
+  }
 })
 
 function onInnInput(e) {
