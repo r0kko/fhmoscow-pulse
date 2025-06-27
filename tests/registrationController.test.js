@@ -34,17 +34,18 @@ jest.unstable_mockModule('../src/services/userService.js', () => ({
 
 const fetchPassportMock = jest.fn();
 
+const fetchBankMock = jest.fn();
+
 jest.unstable_mockModule('../src/services/passportService.js', () => ({
   __esModule: true,
   default: { fetchFromLegacy: fetchPassportMock },
 }));
 
-const importBankMock = jest.fn();
-
 jest.unstable_mockModule('../src/services/bankAccountService.js', () => ({
   __esModule: true,
-  default: { importFromLegacy: importBankMock },
+  default: { fetchFromLegacy: fetchBankMock },
 }));
+
 
 const issueTokensMock = jest.fn(() => ({
   accessToken: 'a',
@@ -130,8 +131,8 @@ test('finish issues tokens after valid code', async () => {
   user.reload.mockResolvedValue(updated);
   findUserMock.mockResolvedValueOnce(user);
   verifyCodeMock.mockResolvedValueOnce();
-  importBankMock.mockResolvedValueOnce({});
   fetchPassportMock.mockResolvedValueOnce({});
+  fetchBankMock.mockResolvedValueOnce({});
   const req = {
     body: { email: 't@example.com', code: '123', password: 'Passw0rd' },
   };
@@ -143,6 +144,7 @@ test('finish issues tokens after valid code', async () => {
     'REGISTRATION_STEP_1'
   );
   expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd');
+  expect(fetchBankMock).toHaveBeenCalledWith('u1');
   expect(fetchPassportMock).toHaveBeenCalledWith('u1');
   expect(issueTokensMock).toHaveBeenCalledWith(updated);
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'r');

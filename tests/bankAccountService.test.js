@@ -96,4 +96,42 @@ test('importFromLegacy returns null on invalid data', async () => {
   expect(findBankMock).not.toHaveBeenCalled();
 });
 
+test('fetchFromLegacy returns null when user not linked', async () => {
+  findExtMock.mockResolvedValue(null);
+  legacyFindMock.mockClear();
+  const res = await service.fetchFromLegacy('u1');
+  expect(res).toBeNull();
+  expect(legacyFindMock).not.toHaveBeenCalled();
+});
+
+test('fetchFromLegacy returns sanitized data', async () => {
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    bank_rs: '40702810900000005555',
+    bik_bank: '044525225',
+  });
+  findBankMock.mockResolvedValue({
+    value: 'Bank',
+    data: {
+      correspondent_account: '301',
+      swift: 'SW',
+      inn: '1',
+      kpp: '2',
+      address: { unrestricted_value: 'A' },
+    },
+  });
+
+  const res = await service.fetchFromLegacy('u1');
+  expect(res).toEqual({
+    number: '40702810900000005555',
+    bic: '044525225',
+    bank_name: 'Bank',
+    correspondent_account: '301',
+    swift: 'SW',
+    inn: '1',
+    kpp: '2',
+    address: 'A',
+  });
+});
+
 

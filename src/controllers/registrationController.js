@@ -75,8 +75,7 @@ export default {
         'REGISTRATION_STEP_1'
       );
       await userService.resetPassword(user.id, password);
-      const account = await bankAccountService.importFromLegacy(user.id);
-      if (!account) throw new Error('bank_account_invalid');
+      await bankAccountService.fetchFromLegacy(user.id);
       await passportService.fetchFromLegacy(user.id);
       const updated = await user.reload();
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
