@@ -17,6 +17,13 @@ jest.unstable_mockModule('dotenv', () => ({
   default: { config: jest.fn() },
 }));
 
+const infoMock = jest.fn();
+const errorMock = jest.fn();
+jest.unstable_mockModule('../logger.js', () => ({
+  __esModule: true,
+  default: { info: infoMock, error: errorMock },
+}));
+
 // eslint-disable-next-line no-undef
 process.env.DB_NAME = 'db';
 // eslint-disable-next-line no-undef

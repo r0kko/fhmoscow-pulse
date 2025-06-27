@@ -26,11 +26,12 @@ const sequelize = new Sequelize(
  * Call this once at app bootstrap (e.g. in app.js) and fail fast on error.
  */
 export async function connectToDatabase() {
+  const { default: logger } = await import('../../logger.js');
   try {
     await sequelize.authenticate();
-    console.log('✅ DB connection established');
+    logger.info('✅ DB connection established');
   } catch (error) {
-    console.error('❌ Unable to connect to DB:', error);
+    logger.error('❌ Unable to connect to DB:', error);
     process.exit(1);
   }
 }
