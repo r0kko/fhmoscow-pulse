@@ -14,6 +14,9 @@ import TaxationType from './taxationType.js';
 import Taxation from './taxation.js';
 import ExternalSystem from './externalSystem.js';
 import UserExternalId from './userExternalId.js';
+import AddressType from './addressType.js';
+import Address from './address.js';
+import UserAddress from './userAddress.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -40,6 +43,14 @@ User.hasOne(Taxation, { foreignKey: 'user_id' });
 Taxation.belongsTo(User, { foreignKey: 'user_id' });
 TaxationType.hasMany(Taxation, { foreignKey: 'taxation_type_id' });
 Taxation.belongsTo(TaxationType, { foreignKey: 'taxation_type_id' });
+
+/* addresses */
+User.hasMany(UserAddress, { foreignKey: 'user_id' });
+UserAddress.belongsTo(User, { foreignKey: 'user_id' });
+Address.hasMany(UserAddress, { foreignKey: 'address_id' });
+UserAddress.belongsTo(Address, { foreignKey: 'address_id' });
+AddressType.hasMany(UserAddress, { foreignKey: 'address_type_id' });
+UserAddress.belongsTo(AddressType, { foreignKey: 'address_type_id' });
 
 /* external systems */
 User.hasMany(UserExternalId, { foreignKey: 'user_id' });
@@ -75,4 +86,7 @@ export {
   Taxation,
   ExternalSystem,
   UserExternalId,
+  AddressType,
+  Address,
+  UserAddress,
 };
