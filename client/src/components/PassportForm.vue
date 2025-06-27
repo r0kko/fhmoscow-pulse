@@ -127,75 +127,115 @@ defineExpose({ validate })
     <div class="card-body">
       <h5 class="card-title mb-3">Паспорт</h5>
       <div v-if="props.locked || Object.keys(props.lockedFields || {}).length" class="alert alert-success">Паспорт подтвержден</div>
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+      <div class="row row-cols-1 row-cols-md-2 g-3">
         <div class="col">
-          <label class="form-label">Тип документа</label>
-          <input
-            class="form-control"
-            value="Паспорт гражданина"
-            readonly
-          />
+          <div class="form-floating">
+            <input
+              id="docType"
+              class="form-control"
+              value="Паспорт гражданина"
+              readonly
+              placeholder="Тип документа"
+            />
+            <label for="docType">Тип документа</label>
+          </div>
         </div>
         <div class="col">
-          <label class="form-label">Страна</label>
-          <input class="form-control" value="Российская Федерация" readonly />
+          <div class="form-floating">
+            <input
+              id="country"
+              class="form-control"
+              value="Российская Федерация"
+              readonly
+              placeholder="Страна"
+            />
+            <label for="country">Страна</label>
+          </div>
         </div>
         <div class="col">
-          <label class="form-label">Серия</label>
-          <input
-            v-model="form.series"
-            @input="onSeriesInput"
-            class="form-control"
-            :class="{ 'is-invalid': errors.series }"
-            :disabled="isLocked('series')"
-          />
-          <div class="invalid-feedback">{{ errors.series }}</div>
+          <div class="form-floating">
+            <input
+              id="series"
+              v-model="form.series"
+              @input="onSeriesInput"
+              class="form-control"
+              :class="{ 'is-invalid': errors.series }"
+              :disabled="isLocked('series')"
+              placeholder="Серия"
+            />
+            <label for="series">Серия</label>
+            <div class="invalid-feedback">{{ errors.series }}</div>
+          </div>
         </div>
         <div class="col">
-          <label class="form-label">Номер</label>
-          <input
-            v-model="form.number"
-            @input="onNumberInput"
-            class="form-control"
-            :class="{ 'is-invalid': errors.number }"
-            :disabled="isLocked('number')"
-          />
-          <div class="invalid-feedback">{{ errors.number }}</div>
+          <div class="form-floating">
+            <input
+              id="number"
+              v-model="form.number"
+              @input="onNumberInput"
+              class="form-control"
+              :class="{ 'is-invalid': errors.number }"
+              :disabled="isLocked('number')"
+              placeholder="Номер"
+            />
+            <label for="number">Номер</label>
+            <div class="invalid-feedback">{{ errors.number }}</div>
+          </div>
         </div>
         <div class="col">
-          <label class="form-label">Дата выдачи</label>
-          <input
-            type="date"
-            v-model="form.issue_date"
-            class="form-control"
-            :class="{ 'is-invalid': errors.issue_date }"
-            :disabled="isLocked('issue_date')"
-          />
-          <div class="invalid-feedback">{{ errors.issue_date }}</div>
+          <div class="form-floating">
+            <input
+              id="issueDate"
+              type="date"
+              v-model="form.issue_date"
+              class="form-control"
+              :class="{ 'is-invalid': errors.issue_date }"
+              :disabled="isLocked('issue_date')"
+              placeholder="Дата выдачи"
+            />
+            <label for="issueDate">Дата выдачи</label>
+            <div class="invalid-feedback">{{ errors.issue_date }}</div>
+          </div>
         </div>
         <div class="col">
-          <label class="form-label">Действителен до</label>
-          <input type="date" v-model="form.valid_until" class="form-control" />
+          <div class="form-floating">
+            <input
+              id="validUntil"
+              type="date"
+              v-model="form.valid_until"
+              class="form-control"
+              placeholder="Действителен до"
+            />
+            <label for="validUntil">Действителен до</label>
+          </div>
         </div>
         <div class="col position-relative">
-          <label class="form-label">Кем выдан</label>
-          <input
-            v-model="form.issuing_authority"
-            class="form-control"
-            :class="{ 'is-invalid': errors.issuing_authority }"
-            :disabled="isLocked('issuing_authority')"
-          />
-          <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
+          <div class="form-floating">
+            <input
+              id="issuedBy"
+              v-model="form.issuing_authority"
+              class="form-control"
+              :class="{ 'is-invalid': errors.issuing_authority }"
+              :disabled="isLocked('issuing_authority')"
+              placeholder="Кем выдан"
+            />
+            <label for="issuedBy">Кем выдан</label>
+            <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
+          </div>
         </div>
         <div class="col position-relative">
-          <label class="form-label">Код подразделения</label>
-          <input
-            v-model="form.issuing_authority_code"
-            class="form-control"
-            :class="{ 'is-invalid': errors.issuing_authority_code }"
-            :disabled="isLocked('issuing_authority_code')"
-          />
-          <div class="invalid-feedback">{{ errors.issuing_authority_code }}</div>
+          <div class="form-floating">
+            <input
+              id="issuingCode"
+              v-model="form.issuing_authority_code"
+              class="form-control"
+              :class="{ 'is-invalid': errors.issuing_authority_code }"
+              :disabled="isLocked('issuing_authority_code')"
+              placeholder="Код подразделения"
+            />
+            <label for="issuingCode">Код подразделения</label>
+            <div class="invalid-feedback">{{ errors.issuing_authority_code }}</div>
+          </div>
           <ul
             v-if="suggestions.length"
             class="list-group position-absolute w-100"
@@ -212,14 +252,18 @@ defineExpose({ validate })
           </ul>
         </div>
         <div class="col">
-          <label class="form-label">Место рождения</label>
-          <input
-            v-model="form.place_of_birth"
-            class="form-control"
-            :class="{ 'is-invalid': errors.place_of_birth }"
-            :disabled="isLocked('place_of_birth')"
-          />
-          <div class="invalid-feedback">{{ errors.place_of_birth }}</div>
+          <div class="form-floating">
+            <input
+              id="birthPlace"
+              v-model="form.place_of_birth"
+              class="form-control"
+              :class="{ 'is-invalid': errors.place_of_birth }"
+              :disabled="isLocked('place_of_birth')"
+              placeholder="Место рождения"
+            />
+            <label for="birthPlace">Место рождения</label>
+            <div class="invalid-feedback">{{ errors.place_of_birth }}</div>
+          </div>
         </div>
       </div>
     </div>
