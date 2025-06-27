@@ -7,6 +7,7 @@ import AddPassportModal from '../components/AddPassportModal.vue'
 import InnSnilsForm from '../components/InnSnilsForm.vue'
 import BankAccountForm from '../components/BankAccountForm.vue'
 import TaxationInfo from '../components/TaxationInfo.vue'
+import UserDocuments from '../components/UserDocuments.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -226,6 +227,7 @@ async function save() {
     <InnSnilsForm v-if="user" :userId="route.params.id" />
     <BankAccountForm v-if="user" :userId="route.params.id" />
     <TaxationInfo v-if="user" :userId="route.params.id" />
+    <UserDocuments v-if="user" :userId="route.params.id" editable />
 
     <div v-if="user" class="mt-4" v-for="section in placeholderSections" :key="section">
       <div class="card placeholder-card text-center">

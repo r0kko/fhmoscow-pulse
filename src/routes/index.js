@@ -13,6 +13,7 @@ import bankAccountsRouter from './bankAccounts.js';
 import taxationsRouter from './taxations.js';
 import registerRouter from './register.js';
 import profileRouter from './profile.js';
+import documentsRouter from './documents.js';
 
 const router = express.Router();
 
@@ -25,6 +26,7 @@ router.use('/inns', innsRouter);
 router.use('/snils', snilsRouter);
 router.use('/bank-accounts', bankAccountsRouter);
 router.use('/taxations', taxationsRouter);
+router.use('/documents', documentsRouter);
 router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
 

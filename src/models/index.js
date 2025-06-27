@@ -5,6 +5,9 @@ import UserStatus from './userStatus.js';
 import Log from './log.js';
 import EmailCode from './emailCode.js';
 import DocumentType from './documentType.js';
+import DocumentStatus from './documentStatus.js';
+import Document from './document.js';
+import UserDocument from './userDocument.js';
 import Country from './country.js';
 import Passport from './passport.js';
 import Inn from './inn.js';
@@ -50,6 +53,16 @@ UserExternalId.belongsTo(ExternalSystem, { foreignKey: 'external_system_id' });
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
 Passport.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
+DocumentType.hasMany(Document, { foreignKey: 'document_type_id' });
+Document.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
+
+DocumentStatus.hasMany(UserDocument, { foreignKey: 'status_id' });
+UserDocument.belongsTo(DocumentStatus, { foreignKey: 'status_id' });
+
+User.hasMany(UserDocument, { foreignKey: 'user_id' });
+UserDocument.belongsTo(User, { foreignKey: 'user_id' });
+Document.hasMany(UserDocument, { foreignKey: 'document_id' });
+UserDocument.belongsTo(Document, { foreignKey: 'document_id' });
 
 Country.hasMany(Passport, { foreignKey: 'country_id' });
 Passport.belongsTo(Country, { foreignKey: 'country_id' });
@@ -66,6 +79,8 @@ export {
   Log,
   EmailCode,
   DocumentType,
+  DocumentStatus,
+  Document,
   Country,
   Passport,
   Inn,
@@ -75,4 +90,5 @@ export {
   Taxation,
   ExternalSystem,
   UserExternalId,
+  UserDocument,
 };

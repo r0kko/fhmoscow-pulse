@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
+import UserDocuments from '../components/UserDocuments.vue';
 
 const placeholderSections = ['Выданный инвентарь'];
 
@@ -661,6 +662,7 @@ onMounted(() => {
         </div>
       </div>
       <TaxationInfo class="mb-4" :editable="false" :showOkved="false" />
+      <UserDocuments class="mb-4" />
       <div v-for="section in placeholderSections" :key="section" class="mb-4">
         <div class="card tile placeholder-card text-center">
           <div

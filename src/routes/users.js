@@ -17,6 +17,8 @@ import {
 import { innRules, snilsRules } from '../validators/personalValidators.js';
 import { bankAccountRules } from '../validators/bankAccountValidators.js';
 import { createPassportRules } from '../validators/passportValidators.js';
+import userDocumentAdmin from '../controllers/userDocumentAdminController.js';
+import { createUserDocumentRules } from '../validators/userDocumentValidators.js';
 
 const router = express.Router();
 
@@ -187,5 +189,21 @@ router.post(
 );
 router.get('/:id/passport', auth, authorize('ADMIN'), admin.getPassport);
 router.delete('/:id/passport', auth, authorize('ADMIN'), admin.deletePassport);
+
+
+router.get('/:id/documents', auth, authorize('ADMIN'), userDocumentAdmin.list);
+router.post(
+  '/:id/documents',
+  auth,
+  authorize('ADMIN'),
+  createUserDocumentRules,
+  userDocumentAdmin.create
+);
+router.delete(
+  '/:id/documents/:docId',
+  auth,
+  authorize('ADMIN'),
+  userDocumentAdmin.remove
+);
 
 export default router;
