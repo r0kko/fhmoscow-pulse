@@ -53,19 +53,21 @@ onMounted(async () => {
   try {
     const data = await apiFetch('/passports/me')
     passport.value = data.passport
+    passportLockFields.value = {
+      series: !!passport.value.series,
+      number: !!passport.value.number,
+      issue_date: !!passport.value.issue_date,
+      issuing_authority: !!passport.value.issuing_authority,
+      issuing_authority_code: !!passport.value.issuing_authority_code,
+      place_of_birth: !!passport.value.place_of_birth,
+    }
     if (passport.value.series && passport.value.number) {
       const cleaned = await cleanPassport(`${passport.value.series} ${passport.value.number}`)
-      passportLocked.value = cleaned && cleaned.qc === 0 && !isExpired(passport.value)
-      if (passportLocked.value) {
-        passportLockFields.value = {
-          series: !!passport.value.series,
-          number: !!passport.value.number,
-          issue_date: !!passport.value.issue_date,
-          issuing_authority: !!passport.value.issuing_authority,
-          issuing_authority_code: !!passport.value.issuing_authority_code,
-          place_of_birth: !!passport.value.place_of_birth,
-        }
-      }
+      passportLocked.value =
+        cleaned &&
+        cleaned.qc === 0 &&
+        !isExpired(passport.value) &&
+        Object.values(passportLockFields.value).every(Boolean)
     }
   } catch (_) {}
   try {
@@ -188,7 +190,10 @@ async function saveStep() {
       return
     }
     if (step.value === 3) {
-      if (passportLocked.value) {
+      if (
+        passportLocked.value &&
+        Object.values(passportLockFields.value).every(Boolean)
+      ) {
         step.value = 4
         loading.value = false
         return
@@ -210,15 +215,13 @@ async function saveStep() {
         body: JSON.stringify(passport.value)
       })
       passportLocked.value = !isExpired(passport.value)
-      if (passportLocked.value) {
-        passportLockFields.value = {
-          series: !!passport.value.series,
-          number: !!passport.value.number,
-          issue_date: !!passport.value.issue_date,
-          issuing_authority: !!passport.value.issuing_authority,
-          issuing_authority_code: !!passport.value.issuing_authority_code,
-          place_of_birth: !!passport.value.place_of_birth,
-        }
+      passportLockFields.value = {
+        series: !!passport.value.series,
+        number: !!passport.value.number,
+        issue_date: !!passport.value.issue_date,
+        issuing_authority: !!passport.value.issuing_authority,
+        issuing_authority_code: !!passport.value.issuing_authority_code,
+        place_of_birth: !!passport.value.place_of_birth,
       }
       step.value = 4
       loading.value = false
