@@ -3,6 +3,10 @@ import { Op } from 'sequelize';
 import { User, Role, UserStatus } from '../models/index.js';
 
 async function createUser(data) {
+  const birth = new Date(data.birth_date);
+  if (Number.isNaN(birth.getTime()) || birth < new Date('1945-01-01')) {
+    throw new Error('invalid_birth_date');
+  }
   const [activeStatus, unconfirmedStatus] = await Promise.all([
     UserStatus.findOne({ where: { alias: 'ACTIVE' } }),
     UserStatus.findOne({ where: { alias: 'EMAIL_UNCONFIRMED' } }),

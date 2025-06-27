@@ -23,6 +23,13 @@ async function getByUser(userId) {
 async function createForUser(userId, data, adminId) {
   data = sanitizePassportData(data);
 
+  if (data.issue_date) {
+    const issue = new Date(data.issue_date);
+    if (Number.isNaN(issue.getTime()) || issue < new Date('2000-01-01')) {
+      throw new Error('invalid_issue_date');
+    }
+  }
+
   const [user, existing] = await Promise.all([
     User.findByPk(userId),
     Passport.findOne({ where: { user_id: userId } }),
