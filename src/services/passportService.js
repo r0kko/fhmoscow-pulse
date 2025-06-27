@@ -80,6 +80,23 @@ async function removeByUser(userId) {
   return true;
 }
 
+async function fetchFromLegacy(userId) {
+  const ext = await UserExternalId.findOne({ where: { user_id: userId } });
+  if (!ext) return null;
+  const legacy = await legacyUserService.findById(ext.external_id);
+  if (!legacy?.ps_ser || !legacy?.ps_num) return null;
+
+  return sanitizePassportData({
+    document_type: 'CIVIL',
+    country: 'RU',
+    series: String(legacy.ps_ser).trim(),
+    number: String(legacy.ps_num).trim().padStart(6, '0'),
+    issue_date: legacy.ps_date,
+    issuing_authority: legacy.ps_org,
+    issuing_authority_code: legacy.ps_pdrz,
+  });
+}
+
 async function importFromLegacy(userId) {
   const existing = await Passport.findOne({ where: { user_id: userId } });
   if (existing) return existing;
@@ -93,8 +110,8 @@ async function importFromLegacy(userId) {
     const data = sanitizePassportData({
       document_type: 'CIVIL',
       country: 'RU',
-      series: legacy.ps_ser,
-      number: String(legacy.ps_num).padStart(6, '0'),
+      series: String(legacy.ps_ser).trim(),
+      number: String(legacy.ps_num).trim().padStart(6, '0'),
       issue_date: legacy.ps_date,
       issuing_authority: legacy.ps_org,
       issuing_authority_code: legacy.ps_pdrz,
@@ -106,4 +123,10 @@ async function importFromLegacy(userId) {
   }
 }
 
-export default { getByUser, createForUser, removeByUser, importFromLegacy };
+export default {
+  getByUser,
+  createForUser,
+  removeByUser,
+  importFromLegacy,
+  fetchFromLegacy,
+};
