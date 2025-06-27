@@ -9,10 +9,10 @@ import {
   calculateValidUntil,
   sanitizePassportData,
 } from '../utils/passportUtils.js';
+import ServiceError from '../errors/ServiceError.js';
 
 import legacyUserService from './legacyUserService.js';
 import dadataService from './dadataService.js';
-import ServiceError from '../errors/ServiceError.js';
 
 async function getByUser(userId) {
   return Passport.findOne({

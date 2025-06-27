@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import ServiceError from '../errors/ServiceError.js';
 
+import ServiceError from '../errors/ServiceError.js';
 import {
   JWT_SECRET,
   ACCESS_TTL,
