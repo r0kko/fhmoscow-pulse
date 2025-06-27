@@ -62,13 +62,13 @@ onMounted(async () => {
   try {
     const data = await apiFetch('/inns/me')
     inn.value = data.inn.number.replace(/\D/g, '')
-    innLocked.value = Boolean(data.inn.id)
+    innLocked.value = Boolean(data.inn.id) || isValidInn(inn.value)
   } catch (_) {}
   try {
     const data = await apiFetch('/snils/me')
     snilsInput.value = formatSnils(data.snils.number.replace(/\D/g, ''))
     snilsDigits.value = data.snils.number.replace(/\D/g, '')
-    snilsLocked.value = Boolean(data.snils.id)
+    snilsLocked.value = Boolean(data.snils.id) || isValidSnils(snilsDigits.value)
   } catch (_) {}
   try {
     const data = await apiFetch('/passports/me')
@@ -327,6 +327,9 @@ async function saveStep() {
             :disabled="innLocked"
           />
           <label for="inn">ИНН</label>
+        </div>
+        <div v-if="innLocked && snilsLocked" class="alert alert-success mt-3">
+          Данные импортированы корректно
         </div>
       </div>
       <div v-else-if="step === 3" class="mb-4">
