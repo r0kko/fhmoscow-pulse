@@ -70,7 +70,7 @@ const logger = createLogger({
               response_time: parsed.respTime,
             });
           } catch (err) {
-            console.warn('DB log persistence failed:', err.message);
+            logger.warn('DB log persistence failed:', err.message);
           } finally {
             cb();
           }
