@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import logger from '../../logger.js';
 
 import {
   SMTP_HOST,
@@ -17,7 +18,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendMail(to, subject, text) {
   if (!SMTP_HOST) {
-    console.warn('Email not configured');
+    logger.warn('Email not configured');
     return;
   }
   await transporter.sendMail({
@@ -26,6 +27,7 @@ export async function sendMail(to, subject, text) {
     subject,
     text,
   });
+  logger.info('Email sent to %s', to);
 }
 
 export async function sendVerificationEmail(user, code) {
