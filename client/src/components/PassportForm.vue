@@ -240,20 +240,6 @@ defineExpose({ validate })
         <div class="col position-relative">
           <div class="form-floating">
             <input
-              id="issuedBy"
-              v-model="form.issuing_authority"
-              class="form-control"
-              :class="{ 'is-invalid': errors.issuing_authority }"
-              :disabled="isLocked('issuing_authority')"
-              placeholder="Кем выдан"
-            />
-            <label for="issuedBy">Кем выдан</label>
-            <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
-          </div>
-        </div>
-        <div class="col position-relative">
-          <div class="form-floating">
-            <input
               id="issuingCode"
               v-model="form.issuing_authority_code"
               @input="onIssuingCodeInput"
@@ -280,6 +266,20 @@ defineExpose({ validate })
               {{ s.value }}
             </li>
           </ul>
+        </div>
+        <div class="col position-relative">
+          <div class="form-floating">
+            <input
+              id="issuedBy"
+              v-model="form.issuing_authority"
+              class="form-control"
+              :class="{ 'is-invalid': errors.issuing_authority }"
+              :disabled="isLocked('issuing_authority')"
+              placeholder="Кем выдан"
+            />
+            <label for="issuedBy">Кем выдан</label>
+            <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
+          </div>
         </div>
         <div class="col">
           <div class="form-floating">
