@@ -25,7 +25,10 @@ export const createPassportRules = [
         req.body.document_type === 'CIVIL' && req.body.country === 'RU'
     )
     .notEmpty()
-    .isISO8601(),
+    .custom((v) => {
+      const d = new Date(v);
+      return !Number.isNaN(d.getTime());
+    }),
   body('valid_until').optional().isISO8601(),
   body('issuing_authority')
     .if(
