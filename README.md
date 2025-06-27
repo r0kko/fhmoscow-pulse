@@ -68,6 +68,10 @@ DADATA_SECRET=your_dadata_secret
 # RATE_LIMIT_MAX=100
 ```
 
+Приложение отправляет HTML-письма для подтверждения адреса электронной почты.
+Настроить внешний вид и текст письма можно в файле
+`src/templates/verificationEmail.js`.
+
 `PASSWORD_MIN_LENGTH` and `PASSWORD_PATTERN` allow customizing the
 password policy for user registration. By default passwords must be at
 least eight characters long and contain both letters and numbers.

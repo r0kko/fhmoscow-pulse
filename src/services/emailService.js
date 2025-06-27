@@ -8,6 +8,7 @@ import {
   SMTP_PASS,
   EMAIL_FROM,
 } from '../config/email.js';
+import { renderVerificationEmail } from '../templates/verificationEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -16,7 +17,7 @@ const transporter = nodemailer.createTransport({
   auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
 });
 
-export async function sendMail(to, subject, text) {
+export async function sendMail(to, subject, text, html) {
   if (!SMTP_HOST) {
     logger.warn('Email not configured');
     return;
@@ -26,13 +27,14 @@ export async function sendMail(to, subject, text) {
     to,
     subject,
     text,
+    html,
   });
   logger.info('Email sent to %s', to);
 }
 
 export async function sendVerificationEmail(user, code) {
-  const text = `Your verification code: ${code}`;
-  await sendMail(user.email, 'Email verification', text);
+  const { subject, text, html } = renderVerificationEmail(code);
+  await sendMail(user.email, subject, text, html);
 }
 
 export default { sendMail, sendVerificationEmail };
