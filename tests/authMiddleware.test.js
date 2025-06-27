@@ -1,4 +1,4 @@
-import {expect, jest, test} from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 
 const verifyMock = jest.fn();
 const findByPkMock = jest.fn();
@@ -15,7 +15,7 @@ jest.unstable_mockModule('../src/models/user.js', () => ({
 
 const { default: auth } = await import('../src/middlewares/auth.js');
 
- test('valid token attaches user to request', async () => {
+test('valid token attaches user to request', async () => {
   const req = { headers: { authorization: 'Bearer t' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
@@ -27,9 +27,10 @@ const { default: auth } = await import('../src/middlewares/auth.js');
 
   expect(req.user).toBe(user);
   expect(next).toHaveBeenCalled();
+  expect(res.json).not.toHaveBeenCalled();
 });
 
- test('missing token returns 401', async () => {
+test('missing token returns 401', async () => {
   const req = { headers: {} };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
@@ -37,10 +38,11 @@ const { default: auth } = await import('../src/middlewares/auth.js');
   await auth(req, res, next);
 
   expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({ error: 'missing_token' });
   expect(next).not.toHaveBeenCalled();
 });
 
- test('user not found returns 401', async () => {
+test('user not found returns 401', async () => {
   const req = { headers: { authorization: 'Bearer t' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
@@ -50,5 +52,21 @@ const { default: auth } = await import('../src/middlewares/auth.js');
   await auth(req, res, next);
 
   expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({ error: 'user_not_found' });
+  expect(next).not.toHaveBeenCalled();
+});
+
+test('invalid token returns 401', async () => {
+  const req = { headers: { authorization: 'Bearer t' } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  const next = jest.fn();
+  verifyMock.mockImplementation(() => {
+    throw new Error('bad');
+  });
+
+  await auth(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({ error: 'invalid_token' });
   expect(next).not.toHaveBeenCalled();
 });
