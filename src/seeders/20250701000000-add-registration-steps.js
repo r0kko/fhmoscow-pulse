@@ -36,7 +36,11 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.bulkDelete('user_statuses', {
-      alias: ['REGISTRATION_STEP_1', 'REGISTRATION_STEP_2', 'REGISTRATION_STEP_3'],
+      alias: [
+        'REGISTRATION_STEP_1',
+        'REGISTRATION_STEP_2',
+        'REGISTRATION_STEP_3',
+      ],
     });
   },
 };
