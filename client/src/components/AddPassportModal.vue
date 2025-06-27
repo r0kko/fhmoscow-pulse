@@ -238,10 +238,7 @@ async function save() {
             </div>
             <div class="mb-3" v-else>
               <label class="form-label">Действителен до</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                <input type="date" class="form-control" :value="form.valid_until" readonly />
-              </div>
+              <input type="date" v-model="form.valid_until" class="form-control" disabled />
             </div>
             <div class="mb-3">
               <label class="form-label">Место рождения</label>

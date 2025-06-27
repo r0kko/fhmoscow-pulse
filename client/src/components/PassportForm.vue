@@ -217,29 +217,16 @@ defineExpose({ validate })
           </div>
         </div>
         <div class="col">
-          <div v-if="!validUntilLocked" class="form-floating">
+          <div class="form-floating">
             <input
               id="validUntil"
               type="date"
               v-model="form.valid_until"
               class="form-control"
+              :disabled="validUntilLocked"
               placeholder="Действителен до"
             />
             <label for="validUntil">Действителен до</label>
-          </div>
-          <div v-else class="input-group">
-            <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-            <div class="form-floating flex-grow-1">
-              <input
-                id="validUntil"
-                type="date"
-                class="form-control"
-                :value="form.valid_until"
-                readonly
-                placeholder="Действителен до"
-              />
-              <label for="validUntil">Действителен до</label>
-            </div>
           </div>
         </div>
         <div class="col position-relative">
