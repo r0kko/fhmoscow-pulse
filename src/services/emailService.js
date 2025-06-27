@@ -8,7 +8,10 @@ import {
   SMTP_PASS,
   EMAIL_FROM,
 } from '../config/email.js';
-import { renderVerificationEmail } from '../templates/verificationEmail.js';
+import {
+  renderVerificationEmail,
+} from '../templates/verificationEmail.js';
+import { renderPasswordResetEmail } from '../templates/passwordResetEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -38,8 +41,8 @@ export async function sendVerificationEmail(user, code) {
 }
 
 export async function sendPasswordResetEmail(user, code) {
-  const text = `Your password reset code: ${code}`;
-  await sendMail(user.email, 'Password reset', text);
+  const { subject, text, html } = renderPasswordResetEmail(code);
+  await sendMail(user.email, subject, text, html);
 }
 
 export default { sendMail, sendVerificationEmail, sendPasswordResetEmail };

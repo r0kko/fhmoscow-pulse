@@ -68,9 +68,9 @@ DADATA_SECRET=your_dadata_secret
 # RATE_LIMIT_MAX=100
 ```
 
-Приложение отправляет HTML-письма для подтверждения адреса электронной почты.
-Настроить внешний вид и текст письма можно в файле
-`src/templates/verificationEmail.js`.
+Приложение отправляет HTML-письма для подтверждения электронной почты и сброса
+пароля. Настроить внешний вид и текст этих писем можно в файлах
+`src/templates/verificationEmail.js` и `src/templates/passwordResetEmail.js`.
 
 `PASSWORD_MIN_LENGTH` and `PASSWORD_PATTERN` allow customizing the
 password policy for user registration. By default passwords must be at
