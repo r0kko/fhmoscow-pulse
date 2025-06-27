@@ -1,7 +1,8 @@
 import { BankAccount, User, UserExternalId } from '../models/index.js';
+import { isValidAccountNumber } from '../utils/bank.js';
+
 import legacyUserService from './legacyUserService.js';
 import dadataService from './dadataService.js';
-import { isValidAccountNumber } from '../utils/bank.js';
 
 async function getByUser(userId) {
   return BankAccount.findOne({ where: { user_id: userId } });

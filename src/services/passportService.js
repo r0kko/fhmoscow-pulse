@@ -5,7 +5,10 @@ import {
   User,
   UserExternalId,
 } from '../models/index.js';
-import { calculateValidUntil, sanitizePassportData } from '../utils/passportUtils.js';
+import {
+  calculateValidUntil,
+  sanitizePassportData,
+} from '../utils/passportUtils.js';
 
 import legacyUserService from './legacyUserService.js';
 import dadataService from './dadataService.js';
@@ -47,7 +50,8 @@ async function createForUser(userId, data, adminId) {
       data.number = cleaned.number;
       data.issue_date = cleaned.issue_date || data.issue_date;
       data.issuing_authority = cleaned.issue_org || data.issuing_authority;
-      data.issuing_authority_code = cleaned.issue_code || data.issuing_authority_code;
+      data.issuing_authority_code =
+        cleaned.issue_code || data.issuing_authority_code;
       data = sanitizePassportData(data);
     }
     validUntil = calculateValidUntil(user.birth_date, data.issue_date);
