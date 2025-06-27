@@ -14,8 +14,10 @@ const step = ref(auth.user?.status === 'REGISTRATION_STEP_2' ? 2 : 1)
 const total = 4
 const user = ref({})
 const inn = ref('')
+const innLocked = ref(false)
 const snilsDigits = ref('')
 const snilsInput = ref('')
+const snilsLocked = ref(false)
 const passport = ref({})
 const passportLocked = ref(false)
 const passportLockFields = ref({})
@@ -40,11 +42,13 @@ onMounted(async () => {
   try {
     const data = await apiFetch('/inns/me')
     inn.value = data.inn.number.replace(/\D/g, '')
+    innLocked.value = isValidInn(inn.value)
   } catch (_) {}
   try {
     const data = await apiFetch('/snils/me')
     snilsInput.value = formatSnils(data.snils.number.replace(/\D/g, ''))
     snilsDigits.value = data.snils.number.replace(/\D/g, '')
+    snilsLocked.value = isValidSnils(snilsInput.value)
   } catch (_) {}
   try {
     const data = await apiFetch('/passports/me')
@@ -177,6 +181,8 @@ async function saveStep() {
         method: 'POST',
         body: JSON.stringify({ number: inn.value })
       })
+      snilsLocked.value = true
+      innLocked.value = true
       step.value = 3
       loading.value = false
       return
@@ -265,6 +271,7 @@ async function saveStep() {
             @input="onSnilsInput"
             class="form-control"
             placeholder="СНИЛС"
+            :disabled="snilsLocked"
           />
           <label for="snils">СНИЛС</label>
         </div>
@@ -275,6 +282,7 @@ async function saveStep() {
             @input="onInnInput"
             class="form-control"
             placeholder="ИНН"
+            :disabled="innLocked"
           />
           <label for="inn">ИНН</label>
         </div>
