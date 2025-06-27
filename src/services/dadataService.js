@@ -65,6 +65,18 @@ export async function cleanFio(fio) {
   return Array.isArray(data) ? data[0] : null;
 }
 
+export async function suggestAddress(query) {
+  if (!query) return [];
+  const data = await request('/suggest/address', { query });
+  return data?.suggestions || [];
+}
+
+export async function cleanAddress(address) {
+  if (!address) return null;
+  const data = await request('/clean/address', [address], true, CLEANER_BASE);
+  return Array.isArray(data) ? data[0] : null;
+}
+
 export async function suggestFmsUnit(query, filters) {
   if (!query) return [];
   const body = { query };
@@ -111,6 +123,8 @@ export async function findPartyByInnWithStatus(inn) {
 export default {
   suggestFio,
   cleanFio,
+  suggestAddress,
+  cleanAddress,
   suggestFmsUnit,
   cleanPassport,
   findBankByBic,

@@ -56,6 +56,32 @@ export async function cleanPassport(passport) {
   }
 }
 
+export async function suggestAddress(query) {
+  if (!query) return []
+  try {
+    const { suggestions } = await apiFetch('/dadata/suggest-address', {
+      method: 'POST',
+      body: JSON.stringify({ query })
+    })
+    return suggestions
+  } catch (_err) {
+    return []
+  }
+}
+
+export async function cleanAddress(address) {
+  if (!address) return null
+  try {
+    const { result } = await apiFetch('/dadata/clean-address', {
+      method: 'POST',
+      body: JSON.stringify({ address })
+    })
+    return result
+  } catch (_err) {
+    return null
+  }
+}
+
 export async function findBankByBic(bic) {
   if (!bic) return null
   try {

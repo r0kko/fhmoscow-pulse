@@ -11,6 +11,16 @@ export default {
     return res.json({ result });
   },
 
+  async suggestAddress(req, res) {
+    const suggestions = await dadata.suggestAddress(req.body.query);
+    return res.json({ suggestions });
+  },
+
+  async cleanAddress(req, res) {
+    const result = await dadata.cleanAddress(req.body.address);
+    return res.json({ result });
+  },
+
   async suggestFmsUnit(req, res) {
     const suggestions = await dadata.suggestFmsUnit(
       req.body.query,
