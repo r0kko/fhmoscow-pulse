@@ -18,7 +18,7 @@ jest.unstable_mockModule('../src/config/redis.js', () => ({
       }
     },
     async keys(pattern) {
-      const prefix = pattern.replace('*', '');
+      const prefix = pattern.replace(/\*/g, '');
       return [...store.keys()].filter((k) => k.startsWith(prefix));
     },
   },
