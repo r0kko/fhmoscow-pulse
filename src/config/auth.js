@@ -5,8 +5,10 @@ export const JWT_SECRET = process.env.JWT_SECRET;
 
 export const PASSWORD_MIN_LENGTH =
   parseInt(process.env.PASSWORD_MIN_LENGTH, 10) || 8;
+import _ from 'lodash';
+
 export const PASSWORD_PATTERN = new RegExp(
-  process.env.PASSWORD_PATTERN || '(?=.*[A-Za-z])(?=.*\\d)'
+  _.escapeRegExp(process.env.PASSWORD_PATTERN || '(?=.*[A-Za-z])(?=.*\\d)')
 );
 
 export const COOKIE_NAME = 'refresh_token';

@@ -41,7 +41,8 @@
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
-    "redis": "^5.5.6"
+    "redis": "^5.5.6",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
