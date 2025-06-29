@@ -9,4 +9,9 @@ export default {
     }
     return res.status(404).json({ error: 'certificate_not_found' });
   },
+
+  async history(req, res) {
+    const list = await medicalCertificateService.listByUser(req.user.id);
+    return res.json({ certificates: list.map(medicalCertificateMapper.toPublic) });
+  },
 };

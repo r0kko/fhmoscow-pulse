@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
 const certificate = ref(null);
+const history = ref([]);
 const error = ref('');
 const loading = ref(true);
 
@@ -15,12 +16,20 @@ function formatDate(str) {
 
 onMounted(async () => {
   try {
-    const data = await apiFetch('/medical-certificates/me');
-    certificate.value = data.certificate;
+    const [current, hist] = await Promise.all([
+      apiFetch('/medical-certificates/me').catch((e) => {
+        if (e.message.includes('не найдена')) return null;
+        throw e;
+      }),
+      apiFetch('/medical-certificates/me/history'),
+    ]);
+    certificate.value = current ? current.certificate : null;
+    history.value = hist.certificates || [];
     error.value = '';
   } catch (e) {
     error.value = e.message;
     certificate.value = null;
+    history.value = [];
   } finally {
     loading.value = false;
   }
@@ -74,6 +83,28 @@ onMounted(async () => {
       </div>
     </div>
     <p v-else class="text-muted">{{ error || 'Справка не найдена.' }}</p>
+    <h2 class="mt-4">История справок</h2>
+    <div v-if="history.length" class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Номер</th>
+            <th>Учреждение</th>
+            <th>ИНН</th>
+            <th>Период действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in history" :key="item.id">
+            <td>{{ item.certificate_number }}</td>
+            <td>{{ item.organization }}</td>
+            <td>{{ item.inn }}</td>
+            <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p v-else class="text-muted">История не найдена</p>
   </div>
 </template>
 
