@@ -3,8 +3,8 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import helmet from 'helmet';
-import lusca from 'lusca';
 
+import csrf from './src/config/csrf.js';
 import session from './src/config/session.js';
 import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
@@ -35,7 +35,7 @@ app.use(helmet());
 app.use(rateLimiter);
 app.use(session);
 // Expose CSRF token in a cookie so the Vue client can read it
-app.use(lusca.csrf({ angular: true }));
+app.use(csrf);
 app.use(requestLogger);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
