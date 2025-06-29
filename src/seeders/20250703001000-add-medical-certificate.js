@@ -6,14 +6,14 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     const now = new Date();
     const [user] = await queryInterface.sequelize.query(
-        // eslint-disable-next-line
+      // eslint-disable-next-line
       `SELECT id FROM users WHERE email = 'aadrobot@fhmoscow.com' LIMIT 1;`,
       { type: Sequelize.QueryTypes.SELECT }
     );
     if (!user) return;
 
     const [existing] = await queryInterface.sequelize.query(
-        // eslint-disable-next-line
+      // eslint-disable-next-line
       `SELECT COUNT(*) AS cnt FROM medical_certificates WHERE user_id = :id;`,
       { replacements: { id: user.id }, type: Sequelize.QueryTypes.SELECT }
     );
