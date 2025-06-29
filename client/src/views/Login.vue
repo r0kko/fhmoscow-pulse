@@ -58,7 +58,8 @@ async function login() {
     await initCsrf()
     const data = await apiFetch('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ phone: phone.value, password: password.value })
+      body: JSON.stringify({ phone: phone.value, password: password.value }),
+      redirectOn401: false
     })
     setAuthToken(data.access_token)
     auth.user = data.user

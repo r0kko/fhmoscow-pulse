@@ -2,6 +2,7 @@ import express from 'express';
 
 import auth from '../middlewares/auth.js';
 import requireActive from '../middlewares/requireActive.js';
+import csrf from '../config/csrf.js';
 
 import authRouter from './auth.js';
 import usersRouter from './users.js';
@@ -33,7 +34,7 @@ router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
 router.use('/password-reset', passwordResetRouter);
 
-router.get('/csrf-token', (req, res) => {
+router.get('/csrf-token', csrf, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 

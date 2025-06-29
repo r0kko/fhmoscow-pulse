@@ -48,7 +48,10 @@ export default {
   },
 
   /* POST /auth/logout */
-  async logout(_req, res) {
+  async logout(req, res) {
+    if (req.session) {
+      req.session.destroy(() => {});
+    }
     clearRefreshCookie(res);
     return res.status(200).json({ message: 'Logged out' });
   },
