@@ -14,6 +14,14 @@ function getXsrfToken() {
   return match ? decodeURIComponent(match.split('=')[1]) : null;
 }
 
+export async function initCsrf() {
+  try {
+    await fetch(`${API_BASE}/csrf-token`, { credentials: 'include' });
+  } catch (_) {
+    // ignore
+  }
+}
+
 export function setAccessToken(token) {
   accessToken = token;
 }

@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { apiFetch, setAccessToken, clearAccessToken } from './api.js'
+import { apiFetch, setAccessToken, clearAccessToken, initCsrf } from './api.js'
 
 export const auth = reactive({
   user: null,
@@ -20,6 +20,7 @@ export async function fetchCurrentUser() {
 
 export async function refreshFromCookie() {
   try {
+    await initCsrf()
     const data = await apiFetch('/auth/refresh', {
       method: 'POST',
       body: '{}',
