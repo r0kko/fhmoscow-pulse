@@ -3,6 +3,9 @@ import { expect, jest, test } from '@jest/globals';
 const addRoleMock = jest.fn();
 const removeRoleMock = jest.fn();
 
+const userRoleFindMock = jest.fn();
+const userRoleRestoreMock = jest.fn();
+
 const createMock = jest.fn();
 const findAndCountAllMock = jest.fn();
 const findByPkMock = jest.fn();
@@ -11,6 +14,20 @@ const updateMock = jest.fn();
 const user = { addRole: addRoleMock, removeRole: removeRoleMock, update: updateMock };
 const findRoleMock = jest.fn();
 const statusFindMock = jest.fn();
+
+beforeEach(() => {
+  addRoleMock.mockClear();
+  removeRoleMock.mockClear();
+  userRoleFindMock.mockClear();
+  userRoleRestoreMock.mockClear();
+  createMock.mockClear();
+  findAndCountAllMock.mockClear();
+  findByPkMock.mockClear();
+  findOneMock.mockClear();
+  updateMock.mockClear();
+  findRoleMock.mockClear();
+  statusFindMock.mockClear();
+});
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -21,6 +38,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findAndCountAll: findAndCountAllMock,
   },
   Role: { findOne: findRoleMock },
+  UserRole: { findOne: userRoleFindMock },
   UserStatus: { findOne: statusFindMock },
 }));
 
@@ -29,8 +47,20 @@ const { default: service } = await import('../src/services/userService.js');
 test('assignRole adds role to user', async () => {
   findByPkMock.mockResolvedValue(user);
   findRoleMock.mockResolvedValue({});
+  userRoleFindMock.mockResolvedValue(null);
   await service.assignRole('1', 'ADMIN');
   expect(addRoleMock).toHaveBeenCalled();
+});
+
+test('assignRole restores removed role', async () => {
+  findByPkMock.mockResolvedValue(user);
+  findRoleMock.mockResolvedValue({ id: 2 });
+  addRoleMock.mockClear();
+  userRoleRestoreMock.mockClear();
+  userRoleFindMock.mockResolvedValue({ deletedAt: new Date(), restore: userRoleRestoreMock });
+  await service.assignRole('1', 'ADMIN');
+  expect(userRoleRestoreMock).toHaveBeenCalled();
+  expect(addRoleMock).not.toHaveBeenCalled();
 });
 
 test('removeRole removes role from user', async () => {

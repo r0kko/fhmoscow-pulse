@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { apiFetch } from '../api.js';
 
 const props = defineProps({
@@ -7,14 +7,19 @@ const props = defineProps({
   userRoles: { type: Array, default: () => [] },
 });
 
+const emit = defineEmits(['updated']);
+
 const roles = ref([]);
 const error = ref('');
+const saving = ref(false);
 const current = ref(new Set(props.userRoles));
+const selected = ref(new Set(props.userRoles));
 
 watch(
   () => props.userRoles,
   (val) => {
     current.value = new Set(val || []);
+    selected.value = new Set(val || []);
   }
 );
 
@@ -29,20 +34,39 @@ async function loadRoles() {
 
 onMounted(loadRoles);
 
-async function toggle(role, checked) {
+function toggle(alias, checked) {
+  if (checked) selected.value.add(alias);
+  else selected.value.delete(alias);
+}
+
+const changed = computed(() => {
+  if (current.value.size !== selected.value.size) return true;
+  for (const r of selected.value) if (!current.value.has(r)) return true;
+  return false;
+});
+
+async function save() {
+  if (!changed.value) return;
+  saving.value = true;
+  error.value = '';
+  const toAdd = [...selected.value].filter((r) => !current.value.has(r));
+  const toRemove = [...current.value].filter((r) => !selected.value.has(r));
   try {
-    if (checked) {
-      await apiFetch(`/users/${props.userId}/roles/${role.alias}`, { method: 'POST' });
-      current.value.add(role.alias);
-    } else {
-      await apiFetch(`/users/${props.userId}/roles/${role.alias}`, { method: 'DELETE' });
-      current.value.delete(role.alias);
+    for (const alias of toAdd) {
+      await apiFetch(`/users/${props.userId}/roles/${alias}`, { method: 'POST' });
     }
-    error.value = '';
+    for (const alias of toRemove) {
+      await apiFetch(`/users/${props.userId}/roles/${alias}`, { method: 'DELETE' });
+    }
+    current.value = new Set(selected.value);
+    emit('updated', [...current.value]);
   } catch (e) {
     error.value = e.message;
+  } finally {
+    saving.value = false;
   }
 }
+
 </script>
 
 <template>
@@ -55,13 +79,20 @@ async function toggle(role, checked) {
             class="form-check-input"
             type="checkbox"
             :id="`role-${role.alias}`"
-            :checked="current.has(role.alias)"
-            @change="toggle(role, $event.target.checked)"
+            :checked="selected.has(role.alias)"
+            @change="toggle(role.alias, $event.target.checked)"
           />
           <label class="form-check-label" :for="`role-${role.alias}`">
             {{ role.name }}
           </label>
         </div>
+        <button
+          class="btn btn-primary mt-3"
+          @click="save"
+          :disabled="saving || !changed"
+        >
+          Сохранить
+        </button>
       </div>
       <p v-else class="mb-0">Нет доступных ролей.</p>
       <div v-if="error" class="text-danger mt-2">{{ error }}</div>

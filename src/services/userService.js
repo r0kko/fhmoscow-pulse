@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 
-import { User, Role, UserStatus } from '../models/index.js';
+import { User, Role, UserRole, UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function createUser(data) {
@@ -123,6 +123,19 @@ async function assignRole(userId, alias) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('role_not_found', 404);
+
+  const existing = await UserRole.findOne({
+    where: { user_id: userId, role_id: role.id },
+    paranoid: false,
+  });
+
+  if (existing) {
+    if (existing.deletedAt) {
+      await existing.restore();
+    }
+    return user;
+  }
+
   await user.addRole(role);
   return user;
 }
