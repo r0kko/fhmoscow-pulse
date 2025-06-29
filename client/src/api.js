@@ -6,6 +6,14 @@ const API_BASE =
 
 let accessToken = null;
 
+function getXsrfToken() {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('XSRF-TOKEN='));
+  return match ? decodeURIComponent(match.split('=')[1]) : null;
+}
+
 export function setAccessToken(token) {
   accessToken = token;
 }
@@ -43,6 +51,10 @@ export async function apiFetch(path, options = {}) {
     'Content-Type': 'application/json',
     ...(opts.headers || {}),
   };
+  const xsrf = getXsrfToken();
+  if (xsrf) {
+    opts.headers['X-XSRF-TOKEN'] = xsrf;
+  }
   if (accessToken) {
     opts.headers['Authorization'] = `Bearer ${accessToken}`;
   }
