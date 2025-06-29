@@ -34,7 +34,8 @@ app.use(cors(corsOptions));
 app.use(helmet());
 app.use(rateLimiter);
 app.use(session);
-app.use(lusca.csrf());
+// Expose CSRF token in a cookie so the Vue client can read it
+app.use(lusca.csrf({ angular: true }));
 app.use(requestLogger);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
