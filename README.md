@@ -52,6 +52,7 @@ LEGACY_DB_NAME=legacydb
 LEGACY_DB_USER=root
 LEGACY_DB_PASS=secret
 JWT_SECRET=your_jwt_secret
+SESSION_SECRET=your_session_secret
 # optional overrides
 # token for DaData suggestions
 VITE_DADATA_TOKEN=your_dadata_api_token
