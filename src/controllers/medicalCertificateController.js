@@ -12,6 +12,8 @@ export default {
 
   async history(req, res) {
     const list = await medicalCertificateService.listByUser(req.user.id);
-    return res.json({ certificates: list.map(medicalCertificateMapper.toPublic) });
+    return res.json({
+      certificates: list.map(medicalCertificateMapper.toPublic),
+    });
   },
 };
