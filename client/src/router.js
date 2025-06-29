@@ -6,6 +6,7 @@ import AwaitingConfirmation from './views/AwaitingConfirmation.vue'
 import { auth, fetchCurrentUser, clearAuth } from './auth.js'
 import Home from './views/Home.vue'
 import Profile from './views/Profile.vue'
+import Medical from './views/Medical.vue'
 import AdminUsers from './views/AdminUsers.vue'
 import AdminHome from './views/AdminHome.vue'
 import AdminUserEdit from './views/AdminUserEdit.vue'
@@ -15,6 +16,7 @@ import PasswordReset from './views/PasswordReset.vue'
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
+  { path: '/medical', component: Medical, meta: { requiresAuth: true } },
   { path: '/admin', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users', component: AdminUsers, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/new', component: AdminUserCreate, meta: { requiresAuth: true, requiresAdmin: true } },
