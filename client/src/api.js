@@ -77,9 +77,11 @@ export async function apiFetch(path, options = {}) {
 
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) {
-    const refreshed = await refreshToken();
-    if (refreshed) {
-      return apiFetch(path, options);
+    if (path !== '/auth/refresh') {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return apiFetch(path, options);
+      }
     }
     clearAuth();
     if (redirectOn401 && typeof window !== 'undefined' && window.location) {
