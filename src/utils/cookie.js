@@ -16,5 +16,8 @@ export function setRefreshCookie(res, token) {
  * @param {import('express').Response} res
  */
 export function clearRefreshCookie(res) {
-  res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+  const { path, domain, httpOnly, sameSite, secure } = COOKIE_OPTIONS;
+  const options = { path, httpOnly, sameSite, secure };
+  if (domain) options.domain = domain;
+  res.clearCookie(COOKIE_NAME, options);
 }

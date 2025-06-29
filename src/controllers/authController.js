@@ -67,6 +67,11 @@ export default {
 
   /* POST /auth/refresh */
   async refresh(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const token =
       req.cookies?.[COOKIE_NAME] ??
       req.body?.[COOKIE_NAME] ??

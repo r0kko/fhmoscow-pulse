@@ -16,10 +16,13 @@ export const COOKIE_HTTP_ONLY = true;
 export const COOKIE_SAME_SITE = 'strict';
 export const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 export const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN;
 
 export const COOKIE_OPTIONS = {
   httpOnly: COOKIE_HTTP_ONLY,
   sameSite: COOKIE_SAME_SITE,
   secure: COOKIE_SECURE,
   maxAge: COOKIE_MAX_AGE,
+  path: '/',
+  ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
 };

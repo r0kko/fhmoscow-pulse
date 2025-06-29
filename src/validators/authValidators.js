@@ -15,8 +15,5 @@ export const loginRules = [
  * /auth/refresh – refresh_token
  * -------------------------------------------------------------------------*/
 export const refreshRules = [
-  body('refresh_token')
-    .isString()
-    .notEmpty()
-    .withMessage('refresh_token is required'),
+  body('refresh_token').optional().isString().notEmpty(),
 ];
