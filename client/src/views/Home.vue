@@ -9,7 +9,7 @@ const sections = [
   { title: 'Отчеты', icon: 'bi-file-earmark-text' },
   { title: 'Доходы', icon: 'bi-currency-dollar' },
   { title: 'Взносы', icon: 'bi-wallet2' },
-  { title: 'Медосмотр', icon: 'bi-heart-pulse' },
+  { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical' },
   { title: 'Результаты тестов', icon: 'bi-graph-up' },
   { title: 'Документы', icon: 'bi-folder2-open' },
   { title: 'Персональные данные', icon: 'bi-person-circle', to: '/profile' }
