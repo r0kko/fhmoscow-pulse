@@ -11,6 +11,7 @@ const noDataPlaceholder = '—';
 
 const user = ref(null);
 const toastRef = ref(null);
+const toastMessage = ref('');
 const code = ref('');
 const codeSent = ref(false);
 const verifyError = ref('');
@@ -60,16 +61,21 @@ function maskPassportNumber(num) {
   return start + '*'.repeat(num.length - 2) + end;
 }
 
-function showToast() {
+function showToast(message) {
+  toastMessage.value = message;
   if (!toast) {
     toast = new Toast(toastRef.value);
   }
   toast.show();
 }
 
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text);
-  showToast();
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Скопировано');
+  } catch (_err) {
+    showToast('Не удалось скопировать');
+  }
 }
 
 async function sendCode() {
@@ -682,7 +688,7 @@ onMounted(() => {
         data-bs-delay="1500"
         data-bs-autohide="true"
       >
-        <div class="toast-body">Скопировано</div>
+        <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
   </div>

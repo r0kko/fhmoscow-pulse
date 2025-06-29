@@ -18,6 +18,7 @@ const sortField = ref('last_name')
 const sortOrder = ref('asc')
 
 const toastRef = ref(null)
+const toastMessage = ref('')
 let toast
 
 const totalPages = computed(() =>
@@ -133,16 +134,21 @@ function formatDate(str) {
   return `${day}.${month}.${year}`
 }
 
-function showToast() {
+function showToast(message) {
+  toastMessage.value = message
   if (!toast) {
     toast = new Toast(toastRef.value)
   }
   toast.show()
 }
 
-function copy(text) {
-  navigator.clipboard.writeText(text)
-  showToast()
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast('Скопировано')
+  } catch (_err) {
+    showToast('Не удалось скопировать')
+  }
 }
 </script>
 
@@ -325,7 +331,7 @@ function copy(text) {
         data-bs-delay="1500"
         data-bs-autohide="true"
       >
-        <div class="toast-body">Скопировано</div>
+        <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
   </div>
