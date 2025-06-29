@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import helmet from 'helmet';
 import lusca from 'lusca';
 
+import session from './src/config/session.js';
 import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
 import rateLimiter from './src/middlewares/rateLimiter.js';
@@ -32,6 +33,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(helmet());
 app.use(rateLimiter);
+app.use(session);
 app.use(lusca.csrf());
 app.use(requestLogger);
 

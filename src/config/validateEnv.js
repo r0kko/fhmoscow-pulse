@@ -15,6 +15,7 @@ const schema = Joi.object({
   LEGACY_DB_USER: Joi.string().required(),
   LEGACY_DB_PASS: Joi.string().required(),
   JWT_SECRET: Joi.string().required(),
+  SESSION_SECRET: Joi.string().required(),
 }).unknown(true);
 
 export default function validateEnv() {
