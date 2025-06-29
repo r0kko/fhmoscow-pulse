@@ -7,6 +7,10 @@ const certificate = ref(null);
 const history = ref([]);
 const error = ref('');
 const loading = ref(true);
+const isValid = (cert) => {
+  const today = new Date();
+  return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
+};
 
 function formatDate(str) {
   if (!str) return '';
@@ -71,7 +75,7 @@ onMounted(async () => {
         <span class="visually-hidden">Загрузка…</span>
       </div>
     </div>
-    <div v-else-if="certificate">
+    <div v-else-if="certificate && isValid(certificate)">
       <div class="card tile fade-in shadow-sm">
         <div class="card-body">
           <h5 class="card-title mb-3">Действующее заключение</h5>
@@ -108,11 +112,19 @@ onMounted(async () => {
               </div>
             </div>
           </div>
+          <div class="border-top pt-3 mt-3">
+            <p class="mb-2 fw-semibold">Файлы</p>
+            <div class="d-flex gap-3 text-muted">
+              <i class="bi bi-file-earmark"></i>
+              <i class="bi bi-file-earmark"></i>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <p v-else class="text-muted">{{ error || 'Справка не найдена.' }}</p>
-    <h2 class="mt-4">История справок</h2>
+    <p v-else-if="!error" class="text-muted">Действующее медицинское заключение отсутствует</p>
+    <p v-else class="text-muted">{{ error }}</p>
+    <h2 class="mt-4">Архив медицинских заключений</h2>
     <div v-if="history.length" class="table-responsive">
       <table class="table table-striped">
         <thead>
@@ -121,6 +133,7 @@ onMounted(async () => {
             <th>Учреждение</th>
             <th>ИНН</th>
             <th>Период действия</th>
+            <th class="text-center">Файлы</th>
           </tr>
         </thead>
         <tbody>
@@ -129,6 +142,7 @@ onMounted(async () => {
             <td>{{ item.organization }}</td>
             <td>{{ item.inn }}</td>
             <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
+            <td class="text-center text-muted"><i class="bi bi-file-earmark"></i></td>
           </tr>
         </tbody>
       </table>
