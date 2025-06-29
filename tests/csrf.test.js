@@ -9,7 +9,7 @@ function buildRes() {
   return { cookie: jest.fn(), locals: {} };
 }
 
-test('csrf middleware sets cookie with strict sameSite', async () => {
+test('csrf middleware sets strict cookie in development', async () => {
   process.env.NODE_ENV = 'development';
   jest.resetModules();
   const { default: csrf } = await import('../src/config/csrf.js');
@@ -25,7 +25,7 @@ test('csrf middleware sets cookie with strict sameSite', async () => {
   expect(next).toHaveBeenCalled();
 });
 
-test('csrf middleware uses secure cookie in production', async () => {
+test('csrf middleware uses sameSite none and secure cookie in production', async () => {
   process.env.NODE_ENV = 'production';
   jest.resetModules();
   const { default: csrf } = await import('../src/config/csrf.js');
@@ -36,7 +36,7 @@ test('csrf middleware uses secure cookie in production', async () => {
   expect(res.cookie).toHaveBeenCalledWith(
     'XSRF-TOKEN',
     expect.any(String),
-    expect.objectContaining({ sameSite: 'strict', secure: true })
+    expect.objectContaining({ sameSite: 'none', secure: true })
   );
   expect(next).toHaveBeenCalled();
 });
