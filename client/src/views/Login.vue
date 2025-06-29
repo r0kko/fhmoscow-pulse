@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import CookieNotice from '../components/CookieNotice.vue'
 import { useRouter, RouterLink } from 'vue-router'
-import { apiFetch } from '../api.js'
+import { apiFetch, initCsrf } from '../api.js'
 import { auth, setAuthToken } from '../auth.js'
 import logo from '../assets/fhm-logo.svg'
 
@@ -55,6 +55,7 @@ async function login() {
   }
   loading.value = true
   try {
+    await initCsrf()
     const data = await apiFetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ phone: phone.value, password: password.value })

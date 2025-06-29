@@ -5,7 +5,12 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap'
 import './brand.css'
 import { refreshFromCookie } from './auth.js'
+import { initCsrf } from './api.js'
 
-refreshFromCookie().finally(() => {
-  createApp(App).use(router).mount('#app')
-})
+initCsrf()
+  .catch(() => {})
+  .finally(() => {
+    refreshFromCookie().finally(() => {
+      createApp(App).use(router).mount('#app')
+    })
+  })
