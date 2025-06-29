@@ -20,7 +20,11 @@ export async function fetchCurrentUser() {
 
 export async function refreshFromCookie() {
   try {
-    const data = await apiFetch('/auth/refresh', { method: 'POST', body: '{}' })
+    const data = await apiFetch('/auth/refresh', {
+      method: 'POST',
+      body: '{}',
+      redirectOn401: false,
+    })
     setAuthToken(data.access_token)
     auth.user = data.user
     auth.roles = data.roles || []

@@ -46,7 +46,8 @@ async function refreshToken() {
 }
 
 export async function apiFetch(path, options = {}) {
-  const opts = { credentials: 'include', ...options };
+  const { redirectOn401 = true, ...rest } = options;
+  const opts = { credentials: 'include', ...rest };
   opts.headers = {
     'Content-Type': 'application/json',
     ...(opts.headers || {}),
@@ -73,7 +74,7 @@ export async function apiFetch(path, options = {}) {
       return apiFetch(path, options);
     }
     clearAuth();
-    if (typeof window !== 'undefined' && window.location) {
+    if (redirectOn401 && typeof window !== 'undefined' && window.location) {
       window.location.href = '/login';
     }
     const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
