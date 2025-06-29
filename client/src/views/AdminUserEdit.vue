@@ -158,6 +158,7 @@ async function save() {
       v-if="user"
       :user-id="route.params.id"
       :user-roles="user.roles"
+      @updated="(roles) => (user.roles = roles)"
     />
     <p v-else-if="isLoading">Загрузка...</p>
     <div v-if="passport !== undefined" class="mt-4">
