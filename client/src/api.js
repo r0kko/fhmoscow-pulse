@@ -5,6 +5,8 @@ const API_BASE =
   'http://localhost:3000';
 
 let accessToken = null;
+let refreshPromise = null;
+let refreshFailed = false;
 
 function getXsrfToken() {
   if (typeof document === 'undefined') return null;
@@ -35,22 +37,33 @@ export function getAccessToken() {
 }
 
 async function refreshToken() {
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.access_token) {
-      setAccessToken(data.access_token);
-      return true;
+  if (refreshFailed) return false;
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.access_token) {
+        setAccessToken(data.access_token);
+        refreshFailed = false;
+        return true;
+      }
+    } catch (_err) {
+      // ignore
+    } finally {
+      refreshPromise = null;
     }
-  } catch (_err) {
-    // ignore
-  }
-  return false;
+    refreshFailed = true;
+    return false;
+  })();
+
+  return refreshPromise;
 }
 
 export async function apiFetch(path, options = {}) {
@@ -77,7 +90,7 @@ export async function apiFetch(path, options = {}) {
 
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) {
-    if (path !== '/auth/refresh') {
+    if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
       if (refreshed) {
         return apiFetch(path, options);
