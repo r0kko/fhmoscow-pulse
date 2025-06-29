@@ -8,6 +8,7 @@ import { medicalCertificateRules } from '../validators/medicalCertificateValidat
 const router = express.Router();
 
 router.get('/me', auth, medicalCertificateController.me);
+router.get('/me/history', auth, medicalCertificateController.history);
 router.post('/', auth, medicalCertificateRules, selfController.create);
 router.delete('/', auth, selfController.remove);
 

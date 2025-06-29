@@ -5,6 +5,14 @@ async function getByUser(userId) {
   return MedicalCertificate.findOne({ where: { user_id: userId } });
 }
 
+async function listByUser(userId) {
+  return MedicalCertificate.findAll({
+    where: { user_id: userId },
+    order: [['issue_date', 'DESC']],
+    paranoid: false,
+  });
+}
+
 async function createForUser(userId, data, actorId) {
   const [user, existing] = await Promise.all([
     User.findByPk(userId),
@@ -31,4 +39,4 @@ async function removeForUser(userId) {
   await cert.destroy();
 }
 
-export default { getByUser, createForUser, removeForUser };
+export default { getByUser, listByUser, createForUser, removeForUser };
