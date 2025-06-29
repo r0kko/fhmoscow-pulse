@@ -4,7 +4,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import helmet from 'helmet';
 
-import csrf from './src/config/csrf.js';
+import csrfMiddleware from './src/middlewares/csrf.js';
 import session from './src/config/session.js';
 import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
@@ -35,7 +35,7 @@ app.use(helmet());
 app.use(rateLimiter);
 app.use(session);
 // Expose CSRF token in a cookie so the Vue client can read it
-app.use(csrf);
+app.use(csrfMiddleware);
 app.use(requestLogger);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

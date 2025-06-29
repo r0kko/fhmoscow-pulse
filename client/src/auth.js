@@ -20,7 +20,6 @@ export async function fetchCurrentUser() {
 
 export async function refreshFromCookie() {
   try {
-    await initCsrf()
     const data = await apiFetch('/auth/refresh', {
       method: 'POST',
       body: '{}',
