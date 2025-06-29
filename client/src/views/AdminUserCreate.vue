@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
-import { Modal } from 'bootstrap'
+import { Modal, Toast } from 'bootstrap'
 
 const router = useRouter()
 
@@ -18,7 +18,10 @@ const user = ref({
 const formRef = ref(null)
 const generatedPassword = ref('')
 const passwordModalRef = ref(null)
+const toastRef = ref(null)
+const toastMessage = ref('')
 let passwordModal
+let toast
 
 function generatePassword(len = 8) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -45,6 +48,23 @@ async function save() {
 
 function close() {
   router.push('/users')
+}
+
+function showToast(message) {
+  toastMessage.value = message
+  if (!toast) {
+    toast = new Toast(toastRef.value)
+  }
+  toast.show()
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast('Скопировано')
+  } catch (_err) {
+    showToast('Не удалось скопировать')
+  }
 }
 </script>
 
@@ -77,14 +97,25 @@ function close() {
             <p>Сгенерированный пароль:</p>
             <div class="input-group">
               <input type="text" class="form-control" :value="generatedPassword" readonly />
-              <button type="button" class="btn btn-outline-secondary" @click="navigator.clipboard.writeText(generatedPassword)">Копировать</button>
+              <button type="button" class="btn btn-outline-secondary" @click="copyToClipboard(generatedPassword)">Копировать</button>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" @click="passwordModal.hide()">OK</button>
           </div>
         </div>
-      </div>
     </div>
   </div>
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div
+      ref="toastRef"
+      class="toast text-bg-secondary"
+      role="status"
+      data-bs-delay="1500"
+      data-bs-autohide="true"
+    >
+      <div class="toast-body">{{ toastMessage }}</div>
+    </div>
+  </div>
+</div>
 </template>
