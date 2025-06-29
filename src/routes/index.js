@@ -34,6 +34,15 @@ router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
 router.use('/password-reset', passwordResetRouter);
 
+/**
+ * @swagger
+ * /csrf-token:
+ *   get:
+ *     summary: Retrieve CSRF token
+ *     responses:
+ *       200:
+ *         description: Token value
+ */
 router.get('/csrf-token', csrf, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
