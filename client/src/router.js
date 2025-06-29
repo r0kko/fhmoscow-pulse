@@ -11,6 +11,9 @@ import AdminHome from './views/AdminHome.vue'
 import AdminUserEdit from './views/AdminUserEdit.vue'
 import AdminUserCreate from './views/AdminUserCreate.vue'
 import PasswordReset from './views/PasswordReset.vue'
+import NotFound from './views/NotFound.vue'
+import Forbidden from './views/Forbidden.vue'
+import ServerError from './views/ServerError.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -27,6 +30,21 @@ const routes = [
     path: '/awaiting-confirmation',
     component: AwaitingConfirmation,
     meta: { requiresAuth: true, hideLayout: true }
+  },
+  {
+    path: '/forbidden',
+    component: Forbidden,
+    meta: { hideLayout: true }
+  },
+  {
+    path: '/error',
+    component: ServerError,
+    meta: { hideLayout: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: NotFound,
+    meta: { hideLayout: true }
   }
 ]
 
@@ -49,7 +67,7 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
   } else if (to.meta.requiresAdmin && !roles.includes('ADMIN')) {
-    next('/')
+    next('/forbidden')
   } else if (
     isAuthenticated &&
     auth.user?.status &&
