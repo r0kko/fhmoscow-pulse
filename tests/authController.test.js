@@ -167,12 +167,14 @@ test('login returns awaiting_confirmation flag', async () => {
   });
 });
 
-test('logout clears refresh cookie', async () => {
-  const req = {};
+test('logout clears refresh cookie and destroys session', async () => {
+  const destroy = jest.fn();
+  const req = { session: { destroy } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
   await authController.logout(req, res);
 
+  expect(destroy).toHaveBeenCalled();
   expect(clearRefreshCookieMock).toHaveBeenCalledWith(res);
   expect(res.status).toHaveBeenCalledWith(200);
   expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' });
