@@ -6,7 +6,20 @@ const API_BASE =
 
 let accessToken = null;
 let refreshPromise = null;
-let refreshFailed = false;
+let refreshFailed =
+  (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('refreshFailed') === '1') ||
+  false;
+
+function setRefreshFailed(val) {
+  refreshFailed = val;
+  if (typeof sessionStorage !== 'undefined') {
+    if (val) {
+      sessionStorage.setItem('refreshFailed', '1');
+    } else {
+      sessionStorage.removeItem('refreshFailed');
+    }
+  }
+}
 
 function getXsrfToken() {
   if (typeof document === 'undefined') return null;
@@ -26,10 +39,12 @@ export async function initCsrf() {
 
 export function setAccessToken(token) {
   accessToken = token;
+  setRefreshFailed(false);
 }
 
 export function clearAccessToken() {
   accessToken = null;
+  setRefreshFailed(true);
 }
 
 export function getAccessToken() {
@@ -51,7 +66,7 @@ async function refreshToken() {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.access_token) {
         setAccessToken(data.access_token);
-        refreshFailed = false;
+        setRefreshFailed(false);
         return true;
       }
     } catch (_err) {
@@ -59,7 +74,7 @@ async function refreshToken() {
     } finally {
       refreshPromise = null;
     }
-    refreshFailed = true;
+    setRefreshFailed(true);
     return false;
   })();
 
@@ -97,7 +112,12 @@ export async function apiFetch(path, options = {}) {
       }
     }
     clearAuth();
-    if (redirectOn401 && typeof window !== 'undefined' && window.location) {
+    if (
+      redirectOn401 &&
+      typeof window !== 'undefined' &&
+      window.location &&
+      window.location.pathname !== '/login'
+    ) {
       window.location.href = '/login';
     }
     const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
