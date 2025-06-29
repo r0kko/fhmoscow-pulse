@@ -8,6 +8,7 @@ import InnSnilsForm from '../components/InnSnilsForm.vue';
 import BankAccountForm from '../components/BankAccountForm.vue';
 import TaxationInfo from '../components/TaxationInfo.vue';
 import UserAddressForm from '../components/UserAddressForm.vue';
+import UserRolesForm from '../components/UserRolesForm.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -153,6 +154,11 @@ async function save() {
         </template>
       </UserForm>
     </form>
+    <UserRolesForm
+      v-if="user"
+      :user-id="route.params.id"
+      :user-roles="user.roles"
+    />
     <p v-else-if="isLoading">Загрузка...</p>
     <div v-if="passport !== undefined" class="mt-4">
       <div v-if="passport" class="card">
