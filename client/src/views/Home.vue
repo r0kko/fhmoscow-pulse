@@ -6,9 +6,9 @@ import { RouterLink } from 'vue-router'
 const sections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
-  { title: 'Отчеты', icon: 'bi-file-earmark-text' },
+  { title: 'Рапорты', icon: 'bi-file-earmark-text' },
   { title: 'Доходы', icon: 'bi-currency-dollar' },
-  { title: 'Взносы', icon: 'bi-wallet2' },
+  { title: 'Сборы (Учебно тренировочные сборы)', icon: 'bi-wallet2' },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical' },
   { title: 'Результаты тестов', icon: 'bi-graph-up' },
   { title: 'Документы', icon: 'bi-folder2-open' },
