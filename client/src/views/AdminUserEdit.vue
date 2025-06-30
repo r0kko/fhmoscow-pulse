@@ -312,7 +312,7 @@ async function save() {
 
     <InnSnilsForm v-if="user" :userId="route.params.id" />
     <BankAccountForm v-if="user" :userId="route.params.id" />
-    <UserAddressForm v-if="user" :userId="route.params.id" />
+    <UserAddressForm v-if="user" :userId="route.params.id" isAdmin />
     <TaxationInfo v-if="user" :userId="route.params.id" />
 
     <div
