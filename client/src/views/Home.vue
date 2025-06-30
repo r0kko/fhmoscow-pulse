@@ -8,7 +8,7 @@ const sections = [
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
   { title: 'Доходы', icon: 'bi-currency-dollar' },
-  { title: 'Сборы (Учебно тренировочные сборы)', icon: 'bi-wallet2' },
+  { title: 'Сборы', icon: 'bi-people-fill' },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical' },
   { title: 'Результаты тестов', icon: 'bi-graph-up' },
   { title: 'Документы', icon: 'bi-folder2-open' },
