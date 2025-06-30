@@ -21,7 +21,7 @@ export default {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const { email } = req.body;
+    const email = String(req.body.email).trim().toLowerCase();
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: 'user_exists' });
 
@@ -67,7 +67,8 @@ export default {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const { email, code, password } = req.body;
+    const email = String(req.body.email).trim().toLowerCase();
+    const { code, password } = req.body;
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(404).json({ error: 'not_found' });
 
