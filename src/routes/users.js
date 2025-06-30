@@ -10,6 +10,7 @@ import snilsAdmin from '../controllers/snilsAdminController.js';
 import bankAccountAdmin from '../controllers/bankAccountAdminController.js';
 import taxationAdmin from '../controllers/taxationAdminController.js';
 import addressAdmin from '../controllers/addressAdminController.js';
+import medicalCertificateAdmin from '../controllers/medicalCertificateAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -18,6 +19,7 @@ import {
 import { innRules, snilsRules } from '../validators/personalValidators.js';
 import { bankAccountRules } from '../validators/bankAccountValidators.js';
 import { addressRules } from '../validators/addressValidators.js';
+import { medicalCertificateRules } from '../validators/medicalCertificateValidators.js';
 import { createPassportRules } from '../validators/passportValidators.js';
 
 const router = express.Router();
@@ -731,5 +733,100 @@ router.delete(
  *         description: Address info
  */
 router.get('/:id/address/:type', auth, authorize('ADMIN'), addressAdmin.get);
+
+/**
+ * @swagger
+ * /users/{id}/medical-certificate:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Add medical certificate for user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       201:
+ *         description: Created
+ */
+router.post(
+  '/:id/medical-certificate',
+  auth,
+  authorize('ADMIN'),
+  medicalCertificateRules,
+  medicalCertificateAdmin.create
+);
+/**
+ * @swagger
+ * /users/{id}/medical-certificate:
+ *   put:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Update user's medical certificate
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated
+ */
+router.put(
+  '/:id/medical-certificate',
+  auth,
+  authorize('ADMIN'),
+  medicalCertificateRules,
+  medicalCertificateAdmin.update
+);
+/**
+ * @swagger
+ * /users/{id}/medical-certificate:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Remove user's medical certificate
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Removed
+ */
+router.delete(
+  '/:id/medical-certificate',
+  auth,
+  authorize('ADMIN'),
+  medicalCertificateAdmin.remove
+);
+/**
+ * @swagger
+ * /users/{id}/medical-certificate:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Get user's medical certificate
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Certificate info
+ */
+router.get(
+  '/:id/medical-certificate',
+  auth,
+  authorize('ADMIN'),
+  medicalCertificateAdmin.get
+);
 
 export default router;

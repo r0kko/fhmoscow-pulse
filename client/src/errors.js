@@ -26,6 +26,8 @@ export const ERROR_MESSAGES = {
   status_not_found: 'Статус не найден',
   status_required: 'Не указан статус',
   taxation_not_found: 'Налоговый статус не найден',
+  certificate_not_found: 'Медицинское заключение не найдено',
+  certificate_exists: 'Медицинское заключение уже существует',
   user_exists: 'Пользователь уже существует',
   user_not_found: 'Пользователь не найден',
   not_found: 'Не найдено'

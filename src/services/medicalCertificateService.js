@@ -39,4 +39,68 @@ async function removeForUser(userId) {
   await cert.destroy();
 }
 
-export default { getByUser, listByUser, createForUser, removeForUser };
+async function listAll(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+
+  return MedicalCertificate.findAndCountAll({
+    include: [User],
+    order: [['issue_date', 'DESC']],
+    limit,
+    offset,
+    paranoid: false,
+  });
+}
+
+async function getById(id) {
+  const cert = await MedicalCertificate.findByPk(id, { include: [User], paranoid: false });
+  if (!cert) throw new ServiceError('certificate_not_found', 404);
+  return cert;
+}
+
+async function updateForUser(userId, data, actorId) {
+  const cert = await MedicalCertificate.findOne({ where: { user_id: userId } });
+  if (!cert) throw new ServiceError('certificate_not_found', 404);
+  await cert.update({
+    inn: data.inn,
+    organization: data.organization,
+    certificate_number: data.certificate_number,
+    issue_date: data.issue_date,
+    valid_until: data.valid_until,
+    updated_by: actorId,
+  });
+  return cert;
+}
+
+async function update(id, data, actorId) {
+  const cert = await MedicalCertificate.findByPk(id);
+  if (!cert) throw new ServiceError('certificate_not_found', 404);
+  await cert.update({
+    inn: data.inn,
+    organization: data.organization,
+    certificate_number: data.certificate_number,
+    issue_date: data.issue_date,
+    valid_until: data.valid_until,
+    updated_by: actorId,
+  });
+  return cert;
+}
+
+async function remove(id) {
+  const cert = await MedicalCertificate.findByPk(id);
+  if (!cert) throw new ServiceError('certificate_not_found', 404);
+  await cert.destroy();
+}
+
+export default {
+  getByUser,
+  listByUser,
+  createForUser,
+  removeForUser,
+  listAll,
+  getById,
+  updateForUser,
+  update,
+  remove,
+};
