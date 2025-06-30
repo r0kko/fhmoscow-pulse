@@ -2,7 +2,12 @@
 import { RouterLink } from 'vue-router'
 
 const tiles = [
-  { title: 'Управление пользователями', icon: 'bi-people', to: '/users' }
+  { title: 'Управление пользователями', icon: 'bi-people', to: '/users' },
+  {
+    title: 'Медицинские справки',
+    icon: 'bi-file-earmark-medical',
+    to: '/medical-certificates'
+  }
 ]
 </script>
 
