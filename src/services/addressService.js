@@ -102,8 +102,13 @@ async function importFromLegacy(userId, actorId) {
   const legacy = await fetchFromLegacy(userId);
   if (!legacy) return null;
   try {
-    return await createForUser(userId, 'REGISTRATION', { result: legacy.result }, actorId);
-  } catch (err) {
+    return await createForUser(
+      userId,
+      'REGISTRATION',
+      { result: legacy.result },
+      actorId
+    );
+  } catch {
     return null;
   }
 }
