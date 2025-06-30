@@ -4,7 +4,15 @@ import { Modal } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
-const props = defineProps({ userId: { type: String, required: true } });
+const props = defineProps({
+  userId: { type: String, required: true },
+  isAdmin: { type: Boolean, default: false },
+});
+
+const addressTypes = [
+  { alias: 'REGISTRATION', name: 'Адрес регистрации' },
+  { alias: 'RESIDENCE', name: 'Адрес проживания' },
+];
 
 const addresses = ref({ REGISTRATION: null, RESIDENCE: null });
 const error = ref('');
@@ -12,8 +20,16 @@ const modalRef = ref(null);
 let modal;
 const current = ref('REGISTRATION');
 const form = ref({ result: '' });
+const sameAsResidence = ref(false);
 const suggestions = ref([]);
 let timeout;
+
+watch(sameAsResidence, (val) => {
+  if (val) {
+    form.value.result = addresses.value.RESIDENCE?.result || '';
+    suggestions.value = [];
+  }
+});
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -36,12 +52,26 @@ async function load() {
 function open(type) {
   current.value = type;
   form.value.result = addresses.value[type]?.result || '';
+  sameAsResidence.value = false;
   error.value = '';
   suggestions.value = [];
   modal.show();
 }
 
 async function save() {
+  if (
+    props.isAdmin &&
+    current.value === 'REGISTRATION' &&
+    !addresses.value[current.value] &&
+    sameAsResidence.value
+  ) {
+    if (!addresses.value.RESIDENCE) {
+      error.value = 'Сначала добавьте адрес проживания';
+      return;
+    }
+    form.value.result = addresses.value.RESIDENCE.result;
+  }
+
   const body = JSON.stringify({ result: form.value.result });
   try {
     let res;
@@ -79,6 +109,7 @@ async function removeAddress() {
 watch(
   () => form.value.result,
   (val) => {
+    if (sameAsResidence.value) return;
     clearTimeout(timeout);
     if (!val || val.length < 3) {
       suggestions.value = [];
@@ -92,6 +123,7 @@ watch(
 );
 
 async function onBlur() {
+  if (sameAsResidence.value) return;
   const cleaned = await cleanAddress(form.value.result);
   if (cleaned && cleaned.result) {
     form.value.result = cleaned.result;
@@ -100,6 +132,7 @@ async function onBlur() {
 }
 
 function applySuggestion(sug) {
+  if (sameAsResidence.value) return;
   form.value.result = sug.value;
   suggestions.value = [];
 }
@@ -107,34 +140,71 @@ function applySuggestion(sug) {
 
 <template>
   <div>
-    <div
-      v-for="type in [
-        { alias: 'REGISTRATION', name: 'Адрес регистрации' },
-        { alias: 'RESIDENCE', name: 'Адрес проживания' },
-      ]"
-      :key="type.alias"
-      class="card mt-4"
-    >
+    <div class="card mt-4">
       <div class="card-body">
-        <div class="d-flex justify-content-between mb-3">
-          <h5 class="card-title mb-0">{{ type.name }}</h5>
-          <button
-            type="button"
-            class="btn btn-link p-0"
-            @click="open(type.alias)"
+        <h5 class="card-title mb-3">Адреса</h5>
+        <div v-for="type in addressTypes" :key="type.alias" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">{{ type.name }}</h6>
+            <button
+              type="button"
+              class="btn btn-link p-0"
+              @click="open(type.alias)"
+            >
+              <i
+                class="bi"
+                :class="addresses[type.alias] ? 'bi-pencil' : 'bi-plus'"
+              ></i>
+            </button>
+          </div>
+          <div
+            v-if="addresses[type.alias]"
+            class="row row-cols-1 row-cols-sm-3 g-3"
           >
-            <i
-              class="bi"
-              :class="addresses[type.alias] ? 'bi-pencil' : 'bi-plus'"
-            ></i>
-          </button>
-        </div>
-        <p v-if="addresses[type.alias]" class="mb-0">
-          {{ addresses[type.alias].result }}
-        </p>
-        <p v-else class="mb-0 text-muted">Адрес не указан.</p>
-        <div v-if="error && current === type.alias" class="text-danger mt-2">
-          {{ error }}
+            <div class="col">
+              <div class="form-floating">
+                <input
+                  :id="`zip-${type.alias}`"
+                  type="text"
+                  class="form-control"
+                  :value="addresses[type.alias].postal_code"
+                  readonly
+                  placeholder="Индекс"
+                />
+                <label :for="`zip-${type.alias}`">Индекс</label>
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-floating">
+                <input
+                  :id="`country-${type.alias}`"
+                  type="text"
+                  class="form-control"
+                  :value="addresses[type.alias].country"
+                  readonly
+                  placeholder="Страна"
+                />
+                <label :for="`country-${type.alias}`">Страна</label>
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-floating">
+                <input
+                  :id="`addr-${type.alias}`"
+                  type="text"
+                  class="form-control"
+                  :value="addresses[type.alias].result"
+                  readonly
+                  placeholder="Адрес"
+                />
+                <label :for="`addr-${type.alias}`">Адрес</label>
+              </div>
+            </div>
+          </div>
+          <p v-else class="mb-0 text-muted">Адрес не указан.</p>
+          <div v-if="error && current === type.alias" class="text-danger mt-2">
+            {{ error }}
+          </div>
         </div>
       </div>
     </div>
@@ -159,12 +229,31 @@ function applySuggestion(sug) {
             </div>
             <div class="modal-body">
               <div v-if="error" class="alert alert-danger">{{ error }}</div>
+              <div
+                v-if="
+                  props.isAdmin &&
+                  current === 'REGISTRATION' &&
+                  !addresses[current]
+                "
+                class="form-check form-switch mb-3"
+              >
+                <input
+                  id="sameResidence"
+                  v-model="sameAsResidence"
+                  class="form-check-input"
+                  type="checkbox"
+                />
+                <label class="form-check-label" for="sameResidence"
+                  >Совпадает с адресом проживания</label
+                >
+              </div>
               <div class="form-floating position-relative">
                 <textarea
                   id="addrInput"
                   v-model="form.result"
                   @blur="onBlur"
                   class="form-control"
+                  :disabled="sameAsResidence"
                   rows="3"
                   placeholder="Адрес"
                 ></textarea>
