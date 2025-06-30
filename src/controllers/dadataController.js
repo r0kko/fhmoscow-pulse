@@ -38,4 +38,9 @@ export default {
     const bank = await dadata.findBankByBic(req.body.bic);
     return res.json({ bank });
   },
+
+  async findOrganization(req, res) {
+    const organization = await dadata.findOrganizationByInn(req.body.inn);
+    return res.json({ organization });
+  },
 };

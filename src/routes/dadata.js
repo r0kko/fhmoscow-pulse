@@ -96,4 +96,17 @@ router.post('/clean-passport', auth, controller.cleanPassport);
  */
 router.post('/find-bank', auth, controller.findBank);
 
+/**
+ * @swagger
+ * /dadata/find-organization:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Find organization by INN
+ *     responses:
+ *       200:
+ *         description: Organization information
+ */
+router.post('/find-organization', auth, controller.findOrganization);
+
 export default router;
