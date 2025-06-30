@@ -1,12 +1,6 @@
 function sanitize(obj) {
-  const {
-    id,
-    inn,
-    organization,
-    certificate_number,
-    issue_date,
-    valid_until,
-  } = obj;
+  const { id, inn, organization, certificate_number, issue_date, valid_until } =
+    obj;
   return {
     id,
     inn,
@@ -19,7 +13,8 @@ function sanitize(obj) {
 
 function toPublic(cert) {
   if (!cert) return null;
-  const plain = typeof cert.get === 'function' ? cert.get({ plain: true }) : cert;
+  const plain =
+    typeof cert.get === 'function' ? cert.get({ plain: true }) : cert;
   const result = sanitize(plain);
   if (plain.user_id) result.user_id = plain.user_id;
   if (plain.User) {

@@ -54,7 +54,10 @@ async function listAll(options = {}) {
 }
 
 async function getById(id) {
-  const cert = await MedicalCertificate.findByPk(id, { include: [User], paranoid: false });
+  const cert = await MedicalCertificate.findByPk(id, {
+    include: [User],
+    paranoid: false,
+  });
   if (!cert) throw new ServiceError('certificate_not_found', 404);
   return cert;
 }
