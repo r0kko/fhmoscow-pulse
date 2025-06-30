@@ -3,6 +3,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { apiFetch } from '../api.js'
+import { findOrganizationByInn } from '../dadata.js'
 
 const certificates = ref([])
 const total = ref(0)
@@ -23,6 +24,9 @@ const editing = ref(null)
 const modalRef = ref(null)
 let modal
 const formError = ref('')
+const userQuery = ref('')
+const userSuggestions = ref([])
+let userTimeout
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -32,6 +36,46 @@ onMounted(() => {
 })
 
 watch(currentPage, load)
+
+watch(userQuery, () => {
+  clearTimeout(userTimeout)
+  form.value.user_id = ''
+  if (!userQuery.value || userQuery.value.length < 2) {
+    userSuggestions.value = []
+    return
+  }
+  userTimeout = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams({ search: userQuery.value, limit: 5 })
+      const data = await apiFetch(`/users?${params}`)
+      userSuggestions.value = data.users
+    } catch (_err) {
+      userSuggestions.value = []
+    }
+  }, 300)
+})
+
+watch(
+  () => form.value.inn,
+  async (val) => {
+    if (!val || val.length < 3) {
+      form.value.organization = ''
+      return
+    }
+    const res = await findOrganizationByInn(val)
+    form.value.organization = res?.value || ''
+  }
+)
+
+watch(
+  () => form.value.issue_date,
+  (val) => {
+    if (!val || editing.value) return
+    const d = new Date(val)
+    d.setDate(d.getDate() + 180)
+    form.value.valid_until = d.toISOString().slice(0, 10)
+  }
+)
 
 async function load() {
   try {
@@ -50,6 +94,8 @@ async function load() {
 function openCreate() {
   editing.value = null
   Object.keys(form.value).forEach(k => (form.value[k] = ''))
+  userQuery.value = ''
+  userSuggestions.value = []
   formError.value = ''
   modal.show()
 }
@@ -57,8 +103,18 @@ function openCreate() {
 function openEdit(cert) {
   editing.value = cert
   Object.assign(form.value, cert)
+  userQuery.value = cert.user
+    ? `${cert.user.last_name} ${cert.user.first_name}`
+    : ''
+  userSuggestions.value = []
   formError.value = ''
   modal.show()
+}
+
+function selectUser(u) {
+  form.value.user_id = u.id
+  userQuery.value = `${u.last_name} ${u.first_name}`
+  userSuggestions.value = []
 }
 
 async function save() {
@@ -95,9 +151,11 @@ function formatDate(str) {
         <li class="breadcrumb-item active" aria-current="page">Медицинские справки</li>
       </ol>
     </nav>
-    <h1 class="mb-4">Медицинские заключения</h1>
-    <div class="mb-3 text-end">
-      <button class="btn btn-brand" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Добавить</button>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="mb-0">Медицинские заключения</h1>
+      <button class="btn btn-brand" @click="openCreate">
+        <i class="bi bi-plus-lg me-1"></i>Добавить
+      </button>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="isLoading" class="text-center my-3">
@@ -155,16 +213,37 @@ function formatDate(str) {
             </div>
             <div class="modal-body">
               <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
-              <div class="form-floating mb-3">
-                <input id="userId" v-model="form.user_id" class="form-control" placeholder="ID пользователя" />
-                <label for="userId">ID пользователя</label>
+              <div class="mb-3 position-relative">
+                <div class="form-floating">
+                  <input
+                    id="userId"
+                    v-model="userQuery"
+                    class="form-control"
+                    placeholder="Пользователь"
+                  />
+                  <label for="userId">Пользователь</label>
+                </div>
+                <ul
+                  v-if="userSuggestions.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
+                >
+                  <li
+                    v-for="u in userSuggestions"
+                    :key="u.id"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="selectUser(u)"
+                  >
+                    {{ u.last_name }} {{ u.first_name }}
+                  </li>
+                </ul>
               </div>
               <div class="form-floating mb-3">
                 <input id="certNumber" v-model="form.certificate_number" class="form-control" placeholder="Номер" />
                 <label for="certNumber">Номер</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="certOrg" v-model="form.organization" class="form-control" placeholder="Учреждение" />
+                <input id="certOrg" v-model="form.organization" class="form-control" placeholder="Учреждение" readonly />
                 <label for="certOrg">Учреждение</label>
               </div>
               <div class="form-floating mb-3">

@@ -110,6 +110,13 @@ export async function findPartyByInn(inn) {
   return data.suggestions[0];
 }
 
+export async function findOrganizationByInn(inn) {
+  if (!inn) return null;
+  const data = await request('/findById/party', { query: inn, type: 'LEGAL' });
+  if (!data?.suggestions?.length) return null;
+  return data.suggestions[0];
+}
+
 export async function findPartyByInnWithStatus(inn) {
   if (!inn) return { data: null, status: 400 };
   const { data, status } = await requestRaw('/findById/party', {
@@ -130,4 +137,5 @@ export default {
   findBankByBic,
   findPartyByInn,
   findPartyByInnWithStatus,
+  findOrganizationByInn,
 };

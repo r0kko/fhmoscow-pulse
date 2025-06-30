@@ -94,3 +94,16 @@ export async function findBankByBic(bic) {
     return null
   }
 }
+
+export async function findOrganizationByInn(inn) {
+  if (!inn) return null
+  try {
+    const { organization } = await apiFetch('/dadata/find-organization', {
+      method: 'POST',
+      body: JSON.stringify({ inn })
+    })
+    return organization
+  } catch (_err) {
+    return null
+  }
+}
