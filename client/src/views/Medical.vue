@@ -152,7 +152,7 @@ onMounted(async () => {
             </tbody>
           </table>
         </div>
-        <p v-else class="text-muted mb-0">История не найдена</p>
+        <p v-else class="text-muted mb-0">Нет медицинских заключений с истекшим сроком действия</p>
       </div>
     </div>
   </div>
