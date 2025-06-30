@@ -27,6 +27,7 @@ const formError = ref('')
 const userQuery = ref('')
 const userSuggestions = ref([])
 let userTimeout
+let skipUserWatch = false
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -39,6 +40,10 @@ watch(currentPage, load)
 
 watch(userQuery, () => {
   clearTimeout(userTimeout)
+  if (skipUserWatch) {
+    skipUserWatch = false
+    return
+  }
   form.value.user_id = ''
   if (!userQuery.value || userQuery.value.length < 2) {
     userSuggestions.value = []
@@ -94,6 +99,7 @@ async function load() {
 function openCreate() {
   editing.value = null
   Object.keys(form.value).forEach(k => (form.value[k] = ''))
+  skipUserWatch = true
   userQuery.value = ''
   userSuggestions.value = []
   formError.value = ''
@@ -103,6 +109,7 @@ function openCreate() {
 function openEdit(cert) {
   editing.value = cert
   Object.assign(form.value, cert)
+  skipUserWatch = true
   userQuery.value = cert.user
     ? `${cert.user.last_name} ${cert.user.first_name}`
     : ''
@@ -113,6 +120,7 @@ function openEdit(cert) {
 
 function selectUser(u) {
   form.value.user_id = u.id
+  skipUserWatch = true
   userQuery.value = `${u.last_name} ${u.first_name}`
   userSuggestions.value = []
 }
