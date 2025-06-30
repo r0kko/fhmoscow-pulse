@@ -24,12 +24,7 @@ const sameAsResidence = ref(false);
 const suggestions = ref([]);
 let timeout;
 
-watch(sameAsResidence, (val) => {
-  if (val) {
-    form.value.result = addresses.value.RESIDENCE?.result || '';
-    suggestions.value = [];
-  }
-});
+
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -59,19 +54,6 @@ function open(type) {
 }
 
 async function save() {
-  if (
-    props.isAdmin &&
-    current.value === 'REGISTRATION' &&
-    !addresses.value[current.value] &&
-    sameAsResidence.value
-  ) {
-    if (!addresses.value.RESIDENCE) {
-      error.value = 'Сначала добавьте адрес проживания';
-      return;
-    }
-    form.value.result = addresses.value.RESIDENCE.result;
-  }
-
   const body = JSON.stringify({ result: form.value.result });
   try {
     let res;
@@ -87,6 +69,27 @@ async function save() {
       });
     }
     addresses.value[current.value] = res.address;
+
+    if (
+      props.isAdmin &&
+      current.value === 'REGISTRATION' &&
+      sameAsResidence.value
+    ) {
+      let res2;
+      if (addresses.value.RESIDENCE) {
+        res2 = await apiFetch(`/users/${props.userId}/address/RESIDENCE`, {
+          method: 'PUT',
+          body,
+        });
+      } else {
+        res2 = await apiFetch(`/users/${props.userId}/address/RESIDENCE`, {
+          method: 'POST',
+          body,
+        });
+      }
+      addresses.value.RESIDENCE = res2.address;
+    }
+
     modal.hide();
   } catch (e) {
     error.value = e.message;
@@ -109,7 +112,6 @@ async function removeAddress() {
 watch(
   () => form.value.result,
   (val) => {
-    if (sameAsResidence.value) return;
     clearTimeout(timeout);
     if (!val || val.length < 3) {
       suggestions.value = [];
@@ -123,7 +125,6 @@ watch(
 );
 
 async function onBlur() {
-  if (sameAsResidence.value) return;
   const cleaned = await cleanAddress(form.value.result);
   if (cleaned && cleaned.result) {
     form.value.result = cleaned.result;
@@ -132,7 +133,6 @@ async function onBlur() {
 }
 
 function applySuggestion(sug) {
-  if (sameAsResidence.value) return;
   form.value.result = sug.value;
   suggestions.value = [];
 }
@@ -161,7 +161,7 @@ function applySuggestion(sug) {
             v-if="addresses[type.alias]"
             class="row g-3 align-items-end"
           >
-            <div class="col-auto" style="width: 8ch">
+            <div class="col-auto" style="width: 10ch">
               <div class="form-floating">
                 <input
                   :id="`zip-${type.alias}`"
@@ -230,11 +230,7 @@ function applySuggestion(sug) {
             <div class="modal-body">
               <div v-if="error" class="alert alert-danger">{{ error }}</div>
               <div
-                v-if="
-                  props.isAdmin &&
-                  current === 'REGISTRATION' &&
-                  !addresses[current]
-                "
+                v-if="props.isAdmin && current === 'REGISTRATION'"
                 class="form-check form-switch mb-3"
               >
                 <input
@@ -253,7 +249,6 @@ function applySuggestion(sug) {
                   v-model="form.result"
                   @blur="onBlur"
                   class="form-control"
-                  :disabled="sameAsResidence"
                   rows="3"
                   placeholder="Адрес"
                 ></textarea>
