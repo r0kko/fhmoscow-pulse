@@ -120,6 +120,10 @@ function selectUser(u) {
 async function save() {
   try {
     formError.value = ''
+    if (!form.value.user_id) {
+      formError.value = 'Выберите пользователя'
+      return
+    }
     const path = `/users/${form.value.user_id}/medical-certificate`
     const method = editing.value ? 'PUT' : 'POST'
     await apiFetch(path, { method, body: JSON.stringify(form.value) })
@@ -243,12 +247,12 @@ function formatDate(str) {
                 <label for="certNumber">Номер</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="certOrg" v-model="form.organization" class="form-control" placeholder="Учреждение" readonly />
-                <label for="certOrg">Учреждение</label>
-              </div>
-              <div class="form-floating mb-3">
                 <input id="certInn" v-model="form.inn" class="form-control" placeholder="ИНН" />
                 <label for="certInn">ИНН</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input id="certOrg" v-model="form.organization" class="form-control" placeholder="Учреждение" disabled />
+                <label for="certOrg">Учреждение</label>
               </div>
               <div class="form-floating mb-3">
                 <input id="issue" type="date" v-model="form.issue_date" class="form-control" />
