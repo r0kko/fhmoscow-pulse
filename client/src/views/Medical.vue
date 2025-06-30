@@ -49,7 +49,10 @@ onMounted(async () => {
       apiFetch('/medical-certificates/me/history'),
     ]);
     certificate.value = current ? current.certificate : null;
-    history.value = hist.certificates || [];
+    const allHistory = hist.certificates || [];
+    const activeId =
+      certificate.value && isValid(certificate.value) ? certificate.value.id : null;
+    history.value = activeId ? allHistory.filter((c) => c.id !== activeId) : allHistory;
     error.value = '';
   } catch (e) {
     error.value = e.message;
@@ -124,30 +127,34 @@ onMounted(async () => {
     </div>
     <p v-else-if="!error" class="text-muted">Действующее медицинское заключение отсутствует</p>
     <p v-else class="text-muted">{{ error }}</p>
-    <h2 class="mt-4">Архив медицинских заключений</h2>
-    <div v-if="history.length" class="table-responsive">
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>Номер</th>
-            <th>Учреждение</th>
-            <th>ИНН</th>
-            <th>Период действия</th>
-            <th class="text-center">Файлы</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in history" :key="item.id">
-            <td>{{ item.certificate_number }}</td>
-            <td>{{ item.organization }}</td>
-            <td>{{ item.inn }}</td>
-            <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
-            <td class="text-center text-muted"><i class="bi bi-file-earmark"></i></td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="card tile fade-in shadow-sm mt-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Архив медицинских заключений</h5>
+        <div v-if="history.length" class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Номер</th>
+                <th>Учреждение</th>
+                <th>ИНН</th>
+                <th>Период действия</th>
+                <th class="text-center">Файлы</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in history" :key="item.id">
+                <td>{{ item.certificate_number }}</td>
+                <td>{{ item.organization }}</td>
+                <td>{{ item.inn }}</td>
+                <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
+                <td class="text-center text-muted"><i class="bi bi-file-earmark"></i></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else class="text-muted mb-0">История не найдена</p>
+      </div>
     </div>
-    <p v-else class="text-muted">История не найдена</p>
   </div>
 </template>
 
