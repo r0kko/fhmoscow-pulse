@@ -28,6 +28,13 @@ const maskedAccountNumber = computed(() => {
   const num = bankAccount.value.number;
   return '···· ' + (num.length > 4 ? num.slice(-4) : num);
 });
+const activeTab = ref('info');
+const tabs = computed(() => [
+  { id: 'info', label: 'Контакты', disabled: false },
+  { id: 'passport', label: 'Паспорт', disabled: !passport.value },
+  { id: 'tax', label: 'ИНН и СНИЛС', disabled: !(inn.value && snils.value) },
+  { id: 'bank', label: 'Банк', disabled: !bankAccount.value },
+]);
 const loading = reactive({
   user: false,
   passport: false,
@@ -200,7 +207,20 @@ onMounted(() => {
       </div>
     </div>
     <div v-else-if="user">
-      <div class="mb-4">
+      <ul class="nav nav-pills nav-fill justify-content-between mb-4">
+        <li class="nav-item" v-for="tab in tabs" :key="tab.id">
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ active: activeTab === tab.id, disabled: tab.disabled }"
+            @click="!tab.disabled && (activeTab = tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        </li>
+      </ul>
+
+      <div v-show="activeTab === 'info'" class="mb-4">
         <div class="card tile fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные и контакты</h5>
@@ -353,7 +373,9 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
       <div
+        v-show="activeTab === 'passport'"
         class="mb-4"
         v-if="passport !== undefined || passportError || loading.passport"
       >
@@ -503,7 +525,9 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
       <div
+        v-show="activeTab === 'tax'"
         class="mb-4"
         v-if="
           inn !== undefined ||
@@ -567,8 +591,11 @@ onMounted(() => {
             </p>
           </div>
         </div>
+        <TaxationInfo class="mt-4" :editable="false" :showOkved="false" />
       </div>
+
       <div
+        v-show="activeTab === 'bank'"
         class="mb-4"
         v-if="
           bankAccount !== undefined || bankAccountError || loading.bankAccount
@@ -666,7 +693,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <TaxationInfo class="mb-4" :editable="false" :showOkved="false" />
+
       <div v-for="section in placeholderSections" :key="section" class="mb-4">
         <div class="card tile placeholder-card text-center">
           <div
