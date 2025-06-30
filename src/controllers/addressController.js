@@ -6,7 +6,7 @@ export default {
   async me(req, res) {
     const alias = String(req.params.type || '').toUpperCase();
     try {
-      let addr = await addressService.getForUser(req.user.id, alias);
+      const addr = await addressService.getForUser(req.user.id, alias);
       if (addr) {
         return res.json({ address: addressMapper.toPublic(addr) });
       }
