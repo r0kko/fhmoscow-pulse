@@ -8,6 +8,7 @@ import userService from '../services/userService.js';
 import authService from '../services/authService.js';
 import passportService from '../services/passportService.js';
 import bankAccountService from '../services/bankAccountService.js';
+import addressService from '../services/addressService.js';
 // legacy data is fetched but not stored automatically
 import { ExternalSystem, UserExternalId } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
@@ -77,6 +78,7 @@ export default {
         'REGISTRATION_STEP_1'
       );
       await userService.resetPassword(user.id, password);
+      await addressService.fetchFromLegacy(user.id);
       await bankAccountService.fetchFromLegacy(user.id);
       await passportService.fetchFromLegacy(user.id);
       const updated = await user.reload();

@@ -1,7 +1,14 @@
-import { Address, AddressType, UserAddress, User } from '../models/index.js';
+import {
+  Address,
+  AddressType,
+  UserAddress,
+  User,
+  UserExternalId,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import dadataService from './dadataService.js';
+import legacyUserService from './legacyUserService.js';
 
 async function getForUser(userId, alias) {
   const type = await AddressType.findOne({ where: { alias } });
@@ -74,4 +81,38 @@ async function removeForUser(userId, alias) {
   await ua.destroy();
 }
 
-export default { getForUser, createForUser, updateForUser, removeForUser };
+async function fetchFromLegacy(userId) {
+  const ext = await UserExternalId.findOne({ where: { user_id: userId } });
+  if (!ext) return null;
+  const legacy = await legacyUserService.findById(ext.external_id);
+  if (!legacy) return null;
+  const parts = [legacy.adr_ind, legacy.adr_city, legacy.adr_adr]
+    .filter(Boolean)
+    .map((p) => String(p).trim());
+  if (!parts.length) return null;
+  const source = parts.join(', ');
+  const cleaned = await dadataService.cleanAddress(source);
+  if (!cleaned) return null;
+  return { result: cleaned.result };
+}
+
+async function importFromLegacy(userId, actorId) {
+  const existing = await UserAddress.findOne({ where: { user_id: userId } });
+  if (existing) return existing;
+  const legacy = await fetchFromLegacy(userId);
+  if (!legacy) return null;
+  try {
+    return await createForUser(userId, 'REGISTRATION', { result: legacy.result }, actorId);
+  } catch (err) {
+    return null;
+  }
+}
+
+export default {
+  getForUser,
+  createForUser,
+  updateForUser,
+  removeForUser,
+  fetchFromLegacy,
+  importFromLegacy,
+};
