@@ -159,9 +159,9 @@ function applySuggestion(sug) {
           </div>
           <div
             v-if="addresses[type.alias]"
-            class="row row-cols-1 row-cols-sm-3 g-3"
+            class="row g-3 align-items-end"
           >
-            <div class="col">
+            <div class="col-auto" style="width: 8ch">
               <div class="form-floating">
                 <input
                   :id="`zip-${type.alias}`"
@@ -174,7 +174,7 @@ function applySuggestion(sug) {
                 <label :for="`zip-${type.alias}`">Индекс</label>
               </div>
             </div>
-            <div class="col">
+            <div class="col-auto" style="width: 12ch">
               <div class="form-floating">
                 <input
                   :id="`country-${type.alias}`"
