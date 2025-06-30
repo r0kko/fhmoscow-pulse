@@ -35,7 +35,7 @@ const step = ref(
     ? parseInt(auth.user.status.split('_').pop()) || 1
     : 1
 )
-const total = 4
+const total = 5
 const user = ref({})
 const inn = ref('')
 const innLocked = ref(false)
@@ -49,6 +49,10 @@ function isExpired(p) {
   if (!p.valid_until) return false
   return new Date(p.valid_until) < new Date()
 }
+const regAddress = ref('')
+const resAddress = ref('')
+const sameAddress = ref(false)
+const addrIds = ref({ REGISTRATION: null, RESIDENCE: null })
 const bank = ref({ number: '', bic: '' })
 const bankInfo = ref(null)
 const bankCheckStatus = ref('')
@@ -102,6 +106,16 @@ onMounted(async () => {
     }
   } catch (_) {}
   try {
+    const data = await apiFetch('/addresses/REGISTRATION')
+    addrIds.value.REGISTRATION = data.address.id || null
+    regAddress.value = data.address.result
+  } catch (_) {}
+  try {
+    const data = await apiFetch('/addresses/RESIDENCE')
+    addrIds.value.RESIDENCE = data.address.id || null
+    resAddress.value = data.address.result
+  } catch (_) {}
+  try {
     const data = await apiFetch('/bank-accounts/me')
     bank.value.number = data.account.number
     bank.value.bic = data.account.bic
@@ -118,9 +132,7 @@ onMounted(async () => {
   if (
     step.value === 3 &&
     passportLocked.value &&
-    Object.values(passportLockFields.value).every(Boolean) &&
-    bank.value.number &&
-    bank.value.bic
+    Object.values(passportLockFields.value).every(Boolean)
   ) {
     step.value = 4
   }
@@ -154,6 +166,24 @@ watch(
   (val) => {
     if (!bankLocked.value && bankCheckStatus.value === 'found' && isValidAccountNumber(val, bank.value.bic)) {
       bankLocked.value = true
+    }
+  }
+)
+
+watch(
+  () => sameAddress.value,
+  (val) => {
+    if (val) {
+      resAddress.value = regAddress.value
+    }
+  }
+)
+
+watch(
+  () => regAddress.value,
+  (val) => {
+    if (sameAddress.value) {
+      resAddress.value = val
     }
   }
 )
@@ -279,6 +309,36 @@ async function saveStep() {
       loading.value = false
       return
     }
+    if (step.value === 4) {
+      if (regAddress.value) {
+        const body = JSON.stringify({ result: regAddress.value })
+        if (addrIds.value.REGISTRATION) {
+          await apiFetch(`/addresses/REGISTRATION`, { method: 'PUT', body })
+        } else {
+          const res = await apiFetch(`/addresses/REGISTRATION`, {
+            method: 'POST',
+            body,
+          })
+          addrIds.value.REGISTRATION = res.address.id
+        }
+      }
+      const resVal = sameAddress.value ? regAddress.value : resAddress.value
+      if (resVal) {
+        const body = JSON.stringify({ result: resVal })
+        if (addrIds.value.RESIDENCE) {
+          await apiFetch(`/addresses/RESIDENCE`, { method: 'PUT', body })
+        } else {
+          const res = await apiFetch(`/addresses/RESIDENCE`, {
+            method: 'POST',
+            body,
+          })
+          addrIds.value.RESIDENCE = res.address.id
+        }
+      }
+      step.value = 5
+      loading.value = false
+      return
+    }
     if (!isValidAccountNumber(bank.value.number, bank.value.bic)) {
       error.value = 'Неверные банковские данные'
       return
@@ -355,6 +415,38 @@ async function saveStep() {
         <div v-if="passportLocked" class="alert alert-success mt-3">Паспорт проверен</div>
       </div>
       <div v-else-if="step === 4" class="mb-4">
+        <div class="form-floating mb-3">
+          <textarea
+            id="regAddr"
+            v-model="regAddress"
+            class="form-control"
+            rows="3"
+            placeholder="Адрес регистрации"
+          ></textarea>
+          <label for="regAddr">Адрес регистрации</label>
+        </div>
+        <div class="form-check mb-3">
+          <input
+            id="sameAddr"
+            v-model="sameAddress"
+            class="form-check-input"
+            type="checkbox"
+          />
+          <label for="sameAddr" class="form-check-label">Совпадает с адресом проживания</label>
+        </div>
+        <div class="form-floating">
+          <textarea
+            id="resAddr"
+            v-model="resAddress"
+            class="form-control"
+            rows="3"
+            placeholder="Адрес проживания"
+            :disabled="sameAddress"
+          ></textarea>
+          <label for="resAddr">Адрес проживания</label>
+        </div>
+      </div>
+      <div v-else-if="step === 5" class="mb-4">
         <div class="form-floating mb-3">
           <input
             id="accNum"
