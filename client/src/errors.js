@@ -27,6 +27,8 @@ export const ERROR_MESSAGES = {
   status_required: 'Не указан статус',
   taxation_not_found: 'Налоговый статус не найден',
   certificate_not_found: 'Медицинское заключение не найдено',
+  stadium_not_found: 'Спортсооружение не найдено',
+  invalid_address: 'Некорректный адрес',
   user_exists: 'Пользователь уже существует',
   user_not_found: 'Пользователь не найден',
   not_found: 'Не найдено'

@@ -7,6 +7,11 @@ const tiles = [
     title: 'Медицинские справки',
     icon: 'bi-file-earmark-medical',
     to: '/medical-certificates'
+  },
+  {
+    title: 'Управление сборами',
+    icon: 'bi-building',
+    to: '/camp-stadiums'
   }
 ]
 </script>
