@@ -1,4 +1,4 @@
-import { expect, jest, test } from '@jest/globals';
+import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const setStatusMock = jest.fn();
 const resetPasswordMock = jest.fn();
@@ -25,6 +25,7 @@ const createPassportMock = jest.fn();
 const getPassportMock = jest.fn();
 const removePassportMock = jest.fn();
 const passportToPublicMock = jest.fn((p) => p);
+const sendActivationEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/passportService.js', () => ({
   __esModule: true,
@@ -40,7 +41,17 @@ jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
   default: { toPublic: passportToPublicMock },
 }));
 
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
+  __esModule: true,
+  default: { sendAccountActivatedEmail: sendActivationEmailMock },
+}));
+
 const { default: controller } = await import('../src/controllers/userAdminController.js');
+
+beforeEach(() => {
+  sendActivationEmailMock.mockClear();
+  setStatusMock.mockClear();
+});
 
 test('approve updates user status to ACTIVE', async () => {
   setStatusMock.mockResolvedValue({ id: '1' });
@@ -48,6 +59,7 @@ test('approve updates user status to ACTIVE', async () => {
   const res = { json: jest.fn() };
   await controller.approve(req, res);
   expect(setStatusMock).toHaveBeenCalledWith('1', 'ACTIVE');
+  expect(sendActivationEmailMock).toHaveBeenCalledWith({ id: '1' });
   expect(res.json).toHaveBeenCalledWith({ user: { id: '1' } });
 });
 
@@ -66,6 +78,7 @@ test('unblock updates user status to ACTIVE', async () => {
   const res = { json: jest.fn() };
   await controller.unblock(req, res);
   expect(setStatusMock).toHaveBeenCalledWith('3', 'ACTIVE');
+  expect(sendActivationEmailMock).toHaveBeenCalledWith({ id: '3' });
   expect(res.json).toHaveBeenCalledWith({ user: { id: '3' } });
 });
 

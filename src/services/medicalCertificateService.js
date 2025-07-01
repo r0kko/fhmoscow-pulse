@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 
 import { MedicalCertificate, User } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import emailService from './emailService.js';
 
 async function getByUser(userId) {
   return MedicalCertificate.findOne({
@@ -23,8 +24,7 @@ async function listByUser(userId) {
 async function createForUser(userId, data, actorId) {
   const user = await User.findByPk(userId);
   if (!user) throw new ServiceError('user_not_found', 404);
-
-  return MedicalCertificate.create({
+  const certificate = await MedicalCertificate.create({
     user_id: userId,
     inn: data.inn,
     organization: data.organization,
@@ -34,6 +34,10 @@ async function createForUser(userId, data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
+  if (actorId !== userId) {
+    await emailService.sendMedicalCertificateAddedEmail(user);
+  }
+  return certificate;
 }
 
 async function removeForUser(userId) {
