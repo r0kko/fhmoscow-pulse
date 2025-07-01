@@ -44,16 +44,13 @@ onMounted(async () => {
   try {
     const [current, hist] = await Promise.all([
       apiFetch('/medical-certificates/me').catch((e) => {
-        if (e.message.includes('не найдена')) return null;
+        if (e.message.includes('не найден')) return null;
         throw e;
       }),
       apiFetch('/medical-certificates/me/history'),
     ]);
     certificate.value = current ? current.certificate : null;
-    const allHistory = hist.certificates || [];
-    const activeId =
-      certificate.value && isValid(certificate.value) ? certificate.value.id : null;
-    history.value = activeId ? allHistory.filter((c) => c.id !== activeId) : allHistory;
+    history.value = hist.certificates || [];
     if (certificate.value) {
       const data = await apiFetch('/medical-certificates/me/files').catch(() => ({ files: [] }));
       files.value = data.files;
