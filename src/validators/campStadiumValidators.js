@@ -18,7 +18,23 @@ export const campStadiumCreateRules = [
       }
       return v;
     }),
-  body('parking').optional().isArray(),
+  body('parking')
+    .optional()
+    .isArray({ max: 1 })
+    .custom((arr) => {
+      if (arr.length === 0) return true;
+      const p = arr[0];
+      if (!p || typeof p.type !== 'string') {
+        throw new Error('invalid_parking');
+      }
+      if (p.type === 'PAID' && (p.price === undefined || p.price === null)) {
+        throw new Error('parking_price_required');
+      }
+      if (p.type !== 'PAID' && p.price) {
+        throw new Error('parking_price_forbidden');
+      }
+      return true;
+    }),
 ];
 
 export const campStadiumUpdateRules = [
@@ -39,5 +55,21 @@ export const campStadiumUpdateRules = [
       }
       return v;
     }),
-  body('parking').optional().isArray(),
+  body('parking')
+    .optional()
+    .isArray({ max: 1 })
+    .custom((arr) => {
+      if (arr.length === 0) return true;
+      const p = arr[0];
+      if (!p || typeof p.type !== 'string') {
+        throw new Error('invalid_parking');
+      }
+      if (p.type === 'PAID' && (p.price === undefined || p.price === null)) {
+        throw new Error('parking_price_required');
+      }
+      if (p.type !== 'PAID' && p.price) {
+        throw new Error('parking_price_forbidden');
+      }
+      return true;
+    }),
 ];

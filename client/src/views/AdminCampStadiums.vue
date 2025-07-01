@@ -50,7 +50,7 @@ const form = ref({
   capacity: '',
   phone: '',
   website: '',
-  parking: [],
+  parking: { type: '', price: '' },
 });
 const editing = ref(null);
 const modalRef = ref(null);
@@ -110,10 +110,6 @@ async function load() {
   }
 }
 
-function makeParkingForm() {
-  return parkingTypes.value.map((t) => ({ type: t.alias, price: '', enabled: false }));
-}
-
 function openCreate() {
   editing.value = null;
   form.value = {
@@ -123,7 +119,7 @@ function openCreate() {
     capacity: '',
     phone: '',
     website: '',
-    parking: makeParkingForm(),
+    parking: { type: parkingTypes.value[0]?.alias || '', price: '' },
   };
   phoneInput.value = '';
   formError.value = '';
@@ -133,6 +129,7 @@ function openCreate() {
 
 function openEdit(s) {
   editing.value = s;
+  const selected = (s.parking || [])[0];
   form.value = {
     name: s.name,
     address: { result: s.address?.result || '' },
@@ -140,10 +137,10 @@ function openEdit(s) {
     capacity: s.capacity || '',
     phone: s.phone || '',
     website: s.website || '',
-    parking: parkingTypes.value.map((t) => {
-      const found = (s.parking || []).find((p) => p.type === t.alias);
-      return { type: t.alias, price: found?.price || '', enabled: !!found };
-    }),
+    parking: {
+      type: selected?.type || parkingTypes.value[0]?.alias || '',
+      price: selected?.price || '',
+    },
   };
   phoneInput.value = formatPhone(form.value.phone);
   formError.value = '';
@@ -159,9 +156,12 @@ async function save() {
     capacity: form.value.capacity || undefined,
     phone: form.value.phone || undefined,
     website: form.value.website || undefined,
-    parking: form.value.parking
-      .filter((p) => p.enabled)
-      .map((p) => ({ type: p.type, price: p.price || null })),
+    parking: [
+      {
+        type: form.value.parking.type,
+        price: form.value.parking.type === 'PAID' ? form.value.parking.price || null : null,
+      },
+    ],
   };
   try {
     if (editing.value) {
@@ -324,16 +324,15 @@ async function onAddressBlur() {
               </div>
               <div class="mb-3" v-if="parkingTypes.length">
                 <h6 class="mb-2">Парковка</h6>
-                <div v-for="(p, idx) in form.parking" :key="p.type" class="row g-2 align-items-center mb-2">
-                  <div class="col-auto">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" v-model="p.enabled" :id="`p-${idx}`" />
-                      <label class="form-check-label" :for="`p-${idx}`">{{ parkingTypes[idx].name }}</label>
-                    </div>
-                  </div>
-                  <div class="col" v-if="p.enabled">
-                    <input v-model="p.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена" />
-                  </div>
+                <div class="form-floating mb-3">
+                  <select id="stadParking" v-model="form.parking.type" class="form-select">
+                    <option v-for="t in parkingTypes" :value="t.alias" :key="t.alias">{{ t.name }}</option>
+                  </select>
+                  <label for="stadParking">Тип</label>
+                </div>
+                <div class="form-floating" v-if="form.parking.type === 'PAID'">
+                  <input id="stadParkingPrice" v-model="form.parking.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена" />
+                  <label for="stadParkingPrice">Цена</label>
                 </div>
               </div>
             </div>

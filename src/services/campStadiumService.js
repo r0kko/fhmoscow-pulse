@@ -46,14 +46,14 @@ async function create(data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  if (Array.isArray(data.parking)) {
-    for (const p of data.parking) {
-      const type = await ParkingType.findOne({ where: { alias: p.type } });
-      if (!type) continue;
+  if (Array.isArray(data.parking) && data.parking.length) {
+    const p = data.parking[0];
+    const type = await ParkingType.findOne({ where: { alias: p.type } });
+    if (type) {
       await CampStadiumParkingType.create({
         camp_stadium_id: stadium.id,
         parking_type_id: type.id,
-        price: p.price,
+        price: p.type === 'PAID' ? p.price : null,
         created_by: actorId,
         updated_by: actorId,
       });
@@ -85,19 +85,19 @@ async function update(id, data, actorId) {
     { returning: false }
   );
   if (Array.isArray(data.parking)) {
-    await CampStadiumParkingType.destroy({
-      where: { camp_stadium_id: id },
-    });
-    for (const p of data.parking) {
+    await CampStadiumParkingType.destroy({ where: { camp_stadium_id: id } });
+    if (data.parking.length) {
+      const p = data.parking[0];
       const type = await ParkingType.findOne({ where: { alias: p.type } });
-      if (!type) continue;
-      await CampStadiumParkingType.create({
-        camp_stadium_id: id,
-        parking_type_id: type.id,
-        price: p.price,
-        created_by: actorId,
-        updated_by: actorId,
-      });
+      if (type) {
+        await CampStadiumParkingType.create({
+          camp_stadium_id: id,
+          parking_type_id: type.id,
+          price: p.type === 'PAID' ? p.price : null,
+          created_by: actorId,
+          updated_by: actorId,
+        });
+      }
     }
   }
   return getById(id);
