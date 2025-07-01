@@ -1,8 +1,16 @@
+import { Op } from 'sequelize';
+
 import { MedicalCertificate, User } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function getByUser(userId) {
-  return MedicalCertificate.findOne({ where: { user_id: userId } });
+  return MedicalCertificate.findOne({
+    where: {
+      user_id: userId,
+      valid_until: { [Op.gte]: new Date() },
+    },
+    order: [['valid_until', 'DESC']],
+  });
 }
 
 async function listByUser(userId) {
@@ -14,12 +22,8 @@ async function listByUser(userId) {
 }
 
 async function createForUser(userId, data, actorId) {
-  const [user, existing] = await Promise.all([
-    User.findByPk(userId),
-    MedicalCertificate.findOne({ where: { user_id: userId } }),
-  ]);
+  const user = await User.findByPk(userId);
   if (!user) throw new ServiceError('user_not_found', 404);
-  if (existing) throw new ServiceError('certificate_exists');
 
   return MedicalCertificate.create({
     user_id: userId,
@@ -34,7 +38,10 @@ async function createForUser(userId, data, actorId) {
 }
 
 async function removeForUser(userId) {
-  const cert = await MedicalCertificate.findOne({ where: { user_id: userId } });
+  const cert = await MedicalCertificate.findOne({
+    where: { user_id: userId },
+    order: [['valid_until', 'DESC']],
+  });
   if (!cert) throw new ServiceError('certificate_not_found', 404);
   await cert.destroy();
 }
@@ -63,7 +70,10 @@ async function getById(id) {
 }
 
 async function updateForUser(userId, data, actorId) {
-  const cert = await MedicalCertificate.findOne({ where: { user_id: userId } });
+  const cert = await MedicalCertificate.findOne({
+    where: { user_id: userId },
+    order: [['valid_until', 'DESC']],
+  });
   if (!cert) throw new ServiceError('certificate_not_found', 404);
   await cert.update({
     inn: data.inn,

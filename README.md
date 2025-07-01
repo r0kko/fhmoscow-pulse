@@ -16,6 +16,9 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - ESLint and Prettier for code quality
 - Jest unit tests
 - Admin panel for managing users and roles (create, edit, block)
+- Soft deletion of records using Sequelize paranoid mode
+- Users can have multiple medical certificates; the active one with the
+  longest validity is returned in personal APIs
 
 ## Branching strategy
 
