@@ -289,6 +289,7 @@ function formatDate(str) {
                     v-model="userQuery"
                     class="form-control"
                     placeholder="Пользователь"
+                    :disabled="editing"
                   />
                   <label for="userId">Пользователь</label>
                 </div>
@@ -308,23 +309,53 @@ function formatDate(str) {
                 </ul>
               </div>
               <div class="form-floating mb-3">
-                <input id="certNumber" v-model="form.certificate_number" class="form-control" placeholder="Номер" />
+                <input
+                  id="certNumber"
+                  v-model="form.certificate_number"
+                  class="form-control"
+                  placeholder="Номер"
+                  :disabled="editing"
+                />
                 <label for="certNumber">Номер</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="certInn" v-model="form.inn" class="form-control" placeholder="ИНН" />
+                <input
+                  id="certInn"
+                  v-model="form.inn"
+                  class="form-control"
+                  placeholder="ИНН"
+                  :disabled="editing"
+                />
                 <label for="certInn">ИНН</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="certOrg" v-model="form.organization" class="form-control" placeholder="Учреждение" disabled />
+                <input
+                  id="certOrg"
+                  v-model="form.organization"
+                  class="form-control"
+                  placeholder="Учреждение"
+                  disabled
+                />
                 <label for="certOrg">Учреждение</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="issue" type="date" v-model="form.issue_date" class="form-control" />
+                <input
+                  id="issue"
+                  type="date"
+                  v-model="form.issue_date"
+                  class="form-control"
+                  :disabled="editing"
+                />
                 <label for="issue">Дата выдачи</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="valid" type="date" v-model="form.valid_until" class="form-control" />
+                <input
+                  id="valid"
+                  type="date"
+                  v-model="form.valid_until"
+                  class="form-control"
+                  :disabled="editing"
+                />
                 <label for="valid">Действительно до</label>
               </div>
               <div v-if="editing" class="border-top pt-3 mt-3">
@@ -353,7 +384,9 @@ function formatDate(str) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <button type="submit" class="btn btn-primary" :disabled="editing">
+                Сохранить
+              </button>
             </div>
           </form>
         </div>
