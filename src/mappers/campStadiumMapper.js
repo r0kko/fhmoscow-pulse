@@ -37,7 +37,8 @@ function sanitize(obj) {
 
 function toPublic(stadium) {
   if (!stadium) return null;
-  const plain = typeof stadium.get === 'function' ? stadium.get({ plain: true }) : stadium;
+  const plain =
+    typeof stadium.get === 'function' ? stadium.get({ plain: true }) : stadium;
   return sanitize(plain);
 }
 

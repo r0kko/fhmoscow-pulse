@@ -65,7 +65,11 @@ export default {
   async parkingTypes(_req, res) {
     const types = await campStadiumService.listParkingTypes();
     return res.json({
-      parkingTypes: types.map((t) => ({ id: t.id, name: t.name, alias: t.alias })),
+      parkingTypes: types.map((t) => ({
+        id: t.id,
+        name: t.name,
+        alias: t.alias,
+      })),
     });
   },
 };

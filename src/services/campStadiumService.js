@@ -13,10 +13,7 @@ async function listAll(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   return CampStadium.findAndCountAll({
-    include: [
-      { model: Address },
-      { model: ParkingType },
-    ],
+    include: [{ model: Address }, { model: ParkingType }],
     limit,
     offset,
     order: [['name', 'ASC']],
@@ -25,10 +22,7 @@ async function listAll(options = {}) {
 
 async function getById(id) {
   const stadium = await CampStadium.findByPk(id, {
-    include: [
-      { model: Address },
-      { model: ParkingType },
-    ],
+    include: [{ model: Address }, { model: ParkingType }],
   });
   if (!stadium) throw new ServiceError('stadium_not_found', 404);
   return stadium;

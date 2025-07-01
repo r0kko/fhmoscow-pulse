@@ -19,9 +19,7 @@ CampStadiumParkingType.init(
     tableName: 'camp_stadium_parking_types',
     paranoid: true,
     underscored: true,
-    indexes: [
-      { unique: true, fields: ['camp_stadium_id', 'parking_type_id'] },
-    ],
+    indexes: [{ unique: true, fields: ['camp_stadium_id', 'parking_type_id'] }],
   }
 );
 
