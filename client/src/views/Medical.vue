@@ -152,8 +152,10 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-    <p v-else-if="!error" class="text-muted">Действующее медицинское заключение отсутствует</p>
-    <p v-else class="text-muted">{{ error }}</p>
+    <div v-else-if="!error" class="alert alert-danger" role="alert">
+      Действующее медицинское заключение отсутствует
+    </div>
+    <div v-else class="alert alert-danger" role="alert">{{ error }}</div>
     <div class="card tile fade-in shadow-sm mt-4">
       <div class="card-body">
         <h5 class="card-title mb-3">Архив медицинских заключений</h5>
@@ -163,7 +165,6 @@ onMounted(async () => {
               <tr>
                 <th>Номер</th>
                 <th>Учреждение</th>
-                <th>ИНН</th>
                 <th>Период действия</th>
                 <th>Файлы</th>
               </tr>
@@ -172,8 +173,7 @@ onMounted(async () => {
               <tr v-for="item in history" :key="item.id">
                 <td>{{ item.certificate_number }}</td>
                 <td>{{ item.organization }}</td>
-                <td>{{ item.inn }}</td>
-                <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
+                <td class="text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
                 <td>
                   <div
                     v-if="item.files && item.files.length"
