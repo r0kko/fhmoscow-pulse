@@ -129,3 +129,47 @@ export async function apiFetch(path, options = {}) {
   }
   return data;
 }
+
+export async function apiFetchForm(path, form, options = {}) {
+  const { redirectOn401 = true, ...rest } = options;
+  const opts = { credentials: 'include', ...rest, body: form };
+  opts.headers = { ...(opts.headers || {}) };
+  const xsrf = getXsrfToken();
+  if (xsrf) {
+    opts.headers['X-XSRF-TOKEN'] = xsrf;
+  }
+  if (accessToken) {
+    opts.headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, opts);
+  } catch (_err) {
+    throw new Error('Сетевая ошибка');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    if (path !== '/auth/refresh' && !refreshFailed) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return apiFetchForm(path, form, options);
+      }
+    }
+    clearAuth();
+    if (
+      redirectOn401 &&
+      typeof window !== 'undefined' &&
+      window.location &&
+      window.location.pathname !== '/login'
+    ) {
+      window.location.href = '/login';
+    }
+    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    throw new Error(message);
+  }
+  if (!res.ok) {
+    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    throw new Error(message);
+  }
+  return data;
+}

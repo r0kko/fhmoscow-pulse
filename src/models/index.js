@@ -12,6 +12,8 @@ import Snils from './snils.js';
 import BankAccount from './bankAccount.js';
 import MedicalCertificate from './medicalCertificate.js';
 import File from './file.js';
+import MedicalCertificateType from './medicalCertificateType.js';
+import MedicalCertificateFile from './medicalCertificateFile.js';
 import TaxationType from './taxationType.js';
 import Taxation from './taxation.js';
 import ExternalSystem from './externalSystem.js';
@@ -43,8 +45,20 @@ User.hasOne(BankAccount, { foreignKey: 'user_id' });
 BankAccount.belongsTo(User, { foreignKey: 'user_id' });
 User.hasOne(MedicalCertificate, { foreignKey: 'user_id' });
 MedicalCertificate.belongsTo(User, { foreignKey: 'user_id' });
-MedicalCertificate.hasMany(File, { foreignKey: 'medical_certificate_id' });
-File.belongsTo(MedicalCertificate, { foreignKey: 'medical_certificate_id' });
+MedicalCertificate.hasMany(MedicalCertificateFile, {
+  foreignKey: 'medical_certificate_id',
+});
+MedicalCertificateFile.belongsTo(MedicalCertificate, {
+  foreignKey: 'medical_certificate_id',
+});
+MedicalCertificateFile.belongsTo(File, { foreignKey: 'file_id' });
+File.hasMany(MedicalCertificateFile, { foreignKey: 'file_id' });
+MedicalCertificateType.hasMany(MedicalCertificateFile, {
+  foreignKey: 'type_id',
+});
+MedicalCertificateFile.belongsTo(MedicalCertificateType, {
+  foreignKey: 'type_id',
+});
 User.hasOne(Taxation, { foreignKey: 'user_id' });
 Taxation.belongsTo(User, { foreignKey: 'user_id' });
 TaxationType.hasMany(Taxation, { foreignKey: 'taxation_type_id' });
@@ -97,4 +111,6 @@ export {
   UserAddress,
   MedicalCertificate,
   File,
+  MedicalCertificateType,
+  MedicalCertificateFile,
 };

@@ -1,10 +1,15 @@
-function toPublic(file, url) {
-  if (!file) return null;
-  const plain = typeof file.get === 'function' ? file.get({ plain: true }) : file;
+function toPublic(attachment, url) {
+  if (!attachment || !attachment.File) return null;
+  const file =
+    typeof attachment.File.get === 'function'
+      ? attachment.File.get({ plain: true })
+      : attachment.File;
   return {
-    id: plain.id,
-    type: plain.type,
-    name: plain.original_name,
+    id: file.id,
+    type:
+      attachment.MedicalCertificateType?.alias ||
+      attachment.MedicalCertificateType?.name,
+    name: file.original_name,
     url,
   };
 }
