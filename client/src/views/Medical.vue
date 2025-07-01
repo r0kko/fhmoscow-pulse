@@ -44,7 +44,7 @@ onMounted(async () => {
   try {
     const [current, hist] = await Promise.all([
       apiFetch('/medical-certificates/me').catch((e) => {
-        if (e.message.includes('не найдена')) return null;
+        if (e.message.includes('не найден')) return null;
         throw e;
       }),
       apiFetch('/medical-certificates/me/history'),
