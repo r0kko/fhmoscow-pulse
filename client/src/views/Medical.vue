@@ -5,6 +5,7 @@ import { apiFetch } from '../api.js';
 
 const certificate = ref(null);
 const history = ref([]);
+const files = ref([]);
 const error = ref('');
 const loading = ref(true);
 const isValid = (cert) => {
@@ -53,11 +54,28 @@ onMounted(async () => {
     const activeId =
       certificate.value && isValid(certificate.value) ? certificate.value.id : null;
     history.value = activeId ? allHistory.filter((c) => c.id !== activeId) : allHistory;
+    if (certificate.value) {
+      const data = await apiFetch('/medical-certificates/me/files').catch(() => ({ files: [] }));
+      files.value = data.files;
+    } else {
+      files.value = [];
+    }
+    await Promise.all(
+      history.value.map(async (h) => {
+        try {
+          const data = await apiFetch(`/medical-certificates/${h.id}/files`);
+          h.files = data.files;
+        } catch (_err) {
+          h.files = [];
+        }
+      })
+    );
     error.value = '';
   } catch (e) {
     error.value = e.message;
     certificate.value = null;
     history.value = [];
+    files.value = [];
   } finally {
     loading.value = false;
   }
@@ -117,10 +135,19 @@ onMounted(async () => {
           </div>
           <div class="border-top pt-3 mt-3">
             <p class="mb-2 fw-semibold">Файлы</p>
-            <div class="d-flex gap-3 text-muted">
-              <i class="bi bi-file-earmark"></i>
-              <i class="bi bi-file-earmark"></i>
-            </div>
+            <ul v-if="files.length" class="list-unstyled mb-0">
+              <li v-for="f in files" :key="f.id">
+                <a
+                  :href="f.url"
+                  target="_blank"
+                  class="d-flex align-items-center gap-2 text-break"
+                >
+                  <i class="bi bi-file-earmark"></i>
+                  <span>{{ f.name }}</span>
+                </a>
+              </li>
+            </ul>
+            <p v-else class="text-muted mb-0">Нет файлов</p>
           </div>
         </div>
       </div>
@@ -138,7 +165,7 @@ onMounted(async () => {
                 <th>Учреждение</th>
                 <th>ИНН</th>
                 <th>Период действия</th>
-                <th class="text-center">Файлы</th>
+                <th>Файлы</th>
               </tr>
             </thead>
             <tbody>
@@ -147,7 +174,14 @@ onMounted(async () => {
                 <td>{{ item.organization }}</td>
                 <td>{{ item.inn }}</td>
                 <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
-                <td class="text-center text-muted"><i class="bi bi-file-earmark"></i></td>
+                <td>
+                  <ul v-if="item.files && item.files.length" class="list-unstyled mb-0">
+                    <li v-for="f in item.files" :key="f.id">
+                      <a :href="f.url" target="_blank">{{ f.name }}</a>
+                    </li>
+                  </ul>
+                  <span v-else class="text-muted">—</span>
+                </td>
               </tr>
             </tbody>
           </table>
