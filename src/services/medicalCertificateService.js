@@ -17,7 +17,6 @@ async function listByUser(userId) {
   return MedicalCertificate.findAll({
     where: { user_id: userId },
     order: [['issue_date', 'DESC']],
-    paranoid: false,
   });
 }
 
@@ -56,14 +55,12 @@ async function listAll(options = {}) {
     order: [['issue_date', 'DESC']],
     limit,
     offset,
-    paranoid: false,
   });
 }
 
 async function getById(id) {
   const cert = await MedicalCertificate.findByPk(id, {
     include: [User],
-    paranoid: false,
   });
   if (!cert) throw new ServiceError('certificate_not_found', 404);
   return cert;
