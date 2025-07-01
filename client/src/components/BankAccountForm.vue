@@ -169,7 +169,7 @@ async function removeAccount() {
           </div>
         </div>
       </div>
-      <p v-else class="mb-2 text-muted">Счёт не указан.</p>
+      <div v-else class="alert alert-warning p-2 mb-2">Счёт не указан.</div>
       <div v-if="error" class="text-danger mt-2">{{ error }}</div>
     </div>
   </div>

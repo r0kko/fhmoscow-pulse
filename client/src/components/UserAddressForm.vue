@@ -201,7 +201,7 @@ function applySuggestion(sug) {
               </div>
             </div>
           </div>
-          <p v-else class="mb-0 text-muted">Адрес не указан.</p>
+          <div v-else class="alert alert-warning p-2 mb-0">Адрес не указан.</div>
           <div v-if="error && current === type.alias" class="text-danger mt-2">
             {{ error }}
           </div>
