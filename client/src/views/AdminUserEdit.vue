@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import UserForm from '../components/UserForm.vue';
@@ -22,6 +22,17 @@ const passport = ref(null);
 const passportError = ref('');
 // Placeholder sections hidden until inventory feature is ready
 const placeholderSections = [];
+
+const activeTab = ref('info');
+const tabs = computed(() => [
+  { id: 'info', label: 'Контакты' },
+  { id: 'passport', label: 'Паспорт' },
+  { id: 'inn', label: 'ИНН и СНИЛС' },
+  { id: 'bank', label: 'Банк' },
+  { id: 'address', label: 'Адреса' },
+  { id: 'tax', label: 'Налоговый статус' },
+  ...placeholderSections.map((name, idx) => ({ id: `ph-${idx}`, label: name, disabled: true })),
+]);
 
 const editing = ref(false);
 let originalUser = null;
@@ -140,29 +151,46 @@ async function save() {
     </nav>
     <h1 class="mb-4">Редактирование пользователя</h1>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <form v-if="user" @submit.prevent="save">
-      <UserForm
-        ref="formRef"
-        v-model="user"
-        :locked="true"
-        @editing-changed="onEditingChanged"
-      >
-        <template #actions>
-          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
-          <button type="button" class="btn btn-secondary" @click="cancelEdit">
-            Отмена
-          </button>
-        </template>
-      </UserForm>
-    </form>
-    <UserRolesForm
-      v-if="user"
-      :user-id="route.params.id"
-      :user-roles="user.roles"
-      @updated="(roles) => (user.roles = roles)"
-    />
+
+    <ul v-if="user" class="nav nav-pills nav-fill justify-content-between mb-4">
+      <li class="nav-item" v-for="tab in tabs" :key="tab.id">
+        <button
+          type="button"
+          class="nav-link"
+          :class="{ active: activeTab === tab.id, disabled: tab.disabled }"
+          @click="!tab.disabled && (activeTab = tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      </li>
+    </ul>
     <p v-else-if="isLoading">Загрузка...</p>
-    <div v-if="passport !== undefined" class="mt-4">
+
+    <div v-show="activeTab === 'info'">
+      <form v-if="user" @submit.prevent="save">
+        <UserForm
+          ref="formRef"
+          v-model="user"
+          :locked="true"
+          @editing-changed="onEditingChanged"
+        >
+          <template #actions>
+            <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+            <button type="button" class="btn btn-secondary" @click="cancelEdit">
+              Отмена
+            </button>
+          </template>
+        </UserForm>
+      </form>
+      <UserRolesForm
+        v-if="user"
+        :user-id="route.params.id"
+        :user-roles="user.roles"
+        @updated="(roles) => (user.roles = roles)"
+      />
+    </div>
+
+    <div v-show="activeTab === 'passport'" v-if="passport !== undefined" class="mt-4">
       <div v-if="passport" class="card">
         <div class="card-body position-relative">
           <div class="d-flex justify-content-between mb-3">
@@ -311,16 +339,27 @@ async function save() {
       </div>
     </div>
 
-    <InnSnilsForm v-if="user" :userId="route.params.id" />
-    <BankAccountForm v-if="user" :userId="route.params.id" />
-    <UserAddressForm v-if="user" :userId="route.params.id" isAdmin />
-    <TaxationInfo v-if="user" :userId="route.params.id" />
+    <div v-show="activeTab === 'inn'">
+      <InnSnilsForm v-if="user" :userId="route.params.id" />
+    </div>
+
+    <div v-show="activeTab === 'bank'">
+      <BankAccountForm v-if="user" :userId="route.params.id" />
+    </div>
+
+    <div v-show="activeTab === 'address'">
+      <UserAddressForm v-if="user" :userId="route.params.id" isAdmin />
+    </div>
+
+    <div v-show="activeTab === 'tax'">
+      <TaxationInfo v-if="user" :userId="route.params.id" />
+    </div>
 
     <div
-      v-if="user"
+      v-for="(section, idx) in placeholderSections"
+      :key="`ph-${idx}`"
+      v-show="activeTab === `ph-${idx}`"
       class="mt-4"
-      v-for="section in placeholderSections"
-      :key="section"
     >
       <div class="card placeholder-card text-center">
         <div
