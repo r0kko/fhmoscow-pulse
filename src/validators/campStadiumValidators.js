@@ -5,7 +5,10 @@ export const campStadiumCreateRules = [
   body('address.result').notEmpty().withMessage('invalid_address'),
   body('yandex_url').optional().isURL(),
   body('capacity').optional().isInt({ min: 0 }),
-  body('phone').optional().isMobilePhone('ru-RU'),
+  body('phone')
+    .optional()
+    .customSanitizer((v) => v.replace(/\D/g, ''))
+    .isMobilePhone('ru-RU'),
   body('website')
     .optional()
     .isURL({ require_protocol: false })
@@ -23,7 +26,10 @@ export const campStadiumUpdateRules = [
   body('address.result').optional().notEmpty(),
   body('yandex_url').optional().isURL(),
   body('capacity').optional().isInt({ min: 0 }),
-  body('phone').optional().isMobilePhone('ru-RU'),
+  body('phone')
+    .optional()
+    .customSanitizer((v) => v.replace(/\D/g, ''))
+    .isMobilePhone('ru-RU'),
   body('website')
     .optional()
     .isURL({ require_protocol: false })

@@ -5,6 +5,35 @@ import { Modal } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
+const phoneInput = ref('');
+
+function formatPhone(digits) {
+  if (!digits) return '';
+  let out = '+7';
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
+  if (digits.length >= 4) out += ') ';
+  if (digits.length >= 4) out += digits.slice(4, 7);
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
+  return out;
+}
+
+function onPhoneInput(e) {
+  let digits = e.target.value.replace(/\D/g, '');
+  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '');
+  digits = digits.slice(0, 11);
+  form.value.phone = digits;
+  phoneInput.value = formatPhone(digits);
+}
+
+function onPhoneKeydown(e) {
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    form.value.phone = form.value.phone.slice(0, -1);
+    phoneInput.value = formatPhone(form.value.phone);
+  }
+}
+
 const stadiums = ref([]);
 const total = ref(0);
 const currentPage = ref(1);
@@ -96,6 +125,7 @@ function openCreate() {
     website: '',
     parking: makeParkingForm(),
   };
+  phoneInput.value = '';
   formError.value = '';
   addressSuggestions.value = [];
   modal.show();
@@ -115,6 +145,7 @@ function openEdit(s) {
       return { type: t.alias, price: found?.price || '', enabled: !!found };
     }),
   };
+  phoneInput.value = formatPhone(form.value.phone);
   formError.value = '';
   addressSuggestions.value = [];
   modal.show();
@@ -209,7 +240,7 @@ async function onAddressBlur() {
             <td>{{ st.name }}</td>
             <td>{{ st.address?.result }}</td>
             <td class="text-center">{{ st.capacity }}</td>
-            <td>{{ st.phone }}</td>
+            <td>{{ formatPhone(st.phone) }}</td>
             <td class="d-none d-md-table-cell">
               <a v-if="st.website" :href="st.website" target="_blank">{{ st.website }}</a>
             </td>
@@ -276,7 +307,15 @@ async function onAddressBlur() {
                 <label for="stadCapacity">Вместимость</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="stadPhone" v-model="form.phone" class="form-control" placeholder="Телефон" />
+                <input
+                  id="stadPhone"
+                  type="tel"
+                  v-model="phoneInput"
+                  @input="onPhoneInput"
+                  @keydown="onPhoneKeydown"
+                  class="form-control"
+                  placeholder="+7 (___) ___-__-__"
+                />
                 <label for="stadPhone">Телефон</label>
               </div>
               <div class="form-floating mb-3">
