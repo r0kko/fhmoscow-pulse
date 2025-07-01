@@ -13,6 +13,9 @@ import {
 import ServiceError from '../errors/ServiceError.js';
 
 async function uploadForCertificate(certId, file, typeAlias, actorId) {
+  if (!S3_BUCKET) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
   const cert = await MedicalCertificate.findByPk(certId);
   if (!cert) throw new ServiceError('certificate_not_found', 404);
   const type = await MedicalCertificateType.findOne({ where: { alias: typeAlias } });
@@ -28,7 +31,8 @@ async function uploadForCertificate(certId, file, typeAlias, actorId) {
         ContentType: file.mimetype,
       })
     );
-  } catch {
+  } catch (err) {
+    console.error('S3 upload failed', err);
     throw new ServiceError('s3_upload_failed');
   }
 
