@@ -50,10 +50,7 @@ onMounted(async () => {
       apiFetch('/medical-certificates/me/history'),
     ]);
     certificate.value = current ? current.certificate : null;
-    const allHistory = hist.certificates || [];
-    const activeId =
-      certificate.value && isValid(certificate.value) ? certificate.value.id : null;
-    history.value = activeId ? allHistory.filter((c) => c.id !== activeId) : allHistory;
+    history.value = hist.certificates || [];
     if (certificate.value) {
       const data = await apiFetch('/medical-certificates/me/files').catch(() => ({ files: [] }));
       files.value = data.files;

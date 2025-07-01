@@ -34,6 +34,9 @@ test('getByUser selects latest valid certificate', async () => {
   const key = Object.getOwnPropertySymbols(opts.where.valid_until)[0];
   expect(key.toString()).toContain('gte');
   expect(opts.where.valid_until[key]).toBeInstanceOf(Date);
+  const key2 = Object.getOwnPropertySymbols(opts.where.issue_date)[0];
+  expect(key2.toString()).toContain('lte');
+  expect(opts.where.issue_date[key2]).toBeInstanceOf(Date);
 });
 
 test('createForUser creates certificate for existing user', async () => {

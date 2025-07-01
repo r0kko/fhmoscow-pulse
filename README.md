@@ -17,8 +17,10 @@
 - Jest unit tests
 - Admin panel for managing users and roles (create, edit, block)
 - Soft deletion of records using Sequelize paranoid mode
-- Users can have multiple medical certificates; the active one with the
-  longest validity is returned in personal APIs
+ - Users can have multiple medical certificates. The API returns the
+   certificate that is currently valid (issue date in the past and not yet
+   expired) while a separate endpoint provides a history of expired
+   certificates.
 
 ## Branching strategy
 

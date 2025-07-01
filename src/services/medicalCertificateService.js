@@ -10,6 +10,7 @@ async function getByUser(userId) {
     where: {
       user_id: userId,
       valid_until: { [Op.gte]: new Date() },
+      issue_date: { [Op.lte]: new Date() },
     },
     order: [['valid_until', 'DESC']],
   });
@@ -17,7 +18,10 @@ async function getByUser(userId) {
 
 async function listByUser(userId) {
   return MedicalCertificate.findAll({
-    where: { user_id: userId },
+    where: {
+      user_id: userId,
+      valid_until: { [Op.lt]: new Date() },
+    },
     order: [['issue_date', 'DESC']],
   });
 }
