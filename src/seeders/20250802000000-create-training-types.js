@@ -7,7 +7,8 @@ module.exports = {
     const now = new Date();
     // prettier-ignore
     const [existing] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS cnt FROM training_types WHERE alias IN (\'ICE\',\'BASIC_FIT\',\'THEORY\');'
+        // eslint-disable-next-line
+      "SELECT COUNT(*) AS cnt FROM training_types WHERE alias IN ('ICE','BASIC_FIT','THEORY');"
     );
     if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(

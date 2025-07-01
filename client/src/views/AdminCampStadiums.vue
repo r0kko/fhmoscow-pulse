@@ -64,7 +64,7 @@ const form = ref({
   capacity: '',
   phone: '',
   website: '',
-  parking: { type: '', price: '' },
+  parking: [],
 });
 const editing = ref(null);
 const modalRef = ref(null);
@@ -88,18 +88,18 @@ watch(currentPage, load);
 watch(typesPage, loadTypes);
 
 watch(
-  () => form.value.address.result,
-  (val) => {
-    clearTimeout(addrTimeout);
-    if (!val || val.length < 3) {
-      addressSuggestions.value = [];
-      return;
+    () => form.value.address.result,
+    (val) => {
+      clearTimeout(addrTimeout);
+      if (!val || val.length < 3) {
+        addressSuggestions.value = [];
+        return;
+      }
+      const query = val.trim();
+      addrTimeout = setTimeout(async () => {
+        addressSuggestions.value = await suggestAddress(query);
+      }, 300);
     }
-    const query = val.trim();
-    addrTimeout = setTimeout(async () => {
-      addressSuggestions.value = await suggestAddress(query);
-    }, 300);
-  }
 );
 
 async function loadParkingTypes() {
@@ -128,6 +128,10 @@ async function load() {
   }
 }
 
+function makeParkingForm() {
+  return parkingTypes.value.map((t) => ({ type: t.alias, price: '', enabled: false }));
+}
+
 function openCreate() {
   editing.value = null;
   form.value = {
@@ -137,7 +141,7 @@ function openCreate() {
     capacity: '',
     phone: '',
     website: '',
-    parking: { type: parkingTypes.value[0]?.alias || '', price: '' },
+    parking: makeParkingForm(),
   };
   phoneInput.value = '';
   formError.value = '';
@@ -147,7 +151,6 @@ function openCreate() {
 
 function openEdit(s) {
   editing.value = s;
-  const selected = (s.parking || [])[0];
   form.value = {
     name: s.name,
     address: { result: s.address?.result || '' },
@@ -155,10 +158,10 @@ function openEdit(s) {
     capacity: s.capacity || '',
     phone: s.phone || '',
     website: s.website || '',
-    parking: {
-      type: selected?.type || parkingTypes.value[0]?.alias || '',
-      price: selected?.price || '',
-    },
+    parking: parkingTypes.value.map((t) => {
+      const found = (s.parking || []).find((p) => p.type === t.alias);
+      return { type: t.alias, price: found?.price || '', enabled: !!found };
+    }),
   };
   phoneInput.value = formatPhone(form.value.phone);
   formError.value = '';
@@ -174,12 +177,9 @@ async function save() {
     capacity: form.value.capacity || undefined,
     phone: form.value.phone || undefined,
     website: form.value.website || undefined,
-    parking: [
-      {
-        type: form.value.parking.type,
-        price: form.value.parking.type === 'PAID' ? form.value.parking.price || null : null,
-      },
-    ],
+    parking: form.value.parking
+        .filter((p) => p.enabled)
+        .map((p) => ({ type: p.type, price: p.price || null })),
   };
   try {
     if (editing.value) {
@@ -299,8 +299,8 @@ async function removeType(t) {
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="mb-0">{{ activeTab === 'stadiums' ? 'Стадионы' : 'Типы тренировок' }}</h1>
       <button
-        class="btn btn-brand"
-        @click="activeTab === 'stadiums' ? openCreate() : openCreateType()"
+          class="btn btn-brand"
+          @click="activeTab === 'stadiums' ? openCreate() : openCreateType()"
       >
         <i class="bi bi-plus-lg me-1"></i>Добавить
       </button>
@@ -324,7 +324,7 @@ async function removeType(t) {
       </div>
       <div v-if="stadiums.length" class="table-responsive">
         <table class="table table-striped align-middle">
-        <thead>
+          <thead>
           <tr>
             <th>Название</th>
             <th>Адрес</th>
@@ -334,8 +334,8 @@ async function removeType(t) {
             <th class="d-none d-lg-table-cell">Парковка</th>
             <th></th>
           </tr>
-        </thead>
-        <tbody>
+          </thead>
+          <tbody>
           <tr v-for="st in stadiums" :key="st.id">
             <td>{{ st.name }}</td>
             <td>{{ st.address?.result }}</td>
@@ -357,136 +357,136 @@ async function removeType(t) {
               <button class="btn btn-sm btn-danger" @click="removeStadium(st)">Удалить</button>
             </td>
           </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
-    <nav class="mt-3" v-if="totalPages > 1">
-      <ul class="pagination justify-content-center">
-        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
-        </li>
-        <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
-          <button class="page-link" @click="currentPage = p">{{ p }}</button>
-        </li>
-        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
-        </li>
-      </ul>
-      </nav>
-    </div>
-
-    </div>
-
-    <div v-else>
-      <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
-      <div v-if="typesLoading" class="text-center my-3">
-        <div class="spinner-border" role="status"></div>
-      </div>
-      <div v-if="trainingTypes.length" class="table-responsive">
-        <table class="table table-striped align-middle">
-          <thead>
-            <tr>
-              <th>Название</th>
-              <th>Алиас</th>
-              <th class="text-center">Емкость</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="t in trainingTypes" :key="t.id">
-              <td>{{ t.name }}</td>
-              <td>{{ t.alias }}</td>
-              <td class="text-center">{{ t.default_capacity }}</td>
-              <td class="text-end">
-                <button class="btn btn-sm btn-secondary me-2" @click="openEditType(t)">Изменить</button>
-                <button class="btn btn-sm btn-danger" @click="removeType(t)">Удалить</button>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
-      <p v-else-if="!typesLoading" class="text-muted">Записей нет.</p>
-      <nav class="mt-3" v-if="typesTotalPages > 1">
+      <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
+      <nav class="mt-3" v-if="totalPages > 1">
         <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: typesPage === 1 }">
-            <button class="page-link" @click="typesPage--" :disabled="typesPage === 1">Пред</button>
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
           </li>
-          <li class="page-item" v-for="p in typesTotalPages" :key="p" :class="{ active: typesPage === p }">
-            <button class="page-link" @click="typesPage = p">{{ p }}</button>
+          <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
+            <button class="page-link" @click="currentPage = p">{{ p }}</button>
           </li>
-          <li class="page-item" :class="{ disabled: typesPage === typesTotalPages }">
-            <button class="page-link" @click="typesPage++" :disabled="typesPage === typesTotalPages">След</button>
+          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+            <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
           </li>
         </ul>
       </nav>
+    </div>
 
-      <div ref="typeModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <form @submit.prevent="saveType">
-              <div class="modal-header">
-                <h5 class="modal-title">{{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}</h5>
-                <button type="button" class="btn-close" @click="typeModal.hide()"></button>
+  </div>
+
+  <div>
+    <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
+    <div v-if="typesLoading" class="text-center my-3">
+      <div class="spinner-border" role="status"></div>
+    </div>
+    <div v-if="trainingTypes.length" class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+        <tr>
+          <th>Название</th>
+          <th>Алиас</th>
+          <th class="text-center">Емкость</th>
+          <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="t in trainingTypes" :key="t.id">
+          <td>{{ t.name }}</td>
+          <td>{{ t.alias }}</td>
+          <td class="text-center">{{ t.default_capacity }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-secondary me-2" @click="openEditType(t)">Изменить</button>
+            <button class="btn btn-sm btn-danger" @click="removeType(t)">Удалить</button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <p v-else-if="!typesLoading" class="text-muted">Записей нет.</p>
+    <nav class="mt-3" v-if="typesTotalPages > 1">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" :class="{ disabled: typesPage === 1 }">
+          <button class="page-link" @click="typesPage--" :disabled="typesPage === 1">Пред</button>
+        </li>
+        <li class="page-item" v-for="p in typesTotalPages" :key="p" :class="{ active: typesPage === p }">
+          <button class="page-link" @click="typesPage = p">{{ p }}</button>
+        </li>
+        <li class="page-item" :class="{ disabled: typesPage === typesTotalPages }">
+          <button class="page-link" @click="typesPage++" :disabled="typesPage === typesTotalPages">След</button>
+        </li>
+      </ul>
+    </nav>
+
+    <div ref="typeModalRef" class="modal fade" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form @submit.prevent="saveType">
+            <div class="modal-header">
+              <h5 class="modal-title">{{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}</h5>
+              <button type="button" class="btn-close" @click="typeModal.hide()"></button>
+            </div>
+            <div class="modal-body">
+              <div v-if="typeFormError" class="alert alert-danger">{{ typeFormError }}</div>
+              <div class="form-floating mb-3">
+                <input id="ttName" v-model="typeForm.name" class="form-control" placeholder="Название" required />
+                <label for="ttName">Наименование</label>
               </div>
-              <div class="modal-body">
-                <div v-if="typeFormError" class="alert alert-danger">{{ typeFormError }}</div>
-                <div class="form-floating mb-3">
-                  <input id="ttName" v-model="typeForm.name" class="form-control" placeholder="Название" required />
-                  <label for="ttName">Наименование</label>
-                </div>
-                <div class="form-floating mb-3">
-                  <input id="ttAlias" v-model="typeForm.alias" class="form-control" placeholder="Алиас" required />
-                  <label for="ttAlias">Алиас</label>
-                </div>
-                <div class="form-floating mb-3">
-                  <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control" placeholder="Емкость" />
-                  <label for="ttCap">Стандартная емкость группы</label>
-                </div>
+              <div class="form-floating mb-3">
+                <input id="ttAlias" v-model="typeForm.alias" class="form-control" placeholder="Алиас" required />
+                <label for="ttAlias">Алиас</label>
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
-                <button type="submit" class="btn btn-primary">Сохранить</button>
+              <div class="form-floating mb-3">
+                <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control" placeholder="Емкость" />
+                <label for="ttCap">Стандартная емкость группы</label>
               </div>
-            </form>
-          </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
+              <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
+  </div>
 
-    <div ref="modalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <form @submit.prevent="save">
-            <div class="modal-header">
-              <h5 class="modal-title">{{ editing ? 'Изменить стадион' : 'Добавить стадион' }}</h5>
-              <button type="button" class="btn-close" @click="modal.hide()"></button>
+  <div ref="modalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form @submit.prevent="save">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ editing ? 'Изменить стадион' : 'Добавить стадион' }}</h5>
+            <button type="button" class="btn-close" @click="modal.hide()"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
+            <div class="form-floating mb-3">
+              <input id="stadName" v-model="form.name" class="form-control" placeholder="Название" required />
+              <label for="stadName">Наименование</label>
             </div>
-            <div class="modal-body">
-              <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
-              <div class="form-floating mb-3">
-                <input id="stadName" v-model="form.name" class="form-control" placeholder="Название" required />
-                <label for="stadName">Наименование</label>
-              </div>
-              <div class="form-floating mb-3 position-relative">
-                <textarea id="stadAddr" v-model="form.address.result" @blur="onAddressBlur" class="form-control" rows="2" placeholder="Адрес"></textarea>
-                <label for="stadAddr">Адрес</label>
-                <ul v-if="addressSuggestions.length" class="list-group position-absolute w-100" style="z-index: 1050">
-                  <li v-for="s in addressSuggestions" :key="s.value" class="list-group-item list-group-item-action" @mousedown.prevent="applyAddressSuggestion(s)">
-                    {{ s.value }}
-                  </li>
-                </ul>
-              </div>
-              <div class="form-floating mb-3">
-                <input id="stadYandex" v-model="form.yandex_url" class="form-control" placeholder="URL в Яндекс.Картах" />
-                <label for="stadYandex">URL в Яндекс.Картах</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input id="stadCapacity" v-model="form.capacity" type="number" class="form-control" placeholder="Вместимость" />
-                <label for="stadCapacity">Вместимость</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input
+            <div class="form-floating mb-3 position-relative">
+              <textarea id="stadAddr" v-model="form.address.result" @blur="onAddressBlur" class="form-control" rows="2" placeholder="Адрес"></textarea>
+              <label for="stadAddr">Адрес</label>
+              <ul v-if="addressSuggestions.length" class="list-group position-absolute w-100" style="z-index: 1050">
+                <li v-for="s in addressSuggestions" :key="s.value" class="list-group-item list-group-item-action" @mousedown.prevent="applyAddressSuggestion(s)">
+                  {{ s.value }}
+                </li>
+              </ul>
+            </div>
+            <div class="form-floating mb-3">
+              <input id="stadYandex" v-model="form.yandex_url" class="form-control" placeholder="URL в Яндекс.Картах" />
+              <label for="stadYandex">URL в Яндекс.Картах</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input id="stadCapacity" v-model="form.capacity" type="number" class="form-control" placeholder="Вместимость" />
+              <label for="stadCapacity">Вместимость</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input
                   id="stadPhone"
                   type="tel"
                   v-model="phoneInput"
@@ -494,33 +494,33 @@ async function removeType(t) {
                   @keydown="onPhoneKeydown"
                   class="form-control"
                   placeholder="+7 (___) ___-__-__"
-                />
-                <label for="stadPhone">Телефон</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input id="stadWebsite" v-model="form.website" class="form-control" placeholder="Сайт" />
-                <label for="stadWebsite">Сайт</label>
-              </div>
-              <div class="mb-3" v-if="parkingTypes.length">
-                <h6 class="mb-2">Парковка</h6>
-                <div class="form-floating mb-3">
-                  <select id="stadParking" v-model="form.parking.type" class="form-select">
-                    <option v-for="t in parkingTypes" :value="t.alias" :key="t.alias">{{ t.name }}</option>
-                  </select>
-                  <label for="stadParking">Тип</label>
+              />
+              <label for="stadPhone">Телефон</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input id="stadWebsite" v-model="form.website" class="form-control" placeholder="Сайт" />
+              <label for="stadWebsite">Сайт</label>
+            </div>
+            <div class="mb-3" v-if="parkingTypes.length">
+              <h6 class="mb-2">Парковка</h6>
+              <div v-for="(p, idx) in form.parking" :key="p.type" class="row g-2 align-items-center mb-2">
+                <div class="col-auto">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" v-model="p.enabled" :id="`p-${idx}`" />
+                    <label class="form-check-label" :for="`p-${idx}`">{{ parkingTypes[idx].name }}</label>
+                  </div>
                 </div>
-                <div class="form-floating" v-if="form.parking.type === 'PAID'">
-                  <input id="stadParkingPrice" v-model="form.parking.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена" />
-                  <label for="stadParkingPrice">Цена</label>
+                <div class="col" v-if="p.enabled">
+                  <input v-model="p.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена" />
                 </div>
               </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
