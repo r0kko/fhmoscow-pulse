@@ -18,7 +18,7 @@ module.exports = {
       },
       yandex_url: { type: Sequelize.STRING(500) },
       capacity: { type: Sequelize.INTEGER },
-      phone: { type: Sequelize.STRING(50) },
+      phone: { type: Sequelize.STRING(15) },
       website: { type: Sequelize.STRING(255) },
       created_by: {
         type: Sequelize.UUID,

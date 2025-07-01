@@ -36,9 +36,9 @@ async function getById(id) {
 
 async function create(data, actorId) {
   const cleaned = await dadataService.cleanAddress(data.address.result);
-  if (!cleaned) throw new ServiceError('invalid_address');
+  const addrData = cleaned || { result: data.address.result };
   const address = await Address.create({
-    ...cleaned,
+    ...addrData,
     created_by: actorId,
     updated_by: actorId,
   });
@@ -47,7 +47,7 @@ async function create(data, actorId) {
     address_id: address.id,
     yandex_url: data.yandex_url,
     capacity: data.capacity,
-    phone: data.phone,
+    phone: data.phone ? data.phone.replace(/\D/g, '') : null,
     website: data.website,
     created_by: actorId,
     updated_by: actorId,
@@ -73,15 +73,18 @@ async function update(id, data, actorId) {
   if (!stadium) throw new ServiceError('stadium_not_found', 404);
   if (data.address) {
     const cleaned = await dadataService.cleanAddress(data.address.result);
-    if (!cleaned) throw new ServiceError('invalid_address');
-    await stadium.Address.update({ ...cleaned, updated_by: actorId });
+    const addrData = cleaned || { result: data.address.result };
+    await stadium.Address.update({ ...addrData, updated_by: actorId });
   }
   await stadium.update(
     {
       name: data.name ?? stadium.name,
       yandex_url: data.yandex_url ?? stadium.yandex_url,
       capacity: data.capacity ?? stadium.capacity,
-      phone: data.phone ?? stadium.phone,
+      phone:
+        data.phone !== undefined
+          ? data.phone.replace(/\D/g, '')
+          : stadium.phone,
       website: data.website ?? stadium.website,
       updated_by: actorId,
     },

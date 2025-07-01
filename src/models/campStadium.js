@@ -15,7 +15,7 @@ CampStadium.init(
     address_id: { type: DataTypes.UUID, allowNull: false },
     yandex_url: { type: DataTypes.STRING(500) },
     capacity: { type: DataTypes.INTEGER },
-    phone: { type: DataTypes.STRING(50) },
+    phone: { type: DataTypes.STRING(15) },
     website: { type: DataTypes.STRING(255) },
   },
   {
