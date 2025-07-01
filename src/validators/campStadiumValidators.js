@@ -6,7 +6,15 @@ export const campStadiumCreateRules = [
   body('yandex_url').optional().isURL(),
   body('capacity').optional().isInt({ min: 0 }),
   body('phone').optional().isMobilePhone('ru-RU'),
-  body('website').optional().isURL(),
+  body('website')
+    .optional()
+    .isURL({ require_protocol: false })
+    .customSanitizer((v) => {
+      if (v && !/^https?:\/\//i.test(v)) {
+        return `http://${v}`;
+      }
+      return v;
+    }),
   body('parking').optional().isArray(),
 ];
 
@@ -16,6 +24,14 @@ export const campStadiumUpdateRules = [
   body('yandex_url').optional().isURL(),
   body('capacity').optional().isInt({ min: 0 }),
   body('phone').optional().isMobilePhone('ru-RU'),
-  body('website').optional().isURL(),
+  body('website')
+    .optional()
+    .isURL({ require_protocol: false })
+    .customSanitizer((v) => {
+      if (v && !/^https?:\/\//i.test(v)) {
+        return `http://${v}`;
+      }
+      return v;
+    }),
   body('parking').optional().isArray(),
 ];
