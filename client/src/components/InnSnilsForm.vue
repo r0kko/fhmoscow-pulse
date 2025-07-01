@@ -121,8 +121,16 @@ async function removeItem() {
 <template>
   <div class="card mt-4">
     <div class="card-body">
-      <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
-      <div class="row row-cols-1 row-cols-sm-2 g-3">
+        <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
+        <div
+          v-if="!inn || !snils"
+          class="alert alert-warning mb-3"
+          role="alert"
+        >
+          Некоторые данные отсутствуют. Используйте кнопки
+          <i class="bi bi-plus"></i> для добавления.
+        </div>
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
         <div class="col">
           <div class="input-group">
             <div class="form-floating flex-grow-1">

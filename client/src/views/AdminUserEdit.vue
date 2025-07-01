@@ -324,7 +324,10 @@ async function save() {
         </div>
       </div>
       <div v-else class="mt-3">
-        <button class="btn btn-primary" @click="openPassportModal">
+        <div class="alert alert-warning" role="alert">
+          Паспортные данные отсутствуют.
+        </div>
+        <button class="btn btn-primary mt-2" @click="openPassportModal">
           Добавить паспорт
         </button>
       </div>
@@ -333,9 +336,7 @@ async function save() {
         :user="user"
         @saved="savePassport"
       />
-      <div v-if="passportError" class="text-danger mt-2">
-        {{ passportError }}
-      </div>
+      <div v-if="passportError" class="alert alert-danger mt-2">{{ passportError }}</div>
     </div>
 
     <div v-show="activeTab === 'inn'">
