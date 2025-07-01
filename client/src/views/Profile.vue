@@ -723,21 +723,17 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.tile {
-  transition:
-    transform 0.2s ease-in-out,
-    box-shadow 0.2s ease-in-out;
-}
-.tile:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
 .placeholder-card {
   opacity: 0.6;
+  cursor: default;
+}
+.placeholder-card:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 @keyframes fadeIn {
