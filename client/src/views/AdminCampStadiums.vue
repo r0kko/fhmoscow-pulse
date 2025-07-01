@@ -51,7 +51,7 @@ const typesTotal = ref(0);
 const typesPage = ref(1);
 const typesLoading = ref(false);
 const typesError = ref('');
-const typeForm = ref({ name: '', alias: '', default_capacity: '' });
+const typeForm = ref({ name: '', default_capacity: '' });
 const typeEditing = ref(null);
 const typeModalRef = ref(null);
 let typeModal;
@@ -238,7 +238,7 @@ async function loadTypes() {
 
 function openCreateType() {
   typeEditing.value = null;
-  typeForm.value = { name: '', alias: '', default_capacity: '' };
+  typeForm.value = { name: '', default_capacity: '' };
   typeFormError.value = '';
   typeModal.show();
 }
@@ -247,7 +247,6 @@ function openEditType(t) {
   typeEditing.value = t;
   typeForm.value = {
     name: t.name,
-    alias: t.alias,
     default_capacity: t.default_capacity || '',
   };
   typeFormError.value = '';
@@ -257,7 +256,6 @@ function openEditType(t) {
 async function saveType() {
   const payload = {
     name: typeForm.value.name,
-    alias: typeForm.value.alias,
     default_capacity: typeForm.value.default_capacity || undefined,
   };
   try {
@@ -388,7 +386,6 @@ async function removeType(t) {
         <thead>
         <tr>
           <th>Название</th>
-          <th>Алиас</th>
           <th class="text-center">Емкость</th>
           <th></th>
         </tr>
@@ -396,7 +393,6 @@ async function removeType(t) {
         <tbody>
         <tr v-for="t in trainingTypes" :key="t.id">
           <td>{{ t.name }}</td>
-          <td>{{ t.alias }}</td>
           <td class="text-center">{{ t.default_capacity }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-secondary me-2" @click="openEditType(t)">Изменить</button>
@@ -441,10 +437,6 @@ async function removeType(t) {
                   :disabled="!!typeEditing"
                 />
                 <label for="ttName">Наименование</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input id="ttAlias" v-model="typeForm.alias" class="form-control" placeholder="Алиас" required />
-                <label for="ttAlias">Алиас</label>
               </div>
               <div class="form-floating mb-3">
                 <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control" placeholder="Емкость" />
