@@ -376,7 +376,7 @@ async function removeType(t) {
 
   </div>
 
-  <div>
+  <div v-if="activeTab === 'types'">
     <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
     <div v-if="typesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
