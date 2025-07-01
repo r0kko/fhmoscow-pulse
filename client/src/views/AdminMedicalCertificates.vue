@@ -2,9 +2,8 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Modal } from 'bootstrap'
-import { apiFetch } from '../api.js'
+import { apiFetch, apiFetchForm } from '../api.js'
 import { findOrganizationByInn } from '../dadata.js'
-import CertificateFilesModal from '../components/CertificateFilesModal.vue'
 
 const certificates = ref([])
 const total = ref(0)
@@ -29,7 +28,11 @@ const userQuery = ref('')
 const userSuggestions = ref([])
 let userTimeout
 let skipUserWatch = false
-const filesModalRef = ref(null)
+const files = ref([])
+const filesLoading = ref(false)
+const fileError = ref('')
+const fileType = ref('CONCLUSION')
+const fileInput = ref(null)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -105,6 +108,9 @@ function openCreate() {
   userQuery.value = ''
   userSuggestions.value = []
   formError.value = ''
+  files.value = []
+  fileType.value = 'CONCLUSION'
+  fileError.value = ''
   modal.show()
 }
 
@@ -117,12 +123,10 @@ function openEdit(cert) {
     : ''
   userSuggestions.value = []
   formError.value = ''
+  loadFiles()
   modal.show()
 }
 
-function openFiles(cert) {
-  filesModalRef.value.open(cert.id)
-}
 
 function selectUser(u) {
   form.value.user_id = u.id
@@ -145,6 +149,53 @@ async function save() {
     await load()
   } catch (e) {
     formError.value = e.message
+  }
+}
+
+async function loadFiles() {
+  if (!editing.value) return
+  filesLoading.value = true
+  fileError.value = ''
+  try {
+    const data = await apiFetch(`/medical-certificates/${editing.value.id}/files`)
+    files.value = data.files
+  } catch (e) {
+    fileError.value = e.message
+    files.value = []
+  } finally {
+    filesLoading.value = false
+  }
+}
+
+async function uploadFile() {
+  const f = fileInput.value?.files[0]
+  if (!f || !editing.value) return
+  const formData = new FormData()
+  formData.append('file', f)
+  formData.append('type', fileType.value)
+  try {
+    await apiFetchForm(`/medical-certificates/${editing.value.id}/files`, formData, {
+      method: 'POST',
+    })
+    fileInput.value.value = ''
+    fileError.value = ''
+    await loadFiles()
+  } catch (e) {
+    fileError.value = e.message
+  }
+}
+
+async function removeFile(file) {
+  if (!editing.value) return
+  if (!confirm('Удалить файл?')) return
+  try {
+    await apiFetch(
+      `/medical-certificates/${editing.value.id}/files/${file.id}`,
+      { method: 'DELETE' }
+    )
+    await loadFiles()
+  } catch (e) {
+    fileError.value = e.message
   }
 }
 
@@ -200,7 +251,6 @@ function formatDate(str) {
             <td>{{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}</td>
             <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(c)">Изменить</button>
-              <button class="btn btn-sm btn-info me-2" @click="openFiles(c)">Файлы</button>
               <button class="btn btn-sm btn-danger" @click="removeCert(c)">Удалить</button>
             </td>
           </tr>
@@ -277,6 +327,29 @@ function formatDate(str) {
                 <input id="valid" type="date" v-model="form.valid_until" class="form-control" />
                 <label for="valid">Действительно до</label>
               </div>
+              <div v-if="editing" class="border-top pt-3 mt-3">
+                <h6 class="mb-2">Файлы</h6>
+                <div v-if="fileError" class="alert alert-danger">{{ fileError }}</div>
+                <div v-if="filesLoading" class="text-center py-2">Загрузка...</div>
+                <ul v-if="files.length" class="list-group mb-3">
+                  <li v-for="f in files" :key="f.id" class="list-group-item d-flex justify-content-between align-items-center">
+                    <a :href="f.url" target="_blank">{{ f.name }}</a>
+                    <button type="button" class="btn-close" aria-label="Удалить" @click="removeFile(f)"></button>
+                  </li>
+                </ul>
+                <p v-else-if="!filesLoading" class="text-muted">Нет файлов</p>
+                <div class="mb-3">
+                  <label class="form-label" for="fileType">Тип документа</label>
+                  <select id="fileType" class="form-select" v-model="fileType">
+                    <option value="CONCLUSION">Заключение</option>
+                    <option value="RESULTS">Результаты исследований</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <input type="file" class="form-control" ref="fileInput" />
+                </div>
+                <button type="button" class="btn btn-primary" @click="uploadFile">Загрузить</button>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
@@ -287,5 +360,4 @@ function formatDate(str) {
       </div>
     </div>
   </div>
-  <CertificateFilesModal ref="filesModalRef" />
 </template>

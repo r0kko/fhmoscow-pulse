@@ -1,4 +1,6 @@
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import path from 'path';
+
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -21,7 +23,9 @@ async function uploadForCertificate(certId, file, typeAlias, actorId) {
   const type = await MedicalCertificateType.findOne({ where: { alias: typeAlias } });
   if (!type) throw new ServiceError('type_not_found', 400);
 
-  const key = `${certId}/${uuidv4()}`;
+  const key = `${certId}/${uuidv4()}${path.extname(file.originalname)}`;
+  const user = await cert.getUser();
+  const displayName = `${type.name} - ${user.last_name} ${user.first_name}${path.extname(file.originalname)}`;
   try {
     await s3.send(
       new PutObjectCommand({
@@ -38,7 +42,7 @@ async function uploadForCertificate(certId, file, typeAlias, actorId) {
 
   const dbFile = await File.create({
     key,
-    original_name: file.originalname,
+    original_name: displayName,
     mime_type: file.mimetype,
     size: file.size,
     created_by: actorId,
@@ -75,11 +79,13 @@ async function getDownloadUrl(file) {
 }
 
 async function remove(id) {
-  const file = await File.findByPk(id);
-  if (!file) throw new ServiceError('file_not_found', 404);
-  await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: file.key }));
-  await MedicalCertificateFile.destroy({ where: { file_id: id } });
-  await file.destroy();
+  const attachment = await MedicalCertificateFile.findOne({
+    where: { file_id: id },
+    include: [File],
+  });
+  if (!attachment) throw new ServiceError('file_not_found', 404);
+  await attachment.destroy();
+  await attachment.File.destroy();
 }
 
 export default { uploadForCertificate, listForCertificate, getDownloadUrl, remove };

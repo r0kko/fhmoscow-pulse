@@ -50,4 +50,17 @@ export default {
       return sendError(res, err, 400);
     }
   },
+  async remove(req, res) {
+    try {
+      const cert = await medicalCertificateService.getById(req.params.id);
+      const admin = await isAdmin(req.user);
+      if (cert.user_id !== req.user.id && !admin) {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+      }
+      await fileService.remove(req.params.fileId);
+      return res.status(204).send();
+    } catch (err) {
+      return sendError(res, err, 400);
+    }
+  },
 };
