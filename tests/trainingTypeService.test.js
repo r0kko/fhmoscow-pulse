@@ -33,10 +33,17 @@ test('update ignores name changes', async () => {
   await service.update('t1', data, 'admin');
   expect(updateMock).toHaveBeenCalledWith(
     {
-      alias: 'old2',
       default_capacity: 10,
       updated_by: 'admin',
     },
     { returning: false }
   );
+});
+
+test('create generates alias from name', async () => {
+  createMock.mockResolvedValue({});
+  await service.create({ name: 'Тест', default_capacity: 5 }, 'admin');
+  const arg = createMock.mock.calls[0][0];
+  expect(arg.alias).toBe('TEST');
+  expect(arg.created_by).toBe('admin');
 });
