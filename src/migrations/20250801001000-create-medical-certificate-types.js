@@ -3,16 +3,14 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('files', {
+    await queryInterface.createTable('medical_certificate_types', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
       },
-      key: { type: Sequelize.STRING(255), allowNull: false },
-      original_name: { type: Sequelize.STRING(255), allowNull: false },
-      mime_type: { type: Sequelize.STRING(100) },
-      size: { type: Sequelize.INTEGER },
+      name: { type: Sequelize.STRING(100), allowNull: false },
+      alias: { type: Sequelize.STRING(100), allowNull: false, unique: true },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },
@@ -38,6 +36,6 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.dropTable('files');
+    await queryInterface.dropTable('medical_certificate_types');
   },
 };

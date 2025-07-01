@@ -11,8 +11,6 @@ File.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    medical_certificate_id: { type: DataTypes.UUID, allowNull: false },
-    type: { type: DataTypes.STRING(50), allowNull: false },
     key: { type: DataTypes.STRING(255), allowNull: false },
     original_name: { type: DataTypes.STRING(255), allowNull: false },
     mime_type: { type: DataTypes.STRING(100) },

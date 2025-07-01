@@ -25,7 +25,7 @@ export default {
       const files = await fileService.listForCertificate(cert.id);
       const result = [];
       for (const f of files) {
-        const url = await fileService.getDownloadUrl(f);
+        const url = await fileService.getDownloadUrl(f.File);
         result.push(fileMapper.toPublic(f, url));
       }
       return res.json({ files: result });
@@ -36,14 +36,16 @@ export default {
 
   async upload(req, res) {
     try {
-      const file = await fileService.uploadForCertificate(
+      const attachment = await fileService.uploadForCertificate(
         req.params.id,
         req.file,
         req.body.type,
         req.user.id
       );
-      const url = await fileService.getDownloadUrl(file);
-      return res.status(201).json({ file: fileMapper.toPublic(file, url) });
+      const url = await fileService.getDownloadUrl(attachment.File);
+      return res
+        .status(201)
+        .json({ file: fileMapper.toPublic(attachment, url) });
     } catch (err) {
       return sendError(res, err, 400);
     }
