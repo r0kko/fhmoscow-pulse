@@ -432,7 +432,14 @@ async function removeType(t) {
             <div class="modal-body">
               <div v-if="typeFormError" class="alert alert-danger">{{ typeFormError }}</div>
               <div class="form-floating mb-3">
-                <input id="ttName" v-model="typeForm.name" class="form-control" placeholder="Название" required />
+                <input
+                  id="ttName"
+                  v-model="typeForm.name"
+                  class="form-control"
+                  placeholder="Название"
+                  required
+                  :disabled="!!typeEditing"
+                />
                 <label for="ttName">Наименование</label>
               </div>
               <div class="form-floating mb-3">

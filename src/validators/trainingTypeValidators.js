@@ -7,7 +7,6 @@ export const trainingTypeCreateRules = [
 ];
 
 export const trainingTypeUpdateRules = [
-  body('name').optional().isString().notEmpty(),
   body('alias').optional().isString().notEmpty(),
   body('default_capacity').optional().isInt({ min: 0 }),
 ];
