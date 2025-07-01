@@ -135,18 +135,21 @@ onMounted(async () => {
           </div>
           <div class="border-top pt-3 mt-3">
             <p class="mb-2 fw-semibold">Файлы</p>
-            <ul v-if="files.length" class="list-unstyled mb-0">
-              <li v-for="f in files" :key="f.id">
+            <div
+              v-if="files.length"
+              class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
+            >
+              <div v-for="f in files" :key="f.id" class="col">
                 <a
                   :href="f.url"
                   target="_blank"
-                  class="d-flex align-items-center gap-2 text-break"
+                  class="file-tile d-flex align-items-center gap-2 text-decoration-none text-body p-2 border rounded w-100"
                 >
                   <i class="bi bi-file-earmark"></i>
-                  <span>{{ f.name }}</span>
+                  <span class="text-break">{{ f.name }}</span>
                 </a>
-              </li>
-            </ul>
+              </div>
+            </div>
             <p v-else class="text-muted mb-0">Нет файлов</p>
           </div>
         </div>
@@ -175,11 +178,21 @@ onMounted(async () => {
                 <td>{{ item.inn }}</td>
                 <td>{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
                 <td>
-                  <ul v-if="item.files && item.files.length" class="list-unstyled mb-0">
-                    <li v-for="f in item.files" :key="f.id">
-                      <a :href="f.url" target="_blank">{{ f.name }}</a>
-                    </li>
-                  </ul>
+                  <div
+                    v-if="item.files && item.files.length"
+                    class="d-flex flex-wrap gap-2"
+                  >
+                    <a
+                      v-for="f in item.files"
+                      :key="f.id"
+                      :href="f.url"
+                      target="_blank"
+                      class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                    >
+                      <i class="bi bi-file-earmark"></i>
+                      <span class="text-break">{{ f.name }}</span>
+                    </a>
+                  </div>
                   <span v-else class="text-muted">—</span>
                 </td>
               </tr>
@@ -202,6 +215,15 @@ onMounted(async () => {
 }
 .fade-in {
   animation: fadeIn 0.4s ease-out;
+}
+
+.file-tile {
+  background-color: #f8f9fa;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.file-tile:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 @keyframes fadeIn {
   from {
