@@ -6,21 +6,23 @@ import ServiceError from '../errors/ServiceError.js';
 import emailService from './emailService.js';
 
 async function getByUser(userId) {
+  const today = new Date().toISOString().slice(0, 10);
   return MedicalCertificate.findOne({
     where: {
       user_id: userId,
-      valid_until: { [Op.gte]: new Date() },
-      issue_date: { [Op.lte]: new Date() },
+      valid_until: { [Op.gte]: today },
+      issue_date: { [Op.lte]: today },
     },
     order: [['valid_until', 'DESC']],
   });
 }
 
 async function listByUser(userId) {
+  const today = new Date().toISOString().slice(0, 10);
   return MedicalCertificate.findAll({
     where: {
       user_id: userId,
-      valid_until: { [Op.lt]: new Date() },
+      valid_until: { [Op.lt]: today },
     },
     order: [['issue_date', 'DESC']],
   });

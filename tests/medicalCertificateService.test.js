@@ -1,12 +1,13 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findOneMock = jest.fn();
+const findAllMock = jest.fn();
 const createMock = jest.fn();
 const sendEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  MedicalCertificate: { findOne: findOneMock, create: createMock },
+  MedicalCertificate: { findOne: findOneMock, findAll: findAllMock, create: createMock },
   User: { findByPk: jest.fn().mockResolvedValue({ id: 'u1', email: 'e' }) },
 }));
 
@@ -21,6 +22,7 @@ beforeEach(() => {
   sendEmailMock.mockClear();
   createMock.mockClear();
   findOneMock.mockClear();
+  findAllMock.mockClear();
 });
 
 test('getByUser selects latest valid certificate', async () => {
@@ -33,10 +35,10 @@ test('getByUser selects latest valid certificate', async () => {
   expect(opts.where.user_id).toBe('u1');
   const key = Object.getOwnPropertySymbols(opts.where.valid_until)[0];
   expect(key.toString()).toContain('gte');
-  expect(opts.where.valid_until[key]).toBeInstanceOf(Date);
+  expect(typeof opts.where.valid_until[key]).toBe('string');
   const key2 = Object.getOwnPropertySymbols(opts.where.issue_date)[0];
   expect(key2.toString()).toContain('lte');
-  expect(opts.where.issue_date[key2]).toBeInstanceOf(Date);
+  expect(typeof opts.where.issue_date[key2]).toBe('string');
 });
 
 test('createForUser creates certificate for existing user', async () => {
@@ -63,4 +65,15 @@ test('createForUser skips email when actor is user', async () => {
   createMock.mockResolvedValue({});
   await service.createForUser('u1', {}, 'u1');
   expect(sendEmailMock).not.toHaveBeenCalled();
+});
+
+test('listByUser selects only expired certificates', async () => {
+  findAllMock.mockResolvedValue([]);
+  await service.listByUser('u1');
+  const opts = findAllMock.mock.calls[0][0];
+  expect(opts.order).toEqual([["issue_date", "DESC"]]);
+  expect(opts.where.user_id).toBe('u1');
+  const key = Object.getOwnPropertySymbols(opts.where.valid_until)[0];
+  expect(key.toString()).toContain('lt');
+  expect(typeof opts.where.valid_until[key]).toBe('string');
 });
