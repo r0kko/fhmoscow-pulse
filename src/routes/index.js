@@ -19,6 +19,7 @@ import rolesRouter from './roles.js';
 import registerRouter from './register.js';
 import profileRouter from './profile.js';
 import passwordResetRouter from './passwordReset.js';
+import campStadiumsRouter from './campStadiums.js';
 
 const router = express.Router();
 
@@ -37,6 +38,7 @@ router.use('/roles', rolesRouter);
 router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
 router.use('/password-reset', passwordResetRouter);
+router.use('/camp-stadiums', campStadiumsRouter);
 
 /**
  * @swagger
