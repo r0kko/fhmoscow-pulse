@@ -1,15 +1,27 @@
-import { expect, jest, test } from '@jest/globals';
+import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findOneMock = jest.fn();
 const createMock = jest.fn();
+const sendEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   MedicalCertificate: { findOne: findOneMock, create: createMock },
-  User: { findByPk: jest.fn().mockResolvedValue({ id: 'u1' }) },
+  User: { findByPk: jest.fn().mockResolvedValue({ id: 'u1', email: 'e' }) },
+}));
+
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
+  __esModule: true,
+  default: { sendMedicalCertificateAddedEmail: sendEmailMock },
 }));
 
 const { default: service } = await import('../src/services/medicalCertificateService.js');
+
+beforeEach(() => {
+  sendEmailMock.mockClear();
+  createMock.mockClear();
+  findOneMock.mockClear();
+});
 
 test('getByUser selects latest valid certificate', async () => {
   const cert = { id: 'c2' };
@@ -41,4 +53,11 @@ test('createForUser creates certificate for existing user', async () => {
     updated_by: 'a1',
   });
   expect(res).toBe(data);
+  expect(sendEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' });
+});
+
+test('createForUser skips email when actor is user', async () => {
+  createMock.mockResolvedValue({});
+  await service.createForUser('u1', {}, 'u1');
+  expect(sendEmailMock).not.toHaveBeenCalled();
 });

@@ -4,6 +4,7 @@ import userService from '../services/userService.js';
 import passportService from '../services/passportService.js';
 import userMapper from '../mappers/userMapper.js';
 import passportMapper from '../mappers/passportMapper.js';
+import emailService from '../services/emailService.js';
 import { sendError } from '../utils/api.js';
 
 export default {
@@ -72,6 +73,7 @@ export default {
   async unblock(req, res) {
     try {
       const user = await userService.setStatus(req.params.id, 'ACTIVE');
+      await emailService.sendAccountActivatedEmail(user);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err, 404);
@@ -81,6 +83,7 @@ export default {
   async approve(req, res) {
     try {
       const user = await userService.setStatus(req.params.id, 'ACTIVE');
+      await emailService.sendAccountActivatedEmail(user);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err, 404);
