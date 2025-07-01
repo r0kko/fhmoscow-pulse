@@ -1,11 +1,15 @@
 import express from 'express';
+import multer from 'multer';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import medicalCertificateController from '../controllers/medicalCertificateController.js';
 import selfController from '../controllers/medicalCertificateSelfController.js';
 import adminController from '../controllers/medicalCertificateAdminController.js';
+import fileController from '../controllers/medicalCertificateFileController.js';
 import { medicalCertificateRules } from '../validators/medicalCertificateValidators.js';
+
+const upload = multer();
 
 const router = express.Router();
 
@@ -13,6 +17,7 @@ router.get('/me', auth, medicalCertificateController.me);
 router.get('/me/history', auth, medicalCertificateController.history);
 router.post('/', auth, medicalCertificateRules, selfController.create);
 router.delete('/', auth, selfController.remove);
+router.get('/me/files', auth, fileController.listMe);
 
 router.get('/', auth, authorize('ADMIN'), adminController.list);
 router.get('/:id', auth, authorize('ADMIN'), adminController.get);
@@ -24,5 +29,7 @@ router.put(
   adminController.updateById
 );
 router.delete('/:id', auth, authorize('ADMIN'), adminController.remove);
+router.post('/:id/files', auth, authorize('ADMIN'), upload.single('file'), fileController.upload);
+router.get('/:id/files', auth, fileController.list);
 
 export default router;
