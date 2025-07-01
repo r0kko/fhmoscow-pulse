@@ -17,10 +17,13 @@ A Node.js REST API built with Express and Sequelize. The project provides JWT-ba
 - Jest unit tests
 - Admin panel for managing users and roles (create, edit, block)
 - Soft deletion of records using Sequelize paranoid mode
- - Users can have multiple medical certificates. The API returns the
-   certificate that is currently valid (issue date in the past and not yet
-   expired) while a separate endpoint provides a history of expired
-   certificates.
+- Users can have multiple medical certificates. The API returns the
+  certificate that is currently valid (issue date in the past and not yet
+  expired) while a separate endpoint provides a history of expired
+  certificates.
+- The personal page warns when a valid certificate is missing and lists
+  expired certificates without displaying the taxpayer ID to keep the layout
+  compact on small screens.
 
 ## Branching strategy
 
