@@ -52,7 +52,9 @@ module.exports = {
       },
       deleted_at: { type: Sequelize.DATE },
     });
-    await queryInterface.addIndex('medical_certificate_files', ['medical_certificate_id']);
+    await queryInterface.addIndex('medical_certificate_files', [
+      'medical_certificate_id',
+    ]);
   },
 
   async down(queryInterface) {

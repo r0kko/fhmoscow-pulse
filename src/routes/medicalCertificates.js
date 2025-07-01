@@ -29,8 +29,19 @@ router.put(
   adminController.updateById
 );
 router.delete('/:id', auth, authorize('ADMIN'), adminController.remove);
-router.post('/:id/files', auth, authorize('ADMIN'), upload.single('file'), fileController.upload);
+router.post(
+  '/:id/files',
+  auth,
+  authorize('ADMIN'),
+  upload.single('file'),
+  fileController.upload
+);
 router.get('/:id/files', auth, fileController.list);
-router.delete('/:id/files/:fileId', auth, authorize('ADMIN'), fileController.remove);
+router.delete(
+  '/:id/files/:fileId',
+  auth,
+  authorize('ADMIN'),
+  fileController.remove
+);
 
 export default router;

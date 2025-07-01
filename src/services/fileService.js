@@ -20,7 +20,9 @@ async function uploadForCertificate(certId, file, typeAlias, actorId) {
   }
   const cert = await MedicalCertificate.findByPk(certId);
   if (!cert) throw new ServiceError('certificate_not_found', 404);
-  const type = await MedicalCertificateType.findOne({ where: { alias: typeAlias } });
+  const type = await MedicalCertificateType.findOne({
+    where: { alias: typeAlias },
+  });
   if (!type) throw new ServiceError('type_not_found', 400);
 
   const key = `${certId}/${uuidv4()}${path.extname(file.originalname)}`;
@@ -88,4 +90,9 @@ async function remove(id) {
   await attachment.File.destroy();
 }
 
-export default { uploadForCertificate, listForCertificate, getDownloadUrl, remove };
+export default {
+  uploadForCertificate,
+  listForCertificate,
+  getDownloadUrl,
+  remove,
+};
