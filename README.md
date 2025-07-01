@@ -1,6 +1,6 @@
-# FH Moscow Pulse
+# АСОУ ПД "Поток"
 
-A Node.js REST API built with Express and Sequelize. The project provides JWT-based authentication, logging of requests to PostgreSQL and Swagger API documentation.
+Автоматизированная система оперативного управления производственной деятельностью. A Node.js REST API built with Express and Sequelize. The project provides JWT-based authentication, logging of requests to PostgreSQL and Swagger API documentation.
 
 ## Features
 
