@@ -20,7 +20,8 @@ const formRef = ref(null);
 const passportModalRef = ref(null);
 const passport = ref(null);
 const passportError = ref('');
-const placeholderSections = ['Выданный инвентарь'];
+// Placeholder sections hidden until inventory feature is ready
+const placeholderSections = [];
 
 const editing = ref(false);
 let originalUser = null;

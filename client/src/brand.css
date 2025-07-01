@@ -18,3 +18,16 @@
   color: var(--brand-color);
 }
 
+/*
+ * Use corporate color for Bootstrap "pills" navigation
+ * on the profile page tabs.
+ */
+.nav-pills .nav-link {
+  color: var(--brand-color);
+}
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+  color: #fff;
+  background-color: var(--brand-color);
+}
+

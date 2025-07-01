@@ -5,7 +5,8 @@ import { Toast, Tooltip } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
 
-const placeholderSections = ['Выданный инвентарь'];
+// Placeholder sections hidden until inventory feature is ready
+const placeholderSections = [];
 
 const noDataPlaceholder = '—';
 
