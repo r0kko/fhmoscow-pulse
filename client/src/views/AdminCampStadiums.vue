@@ -5,6 +5,8 @@ import { Modal } from 'bootstrap';
 import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
+const activeTab = ref('stadiums');
+
 const phoneInput = ref('');
 
 function formatPhone(digits) {
@@ -43,6 +45,18 @@ const error = ref('');
 
 const parkingTypes = ref([]);
 
+/* training types */
+const trainingTypes = ref([]);
+const typesTotal = ref(0);
+const typesPage = ref(1);
+const typesLoading = ref(false);
+const typesError = ref('');
+const typeForm = ref({ name: '', alias: '', default_capacity: '' });
+const typeEditing = ref(null);
+const typeModalRef = ref(null);
+let typeModal;
+const typeFormError = ref('');
+
 const form = ref({
   name: '',
   address: { result: '' },
@@ -60,14 +74,18 @@ const addressSuggestions = ref([]);
 let addrTimeout;
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
+  typeModal = new Modal(typeModalRef.value);
   load();
   loadParkingTypes();
+  loadTypes();
 });
 
 watch(currentPage, load);
+watch(typesPage, loadTypes);
 
 watch(
   () => form.value.address.result,
@@ -200,6 +218,72 @@ async function onAddressBlur() {
   }
   addressSuggestions.value = [];
 }
+
+async function loadTypes() {
+  try {
+    typesLoading.value = true;
+    const params = new URLSearchParams({
+      page: typesPage.value,
+      limit: pageSize,
+    });
+    const data = await apiFetch(`/camp-training-types?${params}`);
+    trainingTypes.value = data.types;
+    typesTotal.value = data.total;
+  } catch (e) {
+    typesError.value = e.message;
+  } finally {
+    typesLoading.value = false;
+  }
+}
+
+function openCreateType() {
+  typeEditing.value = null;
+  typeForm.value = { name: '', alias: '', default_capacity: '' };
+  typeFormError.value = '';
+  typeModal.show();
+}
+
+function openEditType(t) {
+  typeEditing.value = t;
+  typeForm.value = {
+    name: t.name,
+    alias: t.alias,
+    default_capacity: t.default_capacity || '',
+  };
+  typeFormError.value = '';
+  typeModal.show();
+}
+
+async function saveType() {
+  const payload = {
+    name: typeForm.value.name,
+    alias: typeForm.value.alias,
+    default_capacity: typeForm.value.default_capacity || undefined,
+  };
+  try {
+    if (typeEditing.value) {
+      await apiFetch(`/camp-training-types/${typeEditing.value.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await apiFetch('/camp-training-types', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    }
+    typeModal.hide();
+    await loadTypes();
+  } catch (e) {
+    typeFormError.value = e.message;
+  }
+}
+
+async function removeType(t) {
+  if (!confirm('Удалить тип?')) return;
+  await apiFetch(`/camp-training-types/${t.id}`, { method: 'DELETE' });
+  await loadTypes();
+}
 </script>
 
 <template>
@@ -209,21 +293,37 @@ async function onAddressBlur() {
         <li class="breadcrumb-item">
           <RouterLink to="/admin">Администрирование</RouterLink>
         </li>
-        <li class="breadcrumb-item active" aria-current="page">Стадионы</li>
+        <li class="breadcrumb-item active" aria-current="page">Сборы</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="mb-0">Стадионы</h1>
-      <button class="btn btn-brand" @click="openCreate">
+      <h1 class="mb-0">{{ activeTab === 'stadiums' ? 'Стадионы' : 'Типы тренировок' }}</h1>
+      <button
+        class="btn btn-brand"
+        @click="activeTab === 'stadiums' ? openCreate() : openCreateType()"
+      >
         <i class="bi bi-plus-lg me-1"></i>Добавить
       </button>
     </div>
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <div v-if="isLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
-    </div>
-    <div v-if="stadiums.length" class="table-responsive">
-      <table class="table table-striped align-middle">
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
+          Стадионы
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
+          Типы тренировок
+        </button>
+      </li>
+    </ul>
+    <div v-if="activeTab === 'stadiums'">
+      <div v-if="error" class="alert alert-danger">{{ error }}</div>
+      <div v-if="isLoading" class="text-center my-3">
+        <div class="spinner-border" role="status"></div>
+      </div>
+      <div v-if="stadiums.length" class="table-responsive">
+        <table class="table table-striped align-middle">
         <thead>
           <tr>
             <th>Название</th>
@@ -273,7 +373,86 @@ async function onAddressBlur() {
           <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
         </li>
       </ul>
-    </nav>
+      </nav>
+    </div>
+
+    </div>
+
+    <div v-else>
+      <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
+      <div v-if="typesLoading" class="text-center my-3">
+        <div class="spinner-border" role="status"></div>
+      </div>
+      <div v-if="trainingTypes.length" class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Алиас</th>
+              <th class="text-center">Емкость</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in trainingTypes" :key="t.id">
+              <td>{{ t.name }}</td>
+              <td>{{ t.alias }}</td>
+              <td class="text-center">{{ t.default_capacity }}</td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-secondary me-2" @click="openEditType(t)">Изменить</button>
+                <button class="btn btn-sm btn-danger" @click="removeType(t)">Удалить</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-else-if="!typesLoading" class="text-muted">Записей нет.</p>
+      <nav class="mt-3" v-if="typesTotalPages > 1">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: typesPage === 1 }">
+            <button class="page-link" @click="typesPage--" :disabled="typesPage === 1">Пред</button>
+          </li>
+          <li class="page-item" v-for="p in typesTotalPages" :key="p" :class="{ active: typesPage === p }">
+            <button class="page-link" @click="typesPage = p">{{ p }}</button>
+          </li>
+          <li class="page-item" :class="{ disabled: typesPage === typesTotalPages }">
+            <button class="page-link" @click="typesPage++" :disabled="typesPage === typesTotalPages">След</button>
+          </li>
+        </ul>
+      </nav>
+
+      <div ref="typeModalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form @submit.prevent="saveType">
+              <div class="modal-header">
+                <h5 class="modal-title">{{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}</h5>
+                <button type="button" class="btn-close" @click="typeModal.hide()"></button>
+              </div>
+              <div class="modal-body">
+                <div v-if="typeFormError" class="alert alert-danger">{{ typeFormError }}</div>
+                <div class="form-floating mb-3">
+                  <input id="ttName" v-model="typeForm.name" class="form-control" placeholder="Название" required />
+                  <label for="ttName">Наименование</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <input id="ttAlias" v-model="typeForm.alias" class="form-control" placeholder="Алиас" required />
+                  <label for="ttAlias">Алиас</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control" placeholder="Емкость" />
+                  <label for="ttCap">Стандартная емкость группы</label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog modal-lg">
