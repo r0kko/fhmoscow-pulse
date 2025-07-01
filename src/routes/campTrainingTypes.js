@@ -11,9 +11,21 @@ import {
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
-router.post('/', auth, authorize('ADMIN'), trainingTypeCreateRules, controller.create);
+router.post(
+  '/',
+  auth,
+  authorize('ADMIN'),
+  trainingTypeCreateRules,
+  controller.create
+);
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
-router.put('/:id', auth, authorize('ADMIN'), trainingTypeUpdateRules, controller.update);
+router.put(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  trainingTypeUpdateRules,
+  controller.update
+);
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
 
 export default router;
