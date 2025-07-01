@@ -24,6 +24,7 @@ import UserAddress from './userAddress.js';
 import ParkingType from './parkingType.js';
 import CampStadium from './campStadium.js';
 import CampStadiumParkingType from './campStadiumParkingType.js';
+import TrainingType from './trainingType.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -136,6 +137,7 @@ export {
   ParkingType,
   CampStadium,
   CampStadiumParkingType,
+  TrainingType,
   File,
   MedicalCertificateType,
   MedicalCertificateFile,

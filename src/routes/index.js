@@ -20,6 +20,7 @@ import registerRouter from './register.js';
 import profileRouter from './profile.js';
 import passwordResetRouter from './passwordReset.js';
 import campStadiumsRouter from './campStadiums.js';
+import campTrainingTypesRouter from './campTrainingTypes.js';
 
 const router = express.Router();
 
@@ -39,6 +40,7 @@ router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
 router.use('/password-reset', passwordResetRouter);
 router.use('/camp-stadiums', campStadiumsRouter);
+router.use('/camp-training-types', campTrainingTypesRouter);
 
 /**
  * @swagger
