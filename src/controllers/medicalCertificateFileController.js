@@ -8,14 +8,7 @@ async function isAdmin(user) {
   return roles && roles.length > 0;
 }
 
-export default {
-  async listMe(req, res) {
-    const cert = await medicalCertificateService.getByUser(req.user.id);
-    if (!cert) return res.status(404).json({ error: 'certificate_not_found' });
-    req.params.id = cert.id;
-    return this.list(req, res);
-  },
-  async list(req, res) {
+async function list(req, res) {
     try {
       const cert = await medicalCertificateService.getById(req.params.id);
       const admin = await isAdmin(req.user);
@@ -32,9 +25,16 @@ export default {
     } catch (err) {
       return sendError(res, err, 404);
     }
-  },
+}
 
-  async upload(req, res) {
+async function listMe(req, res) {
+  const cert = await medicalCertificateService.getByUser(req.user.id);
+  if (!cert) return res.status(404).json({ error: 'certificate_not_found' });
+  req.params.id = cert.id;
+  return list(req, res);
+}
+
+async function upload(req, res) {
     try {
       const attachment = await fileService.uploadForCertificate(
         req.params.id,
@@ -49,8 +49,9 @@ export default {
     } catch (err) {
       return sendError(res, err, 400);
     }
-  },
-  async remove(req, res) {
+}
+
+async function remove(req, res) {
     try {
       const cert = await medicalCertificateService.getById(req.params.id);
       const admin = await isAdmin(req.user);
@@ -62,5 +63,6 @@ export default {
     } catch (err) {
       return sendError(res, err, 400);
     }
-  },
-};
+}
+
+export default { listMe, list, upload, remove };
