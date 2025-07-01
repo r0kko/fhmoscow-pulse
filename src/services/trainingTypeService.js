@@ -34,7 +34,7 @@ async function update(id, data, actorId) {
   if (!type) throw new ServiceError('training_type_not_found', 404);
   await type.update(
     {
-      name: data.name ?? type.name,
+      // name cannot be changed after creation
       alias: data.alias ?? type.alias,
       default_capacity: data.default_capacity ?? type.default_capacity,
       updated_by: actorId,
