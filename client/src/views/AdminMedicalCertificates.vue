@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { apiFetch } from '../api.js'
 import { findOrganizationByInn } from '../dadata.js'
+import CertificateFilesModal from '../components/CertificateFilesModal.vue'
 
 const certificates = ref([])
 const total = ref(0)
@@ -28,6 +29,7 @@ const userQuery = ref('')
 const userSuggestions = ref([])
 let userTimeout
 let skipUserWatch = false
+const filesModalRef = ref(null)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -118,6 +120,10 @@ function openEdit(cert) {
   modal.show()
 }
 
+function openFiles(cert) {
+  filesModalRef.value.open(cert.id)
+}
+
 function selectUser(u) {
   form.value.user_id = u.id
   skipUserWatch = true
@@ -194,6 +200,7 @@ function formatDate(str) {
             <td>{{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}</td>
             <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(c)">Изменить</button>
+              <button class="btn btn-sm btn-info me-2" @click="openFiles(c)">Файлы</button>
               <button class="btn btn-sm btn-danger" @click="removeCert(c)">Удалить</button>
             </td>
           </tr>
@@ -280,4 +287,5 @@ function formatDate(str) {
       </div>
     </div>
   </div>
+  <CertificateFilesModal ref="filesModalRef" />
 </template>
