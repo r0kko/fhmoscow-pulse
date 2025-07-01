@@ -5,7 +5,11 @@ async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
-  return TrainingType.findAndCountAll({ order: [['name', 'ASC']], limit, offset });
+  return TrainingType.findAndCountAll({
+    order: [['name', 'ASC']],
+    limit,
+    offset,
+  });
 }
 
 async function getById(id) {
