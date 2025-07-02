@@ -14,13 +14,17 @@ async function listAll(options = {}) {
 }
 
 async function getById(id) {
-  const training = await Training.findByPk(id, { include: [TrainingType, TrainingStatus] });
+  const training = await Training.findByPk(id, {
+    include: [TrainingType, TrainingStatus],
+  });
   if (!training) throw new ServiceError('training_not_found', 404);
   return training;
 }
 
 async function create(data, actorId) {
-  const status = await TrainingStatus.findOne({ where: { alias: 'SCHEDULED' } });
+  const status = await TrainingStatus.findOne({
+    where: { alias: 'SCHEDULED' },
+  });
   if (!status) throw new ServiceError('training_status_not_found');
   const training = await Training.create({
     type_id: data.type_id,

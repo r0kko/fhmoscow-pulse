@@ -11,9 +11,7 @@ export const trainingCreateRules = [
 
 export const trainingUpdateRules = [
   body('type_id').optional().isUUID(),
-  body('start_at')
-    .optional()
-    .isISO8601(),
+  body('start_at').optional().isISO8601(),
   body('end_at')
     .optional()
     .isISO8601()

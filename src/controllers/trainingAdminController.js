@@ -65,7 +65,11 @@ export default {
   async statuses(_req, res) {
     const statuses = await trainingService.listStatuses();
     return res.json({
-      statuses: statuses.map((s) => ({ id: s.id, name: s.name, alias: s.alias })),
+      statuses: statuses.map((s) => ({
+        id: s.id,
+        name: s.name,
+        alias: s.alias,
+      })),
     });
   },
 };

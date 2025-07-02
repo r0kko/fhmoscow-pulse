@@ -20,7 +20,10 @@ function sanitize(obj) {
 
 function toPublic(training) {
   if (!training) return null;
-  const plain = typeof training.get === 'function' ? training.get({ plain: true }) : training;
+  const plain =
+    typeof training.get === 'function'
+      ? training.get({ plain: true })
+      : training;
   return sanitize(plain);
 }
 

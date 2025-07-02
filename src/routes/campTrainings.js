@@ -12,9 +12,21 @@ const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
 router.get('/statuses', auth, authorize('ADMIN'), controller.statuses);
-router.post('/', auth, authorize('ADMIN'), trainingCreateRules, controller.create);
+router.post(
+  '/',
+  auth,
+  authorize('ADMIN'),
+  trainingCreateRules,
+  controller.create
+);
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
-router.put('/:id', auth, authorize('ADMIN'), trainingUpdateRules, controller.update);
+router.put(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  trainingUpdateRules,
+  controller.update
+);
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
 
 export default router;
