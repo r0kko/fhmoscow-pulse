@@ -6,15 +6,42 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', role } = req.query;
     const { rows, count } = await medicalCertificateService.listAll({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
+      role,
     });
     return res.json({
       certificates: rows.map(medicalCertificateMapper.toPublic),
       total: count,
     });
+  },
+
+  async listByRole(req, res) {
+    try {
+      const certs = await medicalCertificateService.listByRole(req.params.alias);
+      const grouped = {};
+      for (const c of certs) {
+        const user = c.User;
+        if (!grouped[user.id]) {
+          grouped[user.id] = {
+            user: {
+              id: user.id,
+              last_name: user.last_name,
+              first_name: user.first_name,
+              patronymic: user.patronymic,
+              birth_date: user.birth_date,
+            },
+            certificates: [],
+          };
+        }
+        grouped[user.id].certificates.push(medicalCertificateMapper.toPublic(c));
+      }
+      return res.json({ judges: Object.values(grouped) });
+    } catch (err) {
+      return sendError(res, err);
+    }
   },
 
   async get(req, res) {

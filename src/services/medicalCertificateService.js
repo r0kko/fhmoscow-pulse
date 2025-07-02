@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 
-import { MedicalCertificate, User } from '../models/index.js';
+import { MedicalCertificate, User, Role } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
@@ -61,11 +61,44 @@ async function listAll(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
 
+  const include = [
+    {
+      model: User,
+      include: options.role
+        ? [{ model: Role, where: { alias: options.role }, through: { attributes: [] }, required: true }]
+        : [],
+    },
+  ];
+
   return MedicalCertificate.findAndCountAll({
-    include: [User],
+    include,
     order: [['issue_date', 'DESC']],
     limit,
     offset,
+  });
+}
+
+async function listByRole(alias) {
+  return MedicalCertificate.findAll({
+    include: [
+      {
+        model: User,
+        required: true,
+        include: [
+          {
+            model: Role,
+            where: { alias },
+            through: { attributes: [] },
+            required: true,
+          },
+        ],
+      },
+    ],
+    order: [
+      [User, 'last_name', 'ASC'],
+      [User, 'first_name', 'ASC'],
+      ['issue_date', 'DESC'],
+    ],
   });
 }
 
@@ -120,6 +153,7 @@ export default {
   createForUser,
   removeForUser,
   listAll,
+  listByRole,
   getById,
   updateForUser,
   update,
