@@ -27,5 +27,4 @@ router.put(
   controller.update
 );
 
-
 export default router;
