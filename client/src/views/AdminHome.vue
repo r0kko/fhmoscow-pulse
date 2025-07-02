@@ -9,6 +9,16 @@ const tiles = [
     to: '/medical-certificates'
   },
   {
+    title: 'Медицинские центры',
+    icon: 'bi-hospital',
+    to: '/medical-centers'
+  },
+  {
+    title: 'Расписание медосмотров',
+    icon: 'bi-calendar-check',
+    to: '/medical-exams'
+  },
+  {
     title: 'Управление сборами',
     icon: 'bi-building',
     to: '/camp-stadiums'

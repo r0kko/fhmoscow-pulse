@@ -27,6 +27,9 @@ import CampStadiumParkingType from './campStadiumParkingType.js';
 import TrainingType from './trainingType.js';
 import TrainingStatus from './trainingStatus.js';
 import Training from './training.js';
+import MedicalCenter from './medicalCenter.js';
+import MedicalExamStatus from './medicalExamStatus.js';
+import MedicalExam from './medicalExam.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -106,6 +109,14 @@ Training.belongsTo(TrainingType, { foreignKey: 'type_id' });
 CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
 Training.belongsTo(CampStadium, { foreignKey: 'camp_stadium_id' });
 
+/* medical centers */
+MedicalCenter.belongsTo(Address, { foreignKey: 'address_id' });
+Address.hasMany(MedicalCenter, { foreignKey: 'address_id' });
+MedicalCenter.hasMany(MedicalExam, { foreignKey: 'medical_center_id' });
+MedicalExam.belongsTo(MedicalCenter, { foreignKey: 'medical_center_id' });
+MedicalExamStatus.hasMany(MedicalExam, { foreignKey: 'status_id' });
+MedicalExam.belongsTo(MedicalExamStatus, { foreignKey: 'status_id' });
+
 /* external systems */
 User.hasMany(UserExternalId, { foreignKey: 'user_id' });
 UserExternalId.belongsTo(User, { foreignKey: 'user_id' });
@@ -153,4 +164,7 @@ export {
   File,
   MedicalCertificateType,
   MedicalCertificateFile,
+  MedicalCenter,
+  MedicalExamStatus,
+  MedicalExam,
 };

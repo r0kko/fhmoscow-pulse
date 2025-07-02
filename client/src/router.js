@@ -13,6 +13,8 @@ import AdminUserEdit from './views/AdminUserEdit.vue'
 import AdminUserCreate from './views/AdminUserCreate.vue'
 import AdminMedicalCertificates from './views/AdminMedicalCertificates.vue'
 import AdminCampStadiums from './views/AdminCampStadiums.vue'
+import AdminMedicalCenters from './views/AdminMedicalCenters.vue'
+import AdminMedicalExams from './views/AdminMedicalExams.vue'
 import PasswordReset from './views/PasswordReset.vue'
 import NotFound from './views/NotFound.vue'
 import Forbidden from './views/Forbidden.vue'
@@ -27,6 +29,8 @@ const routes = [
   { path: '/users/new', component: AdminUserCreate, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/users/:id', component: AdminUserEdit, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/medical-certificates', component: AdminMedicalCertificates, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/medical-centers', component: AdminMedicalCenters, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/medical-exams', component: AdminMedicalExams, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/camp-stadiums', component: AdminCampStadiums, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/password-reset', component: PasswordReset, meta: { hideLayout: true } },
   { path: '/login', component: Login, meta: { hideLayout: true } },

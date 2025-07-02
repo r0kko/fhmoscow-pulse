@@ -22,6 +22,8 @@ import passwordResetRouter from './passwordReset.js';
 import campStadiumsRouter from './campStadiums.js';
 import campTrainingTypesRouter from './campTrainingTypes.js';
 import campTrainingsRouter from './campTrainings.js';
+import medicalCentersRouter from './medicalCenters.js';
+import medicalExamsRouter from './medicalExams.js';
 
 const router = express.Router();
 
@@ -43,6 +45,8 @@ router.use('/password-reset', passwordResetRouter);
 router.use('/camp-stadiums', campStadiumsRouter);
 router.use('/camp-training-types', campTrainingTypesRouter);
 router.use('/camp-trainings', campTrainingsRouter);
+router.use('/medical-centers', medicalCentersRouter);
+router.use('/medical-exams', medicalExamsRouter);
 
 /**
  * @swagger
