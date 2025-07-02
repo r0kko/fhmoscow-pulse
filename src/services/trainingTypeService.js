@@ -89,4 +89,10 @@ async function update(id, data, actorId) {
   return type;
 }
 
-export default { listAll, getById, create, update };
+async function remove(id) {
+  const type = await TrainingType.findByPk(id);
+  if (!type) throw new ServiceError('training_type_not_found', 404);
+  await type.destroy();
+}
+
+export default { listAll, getById, create, update, remove };

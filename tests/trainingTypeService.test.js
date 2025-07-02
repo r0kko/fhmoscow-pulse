@@ -49,3 +49,14 @@ test('create generates alias from name', async () => {
   expect(arg.alias).toBe('TEST');
   expect(arg.created_by).toBe('admin');
 });
+
+test('remove deletes training type', async () => {
+  findByPkMock.mockResolvedValue({ ...instance });
+  await service.remove('t1');
+  expect(destroyMock).toHaveBeenCalled();
+});
+
+test('remove throws when not found', async () => {
+  findByPkMock.mockResolvedValue(null);
+  await expect(service.remove('t1')).rejects.toThrow('training_type_not_found');
+});
