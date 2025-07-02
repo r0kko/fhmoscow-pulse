@@ -1,4 +1,4 @@
-# АСОУ ПД "Поток"
+# АСОУ ПД Пульс
 
 Автоматизированная система оперативного управления производственной деятельностью. A Node.js REST API built with Express and Sequelize. The project provides JWT-based authentication, logging of requests to PostgreSQL and Swagger API documentation.
 

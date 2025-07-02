@@ -4,10 +4,10 @@ const options = {
   definition: {
     openapi: '3.0.3',
     info: {
-      title: 'АСОУ ПД "Поток" API',
+      title: 'АСОУ ПД Пульс API',
       version: '1.0.0',
       description:
-        'REST API for the АСОУ ПД "Поток" application providing user management and authentication.',
+        'REST API for the АСОУ ПД Пульс application providing user management and authentication.',
       contact: {
         email: 'support@example.com',
       },
