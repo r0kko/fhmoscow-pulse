@@ -79,27 +79,33 @@ async function listAll(options = {}) {
 }
 
 async function listByRole(alias) {
-  return MedicalCertificate.findAll({
+  const users = await User.findAll({
     include: [
       {
-        model: User,
+        model: Role,
+        where: { alias },
+        through: { attributes: [] },
         required: true,
-        include: [
-          {
-            model: Role,
-            where: { alias },
-            through: { attributes: [] },
-            required: true,
-          },
-        ],
       },
     ],
     order: [
-      [User, 'last_name', 'ASC'],
-      [User, 'first_name', 'ASC'],
-      ['issue_date', 'DESC'],
+      ['last_name', 'ASC'],
+      ['first_name', 'ASC'],
     ],
   });
+
+  const certs = await MedicalCertificate.findAll({
+    where: { user_id: users.map((u) => u.id) },
+    order: [['issue_date', 'DESC']],
+  });
+
+  const grouped = {};
+  for (const cert of certs) {
+    if (!grouped[cert.user_id]) grouped[cert.user_id] = [];
+    grouped[cert.user_id].push(cert);
+  }
+
+  return users.map((u) => ({ user: u, certificates: grouped[u.id] || [] }));
 }
 
 async function getById(id) {

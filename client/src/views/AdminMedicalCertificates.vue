@@ -1,16 +1,9 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import Modal from 'bootstrap/js/dist/modal'
 import { apiFetch, apiFetchForm } from '../api.js'
 import { findOrganizationByInn } from '../dadata.js'
-
-const certificates = ref([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = 8
-const isLoading = ref(false)
-const error = ref('')
 
 const judges = ref([])
 const judgesLoading = ref(false)
@@ -38,15 +31,10 @@ const fileError = ref('')
 const fileType = ref('CONCLUSION')
 const fileInput = ref(null)
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
-
 onMounted(() => {
   modal = new Modal(modalRef.value)
-  load()
   loadJudges()
 })
-
-watch(currentPage, load)
 
 watch(userQuery, () => {
   clearTimeout(userTimeout)
@@ -92,19 +80,6 @@ watch(
   }
 )
 
-async function load() {
-  try {
-    isLoading.value = true
-    const params = new URLSearchParams({ page: currentPage.value, limit: pageSize })
-    const data = await apiFetch(`/medical-certificates?${params}`)
-    certificates.value = data.certificates
-    total.value = data.total
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    isLoading.value = false
-  }
-}
 
 function openCreate() {
   editing.value = null
@@ -118,20 +93,6 @@ function openCreate() {
   fileError.value = ''
   modal.show()
 }
-
-function openEdit(cert) {
-  editing.value = cert
-  Object.assign(form.value, cert)
-  skipUserWatch = true
-  userQuery.value = cert.user
-    ? `${cert.user.last_name} ${cert.user.first_name}`
-    : ''
-  userSuggestions.value = []
-  formError.value = ''
-  loadFiles()
-  modal.show()
-}
-
 
 function selectUser(u) {
   form.value.user_id = u.id
@@ -151,7 +112,7 @@ async function save() {
     const method = editing.value ? 'PUT' : 'POST'
     await apiFetch(path, { method, body: JSON.stringify(form.value) })
     modal.hide()
-    await load()
+    await loadJudges()
   } catch (e) {
     formError.value = e.message
   }
@@ -204,12 +165,6 @@ async function removeFile(file) {
   }
 }
 
-async function removeCert(cert) {
-  if (!confirm('Удалить запись?')) return
-  await apiFetch(`/medical-certificates/${cert.id}`, { method: 'DELETE' })
-  await load()
-}
-
 function formatDate(str) {
   if (!str) return ''
   const [y, m, d] = str.split('-')
@@ -252,51 +207,7 @@ async function loadJudges() {
         <i class="bi bi-plus-lg me-1"></i>Добавить
       </button>
     </div>
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <div v-if="isLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
-    </div>
-    <div v-if="certificates.length" class="table-responsive">
-      <table class="table table-striped align-middle">
-        <thead>
-          <tr>
-            <th>Пользователь</th>
-            <th>Номер</th>
-            <th>Учреждение</th>
-            <th>ИНН</th>
-            <th>Период действия</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="c in certificates" :key="c.id">
-            <td>{{ c.user ? c.user.last_name + ' ' + c.user.first_name : c.user_id }}</td>
-            <td>{{ c.certificate_number }}</td>
-            <td>{{ c.organization }}</td>
-            <td>{{ c.inn }}</td>
-            <td>{{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}</td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(c)">Изменить</button>
-              <button class="btn btn-sm btn-danger" @click="removeCert(c)">Удалить</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
-    <nav class="mt-3" v-if="totalPages > 1">
-      <ul class="pagination justify-content-center">
-        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
-        </li>
-        <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
-          <button class="page-link" @click="currentPage = p">{{ p }}</button>
-        </li>
-        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
-        </li>
-      </ul>
-    </nav>
+
 
     <h2 class="mt-5 mb-3">Судьи</h2>
     <div v-if="judgesError" class="alert alert-danger">{{ judgesError }}</div>
