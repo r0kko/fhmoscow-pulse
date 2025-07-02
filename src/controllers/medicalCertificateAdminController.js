@@ -20,25 +20,18 @@ export default {
 
   async listByRole(req, res) {
     try {
-      const certs = await medicalCertificateService.listByRole(req.params.alias);
-      const grouped = {};
-      for (const c of certs) {
-        const user = c.User;
-        if (!grouped[user.id]) {
-          grouped[user.id] = {
-            user: {
-              id: user.id,
-              last_name: user.last_name,
-              first_name: user.first_name,
-              patronymic: user.patronymic,
-              birth_date: user.birth_date,
-            },
-            certificates: [],
-          };
-        }
-        grouped[user.id].certificates.push(medicalCertificateMapper.toPublic(c));
-      }
-      return res.json({ judges: Object.values(grouped) });
+      const data = await medicalCertificateService.listByRole(req.params.alias);
+      const judges = data.map((j) => ({
+        user: {
+          id: j.user.id,
+          last_name: j.user.last_name,
+          first_name: j.user.first_name,
+          patronymic: j.user.patronymic,
+          birth_date: j.user.birth_date,
+        },
+        certificates: j.certificates.map((c) => medicalCertificateMapper.toPublic(c)),
+      }));
+      return res.json({ judges });
     } catch (err) {
       return sendError(res, err);
     }
