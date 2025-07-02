@@ -94,6 +94,19 @@ function openCreate() {
   modal.show()
 }
 
+function openEdit(cert) {
+  editing.value = cert
+  Object.assign(form.value, cert)
+  skipUserWatch = true
+  userQuery.value = cert.user
+    ? `${cert.user.last_name} ${cert.user.first_name}`
+    : ''
+  userSuggestions.value = []
+  formError.value = ''
+  loadFiles()
+  modal.show()
+}
+
 function selectUser(u) {
   form.value.user_id = u.id
   skipUserWatch = true
@@ -232,14 +245,36 @@ async function loadJudges() {
                 <td>{{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}</td>
                 <td class="d-none d-md-table-cell">{{ formatDate(j.user.birth_date) }}</td>
                 <td>
-                  <div v-for="c in j.certificates" :key="c.id">{{ c.certificate_number }}</div>
+                  <div v-for="c in j.certificates" :key="c.id">
+                    <button
+                      type="button"
+                      class="btn btn-link p-0"
+                      @click="openEdit(c)"
+                    >
+                      {{ c.certificate_number }}
+                    </button>
+                  </div>
                 </td>
                 <td class="d-none d-lg-table-cell">
-                  <div v-for="c in j.certificates" :key="c.id">{{ c.organization }}</div>
+                  <div v-for="c in j.certificates" :key="c.id">
+                    <button
+                      type="button"
+                      class="btn btn-link p-0"
+                      @click="openEdit(c)"
+                    >
+                      {{ c.organization }}
+                    </button>
+                  </div>
                 </td>
                 <td class="d-none d-xl-table-cell">
                   <div v-for="c in j.certificates" :key="c.id" class="text-nowrap">
-                    {{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}
+                    <button
+                      type="button"
+                      class="btn btn-link p-0"
+                      @click="openEdit(c)"
+                    >
+                      {{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}
+                    </button>
                   </div>
                 </td>
               </tr>
