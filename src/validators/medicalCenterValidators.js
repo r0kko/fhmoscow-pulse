@@ -7,7 +7,9 @@ export const medicalCenterCreateRules = [
   body('phone')
     .optional()
     .customSanitizer((v) => v.replace(/\D/g, ''))
-    .isMobilePhone('ru-RU'),
+    .isLength({ min: 10, max: 11 })
+    .matches(/^\d+$/)
+    .withMessage('invalid_phone'),
   body('email').optional().isEmail(),
   body('website')
     .optional()
@@ -27,7 +29,9 @@ export const medicalCenterUpdateRules = [
   body('phone')
     .optional()
     .customSanitizer((v) => v.replace(/\D/g, ''))
-    .isMobilePhone('ru-RU'),
+    .isLength({ min: 10, max: 11 })
+    .matches(/^\d+$/)
+    .withMessage('invalid_phone'),
   body('email').optional().isEmail(),
   body('website')
     .optional()
