@@ -13,11 +13,6 @@ const tiles = [
     icon: 'bi-building',
     to: '/camp-stadiums'
   },
-  {
-    title: 'Тренировки',
-    icon: 'bi-calendar-event',
-    to: '/camp-trainings'
-  }
 ]
 </script>
 

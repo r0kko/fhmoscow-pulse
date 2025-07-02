@@ -16,6 +16,7 @@ Training.init(
     start_at: { type: DataTypes.DATE, allowNull: false },
     end_at: { type: DataTypes.DATE, allowNull: false },
     capacity: { type: DataTypes.INTEGER },
+    camp_stadium_id: { type: DataTypes.UUID },
   },
   {
     sequelize,

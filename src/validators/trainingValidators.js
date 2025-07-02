@@ -2,6 +2,7 @@ import { body } from 'express-validator';
 
 export const trainingCreateRules = [
   body('type_id').isUUID(),
+  body('camp_stadium_id').isUUID(),
   body('start_at').isISO8601(),
   body('end_at')
     .isISO8601()
@@ -11,6 +12,7 @@ export const trainingCreateRules = [
 
 export const trainingUpdateRules = [
   body('type_id').optional().isUUID(),
+  body('camp_stadium_id').optional().isUUID(),
   body('start_at').optional().isISO8601(),
   body('end_at')
     .optional()

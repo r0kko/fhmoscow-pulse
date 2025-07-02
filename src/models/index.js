@@ -103,6 +103,8 @@ TrainingStatus.hasMany(Training, { foreignKey: 'status_id' });
 Training.belongsTo(TrainingStatus, { foreignKey: 'status_id' });
 TrainingType.hasMany(Training, { foreignKey: 'type_id' });
 Training.belongsTo(TrainingType, { foreignKey: 'type_id' });
+CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
+Training.belongsTo(CampStadium, { foreignKey: 'camp_stadium_id' });
 
 /* external systems */
 User.hasMany(UserExternalId, { foreignKey: 'user_id' });

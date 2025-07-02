@@ -57,6 +57,27 @@ const typeModalRef = ref(null);
 let typeModal;
 const typeFormError = ref('');
 
+/* trainings */
+const trainings = ref([]);
+const trainingsTotal = ref(0);
+const trainingsPage = ref(1);
+const trainingsLoading = ref(false);
+const trainingsError = ref('');
+const statuses = ref([]);
+const stadiumOptions = ref([]);
+const trainingForm = ref({
+  type_id: '',
+  camp_stadium_id: '',
+  status: '',
+  start_at: '',
+  end_at: '',
+  capacity: '',
+});
+const trainingEditing = ref(null);
+const trainingModalRef = ref(null);
+let trainingModal;
+const trainingFormError = ref('');
+
 const form = ref({
   name: '',
   address: { result: '' },
@@ -79,13 +100,18 @@ const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / 
 onMounted(() => {
   modal = new Modal(modalRef.value);
   typeModal = new Modal(typeModalRef.value);
+  trainingModal = new Modal(trainingModalRef.value);
   load();
   loadParkingTypes();
   loadTypes();
-});
+  loadTrainings();
+  loadStatuses();
+  loadStadiumOptions();
+  });
 
 watch(currentPage, load);
 watch(typesPage, loadTypes);
+watch(trainingsPage, loadTrainings);
 
 watch(
     () => form.value.address.result,
@@ -100,6 +126,28 @@ watch(
         addressSuggestions.value = await suggestAddress(query);
       }, 300);
     }
+);
+
+watch(
+  () => trainingForm.value.type_id,
+  (val) => {
+    const tt = trainingTypes.value.find((t) => t.id === val);
+    if (tt && tt.default_capacity && (!trainingEditing.value || !trainingForm.value.capacity)) {
+      trainingForm.value.capacity = tt.default_capacity;
+    }
+  }
+);
+
+watch(
+  () => trainingForm.value.start_at,
+  (val) => {
+    if (!val) return;
+    const start = new Date(val);
+    const end = new Date(start.getTime() + 90 * 60000);
+    if (!trainingEditing.value) {
+      trainingForm.value.end_at = end.toISOString().slice(0, 16);
+    }
+  }
 );
 
 async function loadParkingTypes() {
@@ -282,6 +330,122 @@ async function removeType(t) {
   await apiFetch(`/camp-training-types/${t.id}`, { method: 'DELETE' });
   await loadTypes();
 }
+
+async function loadTrainings() {
+  try {
+    trainingsLoading.value = true;
+    const params = new URLSearchParams({
+      page: trainingsPage.value,
+      limit: pageSize,
+    });
+    const data = await apiFetch(`/camp-trainings?${params}`);
+    trainings.value = data.trainings;
+    trainingsTotal.value = data.total;
+  } catch (e) {
+    trainingsError.value = e.message;
+  } finally {
+    trainingsLoading.value = false;
+  }
+}
+
+async function loadStatuses() {
+  try {
+    const data = await apiFetch('/camp-trainings/statuses');
+    statuses.value = data.statuses;
+  } catch (_) {
+    statuses.value = [];
+  }
+}
+
+async function loadStadiumOptions() {
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const data = await apiFetch(`/camp-stadiums?${params}`);
+    stadiumOptions.value = data.stadiums;
+  } catch (_) {
+    stadiumOptions.value = [];
+  }
+}
+
+function openCreateTraining() {
+  trainingEditing.value = null;
+  trainingForm.value = {
+    type_id: '',
+    camp_stadium_id: '',
+    status: statuses.value[0]?.alias || '',
+    start_at: '',
+    end_at: '',
+    capacity: '',
+  };
+  trainingFormError.value = '';
+  trainingModal.show();
+}
+
+function toInputValue(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+function formatDateTime(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  const pad = (n) => (n < 10 ? '0' + n : '' + n);
+  const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${date} ${time}`;
+}
+
+function openEditTraining(t) {
+  trainingEditing.value = t;
+  trainingForm.value = {
+    type_id: t.type?.id || '',
+    camp_stadium_id: t.stadium?.id || '',
+    status: t.status?.alias || '',
+    start_at: toInputValue(t.start_at),
+    end_at: toInputValue(t.end_at),
+    capacity: t.capacity || '',
+  };
+  trainingFormError.value = '';
+  trainingModal.show();
+}
+
+async function saveTraining() {
+  const payload = {
+    type_id: trainingForm.value.type_id,
+    camp_stadium_id: trainingForm.value.camp_stadium_id,
+    start_at: new Date(trainingForm.value.start_at).toISOString(),
+    end_at: new Date(trainingForm.value.end_at).toISOString(),
+    capacity: trainingForm.value.capacity || undefined,
+  };
+  if (trainingEditing.value) {
+    payload.status = trainingForm.value.status;
+  }
+  try {
+    if (trainingEditing.value) {
+      await apiFetch(`/camp-trainings/${trainingEditing.value.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await apiFetch('/camp-trainings', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    }
+    trainingModal.hide();
+    await loadTrainings();
+  } catch (e) {
+    trainingFormError.value = e.message;
+  }
+}
+
+async function removeTraining(t) {
+  if (!confirm('Удалить запись?')) return;
+  await apiFetch(`/camp-trainings/${t.id}`, { method: 'DELETE' });
+  await loadTrainings();
+}
 </script>
 
 <template>
@@ -295,10 +459,24 @@ async function removeType(t) {
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="mb-0">{{ activeTab === 'stadiums' ? 'Стадионы' : 'Типы тренировок' }}</h1>
+      <h1 class="mb-0">
+        {{
+          activeTab === 'stadiums'
+            ? 'Стадионы'
+            : activeTab === 'types'
+              ? 'Типы тренировок'
+              : 'Тренировки'
+        }}
+      </h1>
       <button
           class="btn btn-brand"
-          @click="activeTab === 'stadiums' ? openCreate() : openCreateType()"
+          @click="
+            activeTab === 'stadiums'
+              ? openCreate()
+              : activeTab === 'types'
+                ? openCreateType()
+                : openCreateTraining()
+          "
       >
         <i class="bi bi-plus-lg me-1"></i>Добавить
       </button>
@@ -312,6 +490,11 @@ async function removeType(t) {
       <li class="nav-item">
         <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
           Типы тренировок
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
+          Тренировки
         </button>
       </li>
     </ul>
@@ -376,7 +559,7 @@ async function removeType(t) {
 
   </div>
 
-  <div>
+  <div v-if="activeTab === 'types'">
     <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
     <div v-if="typesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
@@ -445,6 +628,108 @@ async function removeType(t) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
+              <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="activeTab === 'trainings'">
+    <div v-if="trainingsError" class="alert alert-danger">{{ trainingsError }}</div>
+    <div v-if="trainingsLoading" class="text-center my-3">
+      <div class="spinner-border" role="status"></div>
+    </div>
+    <div v-if="trainings.length" class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+        <tr>
+          <th>Тип</th>
+          <th>Стадион</th>
+          <th>Начало</th>
+          <th>Окончание</th>
+          <th class="text-center">Вместимость</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="t in trainings" :key="t.id">
+          <td>{{ t.type?.name }}</td>
+          <td>{{ t.stadium?.name }}</td>
+          <td>{{ formatDateTime(t.start_at) }}</td>
+          <td>{{ formatDateTime(t.end_at) }}</td>
+          <td class="text-center">{{ t.capacity }}</td>
+          <td>{{ t.status?.name }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
+            <button class="btn btn-sm btn-danger" @click="removeTraining(t)">Удалить</button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <p v-else-if="!trainingsLoading" class="text-muted">Записей нет.</p>
+    <nav class="mt-3" v-if="Math.ceil(trainingsTotal / pageSize) > 1">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
+          <button class="page-link" @click="trainingsPage--" :disabled="trainingsPage === 1">Пред</button>
+        </li>
+        <li class="page-item" v-for="p in Math.max(1, Math.ceil(trainingsTotal / pageSize))" :key="p" :class="{ active: trainingsPage === p }">
+          <button class="page-link" @click="trainingsPage = p">{{ p }}</button>
+        </li>
+        <li class="page-item" :class="{ disabled: trainingsPage === Math.max(1, Math.ceil(trainingsTotal / pageSize)) }">
+          <button class="page-link" @click="trainingsPage++" :disabled="trainingsPage === Math.max(1, Math.ceil(trainingsTotal / pageSize))">След</button>
+        </li>
+      </ul>
+    </nav>
+
+    <div ref="trainingModalRef" class="modal fade" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form @submit.prevent="saveTraining">
+            <div class="modal-header">
+              <h5 class="modal-title">{{ trainingEditing ? 'Изменить тренировку' : 'Добавить тренировку' }}</h5>
+              <button type="button" class="btn-close" @click="trainingModal.hide()"></button>
+            </div>
+            <div class="modal-body">
+              <div v-if="trainingFormError" class="alert alert-danger">{{ trainingFormError }}</div>
+              <div class="mb-3">
+                <label class="form-label">Тип</label>
+                <select v-model="trainingForm.type_id" class="form-select" required>
+                  <option value="" disabled>Выберите тип</option>
+                  <option v-for="tt in trainingTypes" :key="tt.id" :value="tt.id">{{ tt.name }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Стадион</label>
+                <select v-model="trainingForm.camp_stadium_id" class="form-select" required>
+                  <option value="" disabled>Выберите стадион</option>
+                  <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Статус</label>
+                <select v-model="trainingForm.status" class="form-select" :disabled="!trainingEditing">
+                  <option v-for="s in statuses" :key="s.alias" :value="s.alias">{{ s.name }}</option>
+                </select>
+              </div>
+              <div class="form-floating mb-3">
+                <input id="trStart" v-model="trainingForm.start_at" type="datetime-local" class="form-control" required />
+                <label for="trStart">Начало</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input id="trEnd" v-model="trainingForm.end_at" type="datetime-local" class="form-control" required />
+                <label for="trEnd">Окончание</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input id="trCap" v-model="trainingForm.capacity" type="number" min="0" class="form-control" />
+                <label for="trCap">Вместимость</label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="trainingModal.hide()">Отмена</button>
               <button type="submit" class="btn btn-primary">Сохранить</button>
             </div>
           </form>

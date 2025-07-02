@@ -1,6 +1,15 @@
 function sanitize(obj) {
-  const { id, start_at, end_at, capacity, TrainingType, TrainingStatus } = obj;
-  const res = { id, start_at, end_at, capacity };
+  const {
+    id,
+    start_at,
+    end_at,
+    capacity,
+    camp_stadium_id,
+    TrainingType,
+    TrainingStatus,
+    CampStadium,
+  } = obj;
+  const res = { id, start_at, end_at, capacity, camp_stadium_id };
   if (TrainingType) {
     res.type = {
       id: TrainingType.id,
@@ -13,6 +22,12 @@ function sanitize(obj) {
       id: TrainingStatus.id,
       name: TrainingStatus.name,
       alias: TrainingStatus.alias,
+    };
+  }
+  if (CampStadium) {
+    res.stadium = {
+      id: CampStadium.id,
+      name: CampStadium.name,
     };
   }
   return res;

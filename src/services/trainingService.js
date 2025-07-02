@@ -1,4 +1,9 @@
-import { Training, TrainingStatus, TrainingType } from '../models/index.js';
+import {
+  Training,
+  TrainingStatus,
+  TrainingType,
+  CampStadium,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -6,7 +11,7 @@ async function listAll(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   return Training.findAndCountAll({
-    include: [TrainingType, TrainingStatus],
+    include: [TrainingType, TrainingStatus, CampStadium],
     order: [['start_at', 'DESC']],
     limit,
     offset,
@@ -15,7 +20,7 @@ async function listAll(options = {}) {
 
 async function getById(id) {
   const training = await Training.findByPk(id, {
-    include: [TrainingType, TrainingStatus],
+    include: [TrainingType, TrainingStatus, CampStadium],
   });
   if (!training) throw new ServiceError('training_not_found', 404);
   return training;
@@ -28,6 +33,7 @@ async function create(data, actorId) {
   if (!status) throw new ServiceError('training_status_not_found');
   const training = await Training.create({
     type_id: data.type_id,
+    camp_stadium_id: data.camp_stadium_id,
     status_id: status.id,
     start_at: data.start_at,
     end_at: data.end_at,
@@ -50,6 +56,7 @@ async function update(id, data, actorId) {
   await training.update(
     {
       type_id: data.type_id ?? training.type_id,
+      camp_stadium_id: data.camp_stadium_id ?? training.camp_stadium_id,
       status_id: statusId,
       start_at: data.start_at ?? training.start_at,
       end_at: data.end_at ?? training.end_at,
