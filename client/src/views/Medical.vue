@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
@@ -40,6 +40,21 @@ function validityText(cert) {
   const suffix = diff > 0 ? `еще ${diff} ${pluralDays(diff)}` : 'истекло';
   return `${formatDate(cert.issue_date)} - ${formatDate(cert.valid_until)} (${suffix})`;
 }
+
+const statusInfo = computed(() => {
+  if (!certificate.value || !isValid(certificate.value)) {
+    return { label: 'Отсутствует', icon: 'bi-x-circle', class: 'bg-danger' };
+  }
+  const diff = daysLeft(certificate.value.valid_until);
+  if (diff < 30) {
+    return {
+      label: 'Истекает',
+      icon: 'bi-exclamation-circle',
+      class: 'bg-warning text-dark',
+    };
+  }
+  return { label: 'OK', icon: 'bi-check-circle', class: 'bg-success' };
+});
 
 let mediaQuery;
 const updateScreen = () => {
@@ -109,11 +124,19 @@ onMounted(async () => {
         <span class="visually-hidden">Загрузка…</span>
       </div>
     </div>
-    <div v-else-if="certificate && isValid(certificate)">
+    <div v-else>
       <div class="card tile fade-in shadow-sm">
-        <div class="card-body">
+        <div class="card-body position-relative">
+          <span
+            class="badge position-absolute top-0 end-0 m-3 d-flex align-items-center gap-1"
+            :class="statusInfo.class"
+          >
+            <i :class="'bi ' + statusInfo.icon"></i>
+            {{ statusInfo.label }}
+          </span>
           <h5 class="card-title mb-3">Действующее заключение</h5>
-          <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+          <template v-if="certificate && isValid(certificate)">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
             <div class="col">
               <div class="form-floating">
                 <input id="certInn" type="text" class="form-control" :value="certificate.inn" readonly placeholder="ИНН" />
@@ -166,13 +189,12 @@ onMounted(async () => {
             </div>
             <p v-else class="text-muted mb-0">Нет файлов</p>
           </div>
+          </template>
+          <p v-else class="text-muted mb-0">Действующее медицинское заключение отсутствует</p>
         </div>
       </div>
+      <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
     </div>
-    <div v-else-if="!error" class="alert alert-danger" role="alert">
-      Действующее медицинское заключение отсутствует
-    </div>
-    <div v-else class="alert alert-danger" role="alert">{{ error }}</div>
     <div class="card tile fade-in shadow-sm mt-4">
       <div class="card-body">
         <h5 class="card-title mb-3">Архив медицинских заключений</h5>
