@@ -23,6 +23,7 @@ function toPublic(cert) {
       last_name: plain.User.last_name,
       first_name: plain.User.first_name,
       patronymic: plain.User.patronymic,
+      birth_date: plain.User.birth_date,
     };
   }
   return result;

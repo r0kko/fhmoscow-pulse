@@ -12,6 +12,10 @@ const pageSize = 8
 const isLoading = ref(false)
 const error = ref('')
 
+const judges = ref([])
+const judgesLoading = ref(false)
+const judgesError = ref('')
+
 const form = ref({
   user_id: '',
   inn: '',
@@ -39,6 +43,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize))
 onMounted(() => {
   modal = new Modal(modalRef.value)
   load()
+  loadJudges()
 })
 
 watch(currentPage, load)
@@ -210,6 +215,27 @@ function formatDate(str) {
   const [y, m, d] = str.split('-')
   return `${d}.${m}.${y}`
 }
+
+function hasActive(judge) {
+  const today = new Date().toISOString().slice(0, 10)
+  return judge.certificates.some(
+    (c) => c.issue_date <= today && c.valid_until >= today
+  )
+}
+
+async function loadJudges() {
+  judgesLoading.value = true
+  try {
+    const data = await apiFetch('/medical-certificates/role/REFEREE')
+    judges.value = data.judges
+    judgesError.value = ''
+  } catch (e) {
+    judgesError.value = e.message
+    judges.value = []
+  } finally {
+    judgesLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -271,6 +297,46 @@ function formatDate(str) {
         </li>
       </ul>
     </nav>
+
+    <h2 class="mt-5 mb-3">Судьи</h2>
+    <div v-if="judgesError" class="alert alert-danger">{{ judgesError }}</div>
+    <div v-if="judgesLoading" class="text-center my-3">
+      <div class="spinner-border" role="status"></div>
+    </div>
+    <div
+      v-if="judges.length"
+      class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3"
+    >
+      <div v-for="j in judges" :key="j.user.id" class="col">
+        <div :class="['card tile h-100', hasActive(j) ? '' : 'border-danger']">
+          <div class="card-body p-3">
+            <h5 class="card-title">
+              {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
+            </h5>
+            <p class="small text-muted mb-2">{{ formatDate(j.user.birth_date) }}</p>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Номер</th>
+                    <th>Учреждение</th>
+                    <th>Срок</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="c in j.certificates" :key="c.id">
+                    <td>{{ c.certificate_number }}</td>
+                    <td>{{ c.organization }}</td>
+                    <td>{{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p v-else-if="!judgesLoading" class="text-muted">Нет данных</p>
 
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">

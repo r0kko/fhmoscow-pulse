@@ -19,6 +19,8 @@ router.post('/', auth, medicalCertificateRules, selfController.create);
 router.delete('/', auth, selfController.remove);
 router.get('/me/files', auth, fileController.listMe);
 
+router.get('/role/:alias', auth, authorize('ADMIN'), adminController.listByRole);
+
 router.get('/', auth, authorize('ADMIN'), adminController.list);
 router.get('/:id', auth, authorize('ADMIN'), adminController.get);
 router.put(
