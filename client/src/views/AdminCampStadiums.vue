@@ -115,8 +115,6 @@ function handleAddClick() {
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
-  typeModal = new Modal(typeModalRef.value);
-  trainingModal = new Modal(trainingModalRef.value);
   load();
   loadParkingTypes();
   loadTypes();
@@ -328,6 +326,9 @@ async function loadTypes() {
 }
 
 function openCreateType() {
+  if (!typeModal) {
+    typeModal = new Modal(typeModalRef.value)
+  }
   typeEditing.value = null;
   typeForm.value = { name: '', default_capacity: '' };
   typeFormError.value = '';
@@ -335,6 +336,9 @@ function openCreateType() {
 }
 
 function openEditType(t) {
+  if (!typeModal) {
+    typeModal = new Modal(typeModalRef.value)
+  }
   typeEditing.value = t;
   typeForm.value = {
     name: t.name,
@@ -406,6 +410,9 @@ async function loadStadiumOptions() {
 }
 
 function openCreateTraining() {
+  if (!trainingModal) {
+    trainingModal = new Modal(trainingModalRef.value)
+  }
   trainingEditing.value = null;
   if (!statuses.value.length) loadStatuses();
   if (!stadiumOptions.value.length) loadStadiumOptions();
@@ -438,6 +445,9 @@ function formatDateTime(str) {
 }
 
 function openEditTraining(t) {
+  if (!trainingModal) {
+    trainingModal = new Modal(trainingModalRef.value)
+  }
   trainingEditing.value = t;
   trainingForm.value = {
     type_id: t.type?.id || '',
