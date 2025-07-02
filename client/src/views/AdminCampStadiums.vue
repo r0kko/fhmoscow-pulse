@@ -348,11 +348,6 @@ async function saveType() {
   }
 }
 
-async function removeType(t) {
-  if (!confirm('Удалить тип?')) return;
-  await apiFetch(`/camp-training-types/${t.id}`, { method: 'DELETE' });
-  await loadTypes();
-}
 
 async function loadTrainings() {
   try {
@@ -509,7 +504,14 @@ async function removeTraining(t) {
                 : openCreateTraining()
           "
       >
-        <i class="bi bi-plus-lg me-1"></i>Добавить
+        <i class="bi bi-plus-lg me-1"></i>
+        {{
+          activeTab === 'types'
+            ? 'Добавить тип'
+            : activeTab === 'trainings'
+              ? 'Добавить тренировку'
+              : 'Добавить стадион'
+        }}
       </button>
     </div>
     <ul class="nav nav-tabs mb-3">
@@ -609,8 +611,7 @@ async function removeTraining(t) {
           <td>{{ t.name }}</td>
           <td class="text-center">{{ t.default_capacity }}</td>
           <td class="text-end">
-            <button class="btn btn-sm btn-secondary me-2" @click="openEditType(t)">Изменить</button>
-            <button class="btn btn-sm btn-danger" @click="removeType(t)">Удалить</button>
+            <button class="btn btn-sm btn-secondary" @click="openEditType(t)">Изменить</button>
           </td>
         </tr>
         </tbody>
