@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 
-import { MedicalCertificate, User, Role } from '../models/index.js';
+import { MedicalCertificate, User } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
@@ -64,11 +64,20 @@ async function listAll(options = {}) {
   const include = [
     {
       model: User,
-      include: options.role
-        ? [{ model: Role, where: { alias: options.role }, through: { attributes: [] }, required: true }]
-        : [],
     },
   ];
+
+  if (options.role) {
+    const { Role } = await import('../models/index.js');
+    include[0].include = [
+      {
+        model: Role,
+        where: { alias: options.role },
+        through: { attributes: [] },
+        required: true,
+      },
+    ];
+  }
 
   return MedicalCertificate.findAndCountAll({
     include,
@@ -79,6 +88,7 @@ async function listAll(options = {}) {
 }
 
 async function listByRole(alias) {
+  const { Role } = await import('../models/index.js');
   const users = await User.findAll({
     include: [
       {
