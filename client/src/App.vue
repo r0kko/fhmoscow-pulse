@@ -14,7 +14,7 @@ const mainClass = computed(() =>
 <template>
   <div class="d-flex flex-column min-vh-100">
     <NavBar v-if="showLayout" />
-    <main :class="mainClass">
+    <main id="main" :class="mainClass">
       <router-view />
     </main>
     <FooterBar v-if="showLayout" />
