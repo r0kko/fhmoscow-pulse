@@ -27,12 +27,14 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 
 const { default: service } = await import('../src/services/trainingTypeService.js');
 
-test('update ignores name changes', async () => {
+test('update modifies name and capacity', async () => {
   findByPkMock.mockResolvedValue({ ...instance, name: 'Old', alias: 'old' });
   const data = { name: 'New', alias: 'old2', default_capacity: 10 };
   await service.update('t1', data, 'admin');
   expect(updateMock).toHaveBeenCalledWith(
     {
+      name: 'New',
+      alias: 'NEW',
       default_capacity: 10,
       updated_by: 'admin',
     },

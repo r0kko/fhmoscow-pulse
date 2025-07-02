@@ -26,6 +26,6 @@ router.put(
   trainingTypeUpdateRules,
   controller.update
 );
-router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
+
 
 export default router;
