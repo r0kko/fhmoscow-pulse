@@ -53,6 +53,11 @@ async function update(id, data, actorId) {
     if (!st) throw new ServiceError('training_status_not_found');
     statusId = st.id;
   }
+  const newStart = data.start_at ? new Date(data.start_at) : training.start_at;
+  const newEnd = data.end_at ? new Date(data.end_at) : training.end_at;
+  if (newEnd <= newStart) {
+    throw new ServiceError('invalid_time_range');
+  }
   await training.update(
     {
       type_id: data.type_id ?? training.type_id,
