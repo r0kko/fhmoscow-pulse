@@ -98,9 +98,7 @@ function openEdit(cert) {
   editing.value = cert
   Object.assign(form.value, cert)
   skipUserWatch = true
-  userQuery.value = cert.user
-    ? `${cert.user.last_name} ${cert.user.first_name}`
-    : ''
+  userQuery.value = ''
   userSuggestions.value = []
   formError.value = ''
   loadFiles()
@@ -178,6 +176,18 @@ async function removeFile(file) {
   }
 }
 
+async function removeCert() {
+  if (!editing.value) return
+  if (!confirm('Удалить справку?')) return
+  try {
+    await apiFetch(`/medical-certificates/${editing.value.id}`, { method: 'DELETE' })
+    modal.hide()
+    await loadJudges()
+  } catch (e) {
+    formError.value = e.message
+  }
+}
+
 function formatDate(str) {
   if (!str) return ''
   const [y, m, d] = str.split('-')
@@ -221,13 +231,11 @@ async function loadJudges() {
       </button>
     </div>
 
-
-    <h2 class="mt-5 mb-3">Судьи</h2>
     <div v-if="judgesError" class="alert alert-danger">{{ judgesError }}</div>
     <div v-if="judgesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="judges.length" class="card tile">
+    <div v-if="judges.length" class="card tile fade-in shadow-sm mt-4">
       <div class="card-body p-3">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -295,14 +303,13 @@ async function loadJudges() {
             </div>
             <div class="modal-body">
               <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
-              <div class="mb-3 position-relative">
+              <div class="mb-3 position-relative" v-if="!editing">
                 <div class="form-floating">
                   <input
                     id="userId"
                     v-model="userQuery"
                     class="form-control"
                     placeholder="Пользователь"
-                    :disabled="editing"
                   />
                   <label for="userId">Пользователь</label>
                 </div>
@@ -396,7 +403,17 @@ async function loadJudges() {
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+              <button
+                v-if="editing"
+                type="button"
+                class="btn btn-danger me-auto"
+                @click="removeCert"
+              >
+                Удалить
+              </button>
+              <button type="button" class="btn btn-secondary" @click="modal.hide()">
+                Отмена
+              </button>
               <button type="submit" class="btn btn-primary" :disabled="editing">
                 Сохранить
               </button>
