@@ -209,18 +209,22 @@ onMounted(() => {
       </div>
     </div>
     <div v-else-if="user">
-      <ul class="nav nav-pills nav-fill justify-content-between mb-4">
-        <li class="nav-item" v-for="tab in tabs" :key="tab.id">
-          <button
-            type="button"
-            class="nav-link"
-            :class="{ active: activeTab === tab.id, disabled: tab.disabled }"
-            @click="!tab.disabled && (activeTab = tab.id)"
-          >
-            {{ tab.label }}
-          </button>
-        </li>
-      </ul>
+      <div class="card tile fade-in mb-4">
+        <div class="card-body p-2">
+          <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+            <li class="nav-item" v-for="tab in tabs" :key="tab.id">
+              <button
+                type="button"
+                class="nav-link"
+                :class="{ active: activeTab === tab.id, disabled: tab.disabled }"
+                @click="!tab.disabled && (activeTab = tab.id)"
+              >
+                {{ tab.label }}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
 
       <div v-show="activeTab === 'info'" class="mb-4">
         <div class="card tile fade-in">
