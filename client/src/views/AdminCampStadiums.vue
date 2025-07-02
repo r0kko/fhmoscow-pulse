@@ -103,15 +103,27 @@ onMounted(() => {
   trainingModal = new Modal(trainingModalRef.value);
   load();
   loadParkingTypes();
-  loadTypes();
-  loadTrainings();
-  loadStatuses();
-  loadStadiumOptions();
   });
 
-watch(currentPage, load);
-watch(typesPage, loadTypes);
-watch(trainingsPage, loadTrainings);
+watch(currentPage, () => {
+  if (activeTab.value === 'stadiums') load();
+});
+watch(typesPage, () => {
+  if (activeTab.value === 'types') loadTypes();
+});
+watch(trainingsPage, () => {
+  if (activeTab.value === 'trainings') loadTrainings();
+});
+
+watch(activeTab, (val) => {
+  if (val === 'types' && !trainingTypes.value.length) {
+    loadTypes();
+  } else if (val === 'trainings' && !trainings.value.length) {
+    loadTrainings();
+    if (!statuses.value.length) loadStatuses();
+    if (!stadiumOptions.value.length) loadStadiumOptions();
+  }
+});
 
 watch(
     () => form.value.address.result,
@@ -380,6 +392,8 @@ async function loadStadiumOptions() {
 
 function openCreateTraining() {
   trainingEditing.value = null;
+  if (!statuses.value.length) loadStatuses();
+  if (!stadiumOptions.value.length) loadStadiumOptions();
   trainingForm.value = {
     type_id: '',
     camp_stadium_id: '',
