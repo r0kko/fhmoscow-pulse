@@ -97,12 +97,32 @@ let addrTimeout;
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
 
+const addButtonText = computed(() => {
+  if (activeTab.value === 'types') return 'Добавить тип';
+  if (activeTab.value === 'trainings') return 'Добавить тренировку';
+  return 'Добавить стадион';
+});
+
+function handleAddClick() {
+  if (activeTab.value === 'stadiums') {
+    openCreate();
+  } else if (activeTab.value === 'types') {
+    openCreateType();
+  } else {
+    openCreateTraining();
+  }
+}
+
 onMounted(() => {
   modal = new Modal(modalRef.value);
   typeModal = new Modal(typeModalRef.value);
   trainingModal = new Modal(trainingModalRef.value);
   load();
   loadParkingTypes();
+  loadTypes();
+  loadTrainings();
+  loadStatuses();
+  loadStadiumOptions();
   });
 
 watch(currentPage, () => {
@@ -494,24 +514,8 @@ async function removeTraining(t) {
               : 'Тренировки'
         }}
       </h1>
-      <button
-          class="btn btn-brand"
-          @click="
-            activeTab === 'stadiums'
-              ? openCreate()
-              : activeTab === 'types'
-                ? openCreateType()
-                : openCreateTraining()
-          "
-      >
-        <i class="bi bi-plus-lg me-1"></i>
-        {{
-          activeTab === 'types'
-            ? 'Добавить тип'
-            : activeTab === 'trainings'
-              ? 'Добавить тренировку'
-              : 'Добавить стадион'
-        }}
+      <button class="btn btn-brand" @click="handleAddClick">
+        <i class="bi bi-plus-lg me-1"></i>{{ addButtonText }}
       </button>
     </div>
     <ul class="nav nav-tabs mb-3">
