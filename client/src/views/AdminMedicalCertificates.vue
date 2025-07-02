@@ -303,36 +303,37 @@ async function loadJudges() {
     <div v-if="judgesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div
-      v-if="judges.length"
-      class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3"
-    >
-      <div v-for="j in judges" :key="j.user.id" class="col">
-        <div :class="['card tile h-100', hasActive(j) ? '' : 'border-danger']">
-          <div class="card-body p-3">
-            <h5 class="card-title">
-              {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
-            </h5>
-            <p class="small text-muted mb-2">{{ formatDate(j.user.birth_date) }}</p>
-            <div class="table-responsive">
-              <table class="table table-sm mb-0">
-                <thead>
-                  <tr>
-                    <th>Номер</th>
-                    <th>Учреждение</th>
-                    <th>Срок</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="c in j.certificates" :key="c.id">
-                    <td>{{ c.certificate_number }}</td>
-                    <td>{{ c.organization }}</td>
-                    <td>{{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+    <div v-if="judges.length" class="card tile">
+      <div class="card-body p-3">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>ФИО</th>
+                <th class="d-none d-md-table-cell">Дата рождения</th>
+                <th>Номер заключения</th>
+                <th class="d-none d-lg-table-cell">Учреждение</th>
+                <th class="d-none d-xl-table-cell">Период действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="j in judges" :key="j.user.id" :class="{ 'table-danger': !hasActive(j) }">
+                <td>{{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}</td>
+                <td class="d-none d-md-table-cell">{{ formatDate(j.user.birth_date) }}</td>
+                <td>
+                  <div v-for="c in j.certificates" :key="c.id">{{ c.certificate_number }}</div>
+                </td>
+                <td class="d-none d-lg-table-cell">
+                  <div v-for="c in j.certificates" :key="c.id">{{ c.organization }}</div>
+                </td>
+                <td class="d-none d-xl-table-cell">
+                  <div v-for="c in j.certificates" :key="c.id" class="text-nowrap">
+                    {{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
