@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { Modal } from 'bootstrap';
+import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 
 const props = defineProps({

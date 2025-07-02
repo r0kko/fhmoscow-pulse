@@ -3,7 +3,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UserForm from '../components/UserForm.vue'
-import { Modal, Toast } from 'bootstrap'
+import Modal from 'bootstrap/js/dist/modal'
+import Toast from 'bootstrap/js/dist/toast'
 
 const router = useRouter()
 

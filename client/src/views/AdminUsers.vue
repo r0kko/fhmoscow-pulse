@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
-import { Toast } from 'bootstrap'
+import Toast from 'bootstrap/js/dist/toast'
 
 const users = ref([])
 const total = ref(0)

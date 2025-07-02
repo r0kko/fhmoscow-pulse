@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted, reactive, nextTick, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Toast, Tooltip } from 'bootstrap';
+import Toast from 'bootstrap/js/dist/toast';
+import Tooltip from 'bootstrap/js/dist/tooltip';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
 
