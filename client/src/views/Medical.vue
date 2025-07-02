@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
@@ -8,6 +8,7 @@ const history = ref([]);
 const files = ref([]);
 const error = ref('');
 const loading = ref(true);
+const isSmallScreen = ref(false);
 const isValid = (cert) => {
   const today = new Date();
   return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
@@ -39,6 +40,21 @@ function validityText(cert) {
   const suffix = diff > 0 ? `еще ${diff} ${pluralDays(diff)}` : 'истекло';
   return `${formatDate(cert.issue_date)} - ${formatDate(cert.valid_until)} (${suffix})`;
 }
+
+let mediaQuery;
+const updateScreen = () => {
+  isSmallScreen.value = mediaQuery.matches;
+};
+
+onMounted(() => {
+  mediaQuery = window.matchMedia('(max-width: 575.98px)');
+  updateScreen();
+  mediaQuery.addEventListener('change', updateScreen);
+});
+
+onUnmounted(() => {
+  mediaQuery.removeEventListener('change', updateScreen);
+});
 
 onMounted(async () => {
   try {
@@ -97,7 +113,7 @@ onMounted(async () => {
       <div class="card tile fade-in shadow-sm">
         <div class="card-body">
           <h5 class="card-title mb-3">Действующее заключение</h5>
-          <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
             <div class="col">
               <div class="form-floating">
                 <input id="certInn" type="text" class="form-control" :value="certificate.inn" readonly placeholder="ИНН" />
@@ -134,12 +150,13 @@ onMounted(async () => {
             <p class="mb-2 fw-semibold">Файлы</p>
             <div
               v-if="files.length"
-              class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2"
+              class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2"
             >
               <div v-for="f in files" :key="f.id" class="col">
                 <a
                   :href="f.url"
                   target="_blank"
+                  rel="noopener"
                   class="file-tile d-flex align-items-center gap-2 text-decoration-none text-body p-2 border rounded w-100"
                 >
                   <i class="bi bi-file-earmark"></i>
@@ -159,42 +176,68 @@ onMounted(async () => {
     <div class="card tile fade-in shadow-sm mt-4">
       <div class="card-body">
         <h5 class="card-title mb-3">Архив медицинских заключений</h5>
-        <div v-if="history.length" class="table-responsive">
-          <table class="table table-striped mb-0">
-            <thead>
-              <tr>
-                <th>Номер</th>
-                <th>Учреждение</th>
-                <th>Период действия</th>
-                <th>Файлы</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in history" :key="item.id">
-                <td>{{ item.certificate_number }}</td>
-                <td>{{ item.organization }}</td>
-                <td class="text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
-                <td>
-                  <div
-                    v-if="item.files && item.files.length"
-                    class="d-flex flex-wrap gap-2"
-                  >
-                    <a
-                      v-for="f in item.files"
-                      :key="f.id"
-                      :href="f.url"
-                      target="_blank"
-                      class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+        <div v-if="history.length">
+          <div v-if="!isSmallScreen" class="table-responsive">
+            <table class="table table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Номер</th>
+                  <th>Учреждение</th>
+                  <th>Период действия</th>
+                  <th>Файлы</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in history" :key="item.id">
+                  <td>{{ item.certificate_number }}</td>
+                  <td>{{ item.organization }}</td>
+                  <td class="text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
+                  <td>
+                    <div
+                      v-if="item.files && item.files.length"
+                      class="d-flex flex-wrap gap-2"
                     >
-                      <i class="bi bi-file-earmark"></i>
-                      <span class="text-break">{{ f.name }}</span>
-                    </a>
-                  </div>
-                  <span v-else class="text-muted">—</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                      <a
+                        v-for="f in item.files"
+                        :key="f.id"
+                        :href="f.url"
+                        target="_blank"
+                        rel="noopener"
+                        class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                      >
+                        <i class="bi bi-file-earmark"></i>
+                        <span class="text-break">{{ f.name }}</span>
+                      </a>
+                    </div>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="d-flex flex-column gap-3">
+            <div v-for="item in history" :key="item.id" class="border rounded p-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">{{ item.certificate_number }}</span>
+                <span class="text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</span>
+              </div>
+              <div class="mb-2">{{ item.organization }}</div>
+              <div v-if="item.files && item.files.length" class="d-flex flex-wrap gap-2">
+                <a
+                  v-for="f in item.files"
+                  :key="f.id"
+                  :href="f.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                >
+                  <i class="bi bi-file-earmark"></i>
+                  <span class="text-break">{{ f.name }}</span>
+                </a>
+              </div>
+              <span v-else class="text-muted small">—</span>
+            </div>
+          </div>
         </div>
         <p v-else class="text-muted mb-0">Нет медицинских заключений с истекшим сроком действия</p>
       </div>
