@@ -150,6 +150,17 @@ watch(
   }
 );
 
+watch(
+  [() => trainingForm.value.start_at, () => trainingForm.value.end_at],
+  ([start, end]) => {
+    if (start && end && new Date(end) <= new Date(start)) {
+      trainingFormError.value = 'Время окончания должно быть позже начала';
+    } else {
+      trainingFormError.value = '';
+    }
+  }
+);
+
 async function loadParkingTypes() {
   try {
     const data = await apiFetch('/camp-stadiums/parking-types');
@@ -412,6 +423,12 @@ function openEditTraining(t) {
 }
 
 async function saveTraining() {
+  if (
+    new Date(trainingForm.value.end_at) <= new Date(trainingForm.value.start_at)
+  ) {
+    trainingFormError.value = 'Время окончания должно быть позже начала';
+    return;
+  }
   const payload = {
     type_id: trainingForm.value.type_id,
     camp_stadium_id: trainingForm.value.camp_stadium_id,
