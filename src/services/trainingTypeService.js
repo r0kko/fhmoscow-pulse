@@ -79,7 +79,8 @@ async function update(id, data, actorId) {
   if (!type) throw new ServiceError('training_type_not_found', 404);
   await type.update(
     {
-      // name cannot be changed after creation
+      name: data.name ?? type.name,
+      alias: data.name ? generateAlias(data.name) : type.alias,
       default_capacity: data.default_capacity ?? type.default_capacity,
       updated_by: actorId,
     },
@@ -88,10 +89,4 @@ async function update(id, data, actorId) {
   return type;
 }
 
-async function remove(id) {
-  const type = await TrainingType.findByPk(id);
-  if (!type) throw new ServiceError('training_type_not_found', 404);
-  await type.destroy();
-}
-
-export default { listAll, getById, create, update, remove };
+export default { listAll, getById, create, update };

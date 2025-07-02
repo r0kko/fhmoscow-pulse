@@ -52,13 +52,4 @@ export default {
       return sendError(res, err, 404);
     }
   },
-
-  async remove(req, res) {
-    try {
-      await trainingTypeService.remove(req.params.id);
-      return res.status(204).end();
-    } catch (err) {
-      return sendError(res, err, 404);
-    }
-  },
 };
