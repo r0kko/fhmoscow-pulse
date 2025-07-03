@@ -1,5 +1,4 @@
 <script setup>
-import { RouterLink } from 'vue-router';
 
 const props = defineProps({
   training: { type: Object, required: true },
@@ -16,14 +15,13 @@ function formatStart(date) {
       hour: '2-digit',
       minute: '2-digit',
     })
-    .replace(',', ' в');
 }
 
 function durationText(start, end) {
   const diff = (new Date(end) - new Date(start)) / 60000;
   const h = Math.floor(diff / 60);
   const m = Math.round(diff % 60);
-  let out = 'Приблизительно ';
+  let out = '≈ ';
   if (h > 0) out += `${h} час${h > 1 ? 'а' : ''}`;
   if (h > 0 && m > 0) out += ' ';
   if (m > 0) out += `${m} минут`;
