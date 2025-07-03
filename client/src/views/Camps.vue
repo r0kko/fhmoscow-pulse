@@ -222,4 +222,8 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
   padding-bottom: 0.25rem;
   justify-content: flex-start;
 }
+
+.training-scroll .training-card {
+  margin: 0;
+}
 </style>
