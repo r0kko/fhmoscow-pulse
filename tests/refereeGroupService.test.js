@@ -50,3 +50,19 @@ test('setUserGroup restores deleted record', async () => {
   expect(updateMock).toHaveBeenCalledWith({ group_id: 'g1', updated_by: 'admin' });
   expect(createMock).not.toHaveBeenCalled();
 });
+
+test('user can be reassigned after removal', async () => {
+  // soft delete existing assignment
+  findOneMock.mockResolvedValueOnce({ destroy: destroyMock });
+  await service.removeUser('u1');
+  expect(destroyMock).toHaveBeenCalled();
+
+  // assign user to a group again
+  findGroupMock.mockResolvedValue({ id: 'g2' });
+  findUserMock.mockResolvedValue({ id: 'u1' });
+  findOneMock.mockResolvedValueOnce({ deleted_at: new Date(), restore: restoreMock, update: updateMock });
+  await service.setUserGroup('u1', 'g2', 'admin');
+  expect(restoreMock).toHaveBeenCalled();
+  expect(updateMock).toHaveBeenCalledWith({ group_id: 'g2', updated_by: 'admin' });
+  expect(createMock).not.toHaveBeenCalled();
+});
