@@ -86,32 +86,35 @@ function formatDeadline(start) {
         :class="badgeClass(training.type?.alias)"
         >{{ training.type?.name }}</span
       >
-      <p class="small mb-2">Мест: {{ seatStatus(training) }}</p>
-      <p
-        v-if="training.coaches && training.coaches.length"
-        class="small mb-1"
-      >
-        Тренер<span v-if="training.coaches.length > 1">(-ы)</span>:
-        <span v-for="(c, i) in training.coaches" :key="c.id">
-          <a
-            :href="`tel:+${c.phone}`"
-            class="text-reset text-decoration-none"
-            >{{ shortName(c) }}</a
-          ><span v-if="i < training.coaches.length - 1">, </span>
-        </span>
+      <p class="small mb-1">
+        Тренер<span v-if="training.coaches && training.coaches.length > 1"
+          >(-ы)</span
+        >:
+        <template v-if="training.coaches && training.coaches.length">
+          <span v-for="(c, i) in training.coaches" :key="c.id">
+            <a
+              :href="`tel:+${c.phone}`"
+              class="text-reset text-decoration-none"
+              >{{ shortName(c) }}</a
+            ><span v-if="i < training.coaches.length - 1">, </span>
+          </span>
+        </template>
+        <span v-else>не назначен</span>
       </p>
-      <p
-        v-if="training.equipment_managers && training.equipment_managers.length"
-        class="small mb-2"
-      >
+      <p class="small mb-2">
         Инвентарь:
-        <span v-for="(m, i) in training.equipment_managers" :key="m.id">
-          <a
-            :href="`tel:+${m.phone}`"
-            class="text-reset text-decoration-none"
-            >{{ shortName(m) }}</a
-          ><span v-if="i < training.equipment_managers.length - 1">, </span>
-        </span>
+        <template
+          v-if="training.equipment_managers && training.equipment_managers.length"
+        >
+          <span v-for="(m, i) in training.equipment_managers" :key="m.id">
+            <a
+              :href="`tel:+${m.phone}`"
+              class="text-reset text-decoration-none"
+              >{{ shortName(m) }}</a
+            ><span v-if="i < training.equipment_managers.length - 1">, </span>
+          </span>
+        </template>
+        <span v-else>не назначен</span>
       </p>
       <button
         v-if="training.registered && showCancel"
@@ -125,8 +128,15 @@ function formatDeadline(start) {
         @click="emit('register', training.id)"
       >
         <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-        {{ registrationNotStarted ? 'Регистрация не началась' : 'Записаться' }}
+        <small>
+          {{
+            registrationNotStarted
+              ? 'Регистрация не началась'
+              : 'Зарегистрироваться'
+          }}
+        </small>
       </button>
+      <p class="small mt-2 mb-0">Мест: {{ seatStatus(training) }}</p>
     </div>
   </div>
 </template>
