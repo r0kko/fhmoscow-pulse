@@ -6,6 +6,7 @@ import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 import { typeBadgeClass } from '../utils/training.js';
+import Toast from 'bootstrap/js/dist/toast';
 
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
@@ -23,6 +24,9 @@ const loading = ref(true);
 const error = ref('');
 const activeTab = ref('register');
 const registering = ref(null);
+const toastRef = ref(null);
+const toastMessage = ref('');
+let toast;
 
 onMounted(loadAll);
 
@@ -70,6 +74,7 @@ async function register(id) {
   try {
     await apiFetch(`/camp-trainings/${id}/register`, { method: 'POST' });
     await loadAll();
+    showToast('Регистрация успешна. Тренировка доступна в разделе «Мои тренировки»');
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -171,6 +176,14 @@ function formatTime(date) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function showToast(message) {
+  toastMessage.value = message;
+  if (!toast) {
+    toast = new Toast(toastRef.value);
+  }
+  toast.show();
 }
 </script>
 
@@ -312,6 +325,17 @@ function formatTime(date) {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div
+        ref="toastRef"
+        class="toast text-bg-secondary"
+        role="status"
+        data-bs-delay="1500"
+        data-bs-autohide="true"
+      >
+        <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
   </div>
