@@ -120,7 +120,7 @@ function formatStart(date) {
               role="img"
               :aria-label="section.title"
             ></i>
-            <h5 class="card-title">{{ section.title }}</h5>
+            <h6 class="card-title">{{ section.title }}</h6>
             <p v-if="!section.to" class="text-muted small mb-0">Скоро</p>
           </div>
           </component>
@@ -133,7 +133,7 @@ function formatStart(date) {
                 role="img"
                 aria-label="Администрирование"
               ></i>
-              <h5 class="card-title">Администрирование</h5>
+              <h6 class="card-title">Администрирование</h6>
             </div>
           </RouterLink>
         </div>
