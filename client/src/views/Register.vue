@@ -87,6 +87,7 @@ async function finish() {
           />
           <label for="email">Email</label>
         </div>
+        <p class="form-text mt-1">с использованием существующей учетной записи в личном кабинете судьи</p>
         <button type="submit" class="btn btn-brand w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Отправить код
