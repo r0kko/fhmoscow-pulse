@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
+import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 
 const activeTab = ref('stadiums');
 
@@ -75,6 +76,7 @@ const trainingEditing = ref(null);
 const trainingModalRef = ref(null);
 let trainingModal;
 const trainingFormError = ref('');
+const assignmentsRef = ref(null);
 
 const form = ref({
   name: '',
@@ -121,6 +123,8 @@ watch(activeTab, (val) => {
   } else if (val === 'trainings' && !trainings.value.length) {
     loadTrainings();
     if (!stadiumOptions.value.length) loadStadiumOptions();
+  } else if (val === 'judges') {
+    assignmentsRef.value?.refresh();
   }
 });
 
@@ -499,6 +503,11 @@ async function removeTraining(t) {
               Тренировки
             </button>
           </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
+              Судьи
+            </button>
+          </li>
         </ul>
       </div>
     </div>
@@ -758,6 +767,10 @@ async function removeTraining(t) {
         </div>
       </div>
     </div>
+  </div>
+
+  <div v-if="activeTab === 'judges'" class="mb-4">
+    <RefereeGroupAssignments ref="assignmentsRef" />
   </div>
 
   <div ref="modalRef" class="modal fade" tabindex="-1">
