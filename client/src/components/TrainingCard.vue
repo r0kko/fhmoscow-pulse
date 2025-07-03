@@ -1,6 +1,7 @@
 <script setup>
 
 import { computed } from 'vue';
+import { typeBadgeClass as badgeClass } from '../utils/training.js';
 
 const props = defineProps({
   training: { type: Object, required: true },
@@ -19,19 +20,6 @@ function formatStart(date) {
     minute: '2-digit',
   });
   return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-function badgeClass(alias) {
-  if (!alias) return 'bg-secondary';
-  switch (alias) {
-    case 'ICE':
-      return 'bg-brand';
-    case 'BASIC_FIT':
-      return 'bg-success';
-    case 'THEORY':
-    default:
-      return 'bg-secondary';
-  }
 }
 
 function durationText(start, end) {

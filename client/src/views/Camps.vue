@@ -5,6 +5,7 @@ import { apiFetch } from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
+import { typeBadgeClass } from '../utils/training.js';
 
 const trainings = ref([]);
 const mine = ref([]);
@@ -223,7 +224,9 @@ function formatTime(date) {
                     <div>
                       <i class="bi bi-clock me-1" aria-hidden="true"></i>
                       {{ formatTime(t.start_at) }}
-                      <span class="ms-2">{{ t.type?.name }}</span>
+                      <span class="badge ms-2" :class="typeBadgeClass(t.type?.alias)">
+                        {{ t.type?.name }}
+                      </span>
                     </div>
                     <div class="text-end">
                       <div class="fw-semibold">{{ t.stadium?.name }}</div>
