@@ -2,25 +2,21 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findByPkMock = jest.fn();
 const updateMock = jest.fn();
-const statusFindMock = jest.fn();
 
 const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
   end_at: new Date('2024-01-01T12:00:00Z'),
   update: updateMock,
-  status_id: 's1',
 };
 
 beforeEach(() => {
   findByPkMock.mockReset();
   updateMock.mockReset();
-  statusFindMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Training: { findByPk: findByPkMock },
-  TrainingStatus: { findOne: statusFindMock },
   TrainingType: {},
   CampStadium: {},
 }));

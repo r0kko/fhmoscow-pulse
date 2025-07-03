@@ -12,7 +12,6 @@ Training.init(
       primaryKey: true,
     },
     type_id: { type: DataTypes.UUID, allowNull: false },
-    status_id: { type: DataTypes.UUID, allowNull: false },
     start_at: { type: DataTypes.DATE, allowNull: false },
     end_at: { type: DataTypes.DATE, allowNull: false },
     capacity: { type: DataTypes.INTEGER },

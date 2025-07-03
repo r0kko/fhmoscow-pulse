@@ -6,22 +6,21 @@ function sanitize(obj) {
     capacity,
     camp_stadium_id,
     TrainingType,
-    TrainingStatus,
     CampStadium,
   } = obj;
-  const res = { id, start_at, end_at, capacity, camp_stadium_id };
+  const res = {
+    id,
+    start_at,
+    end_at,
+    capacity,
+    camp_stadium_id,
+    registration_open: obj.registration_open,
+  };
   if (TrainingType) {
     res.type = {
       id: TrainingType.id,
       name: TrainingType.name,
       alias: TrainingType.alias,
-    };
-  }
-  if (TrainingStatus) {
-    res.status = {
-      id: TrainingStatus.id,
-      name: TrainingStatus.name,
-      alias: TrainingStatus.alias,
     };
   }
   if (CampStadium) {

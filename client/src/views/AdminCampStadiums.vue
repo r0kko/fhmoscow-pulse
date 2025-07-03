@@ -63,12 +63,10 @@ const trainingsTotal = ref(0);
 const trainingsPage = ref(1);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
-const statuses = ref([]);
 const stadiumOptions = ref([]);
 const trainingForm = ref({
   type_id: '',
   camp_stadium_id: '',
-  status: '',
   start_at: '',
   end_at: '',
   capacity: '',
@@ -119,7 +117,6 @@ onMounted(() => {
   loadParkingTypes();
   loadTypes();
   loadTrainings();
-  loadStatuses();
   loadStadiumOptions();
   });
 
@@ -138,7 +135,6 @@ watch(activeTab, (val) => {
     loadTypes();
   } else if (val === 'trainings' && !trainings.value.length) {
     loadTrainings();
-    if (!statuses.value.length) loadStatuses();
     if (!stadiumOptions.value.length) loadStadiumOptions();
   }
 });
@@ -390,14 +386,6 @@ async function loadTrainings() {
   }
 }
 
-async function loadStatuses() {
-  try {
-    const data = await apiFetch('/camp-trainings/statuses');
-    statuses.value = data.statuses;
-  } catch (_) {
-    statuses.value = [];
-  }
-}
 
 async function loadStadiumOptions() {
   try {
@@ -414,12 +402,10 @@ function openCreateTraining() {
     trainingModal = new Modal(trainingModalRef.value)
   }
   trainingEditing.value = null;
-  if (!statuses.value.length) loadStatuses();
   if (!stadiumOptions.value.length) loadStadiumOptions();
   trainingForm.value = {
     type_id: '',
     camp_stadium_id: '',
-    status: statuses.value[0]?.alias || '',
     start_at: '',
     end_at: '',
     capacity: '',
@@ -452,7 +438,6 @@ function openEditTraining(t) {
   trainingForm.value = {
     type_id: t.type?.id || '',
     camp_stadium_id: t.stadium?.id || '',
-    status: t.status?.alias || '',
     start_at: toInputValue(t.start_at),
     end_at: toInputValue(t.end_at),
     capacity: t.capacity || '',
@@ -475,9 +460,6 @@ async function saveTraining() {
     end_at: new Date(trainingForm.value.end_at).toISOString(),
     capacity: trainingForm.value.capacity || undefined,
   };
-  if (trainingEditing.value) {
-    payload.status = trainingForm.value.status;
-  }
   try {
     if (trainingEditing.value) {
       await apiFetch(`/camp-trainings/${trainingEditing.value.id}`, {
@@ -696,7 +678,6 @@ async function removeTraining(t) {
           <th>Начало</th>
           <th>Окончание</th>
           <th class="text-center">Вместимость</th>
-          <th>Статус</th>
           <th></th>
         </tr>
         </thead>
@@ -707,7 +688,6 @@ async function removeTraining(t) {
           <td>{{ formatDateTime(t.start_at) }}</td>
           <td>{{ formatDateTime(t.end_at) }}</td>
           <td class="text-center">{{ t.capacity }}</td>
-          <td>{{ t.status?.name }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
             <button class="btn btn-sm btn-danger" @click="removeTraining(t)">Удалить</button>
@@ -753,12 +733,6 @@ async function removeTraining(t) {
                 <select v-model="trainingForm.camp_stadium_id" class="form-select" required>
                   <option value="" disabled>Выберите стадион</option>
                   <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Статус</label>
-                <select v-model="trainingForm.status" class="form-select" :disabled="!trainingEditing">
-                  <option v-for="s in statuses" :key="s.alias" :value="s.alias">{{ s.name }}</option>
                 </select>
               </div>
               <div class="form-floating mb-3">
