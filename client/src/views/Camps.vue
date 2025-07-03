@@ -98,9 +98,8 @@ function metroNames(address) {
     return '';
   }
   return address.metro
-    .map((m) =>
-      m.distance ? `${m.name} (${m.distance} км)` : m.name
-    )
+    .slice(0, 2)
+    .map((m) => m.name)
     .join(', ');
 }
 
