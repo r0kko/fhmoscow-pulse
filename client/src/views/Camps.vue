@@ -296,4 +296,8 @@ function formatTime(date) {
   padding-bottom: 0.25rem;
   justify-content: flex-start;
 }
+
+.training-scroll .training-card {
+  margin: 0;
+}
 </style>

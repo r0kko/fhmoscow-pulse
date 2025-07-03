@@ -85,7 +85,7 @@ function seatStatus(t) {
 <style scoped>
 .training-card {
   max-width: 20rem;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .training-card .card-title {
