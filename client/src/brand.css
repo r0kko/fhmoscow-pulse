@@ -97,3 +97,9 @@ body {
   background-color: #f0f1f3;
 }
 
+/* allow training type badges to wrap on narrow screens */
+.badge-training-type {
+  white-space: normal;
+  word-break: break-word;
+}
+
