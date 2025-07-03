@@ -32,7 +32,10 @@ async function listAvailable(userId, options = {}) {
         through: { attributes: [] },
         where: { id: link.group_id },
       },
-      { model: TrainingRegistration },
+      {
+        model: TrainingRegistration,
+        include: [User, TrainingRole],
+      },
     ],
     order: [['start_at', 'DESC']],
     distinct: true,
@@ -181,7 +184,10 @@ async function listUpcomingByUser(userId, options = {}) {
       TrainingType,
       { model: CampStadium, include: [Address] },
       Season,
-      { model: TrainingRegistration, where: { user_id: userId } },
+      {
+        model: TrainingRegistration,
+        include: [User, TrainingRole],
+      },
     ],
     where: { start_at: { [Op.gte]: now } },
     order: [['start_at', 'ASC']],
@@ -189,8 +195,11 @@ async function listUpcomingByUser(userId, options = {}) {
     offset,
     distinct: true,
   });
+  const mine = rows.filter((t) =>
+    t.TrainingRegistrations.some((r) => r.user_id === userId)
+  );
   return {
-    rows: rows.map((t) => {
+    rows: mine.map((t) => {
       const registeredCount = t.TrainingRegistrations.length;
       const plain = t.get();
       const available =
@@ -207,7 +216,7 @@ async function listUpcomingByUser(userId, options = {}) {
         user_registered: true,
       };
     }),
-    count,
+    count: mine.length,
   };
 }
 

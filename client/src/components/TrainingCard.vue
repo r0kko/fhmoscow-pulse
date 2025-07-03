@@ -2,6 +2,14 @@
 
 import { computed } from 'vue';
 
+function shortName(u) {
+  const initials = [u.first_name, u.patronymic]
+    .filter(Boolean)
+    .map((n) => n.charAt(0) + '.')
+    .join(' ');
+  return `${u.last_name} ${initials}`.trim();
+}
+
 const props = defineProps({
   training: { type: Object, required: true },
   loading: { type: Boolean, default: false },
@@ -91,8 +99,31 @@ function formatDeadline(start) {
         >{{ training.type?.name }}</span
       >
       <p class="small mb-2">Мест: {{ seatStatus(training) }}</p>
-      <p v-if="showRegistrationDeadline" class="small mb-2 text-muted">
-        Запись до {{ formatDeadline(training.start_at) }}
+      <p
+        v-if="training.coaches && training.coaches.length"
+        class="small mb-1"
+      >
+        Тренер<span v-if="training.coaches.length > 1">(-ы)</span>:
+        <span v-for="(c, i) in training.coaches" :key="c.id">
+          <a
+            :href="`tel:+${c.phone}`"
+            class="text-reset text-decoration-none"
+            >{{ shortName(c) }}</a
+          ><span v-if="i < training.coaches.length - 1">, </span>
+        </span>
+      </p>
+      <p
+        v-if="training.equipment_managers && training.equipment_managers.length"
+        class="small mb-2"
+      >
+        Инвентарь:
+        <span v-for="(m, i) in training.equipment_managers" :key="m.id">
+          <a
+            :href="`tel:+${m.phone}`"
+            class="text-reset text-decoration-none"
+            >{{ shortName(m) }}</a
+          ><span v-if="i < training.equipment_managers.length - 1">, </span>
+        </span>
       </p>
       <button
         v-if="training.registered && showCancel"

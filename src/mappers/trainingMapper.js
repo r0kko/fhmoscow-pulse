@@ -1,4 +1,5 @@
 import campStadiumMapper from './campStadiumMapper.js';
+import userMapper from './userMapper.js';
 
 function sanitize(obj) {
   const {
@@ -45,6 +46,16 @@ function sanitize(obj) {
   }
   if (RefereeGroups) {
     res.groups = RefereeGroups.map((g) => ({ id: g.id, name: g.name }));
+  }
+  if (obj.TrainingRegistrations) {
+    const coaches = obj.TrainingRegistrations.filter(
+      (r) => r.TrainingRole?.alias === 'COACH' && r.User
+    ).map((r) => userMapper.toPublic(r.User));
+    if (coaches.length) res.coaches = coaches;
+    const inventory = obj.TrainingRegistrations.filter(
+      (r) => r.TrainingRole?.alias === 'EQUIPMENT_MANAGER' && r.User
+    ).map((r) => userMapper.toPublic(r.User));
+    if (inventory.length) res.equipment_managers = inventory;
   }
   return res;
 }

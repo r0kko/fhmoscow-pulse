@@ -6,6 +6,14 @@ import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 
+function shortName(u) {
+  const initials = [u.first_name, u.patronymic]
+    .filter(Boolean)
+    .map((n) => n.charAt(0) + '.')
+    .join(' ');
+  return `${u.last_name} ${initials}`.trim();
+}
+
 const trainings = ref([]);
 const mine = ref([]);
 const page = ref(1);
@@ -231,6 +239,18 @@ function formatTime(date) {
                         {{ t.stadium?.address?.result }}
                       </div>
                     </div>
+                  </div>
+                  <div v-if="t.coaches && t.coaches.length" class="small mt-1">
+                    Тренер<span v-if="t.coaches.length > 1">(-ы)</span>:
+                    <span v-for="(c, i) in t.coaches" :key="c.id">
+                      <a :href="`tel:+${c.phone}`" class="text-reset text-decoration-none">{{ shortName(c) }}</a><span v-if="i < t.coaches.length - 1">, </span>
+                    </span>
+                  </div>
+                  <div v-if="t.equipment_managers && t.equipment_managers.length" class="small">
+                    Инвентарь:
+                    <span v-for="(m, i) in t.equipment_managers" :key="m.id">
+                      <a :href="`tel:+${m.phone}`" class="text-reset text-decoration-none">{{ shortName(m) }}</a><span v-if="i < t.equipment_managers.length - 1">, </span>
+                    </span>
                   </div>
                 </li>
               </ul>
