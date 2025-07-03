@@ -389,9 +389,10 @@ async function loadStadiumOptions() {
   }
 }
 
-async function loadRefereeGroups() {
+async function loadRefereeGroups(seasonId) {
   try {
     const params = new URLSearchParams({ page: 1, limit: 100 });
+    if (seasonId) params.set('season_id', seasonId);
     const data = await apiFetch(`/referee-groups?${params}`);
     refereeGroups.value = data.groups;
   } catch (_) {
@@ -405,7 +406,7 @@ function openCreateTraining() {
   }
   trainingEditing.value = null;
   if (!stadiumOptions.value.length) loadStadiumOptions();
-  if (!refereeGroups.value.length) loadRefereeGroups();
+  loadRefereeGroups();
   trainingForm.value = {
     type_id: '',
     camp_stadium_id: '',
@@ -439,7 +440,7 @@ function openEditTraining(t) {
     trainingModal = new Modal(trainingModalRef.value)
   }
   trainingEditing.value = t;
-  if (!refereeGroups.value.length) loadRefereeGroups();
+  loadRefereeGroups(t.season?.id);
   trainingForm.value = {
     type_id: t.type?.id || '',
     camp_stadium_id: t.stadium?.id || '',
@@ -781,10 +782,17 @@ async function removeTraining(t) {
                 <label for="trCap">Вместимость</label>
               </div>
               <div class="mb-3">
-                <label class="form-label">Группы судей</label>
-                <select v-model="trainingForm.groups" multiple class="form-select">
-                  <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </select>
+                <label class="form-label d-block">Группы судей</label>
+                <div v-for="g in refereeGroups" :key="g.id" class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    :id="`trg-${g.id}`"
+                    :value="g.id"
+                    v-model="trainingForm.groups"
+                  />
+                  <label class="form-check-label" :for="`trg-${g.id}`">{{ g.name }}</label>
+                </div>
               </div>
             </div>
             <div class="modal-footer">

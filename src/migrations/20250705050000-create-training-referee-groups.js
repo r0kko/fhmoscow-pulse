@@ -48,6 +48,7 @@ module.exports = {
       fields: ['training_id', 'group_id'],
       type: 'unique',
       name: 'uq_training_referee_group_training_group',
+      where: { deleted_at: null },
     });
   },
 

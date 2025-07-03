@@ -11,8 +11,11 @@ async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
+  const where = {};
+  if (options.season_id) where.season_id = options.season_id;
   return RefereeGroup.findAndCountAll({
     include: [Season],
+    where,
     order: [['name', 'ASC']],
     limit,
     offset,

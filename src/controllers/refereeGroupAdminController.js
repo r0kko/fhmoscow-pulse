@@ -6,10 +6,11 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', season_id } = req.query;
     const { rows, count } = await refereeGroupService.listAll({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
+      season_id,
     });
     return res.json({ groups: rows.map(mapper.toPublic), total: count });
   },
