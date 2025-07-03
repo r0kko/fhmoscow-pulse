@@ -127,6 +127,7 @@ npm run format      # format with Prettier
 
 ```bash
 npm test
+npm run test:coverage
 ```
 
 ### User management API
