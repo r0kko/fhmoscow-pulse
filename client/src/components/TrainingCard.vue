@@ -84,8 +84,10 @@ function seatStatus(t) {
 
 <style scoped>
 .training-card {
-  max-width: 20rem;
+  width: clamp(16rem, 75vw, 20rem);
   margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .training-card .card-title {

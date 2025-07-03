@@ -220,7 +220,7 @@ function formatTime(date) {
                   :key="t.id"
                   class="list-group-item"
                 >
-                  <div class="d-flex justify-content-between">
+                  <div class="d-flex flex-column flex-sm-row justify-content-between">
                     <div>
                       <i class="bi bi-clock me-1" aria-hidden="true"></i>
                       {{ formatTime(t.start_at) }}
@@ -256,6 +256,8 @@ function formatTime(date) {
                     v-if="g.stadium.yandex_url"
                     :href="g.stadium.yandex_url"
                     target="_blank"
+                    rel="noopener"
+                    aria-label="Открыть в Яндекс.Картах"
                     class="ms-2"
                   >
                     <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
@@ -292,6 +294,8 @@ function formatTime(date) {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
   gap: 0.75rem;
   padding-bottom: 0.25rem;
   justify-content: flex-start;
