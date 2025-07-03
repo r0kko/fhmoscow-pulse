@@ -34,6 +34,7 @@ import MedicalCenter from './medicalCenter.js';
 import MedicalExamStatus from './medicalExamStatus.js';
 import MedicalExam from './medicalExam.js';
 import TrainingRegistration from './trainingRegistration.js';
+import TrainingRole from './trainingRole.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -130,6 +131,8 @@ Training.hasMany(TrainingRegistration, { foreignKey: 'training_id' });
 TrainingRegistration.belongsTo(Training, { foreignKey: 'training_id' });
 User.hasMany(TrainingRegistration, { foreignKey: 'user_id' });
 TrainingRegistration.belongsTo(User, { foreignKey: 'user_id' });
+TrainingRole.hasMany(TrainingRegistration, { foreignKey: 'training_role_id' });
+TrainingRegistration.belongsTo(TrainingRole, { foreignKey: 'training_role_id' });
 User.belongsToMany(RefereeGroup, {
   through: RefereeGroupUser,
   foreignKey: 'user_id',
@@ -204,5 +207,6 @@ export {
   MedicalCenter,
   MedicalExamStatus,
   MedicalExam,
+  TrainingRole,
   TrainingRegistration,
 };
