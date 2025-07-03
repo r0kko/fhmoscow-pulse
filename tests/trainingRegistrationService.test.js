@@ -89,7 +89,7 @@ test('register restores deleted registration', async () => {
   findTrainingMock.mockResolvedValue(training);
   findGroupUserMock.mockResolvedValue({ user_id: 'u1', group_id: 'g1' });
   findRegMock.mockResolvedValue({
-    deleted_at: new Date(),
+    deletedAt: new Date(),
     restore: restoreMock,
     update: updateMock,
   });
@@ -136,7 +136,7 @@ test('add restores deleted registration', async () => {
   findTrainingMock.mockResolvedValue(tr);
   findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] });
   findRegMock.mockResolvedValue({
-    deleted_at: new Date(),
+    deletedAt: new Date(),
     restore: restoreMock,
     update: updateMock,
   });

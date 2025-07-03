@@ -23,7 +23,7 @@ async function upsertRegistration(trainingId, userId, roleId, actorId) {
   });
 
   if (existing) {
-    if (!existing.deleted_at) {
+    if (!existing.deletedAt) {
       throw new ServiceError('already_registered');
     }
     await existing.restore();
