@@ -3,7 +3,7 @@
     <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2" to="/">
         <img :src="logo" alt="FHM" height="30" />
-        Отдел организации судейства
+        ФХМ
       </RouterLink>
       <div class="d-flex align-items-center ms-auto">
         <span class="navbar-text me-3 d-none d-md-inline" v-if="user">
