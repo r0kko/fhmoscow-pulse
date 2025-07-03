@@ -26,7 +26,7 @@ async function listAvailable(userId, options = {}) {
     include: [
       TrainingType,
       { model: CampStadium, include: [Address] },
-      Season,
+      { model: Season, where: { active: true }, required: true },
       {
         model: RefereeGroup,
         through: { attributes: [] },
@@ -71,6 +71,7 @@ async function register(userId, trainingId, actorId) {
         { model: RefereeGroup, through: { attributes: [] } },
         { model: TrainingRegistration },
         { model: CampStadium, include: [Address] },
+        { model: Season, where: { active: true }, required: true },
       ],
     }),
     RefereeGroupUser.findOne({ where: { user_id: userId } }),
@@ -119,7 +120,9 @@ async function unregister(userId, trainingId) {
     where: { training_id: trainingId, user_id: userId },
   });
   if (!registration) throw new ServiceError('registration_not_found', 404);
-  const training = await Training.findByPk(trainingId);
+  const training = await Training.findByPk(trainingId, {
+    include: [{ model: Season, where: { active: true }, required: true }],
+  });
   const count = await TrainingRegistration.count({
     where: { training_id: trainingId },
   });
@@ -135,6 +138,7 @@ async function add(trainingId, userId, roleId, actorId) {
       include: [
         { model: TrainingRegistration },
         { model: CampStadium, include: [Address] },
+        { model: Season, where: { active: true }, required: true },
       ],
     }),
     User.findByPk(userId, { include: [Role] }),
@@ -180,7 +184,7 @@ async function listUpcomingByUser(userId, options = {}) {
     include: [
       TrainingType,
       { model: CampStadium, include: [Address] },
-      Season,
+      { model: Season, where: { active: true }, required: true },
       { model: TrainingRegistration, where: { user_id: userId } },
     ],
     where: { start_at: { [Op.gte]: now } },
@@ -234,7 +238,9 @@ async function remove(trainingId, userId) {
   if (!registration) throw new ServiceError('registration_not_found', 404);
   await registration.destroy();
   const [training, user] = await Promise.all([
-    Training.findByPk(trainingId),
+    Training.findByPk(trainingId, {
+      include: [{ model: Season, where: { active: true }, required: true }],
+    }),
     User.findByPk(userId),
   ]);
   if (user && training) {

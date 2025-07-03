@@ -172,6 +172,13 @@ test('listAll returns trainings ordered by start date', async () => {
       order: [['start_at', 'ASC']],
       limit: 5,
       offset: 5,
+      include: expect.arrayContaining([
+        expect.objectContaining({
+          model: expect.anything(),
+          where: { active: true },
+          required: true,
+        }),
+      ]),
     })
   );
 });

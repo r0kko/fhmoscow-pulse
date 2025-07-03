@@ -29,7 +29,7 @@ async function listAll(options = {}) {
     include: [
       TrainingType,
       { model: CampStadium, include: [Address] },
-      Season,
+      { model: Season, where: { active: true }, required: true },
       { model: RefereeGroup, through: { attributes: [] } },
       { model: TrainingRegistration },
     ],
@@ -56,7 +56,7 @@ async function getById(id) {
     include: [
       TrainingType,
       { model: CampStadium, include: [Address] },
-      Season,
+      { model: Season, where: { active: true }, required: true },
       { model: RefereeGroup, through: { attributes: [] } },
     ],
   });
