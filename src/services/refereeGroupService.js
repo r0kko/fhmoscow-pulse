@@ -121,7 +121,7 @@ async function setUserGroup(userId, groupId, actorId) {
 
 async function removeUser(userId) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
-  if (link) await link.destroy();
+  if (link) await link.destroy({ force: true });
 }
 
 async function remove(id) {
