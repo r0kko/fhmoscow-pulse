@@ -40,11 +40,11 @@ function seatStatus(t) {
 
 <template>
   <div class="card h-100 training-card">
-    <div class="card-body d-flex flex-column">
-      <h5 class="card-title mb-2">{{ formatStart(training.start_at) }}</h5>
-      <p class="text-muted mb-2">{{ durationText(training.start_at, training.end_at) }}</p>
-      <span class="badge bg-brand align-self-start mb-2">{{ training.type?.name }}</span>
-      <p class="small mb-3">Мест: {{ seatStatus(training) }}</p>
+    <div class="card-body p-2 d-flex flex-column">
+      <h6 class="card-title mb-1">{{ formatStart(training.start_at) }}</h6>
+      <p class="text-muted mb-1 small">{{ durationText(training.start_at, training.end_at) }}</p>
+      <span class="badge bg-brand align-self-start mb-1">{{ training.type?.name }}</span>
+      <p class="small mb-2">Мест: {{ seatStatus(training) }}</p>
       <button
         v-if="training.registered"
         class="btn btn-sm btn-secondary mt-auto"
@@ -63,5 +63,13 @@ function seatStatus(t) {
 <style scoped>
 .training-card {
   width: 100%;
+}
+
+.training-card .card-title {
+  font-size: 1rem;
+}
+
+.training-card .card-body {
+  padding: 0.5rem;
 }
 </style>
