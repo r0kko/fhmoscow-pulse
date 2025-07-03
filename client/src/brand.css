@@ -18,6 +18,19 @@
   color: var(--brand-color);
 }
 
+.bg-brand {
+  background-color: var(--brand-color) !important;
+  color: #fff !important;
+}
+
+.text-brand {
+  color: var(--brand-color) !important;
+}
+
+.border-brand {
+  border-color: var(--brand-color) !important;
+}
+
 /*
  * Use corporate color for Bootstrap "pills" navigation
  * on the profile page tabs.
