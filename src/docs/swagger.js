@@ -17,8 +17,8 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Local server',
+        url: process.env.BASE_URL || 'http://localhost:3000',
+        description: process.env.BASE_URL ? 'Production server' : 'Local server',
       },
     ],
     components: {

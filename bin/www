@@ -4,6 +4,8 @@
  * Module dependencies.
  */
 import http from 'http';
+import https from 'https';
+import fs from 'fs';
 
 import debugLib from 'debug';
 
@@ -24,9 +26,18 @@ const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 /**
- * Create HTTP server.
+ * Create HTTP or HTTPS server.
  */
-const server = http.createServer(app);
+let server;
+if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
+  const options = {
+    cert: fs.readFileSync(process.env.SSL_CERT_PATH),
+    key: fs.readFileSync(process.env.SSL_KEY_PATH),
+  };
+  server = https.createServer(options, app);
+} else {
+  server = http.createServer(app);
+}
 
 /**
  * Listen on provided port, on all network interfaces.

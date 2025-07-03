@@ -85,6 +85,10 @@ DADATA_SECRET=your_dadata_secret
 # RATE_LIMIT_WINDOW_MS=900000
 # RATE_LIMIT_MAX=100
 # ALLOWED_ORIGINS=http://localhost:5173,http://example.com
+# BASE_URL=https://pulse.fhmoscow.com
+# COOKIE_DOMAIN=pulse.fhmoscow.com
+# SSL_CERT_PATH=/etc/ssl/pulse/fullchain.pem
+# SSL_KEY_PATH=/etc/ssl/pulse/privkey.pem
 ```
 
 Приложение отправляет HTML-письма для подтверждения электронной почты и сброса
@@ -107,6 +111,23 @@ The API will be available at `http://localhost:3000` and Swagger docs at `http:/
 The frontend will be served at `http://localhost:5173`.
 
 On container start, migrations and seeders are run automatically.
+
+### HTTPS deployment
+
+For deployment on `https://pulse.fhmoscow.com` configure the following
+environment variables in `.env`:
+
+```bash
+BASE_URL=https://pulse.fhmoscow.com
+COOKIE_DOMAIN=pulse.fhmoscow.com
+ALLOWED_ORIGINS=https://pulse.fhmoscow.com
+SSL_CERT_PATH=/etc/ssl/pulse/fullchain.pem
+SSL_KEY_PATH=/etc/ssl/pulse/privkey.pem
+```
+
+When `SSL_CERT_PATH` and `SSL_KEY_PATH` are provided the server starts in
+HTTPS mode using the specified certificate. The client build should be configured
+with `VITE_API_BASE=https://pulse.fhmoscow.com`.
 
 ## Local development
 
