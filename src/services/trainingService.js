@@ -35,7 +35,7 @@ async function listAll(options = {}) {
     ],
     distinct: true,
     subQuery: false,
-    order: [['start_at', 'DESC']],
+    order: [['start_at', 'ASC']],
     limit,
     offset,
   });

@@ -1,5 +1,6 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
+const findAndCountAllMock = jest.fn();
 const findByPkMock = jest.fn();
 const createMock = jest.fn();
 const updateMock = jest.fn();
@@ -15,6 +16,7 @@ const trainingInstance = {
 };
 
 beforeEach(() => {
+  findAndCountAllMock.mockReset();
   findByPkMock.mockReset();
   createMock.mockReset();
   updateMock.mockReset();
@@ -26,7 +28,11 @@ beforeEach(() => {
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  Training: { findByPk: findByPkMock, create: createMock },
+  Training: {
+    findAndCountAll: findAndCountAllMock,
+    findByPk: findByPkMock,
+    create: createMock,
+  },
   TrainingType: {},
   CampStadium: {},
   Address: {},
@@ -156,5 +162,17 @@ test('create rejects mismatched group season', async () => {
       'admin'
     )
   ).rejects.toThrow('invalid_group_season');
+});
+
+test('listAll returns trainings ordered by start date', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listAll({ page: 2, limit: 5 });
+  expect(findAndCountAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      order: [['start_at', 'ASC']],
+      limit: 5,
+      offset: 5,
+    })
+  );
 });
 
