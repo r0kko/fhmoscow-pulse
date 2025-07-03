@@ -9,7 +9,9 @@ const showLayout = computed(() => !route.matched.some((r) => r.meta.hideLayout))
 const mainClass = computed(() => {
   if (!showLayout.value) return 'flex-grow-1'
   const base = 'flex-grow-1 py-3'
-  return route.meta.fluid ? `${base} container-fluid` : `${base} container`
+  return route.meta.fluid
+    ? `${base} container-fluid px-0`
+    : `${base} container`
 })
 </script>
 
