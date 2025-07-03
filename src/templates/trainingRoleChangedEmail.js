@@ -27,7 +27,9 @@ export function renderTrainingRoleChangedEmail(training, role) {
     : '';
   const htmlAddress = address
     ? `<p style="font-size:16px;margin:0 0 16px;">Место проведения: ${address}${
-        yandexUrl ? ` (<a href="${yandexUrl}" target="_blank">Яндекс.Карты</a>)` : ''
+        yandexUrl
+          ? ` (<a href="${yandexUrl}" target="_blank">Яндекс.Карты</a>)`
+          : ''
       }.</p>`
     : '';
   const html = `

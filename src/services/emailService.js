@@ -73,7 +73,10 @@ export async function sendTrainingRegistrationCancelledEmail(user, training) {
 }
 
 export async function sendTrainingRoleChangedEmail(user, training, role) {
-  const { subject, text, html } = renderTrainingRoleChangedEmail(training, role);
+  const { subject, text, html } = renderTrainingRoleChangedEmail(
+    training,
+    role
+  );
   await sendMail(user.email, subject, text, html);
 }
 export default {
