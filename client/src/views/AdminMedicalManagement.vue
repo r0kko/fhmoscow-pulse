@@ -20,7 +20,7 @@ const activeTab = ref('certificates');
     </nav>
     <div class="card tile mb-4">
       <div class="card-body p-2">
-        <ul class="nav nav-tabs mb-0">
+        <ul class="nav nav-tabs nav-fill justify-content-between mb-0">
           <li class="nav-item">
             <button
               class="nav-link"
