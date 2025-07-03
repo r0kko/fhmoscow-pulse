@@ -6,7 +6,7 @@ import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 
-const activeTab = ref('stadiums');
+const activeTab = ref('trainings');
 
 const phoneInput = ref('');
 
@@ -620,8 +620,13 @@ async function removeRegistration(userId) {
       <div class="card-body p-2">
         <ul class="nav nav-pills nav-fill justify-content-between mb-0">
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
-              Стадионы
+            <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
+              Тренировки
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
+              Судьи
             </button>
           </li>
           <li class="nav-item">
@@ -630,13 +635,8 @@ async function removeRegistration(userId) {
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
-              Тренировки
-            </button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
-              Судьи
+            <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
+              Стадионы
             </button>
           </li>
         </ul>
