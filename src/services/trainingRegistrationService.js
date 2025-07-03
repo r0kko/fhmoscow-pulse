@@ -7,6 +7,7 @@ import {
   RefereeGroupUser,
   TrainingRegistration,
   User,
+  Address,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -22,7 +23,7 @@ async function listAvailable(userId, options = {}) {
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      CampStadium,
+      { model: CampStadium, include: [Address] },
       Season,
       {
         model: RefereeGroup,
@@ -110,6 +111,44 @@ async function unregister(userId, trainingId) {
   await registration.destroy();
 }
 
+async function listUpcomingByUser(userId, options = {}) {
+  const { Op } = await import('sequelize');
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const now = new Date();
+  const { rows, count } = await Training.findAndCountAll({
+    include: [
+      TrainingType,
+      { model: CampStadium, include: [Address] },
+      Season,
+      { model: TrainingRegistration, where: { user_id: userId } },
+    ],
+    where: { start_at: { [Op.gte]: now } },
+    order: [['start_at', 'ASC']],
+    limit,
+    offset,
+    distinct: true,
+  });
+  return {
+    rows: rows.map((t) => {
+      const registeredCount = t.TrainingRegistrations.length;
+      const plain = t.get();
+      const available =
+        typeof plain.capacity === 'number'
+          ? Math.max(0, plain.capacity - registeredCount)
+          : null;
+      return {
+        ...plain,
+        available,
+        registration_open: trainingService.isRegistrationOpen(t, registeredCount),
+        user_registered: true,
+      };
+    }),
+    count,
+  };
+}
+
 async function listByTraining(trainingId, options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
@@ -145,6 +184,7 @@ export default {
   listAvailable,
   register,
   unregister,
+  listUpcomingByUser,
   listByTraining,
   remove,
 };

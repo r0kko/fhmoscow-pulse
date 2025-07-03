@@ -21,6 +21,7 @@ router.post(
   controller.create
 );
 router.get('/available', auth, selfController.available);
+router.get('/me/upcoming', auth, selfController.upcoming);
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
 router.put(
   '/:id',

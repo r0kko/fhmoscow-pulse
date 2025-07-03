@@ -1,7 +1,8 @@
 <script setup>
 import { auth } from '../auth.js'
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { apiFetch } from '../api.js'
 
 const sections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
@@ -29,6 +30,36 @@ const greeting = computed(() => {
   if (hour >= 18 && hour < 23) return 'Добрый вечер'
   return 'Доброй ночи'
 })
+
+const upcoming = ref([])
+const loadingUpcoming = ref(true)
+
+onMounted(loadUpcoming)
+
+async function loadUpcoming() {
+  loadingUpcoming.value = true
+  try {
+    const data = await apiFetch('/camp-trainings/me/upcoming?limit=3')
+    upcoming.value = data.trainings || []
+  } catch (_err) {
+    upcoming.value = []
+  } finally {
+    loadingUpcoming.value = false
+  }
+}
+
+function formatStart(date) {
+  const d = new Date(date)
+  const dateStr = d.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+  })
+  const timeStr = d.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return `${dateStr} в ${timeStr}`
+}
 </script>
 
 <template>
@@ -37,10 +68,31 @@ const greeting = computed(() => {
       <h1 class="mb-4 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h1>
-      <div class="card mb-4 text-center">
+      <div class="card mb-4 text-start">
         <div class="card-body">
-          <h5 class="card-title mb-2">Ближайшие события</h5>
-          <p class="card-text text-muted mb-0">Информация скоро будет доступна</p>
+          <h5 class="card-title mb-3">Ближайшие события</h5>
+          <div v-if="loadingUpcoming" class="text-center py-3">
+            <div class="spinner-border" role="status" aria-label="Загрузка">
+              <span class="visually-hidden">Загрузка…</span>
+            </div>
+          </div>
+          <p v-else-if="!upcoming.length" class="text-muted mb-0">У вас нет записей</p>
+          <div v-else class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+            <a
+              v-for="t in upcoming"
+              :key="t.id"
+              :href="t.stadium?.yandex_url"
+              target="_blank"
+              class="col text-decoration-none text-body"
+            >
+              <div class="card h-100">
+                <div class="card-body">
+                  <h6 class="card-title mb-2">{{ formatStart(t.start_at) }}</h6>
+                  <p class="card-text small mb-0">{{ t.stadium?.address?.result }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
         </div>
       </div>
       <div class="card main-tile p-4">
