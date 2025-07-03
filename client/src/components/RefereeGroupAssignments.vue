@@ -80,7 +80,7 @@ defineExpose({ refresh });
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
                 <th>ФИО</th>

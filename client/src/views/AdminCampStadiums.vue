@@ -548,7 +548,7 @@ async function removeTraining(t) {
         </div>
         <div class="card-body p-3">
           <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
+            <table class="table admin-table table-striped align-middle mb-0">
           <thead>
           <tr>
             <th>Название</th>
@@ -618,7 +618,7 @@ async function removeTraining(t) {
       </div>
       <div class="card-body p-3">
         <div class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table admin-table table-striped align-middle mb-0">
         <thead>
         <tr>
           <th>Название</th>
@@ -703,7 +703,7 @@ async function removeTraining(t) {
       </div>
       <div class="card-body p-3">
         <div class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table admin-table table-striped align-middle mb-0">
         <thead>
         <tr>
           <th>Тип</th>

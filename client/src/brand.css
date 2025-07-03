@@ -68,6 +68,16 @@
   box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
 }
 
+/* Ensure admin tables keep a consistent width across tabs */
+.admin-table {
+  width: 100%;
+  table-layout: fixed;
+}
+.admin-table th,
+.admin-table td {
+  word-wrap: break-word;
+}
+
 .skip-link {
   position: absolute;
   top: -40px;
