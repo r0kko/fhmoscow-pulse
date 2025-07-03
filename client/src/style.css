@@ -3,6 +3,10 @@
   line-height: 1.5;
   font-weight: 400;
 
+  --fs-base: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-h1: 2rem;
+
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
@@ -30,8 +34,12 @@ body {
   min-height: 100vh;
 }
 
+html {
+  font-size: var(--fs-base);
+}
+
 h1 {
-  font-size: 3.2em;
+  font-size: var(--fs-h1);
   line-height: 1.1;
 }
 
@@ -39,7 +47,7 @@ button {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
-  font-size: 1em;
+  font-size: var(--fs-base);
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
@@ -63,6 +71,13 @@ button:focus-visible {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+}
+
+@media (max-width: 576px) {
+  :root {
+    --fs-base: 0.9375rem;
+    --fs-h1: 1.75rem;
+  }
 }
 
 @media (prefers-color-scheme: light) {

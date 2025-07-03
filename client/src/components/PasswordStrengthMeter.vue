@@ -51,6 +51,6 @@ const strengthClass = computed(() => {
 
 <style scoped>
 .password-strength-label {
-  font-size: 0.875rem;
+  font-size: var(--fs-sm);
 }
 </style>
