@@ -11,7 +11,6 @@ import {
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
-router.get('/statuses', auth, authorize('ADMIN'), controller.statuses);
 router.post(
   '/',
   auth,

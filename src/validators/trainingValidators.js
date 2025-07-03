@@ -24,5 +24,4 @@ export const trainingUpdateRules = [
       return true;
     }),
   body('capacity').optional().isInt({ min: 0 }),
-  body('status').optional().isString(),
 ];

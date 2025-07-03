@@ -25,7 +25,6 @@ import ParkingType from './parkingType.js';
 import CampStadium from './campStadium.js';
 import CampStadiumParkingType from './campStadiumParkingType.js';
 import TrainingType from './trainingType.js';
-import TrainingStatus from './trainingStatus.js';
 import Training from './training.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExamStatus from './medicalExamStatus.js';
@@ -102,8 +101,6 @@ CampStadiumParkingType.belongsTo(ParkingType, {
 });
 
 /* trainings */
-TrainingStatus.hasMany(Training, { foreignKey: 'status_id' });
-Training.belongsTo(TrainingStatus, { foreignKey: 'status_id' });
 TrainingType.hasMany(Training, { foreignKey: 'type_id' });
 Training.belongsTo(TrainingType, { foreignKey: 'type_id' });
 CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
@@ -159,7 +156,6 @@ export {
   CampStadium,
   CampStadiumParkingType,
   TrainingType,
-  TrainingStatus,
   Training,
   File,
   MedicalCertificateType,
