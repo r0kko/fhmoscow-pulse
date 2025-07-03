@@ -487,7 +487,7 @@ async function removeTraining(t) {
     </nav>
     <div class="card tile mb-4">
       <div class="card-body p-2">
-        <ul class="nav nav-tabs nav-fill justify-content-between mb-0">
+        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
               Стадионы
@@ -523,7 +523,7 @@ async function removeTraining(t) {
             <i class="bi bi-plus-lg me-1"></i>Добавить
           </button>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-3">
           <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
           <thead>
@@ -593,7 +593,7 @@ async function removeTraining(t) {
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-0">
+      <div class="card-body p-3">
         <div class="table-responsive">
           <table class="table table-striped align-middle mb-0">
         <thead>
@@ -678,7 +678,7 @@ async function removeTraining(t) {
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-0">
+      <div class="card-body p-3">
         <div class="table-responsive">
           <table class="table table-striped align-middle mb-0">
         <thead>
