@@ -10,7 +10,7 @@ function buildMocks() {
   }));
   jest.unstable_mockModule('connect-redis', () => ({
     __esModule: true,
-    default: jest.fn(() => jest.fn()),
+    RedisStore: jest.fn(() => jest.fn()),
   }));
   jest.unstable_mockModule('../src/config/redis.js', () => ({
     __esModule: true,
