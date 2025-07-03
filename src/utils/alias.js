@@ -39,6 +39,7 @@ export default function generateAlias(name) {
   return translit
     .replace(/[^0-9a-zA-Z]+/g, '_')
     .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .replace(/^_+/, '')
+    .replace(/_+$/, '')
     .toUpperCase();
 }
