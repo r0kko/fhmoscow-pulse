@@ -154,6 +154,21 @@ test('add restores deleted registration', async () => {
   );
 });
 
+test('register rejects when training is full', async () => {
+  const tr = {
+    id: 't1',
+    start_at: '2024-01-01T10:00:00Z',
+    capacity: 1,
+    RefereeGroups: [{ id: 'g1' }],
+    TrainingRegistrations: [{ TrainingRole: { alias: 'PARTICIPANT' } }],
+  };
+  findTrainingMock.mockResolvedValue(tr);
+  findGroupUserMock.mockResolvedValue({ user_id: 'u1', group_id: 'g1' });
+  await expect(service.register('u1', 't1', 'u1')).rejects.toThrow(
+    'training_full'
+  );
+});
+
 test('updateRole sends notification', async () => {
   const updateMock = jest.fn();
   findRegMock.mockResolvedValue({ update: updateMock });

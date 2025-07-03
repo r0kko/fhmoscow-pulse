@@ -68,7 +68,10 @@ async function listAvailable(userId, options = {}) {
   });
   return {
     rows: rows.map((t) => {
-      const registeredCount = t.TrainingRegistrations.length;
+      const participantRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      );
+      const registeredCount = participantRegs.length;
       const userRegistered = t.TrainingRegistrations.some(
         (r) => r.user_id === userId
       );
@@ -96,7 +99,7 @@ async function register(userId, trainingId, actorId) {
     Training.findByPk(trainingId, {
       include: [
         { model: RefereeGroup, through: { attributes: [] } },
-        { model: TrainingRegistration },
+        { model: TrainingRegistration, include: [TrainingRole] },
         { model: CampStadium, include: [Address] },
         { model: Season, where: { active: true }, required: true },
       ],
@@ -108,7 +111,13 @@ async function register(userId, trainingId, actorId) {
   if (!training.RefereeGroups.some((g) => g.id === link.group_id)) {
     throw new ServiceError('access_denied');
   }
-  const registeredCount = training.TrainingRegistrations.length;
+  const participantRegs = training.TrainingRegistrations.filter(
+    (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+  );
+  const registeredCount = participantRegs.length;
+  if (training.capacity && registeredCount >= training.capacity) {
+    throw new ServiceError('training_full');
+  }
   if (!trainingService.isRegistrationOpen(training, registeredCount)) {
     throw new ServiceError('registration_closed');
   }
@@ -133,6 +142,7 @@ async function unregister(userId, trainingId) {
   });
   const count = await TrainingRegistration.count({
     where: { training_id: trainingId },
+    include: [{ model: TrainingRole, where: { alias: 'PARTICIPANT' } }],
   });
   if (!training || !trainingService.isRegistrationOpen(training, count)) {
     throw new ServiceError('registration_closed');
@@ -210,7 +220,10 @@ async function listUpcomingByUser(userId, options = {}) {
   );
   return {
     rows: mine.map((t) => {
-      const registeredCount = t.TrainingRegistrations.length;
+      const participantRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      );
+      const registeredCount = participantRegs.length;
       const plain = t.get();
       const available =
         typeof plain.capacity === 'number'
