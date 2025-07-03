@@ -110,7 +110,7 @@ onMounted(async () => {
       </div>
     </div>
     <div v-else>
-      <div class="card tile fade-in shadow-sm border-brand">
+      <div class="card tile fade-in shadow-sm">
         <div class="card-body position-relative">
           <span
             class="badge position-absolute top-0 end-0 m-3 d-flex align-items-center gap-1"
@@ -174,13 +174,13 @@ onMounted(async () => {
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
     </div>
-    <div class="card tile fade-in shadow-sm mt-4 border-brand">
+    <div class="card tile fade-in shadow-sm mt-4">
       <div class="card-body">
         <h5 class="card-title mb-3 text-brand">Архив медицинских заключений</h5>
         <div v-if="history.length">
           <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
             <div v-for="item in history" :key="item.id" class="col">
-              <div class="card tile h-100 border-brand">
+              <div class="card tile h-100">
                 <div class="card-body d-flex flex-column">
                   <div class="d-flex justify-content-between align-items-start mb-1">
                     <span class="fw-semibold">{{ item.certificate_number }}</span>
