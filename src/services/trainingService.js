@@ -8,6 +8,7 @@ import {
   Address,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import TrainingRegistration from '../models/trainingRegistration.js';
 
 function isRegistrationOpen(training, registeredCount = 0) {
   const start = new Date(training.start_at);
@@ -35,7 +36,6 @@ async function listAll(options = {}) {
     distinct: true,
     subQuery: false,
     order: [['start_at', 'DESC']],
-    distinct: true,
     limit,
     offset,
   });
