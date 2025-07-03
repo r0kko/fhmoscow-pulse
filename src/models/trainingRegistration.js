@@ -18,7 +18,13 @@ TrainingRegistration.init(
     tableName: 'training_registrations',
     paranoid: true,
     underscored: true,
-    indexes: [{ unique: true, fields: ['training_id', 'user_id'] }],
+    indexes: [
+      {
+        unique: true,
+        fields: ['training_id', 'user_id'],
+        where: { deleted_at: null },
+      },
+    ],
   }
 );
 
