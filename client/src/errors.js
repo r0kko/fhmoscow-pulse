@@ -37,6 +37,8 @@ export const ERROR_MESSAGES = {
   invalid_address: 'Некорректный адрес',
   user_exists: 'Пользователь уже существует',
   user_not_found: 'Пользователь не найден',
+  file_too_large: 'Файл слишком большой',
+  invalid_file_type: 'Недопустимый тип файла',
   not_found: 'Не найдено'
 };
 
