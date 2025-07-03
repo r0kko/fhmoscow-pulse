@@ -108,7 +108,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
         <p v-if="!myTrainings.length" class="text-muted">У вас нет записей</p>
         <div v-for="(items, stadium) in groupedMine" :key="stadium" class="mb-5">
           <h2 class="h5 mb-3">{{ stadium }}</h2>
-          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+          <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-5 g-2">
             <TrainingCard
               v-for="t in items"
               :key="t.id"
@@ -122,7 +122,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
       <div v-show="activeTab === 'register'">
         <div v-for="(items, stadium) in groupedAll" :key="stadium" class="mb-5">
           <h2 class="h5 mb-3">{{ stadium }}</h2>
-          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+          <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-5 g-2">
             <TrainingCard
               v-for="t in items"
               :key="t.id"
