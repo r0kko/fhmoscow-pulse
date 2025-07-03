@@ -76,7 +76,11 @@ test('register sends confirmation email', async () => {
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.register('u1', 't1', 'u1');
   expect(createRegMock).toHaveBeenCalled();
-  expect(sendRegEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
+  expect(sendRegEmailMock).toHaveBeenCalledWith(
+    { id: 'u1', email: 'e' },
+    training,
+    { id: 'role1' }
+  );
 });
 
 test('remove sends cancellation email', async () => {
@@ -89,7 +93,8 @@ test('remove sends cancellation email', async () => {
 });
 
 test('add creates registration for referee', async () => {
-  findTrainingMock.mockResolvedValue({ ...training, TrainingRegistrations: [] });
+  const tr = { ...training, TrainingRegistrations: [] };
+  findTrainingMock.mockResolvedValue(tr);
   findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] });
   await service.add('t1', 'u2', 'role2', 'admin');
   expect(createRegMock).toHaveBeenCalledWith({
@@ -99,5 +104,9 @@ test('add creates registration for referee', async () => {
     created_by: 'admin',
     updated_by: 'admin',
   });
-  expect(sendRegEmailMock).toHaveBeenCalled();
+  expect(sendRegEmailMock).toHaveBeenCalledWith(
+    { id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] },
+    tr,
+    { id: 'role1' }
+  );
 });

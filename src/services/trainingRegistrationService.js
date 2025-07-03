@@ -70,6 +70,7 @@ async function register(userId, trainingId, actorId) {
       include: [
         { model: RefereeGroup, through: { attributes: [] } },
         { model: TrainingRegistration },
+        { model: CampStadium, include: [Address] },
       ],
     }),
     RefereeGroupUser.findOne({ where: { user_id: userId } }),
@@ -97,7 +98,7 @@ async function register(userId, trainingId, actorId) {
   });
   const user = await User.findByPk(userId);
   if (user) {
-    await emailService.sendTrainingRegistrationEmail(user, training);
+    await emailService.sendTrainingRegistrationEmail(user, training, role);
   }
 }
 
@@ -119,7 +120,10 @@ async function unregister(userId, trainingId) {
 async function add(trainingId, userId, roleId, actorId) {
   const [training, user, role] = await Promise.all([
     Training.findByPk(trainingId, {
-      include: [{ model: TrainingRegistration }],
+      include: [
+        { model: TrainingRegistration },
+        { model: CampStadium, include: [Address] },
+      ],
     }),
     User.findByPk(userId, { include: [Role] }),
     TrainingRole.findByPk(roleId),
@@ -140,7 +144,7 @@ async function add(trainingId, userId, roleId, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  await emailService.sendTrainingRegistrationEmail(user, training);
+  await emailService.sendTrainingRegistrationEmail(user, training, role);
 }
 
 async function listUpcomingByUser(userId, options = {}) {
