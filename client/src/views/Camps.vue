@@ -248,7 +248,7 @@ function formatTime(date) {
             class="col-12"
           >
             <div class="card tile h-100">
-              <div class="card-body">
+              <div class="card-body stadium-body">
                 <div class="d-flex justify-content-between align-items-start mb-1">
                   <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
                   <a
@@ -302,6 +302,10 @@ function formatTime(date) {
 
 .training-scroll .training-card {
   margin: 0;
+}
+
+.stadium-body {
+  min-width: 0;
 }
 
 @media (max-width: 575.98px) {
