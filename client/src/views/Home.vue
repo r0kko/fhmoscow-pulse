@@ -36,6 +36,12 @@ const greeting = computed(() => {
     <h1 class="mb-4 text-start">
       {{ greeting }}, {{ shortName || auth.user?.phone }}!
     </h1>
+    <div class="card mb-4 text-center">
+      <div class="card-body">
+        <h5 class="card-title mb-2">Ближайшие события</h5>
+        <p class="card-text text-muted mb-0">Информация скоро будет доступна</p>
+      </div>
+    </div>
     <div class="row g-4">
       <div class="col-6 col-md-4 col-lg-3" v-for="section in sections" :key="section.title">
         <component
