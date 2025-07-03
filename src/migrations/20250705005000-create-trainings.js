@@ -15,13 +15,6 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       },
-      status_id: {
-        type: Sequelize.UUID,
-        allowNull: false,
-        references: { model: 'training_statuses', key: 'id' },
-        onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT',
-      },
       start_at: { type: Sequelize.DATE, allowNull: false },
       end_at: { type: Sequelize.DATE, allowNull: false },
       capacity: { type: Sequelize.INTEGER },
