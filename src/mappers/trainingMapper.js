@@ -12,6 +12,7 @@ function sanitize(obj) {
     CampStadium,
     Season,
     RefereeGroups,
+    registered_count,
   } = obj;
   const res = {
     id,
@@ -23,6 +24,7 @@ function sanitize(obj) {
     available: obj.available,
     registration_open: obj.registration_open,
     registered: obj.user_registered,
+    registered_count,
   };
   if (TrainingType) {
     res.type = {

@@ -30,18 +30,24 @@ async function listAll(options = {}) {
       { model: CampStadium, include: [Address] },
       Season,
       { model: RefereeGroup, through: { attributes: [] } },
+      { model: TrainingRegistration },
     ],
     distinct: true,
     subQuery: false,
     order: [['start_at', 'DESC']],
+    distinct: true,
     limit,
     offset,
   });
   return {
-    rows: rows.map((t) => ({
-      ...t.get(),
-      registration_open: isRegistrationOpen(t),
-    })),
+    rows: rows.map((t) => {
+      const registeredCount = t.TrainingRegistrations?.length || 0;
+      return {
+        ...t.get(),
+        registration_open: isRegistrationOpen(t, registeredCount),
+        registered_count: registeredCount,
+      };
+    }),
     count,
   };
 }
