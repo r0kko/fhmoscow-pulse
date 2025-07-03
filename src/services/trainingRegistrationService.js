@@ -6,6 +6,7 @@ import {
   RefereeGroup,
   RefereeGroupUser,
   TrainingRegistration,
+  User,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -104,4 +105,34 @@ async function unregister(userId, trainingId) {
   await registration.destroy();
 }
 
-export default { listAvailable, register, unregister };
+async function listByTraining(trainingId, options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  return TrainingRegistration.findAndCountAll({
+    where: { training_id: trainingId },
+    include: [{ model: User }],
+    order: [
+      [User, 'last_name', 'ASC'],
+      [User, 'first_name', 'ASC'],
+    ],
+    limit,
+    offset,
+  });
+}
+
+async function remove(trainingId, userId) {
+  const registration = await TrainingRegistration.findOne({
+    where: { training_id: trainingId, user_id: userId },
+  });
+  if (!registration) throw new ServiceError('registration_not_found', 404);
+  await registration.destroy();
+}
+
+export default {
+  listAvailable,
+  register,
+  unregister,
+  listByTraining,
+  remove,
+};

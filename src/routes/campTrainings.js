@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/trainingAdminController.js';
 import selfController from '../controllers/trainingSelfController.js';
+import registrationsController from '../controllers/trainingRegistrationAdminController.js';
 import {
   trainingCreateRules,
   trainingUpdateRules,
@@ -29,6 +30,19 @@ router.put(
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
+
+router.get(
+  '/:id/registrations',
+  auth,
+  authorize('ADMIN'),
+  registrationsController.list
+);
+router.delete(
+  '/:id/registrations/:userId',
+  auth,
+  authorize('ADMIN'),
+  registrationsController.remove
+);
 
 router.post('/:id/register', auth, selfController.register);
 router.delete('/:id/register', auth, selfController.unregister);
