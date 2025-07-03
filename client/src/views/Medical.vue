@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
@@ -8,7 +8,6 @@ const history = ref([]);
 const files = ref([]);
 const error = ref('');
 const loading = ref(true);
-const isSmallScreen = ref(false);
 const isValid = (cert) => {
   const today = new Date();
   return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
@@ -56,20 +55,6 @@ const statusInfo = computed(() => {
   return { label: 'OK', icon: 'bi-check-circle', class: 'bg-success' };
 });
 
-let mediaQuery;
-const updateScreen = () => {
-  isSmallScreen.value = mediaQuery.matches;
-};
-
-onMounted(() => {
-  mediaQuery = window.matchMedia('(max-width: 575.98px)');
-  updateScreen();
-  mediaQuery.addEventListener('change', updateScreen);
-});
-
-onUnmounted(() => {
-  mediaQuery.removeEventListener('change', updateScreen);
-});
 
 onMounted(async () => {
   try {
@@ -125,7 +110,7 @@ onMounted(async () => {
       </div>
     </div>
     <div v-else>
-      <div class="card tile fade-in shadow-sm">
+      <div class="card tile fade-in shadow-sm border-brand">
         <div class="card-body position-relative">
           <span
             class="badge position-absolute top-0 end-0 m-3 d-flex align-items-center gap-1"
@@ -134,7 +119,7 @@ onMounted(async () => {
             <i :class="'bi ' + statusInfo.icon"></i>
             {{ statusInfo.label }}
           </span>
-          <h5 class="card-title mb-3">Действующее заключение</h5>
+          <h5 class="card-title mb-3 text-brand">Действующее заключение</h5>
           <template v-if="certificate && isValid(certificate)">
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
             <div class="col">
@@ -195,30 +180,21 @@ onMounted(async () => {
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
     </div>
-    <div class="card tile fade-in shadow-sm mt-4">
+    <div class="card tile fade-in shadow-sm mt-4 border-brand">
       <div class="card-body">
-        <h5 class="card-title mb-3">Архив медицинских заключений</h5>
+        <h5 class="card-title mb-3 text-brand">Архив медицинских заключений</h5>
         <div v-if="history.length">
-          <div v-if="!isSmallScreen" class="table-responsive">
-            <table class="table table-striped mb-0">
-              <thead>
-                <tr>
-                  <th>Номер</th>
-                  <th>Учреждение</th>
-                  <th>Период действия</th>
-                  <th>Файлы</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in history" :key="item.id">
-                  <td>{{ item.certificate_number }}</td>
-                  <td>{{ item.organization }}</td>
-                  <td class="text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</td>
-                  <td>
-                    <div
-                      v-if="item.files && item.files.length"
-                      class="d-flex flex-wrap gap-2"
-                    >
+          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+            <div v-for="item in history" :key="item.id" class="col">
+              <div class="card tile h-100 border-brand">
+                <div class="card-body d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <span class="fw-semibold">{{ item.certificate_number }}</span>
+                    <span class="text-muted small text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</span>
+                  </div>
+                  <p class="mb-2">{{ item.organization }}</p>
+                  <div class="mt-auto">
+                    <div v-if="item.files && item.files.length" class="d-flex flex-wrap gap-2">
                       <a
                         v-for="f in item.files"
                         :key="f.id"
@@ -231,33 +207,10 @@ onMounted(async () => {
                         <span class="text-break">{{ f.name }}</span>
                       </a>
                     </div>
-                    <span v-else class="text-muted">—</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="d-flex flex-column gap-3">
-            <div v-for="item in history" :key="item.id" class="border rounded p-3">
-              <div class="d-flex justify-content-between mb-1">
-                <span class="fw-semibold">{{ item.certificate_number }}</span>
-                <span class="text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</span>
+                    <span v-else class="text-muted small">—</span>
+                  </div>
+                </div>
               </div>
-              <div class="mb-2">{{ item.organization }}</div>
-              <div v-if="item.files && item.files.length" class="d-flex flex-wrap gap-2">
-                <a
-                  v-for="f in item.files"
-                  :key="f.id"
-                  :href="f.url"
-                  target="_blank"
-                  rel="noopener"
-                  class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
-                >
-                  <i class="bi bi-file-earmark"></i>
-                  <span class="text-break">{{ f.name }}</span>
-                </a>
-              </div>
-              <span v-else class="text-muted small">—</span>
             </div>
           </div>
         </div>
