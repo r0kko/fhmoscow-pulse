@@ -3,6 +3,7 @@
 const props = defineProps({
   training: { type: Object, required: true },
   loading: { type: Boolean, default: false },
+  showCancel: { type: Boolean, default: true },
 });
 const emit = defineEmits(['register', 'unregister']);
 
@@ -64,7 +65,7 @@ function seatStatus(t) {
       >
       <p class="small mb-2">Мест: {{ seatStatus(training) }}</p>
       <button
-        v-if="training.registered"
+        v-if="training.registered && showCancel"
         class="btn btn-sm btn-secondary mt-auto"
         @click="emit('unregister', training.id)"
       >Отменить</button>
