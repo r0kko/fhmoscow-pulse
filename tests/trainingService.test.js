@@ -25,6 +25,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Training: { findByPk: findByPkMock },
   TrainingType: {},
   CampStadium: {},
+  Address: {},
   Season: {},
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
   RefereeGroup: { findAll: findAllGroupsMock },
