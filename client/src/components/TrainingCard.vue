@@ -2,19 +2,33 @@
 
 const props = defineProps({
   training: { type: Object, required: true },
+  loading: { type: Boolean, default: false },
 });
 const emit = defineEmits(['register', 'unregister']);
 
 function formatStart(date) {
   const d = new Date(date);
-  return d
-    .toLocaleDateString('ru-RU', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  const text = d.toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function badgeClass(alias) {
+  if (!alias) return 'bg-secondary';
+  switch (alias) {
+    case 'ICE':
+      return 'bg-brand';
+    case 'BASIC_FIT':
+      return 'bg-success';
+    case 'THEORY':
+    default:
+      return 'bg-secondary';
+  }
 }
 
 function durationText(start, end) {
@@ -43,7 +57,11 @@ function seatStatus(t) {
     <div class="card-body d-flex flex-column p-3">
       <h6 class="card-title mb-1 text-truncate">{{ formatStart(training.start_at) }}</h6>
       <p class="text-muted mb-1 small">{{ durationText(training.start_at, training.end_at) }}</p>
-      <span class="badge bg-brand align-self-start mb-2">{{ training.type?.name }}</span>
+      <span
+        class="badge align-self-start mb-2"
+        :class="badgeClass(training.type?.alias)"
+        >{{ training.type?.name }}</span
+      >
       <p class="small mb-2">Мест: {{ seatStatus(training) }}</p>
       <button
         v-if="training.registered"
@@ -53,9 +71,12 @@ function seatStatus(t) {
       <button
         v-else
         class="btn btn-sm btn-brand mt-auto"
-        :disabled="!training.registration_open"
+        :disabled="!training.registration_open || loading"
         @click="emit('register', training.id)"
-      >Записаться</button>
+      >
+        <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+        Записаться
+      </button>
     </div>
   </div>
 </template>

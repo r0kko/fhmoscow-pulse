@@ -10,6 +10,7 @@ const pageSize = 50;
 const loading = ref(true);
 const error = ref('');
 const activeTab = ref('register');
+const registering = ref(null);
 
 onMounted(load);
 
@@ -29,11 +30,15 @@ async function load() {
 }
 
 async function register(id) {
+  if (registering.value) return;
+  registering.value = id;
   try {
     await apiFetch(`/camp-trainings/${id}/register`, { method: 'POST' });
     await load();
   } catch (e) {
     error.value = e.message;
+  } finally {
+    registering.value = null;
   }
 }
 
@@ -171,6 +176,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
                     v-for="t in g.trainings"
                     :key="t.id"
                     :training="t"
+                    :loading="registering === t.id"
                     class="flex-shrink-0"
                     @register="register"
                   />
