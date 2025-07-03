@@ -11,6 +11,7 @@ import {
 import ServiceError from '../errors/ServiceError.js';
 
 import trainingService from './trainingService.js';
+import emailService from './emailService.js';
 
 async function listAvailable(userId, options = {}) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
@@ -88,6 +89,10 @@ async function register(userId, trainingId, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
+  const user = await User.findByPk(userId);
+  if (user) {
+    await emailService.sendTrainingRegistrationEmail(user, training);
+  }
 }
 
 async function unregister(userId, trainingId) {
@@ -127,6 +132,13 @@ async function remove(trainingId, userId) {
   });
   if (!registration) throw new ServiceError('registration_not_found', 404);
   await registration.destroy();
+  const [training, user] = await Promise.all([
+    Training.findByPk(trainingId),
+    User.findByPk(userId),
+  ]);
+  if (user && training) {
+    await emailService.sendTrainingRegistrationCancelledEmail(user, training);
+  }
 }
 
 export default {

@@ -12,6 +12,8 @@ import { renderVerificationEmail } from '../templates/verificationEmail.js';
 import { renderPasswordResetEmail } from '../templates/passwordResetEmail.js';
 import { renderMedicalCertificateAddedEmail } from '../templates/medicalCertificateAddedEmail.js';
 import { renderAccountActivatedEmail } from '../templates/accountActivatedEmail.js';
+import { renderTrainingRegistrationEmail } from '../templates/trainingRegistrationEmail.js';
+import { renderTrainingRegistrationCancelledEmail } from '../templates/trainingRegistrationCancelledEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -54,10 +56,23 @@ export async function sendAccountActivatedEmail(user) {
   const { subject, text, html } = renderAccountActivatedEmail();
   await sendMail(user.email, subject, text, html);
 }
+
+export async function sendTrainingRegistrationEmail(user, training) {
+  const { subject, text, html } = renderTrainingRegistrationEmail(training);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendTrainingRegistrationCancelledEmail(user, training) {
+  const { subject, text, html } =
+    renderTrainingRegistrationCancelledEmail(training);
+  await sendMail(user.email, subject, text, html);
+}
 export default {
   sendMail,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendMedicalCertificateAddedEmail,
   sendAccountActivatedEmail,
+  sendTrainingRegistrationEmail,
+  sendTrainingRegistrationCancelledEmail,
 };
