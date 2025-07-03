@@ -8,6 +8,7 @@ import {
   TrainingRegistration,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+
 import trainingService from './trainingService.js';
 
 async function listAvailable(userId, options = {}) {
@@ -36,11 +37,16 @@ async function listAvailable(userId, options = {}) {
   return {
     rows: rows.map((t) => {
       const registeredCount = t.TrainingRegistrations.length;
-      const userRegistered = t.TrainingRegistrations.some((r) => r.user_id === userId);
+      const userRegistered = t.TrainingRegistrations.some(
+        (r) => r.user_id === userId
+      );
       const plain = t.get();
       return {
         ...plain,
-        registration_open: trainingService.isRegistrationOpen(t, registeredCount),
+        registration_open: trainingService.isRegistrationOpen(
+          t,
+          registeredCount
+        ),
         user_registered: userRegistered,
       };
     }),
@@ -84,7 +90,9 @@ async function unregister(userId, trainingId) {
   });
   if (!registration) throw new ServiceError('registration_not_found', 404);
   const training = await Training.findByPk(trainingId);
-  const count = await TrainingRegistration.count({ where: { training_id: trainingId } });
+  const count = await TrainingRegistration.count({
+    where: { training_id: trainingId },
+  });
   if (!training || !trainingService.isRegistrationOpen(training, count)) {
     throw new ServiceError('registration_closed');
   }

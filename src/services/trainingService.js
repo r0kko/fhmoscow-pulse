@@ -53,8 +53,7 @@ async function getById(id) {
     ],
   });
   if (!training) throw new ServiceError('training_not_found', 404);
-  const plain =
-    typeof training.get === 'function' ? training.get() : training;
+  const plain = typeof training.get === 'function' ? training.get() : training;
   return { ...plain, registration_open: isRegistrationOpen(training) };
 }
 
