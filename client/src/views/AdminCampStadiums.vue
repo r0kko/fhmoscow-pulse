@@ -183,7 +183,7 @@ watch(
     const start = new Date(val);
     const end = new Date(start.getTime() + 90 * 60000);
     if (!trainingEditing.value) {
-      trainingForm.value.end_at = end.toISOString().slice(0, 16);
+      trainingForm.value.end_at = toInputValue(end);
     }
   }
 );
