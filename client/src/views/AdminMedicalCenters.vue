@@ -168,13 +168,7 @@ async function removeCenter(center) {
 </script>
 
 <template>
-  <div class="container mt-4">
-    <nav aria-label="breadcrumb" class="mb-3">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><RouterLink to="/admin">Администрирование</RouterLink></li>
-        <li class="breadcrumb-item active" aria-current="page">Медицинские центры</li>
-      </ol>
-    </nav>
+  <div>
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="mb-0">Медицинские центры</h1>
       <button class="btn btn-brand" @click="openCreate">
