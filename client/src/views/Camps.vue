@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick, computed } from 'vue';
 import { RouterLink } from 'vue-router';
+import Carousel from 'bootstrap/js/dist/carousel';
 import { apiFetch } from '../api.js';
+import TrainingCard from '../components/TrainingCard.vue';
 
 const trainings = ref([]);
 const total = ref(0);
@@ -9,6 +11,29 @@ const page = ref(1);
 const pageSize = 10;
 const loading = ref(true);
 const error = ref('');
+
+const types = [
+  ['ICE', 'Ледовая подготовка'],
+  ['BASIC_FIT', 'Физическая подготовка'],
+  ['THEORY', 'Теоретическая подготовка'],
+];
+
+const carouselRefs = {
+  ICE: ref(null),
+  BASIC_FIT: ref(null),
+  THEORY: ref(null),
+};
+
+const grouped = computed(() => {
+  return trainings.value.reduce(
+    (acc, t) => {
+      const key = t.type?.alias;
+      if (key && acc[key]) acc[key].push(t);
+      return acc;
+    },
+    { ICE: [], BASIC_FIT: [], THEORY: [] }
+  );
+});
 
 function formatDateTimeRange(start, end) {
   const s = new Date(start);
@@ -33,6 +58,8 @@ async function load() {
     trainings.value = data.trainings || [];
     total.value = data.total || 0;
     error.value = '';
+    await nextTick();
+    initCarousels();
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -58,6 +85,13 @@ async function unregister(id) {
   }
 }
 
+function initCarousels() {
+  for (const key of Object.keys(carouselRefs)) {
+    const el = carouselRefs[key].value;
+    if (el) Carousel.getOrCreateInstance(el, { interval: false });
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -77,45 +111,40 @@ onMounted(load);
     </div>
     <div v-else>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
-      <div v-if="trainings.length" class="table-responsive">
-        <table class="table table-striped align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Тип</th>
-              <th>Стадион</th>
-              <th>Дата и время</th>
-              <th class="text-center">Вместимость</th>
-              <th class="text-center">Действие</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="t in trainings" :key="t.id">
-              <td>{{ t.type?.name }}</td>
-              <td>{{ t.stadium?.name }}</td>
-              <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-              <td class="text-center">{{ t.capacity || '—' }}</td>
-              <td class="text-center">
-                <button
-                  v-if="t.registered"
-                  class="btn btn-sm btn-secondary"
-                  @click="unregister(t.id)"
-                >
-                  Отменить
-                </button>
-                <button
-                  v-else
-                  class="btn btn-sm btn-brand"
-                  :disabled="!t.registration_open"
-                  @click="register(t.id)"
-                >
-                  Записаться
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-for="[alias, label] in types" :key="alias" class="mb-5">
+        <h2 class="h5 mb-3">{{ label }}</h2>
+        <div v-if="grouped[alias].length" :id="`car-${alias}`" class="carousel slide" :ref="carouselRefs[alias]">
+          <div class="carousel-inner">
+            <div
+              v-for="(t, idx) in grouped[alias]"
+              :key="t.id"
+              class="carousel-item"
+              :class="{ active: idx === 0 }"
+            >
+              <TrainingCard :training="t" @register="register" @unregister="unregister" />
+            </div>
+          </div>
+          <button
+            class="carousel-control-prev"
+            type="button"
+            :data-bs-target="`#car-${alias}`"
+            data-bs-slide="prev"
+          >
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Предыдущая</span>
+          </button>
+          <button
+            class="carousel-control-next"
+            type="button"
+            :data-bs-target="`#car-${alias}`"
+            data-bs-slide="next"
+          >
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Следующая</span>
+          </button>
+        </div>
+        <p v-else class="text-muted">Нет доступных тренировок</p>
       </div>
-      <p v-else class="text-muted">Нет доступных тренировок</p>
       <nav class="mt-3" v-if="Math.ceil(total / pageSize) > 1">
         <ul class="pagination justify-content-center">
           <li class="page-item" :class="{ disabled: page === 1 }">
@@ -148,4 +177,7 @@ onMounted(load);
 </template>
 
 <style scoped>
+.carousel-item {
+  padding: 0.5rem;
+}
 </style>
