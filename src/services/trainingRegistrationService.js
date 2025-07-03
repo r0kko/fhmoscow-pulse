@@ -177,6 +177,26 @@ async function add(trainingId, userId, roleId, actorId) {
   await emailService.sendTrainingRegistrationEmail(user, training, role);
 }
 
+async function updateRole(trainingId, userId, roleId, actorId) {
+  const [registration, role, training, user] = await Promise.all([
+    TrainingRegistration.findOne({
+      where: { training_id: trainingId, user_id: userId },
+    }),
+    TrainingRole.findByPk(roleId),
+    Training.findByPk(trainingId, {
+      include: [{ model: CampStadium, include: [Address] }, { model: Season }],
+    }),
+    User.findByPk(userId),
+  ]);
+  if (!registration) throw new ServiceError('registration_not_found', 404);
+  if (!role) throw new ServiceError('training_role_not_found', 404);
+  if (!training) throw new ServiceError('training_not_found', 404);
+  await registration.update({ training_role_id: roleId, updated_by: actorId });
+  if (user) {
+    await emailService.sendTrainingRoleChangedEmail(user, training, role);
+  }
+}
+
 async function listUpcomingByUser(userId, options = {}) {
   const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -264,5 +284,6 @@ export default {
   unregister,
   listUpcomingByUser,
   listByTraining,
+  updateRole,
   remove,
 };

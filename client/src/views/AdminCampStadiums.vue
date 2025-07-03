@@ -527,7 +527,10 @@ async function loadRegistrations(trainingId) {
     const data = await apiFetch(
       `/camp-trainings/${trainingId}/registrations?${params}`
     );
-    registrationList.value = data.registrations;
+    registrationList.value = data.registrations.map((r) => ({
+      ...r,
+      role_id: r.role ? r.role.id : '',
+    }));
     registrationTotal.value = data.total;
   } catch (e) {
     registrationError.value = e.message;
@@ -599,6 +602,23 @@ async function removeRegistration(userId) {
       { method: 'DELETE' }
     );
     await loadRegistrations(registrationTraining.value.id);
+    await loadTrainings();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function updateRegistration(reg) {
+  if (!registrationTraining.value) return;
+  try {
+    await apiFetch(
+      `/camp-trainings/${registrationTraining.value.id}/registrations/${reg.user.id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ training_role_id: reg.role_id }),
+      }
+    );
+    reg.role = trainingRoles.value.find((r) => r.id === reg.role_id) || null;
     await loadTrainings();
   } catch (e) {
     alert(e.message);
@@ -986,7 +1006,14 @@ async function removeRegistration(userId) {
             <tbody>
               <tr v-for="r in registrationList" :key="r.user.id">
                 <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
-                <td>{{ r.role?.name }}</td>
+                <td>
+                  <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
+                    <option value="" disabled>Выберите роль</option>
+                    <option v-for="role in trainingRoles" :key="role.id" :value="role.id">
+                      {{ role.name }}
+                    </option>
+                  </select>
+                </td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
                 </td>

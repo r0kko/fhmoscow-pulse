@@ -46,6 +46,24 @@ export default {
     }
   },
 
+  async update(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      await trainingRegistrationService.updateRole(
+        req.params.id,
+        req.params.userId,
+        req.body.training_role_id,
+        req.user.id
+      );
+      return res.status(204).end();
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
   async remove(req, res) {
     try {
       await trainingRegistrationService.remove(

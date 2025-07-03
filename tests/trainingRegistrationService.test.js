@@ -36,12 +36,14 @@ jest.unstable_mockModule('../src/services/trainingService.js', () => ({
 
 const sendRegEmailMock = jest.fn();
 const sendCancelEmailMock = jest.fn();
+const sendRoleChangedEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/emailService.js', () => ({
   __esModule: true,
   default: {
     sendTrainingRegistrationEmail: sendRegEmailMock,
     sendTrainingRegistrationCancelledEmail: sendCancelEmailMock,
+    sendTrainingRoleChangedEmail: sendRoleChangedEmailMock,
   },
 }));
 
@@ -57,6 +59,7 @@ beforeEach(() => {
   findRoleMock.mockReset();
   sendRegEmailMock.mockClear();
   sendCancelEmailMock.mockClear();
+  sendRoleChangedEmailMock.mockClear();
   findRegMock.mockResolvedValue(null);
   findTrainingRoleMock.mockResolvedValue({ id: 'role1' });
 });
@@ -149,4 +152,14 @@ test('add restores deleted registration', async () => {
     tr,
     { id: 'role1' }
   );
+});
+
+test('updateRole sends notification', async () => {
+  const updateMock = jest.fn();
+  findRegMock.mockResolvedValue({ update: updateMock });
+  findTrainingMock.mockResolvedValue(training);
+  findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
+  await service.updateRole('t1', 'u1', 'role3', 'admin');
+  expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role3', updated_by: 'admin' });
+  expect(sendRoleChangedEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training, { id: 'role1' });
 });
