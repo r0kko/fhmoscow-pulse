@@ -82,7 +82,7 @@ async function finish() {
           />
           <label for="email">Email</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+        <button type="submit" class="btn btn-brand w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Отправить код
         </button>
@@ -127,7 +127,7 @@ async function finish() {
           />
           <label for="confirm">Повторите пароль</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+        <button type="submit" class="btn btn-brand w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Сохранить пароль
         </button>

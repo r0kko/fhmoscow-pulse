@@ -115,7 +115,7 @@ async function login() {
           />
           <label for="password">Пароль</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+        <button type="submit" class="btn btn-brand w-100" :disabled="loading">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Войти
         </button>

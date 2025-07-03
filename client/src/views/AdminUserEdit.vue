@@ -175,7 +175,7 @@ async function save() {
           @editing-changed="onEditingChanged"
         >
           <template #actions>
-            <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+            <button type="submit" class="btn btn-brand me-2">Сохранить</button>
             <button type="button" class="btn btn-secondary" @click="cancelEdit">
               Отмена
             </button>
@@ -328,7 +328,7 @@ async function save() {
         <div class="alert alert-warning" role="alert">
           Паспортные данные отсутствуют.
         </div>
-        <button class="btn btn-primary mt-2" @click="openPassportModal">
+        <button class="btn btn-brand mt-2" @click="openPassportModal">
           Добавить паспорт
         </button>
       </div>

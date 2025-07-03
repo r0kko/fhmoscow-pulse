@@ -241,7 +241,7 @@ onMounted(() => {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-          <button type="button" class="btn btn-primary" @click="save" :disabled="!canSave">Сохранить</button>
+          <button type="button" class="btn btn-brand" @click="save" :disabled="!canSave">Сохранить</button>
         </div>
       </div>
     </div>

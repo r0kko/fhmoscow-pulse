@@ -393,7 +393,7 @@ async function loadJudges() {
                 <div class="mb-3">
                   <input type="file" class="form-control" ref="fileInput" />
                 </div>
-                <button type="button" class="btn btn-primary" @click="uploadFile">Загрузить</button>
+                <button type="button" class="btn btn-brand" @click="uploadFile">Загрузить</button>
               </div>
             </div>
             <div class="modal-footer">
@@ -408,7 +408,7 @@ async function loadJudges() {
               <button type="button" class="btn btn-secondary" @click="modal.hide()">
                 Отмена
               </button>
-              <button type="submit" class="btn btn-primary" :disabled="editing">
+              <button type="submit" class="btn btn-brand" :disabled="editing">
                 Сохранить
               </button>
             </div>

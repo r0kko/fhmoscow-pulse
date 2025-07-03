@@ -258,8 +258,8 @@ async function save() {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="prev" v-if="step>1">Назад</button>
-          <button type="button" class="btn btn-primary" v-if="step<3" @click="next">Далее</button>
-          <button type="button" class="btn btn-primary" v-if="step===3" @click="save">Сохранить</button>
+          <button type="button" class="btn btn-brand" v-if="step<3" @click="next">Далее</button>
+          <button type="button" class="btn btn-brand" v-if="step===3" @click="save">Сохранить</button>
         </div>
       </div>
     </div>

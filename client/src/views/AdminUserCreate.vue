@@ -82,7 +82,7 @@ async function copyToClipboard(text) {
     <form @submit.prevent="save">
       <UserForm ref="formRef" v-model="user" :isNew="true" />
       <div class="mt-3">
-        <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+        <button type="submit" class="btn btn-brand me-2">Сохранить</button>
         <button type="button" class="btn btn-secondary" @click="close">Отмена</button>
       </div>
     </form>
@@ -102,7 +102,7 @@ async function copyToClipboard(text) {
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-primary" @click="passwordModal.hide()">OK</button>
+            <button type="button" class="btn btn-brand" @click="passwordModal.hide()">OK</button>
           </div>
         </div>
     </div>

@@ -7,7 +7,7 @@
     <span class="me-3">
       Продолжая работу с сайтом, вы соглашаетесь с использованием файлов cookie и обработкой персональных данных в соответствии с законодательством.
     </span>
-    <button type="button" class="btn btn-primary btn-sm" @click="accept">Принять</button>
+    <button type="button" class="btn btn-brand btn-sm" @click="accept">Принять</button>
   </div>
 </template>
 

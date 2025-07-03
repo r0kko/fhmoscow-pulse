@@ -656,7 +656,7 @@ async function removeTraining(t) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <button type="submit" class="btn btn-brand">Сохранить</button>
             </div>
           </form>
         </div>
@@ -750,7 +750,7 @@ async function removeTraining(t) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="trainingModal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <button type="submit" class="btn btn-brand">Сохранить</button>
             </div>
           </form>
         </div>
@@ -822,7 +822,7 @@ async function removeTraining(t) {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <button type="submit" class="btn btn-brand">Сохранить</button>
           </div>
         </form>
       </div>

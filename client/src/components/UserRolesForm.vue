@@ -87,7 +87,7 @@ async function save() {
           </label>
         </div>
         <button
-          class="btn btn-primary mt-3"
+          class="btn btn-brand mt-3"
           @click="save"
           :disabled="saving || !changed"
         >

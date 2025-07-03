@@ -238,7 +238,7 @@ async function removeAccount() {
           <div class="modal-footer">
             <button v-if="account" type="button" class="btn btn-danger me-auto" @click="removeAccount">Удалить</button>
             <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <button type="submit" class="btn btn-brand">Сохранить</button>
           </div>
         </form>
       </div>

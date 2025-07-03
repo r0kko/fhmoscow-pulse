@@ -356,7 +356,7 @@ onMounted(() => {
             <div v-if="!user.email_confirmed" class="mt-3">
               <div class="alert alert-warning p-2">
                 Email не подтверждён.
-                <button class="btn btn-sm btn-primary ms-2" @click="sendCode">
+                <button class="btn btn-sm btn-brand ms-2" @click="sendCode">
                   Отправить код
                 </button>
               </div>
@@ -368,7 +368,7 @@ onMounted(() => {
                   maxlength="6"
                   placeholder="Код из письма"
                 />
-                <button class="btn btn-primary" @click="confirmCode">
+                <button class="btn btn-brand" @click="confirmCode">
                   Подтвердить
                 </button>
               </div>

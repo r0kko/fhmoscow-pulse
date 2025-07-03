@@ -285,7 +285,7 @@ function applySuggestion(sug) {
               >
                 Отмена
               </button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <button type="submit" class="btn btn-brand">Сохранить</button>
             </div>
           </form>
         </div>

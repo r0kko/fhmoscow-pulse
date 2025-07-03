@@ -214,7 +214,7 @@ async function removeItem() {
               Удалить
             </button>
             <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <button type="submit" class="btn btn-brand">Сохранить</button>
           </div>
         </form>
       </div>

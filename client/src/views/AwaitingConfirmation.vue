@@ -48,7 +48,7 @@ onUnmounted(() => {
       <p class="mb-3">Ваша регистрация завершена и ожидает проверки администратором.</p>
       <p class="mb-4">После подтверждения вам станет доступен портал.</p>
       <div class="d-flex justify-content-center gap-2">
-        <button class="btn btn-outline-primary" @click="checkStatus" :disabled="checking">
+        <button class="btn btn-outline-brand" @click="checkStatus" :disabled="checking">
           <span v-if="checking" class="spinner-border spinner-border-sm me-2"></span>
           Проверить статус
         </button>
