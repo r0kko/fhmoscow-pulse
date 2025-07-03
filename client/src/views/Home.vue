@@ -121,7 +121,7 @@ function formatStart(date) {
               :aria-label="section.title"
             ></i>
             <h5 class="card-title">{{ section.title }}</h5>
-            <p v-if="!section.to" class="text-muted small mb-0">Раздел в разработке</p>
+            <p v-if="!section.to" class="text-muted small mb-0">Скоро</p>
           </div>
           </component>
         </div>
