@@ -233,7 +233,7 @@ async function loadJudges() {
   <div>
     <div class="card tile fade-in shadow-sm mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0">Медицинские заключения</h3>
+        <h5 class="mb-0">Медицинские заключения</h5>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>

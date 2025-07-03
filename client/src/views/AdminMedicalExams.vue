@@ -123,7 +123,7 @@ async function removeExam(exam) {
   <div>
     <div class="card tile fade-in shadow-sm mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0">Расписание медосмотров</h3>
+        <h5 class="mb-0">Расписание медосмотров</h5>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>

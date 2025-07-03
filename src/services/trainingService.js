@@ -70,7 +70,9 @@ async function create(data, actorId) {
   });
   if (Array.isArray(data.groups)) {
     const groups = await RefereeGroup.findAll({ where: { id: data.groups } });
-    const seasonGroups = groups.filter((g) => g.season_id === training.season_id);
+    const seasonGroups = groups.filter(
+      (g) => g.season_id === training.season_id
+    );
     if (seasonGroups.length !== data.groups.length) {
       throw new ServiceError('invalid_group_season');
     }
