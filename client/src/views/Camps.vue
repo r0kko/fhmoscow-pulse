@@ -232,11 +232,11 @@ function formatTime(date) {
                     <div>
                       <i class="bi bi-clock me-1" aria-hidden="true"></i>
                       {{ formatTime(t.start_at) }}
-                      <span class="badge ms-2" :class="typeBadgeClass(t.type?.alias)">
+                      <span class="badge badge-training-type ms-2" :class="typeBadgeClass(t.type?.alias)">
                         {{ t.type?.name }}
                       </span>
                     </div>
-                    <div class="text-end">
+                    <div class="text-sm-end">
                       <div class="fw-semibold">{{ t.stadium?.name }}</div>
                       <div class="small text-muted">
                         {{ t.stadium?.address?.result }}
