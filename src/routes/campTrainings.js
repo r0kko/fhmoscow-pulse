@@ -9,6 +9,7 @@ import {
   trainingCreateRules,
   trainingUpdateRules,
 } from '../validators/trainingValidators.js';
+import { createRegistrationRules } from '../validators/trainingRegistrationValidators.js';
 
 const router = express.Router();
 
@@ -37,6 +38,13 @@ router.get(
   auth,
   authorize('ADMIN'),
   registrationsController.list
+);
+router.post(
+  '/:id/registrations',
+  auth,
+  authorize('ADMIN'),
+  createRegistrationRules,
+  registrationsController.create
 );
 router.delete(
   '/:id/registrations/:userId',

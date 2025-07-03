@@ -86,6 +86,10 @@ const registrationError = ref('');
 const registrationModalRef = ref(null);
 let registrationModal;
 const registrationTraining = ref(null);
+const addForm = ref({ user_id: '', training_role_id: '' });
+const addLoading = ref(false);
+const judges = ref([]);
+const trainingRoles = ref([]);
 const assignmentsRef = ref(null);
 
 const form = ref({
@@ -532,6 +536,47 @@ async function loadRegistrations(trainingId) {
   }
 }
 
+async function loadJudges() {
+  try {
+    const data = await apiFetch('/referee-group-users');
+    judges.value = data.judges;
+  } catch (_) {
+    judges.value = [];
+  }
+}
+
+async function loadTrainingRoles() {
+  try {
+    const data = await apiFetch('/training-roles');
+    trainingRoles.value = data.roles;
+  } catch (_) {
+    trainingRoles.value = [];
+  }
+}
+
+async function addRegistration() {
+  if (!registrationTraining.value) return;
+  if (!addForm.value.user_id || !addForm.value.training_role_id) return;
+  try {
+    addLoading.value = true;
+    await apiFetch(
+      `/camp-trainings/${registrationTraining.value.id}/registrations`,
+      {
+        method: 'POST',
+        body: JSON.stringify(addForm.value),
+      }
+    );
+    addForm.value.user_id = '';
+    addForm.value.training_role_id = '';
+    await loadRegistrations(registrationTraining.value.id);
+    await loadTrainings();
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    addLoading.value = false;
+  }
+}
+
 function openRegistrations(t) {
   if (!registrationModal) {
     registrationModal = new Modal(registrationModalRef.value);
@@ -539,6 +584,8 @@ function openRegistrations(t) {
   registrationTraining.value = t;
   registrationPage.value = 1;
   registrationError.value = '';
+  if (!judges.value.length) loadJudges();
+  if (!trainingRoles.value.length) loadTrainingRoles();
   loadRegistrations(t.id);
   registrationModal.show();
 }
@@ -895,27 +942,54 @@ async function removeRegistration(userId) {
           <h5 class="modal-title">Участники</h5>
           <button type="button" class="btn-close" @click="registrationModal.hide()"></button>
         </div>
-        <div class="modal-body">
-          <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
-          <div v-if="registrationLoading" class="text-center my-3">
-            <div class="spinner-border" role="status"></div>
+      <div class="modal-body">
+        <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
+        <div v-if="registrationLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col">
+            <label class="form-label">Судья</label>
+            <select v-model="addForm.user_id" class="form-select">
+              <option value="" disabled>Выберите судью</option>
+              <option v-for="j in judges" :key="j.user.id" :value="j.user.id">
+                {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
+              </option>
+            </select>
           </div>
-          <div v-if="registrationList.length" class="table-responsive">
-            <table class="table admin-table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>ФИО</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in registrationList" :key="r.user.id">
-                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
-                  </td>
-                </tr>
-              </tbody>
+          <div class="col">
+            <label class="form-label">Роль</label>
+            <select v-model="addForm.training_role_id" class="form-select">
+              <option value="" disabled>Выберите роль</option>
+              <option v-for="r in trainingRoles" :key="r.id" :value="r.id">
+                {{ r.name }}
+              </option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
+              Добавить
+            </button>
+          </div>
+        </div>
+        <div v-if="registrationList.length" class="table-responsive">
+          <table class="table admin-table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>ФИО</th>
+                <th>Роль</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in registrationList" :key="r.user.id">
+                <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                <td>{{ r.role?.name }}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
+                </td>
+              </tr>
+            </tbody>
             </table>
           </div>
           <p v-else-if="!registrationLoading" class="text-muted mb-0">Нет записей.</p>

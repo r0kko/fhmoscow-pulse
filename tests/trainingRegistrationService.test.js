@@ -7,6 +7,7 @@ const findUserMock = jest.fn();
 const findRegMock = jest.fn();
 const destroyMock = jest.fn();
 const findTrainingRoleMock = jest.fn();
+const findRoleMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -16,13 +17,14 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: {},
   RefereeGroup: {},
   Address: {},
-  TrainingRole: { findOne: findTrainingRoleMock },
+  TrainingRole: { findOne: findTrainingRoleMock, findByPk: findTrainingRoleMock },
   RefereeGroupUser: { findOne: findGroupUserMock },
   TrainingRegistration: {
     create: createRegMock,
     findOne: findRegMock,
   },
   User: { findByPk: findUserMock },
+  Role: { findOne: findRoleMock },
 }));
 
 const isOpenMock = jest.fn(() => true);
@@ -52,6 +54,7 @@ beforeEach(() => {
   findUserMock.mockReset();
   findRegMock.mockReset();
   destroyMock.mockReset();
+  findRoleMock.mockReset();
   sendRegEmailMock.mockClear();
   sendCancelEmailMock.mockClear();
   findRegMock.mockImplementation(() => ({ destroy: destroyMock }));
@@ -83,4 +86,18 @@ test('remove sends cancellation email', async () => {
   await service.remove('t1', 'u1');
   expect(destroyMock).toHaveBeenCalled();
   expect(sendCancelEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
+});
+
+test('add creates registration for referee', async () => {
+  findTrainingMock.mockResolvedValue({ ...training, TrainingRegistrations: [] });
+  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] });
+  await service.add('t1', 'u2', 'role2', 'admin');
+  expect(createRegMock).toHaveBeenCalledWith({
+    training_id: 't1',
+    user_id: 'u2',
+    training_role_id: 'role2',
+    created_by: 'admin',
+    updated_by: 'admin',
+  });
+  expect(sendRegEmailMock).toHaveBeenCalled();
 });
