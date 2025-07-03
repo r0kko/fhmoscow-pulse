@@ -45,4 +45,23 @@ router.post(
   controller.setGroup
 );
 
+/**
+ * @swagger
+ * /referee-group-users/{id}:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Remove referee from group
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated referee
+ */
+router.delete('/:id', auth, authorize('ADMIN'), controller.clearGroup);
+
 export default router;
