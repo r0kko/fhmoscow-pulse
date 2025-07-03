@@ -19,6 +19,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Training: { findByPk: findByPkMock },
   TrainingType: {},
   CampStadium: {},
+  Season: {},
 }));
 
 const { default: service } = await import('../src/services/trainingService.js');

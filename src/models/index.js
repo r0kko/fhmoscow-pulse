@@ -26,6 +26,9 @@ import CampStadium from './campStadium.js';
 import CampStadiumParkingType from './campStadiumParkingType.js';
 import TrainingType from './trainingType.js';
 import Training from './training.js';
+import Season from './season.js';
+import JudgeGroup from './judgeGroup.js';
+import JudgeGroupUser from './judgeGroupUser.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExamStatus from './medicalExamStatus.js';
 import MedicalExam from './medicalExam.js';
@@ -105,6 +108,16 @@ TrainingType.hasMany(Training, { foreignKey: 'type_id' });
 Training.belongsTo(TrainingType, { foreignKey: 'type_id' });
 CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
 Training.belongsTo(CampStadium, { foreignKey: 'camp_stadium_id' });
+Season.hasMany(Training, { foreignKey: 'season_id' });
+Training.belongsTo(Season, { foreignKey: 'season_id' });
+Season.hasMany(JudgeGroup, { foreignKey: 'season_id' });
+JudgeGroup.belongsTo(Season, { foreignKey: 'season_id' });
+User.belongsToMany(JudgeGroup, { through: JudgeGroupUser, foreignKey: 'user_id' });
+JudgeGroup.belongsToMany(User, { through: JudgeGroupUser, foreignKey: 'group_id' });
+JudgeGroup.hasMany(JudgeGroupUser, { foreignKey: 'group_id' });
+JudgeGroupUser.belongsTo(JudgeGroup, { foreignKey: 'group_id' });
+User.hasOne(JudgeGroupUser, { foreignKey: 'user_id' });
+JudgeGroupUser.belongsTo(User, { foreignKey: 'user_id' });
 
 /* medical centers */
 MedicalCenter.belongsTo(Address, { foreignKey: 'address_id' });
@@ -157,6 +170,9 @@ export {
   CampStadiumParkingType,
   TrainingType,
   Training,
+  Season,
+  JudgeGroup,
+  JudgeGroupUser,
   File,
   MedicalCertificateType,
   MedicalCertificateFile,
