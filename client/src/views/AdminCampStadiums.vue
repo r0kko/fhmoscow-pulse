@@ -823,7 +823,7 @@ async function removeRegistration(userId) {
           <th>Тип</th>
           <th>Стадион</th>
           <th>Дата и время</th>
-          <th class="text-center">Вместимость</th>
+          <th class="text-center">Участников</th>
           <th v-for="g in refereeGroups" :key="g.id" class="text-center">{{ g.name }}</th>
           <th></th>
         </tr>
@@ -833,7 +833,7 @@ async function removeRegistration(userId) {
           <td>{{ t.type?.name }}</td>
           <td>{{ t.stadium?.name }}</td>
           <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-          <td class="text-center">{{ t.capacity }}</td>
+          <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
           <td v-for="g in refereeGroups" :key="g.id" class="text-center">
             <i
               v-if="t.groups?.some(gr => gr.id === g.id)"
