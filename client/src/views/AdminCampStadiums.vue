@@ -410,13 +410,17 @@ function toInputValue(str) {
   return d.toISOString().slice(0, 16);
 }
 
-function formatDateTime(str) {
-  if (!str) return '';
-  const d = new Date(str);
+
+function formatDateTimeRange(start, end) {
+  if (!start) return '';
   const pad = (n) => (n < 10 ? '0' + n : '' + n);
-  const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
-  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  return `${date} ${time}`;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${
+    startDate.getFullYear()}`;
+  const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+  const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+  return `${date} ${startTime} - ${endTime}`;
 }
 
 function openEditTraining(t) {
@@ -685,8 +689,7 @@ async function removeTraining(t) {
         <tr>
           <th>Тип</th>
           <th>Стадион</th>
-          <th>Начало</th>
-          <th>Окончание</th>
+          <th>Дата и время</th>
           <th class="text-center">Вместимость</th>
           <th></th>
         </tr>
@@ -695,8 +698,7 @@ async function removeTraining(t) {
         <tr v-for="t in trainings" :key="t.id">
           <td>{{ t.type?.name }}</td>
           <td>{{ t.stadium?.name }}</td>
-          <td>{{ formatDateTime(t.start_at) }}</td>
-          <td>{{ formatDateTime(t.end_at) }}</td>
+          <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
           <td class="text-center">{{ t.capacity }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
