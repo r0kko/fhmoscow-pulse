@@ -24,6 +24,8 @@
 - The personal page warns when a valid certificate is missing and lists
   expired certificates without displaying the taxpayer ID to keep the layout
   compact on small screens.
+- Consistent typography with CSS variables. Font sizes shrink slightly on
+  narrow screens for better readability.
 
 ## Branching strategy
 

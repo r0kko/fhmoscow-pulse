@@ -121,7 +121,7 @@ function formatDeadline(start) {
 }
 
 .training-card .card-title {
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .training-card .card-body {
