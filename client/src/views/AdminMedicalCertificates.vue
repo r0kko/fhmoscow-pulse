@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import Modal from 'bootstrap/js/dist/modal'
 import { apiFetch, apiFetchForm } from '../api.js'
 import { findOrganizationByInn } from '../dadata.js'

@@ -9,19 +9,15 @@ module.exports = {
       'SELECT id FROM seasons ORDER BY created_at LIMIT 1'
     );
     if (!season[0]) return;
-    await queryInterface.bulkInsert(
-      'referee_groups',
-      [
-        {
-          id: uuidv4(),
-          season_id: season[0].id,
-          name: 'Основная группа',
-          created_at: now,
-          updated_at: now,
-        },
-      ],
-      { ignoreDuplicates: true }
-    );
+    await queryInterface.bulkInsert('referee_groups', [
+      {
+        id: uuidv4(),
+        season_id: season[0].id,
+        name: 'Основная группа',
+        created_at: now,
+        updated_at: now,
+      },
+    ]);
   },
 
   async down(queryInterface) {
