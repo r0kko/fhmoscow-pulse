@@ -306,6 +306,7 @@ function formatTime(date) {
 
 .stadium-body {
   min-width: 0;
+  overflow-x: hidden;
 }
 
 @media (max-width: 575.98px) {
