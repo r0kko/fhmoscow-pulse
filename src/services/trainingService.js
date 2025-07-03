@@ -31,6 +31,8 @@ async function listAll(options = {}) {
       Season,
       { model: RefereeGroup, through: { attributes: [] } },
     ],
+    distinct: true,
+    subQuery: false,
     order: [['start_at', 'DESC']],
     limit,
     offset,
