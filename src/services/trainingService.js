@@ -34,7 +34,6 @@ async function listAll(options = {}) {
       { model: TrainingRegistration },
     ],
     distinct: true,
-    subQuery: false,
     order: [['start_at', 'ASC']],
     limit,
     offset,
