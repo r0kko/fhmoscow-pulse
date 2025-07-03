@@ -12,6 +12,7 @@
 - Request/response logging persisted to the `logs` table
 - Swagger documentation available at `/api-docs`
 - Docker and docker-compose setup for local development
+- CI builds and publishes Docker images to GitHub Container Registry
 - Redis-backed login attempt tracking
 - ESLint and Prettier for code quality
 - Jest unit tests
@@ -111,6 +112,12 @@ The API will be available at `http://localhost:3000` and Swagger docs at `http:/
 The frontend will be served at `http://localhost:5173`.
 
 On container start, migrations and seeders are run automatically.
+
+For production, prebuilt images are published by the CI pipeline to GitHub Container Registry. Configure `APP_IMAGE` and `CLIENT_IMAGE` in your `.env` file and run:
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
 
 ### HTTPS deployment
 
