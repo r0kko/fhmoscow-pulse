@@ -240,17 +240,23 @@ function formatTime(date) {
                       </div>
                     </div>
                   </div>
-                  <div v-if="t.coaches && t.coaches.length" class="small mt-1">
-                    Тренер<span v-if="t.coaches.length > 1">(-ы)</span>:
-                    <span v-for="(c, i) in t.coaches" :key="c.id">
-                      <a :href="`tel:+${c.phone}`" class="text-reset text-decoration-none">{{ shortName(c) }}</a><span v-if="i < t.coaches.length - 1">, </span>
-                    </span>
+                  <div class="small mt-1">
+                    Тренер<span v-if="t.coaches && t.coaches.length > 1">(-ы)</span>:
+                    <template v-if="t.coaches && t.coaches.length">
+                      <span v-for="(c, i) in t.coaches" :key="c.id">
+                        <a :href="`tel:+${c.phone}`" class="text-reset text-decoration-none">{{ shortName(c) }}</a><span v-if="i < t.coaches.length - 1">, </span>
+                      </span>
+                    </template>
+                    <span v-else>не назначен</span>
                   </div>
-                  <div v-if="t.equipment_managers && t.equipment_managers.length" class="small">
+                  <div class="small">
                     Инвентарь:
-                    <span v-for="(m, i) in t.equipment_managers" :key="m.id">
-                      <a :href="`tel:+${m.phone}`" class="text-reset text-decoration-none">{{ shortName(m) }}</a><span v-if="i < t.equipment_managers.length - 1">, </span>
-                    </span>
+                    <template v-if="t.equipment_managers && t.equipment_managers.length">
+                      <span v-for="(m, i) in t.equipment_managers" :key="m.id">
+                        <a :href="`tel:+${m.phone}`" class="text-reset text-decoration-none">{{ shortName(m) }}</a><span v-if="i < t.equipment_managers.length - 1">, </span>
+                      </span>
+                    </template>
+                    <span v-else>не назначен</span>
                   </div>
                 </li>
               </ul>
