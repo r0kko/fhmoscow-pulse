@@ -136,7 +136,9 @@ function formatDeadline(start) {
           }}
         </small>
       </button>
-      <p class="small mt-2 mb-0">Мест: {{ seatStatus(training) }}</p>
+      <p class="seat-status text-muted mt-1 mb-0 text-center">
+        Мест: {{ seatStatus(training) }}
+      </p>
     </div>
   </div>
 </template>
@@ -155,5 +157,9 @@ function formatDeadline(start) {
 
 .training-card .card-body {
   padding: 0.75rem;
+}
+
+.seat-status {
+  font-size: 0.75rem;
 }
 </style>
