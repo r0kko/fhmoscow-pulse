@@ -29,6 +29,8 @@ const filesLoading = ref(false)
 const fileError = ref('')
 const fileType = ref('CONCLUSION')
 const fileInput = ref(null)
+const saving = ref(false)
+const deleting = ref(false)
 
 onMounted(() => {
   modal = new Modal(modalRef.value)
@@ -90,6 +92,8 @@ function openCreate() {
   files.value = []
   fileType.value = 'CONCLUSION'
   fileError.value = ''
+  saving.value = false
+  deleting.value = false
   modal.show()
 }
 
@@ -100,6 +104,8 @@ function openEdit(cert) {
   userQuery.value = ''
   userSuggestions.value = []
   formError.value = ''
+  saving.value = false
+  deleting.value = false
   loadFiles()
   modal.show()
 }
@@ -112,6 +118,8 @@ function selectUser(u) {
 }
 
 async function save() {
+  if (saving.value) return
+  saving.value = true
   try {
     formError.value = ''
     if (!form.value.user_id) {
@@ -125,6 +133,8 @@ async function save() {
     await loadJudges()
   } catch (e) {
     formError.value = e.message
+  } finally {
+    saving.value = false
   }
 }
 
@@ -178,12 +188,16 @@ async function removeFile(file) {
 async function removeCert() {
   if (!editing.value) return
   if (!confirm('Удалить справку?')) return
+  if (deleting.value) return
+  deleting.value = true
   try {
     await apiFetch(`/medical-certificates/${editing.value.id}`, { method: 'DELETE' })
     modal.hide()
     await loadJudges()
   } catch (e) {
     formError.value = e.message
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -400,13 +414,16 @@ async function loadJudges() {
                 type="button"
                 class="btn btn-danger me-auto"
                 @click="removeCert"
+                :disabled="deleting"
               >
+                <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
                 Удалить
               </button>
               <button type="button" class="btn btn-secondary" @click="modal.hide()">
                 Отмена
               </button>
-              <button type="submit" class="btn btn-brand" :disabled="editing">
+              <button type="submit" class="btn btn-brand" :disabled="editing || saving">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                 Сохранить
               </button>
             </div>
