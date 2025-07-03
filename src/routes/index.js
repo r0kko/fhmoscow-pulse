@@ -23,7 +23,7 @@ import campStadiumsRouter from './campStadiums.js';
 import campTrainingTypesRouter from './campTrainingTypes.js';
 import campTrainingsRouter from './campTrainings.js';
 import campSeasonsRouter from './campSeasons.js';
-import judgeGroupsRouter from './judgeGroups.js';
+import refereeGroupsRouter from './refereeGroups.js';
 import medicalCentersRouter from './medicalCenters.js';
 import medicalExamsRouter from './medicalExams.js';
 
@@ -48,7 +48,7 @@ router.use('/camp-stadiums', campStadiumsRouter);
 router.use('/camp-training-types', campTrainingTypesRouter);
 router.use('/camp-trainings', campTrainingsRouter);
 router.use('/camp-seasons', campSeasonsRouter);
-router.use('/judge-groups', judgeGroupsRouter);
+router.use('/referee-groups', refereeGroupsRouter);
 router.use('/medical-centers', medicalCentersRouter);
 router.use('/medical-exams', medicalExamsRouter);
 

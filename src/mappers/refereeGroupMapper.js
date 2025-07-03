@@ -1,6 +1,6 @@
 function sanitize(obj) {
-  const { id, name, alias, season_id, Season } = obj;
-  const res = { id, name, alias, season_id };
+  const { id, name, season_id, Season } = obj;
+  const res = { id, name, season_id };
   if (Season) {
     res.season = { id: Season.id, name: Season.name, alias: Season.alias };
   }

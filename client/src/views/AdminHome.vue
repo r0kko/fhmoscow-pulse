@@ -13,8 +13,7 @@ const tiles = [
     icon: 'bi-building',
     to: '/camp-stadiums',
   },
-  { title: 'Сезоны', icon: 'bi-calendar-event', to: '/camp-seasons' },
-  { title: 'Группы судей', icon: 'bi-people-fill', to: '/judge-groups' },
+  { title: 'Группы судей', icon: 'bi-people-fill', to: '/referee-groups' },
 ];
 </script>
 

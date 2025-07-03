@@ -10,13 +10,12 @@ module.exports = {
     );
     if (!season[0]) return;
     await queryInterface.bulkInsert(
-      'judge_groups',
+      'referee_groups',
       [
         {
           id: uuidv4(),
           season_id: season[0].id,
           name: 'Основная группа',
-          alias: 'MAIN',
           created_at: now,
           updated_at: now,
         },
@@ -26,6 +25,6 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.bulkDelete('judge_groups', { alias: ['MAIN'] });
+    await queryInterface.bulkDelete('referee_groups', { name: ['Основная группа'] });
   },
 };

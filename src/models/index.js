@@ -27,8 +27,8 @@ import CampStadiumParkingType from './campStadiumParkingType.js';
 import TrainingType from './trainingType.js';
 import Training from './training.js';
 import Season from './season.js';
-import JudgeGroup from './judgeGroup.js';
-import JudgeGroupUser from './judgeGroupUser.js';
+import RefereeGroup from './refereeGroup.js';
+import RefereeGroupUser from './refereeGroupUser.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExamStatus from './medicalExamStatus.js';
 import MedicalExam from './medicalExam.js';
@@ -110,14 +110,14 @@ CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
 Training.belongsTo(CampStadium, { foreignKey: 'camp_stadium_id' });
 Season.hasMany(Training, { foreignKey: 'season_id' });
 Training.belongsTo(Season, { foreignKey: 'season_id' });
-Season.hasMany(JudgeGroup, { foreignKey: 'season_id' });
-JudgeGroup.belongsTo(Season, { foreignKey: 'season_id' });
-User.belongsToMany(JudgeGroup, { through: JudgeGroupUser, foreignKey: 'user_id' });
-JudgeGroup.belongsToMany(User, { through: JudgeGroupUser, foreignKey: 'group_id' });
-JudgeGroup.hasMany(JudgeGroupUser, { foreignKey: 'group_id' });
-JudgeGroupUser.belongsTo(JudgeGroup, { foreignKey: 'group_id' });
-User.hasOne(JudgeGroupUser, { foreignKey: 'user_id' });
-JudgeGroupUser.belongsTo(User, { foreignKey: 'user_id' });
+Season.hasMany(RefereeGroup, { foreignKey: 'season_id' });
+RefereeGroup.belongsTo(Season, { foreignKey: 'season_id' });
+User.belongsToMany(RefereeGroup, { through: RefereeGroupUser, foreignKey: 'user_id' });
+RefereeGroup.belongsToMany(User, { through: RefereeGroupUser, foreignKey: 'group_id' });
+RefereeGroup.hasMany(RefereeGroupUser, { foreignKey: 'group_id' });
+RefereeGroupUser.belongsTo(RefereeGroup, { foreignKey: 'group_id' });
+User.hasOne(RefereeGroupUser, { foreignKey: 'user_id' });
+RefereeGroupUser.belongsTo(User, { foreignKey: 'user_id' });
 
 /* medical centers */
 MedicalCenter.belongsTo(Address, { foreignKey: 'address_id' });
@@ -171,8 +171,8 @@ export {
   TrainingType,
   Training,
   Season,
-  JudgeGroup,
-  JudgeGroupUser,
+  RefereeGroup,
+  RefereeGroupUser,
   File,
   MedicalCertificateType,
   MedicalCertificateFile,
