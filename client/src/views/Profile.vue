@@ -209,7 +209,7 @@ onMounted(() => {
       </div>
     </div>
     <div v-else-if="user">
-      <div class="card tile fade-in mb-4">
+      <div class="card fade-in mb-4">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill justify-content-between mb-0">
             <li class="nav-item" v-for="tab in tabs" :key="tab.id">
@@ -227,7 +227,7 @@ onMounted(() => {
       </div>
 
       <div v-show="activeTab === 'info'" class="mb-4">
-        <div class="card tile fade-in">
+        <div class="card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные и контакты</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
@@ -385,7 +385,7 @@ onMounted(() => {
         class="mb-4"
         v-if="passport !== undefined || passportError || loading.passport"
       >
-        <div class="card tile fade-in">
+        <div class="card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
             <div v-if="loading.passport" class="text-center py-4">
@@ -544,7 +544,7 @@ onMounted(() => {
           loading.snils
         "
       >
-        <div class="card tile fade-in">
+        <div class="card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
             <div v-if="loading.inn || loading.snils" class="text-center py-4">
@@ -607,7 +607,7 @@ onMounted(() => {
           bankAccount !== undefined || bankAccountError || loading.bankAccount
         "
       >
-        <div class="card tile fade-in">
+        <div class="card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Банковские реквизиты</h5>
             <div v-if="loading.bankAccount" class="text-center py-4">
@@ -701,7 +701,7 @@ onMounted(() => {
       </div>
 
       <div v-for="section in placeholderSections" :key="section" class="mb-4">
-        <div class="card tile placeholder-card text-center">
+        <div class="card placeholder-card text-center">
           <div
             class="card-body d-flex flex-column align-items-center justify-content-center"
           >

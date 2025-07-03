@@ -188,8 +188,10 @@ async function copy(text) {
     <div v-if="isLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div class="table-responsive" v-if="users.length">
-      <table class="table table-hover table-striped align-middle">
+    <div v-if="users.length" class="card tile fade-in">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped align-middle mb-0">
         <thead>
           <tr>
             <th @click="toggleSort('last_name')" class="sortable">
@@ -302,7 +304,9 @@ async function copy(text) {
             </td>
           </tr>
         </tbody>
-      </table>
+          </table>
+        </div>
+      </div>
     </div>
     <p v-else>Нет пользователей.</p>
     <nav class="mt-3" v-if="totalPages > 1">

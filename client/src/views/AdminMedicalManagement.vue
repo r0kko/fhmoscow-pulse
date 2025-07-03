@@ -18,35 +18,39 @@ const activeTab = ref('certificates');
         <li class="breadcrumb-item active" aria-current="page">Медицина</li>
       </ol>
     </nav>
-    <ul class="nav nav-tabs mb-3">
-      <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeTab === 'certificates' }"
-          @click="activeTab = 'certificates'"
-        >
-          Медицинские справки
-        </button>
-      </li>
-      <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeTab === 'centers' }"
-          @click="activeTab = 'centers'"
-        >
-          Медицинские центры
-        </button>
-      </li>
-      <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeTab === 'exams' }"
-          @click="activeTab = 'exams'"
-        >
-          Расписание медосмотров
-        </button>
-      </li>
-    </ul>
+    <div class="card tile mb-4">
+      <div class="card-body p-2">
+        <ul class="nav nav-tabs mb-0">
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'certificates' }"
+              @click="activeTab = 'certificates'"
+            >
+              Медицинские справки
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'centers' }"
+              @click="activeTab = 'centers'"
+            >
+              Медицинские центры
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'exams' }"
+              @click="activeTab = 'exams'"
+            >
+              Расписание медосмотров
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
     <div v-if="activeTab === 'certificates'">
       <AdminMedicalCertificates />
     </div>

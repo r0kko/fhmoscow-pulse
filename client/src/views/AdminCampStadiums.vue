@@ -510,30 +510,36 @@ async function removeTraining(t) {
         <i class="bi bi-plus-lg me-1"></i>{{ addButtonText }}
       </button>
     </div>
-    <ul class="nav nav-tabs mb-3">
-      <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
-          Стадионы
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
-          Типы тренировок
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
-          Тренировки
-        </button>
-      </li>
-    </ul>
+    <div class="card tile mb-4">
+      <div class="card-body p-2">
+        <ul class="nav nav-tabs mb-0">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
+              Стадионы
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
+              Типы тренировок
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
+              Тренировки
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
     <div v-if="activeTab === 'stadiums'">
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-if="isLoading" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
       </div>
-      <div v-if="stadiums.length" class="table-responsive">
-        <table class="table table-striped align-middle">
+      <div v-if="stadiums.length" class="card tile fade-in">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
           <thead>
           <tr>
             <th>Название</th>
@@ -568,7 +574,9 @@ async function removeTraining(t) {
             </td>
           </tr>
           </tbody>
-        </table>
+            </table>
+          </div>
+        </div>
       </div>
       <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
       <nav class="mt-3" v-if="totalPages > 1">
@@ -593,8 +601,10 @@ async function removeTraining(t) {
     <div v-if="typesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="trainingTypes.length" class="table-responsive">
-      <table class="table table-striped align-middle">
+    <div v-if="trainingTypes.length" class="card tile fade-in">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
         <thead>
         <tr>
           <th>Название</th>
@@ -611,7 +621,9 @@ async function removeTraining(t) {
           </td>
         </tr>
         </tbody>
-      </table>
+          </table>
+        </div>
+      </div>
     </div>
     <p v-else-if="!typesLoading" class="text-muted">Записей нет.</p>
     <nav class="mt-3" v-if="typesTotalPages > 1">
@@ -669,8 +681,10 @@ async function removeTraining(t) {
     <div v-if="trainingsLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="trainings.length" class="table-responsive">
-      <table class="table table-striped align-middle">
+    <div v-if="trainings.length" class="card tile fade-in">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
         <thead>
         <tr>
           <th>Тип</th>
@@ -694,7 +708,9 @@ async function removeTraining(t) {
           </td>
         </tr>
         </tbody>
-      </table>
+          </table>
+        </div>
+      </div>
     </div>
     <p v-else-if="!trainingsLoading" class="text-muted">Записей нет.</p>
     <nav class="mt-3" v-if="Math.ceil(trainingsTotal / pageSize) > 1">
