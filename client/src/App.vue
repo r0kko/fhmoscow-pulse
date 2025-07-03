@@ -8,10 +8,10 @@ const route = useRoute()
 const showLayout = computed(() => !route.matched.some((r) => r.meta.hideLayout))
 const mainClass = computed(() => {
   if (!showLayout.value) return 'flex-grow-1'
-  const base = 'flex-grow-1 py-3'
+  const base = 'flex-grow-1'
   return route.meta.fluid
     ? `${base} container-fluid px-0`
-    : `${base} container`
+    : `${base} container py-3`
 })
 </script>
 

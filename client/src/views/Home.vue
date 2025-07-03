@@ -32,7 +32,7 @@ const greeting = computed(() => {
 </script>
 
 <template>
-  <div class="home-page py-4">
+  <div class="py-4">
     <div class="container">
       <h1 class="mb-4 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
@@ -82,9 +82,6 @@ const greeting = computed(() => {
 </template>
 
 <style scoped>
-.home-page {
-  background-color: #f0f1f3;
-}
 
 .main-tile {
   border-radius: 1rem;
