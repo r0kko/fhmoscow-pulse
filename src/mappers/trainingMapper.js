@@ -1,3 +1,5 @@
+import campStadiumMapper from './campStadiumMapper.js';
+
 function sanitize(obj) {
   const {
     id,
@@ -30,10 +32,7 @@ function sanitize(obj) {
     };
   }
   if (CampStadium) {
-    res.stadium = {
-      id: CampStadium.id,
-      name: CampStadium.name,
-    };
+    res.stadium = campStadiumMapper.toPublic(CampStadium);
   }
   if (Season) {
     res.season = {

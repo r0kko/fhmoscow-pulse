@@ -5,6 +5,7 @@ import {
   Season,
   RefereeGroup,
   TrainingRefereeGroup,
+  Address,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -26,7 +27,7 @@ async function listAll(options = {}) {
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      CampStadium,
+      { model: CampStadium, include: [Address] },
       Season,
       { model: RefereeGroup, through: { attributes: [] } },
     ],
@@ -47,7 +48,7 @@ async function getById(id) {
   const training = await Training.findByPk(id, {
     include: [
       TrainingType,
-      CampStadium,
+      { model: CampStadium, include: [Address] },
       Season,
       { model: RefereeGroup, through: { attributes: [] } },
     ],
