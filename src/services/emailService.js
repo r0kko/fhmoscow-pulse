@@ -58,7 +58,10 @@ export async function sendAccountActivatedEmail(user) {
 }
 
 export async function sendTrainingRegistrationEmail(user, training, role) {
-  const { subject, text, html } = renderTrainingRegistrationEmail(training, role);
+  const { subject, text, html } = renderTrainingRegistrationEmail(
+    training,
+    role
+  );
   await sendMail(user.email, subject, text, html);
 }
 

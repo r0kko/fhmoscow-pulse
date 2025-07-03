@@ -23,7 +23,7 @@ export function renderTrainingRegistrationEmail(training, role) {
     text += '.';
   }
   text +=
-    '\n\nЕсли вы не записывались на тренировку, просто проигнорируйте письмо.';
+    '\n\nЕсли вы не записывались на тренировку, сообщите об этом администратору.';
 
   const htmlRole = roleName
     ? `<p style="font-size:16px;margin:0 0 16px;">Ваша роль: ${roleName}.</p>`
@@ -44,7 +44,7 @@ export function renderTrainingRegistrationEmail(training, role) {
       ${htmlRole}
       ${htmlAddress}
       <p style="font-size:12px;color:#777;margin:0;">
-        Если вы не записывались на тренировку, просто проигнорируйте письмо.
+        Если вы не записывались на тренировку, сообщите об этом администратору.
       </p>
     </div>`;
   return { subject, text, html };
