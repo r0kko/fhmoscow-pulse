@@ -57,7 +57,7 @@ beforeEach(() => {
   findRoleMock.mockReset();
   sendRegEmailMock.mockClear();
   sendCancelEmailMock.mockClear();
-  findRegMock.mockImplementation(() => ({ destroy: destroyMock }));
+  findRegMock.mockResolvedValue(null);
   findTrainingRoleMock.mockResolvedValue({ id: 'role1' });
 });
 
@@ -83,6 +83,24 @@ test('register sends confirmation email', async () => {
   );
 });
 
+test('register restores deleted registration', async () => {
+  const restoreMock = jest.fn();
+  const updateMock = jest.fn();
+  findTrainingMock.mockResolvedValue(training);
+  findGroupUserMock.mockResolvedValue({ user_id: 'u1', group_id: 'g1' });
+  findRegMock.mockResolvedValue({
+    deleted_at: new Date(),
+    restore: restoreMock,
+    update: updateMock,
+  });
+  findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
+  await service.register('u1', 't1', 'u1');
+  expect(restoreMock).toHaveBeenCalled();
+  expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role1', updated_by: 'u1' });
+  expect(createRegMock).not.toHaveBeenCalled();
+  expect(sendRegEmailMock).toHaveBeenCalled();
+});
+
 test('remove sends cancellation email', async () => {
   findRegMock.mockResolvedValue({ destroy: destroyMock });
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
@@ -104,6 +122,28 @@ test('add creates registration for referee', async () => {
     created_by: 'admin',
     updated_by: 'admin',
   });
+  expect(sendRegEmailMock).toHaveBeenCalledWith(
+    { id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] },
+    tr,
+    { id: 'role1' }
+  );
+});
+
+test('add restores deleted registration', async () => {
+  const tr = { ...training, TrainingRegistrations: [] };
+  const restoreMock = jest.fn();
+  const updateMock = jest.fn();
+  findTrainingMock.mockResolvedValue(tr);
+  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] });
+  findRegMock.mockResolvedValue({
+    deleted_at: new Date(),
+    restore: restoreMock,
+    update: updateMock,
+  });
+  await service.add('t1', 'u2', 'role2', 'admin');
+  expect(restoreMock).toHaveBeenCalled();
+  expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role2', updated_by: 'admin' });
+  expect(createRegMock).not.toHaveBeenCalled();
   expect(sendRegEmailMock).toHaveBeenCalledWith(
     { id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] },
     tr,
