@@ -119,7 +119,7 @@ async function setUserGroup(userId, groupId, actorId) {
     paranoid: false,
   });
   if (link) {
-    if (link.deleted_at) {
+    if (link.deletedAt) {
       await link.restore();
     }
     await link.update({ group_id: groupId, updated_by: actorId });

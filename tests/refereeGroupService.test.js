@@ -44,7 +44,7 @@ test('removeUser does nothing when link missing', async () => {
 test('setUserGroup restores deleted record', async () => {
   findGroupMock.mockResolvedValue({ id: 'g1' });
   findUserMock.mockResolvedValue({ id: 'u1' });
-  findOneMock.mockResolvedValue({ deleted_at: new Date(), restore: restoreMock, update: updateMock });
+  findOneMock.mockResolvedValue({ deletedAt: new Date(), restore: restoreMock, update: updateMock });
   await service.setUserGroup('u1', 'g1', 'admin');
   expect(restoreMock).toHaveBeenCalled();
   expect(updateMock).toHaveBeenCalledWith({ group_id: 'g1', updated_by: 'admin' });
@@ -60,7 +60,7 @@ test('user can be reassigned after removal', async () => {
   // assign user to a group again
   findGroupMock.mockResolvedValue({ id: 'g2' });
   findUserMock.mockResolvedValue({ id: 'u1' });
-  findOneMock.mockResolvedValueOnce({ deleted_at: new Date(), restore: restoreMock, update: updateMock });
+  findOneMock.mockResolvedValueOnce({ deletedAt: new Date(), restore: restoreMock, update: updateMock });
   await service.setUserGroup('u1', 'g2', 'admin');
   expect(restoreMock).toHaveBeenCalled();
   expect(updateMock).toHaveBeenCalledWith({ group_id: 'g2', updated_by: 'admin' });
