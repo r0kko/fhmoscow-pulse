@@ -130,8 +130,10 @@ async function removeExam(exam) {
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="isLoading" class="text-center my-3"><div class="spinner-border" role="status"></div></div>
-    <div v-if="exams.length" class="table-responsive">
-      <table class="table table-striped align-middle">
+    <div v-if="exams.length" class="card tile fade-in mb-4">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
         <thead>
           <tr>
             <th>Центр</th>
@@ -153,7 +155,9 @@ async function removeExam(exam) {
             </td>
           </tr>
         </tbody>
-      </table>
+          </table>
+        </div>
+      </div>
     </div>
     <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
     <nav class="mt-3" v-if="totalPages > 1">
