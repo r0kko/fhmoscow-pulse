@@ -37,6 +37,12 @@ router.get('/', auth, authorize('ADMIN'), controller.list);
  *       200:
  *         description: Updated referee
  */
-router.post('/:id', auth, authorize('ADMIN'), setGroupRules, controller.setGroup);
+router.post(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  setGroupRules,
+  controller.setGroup
+);
 
 export default router;
