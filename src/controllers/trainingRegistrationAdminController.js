@@ -1,4 +1,5 @@
 import { validationResult } from 'express-validator';
+
 import trainingRegistrationService from '../services/trainingRegistrationService.js';
 import userMapper from '../mappers/userMapper.js';
 import { sendError } from '../utils/api.js';
@@ -14,7 +15,11 @@ export default {
       const registrations = rows.map((r) => ({
         user: userMapper.toPublic(r.User),
         role: r.TrainingRole
-          ? { id: r.TrainingRole.id, name: r.TrainingRole.name, alias: r.TrainingRole.alias }
+          ? {
+              id: r.TrainingRole.id,
+              name: r.TrainingRole.name,
+              alias: r.TrainingRole.alias,
+            }
           : null,
       }));
       return res.json({ registrations, total: count });

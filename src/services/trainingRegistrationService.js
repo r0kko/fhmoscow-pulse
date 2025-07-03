@@ -118,7 +118,9 @@ async function unregister(userId, trainingId) {
 
 async function add(trainingId, userId, roleId, actorId) {
   const [training, user, role] = await Promise.all([
-    Training.findByPk(trainingId, { include: [{ model: TrainingRegistration }] }),
+    Training.findByPk(trainingId, {
+      include: [{ model: TrainingRegistration }],
+    }),
     User.findByPk(userId, { include: [Role] }),
     TrainingRole.findByPk(roleId),
   ]);
@@ -188,10 +190,7 @@ async function listByTraining(trainingId, options = {}) {
   const offset = (page - 1) * limit;
   return TrainingRegistration.findAndCountAll({
     where: { training_id: trainingId },
-    include: [
-      { model: User },
-      { model: TrainingRole },
-    ],
+    include: [{ model: User }, { model: TrainingRole }],
     order: [
       [User, 'last_name', 'ASC'],
       [User, 'first_name', 'ASC'],
