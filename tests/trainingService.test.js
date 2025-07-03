@@ -43,3 +43,35 @@ test('update throws on invalid time range', async () => {
   ).rejects.toThrow('invalid_time_range');
 });
 
+test('update saves groups', async () => {
+  findByPkMock.mockResolvedValue({ ...trainingInstance, season_id: 's1' });
+  findAllGroupsMock.mockResolvedValue([
+    { id: 'g1', season_id: 's1' },
+    { id: 'g2', season_id: 's1' },
+  ]);
+  await service.update('t1', { groups: ['g1', 'g2'] }, 'admin');
+  expect(destroyMock).toHaveBeenCalledWith({ where: { training_id: 't1' } });
+  expect(bulkCreateMock).toHaveBeenCalledWith([
+    {
+      training_id: 't1',
+      group_id: 'g1',
+      created_by: 'admin',
+      updated_by: 'admin',
+    },
+    {
+      training_id: 't1',
+      group_id: 'g2',
+      created_by: 'admin',
+      updated_by: 'admin',
+    },
+  ]);
+});
+
+test('update rejects mismatched group season', async () => {
+  findByPkMock.mockResolvedValue({ ...trainingInstance, season_id: 's1' });
+  findAllGroupsMock.mockResolvedValue([{ id: 'g1', season_id: 's2' }]);
+  await expect(
+    service.update('t1', { groups: ['g1'] }, 'admin')
+  ).rejects.toThrow('invalid_group_season');
+});
+

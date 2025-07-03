@@ -65,12 +65,14 @@ const trainingsPage = ref(1);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
 const stadiumOptions = ref([]);
+const refereeGroups = ref([]);
 const trainingForm = ref({
   type_id: '',
   camp_stadium_id: '',
   start_at: '',
   end_at: '',
   capacity: '',
+  groups: [],
 });
 const trainingEditing = ref(null);
 const trainingModalRef = ref(null);
@@ -105,6 +107,7 @@ onMounted(() => {
   loadTypes();
   loadTrainings();
   loadStadiumOptions();
+  loadRefereeGroups();
   });
 
 watch(currentPage, () => {
@@ -386,18 +389,30 @@ async function loadStadiumOptions() {
   }
 }
 
+async function loadRefereeGroups() {
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const data = await apiFetch(`/referee-groups?${params}`);
+    refereeGroups.value = data.groups;
+  } catch (_) {
+    refereeGroups.value = [];
+  }
+}
+
 function openCreateTraining() {
   if (!trainingModal) {
     trainingModal = new Modal(trainingModalRef.value)
   }
   trainingEditing.value = null;
   if (!stadiumOptions.value.length) loadStadiumOptions();
+  if (!refereeGroups.value.length) loadRefereeGroups();
   trainingForm.value = {
     type_id: '',
     camp_stadium_id: '',
     start_at: '',
     end_at: '',
     capacity: '',
+    groups: [],
   };
   trainingFormError.value = '';
   trainingModal.show();
@@ -424,12 +439,14 @@ function openEditTraining(t) {
     trainingModal = new Modal(trainingModalRef.value)
   }
   trainingEditing.value = t;
+  if (!refereeGroups.value.length) loadRefereeGroups();
   trainingForm.value = {
     type_id: t.type?.id || '',
     camp_stadium_id: t.stadium?.id || '',
     start_at: toInputValue(t.start_at),
     end_at: toInputValue(t.end_at),
     capacity: t.capacity || '',
+    groups: (t.groups || []).map((g) => g.id),
   };
   trainingFormError.value = '';
   trainingModal.show();
@@ -448,6 +465,7 @@ async function saveTraining() {
     start_at: new Date(trainingForm.value.start_at).toISOString(),
     end_at: new Date(trainingForm.value.end_at).toISOString(),
     capacity: trainingForm.value.capacity || undefined,
+    groups: trainingForm.value.groups,
   };
   try {
     if (trainingEditing.value) {
@@ -688,6 +706,7 @@ async function removeTraining(t) {
           <th>Начало</th>
           <th>Окончание</th>
           <th class="text-center">Вместимость</th>
+          <th>Группы</th>
           <th></th>
         </tr>
         </thead>
@@ -698,6 +717,9 @@ async function removeTraining(t) {
           <td>{{ formatDateTime(t.start_at) }}</td>
           <td>{{ formatDateTime(t.end_at) }}</td>
           <td class="text-center">{{ t.capacity }}</td>
+          <td>
+            <span v-if="t.groups?.length">{{ t.groups.map(g => g.name).join(', ') }}</span>
+          </td>
           <td class="text-end">
             <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
             <button class="btn btn-sm btn-danger" @click="removeTraining(t)">Удалить</button>
@@ -757,6 +779,12 @@ async function removeTraining(t) {
               <div class="form-floating mb-3">
                 <input id="trCap" v-model="trainingForm.capacity" type="number" min="0" class="form-control" />
                 <label for="trCap">Вместимость</label>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Группы судей</label>
+                <select v-model="trainingForm.groups" multiple class="form-select">
+                  <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                </select>
               </div>
             </div>
             <div class="modal-footer">
