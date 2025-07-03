@@ -21,7 +21,10 @@ export default {
 
   async remove(req, res) {
     try {
-      await trainingRegistrationService.remove(req.params.id, req.params.userId);
+      await trainingRegistrationService.remove(
+        req.params.id,
+        req.params.userId
+      );
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);
