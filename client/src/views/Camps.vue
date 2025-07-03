@@ -159,7 +159,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
           <div
             v-for="g in groupedAll"
             :key="g.stadium.id"
-            class="col-12 col-md-6 col-lg-4"
+            class="col-12"
           >
             <div class="card tile h-100">
               <div class="card-body">
