@@ -800,7 +800,9 @@ async function removeRegistration(userId) {
             ></i>
           </td>
           <td class="text-end">
-            <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">Участники</button>
+            <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
+              <i class="bi bi-people"></i>
+            </button>
             <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
               <i class="bi bi-pencil"></i>
             </button>
