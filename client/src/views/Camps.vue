@@ -303,4 +303,15 @@ function formatTime(date) {
 .training-scroll .training-card {
   margin: 0;
 }
+
+@media (max-width: 575.98px) {
+  .training-scroll {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+  .training-scroll .training-card {
+    width: 100%;
+  }
+}
 </style>
