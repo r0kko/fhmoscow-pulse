@@ -15,6 +15,7 @@ module.exports = {
         unique: true,
         where: {
           deleted_at: null,
+          status_id: active.id,
         },
       }
     );
