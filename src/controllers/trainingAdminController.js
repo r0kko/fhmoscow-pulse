@@ -61,5 +61,4 @@ export default {
       return sendError(res, err, 404);
     }
   },
-
 };

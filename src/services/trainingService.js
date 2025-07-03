@@ -23,7 +23,10 @@ async function listAll(options = {}) {
     offset,
   });
   return {
-    rows: rows.map((t) => ({ ...t.get(), registration_open: isRegistrationOpen(t) })),
+    rows: rows.map((t) => ({
+      ...t.get(),
+      registration_open: isRegistrationOpen(t),
+    })),
     count,
   };
 }
