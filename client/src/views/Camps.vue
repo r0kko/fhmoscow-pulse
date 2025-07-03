@@ -247,7 +247,7 @@ function formatTime(date) {
             :key="g.stadium.id"
             class="col-12"
           >
-            <div class="card tile h-100 w-100">
+            <div class="card tile h-100">
               <div class="card-body stadium-body">
                 <div class="d-flex justify-content-between align-items-start mb-1">
                   <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
@@ -291,7 +291,6 @@ function formatTime(date) {
 <style scoped>
 .training-scroll {
   display: flex;
-  width: 100%;
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -307,16 +306,5 @@ function formatTime(date) {
 
 .stadium-body {
   min-width: 0;
-}
-
-@media (max-width: 575.98px) {
-  .training-scroll {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    scroll-snap-type: none;
-  }
-  .training-scroll .training-card {
-    width: 100%;
-  }
 }
 </style>
