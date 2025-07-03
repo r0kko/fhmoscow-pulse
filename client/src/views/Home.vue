@@ -77,18 +77,19 @@ function formatStart(date) {
             </div>
           </div>
           <p v-else-if="!upcoming.length" class="text-muted mb-0">У вас нет записей</p>
-          <div v-else class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+          <div v-else class="upcoming-scroll d-flex flex-nowrap gap-3">
             <a
               v-for="t in upcoming"
               :key="t.id"
               :href="t.stadium?.yandex_url"
               target="_blank"
-              class="col text-decoration-none text-body"
+              class="text-decoration-none text-body"
             >
               <div class="card h-100 upcoming-card">
                 <div class="card-body d-flex align-items-start">
                   <i class="bi bi-people-fill fs-3 me-3 text-brand" aria-hidden="true"></i>
                   <div>
+                    <p class="small text-muted mb-1">Тренировка</p>
                     <p class="mb-1">
                       <i class="bi bi-clock me-1" aria-hidden="true"></i>
                       {{ formatStart(t.start_at) }}
@@ -161,6 +162,24 @@ function formatStart(date) {
 }
 .fade-in {
   animation: fadeIn 0.4s ease-out;
+}
+
+.upcoming-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+  justify-content: flex-start;
+}
+
+.upcoming-card {
+  width: clamp(16rem, 75vw, 20rem);
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .upcoming-card i {
