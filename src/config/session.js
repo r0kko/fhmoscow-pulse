@@ -1,5 +1,5 @@
 import session from 'express-session';
-import connectRedis from 'connect-redis';
+import * as connectRedisPkg from 'connect-redis';
 import dotenv from 'dotenv';
 
 import redisClient from './redis.js';
@@ -7,6 +7,8 @@ dotenv.config();
 function isClass(fn) {
   return typeof fn === 'function' && /^class\s/.test(Function.prototype.toString.call(fn));
 }
+
+const connectRedis = connectRedisPkg.default || connectRedisPkg;
 
 let RedisStore = connectRedis;
 if (!isClass(connectRedis)) {
