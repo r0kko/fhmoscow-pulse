@@ -21,6 +21,11 @@ const schema = Joi.object({
   S3_ENDPOINT: Joi.string().optional(),
   S3_ACCESS_KEY: Joi.string().optional(),
   S3_SECRET_KEY: Joi.string().optional(),
+  BASE_URL: Joi.string().optional(),
+  SSL_CERT_PATH: Joi.string().optional(),
+  SSL_KEY_PATH: Joi.string().optional(),
+  COOKIE_DOMAIN: Joi.string().optional(),
+  ALLOWED_ORIGINS: Joi.string().optional(),
 }).unknown(true);
 
 export default function validateEnv() {
