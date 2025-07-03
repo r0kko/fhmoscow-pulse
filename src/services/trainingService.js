@@ -59,22 +59,39 @@ async function getById(id) {
 }
 
 async function create(data, actorId) {
+  let seasonId = data.season_id;
+  let groups = [];
+  if (Array.isArray(data.groups) && data.groups.length) {
+    groups = await RefereeGroup.findAll({ where: { id: data.groups } });
+  }
+  if (!seasonId) {
+    if (groups.length) {
+      const uniq = [...new Set(groups.map((g) => g.season_id))];
+      if (uniq.length === 1) {
+        seasonId = uniq[0];
+      } else {
+        throw new ServiceError('invalid_group_season');
+      }
+    } else {
+      const yearAlias = new Date(data.start_at).getFullYear().toString();
+      const season = await Season.findOne({ where: { alias: yearAlias } });
+      if (!season) throw new ServiceError('season_not_found', 404);
+      seasonId = season.id;
+    }
+  }
   const training = await Training.create({
     type_id: data.type_id,
     camp_stadium_id: data.camp_stadium_id,
-    season_id: data.season_id,
+    season_id: seasonId,
     start_at: data.start_at,
     end_at: data.end_at,
     capacity: data.capacity,
     created_by: actorId,
     updated_by: actorId,
   });
-  if (Array.isArray(data.groups)) {
-    const groups = await RefereeGroup.findAll({ where: { id: data.groups } });
-    const seasonGroups = groups.filter(
-      (g) => g.season_id === training.season_id
-    );
-    if (seasonGroups.length !== data.groups.length) {
+  if (groups.length) {
+    const seasonGroups = groups.filter((g) => g.season_id === seasonId);
+    if (seasonGroups.length !== groups.length) {
       throw new ServiceError('invalid_group_season');
     }
     await TrainingRefereeGroup.bulkCreate(
