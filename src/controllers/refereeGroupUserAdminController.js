@@ -41,4 +41,19 @@ export default {
       return sendError(res, err, 404);
     }
   },
+
+  async clearGroup(req, res) {
+    try {
+      await refereeGroupService.removeUser(req.params.id);
+      const user = await refereeGroupService.getReferee(req.params.id);
+      return res.json({
+        judge: {
+          user: userMapper.toPublic(user),
+          group: null,
+        },
+      });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
 };

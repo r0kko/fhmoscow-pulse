@@ -34,12 +34,17 @@ async function loadGroups() {
 }
 
 async function setGroup(judge) {
-  if (!judge.group_id) return;
   try {
-    await apiFetch(`/referee-group-users/${judge.user.id}`, {
-      method: 'POST',
-      body: JSON.stringify({ group_id: judge.group_id })
-    });
+    if (!judge.group_id) {
+      await apiFetch(`/referee-group-users/${judge.user.id}`, {
+        method: 'DELETE'
+      });
+    } else {
+      await apiFetch(`/referee-group-users/${judge.user.id}`, {
+        method: 'POST',
+        body: JSON.stringify({ group_id: judge.group_id })
+      });
+    }
   } catch (e) {
     alert(e.message);
   }
@@ -94,7 +99,7 @@ defineExpose({ refresh });
                 <td>{{ formatDate(j.user.birth_date) }}</td>
                 <td>
                   <select v-model="j.group_id" class="form-select" @change="setGroup(j)">
-                    <option value="" disabled>Выберите группу</option>
+                    <option value="">Без группы</option>
                     <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                   </select>
                 </td>
