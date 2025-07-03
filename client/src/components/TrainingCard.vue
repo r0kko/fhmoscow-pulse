@@ -1,5 +1,7 @@
 <script setup>
 
+import { computed } from 'vue';
+
 const props = defineProps({
   training: { type: Object, required: true },
   loading: { type: Boolean, default: false },
@@ -51,6 +53,31 @@ function seatStatus(t) {
   }
   return 'много';
 }
+
+function registrationOpenTime(start) {
+  const d = new Date(start);
+  d.setDate(d.getDate() - 7);
+  return d;
+}
+
+function registrationCloseTime(start) {
+  const d = new Date(start);
+  d.setMinutes(d.getMinutes() - 45);
+  return d;
+}
+
+const registrationNotStarted = computed(() => {
+  return new Date() < registrationOpenTime(props.training.start_at);
+});
+
+const showRegistrationDeadline = computed(() => {
+  return new Date() < registrationCloseTime(props.training.start_at);
+});
+
+function formatDeadline(start) {
+  const d = registrationCloseTime(start);
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
 </script>
 
 <template>
@@ -64,6 +91,9 @@ function seatStatus(t) {
         >{{ training.type?.name }}</span
       >
       <p class="small mb-2">Мест: {{ seatStatus(training) }}</p>
+      <p v-if="showRegistrationDeadline" class="small mb-2 text-muted">
+        Запись до {{ formatDeadline(training.start_at) }}
+      </p>
       <button
         v-if="training.registered && showCancel"
         class="btn btn-sm btn-secondary mt-auto"
@@ -76,7 +106,7 @@ function seatStatus(t) {
         @click="emit('register', training.id)"
       >
         <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-        Записаться
+        {{ registrationNotStarted ? 'Регистрация не началась' : 'Записаться' }}
       </button>
     </div>
   </div>
