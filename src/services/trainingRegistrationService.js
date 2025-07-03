@@ -188,10 +188,10 @@ async function listUpcomingByUser(userId, options = {}) {
       TrainingType,
       { model: CampStadium, include: [Address] },
       { model: Season, where: { active: true }, required: true },
-        {
-            model: TrainingRegistration,
-            include: [User, TrainingRole],
-        },
+      {
+        model: TrainingRegistration,
+        include: [User, TrainingRole],
+      },
     ],
     where: { start_at: { [Op.gte]: now } },
     order: [['start_at', 'ASC']],

@@ -8,7 +8,7 @@ module.exports = {
       defaultValue: false,
     });
     await queryInterface.sequelize.query(
-      "CREATE UNIQUE INDEX seasons_active_true_idx ON seasons ((active)) WHERE active"
+      'CREATE UNIQUE INDEX seasons_active_true_idx ON seasons ((active)) WHERE active'
     );
   },
 

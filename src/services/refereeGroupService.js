@@ -5,8 +5,9 @@ import {
   User,
   Role,
 } from '../models/index.js';
-import seasonService from './seasonService.js';
 import ServiceError from '../errors/ServiceError.js';
+
+import seasonService from './seasonService.js';
 
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
