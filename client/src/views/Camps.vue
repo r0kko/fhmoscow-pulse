@@ -78,8 +78,14 @@ function groupDetailed(list) {
 }
 
 function metroNames(address) {
-  if (!address || !Array.isArray(address.metro)) return '';
-  return address.metro.map((m) => m.name).join(', ');
+  if (!address || !Array.isArray(address.metro) || !address.metro.length) {
+    return '';
+  }
+  return address.metro
+    .map((m) =>
+      m.distance ? `${m.name} (${m.distance} км)` : m.name
+    )
+    .join(', ');
 }
 
 const upcoming = computed(() => {

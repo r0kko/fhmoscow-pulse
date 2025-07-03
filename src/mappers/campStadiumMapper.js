@@ -23,6 +23,7 @@ function sanitize(obj) {
       result: Address.result,
       geo_lat: Address.geo_lat,
       geo_lon: Address.geo_lon,
+      metro: Address.metro,
     };
   }
   if (ParkingTypes) {
