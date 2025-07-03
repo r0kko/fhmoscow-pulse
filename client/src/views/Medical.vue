@@ -121,39 +121,33 @@ onMounted(async () => {
           </span>
           <h5 class="card-title mb-3 text-brand">Действующее заключение</h5>
           <template v-if="certificate && isValid(certificate)">
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
-            <div class="col">
-              <div class="form-floating">
-                <input id="certInn" type="text" class="form-control" :value="certificate.inn" readonly placeholder="ИНН" />
-                <label for="certInn">ИНН</label>
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+              <div class="col">
+                <div class="form-floating">
+                  <input id="certOrg" type="text" class="form-control" :value="certificate.organization" readonly placeholder="Учреждение" />
+                  <label for="certOrg">Мед. учреждение</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <input id="certNumber" type="text" class="form-control" :value="certificate.certificate_number" readonly placeholder="Номер" />
+                  <label for="certNumber">Номер справки</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating">
+                  <input
+                    id="certDates"
+                    type="text"
+                    class="form-control"
+                    :value="validityText(certificate)"
+                    readonly
+                    placeholder="Период"
+                  />
+                  <label for="certDates">Период действия</label>
+                </div>
               </div>
             </div>
-            <div class="col">
-              <div class="form-floating">
-                <input id="certOrg" type="text" class="form-control" :value="certificate.organization" readonly placeholder="Учреждение" />
-                <label for="certOrg">Мед. учреждение</label>
-              </div>
-            </div>
-            <div class="col">
-              <div class="form-floating">
-                <input id="certNumber" type="text" class="form-control" :value="certificate.certificate_number" readonly placeholder="Номер" />
-                <label for="certNumber">Номер справки</label>
-              </div>
-            </div>
-            <div class="col">
-              <div class="form-floating">
-                <input
-                  id="certDates"
-                  type="text"
-                  class="form-control"
-                  :value="validityText(certificate)"
-                  readonly
-                  placeholder="Срок"
-                />
-                <label for="certDates">Срок действия</label>
-              </div>
-            </div>
-          </div>
           <div class="border-top pt-3 mt-3">
             <p class="mb-2 fw-semibold">Файлы</p>
             <div
