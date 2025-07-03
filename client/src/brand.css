@@ -103,3 +103,9 @@ body {
   word-break: break-word;
 }
 
+/* compact columns for referee groups */
+.group-col {
+  width: 2.5rem;
+  white-space: nowrap;
+}
+

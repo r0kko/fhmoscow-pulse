@@ -459,6 +459,15 @@ function formatDateTimeRange(start, end) {
   return `${date} ${startTime} - ${endTime}`;
 }
 
+function shortGroupName(name) {
+  if (!name) return '';
+  return name
+    .split(/\s+/)
+    .map((w) => w.charAt(0))
+    .join('')
+    .toUpperCase();
+}
+
 function openEditTraining(t) {
   if (!trainingModal) {
     trainingModal = new Modal(trainingModalRef.value)
@@ -821,20 +830,32 @@ async function removeRegistration(userId) {
         <thead>
         <tr>
           <th>Тип</th>
-          <th>Стадион</th>
+          <th class="d-none d-sm-table-cell">Стадион</th>
           <th>Дата и время</th>
           <th class="text-center">Участников</th>
-          <th v-for="g in refereeGroups" :key="g.id" class="text-center">{{ g.name }}</th>
+          <th
+            v-for="g in refereeGroups"
+            :key="g.id"
+            class="text-center group-col"
+            :title="g.name"
+          >
+            {{ shortGroupName(g.name) }}
+          </th>
           <th></th>
         </tr>
         </thead>
         <tbody>
         <tr v-for="t in trainings" :key="t.id">
           <td>{{ t.type?.name }}</td>
-          <td>{{ t.stadium?.name }}</td>
+          <td class="d-none d-sm-table-cell">{{ t.stadium?.name }}</td>
           <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
           <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
-          <td v-for="g in refereeGroups" :key="g.id" class="text-center">
+          <td
+            v-for="g in refereeGroups"
+            :key="g.id"
+            class="text-center group-col"
+            :title="g.name"
+          >
             <i
               v-if="t.groups?.some(gr => gr.id === g.id)"
               class="bi bi-check-lg text-success"
@@ -1107,5 +1128,10 @@ async function removeRegistration(userId) {
 .list-group {
   max-height: 200px;
   overflow-y: auto;
+}
+
+.group-col {
+  width: 2.5rem;
+  white-space: nowrap;
 }
 </style>
