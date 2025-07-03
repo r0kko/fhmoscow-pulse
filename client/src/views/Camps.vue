@@ -5,6 +5,7 @@ import { apiFetch } from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 
 const trainings = ref([]);
+const mine = ref([]);
 const page = ref(1);
 const pageSize = 50;
 const loading = ref(true);
@@ -12,9 +13,21 @@ const error = ref('');
 const activeTab = ref('register');
 const registering = ref(null);
 
-onMounted(load);
+onMounted(loadAll);
 
-async function load() {
+async function loadAll() {
+  loading.value = true;
+  try {
+    await Promise.all([loadAvailable(), loadMine()]);
+    error.value = '';
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadAvailable() {
   loading.value = true;
   try {
     const data = await apiFetch(
@@ -29,12 +42,23 @@ async function load() {
   }
 }
 
+async function loadMine() {
+  try {
+    const data = await apiFetch(
+      `/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize}`
+    );
+    mine.value = data.trainings || [];
+  } catch (e) {
+    // ignore, handled by caller
+  }
+}
+
 async function register(id) {
   if (registering.value) return;
   registering.value = id;
   try {
     await apiFetch(`/camp-trainings/${id}/register`, { method: 'POST' });
-    await load();
+    await loadAll();
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -45,23 +69,13 @@ async function register(id) {
 async function unregister(id) {
   try {
     await apiFetch(`/camp-trainings/${id}/register`, { method: 'DELETE' });
-    await load();
+    await loadAll();
   } catch (e) {
     error.value = e.message;
   }
 }
 
-const myTrainings = computed(() => trainings.value.filter((t) => t.registered));
-
-function groupByStadium(list) {
-  return list.reduce((acc, t) => {
-    const key = t.stadium?.name;
-    if (!key) return acc;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(t);
-    return acc;
-  }, {});
-}
+const myTrainings = computed(() => mine.value);
 
 function groupDetailed(list) {
   const map = {};
@@ -104,7 +118,50 @@ const availableTrainings = computed(() =>
 );
 
 const groupedAll = computed(() => groupDetailed(availableTrainings.value));
-const groupedMine = computed(() => groupByStadium(myTrainings.value));
+
+function groupByDay(list) {
+  const map = {};
+  list.forEach((t) => {
+    const d = new Date(t.start_at);
+    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const idx = key.toISOString();
+    if (!map[idx]) map[idx] = { date: key, trainings: [] };
+    map[idx].trainings.push(t);
+  });
+  return Object.values(map)
+    .sort((a, b) => a.date - b.date)
+    .map((g) => {
+      g.trainings.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+      return g;
+    });
+}
+
+const weekTrainings = computed(() => {
+  const now = new Date();
+  const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  return myTrainings.value.filter((t) => {
+    const start = new Date(t.start_at);
+    return start >= now && start < end;
+  });
+});
+
+const groupedMine = computed(() => groupByDay(weekTrainings.value));
+
+function formatDay(date) {
+  const text = date.toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatTime(date) {
+  return new Date(date).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 </script>
 
 <template>
@@ -150,16 +207,33 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-show="activeTab === 'mine'">
-        <p v-if="!myTrainings.length" class="text-muted">У вас нет записей</p>
-        <div v-for="(items, stadium) in groupedMine" :key="stadium" class="mb-5">
-          <h2 class="h5 mb-3">{{ stadium }}</h2>
-          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-5 g-3">
-            <TrainingCard
-              v-for="t in items"
-              :key="t.id"
-              :training="t"
-              @unregister="unregister"
-            />
+        <p v-if="!groupedMine.length" class="text-muted">У вас нет записей</p>
+        <div v-else class="card tile">
+          <div class="card-body">
+            <div v-for="g in groupedMine" :key="g.date" class="mb-3">
+              <h2 class="h6 mb-2">{{ formatDay(g.date) }}</h2>
+              <ul class="list-group">
+                <li
+                  v-for="t in g.trainings"
+                  :key="t.id"
+                  class="list-group-item"
+                >
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <i class="bi bi-clock me-1" aria-hidden="true"></i>
+                      {{ formatTime(t.start_at) }}
+                      <span class="ms-2">{{ t.type?.name }}</span>
+                    </div>
+                    <div class="text-end">
+                      <div class="fw-semibold">{{ t.stadium?.name }}</div>
+                      <div class="small text-muted">
+                        {{ t.stadium?.address?.result }}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
