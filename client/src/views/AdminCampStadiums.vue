@@ -710,7 +710,7 @@ async function removeTraining(t) {
           <th>Стадион</th>
           <th>Дата и время</th>
           <th class="text-center">Вместимость</th>
-          <th>Группы</th>
+          <th v-for="g in refereeGroups" :key="g.id" class="text-center">{{ g.name }}</th>
           <th></th>
         </tr>
         </thead>
@@ -720,8 +720,17 @@ async function removeTraining(t) {
           <td>{{ t.stadium?.name }}</td>
           <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
           <td class="text-center">{{ t.capacity }}</td>
-          <td>
-            <span v-if="t.groups?.length">{{ t.groups.map(g => g.name).join(', ') }}</span>
+          <td v-for="g in refereeGroups" :key="g.id" class="text-center">
+            <i
+              v-if="t.groups?.some(gr => gr.id === g.id)"
+              class="bi bi-check-lg text-success"
+              aria-label="\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u043e"
+            ></i>
+            <i
+              v-else
+              class="bi bi-dash-lg text-muted"
+              aria-label="\u041d\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e"
+            ></i>
           </td>
           <td class="text-end">
             <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
