@@ -78,6 +78,14 @@ const trainingEditing = ref(null);
 const trainingModalRef = ref(null);
 let trainingModal;
 const trainingFormError = ref('');
+const registrationList = ref([]);
+const registrationTotal = ref(0);
+const registrationPage = ref(1);
+const registrationLoading = ref(false);
+const registrationError = ref('');
+const registrationModalRef = ref(null);
+let registrationModal;
+const registrationTraining = ref(null);
 const assignmentsRef = ref(null);
 
 const form = ref({
@@ -98,6 +106,9 @@ let addrTimeout;
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
+const registrationsTotalPages = computed(() =>
+  Math.max(1, Math.ceil(registrationTotal.value / pageSize))
+);
 
 
 onMounted(() => {
@@ -118,6 +129,11 @@ watch(typesPage, () => {
 });
 watch(trainingsPage, () => {
   if (activeTab.value === 'trainings') loadTrainings();
+});
+watch(registrationPage, () => {
+  if (registrationTraining.value) {
+    loadRegistrations(registrationTraining.value.id);
+  }
 });
 
 watch(activeTab, (val) => {
@@ -496,6 +512,51 @@ async function removeTraining(t) {
   await apiFetch(`/camp-trainings/${t.id}`, { method: 'DELETE' });
   await loadTrainings();
 }
+
+async function loadRegistrations(trainingId) {
+  try {
+    registrationLoading.value = true;
+    const params = new URLSearchParams({
+      page: registrationPage.value,
+      limit: pageSize,
+    });
+    const data = await apiFetch(
+      `/camp-trainings/${trainingId}/registrations?${params}`
+    );
+    registrationList.value = data.registrations;
+    registrationTotal.value = data.total;
+  } catch (e) {
+    registrationError.value = e.message;
+  } finally {
+    registrationLoading.value = false;
+  }
+}
+
+function openRegistrations(t) {
+  if (!registrationModal) {
+    registrationModal = new Modal(registrationModalRef.value);
+  }
+  registrationTraining.value = t;
+  registrationPage.value = 1;
+  registrationError.value = '';
+  loadRegistrations(t.id);
+  registrationModal.show();
+}
+
+async function removeRegistration(userId) {
+  if (!registrationTraining.value) return;
+  if (!confirm('Удалить запись?')) return;
+  try {
+    await apiFetch(
+      `/camp-trainings/${registrationTraining.value.id}/registrations/${userId}`,
+      { method: 'DELETE' }
+    );
+    await loadRegistrations(registrationTraining.value.id);
+    await loadTrainings();
+  } catch (e) {
+    alert(e.message);
+  }
+}
 </script>
 
 <template>
@@ -733,6 +794,7 @@ async function removeTraining(t) {
             ></i>
           </td>
           <td class="text-end">
+            <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">Участники</button>
             <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
             <button class="btn btn-sm btn-danger" @click="removeTraining(t)">Удалить</button>
           </td>
@@ -811,6 +873,69 @@ async function removeTraining(t) {
               <button type="submit" class="btn btn-brand">Сохранить</button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div ref="registrationModalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Участники</h5>
+          <button type="button" class="btn-close" @click="registrationModal.hide()"></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
+          <div v-if="registrationLoading" class="text-center my-3">
+            <div class="spinner-border" role="status"></div>
+          </div>
+          <div v-if="registrationList.length" class="table-responsive">
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in registrationList" :key="r.user.id">
+                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!registrationLoading" class="text-muted mb-0">Нет записей.</p>
+        </div>
+        <div class="modal-footer" v-if="registrationsTotalPages > 1">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" :class="{ disabled: registrationPage === 1 }">
+              <button class="page-link" @click="registrationPage--" :disabled="registrationPage === 1">Пред</button>
+            </li>
+            <li
+              class="page-item"
+              v-for="p in registrationsTotalPages"
+              :key="p"
+              :class="{ active: registrationPage === p }"
+            >
+              <button class="page-link" @click="registrationPage = p">{{ p }}</button>
+            </li>
+            <li
+              class="page-item"
+              :class="{ disabled: registrationPage === registrationsTotalPages }"
+            >
+              <button
+                class="page-link"
+                @click="registrationPage++"
+                :disabled="registrationPage === registrationsTotalPages"
+              >
+                След
+              </button>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
