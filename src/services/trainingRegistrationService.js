@@ -16,6 +16,30 @@ import ServiceError from '../errors/ServiceError.js';
 import trainingService from './trainingService.js';
 import emailService from './emailService.js';
 
+async function upsertRegistration(trainingId, userId, roleId, actorId) {
+  const existing = await TrainingRegistration.findOne({
+    where: { training_id: trainingId, user_id: userId },
+    paranoid: false,
+  });
+
+  if (existing) {
+    if (!existing.deleted_at) {
+      throw new ServiceError('already_registered');
+    }
+    await existing.restore();
+    await existing.update({ training_role_id: roleId, updated_by: actorId });
+    return existing;
+  }
+
+  return TrainingRegistration.create({
+    training_id: trainingId,
+    user_id: userId,
+    training_role_id: roleId,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+}
+
 async function listAvailable(userId, options = {}) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
   if (!link) return { rows: [], count: 0 };
@@ -91,26 +115,7 @@ async function register(userId, trainingId, actorId) {
   const role = await TrainingRole.findOne({ where: { alias: 'PARTICIPANT' } });
   if (!role) throw new ServiceError('training_role_not_found');
 
-  const existing = await TrainingRegistration.findOne({
-    where: { training_id: trainingId, user_id: userId },
-    paranoid: false,
-  });
-
-  if (existing) {
-    if (!existing.deleted_at) {
-      throw new ServiceError('already_registered');
-    }
-    await existing.restore();
-    await existing.update({ training_role_id: role.id, updated_by: actorId });
-  } else {
-    await TrainingRegistration.create({
-      training_id: trainingId,
-      user_id: userId,
-      training_role_id: role.id,
-      created_by: actorId,
-      updated_by: actorId,
-    });
-  }
+  await upsertRegistration(trainingId, userId, role.id, actorId);
 
   const user = await User.findByPk(userId);
   if (user) {
@@ -154,26 +159,7 @@ async function add(trainingId, userId, roleId, actorId) {
     throw new ServiceError('user_not_referee');
   }
 
-  const existing = await TrainingRegistration.findOne({
-    where: { training_id: trainingId, user_id: userId },
-    paranoid: false,
-  });
-
-  if (existing) {
-    if (!existing.deleted_at) {
-      throw new ServiceError('already_registered');
-    }
-    await existing.restore();
-    await existing.update({ training_role_id: roleId, updated_by: actorId });
-  } else {
-    await TrainingRegistration.create({
-      training_id: trainingId,
-      user_id: userId,
-      training_role_id: roleId,
-      created_by: actorId,
-      updated_by: actorId,
-    });
-  }
+  await upsertRegistration(trainingId, userId, roleId, actorId);
   await emailService.sendTrainingRegistrationEmail(user, training, role);
 }
 
