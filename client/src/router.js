@@ -7,6 +7,7 @@ import { auth, fetchCurrentUser, clearAuth } from './auth.js';
 import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
 import Medical from './views/Medical.vue';
+import Camps from './views/Camps.vue';
 import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
@@ -23,6 +24,7 @@ const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true, fluid: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/medical', component: Medical, meta: { requiresAuth: true } },
+  { path: '/camps', component: Camps, meta: { requiresAuth: true } },
   {
     path: '/admin',
     component: AdminHome,
