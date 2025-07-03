@@ -21,7 +21,7 @@ import Forbidden from './views/Forbidden.vue'
 import ServerError from './views/ServerError.vue'
 
 const routes = [
-  { path: '/', component: Home, meta: { requiresAuth: true } },
+  { path: '/', component: Home, meta: { requiresAuth: true, fluid: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/medical', component: Medical, meta: { requiresAuth: true } },
   { path: '/admin', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } },
