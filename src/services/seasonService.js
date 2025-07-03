@@ -16,9 +16,13 @@ async function getById(id) {
 }
 
 async function create(data, actorId) {
+  if (data.active) {
+    await Season.update({ active: false }, { where: { active: true } });
+  }
   const season = await Season.create({
     name: data.name,
     alias: generateAlias(data.name),
+    active: Boolean(data.active),
     created_by: actorId,
     updated_by: actorId,
   });
@@ -28,15 +32,23 @@ async function create(data, actorId) {
 async function update(id, data, actorId) {
   const season = await Season.findByPk(id);
   if (!season) throw new ServiceError('season_not_found', 404);
+  if (data.active) {
+    await Season.update({ active: false }, { where: { active: true } });
+  }
   await season.update(
     {
       name: data.name ?? season.name,
       alias: data.name ? generateAlias(data.name) : season.alias,
+      active: data.active ?? season.active,
       updated_by: actorId,
     },
     { returning: false }
   );
   return season;
+}
+
+async function getActive() {
+  return Season.findOne({ where: { active: true } });
 }
 
 async function remove(id) {
@@ -45,4 +57,4 @@ async function remove(id) {
   await season.destroy();
 }
 
-export default { listAll, getById, create, update, remove };
+export default { listAll, getById, create, update, remove, getActive };

@@ -1,6 +1,6 @@
 function sanitize(obj) {
-  const { id, name, alias } = obj;
-  return { id, name, alias };
+  const { id, name, alias, active } = obj;
+  return { id, name, alias, active };
 }
 
 function toPublic(season) {

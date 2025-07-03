@@ -13,6 +13,11 @@ Season.init(
     },
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     alias: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+    active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

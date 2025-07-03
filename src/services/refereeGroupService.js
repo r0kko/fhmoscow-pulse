@@ -5,6 +5,7 @@ import {
   User,
   Role,
 } from '../models/index.js';
+import seasonService from './seasonService.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -12,7 +13,12 @@ async function listAll(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   const where = {};
-  if (options.season_id) where.season_id = options.season_id;
+  if (options.season_id) {
+    where.season_id = options.season_id;
+  } else {
+    const active = await seasonService.getActive();
+    if (active) where.season_id = active.id;
+  }
   return RefereeGroup.findAndCountAll({
     include: [Season],
     where,
@@ -24,7 +30,9 @@ async function listAll(options = {}) {
 
 async function getById(id) {
   const group = await RefereeGroup.findByPk(id, { include: [Season, User] });
-  if (!group) throw new ServiceError('referee_group_not_found', 404);
+  if (!group || !group.Season?.active) {
+    throw new ServiceError('referee_group_not_found', 404);
+  }
   return group;
 }
 
