@@ -18,7 +18,13 @@ TrainingRefereeGroup.init(
     tableName: 'training_referee_groups',
     paranoid: true,
     underscored: true,
-    indexes: [{ unique: true, fields: ['training_id', 'group_id'] }],
+    indexes: [
+      {
+        unique: true,
+        fields: ['training_id', 'group_id'],
+        where: { deleted_at: null },
+      },
+    ],
   }
 );
 
