@@ -132,6 +132,8 @@ function formatDeadline(start) {
           {{
             registrationNotStarted
               ? 'Регистрация не началась'
+              : training.available === 0
+              ? 'Мест нет'
               : 'Зарегистрироваться'
           }}
         </small>
