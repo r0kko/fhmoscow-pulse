@@ -211,7 +211,7 @@ async function removeItem() {
               class="btn btn-danger me-auto"
               @click="removeItem"
             >
-              Удалить
+              <i class="bi bi-trash"></i>
             </button>
             <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
             <button type="submit" class="btn btn-brand">Сохранить</button>

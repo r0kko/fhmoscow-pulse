@@ -278,7 +278,7 @@ async function copy(text) {
             <td><span class="badge" :class="statusClass(u.status)">{{ u.status_name }}</span></td>
             <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(u)">
-                Редактировать
+                <i class="bi bi-pencil"></i>
               </button>
               <button
                 v-if="u.status === 'ACTIVE'"

@@ -639,8 +639,12 @@ async function removeRegistration(userId) {
               <span v-else class="text-muted">Нет</span>
             </td>
             <td class="text-end">
-              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">Изменить</button>
-              <button class="btn btn-sm btn-danger" @click="removeStadium(st)">Удалить</button>
+              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
+                <i class="bi bi-trash"></i>
+              </button>
             </td>
           </tr>
           </tbody>
@@ -692,7 +696,9 @@ async function removeRegistration(userId) {
           <td>{{ t.name }}</td>
           <td class="text-center">{{ t.default_capacity }}</td>
           <td class="text-end">
-            <button class="btn btn-sm btn-secondary" @click="openEditType(t)">Изменить</button>
+            <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
+              <i class="bi bi-pencil"></i>
+            </button>
           </td>
         </tr>
         </tbody>
@@ -795,8 +801,12 @@ async function removeRegistration(userId) {
           </td>
           <td class="text-end">
             <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">Участники</button>
-            <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">Изменить</button>
-            <button class="btn btn-sm btn-danger" @click="removeTraining(t)">Удалить</button>
+            <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" @click="removeTraining(t)">
+              <i class="bi bi-trash"></i>
+            </button>
           </td>
         </tr>
         </tbody>

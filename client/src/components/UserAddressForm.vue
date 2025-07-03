@@ -276,7 +276,7 @@ function applySuggestion(sug) {
                 class="btn btn-danger me-auto"
                 @click="removeAddress"
               >
-                Удалить
+                <i class="bi bi-trash"></i>
               </button>
               <button
                 type="button"

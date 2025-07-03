@@ -200,8 +200,12 @@ async function removeCenter(center) {
             <td>{{ c.email }}</td>
             <td>{{ c.website }}</td>
             <td class="text-end">
-              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(c)">Изменить</button>
-              <button class="btn btn-sm btn-danger" @click="removeCenter(c)">Удалить</button>
+              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(c)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" @click="removeCenter(c)">
+                <i class="bi bi-trash"></i>
+              </button>
             </td>
           </tr>
         </tbody>

@@ -149,8 +149,12 @@ async function removeExam(exam) {
             <td>{{ ex.capacity }}</td>
             <td>{{ ex.status?.name }}</td>
             <td class="text-end">
-              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(ex)">Изменить</button>
-              <button class="btn btn-sm btn-danger" @click="removeExam(ex)">Удалить</button>
+              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(ex)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" @click="removeExam(ex)">
+                <i class="bi bi-trash"></i>
+              </button>
             </td>
           </tr>
         </tbody>
