@@ -58,7 +58,18 @@ function groupByStadium(list) {
   }, {});
 }
 
-const groupedAll = computed(() => groupByStadium(trainings.value));
+const upcoming = computed(() => {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  return trainings.value
+    .filter((t) => {
+      const start = new Date(t.start_at);
+      return start >= now && start <= cutoff;
+    })
+    .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+});
+
+const groupedAll = computed(() => groupByStadium(upcoming.value));
 const groupedMine = computed(() => groupByStadium(myTrainings.value));
 </script>
 
@@ -108,7 +119,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
         <p v-if="!myTrainings.length" class="text-muted">У вас нет записей</p>
         <div v-for="(items, stadium) in groupedMine" :key="stadium" class="mb-5">
           <h2 class="h5 mb-3">{{ stadium }}</h2>
-          <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-5 g-2">
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-5 g-3">
             <TrainingCard
               v-for="t in items"
               :key="t.id"
@@ -122,7 +133,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
       <div v-show="activeTab === 'register'">
         <div v-for="(items, stadium) in groupedAll" :key="stadium" class="mb-5">
           <h2 class="h5 mb-3">{{ stadium }}</h2>
-          <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-5 g-2">
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-5 g-3">
             <TrainingCard
               v-for="t in items"
               :key="t.id"
