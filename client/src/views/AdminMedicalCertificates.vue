@@ -218,20 +218,19 @@ async function loadJudges() {
 
 <template>
   <div>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="mb-0">Медицинские заключения</h1>
-      <button class="btn btn-brand" @click="openCreate">
-        <i class="bi bi-plus-lg me-1"></i>Добавить
-      </button>
-    </div>
-
-    <div v-if="judgesError" class="alert alert-danger">{{ judgesError }}</div>
-    <div v-if="judgesLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
-    </div>
-    <div v-if="judges.length" class="card tile fade-in shadow-sm mt-4">
+    <div class="card tile fade-in shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h1 class="mb-0">Медицинские заключения</h1>
+        <button class="btn btn-brand" @click="openCreate">
+          <i class="bi bi-plus-lg me-1"></i>Добавить
+        </button>
+      </div>
       <div class="card-body p-3">
-        <div class="table-responsive">
+        <div v-if="judgesError" class="alert alert-danger mb-3">{{ judgesError }}</div>
+        <div v-if="judgesLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div v-if="judges.length" class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead>
               <tr>
@@ -283,9 +282,9 @@ async function loadJudges() {
             </tbody>
           </table>
         </div>
+        <p v-else-if="!judgesLoading" class="text-muted mb-0">Нет данных</p>
       </div>
     </div>
-    <p v-else-if="!judgesLoading" class="text-muted">Нет данных</p>
 
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">

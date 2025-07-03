@@ -95,21 +95,6 @@ let addrTimeout;
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
 
-const addButtonText = computed(() => {
-  if (activeTab.value === 'types') return 'Добавить тип';
-  if (activeTab.value === 'trainings') return 'Добавить тренировку';
-  return 'Добавить стадион';
-});
-
-function handleAddClick() {
-  if (activeTab.value === 'stadiums') {
-    openCreate();
-  } else if (activeTab.value === 'types') {
-    openCreateType();
-  } else {
-    openCreateTraining();
-  }
-}
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -496,20 +481,6 @@ async function removeTraining(t) {
         <li class="breadcrumb-item active" aria-current="page">Сборы</li>
       </ol>
     </nav>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="mb-0">
-        {{
-          activeTab === 'stadiums'
-            ? 'Стадионы'
-            : activeTab === 'types'
-              ? 'Типы тренировок'
-              : 'Тренировки'
-        }}
-      </h1>
-      <button class="btn btn-brand" @click="handleAddClick">
-        <i class="bi bi-plus-lg me-1"></i>{{ addButtonText }}
-      </button>
-    </div>
     <div class="card tile mb-4">
       <div class="card-body p-2">
         <ul class="nav nav-tabs mb-0">
@@ -537,6 +508,12 @@ async function removeTraining(t) {
         <div class="spinner-border" role="status"></div>
       </div>
       <div v-if="stadiums.length" class="card tile fade-in">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2 class="h5 mb-0">Стадионы</h2>
+          <button class="btn btn-brand" @click="openCreate">
+            <i class="bi bi-plus-lg me-1"></i>Добавить
+          </button>
+        </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
@@ -577,8 +554,8 @@ async function removeTraining(t) {
             </table>
           </div>
         </div>
+        <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
-      <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
       <nav class="mt-3" v-if="totalPages > 1">
         <ul class="pagination justify-content-center">
           <li class="page-item" :class="{ disabled: currentPage === 1 }">
@@ -602,6 +579,12 @@ async function removeTraining(t) {
       <div class="spinner-border" role="status"></div>
     </div>
     <div v-if="trainingTypes.length" class="card tile fade-in">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Типы тренировок</h2>
+        <button class="btn btn-brand" @click="openCreateType">
+          <i class="bi bi-plus-lg me-1"></i>Добавить
+        </button>
+      </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-striped align-middle mb-0">
@@ -623,9 +606,9 @@ async function removeTraining(t) {
         </tbody>
           </table>
         </div>
+        </div>
+        <p v-else-if="!typesLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
-    </div>
-    <p v-else-if="!typesLoading" class="text-muted">Записей нет.</p>
     <nav class="mt-3" v-if="typesTotalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: typesPage === 1 }">
@@ -682,6 +665,12 @@ async function removeTraining(t) {
       <div class="spinner-border" role="status"></div>
     </div>
     <div v-if="trainings.length" class="card tile fade-in">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Тренировки</h2>
+        <button class="btn btn-brand" @click="openCreateTraining">
+          <i class="bi bi-plus-lg me-1"></i>Добавить
+        </button>
+      </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-striped align-middle mb-0">
@@ -710,9 +699,9 @@ async function removeTraining(t) {
         </tbody>
           </table>
         </div>
+        </div>
+        <p v-else-if="!trainingsLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
-    </div>
-    <p v-else-if="!trainingsLoading" class="text-muted">Записей нет.</p>
     <nav class="mt-3" v-if="Math.ceil(trainingsTotal / pageSize) > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
