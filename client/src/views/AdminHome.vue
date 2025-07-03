@@ -4,19 +4,9 @@ import { RouterLink } from 'vue-router'
 const tiles = [
   { title: 'Управление пользователями', icon: 'bi-people', to: '/users' },
   {
-    title: 'Медицинские справки',
+    title: 'Медицина',
     icon: 'bi-file-earmark-medical',
-    to: '/medical-certificates'
-  },
-  {
-    title: 'Медицинские центры',
-    icon: 'bi-hospital',
-    to: '/medical-centers'
-  },
-  {
-    title: 'Расписание медосмотров',
-    icon: 'bi-calendar-check',
-    to: '/medical-exams'
+    to: '/medical-admin'
   },
   {
     title: 'Управление сборами',
