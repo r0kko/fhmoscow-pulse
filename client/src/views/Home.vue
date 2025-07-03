@@ -65,9 +65,9 @@ function formatStart(date) {
 <template>
   <div class="py-4">
     <div class="container">
-      <h1 class="mb-4 text-start">
+      <h3 class="mb-4 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
-      </h1>
+      </h3>
       <div class="card mb-4 text-start">
         <div class="card-body">
           <h5 class="card-title mb-3">Ближайшие события</h5>
