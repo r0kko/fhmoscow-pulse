@@ -18,6 +18,14 @@ async function uploadForCertificate(certId, file, typeAlias, actorId) {
   if (!S3_BUCKET) {
     throw new ServiceError('s3_not_configured', 500);
   }
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+  if (file.size > MAX_FILE_SIZE) {
+    throw new ServiceError('file_too_large', 400);
+  }
+  if (!ALLOWED_TYPES.includes(file.mimetype)) {
+    throw new ServiceError('invalid_file_type', 400);
+  }
   const cert = await MedicalCertificate.findByPk(certId);
   if (!cert) throw new ServiceError('certificate_not_found', 404);
   const type = await MedicalCertificateType.findOne({
