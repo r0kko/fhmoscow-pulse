@@ -18,6 +18,7 @@ function sanitize(obj) {
     capacity,
     camp_stadium_id,
     season_id,
+    available,
     registration_open: obj.registration_open,
     registered: obj.user_registered,
   };

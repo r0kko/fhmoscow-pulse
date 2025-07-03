@@ -1,53 +1,17 @@
 <script setup>
-import { ref, onMounted, nextTick, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import Carousel from 'bootstrap/js/dist/carousel';
 import { apiFetch } from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 
 const trainings = ref([]);
-const total = ref(0);
 const page = ref(1);
-const pageSize = 10;
+const pageSize = 50;
 const loading = ref(true);
 const error = ref('');
+const activeTab = ref('register');
 
-const types = [
-  ['ICE', 'Ледовая подготовка'],
-  ['BASIC_FIT', 'Физическая подготовка'],
-  ['THEORY', 'Теоретическая подготовка'],
-];
-
-const carouselRefs = {
-  ICE: ref(null),
-  BASIC_FIT: ref(null),
-  THEORY: ref(null),
-};
-
-const grouped = computed(() => {
-  return trainings.value.reduce(
-    (acc, t) => {
-      const key = t.type?.alias;
-      if (key && acc[key]) acc[key].push(t);
-      return acc;
-    },
-    { ICE: [], BASIC_FIT: [], THEORY: [] }
-  );
-});
-
-function formatDateTimeRange(start, end) {
-  const s = new Date(start);
-  const e = new Date(end);
-  return (
-    s.toLocaleDateString() +
-    ' ' +
-    s.toLocaleTimeString().slice(0, 5) +
-    ' - ' +
-    e.toLocaleDateString() +
-    ' ' +
-    e.toLocaleTimeString().slice(0, 5)
-  );
-}
+onMounted(load);
 
 async function load() {
   loading.value = true;
@@ -56,10 +20,7 @@ async function load() {
       `/camp-trainings/available?page=${page.value}&limit=${pageSize}`
     );
     trainings.value = data.trainings || [];
-    total.value = data.total || 0;
     error.value = '';
-    await nextTick();
-    initCarousels();
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -85,14 +46,20 @@ async function unregister(id) {
   }
 }
 
-function initCarousels() {
-  for (const key of Object.keys(carouselRefs)) {
-    const el = carouselRefs[key].value;
-    if (el) Carousel.getOrCreateInstance(el, { interval: false });
-  }
+const myTrainings = computed(() => trainings.value.filter((t) => t.registered));
+
+function groupByStadium(list) {
+  return list.reduce((acc, t) => {
+    const key = t.stadium?.name;
+    if (!key) return acc;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(t);
+    return acc;
+  }, {});
 }
 
-onMounted(load);
+const groupedAll = computed(() => groupByStadium(trainings.value));
+const groupedMine = computed(() => groupByStadium(myTrainings.value));
 </script>
 
 <template>
@@ -103,7 +70,32 @@ onMounted(load);
         <li class="breadcrumb-item active" aria-current="page">Сборы</li>
       </ol>
     </nav>
-    <h1 class="mb-4">Запись на сборы</h1>
+    <h1 class="mb-4">Сборы</h1>
+    <div class="card mb-4">
+      <div class="card-body p-2">
+        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'mine' }"
+              @click="activeTab = 'mine'"
+            >
+              Мои сборы
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'register' }"
+              @click="activeTab = 'register'"
+            >
+              Запись на тренировки
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <div v-if="loading" class="text-center my-5">
       <div class="spinner-border" role="status" aria-label="Загрузка">
         <span class="visually-hidden">Загрузка…</span>
@@ -111,73 +103,38 @@ onMounted(load);
     </div>
     <div v-else>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
-      <div v-for="[alias, label] in types" :key="alias" class="mb-5">
-        <h2 class="h5 mb-3">{{ label }}</h2>
-        <div v-if="grouped[alias].length" :id="`car-${alias}`" class="carousel slide" :ref="carouselRefs[alias]">
-          <div class="carousel-inner">
-            <div
-              v-for="(t, idx) in grouped[alias]"
+
+      <div v-show="activeTab === 'mine'">
+        <p v-if="!myTrainings.length" class="text-muted">У вас нет записей</p>
+        <div v-for="(items, stadium) in groupedMine" :key="stadium" class="mb-5">
+          <h2 class="h5 mb-3">{{ stadium }}</h2>
+          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+            <TrainingCard
+              v-for="t in items"
               :key="t.id"
-              class="carousel-item"
-              :class="{ active: idx === 0 }"
-            >
-              <TrainingCard :training="t" @register="register" @unregister="unregister" />
-            </div>
+              :training="t"
+              @unregister="unregister"
+            />
           </div>
-          <button
-            class="carousel-control-prev"
-            type="button"
-            :data-bs-target="`#car-${alias}`"
-            data-bs-slide="prev"
-          >
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Предыдущая</span>
-          </button>
-          <button
-            class="carousel-control-next"
-            type="button"
-            :data-bs-target="`#car-${alias}`"
-            data-bs-slide="next"
-          >
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Следующая</span>
-          </button>
         </div>
-        <p v-else class="text-muted">Нет доступных тренировок</p>
       </div>
-      <nav class="mt-3" v-if="Math.ceil(total / pageSize) > 1">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" @click="page--; load()" :disabled="page === 1">Пред</button>
-          </li>
-          <li
-            class="page-item"
-            v-for="p in Math.max(1, Math.ceil(total / pageSize))"
-            :key="p"
-            :class="{ active: page === p }"
-          >
-            <button class="page-link" @click="page = p; load()">{{ p }}</button>
-          </li>
-          <li
-            class="page-item"
-            :class="{ disabled: page === Math.max(1, Math.ceil(total / pageSize)) }"
-          >
-            <button
-              class="page-link"
-              @click="page++; load()"
-              :disabled="page === Math.max(1, Math.ceil(total / pageSize))"
-            >
-              След
-            </button>
-          </li>
-        </ul>
-      </nav>
+
+      <div v-show="activeTab === 'register'">
+        <div v-for="(items, stadium) in groupedAll" :key="stadium" class="mb-5">
+          <h2 class="h5 mb-3">{{ stadium }}</h2>
+          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+            <TrainingCard
+              v-for="t in items"
+              :key="t.id"
+              :training="t"
+              @register="register"
+              @unregister="unregister"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.carousel-item {
-  padding: 0.5rem;
-}
-</style>
+<style scoped></style>

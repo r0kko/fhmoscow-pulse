@@ -41,8 +41,13 @@ async function listAvailable(userId, options = {}) {
         (r) => r.user_id === userId
       );
       const plain = t.get();
+      const available =
+        typeof plain.capacity === 'number'
+          ? Math.max(0, plain.capacity - registeredCount)
+          : null;
       return {
         ...plain,
+        available,
         registration_open: trainingService.isRegistrationOpen(
           t,
           registeredCount
