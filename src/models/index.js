@@ -29,6 +29,7 @@ import Training from './training.js';
 import Season from './season.js';
 import RefereeGroup from './refereeGroup.js';
 import RefereeGroupUser from './refereeGroupUser.js';
+import TrainingRefereeGroup from './trainingRefereeGroup.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExamStatus from './medicalExamStatus.js';
 import MedicalExam from './medicalExam.js';
@@ -110,6 +111,18 @@ CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
 Training.belongsTo(CampStadium, { foreignKey: 'camp_stadium_id' });
 Season.hasMany(Training, { foreignKey: 'season_id' });
 Training.belongsTo(Season, { foreignKey: 'season_id' });
+Training.belongsToMany(RefereeGroup, {
+  through: TrainingRefereeGroup,
+  foreignKey: 'training_id',
+});
+RefereeGroup.belongsToMany(Training, {
+  through: TrainingRefereeGroup,
+  foreignKey: 'group_id',
+});
+Training.hasMany(TrainingRefereeGroup, { foreignKey: 'training_id' });
+TrainingRefereeGroup.belongsTo(Training, { foreignKey: 'training_id' });
+RefereeGroup.hasMany(TrainingRefereeGroup, { foreignKey: 'group_id' });
+TrainingRefereeGroup.belongsTo(RefereeGroup, { foreignKey: 'group_id' });
 Season.hasMany(RefereeGroup, { foreignKey: 'season_id' });
 RefereeGroup.belongsTo(Season, { foreignKey: 'season_id' });
 User.belongsToMany(RefereeGroup, {
@@ -179,6 +192,7 @@ export {
   Season,
   RefereeGroup,
   RefereeGroupUser,
+  TrainingRefereeGroup,
   File,
   MedicalCertificateType,
   MedicalCertificateFile,

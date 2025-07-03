@@ -9,6 +9,7 @@ function sanitize(obj) {
     TrainingType,
     CampStadium,
     Season,
+    RefereeGroups,
   } = obj;
   const res = {
     id,
@@ -38,6 +39,9 @@ function sanitize(obj) {
       name: Season.name,
       alias: Season.alias,
     };
+  }
+  if (RefereeGroups) {
+    res.groups = RefereeGroups.map((g) => ({ id: g.id, name: g.name }));
   }
   return res;
 }
