@@ -85,10 +85,19 @@ function formatStart(date) {
               target="_blank"
               class="col text-decoration-none text-body"
             >
-              <div class="card h-100">
-                <div class="card-body">
-                  <h6 class="card-title mb-2">{{ formatStart(t.start_at) }}</h6>
-                  <p class="card-text small mb-0">{{ t.stadium?.address?.result }}</p>
+              <div class="card h-100 upcoming-card">
+                <div class="card-body d-flex align-items-start">
+                  <i class="bi bi-people-fill fs-3 me-3 text-brand" aria-hidden="true"></i>
+                  <div>
+                    <p class="mb-1">
+                      <i class="bi bi-clock me-1" aria-hidden="true"></i>
+                      {{ formatStart(t.start_at) }}
+                    </p>
+                    <p class="mb-0 small">
+                      <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+                      {{ t.stadium?.address?.result }}
+                    </p>
+                  </div>
                 </div>
               </div>
             </a>
@@ -152,6 +161,10 @@ function formatStart(date) {
 }
 .fade-in {
   animation: fadeIn 0.4s ease-out;
+}
+
+.upcoming-card i {
+  color: var(--brand-color);
 }
 
 @keyframes fadeIn {
