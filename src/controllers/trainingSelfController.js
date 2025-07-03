@@ -19,10 +19,11 @@ export default {
   async upcoming(req, res) {
     const { page = '1', limit = '20' } = req.query;
     try {
-      const { rows, count } = await trainingRegistrationService.listUpcomingByUser(
-        req.user.id,
-        { page: parseInt(page, 10), limit: parseInt(limit, 10) }
-      );
+      const { rows, count } =
+        await trainingRegistrationService.listUpcomingByUser(req.user.id, {
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+        });
       return res.json({ trainings: rows.map(mapper.toPublic), total: count });
     } catch (err) {
       return sendError(res, err);

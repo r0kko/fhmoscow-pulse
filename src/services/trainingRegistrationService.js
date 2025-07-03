@@ -145,7 +145,10 @@ async function listUpcomingByUser(userId, options = {}) {
       return {
         ...plain,
         available,
-        registration_open: trainingService.isRegistrationOpen(t, registeredCount),
+        registration_open: trainingService.isRegistrationOpen(
+          t,
+          registeredCount
+        ),
         user_registered: true,
       };
     }),

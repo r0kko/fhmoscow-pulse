@@ -132,7 +132,9 @@ TrainingRegistration.belongsTo(Training, { foreignKey: 'training_id' });
 User.hasMany(TrainingRegistration, { foreignKey: 'user_id' });
 TrainingRegistration.belongsTo(User, { foreignKey: 'user_id' });
 TrainingRole.hasMany(TrainingRegistration, { foreignKey: 'training_role_id' });
-TrainingRegistration.belongsTo(TrainingRole, { foreignKey: 'training_role_id' });
+TrainingRegistration.belongsTo(TrainingRole, {
+  foreignKey: 'training_role_id',
+});
 User.belongsToMany(RefereeGroup, {
   through: RefereeGroupUser,
   foreignKey: 'user_id',
