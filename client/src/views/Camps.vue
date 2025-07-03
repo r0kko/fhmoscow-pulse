@@ -21,7 +21,7 @@ const page = ref(1);
 const pageSize = 50;
 const loading = ref(true);
 const error = ref('');
-const activeTab = ref('register');
+const activeTab = ref('mine');
 const registering = ref(null);
 
 onMounted(loadAll);
@@ -217,7 +217,16 @@ function formatTime(date) {
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-show="activeTab === 'mine'">
-        <p v-if="!groupedMine.length" class="text-muted">У вас нет записей</p>
+        <p v-if="!groupedMine.length" class="text-muted">
+          У вас нет тренировок. Перейдите во вкладку
+          <button
+            class="btn btn-link p-0"
+            @click="activeTab = 'register'"
+          >
+            Запись на тренировки
+          </button>
+          , чтобы записаться
+        </p>
         <div v-else class="card tile">
           <div class="card-body">
             <div v-for="g in groupedMine" :key="g.date" class="mb-3">
