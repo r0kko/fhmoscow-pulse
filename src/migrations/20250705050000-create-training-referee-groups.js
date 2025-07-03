@@ -44,12 +44,15 @@ module.exports = {
       },
       deleted_at: { type: Sequelize.DATE },
     });
-    await queryInterface.addConstraint('training_referee_groups', {
-      fields: ['training_id', 'group_id'],
-      type: 'unique',
-      name: 'uq_training_referee_group_training_group',
-      where: { deleted_at: null },
-    });
+    await queryInterface.addIndex(
+      'training_referee_groups',
+      ['training_id', 'group_id'],
+      {
+        name: 'uq_training_referee_group_training_group',
+        unique: true,
+        where: { deleted_at: null },
+      }
+    );
   },
 
   async down(queryInterface) {
