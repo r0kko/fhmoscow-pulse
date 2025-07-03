@@ -122,15 +122,15 @@ async function removeExam(exam) {
 
 <template>
   <div>
-    <div class="card tile fade-in mb-4">
+    <div class="card tile fade-in shadow-sm mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h1 class="mb-0">Расписание медосмотров</h1>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-0">
-        <div v-if="error" class="alert alert-danger m-3">{{ error }}</div>
+      <div class="card-body p-3">
+        <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3"><div class="spinner-border" role="status"></div></div>
         <div v-if="exams.length" class="table-responsive">
           <table class="table table-striped align-middle mb-0">
