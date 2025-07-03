@@ -6,6 +6,7 @@ import {
   RefereeGroup,
   RefereeGroupUser,
   TrainingRegistration,
+  TrainingRole,
   User,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
@@ -82,9 +83,12 @@ async function register(userId, trainingId, actorId) {
   if (training.TrainingRegistrations.some((r) => r.user_id === userId)) {
     throw new ServiceError('already_registered');
   }
+  const role = await TrainingRole.findOne({ where: { alias: 'PARTICIPANT' } });
+  if (!role) throw new ServiceError('training_role_not_found');
   await TrainingRegistration.create({
     training_id: trainingId,
     user_id: userId,
+    training_role_id: role.id,
     created_by: actorId,
     updated_by: actorId,
   });
