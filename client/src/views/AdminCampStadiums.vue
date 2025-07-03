@@ -554,7 +554,6 @@ async function removeTraining(t) {
             </table>
           </div>
         </div>
-        <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
       <nav class="mt-3" v-if="totalPages > 1">
         <ul class="pagination justify-content-center">
@@ -607,7 +606,6 @@ async function removeTraining(t) {
           </table>
         </div>
         </div>
-        <p v-else-if="!typesLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     <nav class="mt-3" v-if="typesTotalPages > 1">
       <ul class="pagination justify-content-center">
@@ -700,7 +698,6 @@ async function removeTraining(t) {
           </table>
         </div>
         </div>
-        <p v-else-if="!trainingsLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     <nav class="mt-3" v-if="Math.ceil(trainingsTotal / pageSize) > 1">
       <ul class="pagination justify-content-center">

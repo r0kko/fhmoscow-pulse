@@ -1,4 +1,4 @@
-import { RefereeGroup, Season, RefereeGroupUser, User } from '../models/index.js';
+import {RefereeGroup, RefereeGroupUser, Season, User,} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -20,13 +20,12 @@ async function getById(id) {
 }
 
 async function create(data, actorId) {
-  const group = await RefereeGroup.create({
+  return await RefereeGroup.create({
     season_id: data.season_id,
     name: data.name,
     created_by: actorId,
     updated_by: actorId,
   });
-  return group;
 }
 
 async function update(id, data, actorId) {
@@ -44,7 +43,12 @@ async function update(id, data, actorId) {
 }
 
 async function addUser(groupId, userId, actorId) {
-  await RefereeGroupUser.create({ group_id: groupId, user_id: userId, created_by: actorId, updated_by: actorId });
+  await RefereeGroupUser.create({
+    group_id: groupId,
+    user_id: userId,
+    created_by: actorId,
+    updated_by: actorId,
+  });
 }
 
 async function removeUser(userId) {
@@ -56,9 +60,16 @@ async function remove(id) {
   const group = await RefereeGroup.findByPk(id);
   if (!group) throw new ServiceError('referee_group_not_found', 404);
   const userCount = await RefereeGroupUser.count({ where: { group_id: id } });
-  if (userCount > 0)
-    throw new ServiceError('referee_group_not_empty');
+  if (userCount > 0) throw new ServiceError('referee_group_not_empty');
   await group.destroy();
 }
 
-export default { listAll, getById, create, update, addUser, removeUser, remove };
+export default {
+  listAll,
+  getById,
+  create,
+  update,
+  addUser,
+  removeUser,
+  remove,
+};

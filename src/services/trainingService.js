@@ -1,4 +1,9 @@
-import { Training, TrainingType, CampStadium, Season } from '../models/index.js';
+import {
+  Training,
+  TrainingType,
+  CampStadium,
+  Season,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 function isRegistrationOpen(training, registeredCount = 0) {

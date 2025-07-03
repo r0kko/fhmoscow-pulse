@@ -25,6 +25,8 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.bulkDelete('referee_groups', { name: ['Основная группа'] });
+    await queryInterface.bulkDelete('referee_groups', {
+      name: ['Основная группа'],
+    });
   },
 };
