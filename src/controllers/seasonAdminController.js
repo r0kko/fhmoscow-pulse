@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import seasonService from '../services/seasonService.js';
 import mapper from '../mappers/seasonMapper.js';
 import { sendError } from '../utils/api.js';
@@ -23,42 +21,5 @@ export default {
     }
   },
 
-  async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const season = await seasonService.create(req.body, req.user.id);
-      return res.status(201).json({ season: mapper.toPublic(season) });
-    } catch (err) {
-      return sendError(res, err);
-    }
-  },
-
-  async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const season = await seasonService.update(
-        req.params.id,
-        req.body,
-        req.user.id
-      );
-      return res.json({ season: mapper.toPublic(season) });
-    } catch (err) {
-      return sendError(res, err, 404);
-    }
-  },
-
-  async remove(req, res) {
-    try {
-      await seasonService.remove(req.params.id);
-      return res.status(204).end();
-    } catch (err) {
-      return sendError(res, err, 404);
-    }
-  },
+  // seasons are read-only via API
 };

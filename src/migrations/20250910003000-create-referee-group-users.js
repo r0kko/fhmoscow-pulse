@@ -2,21 +2,26 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('judge_groups', {
+    await queryInterface.createTable('referee_group_users', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
       },
-      season_id: {
+      group_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'seasons', key: 'id' },
+        references: { model: 'referee_groups', key: 'id' },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       },
-      name: { type: Sequelize.STRING(100), allowNull: false },
-      alias: { type: Sequelize.STRING(100), allowNull: false, unique: true },
+      user_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: 'users', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },
@@ -39,9 +44,14 @@ module.exports = {
       },
       deleted_at: { type: Sequelize.DATE },
     });
+    await queryInterface.addConstraint('referee_group_users', {
+      fields: ['user_id'],
+      type: 'unique',
+      name: 'uq_referee_group_users_user',
+    });
   },
 
   async down(queryInterface) {
-    await queryInterface.dropTable('judge_groups');
+    await queryInterface.dropTable('referee_group_users');
   },
 };

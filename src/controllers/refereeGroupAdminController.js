@@ -1,13 +1,13 @@
 import { validationResult } from 'express-validator';
 
-import judgeGroupService from '../services/judgeGroupService.js';
-import mapper from '../mappers/judgeGroupMapper.js';
+import refereeGroupService from '../services/refereeGroupService.js';
+import mapper from '../mappers/refereeGroupMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
     const { page = '1', limit = '20' } = req.query;
-    const { rows, count } = await judgeGroupService.listAll({
+    const { rows, count } = await refereeGroupService.listAll({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
     });
@@ -16,7 +16,7 @@ export default {
 
   async get(req, res) {
     try {
-      const group = await judgeGroupService.getById(req.params.id);
+      const group = await refereeGroupService.getById(req.params.id);
       return res.json({ group: mapper.toPublic(group) });
     } catch (err) {
       return sendError(res, err, 404);
@@ -29,7 +29,7 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const group = await judgeGroupService.create(req.body, req.user.id);
+      const group = await refereeGroupService.create(req.body, req.user.id);
       return res.status(201).json({ group: mapper.toPublic(group) });
     } catch (err) {
       return sendError(res, err);
@@ -42,7 +42,7 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const group = await judgeGroupService.update(
+      const group = await refereeGroupService.update(
         req.params.id,
         req.body,
         req.user.id
@@ -55,7 +55,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await judgeGroupService.remove(req.params.id);
+      await refereeGroupService.remove(req.params.id);
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

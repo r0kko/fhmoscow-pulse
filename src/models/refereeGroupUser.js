@@ -2,9 +2,9 @@ import { DataTypes, Model } from 'sequelize';
 
 import sequelize from '../config/database.js';
 
-class JudgeGroupUser extends Model {}
+class RefereeGroupUser extends Model {}
 
-JudgeGroupUser.init(
+RefereeGroupUser.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -14,12 +14,12 @@ JudgeGroupUser.init(
   },
   {
     sequelize,
-    modelName: 'JudgeGroupUser',
-    tableName: 'judge_group_users',
+    modelName: 'RefereeGroupUser',
+    tableName: 'referee_group_users',
     paranoid: true,
     underscored: true,
     indexes: [{ unique: true, fields: ['user_id'] }],
   }
 );
 
-export default JudgeGroupUser;
+export default RefereeGroupUser;
