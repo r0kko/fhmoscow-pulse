@@ -1,4 +1,10 @@
-import {RefereeGroup, RefereeGroupUser, Season, User,} from '../models/index.js';
+import {
+  RefereeGroup,
+  RefereeGroupUser,
+  Season,
+  User,
+  Role,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -51,6 +57,65 @@ async function addUser(groupId, userId, actorId) {
   });
 }
 
+async function listReferees() {
+  return User.findAll({
+    include: [
+      {
+        model: Role,
+        where: { alias: 'REFEREE' },
+        through: { attributes: [] },
+        required: true,
+      },
+      {
+        model: RefereeGroupUser,
+        include: [RefereeGroup],
+        required: false,
+      },
+    ],
+    order: [
+      ['last_name', 'ASC'],
+      ['first_name', 'ASC'],
+    ],
+  });
+}
+
+async function getReferee(id) {
+  const user = await User.findByPk(id, {
+    include: [
+      {
+        model: Role,
+        where: { alias: 'REFEREE' },
+        through: { attributes: [] },
+        required: true,
+      },
+      { model: RefereeGroupUser, include: [RefereeGroup] },
+    ],
+  });
+  if (!user) throw new ServiceError('user_not_found', 404);
+  return user;
+}
+
+async function setUserGroup(userId, groupId, actorId) {
+  const [user, group] = await Promise.all([
+    User.findByPk(userId),
+    RefereeGroup.findByPk(groupId),
+  ]);
+  if (!user) throw new ServiceError('user_not_found', 404);
+  if (!group) throw new ServiceError('referee_group_not_found', 404);
+  let link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
+  if (link) {
+    await link.update({ group_id: groupId, updated_by: actorId });
+  } else {
+    link = await RefereeGroupUser.create({
+      user_id: userId,
+      group_id: groupId,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  }
+  return link;
+}
+
 async function removeUser(userId) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
   if (link) await link.destroy();
@@ -70,6 +135,9 @@ export default {
   create,
   update,
   addUser,
+  listReferees,
+  getReferee,
+  setUserGroup,
   removeUser,
   remove,
 };
