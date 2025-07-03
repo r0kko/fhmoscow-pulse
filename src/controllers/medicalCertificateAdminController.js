@@ -29,7 +29,9 @@ export default {
           patronymic: j.user.patronymic,
           birth_date: j.user.birth_date,
         },
-        certificates: j.certificates.map((c) => medicalCertificateMapper.toPublic(c)),
+        certificates: j.certificates.map((c) =>
+          medicalCertificateMapper.toPublic(c)
+        ),
       }));
       return res.json({ judges });
     } catch (err) {

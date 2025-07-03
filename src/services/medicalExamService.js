@@ -1,4 +1,8 @@
-import { MedicalExam, MedicalExamStatus, MedicalCenter } from '../models/index.js';
+import {
+  MedicalExam,
+  MedicalExamStatus,
+  MedicalCenter,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -14,7 +18,9 @@ async function listAll(options = {}) {
 }
 
 async function getById(id) {
-  const exam = await MedicalExam.findByPk(id, { include: [MedicalExamStatus, MedicalCenter] });
+  const exam = await MedicalExam.findByPk(id, {
+    include: [MedicalExamStatus, MedicalCenter],
+  });
   if (!exam) throw new ServiceError('exam_not_found', 404);
   return exam;
 }
@@ -38,7 +44,9 @@ async function update(id, data, actorId) {
   if (!exam) throw new ServiceError('exam_not_found', 404);
   let statusId = exam.status_id;
   if (data.status) {
-    const st = await MedicalExamStatus.findOne({ where: { alias: data.status } });
+    const st = await MedicalExamStatus.findOne({
+      where: { alias: data.status },
+    });
     if (st) statusId = st.id;
   }
   await exam.update(

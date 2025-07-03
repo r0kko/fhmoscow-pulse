@@ -1,4 +1,5 @@
 import { validationResult } from 'express-validator';
+
 import medicalExamService from '../services/medicalExamService.js';
 import mapper from '../mappers/medicalExamMapper.js';
 import { sendError } from '../utils/api.js';
@@ -64,7 +65,11 @@ export default {
   async statuses(_req, res) {
     const statuses = await medicalExamService.listStatuses();
     return res.json({
-      statuses: statuses.map((s) => ({ id: s.id, name: s.name, alias: s.alias })),
+      statuses: statuses.map((s) => ({
+        id: s.id,
+        name: s.name,
+        alias: s.alias,
+      })),
     });
   },
 };

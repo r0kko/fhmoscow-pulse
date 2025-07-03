@@ -1,4 +1,5 @@
 import { validationResult } from 'express-validator';
+
 import medicalCenterService from '../services/medicalCenterService.js';
 import mapper from '../mappers/medicalCenterMapper.js';
 import { sendError } from '../utils/api.js';

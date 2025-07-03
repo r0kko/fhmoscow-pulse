@@ -1,5 +1,6 @@
 import { MedicalCenter, Address } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+
 import * as dadataService from './dadataService.js';
 
 async function listAll(options = {}) {
@@ -27,7 +28,11 @@ function detectLegalEntity(inn) {
 async function create(data, actorId) {
   const cleaned = await dadataService.cleanAddress(data.address.result);
   const addrData = cleaned || { result: data.address.result };
-  const address = await Address.create({ ...addrData, created_by: actorId, updated_by: actorId });
+  const address = await Address.create({
+    ...addrData,
+    created_by: actorId,
+    updated_by: actorId,
+  });
   const center = await MedicalCenter.create({
     name: data.name,
     inn: data.inn,
@@ -51,7 +56,11 @@ async function update(id, data, actorId) {
     if (center.Address) {
       await center.Address.update({ ...addrData, updated_by: actorId });
     } else {
-      const addr = await Address.create({ ...addrData, created_by: actorId, updated_by: actorId });
+      const addr = await Address.create({
+        ...addrData,
+        created_by: actorId,
+        updated_by: actorId,
+      });
       data.address_id = addr.id;
     }
   }
@@ -59,9 +68,12 @@ async function update(id, data, actorId) {
     {
       name: data.name ?? center.name,
       inn: data.inn ?? center.inn,
-      is_legal_entity: data.inn ? detectLegalEntity(data.inn) : center.is_legal_entity,
+      is_legal_entity: data.inn
+        ? detectLegalEntity(data.inn)
+        : center.is_legal_entity,
       address_id: data.address_id ?? center.address_id,
-      phone: data.phone !== undefined ? data.phone.replace(/\D/g, '') : center.phone,
+      phone:
+        data.phone !== undefined ? data.phone.replace(/\D/g, '') : center.phone,
       email: data.email ?? center.email,
       website: data.website ?? center.website,
       updated_by: actorId,
