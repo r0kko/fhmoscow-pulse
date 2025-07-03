@@ -80,7 +80,7 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
               :class="{ active: activeTab === 'mine' }"
               @click="activeTab = 'mine'"
             >
-              Мои сборы
+              Мои тренировки
             </button>
           </li>
           <li class="nav-item">
