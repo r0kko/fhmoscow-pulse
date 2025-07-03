@@ -27,6 +27,7 @@ import refereeGroupsRouter from './refereeGroups.js';
 import refereeGroupUsersRouter from './refereeGroupUsers.js';
 import medicalCentersRouter from './medicalCenters.js';
 import medicalExamsRouter from './medicalExams.js';
+import trainingRolesRouter from './trainingRoles.js';
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.use('/bank-accounts', bankAccountsRouter);
 router.use('/medical-certificates', medicalCertificatesRouter);
 router.use('/taxations', taxationsRouter);
 router.use('/roles', rolesRouter);
+router.use('/training-roles', trainingRolesRouter);
 router.use('/register', registerRouter);
 router.use('/profile', profileRouter);
 router.use('/password-reset', passwordResetRouter);

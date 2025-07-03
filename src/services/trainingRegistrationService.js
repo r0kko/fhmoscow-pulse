@@ -7,6 +7,7 @@ import {
   RefereeGroupUser,
   TrainingRegistration,
   TrainingRole,
+  Role,
   User,
   Address,
 } from '../models/index.js';
@@ -115,6 +116,31 @@ async function unregister(userId, trainingId) {
   await registration.destroy();
 }
 
+async function add(trainingId, userId, roleId, actorId) {
+  const [training, user, role] = await Promise.all([
+    Training.findByPk(trainingId, { include: [{ model: TrainingRegistration }] }),
+    User.findByPk(userId, { include: [Role] }),
+    TrainingRole.findByPk(roleId),
+  ]);
+  if (!training) throw new ServiceError('training_not_found', 404);
+  if (!user) throw new ServiceError('user_not_found', 404);
+  if (!role) throw new ServiceError('training_role_not_found', 404);
+  if (!user.Roles.some((r) => r.alias === 'REFEREE')) {
+    throw new ServiceError('user_not_referee');
+  }
+  if (training.TrainingRegistrations.some((r) => r.user_id === userId)) {
+    throw new ServiceError('already_registered');
+  }
+  await TrainingRegistration.create({
+    training_id: trainingId,
+    user_id: userId,
+    training_role_id: roleId,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+  await emailService.sendTrainingRegistrationEmail(user, training);
+}
+
 async function listUpcomingByUser(userId, options = {}) {
   const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -162,7 +188,10 @@ async function listByTraining(trainingId, options = {}) {
   const offset = (page - 1) * limit;
   return TrainingRegistration.findAndCountAll({
     where: { training_id: trainingId },
-    include: [{ model: User }],
+    include: [
+      { model: User },
+      { model: TrainingRole },
+    ],
     order: [
       [User, 'last_name', 'ASC'],
       [User, 'first_name', 'ASC'],
@@ -190,6 +219,7 @@ async function remove(trainingId, userId) {
 export default {
   listAvailable,
   register,
+  add,
   unregister,
   listUpcomingByUser,
   listByTraining,
