@@ -55,7 +55,7 @@ function seatStatus(t) {
 <template>
 <div class="card h-100 training-card tile">
     <div class="card-body d-flex flex-column p-3">
-      <h6 class="card-title mb-1 text-truncate">{{ formatStart(training.start_at) }}</h6>
+      <h6 class="card-title mb-1">{{ formatStart(training.start_at) }}</h6>
       <p class="text-muted mb-1 small">{{ durationText(training.start_at, training.end_at) }}</p>
       <span
         class="badge align-self-start mb-2"

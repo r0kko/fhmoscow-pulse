@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
+import metroIcon from '../assets/metro.svg';
+import yandexLogo from '../assets/yandex-maps.svg';
 
 const trainings = ref([]);
 const page = ref(1);
@@ -174,9 +176,24 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
           >
             <div class="card tile h-100">
               <div class="card-body">
-                <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
-                <p class="text-muted mb-1 small">{{ g.stadium.address?.result }}</p>
-                <p class="text-muted mb-3 small">{{ metroNames(g.stadium.address) }}</p>
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
+                  <a
+                    v-if="g.stadium.yandex_url"
+                    :href="g.stadium.yandex_url"
+                    target="_blank"
+                    class="ms-2"
+                  >
+                    <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
+                  </a>
+                </div>
+                <p class="text-muted mb-1 small d-flex align-items-center">
+                  <span>{{ g.stadium.address?.result }}</span>
+                </p>
+                <p v-if="metroNames(g.stadium.address)" class="text-muted mb-3 small d-flex align-items-center">
+                  <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
+                  <span>{{ metroNames(g.stadium.address) }}</span>
+                </p>
                 <div class="training-scroll d-flex flex-nowrap gap-3">
                   <TrainingCard
                     v-for="t in g.trainings"
@@ -203,5 +220,6 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
   overflow-x: auto;
   gap: 0.75rem;
   padding-bottom: 0.25rem;
+  justify-content: flex-start;
 }
 </style>
