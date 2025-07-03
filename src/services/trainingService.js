@@ -3,6 +3,8 @@ import {
   TrainingType,
   CampStadium,
   Season,
+  RefereeGroup,
+  TrainingRefereeGroup,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -22,7 +24,12 @@ async function listAll(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   const { rows, count } = await Training.findAndCountAll({
-    include: [TrainingType, CampStadium, Season],
+    include: [
+      TrainingType,
+      CampStadium,
+      Season,
+      { model: RefereeGroup, through: { attributes: [] } },
+    ],
     order: [['start_at', 'DESC']],
     limit,
     offset,
@@ -38,7 +45,12 @@ async function listAll(options = {}) {
 
 async function getById(id) {
   const training = await Training.findByPk(id, {
-    include: [TrainingType, CampStadium, Season],
+    include: [
+      TrainingType,
+      CampStadium,
+      Season,
+      { model: RefereeGroup, through: { attributes: [] } },
+    ],
   });
   if (!training) throw new ServiceError('training_not_found', 404);
   const plain = training.get();
@@ -56,6 +68,21 @@ async function create(data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
+  if (Array.isArray(data.groups)) {
+    const groups = await RefereeGroup.findAll({ where: { id: data.groups } });
+    const seasonGroups = groups.filter((g) => g.season_id === training.season_id);
+    if (seasonGroups.length !== data.groups.length) {
+      throw new ServiceError('invalid_group_season');
+    }
+    await TrainingRefereeGroup.bulkCreate(
+      seasonGroups.map((g) => ({
+        training_id: training.id,
+        group_id: g.id,
+        created_by: actorId,
+        updated_by: actorId,
+      }))
+    );
+  }
   return getById(training.id);
 }
 
@@ -79,6 +106,25 @@ async function update(id, data, actorId) {
     },
     { returning: false }
   );
+  if (data.groups !== undefined) {
+    const seasonId = data.season_id ?? training.season_id;
+    await TrainingRefereeGroup.destroy({ where: { training_id: id } });
+    if (Array.isArray(data.groups) && data.groups.length) {
+      const groups = await RefereeGroup.findAll({ where: { id: data.groups } });
+      const seasonGroups = groups.filter((g) => g.season_id === seasonId);
+      if (seasonGroups.length !== data.groups.length) {
+        throw new ServiceError('invalid_group_season');
+      }
+      await TrainingRefereeGroup.bulkCreate(
+        seasonGroups.map((g) => ({
+          training_id: id,
+          group_id: g.id,
+          created_by: actorId,
+          updated_by: actorId,
+        }))
+      );
+    }
+  }
   return getById(id);
 }
 

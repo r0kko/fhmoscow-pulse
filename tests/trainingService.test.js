@@ -2,6 +2,9 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findByPkMock = jest.fn();
 const updateMock = jest.fn();
+const destroyMock = jest.fn();
+const bulkCreateMock = jest.fn();
+const findAllGroupsMock = jest.fn();
 
 const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
@@ -12,6 +15,9 @@ const trainingInstance = {
 beforeEach(() => {
   findByPkMock.mockReset();
   updateMock.mockReset();
+  destroyMock.mockReset();
+  bulkCreateMock.mockReset();
+  findAllGroupsMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -20,6 +26,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TrainingType: {},
   CampStadium: {},
   Season: {},
+  TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
+  RefereeGroup: { findAll: findAllGroupsMock },
 }));
 
 const { default: service } = await import('../src/services/trainingService.js');

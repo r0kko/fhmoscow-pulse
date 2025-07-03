@@ -9,6 +9,8 @@ export const trainingCreateRules = [
     .isISO8601()
     .custom((val, { req }) => new Date(val) > new Date(req.body.start_at)),
   body('capacity').optional().isInt({ min: 0 }),
+  body('groups').optional().isArray(),
+  body('groups.*').isUUID(),
 ];
 
 export const trainingUpdateRules = [
@@ -26,4 +28,6 @@ export const trainingUpdateRules = [
       return true;
     }),
   body('capacity').optional().isInt({ min: 0 }),
+  body('groups').optional().isArray(),
+  body('groups.*').isUUID(),
 ];
