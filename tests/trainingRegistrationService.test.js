@@ -6,6 +6,7 @@ const createRegMock = jest.fn();
 const findUserMock = jest.fn();
 const findRegMock = jest.fn();
 const destroyMock = jest.fn();
+const findTrainingRoleMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -14,6 +15,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   CampStadium: {},
   Season: {},
   RefereeGroup: {},
+  Address: {},
+  TrainingRole: { findOne: findTrainingRoleMock },
   RefereeGroupUser: { findOne: findGroupUserMock },
   TrainingRegistration: {
     create: createRegMock,
@@ -52,6 +55,7 @@ beforeEach(() => {
   sendRegEmailMock.mockClear();
   sendCancelEmailMock.mockClear();
   findRegMock.mockImplementation(() => ({ destroy: destroyMock }));
+  findTrainingRoleMock.mockResolvedValue({ id: 'role1' });
 });
 
 const training = {

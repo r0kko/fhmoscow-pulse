@@ -58,6 +58,25 @@ function groupByStadium(list) {
   }, {});
 }
 
+function groupDetailed(list) {
+  const map = {};
+  list.forEach((t) => {
+    const s = t.stadium;
+    if (!s) return;
+    if (!map[s.id]) map[s.id] = { stadium: s, trainings: [] };
+    map[s.id].trainings.push(t);
+  });
+  return Object.values(map).map((g) => {
+    g.trainings.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+    return g;
+  });
+}
+
+function metroNames(address) {
+  if (!address || !Array.isArray(address.metro)) return '';
+  return address.metro.map((m) => m.name).join(', ');
+}
+
 const upcoming = computed(() => {
   const now = new Date();
   const cutoff = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
@@ -69,7 +88,11 @@ const upcoming = computed(() => {
     .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
 });
 
-const groupedAll = computed(() => groupByStadium(upcoming.value));
+const availableTrainings = computed(() =>
+  upcoming.value.filter((t) => !t.registered)
+);
+
+const groupedAll = computed(() => groupDetailed(availableTrainings.value));
 const groupedMine = computed(() => groupByStadium(myTrainings.value));
 </script>
 
@@ -131,16 +154,29 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
       </div>
 
       <div v-show="activeTab === 'register'">
-        <div v-for="(items, stadium) in groupedAll" :key="stadium" class="mb-5">
-          <h2 class="h5 mb-3">{{ stadium }}</h2>
-          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-5 g-3">
-            <TrainingCard
-              v-for="t in items"
-              :key="t.id"
-              :training="t"
-              @register="register"
-              @unregister="unregister"
-            />
+        <p v-if="!groupedAll.length" class="text-muted">Нет доступных тренировок</p>
+        <div v-else class="row gy-4">
+          <div
+            v-for="g in groupedAll"
+            :key="g.stadium.id"
+            class="col-12 col-md-6 col-lg-4"
+          >
+            <div class="card tile h-100">
+              <div class="card-body">
+                <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
+                <p class="text-muted mb-1 small">{{ g.stadium.address?.result }}</p>
+                <p class="text-muted mb-3 small">{{ metroNames(g.stadium.address) }}</p>
+                <div class="training-scroll d-flex flex-nowrap gap-3">
+                  <TrainingCard
+                    v-for="t in g.trainings"
+                    :key="t.id"
+                    :training="t"
+                    class="flex-shrink-0"
+                    @register="register"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -148,4 +184,12 @@ const groupedMine = computed(() => groupByStadium(myTrainings.value));
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.training-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+}
+</style>
