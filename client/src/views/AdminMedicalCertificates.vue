@@ -417,7 +417,7 @@ async function loadJudges() {
                 :disabled="deleting"
               >
                 <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
-                Удалить
+                <i class="bi bi-trash"></i>
               </button>
               <button type="button" class="btn btn-secondary" @click="modal.hide()">
                 Отмена

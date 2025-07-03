@@ -145,10 +145,10 @@ async function removeGroup(group) {
                     class="btn btn-sm btn-secondary me-2"
                     @click="openEdit(g)"
                   >
-                    Изменить
+                    <i class="bi bi-pencil"></i>
                   </button>
                   <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
-                    Удалить
+                    <i class="bi bi-trash"></i>
                   </button>
                 </td>
               </tr>
