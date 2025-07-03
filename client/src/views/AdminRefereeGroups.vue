@@ -115,45 +115,49 @@ async function removeGroup(group) {
         <li class="breadcrumb-item active" aria-current="page">Группы судей</li>
       </ol>
     </nav>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="mb-0">Группы судей</h1>
-      <button class="btn btn-brand" @click="openCreate">
-        <i class="bi bi-plus-lg me-1"></i>Добавить
-      </button>
+    <div class="card tile fade-in">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Группы судей</h2>
+        <button class="btn btn-brand" @click="openCreate">
+          <i class="bi bi-plus-lg me-1"></i>Добавить
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
+        <div v-if="isLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div v-if="groups.length" class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Сезон</th>
+                <th>Название</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="g in groups" :key="g.id">
+                <td>{{ g.season ? g.season.name : '' }}</td>
+                <td>{{ g.name }}</td>
+                <td class="text-end">
+                  <button
+                    class="btn btn-sm btn-secondary me-2"
+                    @click="openEdit(g)"
+                  >
+                    Изменить
+                  </button>
+                  <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
+                    Удалить
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
+      </div>
     </div>
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <div v-if="isLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
-    </div>
-    <div v-if="groups.length" class="table-responsive">
-      <table class="table table-striped align-middle">
-        <thead>
-          <tr>
-            <th>Сезон</th>
-            <th>Название</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="g in groups" :key="g.id">
-            <td>{{ g.season ? g.season.name : '' }}</td>
-            <td>{{ g.name }}</td>
-            <td class="text-end">
-              <button
-                class="btn btn-sm btn-secondary me-2"
-                @click="openEdit(g)"
-              >
-                Изменить
-              </button>
-              <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
-                Удалить
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else-if="!isLoading" class="text-muted">Записей нет.</p>
     <nav class="mt-3" v-if="totalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">

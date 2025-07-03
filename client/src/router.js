@@ -12,7 +12,6 @@ import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminCampStadiums from './views/AdminCampStadiums.vue';
-import AdminTrainings from './views/AdminTrainings.vue';
 import AdminRefereeGroups from './views/AdminRefereeGroups.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import PasswordReset from './views/PasswordReset.vue';
@@ -52,11 +51,6 @@ const routes = [
   {
     path: '/camp-stadiums',
     component: AdminCampStadiums,
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/trainings',
-    component: AdminTrainings,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
