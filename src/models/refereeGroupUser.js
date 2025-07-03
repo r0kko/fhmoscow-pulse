@@ -16,6 +16,7 @@ RefereeGroupUser.init(
     sequelize,
     modelName: 'RefereeGroupUser',
     tableName: 'referee_group_users',
+    paranoid: true,
     underscored: true,
     indexes: [{ unique: true, fields: ['user_id'] }],
   }

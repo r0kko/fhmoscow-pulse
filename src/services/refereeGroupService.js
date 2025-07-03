@@ -105,8 +105,14 @@ async function setUserGroup(userId, groupId, actorId) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!group) throw new ServiceError('referee_group_not_found', 404);
-  let link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
+  let link = await RefereeGroupUser.findOne({
+    where: { user_id: userId },
+    paranoid: false,
+  });
   if (link) {
+    if (link.deleted_at) {
+      await link.restore();
+    }
     await link.update({ group_id: groupId, updated_by: actorId });
   } else {
     link = await RefereeGroupUser.create({
@@ -121,7 +127,7 @@ async function setUserGroup(userId, groupId, actorId) {
 
 async function removeUser(userId) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
-  if (link) await link.destroy({ force: true });
+  if (link) await link.destroy();
 }
 
 async function remove(id) {
