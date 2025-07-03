@@ -40,6 +40,27 @@ onMounted(() => {
 
 watch(currentPage, loadTrainings);
 
+watch(
+  () => form.value.type_id,
+  (newId) => {
+    if (editing.value) return;
+    const type = trainingTypes.value.find((tt) => tt.id === newId);
+    if (type && type.default_capacity !== undefined) {
+      form.value.capacity = type.default_capacity;
+    }
+  }
+);
+
+watch(
+  () => form.value.start_at,
+  (newStart) => {
+    if (editing.value || !newStart) return;
+    const end = new Date(newStart);
+    end.setMinutes(end.getMinutes() + 90);
+    form.value.end_at = toInputValue(end);
+  }
+);
+
 async function loadTrainings() {
   isLoading.value = true;
   error.value = '';
