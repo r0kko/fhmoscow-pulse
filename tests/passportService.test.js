@@ -145,9 +145,18 @@ test('fetchFromLegacy returns sanitized data', async () => {
   legacyFindMock.mockResolvedValue({
     ps_ser: '11 ',
     ps_num: ' 22',
-    ps_date: '2000-01-01',
+    ps_date: '2020-01-01',
     ps_org: ' OVD ',
     ps_pdrz: ' 770-000 ',
+  });
+  findByPkMock.mockResolvedValue({ birth_date: '2000-01-01' });
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '11',
+    number: '000022',
+    issue_date: '2020-01-01',
+    issue_org: 'OVD',
+    issue_code: '770-000',
   });
 
   const res = await service.fetchFromLegacy('u1');
@@ -156,10 +165,49 @@ test('fetchFromLegacy returns sanitized data', async () => {
     country: 'RU',
     series: '11',
     number: '000022',
-    issue_date: '2000-01-01',
+    issue_date: '2020-01-01',
     issuing_authority: 'OVD',
     issuing_authority_code: '770-000',
   });
+});
+
+test('fetchFromLegacy returns null when DaData check fails', async () => {
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    ps_ser: '11',
+    ps_num: '22',
+    ps_date: '2020-01-01',
+    ps_org: 'OVD',
+    ps_pdrz: '770-000',
+  });
+  findByPkMock.mockResolvedValue({ birth_date: '2000-01-01' });
+  cleanPassportMock.mockResolvedValue({ qc: 1 });
+
+  const res = await service.fetchFromLegacy('u1');
+  expect(res).toBeNull();
+});
+
+test('fetchFromLegacy returns null for expired passport', async () => {
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    ps_ser: '11',
+    ps_num: '22',
+    ps_date: '2000-01-01',
+    ps_org: 'OVD',
+    ps_pdrz: '770-000',
+  });
+  findByPkMock.mockResolvedValue({ birth_date: '1970-01-01' });
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '11',
+    number: '000022',
+    issue_date: '2000-01-01',
+    issue_org: 'OVD',
+    issue_code: '770-000',
+  });
+
+  const res = await service.fetchFromLegacy('u1');
+  expect(res).toBeNull();
 });
 
 test('importFromLegacy returns existing passport', async () => {
@@ -173,15 +221,17 @@ test('importFromLegacy returns existing passport', async () => {
 test('importFromLegacy creates passport from legacy data', async () => {
   findOneMock.mockResolvedValueOnce(null); // initial check
   findExtMock.mockClear();
+  createMock.mockClear();
+  cleanPassportMock.mockClear();
   findExtMock.mockResolvedValue({ external_id: '5' });
   legacyFindMock.mockResolvedValue({
     ps_ser: '11 ',
     ps_num: ' 22',
-    ps_date: '2000-01-01',
+    ps_date: '2020-01-01',
     ps_org: ' OVD ',
     ps_pdrz: ' 770-000 ',
   });
-  findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '1990-01-01' });
+  findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '2000-01-01' });
   findOneMock.mockResolvedValueOnce(null); // createForUser existing check
   findTypeMock.mockResolvedValue({ id: 't1' });
   findCountryMock.mockResolvedValue({ id: 'c1' });
@@ -191,7 +241,7 @@ test('importFromLegacy creates passport from legacy data', async () => {
     qc: 0,
     series: '11',
     number: '000022',
-    issue_date: '2000-01-01',
+    issue_date: '2020-01-01',
     issue_org: 'OVD',
     issue_code: '770-000',
   });
@@ -206,7 +256,56 @@ test('importFromLegacy creates passport from legacy data', async () => {
     })
   );
   expect(createMock).toHaveBeenCalled();
+  expect(cleanPassportMock).toHaveBeenCalledWith('11   22');
+  expect(cleanPassportMock).toHaveBeenCalledWith('11 000022');
   expect(res).toBe(passportInstance);
+});
+
+test('importFromLegacy returns null when DaData check fails', async () => {
+  createMock.mockClear();
+  cleanPassportMock.mockClear();
+  findOneMock.mockResolvedValueOnce(null);
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    ps_ser: '11 ',
+    ps_num: ' 22',
+    ps_date: '2020-01-01',
+    ps_org: ' OVD ',
+    ps_pdrz: ' 770-000 ',
+  });
+  findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '2000-01-01' });
+  cleanPassportMock.mockResolvedValue({ qc: 1 });
+
+  const res = await service.importFromLegacy('u1');
+  expect(res).toBeNull();
+  expect(createMock).not.toHaveBeenCalled();
+});
+
+test('importFromLegacy returns null for expired passport', async () => {
+  createMock.mockClear();
+  cleanPassportMock.mockClear();
+  findOneMock.mockResolvedValueOnce(null);
+  findExtMock.mockResolvedValue({ external_id: '5' });
+  legacyFindMock.mockResolvedValue({
+    ps_ser: '11 ',
+    ps_num: ' 22',
+    ps_date: '2000-01-01',
+    ps_org: ' OVD ',
+    ps_pdrz: ' 770-000 ',
+  });
+  findByPkMock.mockResolvedValue({ id: 'u1', birth_date: '1970-01-01' });
+  cleanPassportMock.mockResolvedValue({
+    qc: 0,
+    series: '11',
+    number: '000022',
+    issue_date: '2000-01-01',
+    issue_org: 'OVD',
+    issue_code: '770-000',
+  });
+
+  const res = await service.importFromLegacy('u1');
+  expect(res).toBeNull();
+  expect(createMock).not.toHaveBeenCalled();
 });
 
 test('createForUser throws error on DaData failure', async () => {

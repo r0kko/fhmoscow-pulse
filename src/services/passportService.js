@@ -91,17 +91,29 @@ async function removeByUser(userId) {
 async function fetchFromLegacy(userId) {
   const ext = await UserExternalId.findOne({ where: { user_id: userId } });
   if (!ext) return null;
-  const legacy = await legacyUserService.findById(ext.external_id);
+  const [legacy, user] = await Promise.all([
+    legacyUserService.findById(ext.external_id),
+    User.findByPk(userId),
+  ]);
   if (!legacy?.ps_ser || !legacy?.ps_num) return null;
+
+  const cleaned = await dadataService.cleanPassport(
+    `${legacy.ps_ser} ${legacy.ps_num}`
+  );
+  if (!cleaned || cleaned.qc !== 0) return null;
+
+  const issueDate = cleaned.issue_date || legacy.ps_date;
+  const validUntil = calculateValidUntil(user.birth_date, issueDate);
+  if (validUntil && new Date(validUntil) < new Date()) return null;
 
   return sanitizePassportData({
     document_type: 'CIVIL',
     country: 'RU',
-    series: String(legacy.ps_ser).trim(),
-    number: String(legacy.ps_num).trim().padStart(6, '0'),
-    issue_date: legacy.ps_date,
-    issuing_authority: legacy.ps_org,
-    issuing_authority_code: legacy.ps_pdrz,
+    series: cleaned.series,
+    number: cleaned.number,
+    issue_date: issueDate,
+    issuing_authority: cleaned.issue_org || legacy.ps_org,
+    issuing_authority_code: cleaned.issue_code || legacy.ps_pdrz,
   });
 }
 
@@ -111,18 +123,30 @@ async function importFromLegacy(userId) {
 
   const ext = await UserExternalId.findOne({ where: { user_id: userId } });
   if (!ext) return null;
-  const legacy = await legacyUserService.findById(ext.external_id);
+  const [legacy, user] = await Promise.all([
+    legacyUserService.findById(ext.external_id),
+    User.findByPk(userId),
+  ]);
   if (!legacy?.ps_ser || !legacy?.ps_num) return null;
+
+  const cleaned = await dadataService.cleanPassport(
+    `${legacy.ps_ser} ${legacy.ps_num}`
+  );
+  if (!cleaned || cleaned.qc !== 0) return null;
+
+  const issueDate = cleaned.issue_date || legacy.ps_date;
+  const validUntil = calculateValidUntil(user.birth_date, issueDate);
+  if (validUntil && new Date(validUntil) < new Date()) return null;
 
   try {
     const data = sanitizePassportData({
       document_type: 'CIVIL',
       country: 'RU',
-      series: String(legacy.ps_ser).trim(),
-      number: String(legacy.ps_num).trim().padStart(6, '0'),
-      issue_date: legacy.ps_date,
-      issuing_authority: legacy.ps_org,
-      issuing_authority_code: legacy.ps_pdrz,
+      series: cleaned.series,
+      number: cleaned.number,
+      issue_date: issueDate,
+      issuing_authority: cleaned.issue_org || legacy.ps_org,
+      issuing_authority_code: cleaned.issue_code || legacy.ps_pdrz,
     });
     return await createForUser(userId, data, userId);
     // eslint-disable-next-line no-unused-vars
