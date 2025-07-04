@@ -780,7 +780,7 @@ async function updateRegistration(reg) {
         </tbody>
           </table>
         </div>
-        </div>
+      </div>
       </div>
     <nav class="mt-3" v-if="typesTotalPages > 1">
       <ul class="pagination justify-content-center">
@@ -837,7 +837,7 @@ async function updateRegistration(reg) {
     <div v-if="trainingsLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="trainings.length" class="card tile fade-in">
+    <div class="card tile fade-in">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Тренировки</h2>
         <button class="btn btn-brand" @click="openCreateTraining">
@@ -845,7 +845,7 @@ async function updateRegistration(reg) {
         </button>
       </div>
       <div class="card-body p-3">
-        <div class="table-responsive">
+        <div v-if="trainings.length" class="table-responsive">
           <table class="table admin-table table-striped align-middle mb-0">
         <thead>
         <tr>
@@ -902,6 +902,7 @@ async function updateRegistration(reg) {
         </tbody>
           </table>
         </div>
+        <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
         </div>
       </div>
     <nav class="mt-3" v-if="Math.ceil(trainingsTotal / pageSize) > 1">
