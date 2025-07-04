@@ -11,6 +11,7 @@ export default defineConfig({
     allowedHosts: ['pulse.fhmoscow.com', 'localhost'],
     proxy: {
       '/auth': target,
+      '/api': target,
     },
   },
   preview: {
