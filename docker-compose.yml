@@ -23,6 +23,8 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE=http://localhost:3000
     container_name: client
     depends_on:
       - app
