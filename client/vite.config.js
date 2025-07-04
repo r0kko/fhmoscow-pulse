@@ -15,6 +15,6 @@ export default defineConfig({
   },
   preview: {
     host: '0.0.0.0',
-    allowedHosts: ['pulse.fhmoscow.com'],
+    allowedHosts: true,
   },
 });
