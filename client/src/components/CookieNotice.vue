@@ -32,4 +32,14 @@ onMounted(() => {
 .cookie-notice {
   z-index: 1080;
 }
+
+@media (max-width: 576px) {
+  .cookie-notice {
+    position: static !important;
+    transform: none !important;
+    left: auto !important;
+    bottom: auto !important;
+    margin-bottom: 0 !important;
+  }
+}
 </style>
