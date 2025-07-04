@@ -36,16 +36,19 @@ test('persists log entry on finish', async () => {
 
   expect(next).toHaveBeenCalled();
   expect(onFinishedMock).toHaveBeenCalledWith(res, expect.any(Function));
-  expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
-    id: 'id',
-    method: 'GET',
-    path: '/x',
-    status_code: 200,
-    ip: '::1',
-    user_agent: 'ua',
-    request_body: {foo:'bar'},
-    response_body: 'ok',
-  }));
+  expect(createMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      id: 'id',
+      method: 'GET',
+      path: '/x',
+      status_code: 200,
+      ip: '::1',
+      user_agent: 'ua',
+      request_body: { foo: 'bar' },
+      response_body: 'ok',
+    }),
+    { logging: false },
+  );
 });
 
 test('omits sensitive fields from request body', async () => {
@@ -61,7 +64,8 @@ test('omits sensitive fields from request body', async () => {
   await requestLogger(req, res, () => {});
 
   expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ request_body: { foo: 'bar' } })
+    expect.objectContaining({ request_body: { foo: 'bar' } }),
+    { logging: false },
   );
   expect(req.body.password).toBe('secret');
   expect(req.body.refresh_token).toBe('r');
@@ -81,7 +85,8 @@ test('stores null when only sensitive fields present', async () => {
   await requestLogger(req, res, () => {});
 
   expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ request_body: null })
+    expect.objectContaining({ request_body: null }),
+    { logging: false },
   );
 });
 

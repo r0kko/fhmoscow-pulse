@@ -15,6 +15,7 @@ function buildMocks() {
   jest.unstable_mockModule('../src/config/redis.js', () => ({
     __esModule: true,
     default: {},
+    isRedisWritable: () => true,
   }));
   return { sessionMock, middleware };
 }

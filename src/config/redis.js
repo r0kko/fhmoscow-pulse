@@ -6,10 +6,14 @@ dotenv.config();
 const url =
   process.env.REDIS_URL ||
   `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+let redisWritable = true;
 const client = createClient({ url });
 
 client.on('error', (err) => {
   console.error('Redis Client Error', err);
+  if (err?.message?.includes('READONLY')) {
+    redisWritable = false;
+  }
 });
 
 export async function connectRedis() {
@@ -25,6 +29,9 @@ export async function connectRedis() {
 
 export async function closeRedis() {
   await client.quit();
+}
+export function isRedisWritable() {
+  return redisWritable;
 }
 
 export default client;

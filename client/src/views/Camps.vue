@@ -156,7 +156,10 @@ const weekTrainings = computed(() => {
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   return myTrainings.value.filter((t) => {
     const start = new Date(t.start_at);
-    return start >= now && start < end;
+    const finish = new Date(t.end_at);
+    // show only trainings that have not finished yet
+    // and start within the next week
+    return finish > now && start < end;
   });
 });
 

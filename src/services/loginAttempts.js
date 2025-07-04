@@ -7,7 +7,7 @@ function key(id) {
   return `${PREFIX}${id}`;
 }
 
-function isReadonlyError(err) {
+export function isReadonlyError(err) {
   return err?.message?.includes('READONLY');
 }
 
