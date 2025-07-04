@@ -122,20 +122,25 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### HTTPS deployment
 
-For deployment on `https://pulse.fhmoscow.com` configure the following
-environment variables in `.env`:
+In production HTTPS is terminated by **nginx**. Place your SSL certificate and
+key in `infra/nginx/certs` as `fullchain.pem` and `privkey.pem` respectively
+and adjust the reverse proxy configuration in `infra/nginx/conf.d/default.conf`
+if needed.
+
+The Node.js backend runs over plain HTTP internally while nginx handles TLS and
+forwards requests.
+
+Configure the following environment variables in `.env`:
 
 ```bash
 BASE_URL=https://pulse.fhmoscow.com
 COOKIE_DOMAIN=pulse.fhmoscow.com
 ALLOWED_ORIGINS=https://pulse.fhmoscow.com
-SSL_CERT_PATH=/etc/ssl/pulse/fullchain.pem
-SSL_KEY_PATH=/etc/ssl/pulse/privkey.pem
+VITE_API_BASE=/api
 ```
 
-When `SSL_CERT_PATH` and `SSL_KEY_PATH` are provided the server starts in
-HTTPS mode using the specified certificate. The client build should be configured
-with `VITE_API_BASE=https://pulse.fhmoscow.com`.
+Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application
+starts in HTTP mode and relies on nginx for TLS termination.
 
 ## Local development
 

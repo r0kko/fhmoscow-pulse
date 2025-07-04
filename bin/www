@@ -30,11 +30,18 @@ app.set('port', port);
  */
 let server;
 if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
-  const options = {
-    cert: fs.readFileSync(process.env.SSL_CERT_PATH),
-    key: fs.readFileSync(process.env.SSL_KEY_PATH),
-  };
-  server = https.createServer(options, app);
+  try {
+    const options = {
+      cert: fs.readFileSync(process.env.SSL_CERT_PATH),
+      key: fs.readFileSync(process.env.SSL_KEY_PATH),
+    };
+    server = https.createServer(options, app);
+  } catch (err) {
+    console.warn(
+      `Could not load SSL certificates, falling back to HTTP: ${err.message}`,
+    );
+    server = http.createServer(app);
+  }
 } else {
   server = http.createServer(app);
 }
