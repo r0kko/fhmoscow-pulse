@@ -4,6 +4,9 @@
 FROM node:24-alpine AS build
 WORKDIR /usr/src/app
 
+ARG VITE_API_BASE=/api
+ENV VITE_API_BASE=$VITE_API_BASE
+
 # Install build deps for optional native addons (rollup, esbuild, etc.)
 RUN apk add --no-cache python3 make g++
 
