@@ -104,6 +104,11 @@ least eight characters long and contain both letters and numbers.
 
 The easiest way to start the application together with PostgreSQL and Redis is using Docker Compose:
 
+The frontend build needs to know where the backend API is running. The
+`docker-compose.yml` file passes `VITE_API_BASE=http://localhost:3000` when
+building the client image so that API requests in development reach the backend
+directly.
+
 ```bash
 docker-compose up --build
 ```
