@@ -7,14 +7,14 @@ const target = process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000';
 export default defineConfig({
   plugins: [vue()],
   server: {
-    host: '0.0.0.0',
-    allowedHosts: 'all',
+    host: true,
+    allowedHosts: ['pulse.fhmoscow.com'],
     proxy: {
       '/auth': target,
     },
   },
   preview: {
     host: '0.0.0.0',
-    allowedHosts: true,
+    allowedHosts: ['pulse.fhmoscow.com'],
   },
 });
