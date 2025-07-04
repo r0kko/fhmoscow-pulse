@@ -110,6 +110,7 @@ docker-compose up --build
 
 The API will be available at `http://localhost:3000` and Swagger docs at `http://localhost:3000/api-docs`.
 The frontend will be served at `http://localhost:5173`.
+Docker logs for all containers can be viewed at `http://localhost:8080` via [Dozzle](https://github.com/amir20/dozzle).
 
 On container start, migrations and seeders are run automatically.
 
