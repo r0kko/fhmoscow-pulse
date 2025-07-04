@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: true,
-    allowedHosts: ['pulse.fhmoscow.com'],
+    allowedHosts: true,
     proxy: {
       '/auth': target,
     },
