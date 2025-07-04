@@ -111,7 +111,7 @@ onMounted(async () => {
     </div>
     <div v-else>
       <div class="card tile fade-in shadow-sm">
-        <div class="card-body position-relative">
+        <div class="card-body position-relative with-status-badge">
           <span
             class="badge position-absolute top-0 end-0 m-3 d-flex align-items-center gap-1"
             :class="statusInfo.class"
@@ -220,6 +220,16 @@ onMounted(async () => {
 }
 .file-tile {
   background-color: #f8f9fa;
+}
+
+/* ensure badge does not overlap heading on small screens */
+.with-status-badge {
+  padding-top: 3rem;
+}
+@media (min-width: 576px) {
+  .with-status-badge {
+    padding-top: 1rem;
+  }
 }
 @keyframes fadeIn {
   from {
