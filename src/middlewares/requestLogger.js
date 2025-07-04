@@ -17,8 +17,7 @@ const SENSITIVE_KEYS = [
 
 function isReadonlyDbError(err) {
   return (
-    err?.parent?.code === '25006' ||
-    /read[- ]only/i.test(err?.message || '')
+    err?.parent?.code === '25006' || /read[- ]only/i.test(err?.message || '')
   );
 }
 
@@ -54,7 +53,7 @@ export default function requestLogger(req, res, next) {
           request_body: bodyClone,
           response_body: res.locals.body ?? null, // заполни, если нужен body
         },
-        { logging: false },
+        { logging: false }
       );
     } catch (err) {
       if (!isReadonlyDbError(err)) {
