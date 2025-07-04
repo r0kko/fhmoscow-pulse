@@ -1,4 +1,17 @@
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - client
+      - app
   app:
     image: ${APP_IMAGE}
     container_name: app
@@ -13,6 +26,7 @@ services:
         condition: service_started
     networks:
       - backend
+    restart: unless-stopped
 
   client:
     image: ${CLIENT_IMAGE}
@@ -23,6 +37,7 @@ services:
       - "5173:4173"
     networks:
       - backend
+    restart: unless-stopped
 
   db:
     image: postgres:17.5
