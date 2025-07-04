@@ -25,12 +25,15 @@ test('delegates to csrf for normal paths', () => {
   expect(csrfMock).toHaveBeenCalledWith(req, res, next);
 });
 
-test('bypasses middleware for /csrf-token', () => {
+test('bypasses middleware for exempt paths', () => {
   csrfMock.mockClear();
-  const req = buildReq('/csrf-token');
-  const res = buildRes();
-  const next = jest.fn();
-  csrfMiddleware(req, res, next);
-  expect(csrfMock).not.toHaveBeenCalled();
-  expect(next).toHaveBeenCalled();
+  for (const p of ['/csrf-token', '/auth/login', '/auth/logout', '/auth/refresh']) {
+    const req = buildReq(p);
+    const res = buildRes();
+    const next = jest.fn();
+    csrfMiddleware(req, res, next);
+    expect(csrfMock).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+    csrfMock.mockClear();
+  }
 });

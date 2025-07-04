@@ -22,7 +22,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, fetchCurrentUser, clearAuth } from '../auth.js'
-import { apiFetch } from '../api.js'
+import { apiFetch, initCsrf } from '../api.js'
 import logo from '../assets/fhm-logo.svg'
 
 const router = useRouter()
@@ -38,10 +38,11 @@ onMounted(async () => {
   }
 })
 
-function logout() {
-  apiFetch('/auth/logout', { method: 'POST' }).finally(() => {
+async function logout() {
+  await apiFetch('/auth/logout', { method: 'POST' }).finally(() => {
     clearAuth()
-    router.push('/login')
   })
+  await initCsrf().catch(() => {})
+  router.push('/login')
 }
 </script>
