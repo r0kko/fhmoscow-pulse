@@ -1,7 +1,7 @@
 <template>
   <div
-    class="cookie-notice alert alert-info d-flex align-items-center position-fixed bottom-0 start-50 translate-middle-x mb-3 fade"
-    :class="{ show: visible }"
+    v-if="visible"
+    class="cookie-notice alert alert-info d-flex align-items-center position-fixed bottom-0 start-50 translate-middle-x mb-3 fade show"
     role="alert"
   >
     <span class="me-3">
