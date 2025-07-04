@@ -4,7 +4,7 @@ const csrfOptions = {
   angular: true,
   cookie: {
     options: {
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: process.env.NODE_ENV === 'production',
     },
   },
