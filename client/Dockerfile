@@ -4,7 +4,7 @@
 FROM node:24-alpine AS build
 WORKDIR /usr/src/app
 
-ARG VITE_API_BASE=/api
+# ARG VITE_API_BASE=/api
 ENV VITE_API_BASE=$VITE_API_BASE
 
 # Install build deps for optional native addons (rollup, esbuild, etc.)
