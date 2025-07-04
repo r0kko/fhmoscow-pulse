@@ -137,6 +137,7 @@ BASE_URL=https://pulse.fhmoscow.com
 COOKIE_DOMAIN=pulse.fhmoscow.com
 ALLOWED_ORIGINS=https://pulse.fhmoscow.com
 VITE_API_BASE=/api
+VITE_ALLOWED_HOSTS=pulse.fhmoscow.com
 ```
 
 Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application

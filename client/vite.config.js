@@ -12,6 +12,9 @@ export default defineConfig({
     },
   },
   preview: {
-    allowedHosts: ['pulse.fhmoscow.com'],
+    host: '0.0.0.0',
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS
+      ? process.env.VITE_ALLOWED_HOSTS.split(',').map((h) => h.trim())
+      : ['pulse.fhmoscow.com'],
   },
 });
