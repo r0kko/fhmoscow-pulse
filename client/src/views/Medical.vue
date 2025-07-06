@@ -112,15 +112,19 @@ onMounted(async () => {
     </div>
     <div v-else>
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body position-relative with-status-badge">
-          <span
-            class="badge position-absolute top-0 end-0 m-3 d-flex align-items-center gap-1"
-            :class="statusInfo.class"
+        <div class="card-body">
+          <div
+            class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3"
           >
-            <i :class="'bi ' + statusInfo.icon"></i>
-            {{ statusInfo.label }}
-          </span>
-          <h5 class="card-title mb-3 text-brand">Действующее заключение</h5>
+            <h5 class="card-title mb-0 text-brand">Действующее заключение</h5>
+            <span
+              class="badge d-flex align-items-center gap-1"
+              :class="statusInfo.class"
+            >
+              <i :class="'bi ' + statusInfo.icon"></i>
+              {{ statusInfo.label }}
+            </span>
+          </div>
           <template v-if="certificate && isValid(certificate)">
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
               <div class="col">
@@ -209,7 +213,9 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <p v-else class="text-muted mb-0">Нет медицинских заключений с истекшим сроком действия</p>
+        <div v-else class="alert alert-primary mb-0" role="alert">
+          Нет медицинских заключений с истекшим сроком действия
+        </div>
       </div>
     </div>
     </div>
@@ -224,15 +230,6 @@ onMounted(async () => {
   background-color: #f8f9fa;
 }
 
-/* ensure badge does not overlap heading on small screens */
-.with-status-badge {
-  padding-top: 3rem;
-}
-@media (min-width: 576px) {
-  .with-status-badge {
-    padding-top: 1rem;
-  }
-}
 .section-card {
   border-radius: 1rem;
   overflow: hidden;
