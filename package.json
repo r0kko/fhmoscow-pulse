@@ -39,7 +39,7 @@
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
     "@aws-sdk/client-s3": "^3.456.0",
-    "@aws-sdk/s3-request-presigner": "^3.456.0",
+    "@aws-sdk/s3-request-presigner": "^3.842.0",
     "multer": "^2.0.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
