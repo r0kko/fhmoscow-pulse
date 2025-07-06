@@ -208,7 +208,12 @@ function showToast(message) {
 }
 
 function selectDate(id, iso) {
-  selectedDates.value = { ...selectedDates.value, [id]: iso };
+  const current = selectedDates.value[id];
+  const next = current === iso ? undefined : iso;
+  const copy = { ...selectedDates.value };
+  if (next) copy[id] = next;
+  else delete copy[id];
+  selectedDates.value = copy;
 }
 
 function dayTrainings(id) {
@@ -378,7 +383,7 @@ function dayTrainings(id) {
                     @register="register"
                   />
                 </div>
-                <p v-else class="text-muted small">Выберите дату</p>
+                
               </div>
             </div>
           </div>
