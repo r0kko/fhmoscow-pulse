@@ -8,6 +8,7 @@ const findRegMock = jest.fn();
 const destroyMock = jest.fn();
 const findTrainingRoleMock = jest.fn();
 const findRoleMock = jest.fn();
+const countMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -22,6 +23,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TrainingRegistration: {
     create: createRegMock,
     findOne: findRegMock,
+    count: countMock,
   },
   User: { findByPk: findUserMock },
   Role: { findOne: findRoleMock },
@@ -37,12 +39,14 @@ jest.unstable_mockModule('../src/services/trainingService.js', () => ({
 const sendRegEmailMock = jest.fn();
 const sendCancelEmailMock = jest.fn();
 const sendRoleChangedEmailMock = jest.fn();
+const sendSelfCancelEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/emailService.js', () => ({
   __esModule: true,
   default: {
     sendTrainingRegistrationEmail: sendRegEmailMock,
     sendTrainingRegistrationCancelledEmail: sendCancelEmailMock,
+    sendTrainingRegistrationSelfCancelledEmail: sendSelfCancelEmailMock,
     sendTrainingRoleChangedEmail: sendRoleChangedEmailMock,
   },
 }));
@@ -57,16 +61,19 @@ beforeEach(() => {
   findRegMock.mockReset();
   destroyMock.mockReset();
   findRoleMock.mockReset();
+  countMock.mockReset();
   sendRegEmailMock.mockClear();
   sendCancelEmailMock.mockClear();
+  sendSelfCancelEmailMock.mockClear();
   sendRoleChangedEmailMock.mockClear();
   findRegMock.mockResolvedValue(null);
   findTrainingRoleMock.mockResolvedValue({ id: 'role1' });
+  countMock.mockResolvedValue(0);
 });
 
 const training = {
   id: 't1',
-  start_at: '2024-01-01T10:00:00Z',
+  start_at: '2099-01-01T10:00:00Z',
   RefereeGroups: [{ id: 'g1' }],
   TrainingRegistrations: [],
 };
@@ -157,7 +164,7 @@ test('add restores deleted registration', async () => {
 test('register rejects when training is full', async () => {
   const tr = {
     id: 't1',
-    start_at: '2024-01-01T10:00:00Z',
+    start_at: '2099-01-01T10:00:00Z',
     capacity: 1,
     RefereeGroups: [{ id: 'g1' }],
     TrainingRegistrations: [{ TrainingRole: { alias: 'PARTICIPANT' } }],
@@ -177,4 +184,20 @@ test('updateRole sends notification', async () => {
   await service.updateRole('t1', 'u1', 'role3', 'admin');
   expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role3', updated_by: 'admin' });
   expect(sendRoleChangedEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training, { id: 'role1' });
+});
+
+test('unregister sends notification', async () => {
+  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  findTrainingMock.mockResolvedValue(training);
+  findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
+  await service.unregister('u1', 't1');
+  expect(destroyMock).toHaveBeenCalled();
+  expect(sendSelfCancelEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
+});
+
+test('unregister rejects when deadline passed', async () => {
+  const soon = { ...training, start_at: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString() };
+  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  findTrainingMock.mockResolvedValue(soon);
+  await expect(service.unregister('u1', 't1')).rejects.toThrow('cancellation_deadline_passed');
 });

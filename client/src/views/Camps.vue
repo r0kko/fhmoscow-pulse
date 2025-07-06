@@ -84,6 +84,11 @@ async function unregister(id) {
   }
 }
 
+function confirmUnregister(id) {
+  if (!confirm('Отменить запись на тренировку?')) return;
+  unregister(id);
+}
+
 const myTrainings = computed(() => mine.value);
 
 function groupDetailed(list) {
@@ -297,8 +302,9 @@ function dayOpen(day) {
                     </div>
                     <div class="text-muted small">{{ t.type?.name }}</div>
                   </div>
-                  <button class="btn btn-sm btn-secondary" @click="unregister(t.id)">
-                    Отменить
+                  <button class="btn btn-link text-danger p-0" @click="confirmUnregister(t.id)">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    <span class="visually-hidden">Отменить</span>
                   </button>
                 </li>
               </ul>
