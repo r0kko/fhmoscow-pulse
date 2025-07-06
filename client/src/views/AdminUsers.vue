@@ -285,21 +285,21 @@ async function copy(text) {
                 @click="blockUser(u.id)"
                 class="btn btn-sm btn-danger me-2"
               >
-                Заблокировать
+                <i class="bi bi-lock-fill"></i>
               </button>
               <button
                 v-if="u.status === 'INACTIVE'"
                 @click="unblockUser(u.id)"
                 class="btn btn-sm btn-success me-2"
               >
-                Разблокировать
+                <i class="bi bi-unlock-fill"></i>
               </button>
               <button
                 v-if="u.status === 'AWAITING_CONFIRMATION'"
                 @click="approveUser(u.id)"
                 class="btn btn-sm btn-success"
               >
-                Подтвердить
+                <i class="bi bi-check-lg"></i>
               </button>
             </td>
           </tr>
