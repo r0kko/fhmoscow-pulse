@@ -42,6 +42,9 @@ function durationText(start, end) {
 }
 
 function seatStatus(t) {
+  if (typeof t.available === 'number' && t.available <= 0) {
+    return '';
+  }
   if (typeof t.available === 'number' && typeof t.capacity === 'number') {
     return `${t.available} / ${t.capacity} мест свободно`;
   }
@@ -139,7 +142,7 @@ function formatDeadline(start) {
           }}
         </small>
       </button>
-      <p class="seat-status text-muted mt-1 mb-0 text-center">
+      <p v-if="seatStatus(training)" class="seat-status text-muted mt-1 mb-0 text-center">
         {{ seatStatus(training) }}
       </p>
     </div>
