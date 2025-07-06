@@ -285,11 +285,11 @@ function dayTrainings(id) {
 
       <div v-show="activeTab === 'register'">
         <p v-if="!groupedAllByDay.length" class="text-muted">Нет доступных тренировок</p>
-        <div v-else class="stadium-scroll d-flex flex-nowrap gap-3">
+        <div v-else class="stadium-list">
           <div
             v-for="g in groupedAllByDay"
             :key="g.stadium.id"
-            class="stadium-card card tile flex-shrink-0 h-100"
+            class="stadium-card card tile"
           >
             <div class="card-body stadium-body">
                 <div class="d-flex justify-content-between align-items-start mb-1">
@@ -387,21 +387,22 @@ function dayTrainings(id) {
   flex-shrink: 0;
 }
 
-.stadium-scroll {
+.stadium-list {
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
+  flex-direction: column;
   gap: 0.75rem;
-  padding-bottom: 0.25rem;
-  justify-content: flex-start;
 }
 
 .stadium-card {
-  width: clamp(16rem, 75vw, 20rem);
-  margin: 0;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .stadium-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
 }
 </style>
