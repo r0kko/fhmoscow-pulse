@@ -121,8 +121,12 @@ function metroNames(address) {
 
 const upcoming = computed(() => {
   const now = new Date();
+  const cutoff = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   return trainings.value
-    .filter((t) => new Date(t.start_at) >= now)
+    .filter((t) => {
+      const start = new Date(t.start_at);
+      return start >= now && start <= cutoff;
+    })
     .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
 });
 
@@ -220,6 +224,16 @@ function dayTrainings(id) {
   if (!iso) return [];
   const day = group.days.find((d) => d.date.toISOString() === iso);
   return day ? day.trainings : [];
+}
+
+function dayOpen(day) {
+  return day.trainings.some((t) => t.registration_open);
+}
+
+function timesForDay(day) {
+  return day.trainings
+    .map((t) => formatTime(t.start_at))
+    .join(', ');
 }
 </script>
 
@@ -361,13 +375,19 @@ function dayTrainings(id) {
                     v-for="d in g.days"
                     :key="d.date"
                     class="btn btn-sm"
-                    :class="{
-                      'btn-brand text-white': selectedDates[g.stadium.id] === d.date.toISOString(),
-                      'btn-outline-brand': selectedDates[g.stadium.id] !== d.date.toISOString(),
-                    }"
+                    :class="[
+                      selectedDates[g.stadium.id] === d.date.toISOString()
+                        ? dayOpen(d)
+                          ? 'btn-brand text-white'
+                          : 'btn-secondary text-white'
+                        : dayOpen(d)
+                        ? 'btn-outline-brand'
+                        : 'btn-outline-secondary',
+                    ]"
                     @click="selectDate(g.stadium.id, d.date.toISOString())"
                   >
-                    {{ formatShortDate(d.date) }}
+                    <span class="d-block">{{ formatShortDate(d.date) }}</span>
+                    <span class="d-block small">{{ timesForDay(d) }}</span>
                   </button>
                 </div>
                 <div v-if="selectedDates[g.stadium.id]" class="training-scroll d-flex flex-nowrap gap-3">
@@ -434,5 +454,8 @@ function dayTrainings(id) {
 .date-scroll .btn {
   flex-shrink: 0;
   scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 </style>
