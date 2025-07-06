@@ -121,12 +121,8 @@ function metroNames(address) {
 
 const upcoming = computed(() => {
   const now = new Date();
-  const cutoff = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   return trainings.value
-    .filter((t) => {
-      const start = new Date(t.start_at);
-      return start >= now && start <= cutoff;
-    })
+    .filter((t) => new Date(t.start_at) >= now)
     .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
 });
 
@@ -196,7 +192,8 @@ function formatShortDate(date) {
     day: 'numeric',
     month: 'short',
   });
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  const formatted = text.charAt(0).toUpperCase() + text.slice(1);
+  return formatted.replace(/\.$/, '');
 }
 
 function showToast(message) {
@@ -429,10 +426,13 @@ function dayTrainings(id) {
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
   gap: 0.5rem;
+  padding-bottom: 0.25rem;
 }
 
 .date-scroll .btn {
   flex-shrink: 0;
+  scroll-snap-align: start;
 }
 </style>
