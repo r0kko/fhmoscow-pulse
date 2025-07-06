@@ -1,11 +1,12 @@
 <script setup>
-import {ref, onMounted, computed} from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import {RouterLink} from 'vue-router';
 import {apiFetch} from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 import Toast from 'bootstrap/js/dist/toast';
+import Tooltip from 'bootstrap/js/dist/tooltip';
 
 const selectedDates = ref({});
 
@@ -21,6 +22,14 @@ const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
 
+function shortName(u) {
+  const initials = [u.first_name, u.patronymic]
+    .filter(Boolean)
+    .map((n) => n.charAt(0) + '.')
+    .join(' ');
+  return `${u.last_name} ${initials}`.trim();
+}
+
 onMounted(loadAll);
 
 async function loadAll() {
@@ -28,6 +37,8 @@ async function loadAll() {
   try {
     await Promise.all([loadAvailable(), loadMine()]);
     error.value = '';
+    await nextTick();
+    applyTooltips();
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -87,6 +98,10 @@ async function unregister(id) {
 function confirmUnregister(id) {
   if (!confirm('Отменить запись на тренировку?')) return;
   unregister(id);
+}
+
+function canCancel(t) {
+  return new Date(t.start_at).getTime() - Date.now() > 48 * 60 * 60 * 1000;
 }
 
 const myTrainings = computed(() => mine.value);
@@ -205,6 +220,14 @@ function showToast(message) {
   toast.show();
 }
 
+function applyTooltips() {
+  nextTick(() => {
+    document
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
+  });
+}
+
 function selectDate(id, iso) {
   const current = selectedDates.value[id];
   const next = current === iso ? undefined : iso;
@@ -301,8 +324,33 @@ function dayOpen(day) {
                       <span class="ms-2">{{ t.stadium?.name }}</span>
                     </div>
                     <div class="text-muted small">{{ t.type?.name }}</div>
+                    <p class="text-muted small mb-1 d-flex mt-1">
+                      <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
+                      <span>
+                        Роль: {{ t.my_role?.name || '—' }}<br />
+                        Тренеры:
+                        <span v-if="t.coaches && t.coaches.length">
+                          {{ t.coaches.map(shortName).join(', ') }}
+                        </span>
+                        <span v-else>не назначены</span><br />
+                        Инвентарь:
+                        <span
+                          v-if="t.equipment_managers && t.equipment_managers.length"
+                        >
+                          {{ t.equipment_managers.map(shortName).join(', ') }}
+                        </span>
+                        <span v-else>не назначен</span><br />
+                        Адрес: {{ t.stadium?.address?.result || '—' }}
+                      </span>
+                    </p>
                   </div>
-                  <button class="btn btn-link text-danger p-0" @click="confirmUnregister(t.id)">
+                  <button
+                    class="btn btn-link p-0"
+                    :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
+                    @click="canCancel(t) ? confirmUnregister(t.id) : null"
+                    :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
+                    title="Отменить можно не позднее чем за 48 часов"
+                  >
                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                     <span class="visually-hidden">Отменить</span>
                   </button>

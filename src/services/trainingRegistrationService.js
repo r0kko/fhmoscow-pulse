@@ -245,6 +245,14 @@ async function listUpcomingByUser(userId, options = {}) {
         typeof plain.capacity === 'number'
           ? Math.max(0, plain.capacity - registeredCount)
           : null;
+      const myReg = t.TrainingRegistrations.find((r) => r.user_id === userId);
+      const myRole = myReg?.TrainingRole
+        ? {
+            id: myReg.TrainingRole.id,
+            name: myReg.TrainingRole.name,
+            alias: myReg.TrainingRole.alias,
+          }
+        : null;
       return {
         ...plain,
         available,
@@ -253,6 +261,7 @@ async function listUpcomingByUser(userId, options = {}) {
           registeredCount
         ),
         user_registered: true,
+        my_role: myRole,
       };
     }),
     count: mine.length,
