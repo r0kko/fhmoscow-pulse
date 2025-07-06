@@ -225,9 +225,9 @@ function dayOpen(day) {
 </script>
 
 <template>
-  <div class="py-4 camps-page">
+  <div class="py-3 camps-page">
     <div class="container">
-    <nav aria-label="breadcrumb" class="mb-3">
+    <nav aria-label="breadcrumb" class="mb-2">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
           <RouterLink to="/">Главная</RouterLink>
@@ -235,8 +235,8 @@ function dayOpen(day) {
         <li class="breadcrumb-item active" aria-current="page">Сборы</li>
       </ol>
     </nav>
-    <h1 class="mb-4">Сборы</h1>
-    <div class="card section-card tile fade-in shadow-sm mb-4 stadium-card">
+    <h1 class="mb-3">Сборы</h1>
+    <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
       <div class="card-body p-2">
         <ul class="nav nav-pills nav-fill mb-0 tab-selector">
           <li class="nav-item">
@@ -476,7 +476,7 @@ function dayOpen(day) {
   }
 
   .camps-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
   }
 
   .camps-page h1 {
