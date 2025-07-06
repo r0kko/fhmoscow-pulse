@@ -1,6 +1,7 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findTrainingMock = jest.fn();
+const findAndCountAllMock = jest.fn();
 const findGroupUserMock = jest.fn();
 const createRegMock = jest.fn();
 const findUserMock = jest.fn();
@@ -12,7 +13,7 @@ const countMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  Training: { findByPk: findTrainingMock },
+  Training: { findByPk: findTrainingMock, findAndCountAll: findAndCountAllMock },
   TrainingType: {},
   CampStadium: {},
   Season: {},
@@ -55,6 +56,7 @@ const { default: service } = await import('../src/services/trainingRegistrationS
 
 beforeEach(() => {
   findTrainingMock.mockReset();
+  findAndCountAllMock.mockReset();
   findGroupUserMock.mockReset();
   createRegMock.mockReset();
   findUserMock.mockReset();
@@ -200,4 +202,21 @@ test('unregister rejects when deadline passed', async () => {
   findRegMock.mockResolvedValue({ destroy: destroyMock });
   findTrainingMock.mockResolvedValue(soon);
   await expect(service.unregister('u1', 't1')).rejects.toThrow('cancellation_deadline_passed');
+});
+
+test('listUpcomingByUser includes my role', async () => {
+  const trPlain = {
+    ...training,
+    TrainingRegistrations: [
+      {
+        user_id: 'u1',
+        TrainingRole: { id: 'r1', name: 'Участник', alias: 'PARTICIPANT' },
+      },
+    ],
+  };
+  const tr = { ...trPlain, get: () => trPlain };
+  findAndCountAllMock.mockResolvedValue({ rows: [tr], count: 1 });
+  const res = await service.listUpcomingByUser('u1', {});
+  expect(res.rows[0].my_role).toEqual({ id: 'r1', name: 'Участник', alias: 'PARTICIPANT' });
+  expect(findAndCountAllMock).toHaveBeenCalled();
 });
