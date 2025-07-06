@@ -111,7 +111,7 @@ function formatStart(date) {
           </div>
         </div>
       </div>
-      <div class="card section-card mb-4">
+      <div class="card section-card mb-3">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
           <div class="scroll-container">
@@ -132,7 +132,7 @@ function formatStart(date) {
         </div>
       </div>
 
-      <div class="card section-card mb-4">
+      <div class="card section-card mb-3">
         <div class="card-body">
           <h5 class="card-title mb-3">Рабочие сервисы</h5>
           <div class="scroll-container">
@@ -153,7 +153,7 @@ function formatStart(date) {
         </div>
       </div>
 
-      <div class="card section-card mb-4">
+      <div class="card section-card mb-3">
         <div class="card-body">
           <h5 class="card-title mb-3">Документы и формальности</h5>
           <div class="scroll-container">
@@ -250,7 +250,7 @@ function formatStart(date) {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  align-items: flex-start;
   height: 100%;
 }
 
@@ -262,6 +262,7 @@ function formatStart(date) {
 .section-card {
   border-radius: 0.75rem;
   overflow: hidden;
+  border: 0;
 }
 
 @media (max-width: 575.98px) {
