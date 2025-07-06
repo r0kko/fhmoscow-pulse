@@ -231,7 +231,7 @@ function timesForDay(day) {
 </script>
 
 <template>
-  <div class="container my-4">
+  <div class="container my-4 camps-page">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
@@ -241,7 +241,7 @@ function timesForDay(day) {
     <h1 class="mb-4">Сборы</h1>
     <div class="card mb-4">
       <div class="card-body p-2">
-        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+        <ul class="nav nav-pills nav-fill mb-0 tab-selector">
           <li class="nav-item">
             <button
               class="nav-link"
@@ -285,7 +285,7 @@ function timesForDay(day) {
         </p>
         <div v-else class="card tile">
           <div class="card-body">
-            <div v-for="g in groupedMine" :key="g.date" class="mb-3">
+            <div v-for="g in groupedMine" :key="g.date" class="mb-3 calendar-day">
               <h2 class="h6 mb-2">{{ formatDay(g.date) }}</h2>
               <div class="training-scroll d-flex flex-nowrap gap-3">
                 <TrainingCard
@@ -429,10 +429,38 @@ function timesForDay(day) {
   border: 0;
 }
 
+.calendar-day {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #dee2e6;
+}
+.calendar-day:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.tab-selector {
+  gap: 0.5rem;
+}
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
+}
+
+/* tighter layout on small screens */
 @media (max-width: 575.98px) {
+  .camps-page {
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  .camps-page nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.5rem !important;
+  }
+  .camps-page h1 {
+    margin-bottom: 1rem !important;
+  }
   .stadium-card {
     margin-left: -1rem;
     margin-right: -1rem;
   }
 }
+
 </style>
