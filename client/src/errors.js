@@ -31,6 +31,7 @@ export const ERROR_MESSAGES = {
   training_not_found: 'Тренировка не найдена',
   registration_not_found: 'Запись не найдена',
   registration_closed: 'Запись закрыта',
+  cancellation_deadline_passed: 'Нельзя отменить запись менее чем за 48 часов до начала',
   already_registered: 'Уже зарегистрированы',
   referee_group_not_found: 'Группа судей не найдена',
   access_denied: 'Доступ запрещен',

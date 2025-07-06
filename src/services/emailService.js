@@ -14,6 +14,7 @@ import { renderMedicalCertificateAddedEmail } from '../templates/medicalCertific
 import { renderAccountActivatedEmail } from '../templates/accountActivatedEmail.js';
 import { renderTrainingRegistrationEmail } from '../templates/trainingRegistrationEmail.js';
 import { renderTrainingRegistrationCancelledEmail } from '../templates/trainingRegistrationCancelledEmail.js';
+import { renderTrainingRegistrationSelfCancelledEmail } from '../templates/trainingRegistrationSelfCancelledEmail.js';
 import { renderTrainingRoleChangedEmail } from '../templates/trainingRoleChangedEmail.js';
 
 const transporter = nodemailer.createTransport({
@@ -72,6 +73,12 @@ export async function sendTrainingRegistrationCancelledEmail(user, training) {
   await sendMail(user.email, subject, text, html);
 }
 
+export async function sendTrainingRegistrationSelfCancelledEmail(user, training) {
+  const { subject, text, html } =
+    renderTrainingRegistrationSelfCancelledEmail(training);
+  await sendMail(user.email, subject, text, html);
+}
+
 export async function sendTrainingRoleChangedEmail(user, training, role) {
   const { subject, text, html } = renderTrainingRoleChangedEmail(
     training,
@@ -87,5 +94,6 @@ export default {
   sendAccountActivatedEmail,
   sendTrainingRegistrationEmail,
   sendTrainingRegistrationCancelledEmail,
+  sendTrainingRegistrationSelfCancelledEmail,
   sendTrainingRoleChangedEmail,
 };

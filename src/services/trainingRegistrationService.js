@@ -144,6 +144,13 @@ async function unregister(userId, trainingId) {
   const training = await Training.findByPk(trainingId, {
     include: [{ model: Season, where: { active: true }, required: true }],
   });
+  if (!training) throw new ServiceError('training_not_found', 404);
+
+  const start = new Date(training.start_at);
+  const tooLate = Date.now() > start.getTime() - 48 * 60 * 60 * 1000;
+  if (tooLate) {
+    throw new ServiceError('cancellation_deadline_passed');
+  }
   const count = await TrainingRegistration.count({
     where: { training_id: trainingId },
     include: [{ model: TrainingRole, where: { alias: 'PARTICIPANT' } }],
@@ -152,6 +159,11 @@ async function unregister(userId, trainingId) {
     throw new ServiceError('registration_closed');
   }
   await registration.destroy();
+
+  const user = await User.findByPk(userId);
+  if (user) {
+    await emailService.sendTrainingRegistrationSelfCancelledEmail(user, training);
+  }
 }
 
 async function add(trainingId, userId, roleId, actorId) {
