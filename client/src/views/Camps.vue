@@ -8,6 +8,8 @@ import yandexLogo from '../assets/yandex-maps.svg';
 import { typeBadgeClass } from '../utils/training.js';
 import Toast from 'bootstrap/js/dist/toast';
 
+const selectedDates = ref({});
+
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
     .filter(Boolean)
@@ -134,6 +136,13 @@ const availableTrainings = computed(() =>
 
 const groupedAll = computed(() => groupDetailed(availableTrainings.value));
 
+const groupedAllByDay = computed(() =>
+  groupedAll.value.map((g) => ({
+    stadium: g.stadium,
+    days: groupByDay(g.trainings),
+  }))
+);
+
 function groupByDay(list) {
   const map = {};
   list.forEach((t) => {
@@ -181,12 +190,35 @@ function formatTime(date) {
   });
 }
 
+function formatShortDate(date) {
+  const text = date.toLocaleDateString('ru-RU', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function showToast(message) {
   toastMessage.value = message;
   if (!toast) {
     toast = new Toast(toastRef.value);
   }
   toast.show();
+}
+
+function selectDate(id, iso) {
+  selectedDates.value = { ...selectedDates.value, [id]: iso };
+}
+
+function dayTrainings(id) {
+  const group = groupedAllByDay.value.find((g) => g.stadium.id === id);
+  if (!group || !group.days.length) return [];
+  const iso =
+    selectedDates.value[id] || group.days[0].date.toISOString();
+  if (!selectedDates.value[id]) selectDate(id, iso);
+  const day = group.days.find((d) => d.date.toISOString() === iso);
+  return day ? day.trainings : [];
 }
 </script>
 
@@ -294,10 +326,10 @@ function showToast(message) {
       </div>
 
       <div v-show="activeTab === 'register'">
-        <p v-if="!groupedAll.length" class="text-muted">Нет доступных тренировок</p>
+        <p v-if="!groupedAllByDay.length" class="text-muted">Нет доступных тренировок</p>
         <div v-else class="row gy-4">
           <div
-            v-for="g in groupedAll"
+            v-for="g in groupedAllByDay"
             :key="g.stadium.id"
             class="col-12"
           >
@@ -323,9 +355,23 @@ function showToast(message) {
                   <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
                   <span>{{ metroNames(g.stadium.address) }}</span>
                 </p>
+                <div class="date-scroll mb-3">
+                  <button
+                    v-for="d in g.days"
+                    :key="d.date"
+                    class="btn btn-sm"
+                    :class="{
+                      'btn-brand text-white': selectedDates[g.stadium.id] === d.date.toISOString(),
+                      'btn-outline-brand': selectedDates[g.stadium.id] !== d.date.toISOString(),
+                    }"
+                    @click="selectDate(g.stadium.id, d.date.toISOString())"
+                  >
+                    {{ formatShortDate(d.date) }}
+                  </button>
+                </div>
                 <div class="training-scroll d-flex flex-nowrap gap-3">
                   <TrainingCard
-                    v-for="t in g.trainings"
+                    v-for="t in dayTrainings(g.stadium.id)"
                     :key="t.id"
                     :training="t"
                     :loading="registering === t.id"
@@ -371,5 +417,17 @@ function showToast(message) {
 
 .stadium-body {
   min-width: 0;
+}
+
+.date-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0.5rem;
+}
+
+.date-scroll .btn {
+  flex-shrink: 0;
 }
 </style>
