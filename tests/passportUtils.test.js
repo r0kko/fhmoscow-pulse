@@ -13,8 +13,8 @@ describe('passport utils', () => {
     expect(calculateValidUntil('1990-01-01', '2010-02-03')).toBe('2035-04-01');
   });
 
-  test('calculateValidUntil returns null for age 45+', () => {
-    expect(calculateValidUntil('1950-01-01', '2020-01-01')).toBe(null);
+  test('calculateValidUntil returns 100th birthday for age 45+', () => {
+    expect(calculateValidUntil('1950-01-01', '2020-01-01')).toBe('2050-01-01');
   });
 
   test('sanitizePassportData normalizes dates', () => {

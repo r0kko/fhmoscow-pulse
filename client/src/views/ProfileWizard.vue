@@ -23,7 +23,9 @@ function calculateValidUntil(birthDate, issueDate) {
     until = new Date(birth)
     until.setFullYear(until.getFullYear() + 45)
   } else {
-    return ''
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 100)
+    return until.toISOString().slice(0, 10)
   }
   until.setDate(until.getDate() + 90)
   return until.toISOString().slice(0, 10)

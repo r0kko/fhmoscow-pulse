@@ -132,7 +132,10 @@ function calcValid() {
     until = new Date(birth)
     until.setFullYear(until.getFullYear() + 45)
   } else {
-    until = ''
+    until = new Date(birth)
+    until.setFullYear(until.getFullYear() + 100)
+    form.valid_until = until.toISOString().slice(0, 10)
+    return
   }
   if (until) {
     until.setDate(until.getDate() + 90)
