@@ -2,8 +2,8 @@
   <nav class="navbar navbar-dark" style="background-color: var(--brand-color)">
     <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2" to="/">
-        <img :src="logo" alt="FHM" height="30" />
-        ФХМ
+        <!--suppress CheckImageSize -->
+        <img src="../assets/system-logo-placeholder.png" alt="Логотип системы" height="30" loading="lazy" />
       </RouterLink>
       <div class="d-flex align-items-center ms-auto">
         <span class="navbar-text me-3 d-none d-md-inline" v-if="user">
@@ -23,7 +23,6 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, fetchCurrentUser, clearAuth } from '../auth.js'
 import { apiFetch, initCsrf } from '../api.js'
-import logo from '../assets/fhm-logo.svg'
 
 const router = useRouter()
 const { user } = auth
