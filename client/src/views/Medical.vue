@@ -96,21 +96,22 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="container my-4">
+  <div class="py-4">
+    <div class="container">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
         <li class="breadcrumb-item active" aria-current="page">Медосмотр</li>
       </ol>
     </nav>
-    <h1 class="mb-4">Данные медицинских обследований</h1>
-    <div v-if="loading" class="text-center my-5">
+    <h1 class="mb-4 text-start">Данные медицинских обследований</h1>
+    <div v-if="loading" class="text-center py-5">
       <div class="spinner-border" role="status" aria-label="Загрузка">
         <span class="visually-hidden">Загрузка…</span>
       </div>
     </div>
     <div v-else>
-      <div class="card tile fade-in shadow-sm">
+      <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body position-relative with-status-badge">
           <span
             class="badge position-absolute top-0 end-0 m-3 d-flex align-items-center gap-1"
@@ -174,7 +175,7 @@ onMounted(async () => {
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
     </div>
-    <div class="card tile fade-in shadow-sm mt-4">
+    <div class="card section-card tile fade-in shadow-sm">
       <div class="card-body">
         <h5 class="card-title mb-3 text-brand">Архив медицинских заключений</h5>
         <div v-if="history.length">
@@ -211,6 +212,7 @@ onMounted(async () => {
         <p v-else class="text-muted mb-0">Нет медицинских заключений с истекшим сроком действия</p>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -229,6 +231,18 @@ onMounted(async () => {
 @media (min-width: 576px) {
   .with-status-badge {
     padding-top: 1rem;
+  }
+}
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
   }
 }
 @keyframes fadeIn {
