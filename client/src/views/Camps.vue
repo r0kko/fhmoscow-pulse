@@ -101,7 +101,15 @@ function confirmUnregister(id) {
 }
 
 function canCancel(t) {
+  if (t.my_role?.alias !== 'PARTICIPANT') return false;
   return new Date(t.start_at).getTime() - Date.now() > 48 * 60 * 60 * 1000;
+}
+
+function cancelTooltip(t) {
+  if (t.my_role?.alias !== 'PARTICIPANT') {
+    return 'Отменять запись могут только участники';
+  }
+  return 'Отменить можно не позднее чем за 48 часов';
 }
 
 const myTrainings = computed(() => mine.value);
@@ -349,7 +357,7 @@ function dayOpen(day) {
                     :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
                     @click="canCancel(t) ? confirmUnregister(t.id) : null"
                     :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
-                    title="Отменить можно не позднее чем за 48 часов"
+                    :title="cancelTooltip(t)"
                   >
                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                     <span class="visually-hidden">Отменить</span>

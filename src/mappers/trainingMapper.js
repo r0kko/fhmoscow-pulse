@@ -57,6 +57,9 @@ function sanitize(obj) {
     ).map((r) => userMapper.toPublic(r.User));
     if (inventory.length) res.equipment_managers = inventory;
   }
+  if (obj.my_role) {
+    res.my_role = { ...obj.my_role };
+  }
   return res;
 }
 
