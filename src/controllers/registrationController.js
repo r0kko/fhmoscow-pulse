@@ -36,7 +36,9 @@ export default {
       first_name: legacy.first_name,
       patronymic: legacy.second_name,
       birth_date: legacy.b_date,
-      phone: `7${legacy.phone_cod}${legacy.phone_number}`,
+      // phone_number in legacy DB may contain leading zeros
+      // ensure both parts remain strings when concatenated
+      phone: `7${String(legacy.phone_cod)}${String(legacy.phone_number)}`,
     };
     let user;
     try {
