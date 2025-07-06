@@ -238,6 +238,7 @@ function formatStart(date) {
 .menu-card {
   width: 8rem;
   flex: 0 0 auto;
+  height: 6.5rem;
   border-radius: 0.75rem;
   box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
   scroll-snap-align: start;
