@@ -14,7 +14,7 @@ const workSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
-  { title: 'Доходы', icon: 'bi-currency-dollar' }
+  { title: 'Доходы', icon: 'ruble-icon' }
 ]
 
 const docsSections = [
@@ -277,6 +277,15 @@ function formatStart(date) {
   bottom: 0.5rem;
   right: 0.5rem;
   color: var(--brand-color);
+}
+
+.ruble-icon::before {
+  content: '₽';
+  display: inline-block;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  vertical-align: -.125em;
 }
 
 @keyframes fadeIn {
