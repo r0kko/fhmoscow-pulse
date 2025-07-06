@@ -88,7 +88,7 @@ function formatDeadline(start) {
       >
       <p class="small mb-1">
         Тренер<span v-if="training.coaches && training.coaches.length > 1"
-          >(-ы)</span
+          >ы</span
         >:
         <template v-if="training.coaches && training.coaches.length">
           <span v-for="(c, i) in training.coaches" :key="c.id">
