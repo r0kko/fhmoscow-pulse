@@ -10,14 +10,6 @@ import Toast from 'bootstrap/js/dist/toast';
 
 const selectedDates = ref({});
 
-function shortName(u) {
-  const initials = [u.first_name, u.patronymic]
-    .filter(Boolean)
-    .map((n) => n.charAt(0) + '.')
-    .join(' ');
-  return `${u.last_name} ${initials}`.trim();
-}
-
 const trainings = ref([]);
 const mine = ref([]);
 const page = ref(1);
@@ -183,12 +175,6 @@ function formatDay(date) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function formatTime(date) {
-  return new Date(date).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function formatShortDate(date) {
   const text = date.toLocaleDateString('ru-RU', {
@@ -283,47 +269,15 @@ function dayTrainings(id) {
           <div class="card-body">
             <div v-for="g in groupedMine" :key="g.date" class="mb-3">
               <h2 class="h6 mb-2">{{ formatDay(g.date) }}</h2>
-              <ul class="list-group">
-                <li
+              <div class="training-scroll d-flex flex-nowrap gap-3">
+                <TrainingCard
                   v-for="t in g.trainings"
                   :key="t.id"
-                  class="list-group-item"
-                >
-                  <div class="d-flex flex-column flex-sm-row justify-content-between">
-                    <div>
-                      <i class="bi bi-clock me-1" aria-hidden="true"></i>
-                      {{ formatTime(t.start_at) }}
-                      <span class="badge badge-training-type ms-2" :class="typeBadgeClass(t.type?.alias)">
-                        {{ t.type?.name }}
-                      </span>
-                    </div>
-                    <div class="text-sm-end">
-                      <div class="fw-semibold">{{ t.stadium?.name }}</div>
-                      <div class="small text-muted">
-                        {{ t.stadium?.address?.result }}
-                      </div>
-                    </div>
-                  </div>
-                  <div class="small mt-1">
-                    Тренер<span v-if="t.coaches && t.coaches.length > 1">(-ы)</span>:
-                    <template v-if="t.coaches && t.coaches.length">
-                      <span v-for="(c, i) in t.coaches" :key="c.id">
-                        <a :href="`tel:+${c.phone}`" class="text-reset text-decoration-none">{{ shortName(c) }}</a><span v-if="i < t.coaches.length - 1">, </span>
-                      </span>
-                    </template>
-                    <span v-else>не назначен</span>
-                  </div>
-                  <div class="small">
-                    Инвентарь:
-                    <template v-if="t.equipment_managers && t.equipment_managers.length">
-                      <span v-for="(m, i) in t.equipment_managers" :key="m.id">
-                        <a :href="`tel:+${m.phone}`" class="text-reset text-decoration-none">{{ shortName(m) }}</a><span v-if="i < t.equipment_managers.length - 1">, </span>
-                      </span>
-                    </template>
-                    <span v-else>не назначен</span>
-                  </div>
-                </li>
-              </ul>
+                  :training="t"
+                  class="flex-shrink-0"
+                  @unregister="unregister"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -331,14 +285,13 @@ function dayTrainings(id) {
 
       <div v-show="activeTab === 'register'">
         <p v-if="!groupedAllByDay.length" class="text-muted">Нет доступных тренировок</p>
-        <div v-else class="row gy-4">
+        <div v-else class="stadium-scroll d-flex flex-nowrap gap-3">
           <div
             v-for="g in groupedAllByDay"
             :key="g.stadium.id"
-            class="col-12"
+            class="stadium-card card tile flex-shrink-0 h-100"
           >
-            <div class="card tile h-100">
-              <div class="card-body stadium-body">
+            <div class="card-body stadium-body">
                 <div class="d-flex justify-content-between align-items-start mb-1">
                   <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
                   <a
@@ -383,13 +336,11 @@ function dayTrainings(id) {
                     @register="register"
                   />
                 </div>
-                
+
               </div>
             </div>
-          </div>
         </div>
       </div>
-    </div>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
       <div
         ref="toastRef"
@@ -434,5 +385,23 @@ function dayTrainings(id) {
 
 .date-scroll .btn {
   flex-shrink: 0;
+}
+
+.stadium-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+  justify-content: flex-start;
+}
+
+.stadium-card {
+  width: clamp(16rem, 75vw, 20rem);
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 </style>
