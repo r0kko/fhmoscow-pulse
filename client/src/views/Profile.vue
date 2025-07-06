@@ -193,7 +193,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container my-4">
+  <div class="container my-3 profile-page">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
@@ -209,9 +209,9 @@ onMounted(() => {
       </div>
     </div>
     <div v-else-if="user">
-      <div class="card fade-in mb-4">
+      <div class="card tile profile-card fade-in mb-4">
         <div class="card-body p-2">
-          <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+          <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item" v-for="tab in tabs" :key="tab.id">
               <button
                 type="button"
@@ -227,7 +227,7 @@ onMounted(() => {
       </div>
 
       <div v-show="activeTab === 'info'" class="mb-4">
-        <div class="card fade-in">
+        <div class="card tile profile-card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные и контакты</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
@@ -385,7 +385,7 @@ onMounted(() => {
         class="mb-4"
         v-if="passport !== undefined || passportError || loading.passport"
       >
-        <div class="card fade-in">
+        <div class="card tile profile-card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
             <div v-if="loading.passport" class="text-center py-4">
@@ -544,7 +544,7 @@ onMounted(() => {
           loading.snils
         "
       >
-        <div class="card fade-in">
+        <div class="card tile profile-card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
             <div v-if="loading.inn || loading.snils" class="text-center py-4">
@@ -607,7 +607,7 @@ onMounted(() => {
           bankAccount !== undefined || bankAccountError || loading.bankAccount
         "
       >
-        <div class="card fade-in">
+        <div class="card tile profile-card fade-in">
           <div class="card-body">
             <h5 class="card-title mb-3">Банковские реквизиты</h5>
             <div v-if="loading.bankAccount" class="text-center py-4">
@@ -739,6 +739,35 @@ onMounted(() => {
 .placeholder-card:hover {
   transform: none;
   box-shadow: none;
+}
+
+.profile-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 0;
+}
+
+.tab-selector {
+  gap: 0.5rem;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+  .profile-page {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .profile-page nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .profile-page h1 {
+    margin-bottom: 1rem !important;
+  }
 }
 
 @keyframes fadeIn {
