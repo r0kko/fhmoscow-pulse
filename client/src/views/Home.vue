@@ -184,7 +184,6 @@ function formatStart(date) {
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <style scoped>
