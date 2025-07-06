@@ -175,6 +175,13 @@ function formatDay(date) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function formatTime(date) {
+  return new Date(date).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 
 function formatShortDate(date) {
   const text = date.toLocaleDateString('ru-RU', {
