@@ -111,55 +111,67 @@ function formatStart(date) {
           </div>
         </div>
       </div>
-      <h5 class="mb-3">Подготовка к сезону</h5>
-      <div class="scroll-container mb-4">
-        <component
-          v-for="item in preparationSections"
-          :key="item.title"
-          :is="item.to ? RouterLink : 'div'"
-          :to="item.to"
-          class="menu-card card text-decoration-none text-body tile fade-in"
-          :class="{ 'placeholder-card': !item.to }"
-        >
-          <div class="card-body">
-            <span class="card-title small">{{ item.title }}</span>
-            <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+      <div class="card section-card mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Подготовка к сезону</h5>
+          <div class="scroll-container">
+            <component
+              v-for="item in preparationSections"
+              :key="item.title"
+              :is="item.to ? RouterLink : 'div'"
+              :to="item.to"
+              class="menu-card card text-decoration-none text-body tile fade-in"
+              :class="{ 'placeholder-card': !item.to }"
+            >
+              <div class="card-body">
+                <p class="card-title small mb-2">{{ item.title }}</p>
+                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+              </div>
+            </component>
           </div>
-        </component>
+        </div>
       </div>
 
-      <h5 class="mb-3">Рабочие сервисы</h5>
-      <div class="scroll-container mb-4">
-        <component
-          v-for="item in workSections"
-          :key="item.title"
-          :is="item.to ? RouterLink : 'div'"
-          :to="item.to"
-          class="menu-card card text-decoration-none text-body tile fade-in"
-          :class="{ 'placeholder-card': !item.to }"
-        >
-          <div class="card-body">
-            <span class="card-title small">{{ item.title }}</span>
-            <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+      <div class="card section-card mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Рабочие сервисы</h5>
+          <div class="scroll-container">
+            <component
+              v-for="item in workSections"
+              :key="item.title"
+              :is="item.to ? RouterLink : 'div'"
+              :to="item.to"
+              class="menu-card card text-decoration-none text-body tile fade-in"
+              :class="{ 'placeholder-card': !item.to }"
+            >
+              <div class="card-body">
+                <p class="card-title small mb-2">{{ item.title }}</p>
+                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+              </div>
+            </component>
           </div>
-        </component>
+        </div>
       </div>
 
-      <h5 class="mb-3">Документы и формальности</h5>
-      <div class="scroll-container mb-4">
-        <component
-          v-for="item in docsSections"
-          :key="item.title"
-          :is="item.to ? RouterLink : 'div'"
-          :to="item.to"
-          class="menu-card card text-decoration-none text-body tile fade-in"
-          :class="{ 'placeholder-card': !item.to }"
-        >
-          <div class="card-body">
-            <span class="card-title small">{{ item.title }}</span>
-            <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+      <div class="card section-card mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Документы и формальности</h5>
+          <div class="scroll-container">
+            <component
+              v-for="item in docsSections"
+              :key="item.title"
+              :is="item.to ? RouterLink : 'div'"
+              :to="item.to"
+              class="menu-card card text-decoration-none text-body tile fade-in"
+              :class="{ 'placeholder-card': !item.to }"
+            >
+              <div class="card-body">
+                <p class="card-title small mb-2">{{ item.title }}</p>
+                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+              </div>
+            </component>
           </div>
-        </component>
+        </div>
       </div>
 
       <div v-if="isAdmin" class="mt-3">
@@ -240,6 +252,23 @@ function formatStart(date) {
   flex-direction: column;
   justify-content: flex-end;
   height: 100%;
+}
+
+.menu-card .card-title {
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.section-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
 }
 
 .menu-card .icon {
