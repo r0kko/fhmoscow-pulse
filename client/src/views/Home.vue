@@ -71,10 +71,10 @@ function formatStart(date) {
 <template>
   <div class="py-4">
     <div class="container">
-      <h3 class="mb-4 text-start">
+      <h3 class="mb-3 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>
-      <div class="card section-card mb-4 text-start">
+      <div class="card section-card mb-2 text-start">
         <div class="card-body">
           <h5 class="card-title mb-3">Ближайшие события</h5>
           <div v-if="loadingUpcoming" class="text-center py-3">
@@ -111,7 +111,7 @@ function formatStart(date) {
           </div>
         </div>
       </div>
-      <div class="card section-card mb-3">
+      <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
           <div class="scroll-container">
@@ -132,7 +132,7 @@ function formatStart(date) {
         </div>
       </div>
 
-      <div class="card section-card mb-3">
+      <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Рабочие сервисы</h5>
           <div class="scroll-container">
@@ -153,7 +153,7 @@ function formatStart(date) {
         </div>
       </div>
 
-      <div class="card section-card mb-3">
+      <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Документы и формальности</h5>
           <div class="scroll-container">
@@ -174,7 +174,7 @@ function formatStart(date) {
         </div>
       </div>
 
-      <div v-if="isAdmin" class="mt-3">
+      <div v-if="isAdmin" class="mt-2">
         <RouterLink to="/admin" class="menu-card card text-decoration-none text-body tile fade-in d-inline-block">
           <div class="card-body">
             <span class="card-title small">Администрирование</span>
