@@ -149,7 +149,7 @@ async function save() {
         </li>
       </ol>
     </nav>
-    <h1 class="mb-4">Редактирование пользователя</h1>
+    <h1 class="mb-3">Редактирование пользователя</h1>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
     <ul v-if="user" class="nav nav-pills nav-fill justify-content-between mb-4">

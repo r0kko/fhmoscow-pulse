@@ -104,7 +104,7 @@ onMounted(async () => {
         <li class="breadcrumb-item active" aria-current="page">Медосмотр</li>
       </ol>
     </nav>
-    <h1 class="mb-4 text-start">Данные медицинских обследований</h1>
+    <h1 class="mb-3">Данные медицинских обследований</h1>
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border" role="status" aria-label="Загрузка">
         <span class="visually-hidden">Загрузка…</span>
