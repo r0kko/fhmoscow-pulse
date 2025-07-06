@@ -274,17 +274,26 @@ function dayOpen(day) {
         </p>
         <div v-else class="card tile">
           <div class="card-body">
-            <div v-for="g in groupedMine" :key="g.date" class="mb-3 calendar-day">
-              <h2 class="h6 mb-2">{{ formatDay(g.date) }}</h2>
-              <div class="training-scroll d-flex flex-nowrap gap-3">
-                <TrainingCard
+            <div v-for="g in groupedMine" :key="g.date" class="mb-3 schedule-day">
+              <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+              <ul class="list-unstyled mb-0">
+                <li
                     v-for="t in g.trainings"
                     :key="t.id"
-                    :training="t"
-                    class="flex-shrink-0"
-                    @unregister="unregister"
-                />
-              </div>
+                    class="schedule-item d-flex justify-content-between align-items-start"
+                >
+                  <div>
+                    <div>
+                      <strong>{{ formatTime(t.start_at) }}–{{ formatTime(t.end_at) }}</strong>
+                      <span class="ms-2">{{ t.stadium?.name }}</span>
+                    </div>
+                    <div class="text-muted small">{{ t.type?.name }}</div>
+                  </div>
+                  <button class="btn btn-sm btn-secondary" @click="unregister(t.id)">
+                    Отменить
+                  </button>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
@@ -418,14 +427,18 @@ function dayOpen(day) {
   border: 0;
 }
 
-.calendar-day {
+.schedule-day {
   padding-bottom: 1rem;
   border-bottom: 1px solid #dee2e6;
 }
 
-.calendar-day:last-child {
+.schedule-day:last-child {
   border-bottom: 0;
   padding-bottom: 0;
+}
+
+.schedule-item + .schedule-item {
+  margin-top: 0.5rem;
 }
 
 .tab-selector {
