@@ -42,12 +42,13 @@ function durationText(start, end) {
 }
 
 function seatStatus(t) {
-  if (typeof t.available === 'number') {
-    if (t.available === 0) return 'закончились';
-    if (t.available <= 5) return 'мало';
-    return 'много';
+  if (typeof t.available === 'number' && typeof t.capacity === 'number') {
+    return `${t.available} / ${t.capacity} мест свободно`;
   }
-  return 'много';
+  if (typeof t.available === 'number') {
+    return `${t.available} мест свободно`;
+  }
+  return '';
 }
 
 function registrationOpenTime(start) {
@@ -139,7 +140,7 @@ function formatDeadline(start) {
         </small>
       </button>
       <p class="seat-status text-muted mt-1 mb-0 text-center">
-        Мест: {{ seatStatus(training) }}
+        {{ seatStatus(training) }}
       </p>
     </div>
   </div>
