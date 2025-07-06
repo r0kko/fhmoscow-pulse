@@ -73,7 +73,10 @@ export async function sendTrainingRegistrationCancelledEmail(user, training) {
   await sendMail(user.email, subject, text, html);
 }
 
-export async function sendTrainingRegistrationSelfCancelledEmail(user, training) {
+export async function sendTrainingRegistrationSelfCancelledEmail(
+  user,
+  training
+) {
   const { subject, text, html } =
     renderTrainingRegistrationSelfCancelledEmail(training);
   await sendMail(user.email, subject, text, html);

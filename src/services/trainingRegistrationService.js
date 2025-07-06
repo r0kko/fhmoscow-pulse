@@ -166,7 +166,10 @@ async function unregister(userId, trainingId) {
 
   const user = await User.findByPk(userId);
   if (user) {
-    await emailService.sendTrainingRegistrationSelfCancelledEmail(user, training);
+    await emailService.sendTrainingRegistrationSelfCancelledEmail(
+      user,
+      training
+    );
   }
 }
 
