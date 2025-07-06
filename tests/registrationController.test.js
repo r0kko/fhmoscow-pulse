@@ -119,6 +119,28 @@ test('start returns code_sent when data is valid', async () => {
   expect(res.json).toHaveBeenCalledWith({ message: 'code_sent' });
 });
 
+test('start keeps leading zeros in phone number', async () => {
+  const legacyUser = {
+    id: 1,
+    last_name: 'L',
+    first_name: 'F',
+    second_name: 'P',
+    b_date: '2000-01-01',
+    phone_cod: '99',
+    phone_number: '0123456',
+  };
+  findUserMock.mockResolvedValueOnce(null);
+  findLegacyMock.mockResolvedValueOnce(legacyUser);
+  createUserMock.mockResolvedValueOnce({ id: 'u1' });
+  findSystemMock.mockResolvedValueOnce(null);
+  const req = { body: { email: 't@example.com' } };
+  const res = createRes();
+  await controller.start(req, res);
+  expect(createUserMock).toHaveBeenCalledWith(
+    expect.objectContaining({ phone: '7990123456' })
+  );
+});
+
 test('start returns 400 on validation errors', async () => {
   validationOk = false;
   const req = { body: {} };
