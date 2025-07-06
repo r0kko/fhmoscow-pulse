@@ -4,14 +4,20 @@ import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 
-const sections = [
+const preparationSections = [
+  { title: 'Сборы', icon: 'bi-people-fill', to: '/camps' },
+  { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical' },
+  { title: 'Результаты тестов', icon: 'bi-graph-up' }
+]
+
+const workSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
-  { title: 'Доходы', icon: 'bi-currency-dollar' },
-  { title: 'Сборы', icon: 'bi-people-fill', to: '/camps' },
-  { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical' },
-  { title: 'Результаты тестов', icon: 'bi-graph-up' },
+  { title: 'Доходы', icon: 'bi-currency-dollar' }
+]
+
+const docsSections = [
   { title: 'Документы', icon: 'bi-folder2-open' },
   { title: 'Персональные данные', icon: 'bi-person-circle', to: '/profile' }
 ]
@@ -105,38 +111,64 @@ function formatStart(date) {
           </div>
         </div>
       </div>
-      <div class="card main-tile p-4">
-        <div class="row g-4">
-          <div class="col-6 col-md-4 col-lg-3" v-for="section in sections" :key="section.title">
-          <component
-            :is="section.to ? RouterLink : 'div'"
-            :to="section.to"
-            class="card h-100 text-center tile fade-in text-decoration-none text-body"
-            :class="{ 'placeholder-card': !section.to }"
+      <h5 class="mb-3">Подготовка к сезону</h5>
+      <div class="scroll-container mb-4">
+        <component
+          v-for="item in preparationSections"
+          :key="item.title"
+          :is="item.to ? RouterLink : 'div'"
+          :to="item.to"
+          class="menu-card card text-decoration-none text-body tile fade-in"
+          :class="{ 'placeholder-card': !item.to }"
         >
-          <div class="card-body d-flex flex-column justify-content-center align-items-center">
-            <i
-              :class="section.icon + ' fs-1 mb-3 icon-brand'"
-              role="img"
-              :aria-label="section.title"
-            ></i>
-            <h6 class="card-title">{{ section.title }}</h6>
-            <p v-if="!section.to" class="text-muted small mb-0">Скоро</p>
+          <div class="card-body">
+            <span class="card-title small">{{ item.title }}</span>
+            <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
           </div>
-          </component>
-        </div>
-        <div v-if="isAdmin" class="col-6 col-md-4 col-lg-3">
-          <RouterLink to="/admin" class="card h-100 text-center tile fade-in text-decoration-none text-body">
-            <div class="card-body d-flex flex-column justify-content-center align-items-center">
-              <i
-                class="bi bi-shield-lock fs-1 mb-3 icon-brand"
-                role="img"
-                aria-label="Администрирование"
-              ></i>
-              <h6 class="card-title">Администрирование</h6>
-            </div>
-          </RouterLink>
-        </div>
+        </component>
+      </div>
+
+      <h5 class="mb-3">Рабочие сервисы</h5>
+      <div class="scroll-container mb-4">
+        <component
+          v-for="item in workSections"
+          :key="item.title"
+          :is="item.to ? RouterLink : 'div'"
+          :to="item.to"
+          class="menu-card card text-decoration-none text-body tile fade-in"
+          :class="{ 'placeholder-card': !item.to }"
+        >
+          <div class="card-body">
+            <span class="card-title small">{{ item.title }}</span>
+            <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+          </div>
+        </component>
+      </div>
+
+      <h5 class="mb-3">Документы и формальности</h5>
+      <div class="scroll-container mb-4">
+        <component
+          v-for="item in docsSections"
+          :key="item.title"
+          :is="item.to ? RouterLink : 'div'"
+          :to="item.to"
+          class="menu-card card text-decoration-none text-body tile fade-in"
+          :class="{ 'placeholder-card': !item.to }"
+        >
+          <div class="card-body">
+            <span class="card-title small">{{ item.title }}</span>
+            <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+          </div>
+        </component>
+      </div>
+
+      <div v-if="isAdmin" class="mt-3">
+        <RouterLink to="/admin" class="menu-card card text-decoration-none text-body tile fade-in d-inline-block">
+          <div class="card-body">
+            <span class="card-title small">Администрирование</span>
+            <i class="bi bi-shield-lock icon fs-3" aria-hidden="true"></i>
+          </div>
+        </RouterLink>
       </div>
     </div>
   </div>
@@ -144,12 +176,6 @@ function formatStart(date) {
 </template>
 
 <style scoped>
-
-.main-tile {
-  border-radius: 1rem;
-  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
-  background-color: #fff;
-}
 
 .placeholder-card {
   background-color: #f8f9fa;
@@ -183,6 +209,43 @@ function formatStart(date) {
 }
 
 .upcoming-card i {
+  color: var(--brand-color);
+}
+
+.scroll-container {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+  justify-content: flex-start;
+}
+
+.menu-card {
+  width: 8rem;
+  flex: 0 0 auto;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+}
+
+.menu-card .card-body {
+  padding: 0.75rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.menu-card .icon {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
   color: var(--brand-color);
 }
 
