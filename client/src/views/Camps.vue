@@ -270,7 +270,7 @@ function dayOpen(day) {
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-show="activeTab === 'mine'">
-        <p v-if="!groupedMine.length" class="text-muted">
+        <div v-if="!groupedMine.length" class="alert alert-warning">
           У вас нет тренировок. Перейдите во вкладку
           <button
               class="btn btn-link p-0"
@@ -279,7 +279,7 @@ function dayOpen(day) {
             Запись на тренировки
           </button>
           , чтобы записаться
-        </p>
+        </div>
         <div v-else class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
             <div v-for="g in groupedMine" :key="g.date" class="mb-3 schedule-day">
