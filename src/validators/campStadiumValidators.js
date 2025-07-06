@@ -3,7 +3,16 @@ import { body } from 'express-validator';
 export const campStadiumCreateRules = [
   body('name').isString().notEmpty().withMessage('invalid_name'),
   body('address.result').notEmpty().withMessage('invalid_address'),
-  body('yandex_url').optional().isURL().withMessage('invalid_url'),
+  body('yandex_url')
+    .optional()
+    .isURL({ require_protocol: false })
+    .withMessage('invalid_url')
+    .customSanitizer((v) => {
+      if (v && !/^https?:\/\//i.test(v)) {
+        return `http://${v}`;
+      }
+      return v;
+    }),
   body('capacity').optional().isInt({ min: 0 }).withMessage('invalid_capacity'),
   body('phone')
     .optional()
@@ -43,7 +52,16 @@ export const campStadiumCreateRules = [
 export const campStadiumUpdateRules = [
   body('name').optional().isString().notEmpty().withMessage('invalid_name'),
   body('address.result').optional().notEmpty().withMessage('invalid_address'),
-  body('yandex_url').optional().isURL().withMessage('invalid_url'),
+  body('yandex_url')
+    .optional()
+    .isURL({ require_protocol: false })
+    .withMessage('invalid_url')
+    .customSanitizer((v) => {
+      if (v && !/^https?:\/\//i.test(v)) {
+        return `http://${v}`;
+      }
+      return v;
+    }),
   body('capacity').optional().isInt({ min: 0 }).withMessage('invalid_capacity'),
   body('phone')
     .optional()

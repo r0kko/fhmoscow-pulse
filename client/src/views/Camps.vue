@@ -6,6 +6,7 @@ import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 import Toast from 'bootstrap/js/dist/toast';
+import { withHttp } from '../utils/url.js';
 
 const selectedDates = ref({});
 
@@ -320,7 +321,7 @@ function dayOpen(day) {
                 <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
                 <a
                     v-if="g.stadium.yandex_url"
-                    :href="g.stadium.yandex_url"
+                    :href="withHttp(g.stadium.yandex_url)"
                     target="_blank"
                     rel="noopener"
                     aria-label="Открыть в Яндекс.Картах"

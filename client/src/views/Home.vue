@@ -3,6 +3,7 @@ import { auth } from '../auth.js'
 import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
+import { withHttp } from '../utils/url.js'
 
 const preparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps' },
@@ -87,7 +88,7 @@ function formatStart(date) {
             <a
               v-for="t in upcoming"
               :key="t.id"
-              :href="t.stadium?.yandex_url"
+              :href="withHttp(t.stadium?.yandex_url)"
               target="_blank"
               class="text-decoration-none text-body"
             >
