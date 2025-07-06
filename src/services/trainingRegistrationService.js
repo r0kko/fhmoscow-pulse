@@ -43,9 +43,12 @@ async function upsertRegistration(trainingId, userId, roleId, actorId) {
 async function listAvailable(userId, options = {}) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
   if (!link) return { rows: [], count: 0 };
+  const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
+  const now = new Date();
+  const horizon = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
@@ -61,6 +64,7 @@ async function listAvailable(userId, options = {}) {
         include: [User, TrainingRole],
       },
     ],
+    where: { start_at: { [Op.between]: [now, horizon] } },
     order: [['start_at', 'DESC']],
     distinct: true,
     limit,
