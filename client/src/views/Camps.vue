@@ -214,9 +214,8 @@ function selectDate(id, iso) {
 function dayTrainings(id) {
   const group = groupedAllByDay.value.find((g) => g.stadium.id === id);
   if (!group || !group.days.length) return [];
-  const iso =
-    selectedDates.value[id] || group.days[0].date.toISOString();
-  if (!selectedDates.value[id]) selectDate(id, iso);
+  const iso = selectedDates.value[id];
+  if (!iso) return [];
   const day = group.days.find((d) => d.date.toISOString() === iso);
   return day ? day.trainings : [];
 }
@@ -369,7 +368,7 @@ function dayTrainings(id) {
                     {{ formatShortDate(d.date) }}
                   </button>
                 </div>
-                <div class="training-scroll d-flex flex-nowrap gap-3">
+                <div v-if="selectedDates[g.stadium.id]" class="training-scroll d-flex flex-nowrap gap-3">
                   <TrainingCard
                     v-for="t in dayTrainings(g.stadium.id)"
                     :key="t.id"
@@ -379,6 +378,7 @@ function dayTrainings(id) {
                     @register="register"
                   />
                 </div>
+                <p v-else class="text-muted small">Выберите дату</p>
               </div>
             </div>
           </div>
