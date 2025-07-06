@@ -20,7 +20,7 @@ const isAdmin = computed(() => auth.roles.includes('ADMIN'))
 
 const shortName = computed(() => {
   if (!auth.user) return ''
-  return [auth.user.first_name, auth.user.patronymic].filter(Boolean).join(' ')
+  return [auth.user.first_name].filter(Boolean).join(' ')
 })
 
 const greeting = computed(() => {
