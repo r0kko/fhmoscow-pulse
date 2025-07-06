@@ -19,7 +19,7 @@ const tiles = [
 
 <template>
   <div class="container mt-4">
-    <h1 class="mb-4 text-center">Администрирование</h1>
+    <h1 class="mb-3 text-center">Администрирование</h1>
     <div class="row g-4">
       <div class="col-6 col-md-4" v-for="tile in tiles" :key="tile.to">
         <RouterLink

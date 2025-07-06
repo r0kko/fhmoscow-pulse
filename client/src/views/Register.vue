@@ -70,7 +70,7 @@ async function finish() {
 <template>
   <div class="d-flex align-items-center justify-content-center min-vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
-      <h1 class="mb-1 text-center">Регистрация</h1>
+      <h1 class="mb-3 text-center">Регистрация</h1>
       <p class="text-center mb-3">с использованием существующей учетной записи в личном кабинете судьи</p>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>

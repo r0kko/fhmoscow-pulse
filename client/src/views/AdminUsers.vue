@@ -160,7 +160,7 @@ async function copy(text) {
         <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
       </ol>
     </nav>
-    <h1 class="mb-4">Пользователи</h1>
+    <h1 class="mb-3">Пользователи</h1>
     <div class="row g-2 mb-3">
       <div class="col">
         <input
