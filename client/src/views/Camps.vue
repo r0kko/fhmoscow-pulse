@@ -185,6 +185,13 @@ function formatShortDate(date) {
   return formatted.replace(/\.$/, '');
 }
 
+function formatTime(date) {
+  return new Date(date).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function showToast(message) {
   toastMessage.value = message;
   if (!toast) {
@@ -218,7 +225,8 @@ function dayOpen(day) {
 </script>
 
 <template>
-  <div class="container my-3 camps-page">
+  <div class="py-4 camps-page">
+    <div class="container">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
@@ -228,7 +236,7 @@ function dayOpen(day) {
       </ol>
     </nav>
     <h1 class="mb-4">Сборы</h1>
-    <div class="card mb-4 stadium-card tile">
+    <div class="card section-card tile fade-in shadow-sm mb-4 stadium-card">
       <div class="card-body p-2">
         <ul class="nav nav-pills nav-fill mb-0 tab-selector">
           <li class="nav-item">
@@ -272,7 +280,7 @@ function dayOpen(day) {
           </button>
           , чтобы записаться
         </p>
-        <div v-else class="card tile">
+        <div v-else class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
             <div v-for="g in groupedMine" :key="g.date" class="mb-3 schedule-day">
               <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
@@ -305,7 +313,7 @@ function dayOpen(day) {
           <div
               v-for="g in groupedAllByDay"
               :key="g.stadium.id"
-              class="stadium-card card tile"
+              class="stadium-card card section-card tile fade-in shadow-sm"
           >
             <div class="card-body stadium-body">
               <div class="d-flex justify-content-between align-items-start mb-1">
@@ -373,6 +381,7 @@ function dayOpen(day) {
           <div class="toast-body">{{ toastMessage }}</div>
         </div>
       </div>
+</div>
     </div>
   </div>
 </template>
@@ -449,11 +458,21 @@ function dayOpen(day) {
   border-radius: 0.5rem;
 }
 
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
 /* tighter layout on small screens */
 @media (max-width: 575.98px) {
   .camps-page {
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
   }
 
   .camps-page nav[aria-label='breadcrumb'] {
@@ -467,6 +486,22 @@ function dayOpen(day) {
   .stadium-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
