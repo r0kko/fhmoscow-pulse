@@ -139,8 +139,12 @@ async function register(userId, trainingId, actorId) {
 async function unregister(userId, trainingId) {
   const registration = await TrainingRegistration.findOne({
     where: { training_id: trainingId, user_id: userId },
+    include: [TrainingRole],
   });
   if (!registration) throw new ServiceError('registration_not_found', 404);
+  if (registration.TrainingRole?.alias !== 'PARTICIPANT') {
+    throw new ServiceError('cancellation_forbidden');
+  }
   const training = await Training.findByPk(trainingId, {
     include: [{ model: Season, where: { active: true }, required: true }],
   });

@@ -189,7 +189,10 @@ test('updateRole sends notification', async () => {
 });
 
 test('unregister sends notification', async () => {
-  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  findRegMock.mockResolvedValue({
+    destroy: destroyMock,
+    TrainingRole: { alias: 'PARTICIPANT' },
+  });
   findTrainingMock.mockResolvedValue(training);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.unregister('u1', 't1');
@@ -199,9 +202,21 @@ test('unregister sends notification', async () => {
 
 test('unregister rejects when deadline passed', async () => {
   const soon = { ...training, start_at: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString() };
-  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  findRegMock.mockResolvedValue({
+    destroy: destroyMock,
+    TrainingRole: { alias: 'PARTICIPANT' },
+  });
   findTrainingMock.mockResolvedValue(soon);
   await expect(service.unregister('u1', 't1')).rejects.toThrow('cancellation_deadline_passed');
+});
+
+test('unregister rejects when role not participant', async () => {
+  findRegMock.mockResolvedValue({
+    destroy: destroyMock,
+    TrainingRole: { alias: 'COACH' },
+  });
+  findTrainingMock.mockResolvedValue(training);
+  await expect(service.unregister('u1', 't1')).rejects.toThrow('cancellation_forbidden');
 });
 
 test('listUpcomingByUser includes my role', async () => {
