@@ -74,7 +74,7 @@ function formatStart(date) {
       <h3 class="mb-4 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>
-      <div class="card mb-4 text-start">
+      <div class="card section-card mb-4 text-start">
         <div class="card-body">
           <h5 class="card-title mb-3">Ближайшие события</h5>
           <div v-if="loadingUpcoming" class="text-center py-3">
@@ -217,6 +217,7 @@ function formatStart(date) {
   margin: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  border-radius: 1rem;
 }
 
 .upcoming-card i {
@@ -260,7 +261,7 @@ function formatStart(date) {
 }
 
 .section-card {
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   overflow: hidden;
   border: 0;
 }
