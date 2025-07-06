@@ -174,7 +174,10 @@ onMounted(async () => {
             <p v-else class="text-muted mb-0">Нет файлов</p>
           </div>
           </template>
-          <p v-else class="text-muted mb-0">Действующее медицинское заключение отсутствует</p>
+          <div v-else class="alert alert-warning mb-0" role="alert">
+            Действующее медицинское заключение отсутствует в разделе
+            "Данные медицинских обследований"
+          </div>
         </div>
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
