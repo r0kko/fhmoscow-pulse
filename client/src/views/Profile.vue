@@ -193,8 +193,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container my-3 profile-page">
-    <nav aria-label="breadcrumb" class="mb-3">
+  <div class="py-3 profile-page">
+    <div class="container">
+    <nav aria-label="breadcrumb" class="mb-2">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
         <li class="breadcrumb-item active" aria-current="page">
@@ -209,7 +210,7 @@ onMounted(() => {
       </div>
     </div>
     <div v-else-if="user">
-      <div class="card tile profile-card fade-in mb-4">
+      <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item" v-for="tab in tabs" :key="tab.id">
@@ -227,7 +228,7 @@ onMounted(() => {
       </div>
 
       <div v-show="activeTab === 'info'" class="mb-4">
-        <div class="card tile profile-card fade-in">
+        <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
             <h5 class="card-title mb-3">Основные данные и контакты</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
@@ -385,7 +386,7 @@ onMounted(() => {
         class="mb-4"
         v-if="passport !== undefined || passportError || loading.passport"
       >
-        <div class="card tile profile-card fade-in">
+        <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
             <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
             <div v-if="loading.passport" class="text-center py-4">
@@ -544,7 +545,7 @@ onMounted(() => {
           loading.snils
         "
       >
-        <div class="card tile profile-card fade-in">
+        <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
             <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
             <div v-if="loading.inn || loading.snils" class="text-center py-4">
@@ -607,7 +608,7 @@ onMounted(() => {
           bankAccount !== undefined || bankAccountError || loading.bankAccount
         "
       >
-        <div class="card tile profile-card fade-in">
+        <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
             <h5 class="card-title mb-3">Банковские реквизиты</h5>
             <div v-if="loading.bankAccount" class="text-center py-4">
@@ -724,6 +725,7 @@ onMounted(() => {
         <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -741,8 +743,8 @@ onMounted(() => {
   box-shadow: none;
 }
 
-.profile-card {
-  border-radius: 0.75rem;
+.section-card {
+  border-radius: 1rem;
   overflow: hidden;
   border: 0;
 }
@@ -757,16 +759,21 @@ onMounted(() => {
 
 @media (max-width: 575.98px) {
   .profile-page {
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
   }
 
   .profile-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
   }
 
   .profile-page h1 {
     margin-bottom: 1rem !important;
+  }
+
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
   }
 }
 
