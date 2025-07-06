@@ -92,11 +92,11 @@ function formatStart(date) {
               class="text-decoration-none text-body"
             >
               <div class="card h-100 upcoming-card">
-                <div class="card-body d-flex align-items-start">
+                <div class="card-body d-flex align-items-start p-3">
                   <i class="bi bi-people-fill fs-3 me-3 text-brand" aria-hidden="true"></i>
                   <div>
-                    <p class="small text-muted mb-1">Тренировка</p>
-                    <p class="mb-1">
+                    <h6 class="card-title mb-1">Тренировка</h6>
+                    <p class="mb-1 small">
                       <i class="bi bi-clock me-1" aria-hidden="true"></i>
                       {{ formatStart(t.start_at) }}
                     </p>
@@ -207,17 +207,21 @@ function formatStart(date) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
-  gap: 0.75rem;
+  gap: 0.5rem;
   padding-bottom: 0.25rem;
   justify-content: flex-start;
 }
 
 .upcoming-card {
-  width: clamp(16rem, 75vw, 20rem);
+  width: clamp(14rem, 70vw, 18rem);
   margin: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  border-radius: 1rem;
+  border-radius: 0.75rem;
+}
+
+.upcoming-card .card-body {
+  padding: 0.75rem;
 }
 
 .upcoming-card i {
