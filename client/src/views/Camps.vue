@@ -174,13 +174,6 @@ function formatDay(date) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function formatTime(date) {
-  return new Date(date).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 
 function formatShortDate(date) {
   const text = date.toLocaleDateString('ru-RU', {
@@ -222,15 +215,10 @@ function dayOpen(day) {
   return day.trainings.some((t) => t.registration_open);
 }
 
-function timesForDay(day) {
-  return day.trainings
-      .map((t) => formatTime(t.start_at))
-      .join(', ');
-}
 </script>
 
 <template>
-  <div class="container my-4 camps-page">
+  <div class="container my-3 camps-page">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
@@ -240,7 +228,7 @@ function timesForDay(day) {
       </ol>
     </nav>
     <h1 class="mb-4">Сборы</h1>
-    <div class="card mb-4">
+    <div class="card mb-4 stadium-card tile">
       <div class="card-body p-2">
         <ul class="nav nav-pills nav-fill mb-0 tab-selector">
           <li class="nav-item">
@@ -348,7 +336,6 @@ function timesForDay(day) {
                     @click="selectDate(g.stadium.id, d.date.toISOString())"
                 >
                   <span class="d-block">{{ formatShortDate(d.date) }}</span>
-                  <span class="d-block small">{{ timesForDay(d) }}</span>
                 </button>
               </div>
               <div v-if="selectedDates[g.stadium.id]" class="training-scroll d-flex flex-nowrap gap-3">
@@ -452,8 +439,8 @@ function timesForDay(day) {
 /* tighter layout on small screens */
 @media (max-width: 575.98px) {
   .camps-page {
-    margin-top: 1rem !important;
-    margin-bottom: 1rem !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
   }
 
   .camps-page nav[aria-label='breadcrumb'] {
