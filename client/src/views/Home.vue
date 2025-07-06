@@ -275,8 +275,8 @@ function formatStart(date) {
 
 .menu-card .icon {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.75rem;
+  right: 0.75rem;
   color: var(--brand-color);
 }
 
