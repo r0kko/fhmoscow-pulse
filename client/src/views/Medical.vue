@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import MedicalExamCard from '../components/MedicalExamCard.vue';
+import Tooltip from 'bootstrap/js/dist/tooltip';
 
 const certificate = ref(null);
 const history = ref([]);
@@ -73,6 +74,14 @@ const showExams = computed(
     daysLeft(certificate.value.valid_until) < 30
 );
 
+function applyTooltips() {
+  nextTick(() => {
+    document
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
+  });
+}
+
 
 onMounted(async () => {
   try {
@@ -119,6 +128,8 @@ async function loadExams() {
     const data = await apiFetch('/medical-exams/available');
     exams.value = data.exams || [];
     examsError.value = '';
+    await nextTick();
+    applyTooltips();
   } catch (e) {
     exams.value = [];
     examsError.value = e.message;
