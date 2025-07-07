@@ -3,7 +3,7 @@ import { auth } from '../auth.js'
 import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
-import { withHttp } from '../utils/url.js'
+import UpcomingEventCard from '../components/UpcomingEventCard.vue'
 
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
@@ -59,7 +59,9 @@ async function loadUpcoming() {
       ...t
     }))
     const exams = (examData.exams || [])
-      .filter((e) => e.registration_status === 'APPROVED')
+      .filter(
+        (e) => e.registration_status === 'APPROVED' || e.registration_status === 'COMPLETED'
+      )
       .map((e) => ({
         type: 'exam',
         ...e
@@ -72,19 +74,6 @@ async function loadUpcoming() {
   } finally {
     loadingUpcoming.value = false
   }
-}
-
-function formatStart(date) {
-  const d = new Date(date)
-  const dateStr = d.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-  })
-  const timeStr = d.toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return `${dateStr} в ${timeStr}`
 }
 </script>
 
@@ -104,52 +93,11 @@ function formatStart(date) {
           </div>
           <p v-else-if="!upcoming.length" class="text-muted mb-0">У вас нет записей</p>
           <div v-else class="upcoming-scroll d-flex flex-nowrap gap-3">
-            <template v-for="item in upcoming" :key="item.type + '-' + item.id">
-              <a
-                v-if="item.type === 'training'"
-                :href="withHttp(item.stadium?.yandex_url)"
-                target="_blank"
-                class="text-decoration-none text-body"
-              >
-                <div class="card h-100 upcoming-card">
-                  <div class="card-body d-flex align-items-start p-3">
-                    <i class="bi bi-people-fill fs-3 me-3 text-brand" aria-hidden="true"></i>
-                    <div>
-                      <h6 class="card-title mb-1">Тренировка</h6>
-                      <p class="mb-1 small">
-                        <i class="bi bi-clock me-1" aria-hidden="true"></i>
-                        {{ formatStart(item.start_at) }}
-                      </p>
-                      <p class="mb-0 small">
-                        <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
-                        {{ item.stadium?.address?.result }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </a>
-              <div
-                v-else
-                class="text-decoration-none text-body"
-              >
-                <div class="card h-100 upcoming-card">
-                  <div class="card-body d-flex align-items-start p-3">
-                    <i class="bi bi-heart-pulse fs-3 me-3 text-brand" aria-hidden="true"></i>
-                    <div>
-                      <h6 class="card-title mb-1">Медосмотр</h6>
-                      <p class="mb-1 small">
-                        <i class="bi bi-clock me-1" aria-hidden="true"></i>
-                        {{ formatStart(item.start_at) }}
-                      </p>
-                      <p class="mb-0 small">
-                        <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
-                        {{ item.center?.address?.result }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
+            <UpcomingEventCard
+              v-for="item in upcoming"
+              :key="item.type + '-' + item.id"
+              :event="item"
+            />
           </div>
         </div>
       </div>
@@ -254,21 +202,6 @@ function formatStart(date) {
   justify-content: flex-start;
 }
 
-.upcoming-card {
-  width: clamp(14rem, 70vw, 18rem);
-  margin: 0;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  border-radius: 0.75rem;
-}
-
-.upcoming-card .card-body {
-  padding: 0.75rem;
-}
-
-.upcoming-card i {
-  color: var(--brand-color);
-}
 
 .scroll-container {
   display: flex;
