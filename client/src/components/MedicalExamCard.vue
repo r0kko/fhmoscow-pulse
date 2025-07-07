@@ -79,9 +79,6 @@ const disabled = computed(
         <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
         <span>{{ metroNames(exam.center.address) }}</span>
       </p>
-      <p v-if="seatStatus(exam)" class="seat-status text-muted text-center mb-2">
-        {{ seatStatus(exam) }}
-      </p>
       <button
         class="btn btn-sm mt-auto"
         :class="btnClass"
@@ -91,6 +88,9 @@ const disabled = computed(
         <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
         <small>{{ btnText }}</small>
       </button>
+      <p v-if="seatStatus(exam)" class="seat-status text-muted text-center mt-2">
+        {{ seatStatus(exam) }}
+      </p>
     </div>
   </div>
 </template>
