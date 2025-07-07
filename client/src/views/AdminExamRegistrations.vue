@@ -116,6 +116,7 @@ async function setStatus(userId, status) {
           <table class="table table-striped align-middle mb-0">
             <thead>
               <tr>
+                <th>#</th>
                 <th>Пользователь</th>
                 <th>Дата заявки</th>
                 <th>Email</th>
@@ -125,7 +126,8 @@ async function setStatus(userId, status) {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in list" :key="r.user.id">
+              <tr v-for="(r, idx) in list" :key="r.user.id">
+                <td>{{ (page - 1) * pageSize + idx + 1 }}</td>
                 <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                 <td>{{ formatDateTime(r.created_at) }}</td>
                 <td>{{ r.user.email }}</td>

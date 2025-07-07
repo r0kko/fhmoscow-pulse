@@ -29,6 +29,7 @@ async function listByExam(examId, options = {}) {
     order: [
       [User, 'last_name', 'ASC'],
       [User, 'first_name', 'ASC'],
+      [User, 'patronymic', 'ASC'],
     ],
     limit,
     offset,
