@@ -70,6 +70,14 @@ test('register fails if already registered', async () => {
   await expect(service.register('u1', 'e1', 'u1')).rejects.toBeTruthy();
 });
 
+test('register fails when another active registration exists', async () => {
+  findExamMock.mockResolvedValue(exam);
+  findRegMock
+    .mockResolvedValueOnce(null) // check same exam
+    .mockResolvedValueOnce({ id: 'r2' }); // check other active
+  await expect(service.register('u1', 'e1', 'u1')).rejects.toBeTruthy();
+});
+
 test('unregister removes pending registration', async () => {
   findRegMock.mockResolvedValue({
     status_id: statuses.PENDING.id,

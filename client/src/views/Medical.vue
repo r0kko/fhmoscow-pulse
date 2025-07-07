@@ -14,9 +14,12 @@ const exams = ref([]);
 const examsError = ref('');
 const examsLoading = ref(true);
 const registering = ref(null);
-const pendingExamId = computed(() => {
+const activeExamId = computed(() => {
   const e = exams.value.find(
-    (ex) => ex.registered && ex.registration_status === 'PENDING'
+    (ex) =>
+      ex.registered &&
+      (ex.registration_status === 'PENDING' ||
+        ex.registration_status === 'APPROVED')
   );
   return e ? e.id : null;
 });
@@ -259,7 +262,7 @@ async function toggleExam(exam) {
               :key="ex.id"
               :exam="ex"
               :loading="registering === ex.id"
-              :pending-exam-id="pendingExamId"
+              :active-exam-id="activeExamId"
               class="flex-shrink-0"
               @toggle="toggleExam"
             />

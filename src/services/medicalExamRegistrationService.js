@@ -161,6 +161,16 @@ async function register(userId, examId, actorId) {
   if (existing) throw new ServiceError('already_registered');
 
   const pendingId = await getStatusId('PENDING');
+  const approvedId = await getStatusId('APPROVED');
+  const { Op } = await import('sequelize');
+  const other = await MedicalExamRegistration.findOne({
+    where: {
+      user_id: userId,
+      medical_exam_id: { [Op.ne]: examId },
+      status_id: { [Op.in]: [pendingId, approvedId] },
+    },
+  });
+  if (other) throw new ServiceError('other_active');
   await MedicalExamRegistration.create({
     medical_exam_id: examId,
     user_id: userId,
