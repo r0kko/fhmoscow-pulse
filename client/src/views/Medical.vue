@@ -13,6 +13,12 @@ const exams = ref([]);
 const examsError = ref('');
 const examsLoading = ref(true);
 const registering = ref(null);
+const pendingExamId = computed(() => {
+  const e = exams.value.find(
+    (ex) => ex.registered && ex.registration_status === 'PENDING'
+  );
+  return e ? e.id : null;
+});
 const isValid = (cert) => {
   const today = new Date();
   return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
@@ -242,6 +248,7 @@ async function toggleExam(exam) {
               :key="ex.id"
               :exam="ex"
               :loading="registering === ex.id"
+              :pending-exam-id="pendingExamId"
               class="flex-shrink-0"
               @toggle="toggleExam"
             />

@@ -5,6 +5,7 @@ const findAllMock = jest.fn();
 const createRegMock = jest.fn();
 const findRegMock = jest.fn();
 const updateMock = jest.fn();
+const destroyMock = jest.fn();
 const findStatusMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -28,6 +29,7 @@ beforeEach(() => {
   createRegMock.mockReset();
   findRegMock.mockReset();
   updateMock.mockReset();
+  destroyMock.mockReset();
   findStatusMock.mockReset();
   findStatusMock.mockImplementation(({ where: { alias } }) => statuses[alias]);
 });
@@ -52,7 +54,6 @@ test('register creates new registration', async () => {
   await service.register('u1', 'e1', 'u1');
   expect(findRegMock).toHaveBeenCalledWith({
     where: { medical_exam_id: 'e1', user_id: 'u1' },
-    paranoid: false,
   });
   expect(createRegMock).toHaveBeenCalledWith({
     medical_exam_id: 'e1',
@@ -69,10 +70,13 @@ test('register fails if already registered', async () => {
   await expect(service.register('u1', 'e1', 'u1')).rejects.toBeTruthy();
 });
 
-test('unregister updates status to canceled', async () => {
-  findRegMock.mockResolvedValue({ status_id: statuses.PENDING.id, update: updateMock });
+test('unregister removes pending registration', async () => {
+  findRegMock.mockResolvedValue({
+    status_id: statuses.PENDING.id,
+    destroy: destroyMock,
+  });
   await service.unregister('u1', 'e1');
-  expect(updateMock).toHaveBeenCalledWith({ status_id: statuses.CANCELED.id });
+  expect(destroyMock).toHaveBeenCalled();
 });
 
 test('unregister fails when approved', async () => {

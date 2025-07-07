@@ -5,8 +5,13 @@ import metroIcon from '../assets/metro.svg';
 const props = defineProps({
   exam: { type: Object, required: true },
   loading: { type: Boolean, default: false },
+  pendingExamId: { type: String, default: null },
 });
 const emit = defineEmits(['toggle']);
+
+const hasOtherPending = computed(
+  () => props.pendingExamId && props.pendingExamId !== props.exam.id
+);
 
 function formatStart(date) {
   const d = new Date(date);
@@ -41,6 +46,7 @@ function seatStatus(e) {
 }
 
 const btnClass = computed(() => {
+  if (hasOtherPending.value) return 'btn-secondary';
   if (!props.exam.registered) return 'btn-brand';
   if (props.exam.registration_status === 'PENDING') return 'btn-secondary';
   if (props.exam.registration_status === 'APPROVED') return 'btn-success';
@@ -49,6 +55,7 @@ const btnClass = computed(() => {
 });
 
 const btnText = computed(() => {
+  if (hasOtherPending.value) return 'Есть активная заявка';
   if (!props.exam.registered) return 'Записаться';
   if (props.exam.registration_status === 'PENDING') return 'На рассмотрении';
   if (props.exam.registration_status === 'APPROVED') return 'Подтверждена';
@@ -57,6 +64,7 @@ const btnText = computed(() => {
 });
 
 const btnIcon = computed(() => {
+  if (hasOtherPending.value) return 'bi-hourglass';
   if (!props.exam.registered) return 'bi-plus-lg';
   if (props.exam.registration_status === 'PENDING') return 'bi-hourglass';
   if (props.exam.registration_status === 'APPROVED') return 'bi-check-lg';
@@ -66,6 +74,7 @@ const btnIcon = computed(() => {
 
 const disabled = computed(
   () =>
+    hasOtherPending.value ||
     props.exam.registration_status === 'APPROVED' ||
     props.exam.registration_status === 'COMPLETED' ||
     props.exam.registration_status === 'CANCELED' ||

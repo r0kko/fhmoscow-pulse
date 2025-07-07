@@ -157,7 +157,6 @@ async function register(userId, examId, actorId) {
 
   const existing = await MedicalExamRegistration.findOne({
     where: { medical_exam_id: examId, user_id: userId },
-    paranoid: false,
   });
   if (existing) throw new ServiceError('already_registered');
 
@@ -179,8 +178,7 @@ async function unregister(userId, examId) {
   const pendingId = await getStatusId('PENDING');
   if (reg.status_id !== pendingId)
     throw new ServiceError('cancellation_forbidden');
-  const canceledId = await getStatusId('CANCELED');
-  await reg.update({ status_id: canceledId });
+  await reg.destroy();
 }
 
 async function setStatus(examId, userId, status, actorId) {
