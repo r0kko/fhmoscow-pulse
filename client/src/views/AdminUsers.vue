@@ -153,14 +153,15 @@ async function copy(text) {
 </script>
 
 <template>
-  <div class="container mt-4">
+  <div class="py-3 admin-users-page">
+    <div class="container">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/admin">Администрирование</RouterLink></li>
         <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
       </ol>
     </nav>
-    <div class="card tile fade-in">
+    <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Пользователи</h2>
         <button class="btn btn-brand" @click="openCreate">
@@ -338,6 +339,7 @@ async function copy(text) {
         <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -350,5 +352,26 @@ async function copy(text) {
 }
 .sortable i {
   margin-left: 4px;
+}
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .admin-users-page {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .admin-users-page nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
 }
 </style>
