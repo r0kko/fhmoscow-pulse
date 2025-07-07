@@ -72,7 +72,6 @@ const trainingForm = ref({
   start_at: '',
   end_at: '',
   capacity: '',
-  groups: [],
 });
 const trainingEditing = ref(null);
 const trainingModalRef = ref(null);
@@ -426,14 +425,12 @@ function openCreateTraining() {
   }
   trainingEditing.value = null;
   if (!stadiumOptions.value.length) loadStadiumOptions();
-  loadRefereeGroups();
   trainingForm.value = {
     type_id: '',
     camp_stadium_id: '',
     start_at: '',
     end_at: '',
     capacity: '',
-    groups: [],
   };
   trainingFormError.value = '';
   trainingModal.show();
@@ -473,14 +470,12 @@ function openEditTraining(t) {
     trainingModal = new Modal(trainingModalRef.value)
   }
   trainingEditing.value = t;
-  loadRefereeGroups(t.season?.id);
   trainingForm.value = {
     type_id: t.type?.id || '',
     camp_stadium_id: t.stadium?.id || '',
     start_at: toInputValue(t.start_at),
     end_at: toInputValue(t.end_at),
     capacity: t.capacity || '',
-    groups: (t.groups || []).map((g) => g.id),
   };
   trainingFormError.value = '';
   trainingModal.show();
@@ -499,7 +494,6 @@ async function saveTraining() {
     start_at: new Date(trainingForm.value.start_at).toISOString(),
     end_at: new Date(trainingForm.value.end_at).toISOString(),
     capacity: trainingForm.value.capacity || undefined,
-    groups: trainingForm.value.groups,
   };
   try {
     if (trainingEditing.value) {
@@ -524,6 +518,22 @@ async function removeTraining(t) {
   if (!confirm('Удалить запись?')) return;
   await apiFetch(`/camp-trainings/${t.id}`, { method: 'DELETE' });
   await loadTrainings();
+}
+
+async function toggleTrainingGroup(training, groupId, checked) {
+  const currentIds = (training.groups || []).map((g) => g.id);
+  const newIds = checked
+    ? Array.from(new Set([...currentIds, groupId]))
+    : currentIds.filter((id) => id !== groupId);
+  try {
+    await apiFetch(`/camp-trainings/${training.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ groups: newIds }),
+    });
+    training.groups = refereeGroups.value.filter((g) => newIds.includes(g.id));
+  } catch (e) {
+    alert(e.message);
+  }
 }
 
 async function loadRegistrations(trainingId) {
@@ -877,16 +887,12 @@ async function updateRegistration(reg) {
             class="text-center group-col"
             :title="g.name"
           >
-            <i
-              v-if="t.groups?.some(gr => gr.id === g.id)"
-              class="bi bi-check-lg text-success"
-              aria-label="\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u043e"
-            ></i>
-            <i
-              v-else
-              class="bi bi-dash-lg text-muted"
-              aria-label="\u041d\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e"
-            ></i>
+            <input
+              type="checkbox"
+              class="form-check-input m-0"
+              :checked="t.groups?.some((gr) => gr.id === g.id)"
+              @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
+            />
           </td>
           <td class="text-end">
             <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
@@ -955,19 +961,6 @@ async function updateRegistration(reg) {
               <div class="form-floating mb-3">
                 <input id="trCap" v-model="trainingForm.capacity" type="number" min="0" class="form-control" />
                 <label for="trCap">Вместимость</label>
-              </div>
-              <div class="mb-3">
-                <label class="form-label d-block">Группы судей</label>
-                <div v-for="g in refereeGroups" :key="g.id" class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :id="`trg-${g.id}`"
-                    :value="g.id"
-                    v-model="trainingForm.groups"
-                  />
-                  <label class="form-check-label" :for="`trg-${g.id}`">{{ g.name }}</label>
-                </div>
               </div>
             </div>
             <div class="modal-footer">
