@@ -5,10 +5,10 @@ import { RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { withHttp } from '../utils/url.js'
 
-const preparationSections = [
-  { title: 'Сборы', icon: 'bi-people-fill', to: '/camps' },
-  { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical' },
-  { title: 'Результаты тестов', icon: 'bi-graph-up' }
+const basePreparationSections = [
+  { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
+  { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
+  { title: 'Результаты тестов', icon: 'bi-graph-up' },
 ]
 
 const workSections = [
@@ -24,6 +24,10 @@ const docsSections = [
 ]
 
 const isAdmin = computed(() => auth.roles.includes('ADMIN'))
+const isReferee = computed(() => auth.roles.includes('REFEREE'))
+const preparationSections = computed(() =>
+  basePreparationSections.filter((s) => !s.referee || isReferee.value)
+)
 
 const shortName = computed(() => {
   if (!auth.user) return ''

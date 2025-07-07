@@ -13,11 +13,27 @@ const upload = multer();
 
 const router = express.Router();
 
-router.get('/me', auth, medicalCertificateController.me);
-router.get('/me/history', auth, medicalCertificateController.history);
-router.post('/', auth, medicalCertificateRules, selfController.create);
-router.delete('/', auth, selfController.remove);
-router.get('/me/files', auth, fileController.listMe);
+router.get(
+  '/me',
+  auth,
+  authorize('REFEREE'),
+  medicalCertificateController.me
+);
+router.get(
+  '/me/history',
+  auth,
+  authorize('REFEREE'),
+  medicalCertificateController.history
+);
+router.post(
+  '/',
+  auth,
+  authorize('REFEREE'),
+  medicalCertificateRules,
+  selfController.create
+);
+router.delete('/', auth, authorize('REFEREE'), selfController.remove);
+router.get('/me/files', auth, authorize('REFEREE'), fileController.listMe);
 
 router.get(
   '/role/:alias',
