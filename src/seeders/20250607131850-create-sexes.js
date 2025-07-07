@@ -6,6 +6,7 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
+      // eslint-disable-next-line
       "SELECT COUNT(*) AS cnt FROM sexes WHERE alias IN ('MALE','FEMALE');"
     );
     if (Number(existing[0].cnt) > 0) return;
