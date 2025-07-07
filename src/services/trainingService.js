@@ -6,6 +6,8 @@ import {
   RefereeGroup,
   TrainingRefereeGroup,
   Address,
+  User,
+  TrainingRole,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import TrainingRegistration from '../models/trainingRegistration.js';
@@ -39,7 +41,7 @@ async function listAll(options = {}) {
         through: { attributes: [] },
         ...(options.group_id ? { where: { id: options.group_id } } : {}),
       },
-      { model: TrainingRegistration },
+      { model: TrainingRegistration, include: [User, TrainingRole] },
     ],
     distinct: true,
     order: [['start_at', 'ASC']],
@@ -67,6 +69,7 @@ async function getById(id) {
       { model: CampStadium, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       { model: RefereeGroup, through: { attributes: [] } },
+      { model: TrainingRegistration, include: [User, TrainingRole] },
     ],
   });
   if (!training) throw new ServiceError('training_not_found', 404);

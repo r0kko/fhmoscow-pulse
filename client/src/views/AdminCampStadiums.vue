@@ -492,6 +492,15 @@ function shortGroupName(name) {
     .toUpperCase();
 }
 
+function shortName(u) {
+  if (!u) return '';
+  const initials = [u.first_name, u.patronymic]
+    .filter(Boolean)
+    .map((n) => n.charAt(0) + '.')
+    .join(' ');
+  return `${u.last_name} ${initials}`.trim();
+}
+
 function openEditTraining(t) {
   if (!trainingModal) {
     trainingModal = new Modal(trainingModalRef.value)
@@ -683,6 +692,7 @@ async function updateRegistration(reg) {
         <li class="breadcrumb-item active" aria-current="page">Сборы</li>
       </ol>
     </nav>
+    <h1 class="mb-3">Сборы</h1>
     <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
       <div class="card-body p-2">
         <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
@@ -935,6 +945,8 @@ async function updateRegistration(reg) {
           <th class="d-none d-sm-table-cell">Стадион</th>
           <th>Дата и время</th>
           <th class="text-center">Участников</th>
+          <th class="d-none d-md-table-cell">Тренеры</th>
+          <th class="d-none d-md-table-cell">Инвентарь</th>
           <th
             v-for="g in refereeGroups"
             :key="g.id"
@@ -952,6 +964,18 @@ async function updateRegistration(reg) {
           <td class="d-none d-sm-table-cell">{{ t.stadium?.name }}</td>
           <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
           <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
+          <td class="d-none d-md-table-cell">
+            <span v-if="t.coaches?.length">
+              {{ t.coaches.map(shortName).join(', ') }}
+            </span>
+            <span v-else class="text-muted">—</span>
+          </td>
+          <td class="d-none d-md-table-cell">
+            <span v-if="t.equipment_managers?.length">
+              {{ t.equipment_managers.map(shortName).join(', ') }}
+            </span>
+            <span v-else class="text-muted">—</span>
+          </td>
           <td
             v-for="g in refereeGroups"
             :key="g.id"
@@ -989,6 +1013,14 @@ async function updateRegistration(reg) {
                   <p class="mb-1">{{ t.stadium?.name }}</p>
                   <p class="mb-1">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
                   <p class="mb-1">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</p>
+                  <p class="mb-1" v-if="t.coaches?.length">
+                    Тренеры: {{ t.coaches.map(shortName).join(', ') }}
+                  </p>
+                  <p class="mb-1" v-else>Тренеры: —</p>
+                  <p class="mb-1" v-if="t.equipment_managers?.length">
+                    Инвентарь: {{ t.equipment_managers.map(shortName).join(', ') }}
+                  </p>
+                  <p class="mb-1" v-else>Инвентарь: —</p>
                 </div>
                 <div class="text-end">
                   <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
