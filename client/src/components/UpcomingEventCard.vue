@@ -9,9 +9,12 @@ const props = defineProps({
 const isTraining = computed(() => props.event.type === 'training')
 const icon = computed(() => (isTraining.value ? 'bi-people-fill' : 'bi-heart-pulse'))
 const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'))
-const location = computed(() =>
-  isTraining.value ? props.event.stadium?.address?.result : props.event.center?.address?.result
-)
+const location = computed(() => {
+  const loc = isTraining.value
+    ? props.event.stadium?.address?.result
+    : props.event.center?.address?.result
+  return loc || ''
+})
 const href = computed(() => {
   return isTraining.value ? withHttp(props.event.stadium?.yandex_url) : null
 })
