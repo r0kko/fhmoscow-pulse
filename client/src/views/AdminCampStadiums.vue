@@ -831,43 +831,6 @@ async function updateRegistration(reg) {
     </div>
   </div>
 
-  <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Фильтры</h5>
-          <button type="button" class="btn-close" @click="trainingFilterModal.hide()"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Стадион</label>
-            <select v-model="trainingsFilterStadium" class="form-select">
-              <option value="">Все стадионы</option>
-              <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Группа</label>
-            <select v-model="trainingsFilterGroup" class="form-select">
-              <option value="">Все группы</option>
-              <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">На странице</label>
-            <select v-model.number="trainingsPageSize" class="form-select">
-              <option :value="8">8</option>
-              <option :value="15">15</option>
-              <option :value="30">30</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="trainingFilterModal.hide()">Закрыть</button>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
     <nav class="mt-3" v-if="typesTotalPages > 1">
       <ul class="pagination justify-content-center">
@@ -1076,6 +1039,44 @@ async function updateRegistration(reg) {
         </li>
       </ul>
     </nav>
+
+    <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Фильтры</h5>
+            <button type="button" class="btn-close" @click="trainingFilterModal.hide()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Стадион</label>
+              <select v-model="trainingsFilterStadium" class="form-select">
+                <option value="">Все стадионы</option>
+                <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Группа</label>
+              <select v-model="trainingsFilterGroup" class="form-select">
+                <option value="">Все группы</option>
+                <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">На странице</label>
+              <select v-model.number="trainingsPageSize" class="form-select">
+                <option :value="8">8</option>
+                <option :value="15">15</option>
+                <option :value="30">30</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="trainingFilterModal.hide()">Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div ref="trainingModalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">
