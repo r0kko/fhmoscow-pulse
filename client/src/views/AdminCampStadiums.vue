@@ -82,6 +82,9 @@ let trainingModal;
 const trainingFilterModalRef = ref(null);
 let trainingFilterModal;
 const trainingFormError = ref('');
+const saveLoading = ref(false);
+const typeSaveLoading = ref(false);
+const trainingSaveLoading = ref(false);
 const registrationList = ref([]);
 const registrationTotal = ref(0);
 const registrationPage = ref(1);
@@ -290,6 +293,7 @@ async function save() {
         .map((p) => ({ type: p.type, price: p.price || null })),
   };
   try {
+    saveLoading.value = true;
     if (editing.value) {
       await apiFetch(`/camp-stadiums/${editing.value.id}`, {
         method: 'PUT',
@@ -305,6 +309,8 @@ async function save() {
     await load();
   } catch (e) {
     formError.value = e.message;
+  } finally {
+    saveLoading.value = false;
   }
 }
 
@@ -373,6 +379,7 @@ async function saveType() {
     default_capacity: typeForm.value.default_capacity || undefined,
   };
   try {
+    typeSaveLoading.value = true;
     if (typeEditing.value) {
       await apiFetch(`/camp-training-types/${typeEditing.value.id}`, {
         method: 'PUT',
@@ -388,6 +395,8 @@ async function saveType() {
     await loadTypes();
   } catch (e) {
     typeFormError.value = e.message;
+  } finally {
+    typeSaveLoading.value = false;
   }
 }
 
@@ -532,6 +541,7 @@ async function saveTraining() {
     capacity: trainingForm.value.capacity || undefined,
   };
   try {
+    trainingSaveLoading.value = true;
     if (trainingEditing.value) {
       await apiFetch(`/camp-trainings/${trainingEditing.value.id}`, {
         method: 'PUT',
@@ -547,6 +557,8 @@ async function saveTraining() {
     await loadTrainings();
   } catch (e) {
     trainingFormError.value = e.message;
+  } finally {
+    trainingSaveLoading.value = false;
   }
 }
 
@@ -732,7 +744,7 @@ async function updateRegistration(reg) {
           </button>
         </div>
         <div class="card-body p-3">
-          <div v-if="stadiums.length" class="table-responsive">
+          <div v-if="stadiums.length" class="table-responsive d-none d-sm-block">
             <table class="table admin-table table-striped align-middle mb-0">
           <thead>
           <tr>
@@ -774,6 +786,33 @@ async function updateRegistration(reg) {
           </tbody>
             </table>
           </div>
+          <div v-if="stadiums.length" class="d-block d-sm-none">
+            <div v-for="st in stadiums" :key="st.id" class="card training-card mb-2">
+              <div class="card-body p-2">
+                <h6 class="mb-1">{{ st.name }}</h6>
+                <p class="mb-1">{{ st.address?.result }}</p>
+                <p class="mb-1">Вместимость: {{ st.capacity }}</p>
+                <p class="mb-1">Телефон: {{ formatPhone(st.phone) }}</p>
+                <p class="mb-1" v-if="st.website">
+                  <a :href="st.website" target="_blank">{{ st.website }}</a>
+                </p>
+                <div class="mb-1" v-if="st.parking?.length">
+                  <span v-for="p in st.parking" :key="p.type" class="d-block">
+                    {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
+                  </span>
+                </div>
+                <p v-else class="mb-1 text-muted">Парковка: нет</p>
+                <div class="text-end">
+                  <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div v-else-if="!isLoading" class="alert alert-warning mb-0">Стадионов нет.</div>
         </div>
       </div>
@@ -807,7 +846,7 @@ async function updateRegistration(reg) {
         </button>
       </div>
       <div class="card-body p-3">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
         <thead>
         <tr>
@@ -828,6 +867,20 @@ async function updateRegistration(reg) {
         </tr>
         </tbody>
           </table>
+        </div>
+        <div v-if="trainingTypes.length" class="d-block d-sm-none">
+          <div v-for="t in trainingTypes" :key="t.id" class="card training-card mb-2">
+            <div class="card-body p-2 d-flex justify-content-between">
+              <div>
+                <h6 class="mb-1">{{ t.name }}</h6>
+                <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
+              </div>
+              <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </div>
+          </div>
+        </div>
     </div>
   </div>
 
@@ -874,7 +927,10 @@ async function updateRegistration(reg) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-brand">Сохранить</button>
+              <button type="submit" class="btn btn-brand" :disabled="typeSaveLoading">
+                <span v-if="typeSaveLoading" class="spinner-border spinner-border-sm me-2"></span>
+                Сохранить
+              </button>
             </div>
           </form>
         </div>
@@ -1117,7 +1173,10 @@ async function updateRegistration(reg) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="trainingModal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-brand">Сохранить</button>
+              <button type="submit" class="btn btn-brand" :disabled="trainingSaveLoading">
+                <span v-if="trainingSaveLoading" class="spinner-border spinner-border-sm me-2"></span>
+                Сохранить
+              </button>
             </div>
           </form>
         </div>
@@ -1287,12 +1346,15 @@ async function updateRegistration(reg) {
                 </div>
               </div>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-            <button type="submit" class="btn btn-brand">Сохранить</button>
-          </div>
-        </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+          <button type="submit" class="btn btn-brand" :disabled="saveLoading">
+            <span v-if="saveLoading" class="spinner-border spinner-border-sm me-2"></span>
+            Сохранить
+          </button>
+        </div>
+      </form>
       </div>
     </div>
   </div>
