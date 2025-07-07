@@ -60,6 +60,19 @@ router.use('/medical-exams', medicalExamsRouter);
 
 /**
  * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     responses:
+ *       200:
+ *         description: Service status
+ */
+router.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+/**
+ * @swagger
  * /csrf-token:
  *   get:
  *     summary: Retrieve CSRF token
