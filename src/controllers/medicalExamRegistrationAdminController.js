@@ -1,4 +1,5 @@
 import { validationResult } from 'express-validator';
+
 import medicalExamRegistrationService from '../services/medicalExamRegistrationService.js';
 import userMapper from '../mappers/userMapper.js';
 import { sendError } from '../utils/api.js';
@@ -41,7 +42,10 @@ export default {
 
   async remove(req, res) {
     try {
-      await medicalExamRegistrationService.remove(req.params.id, req.params.userId);
+      await medicalExamRegistrationService.remove(
+        req.params.id,
+        req.params.userId
+      );
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

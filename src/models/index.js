@@ -154,7 +154,9 @@ Address.hasMany(MedicalCenter, { foreignKey: 'address_id' });
 MedicalCenter.hasMany(MedicalExam, { foreignKey: 'medical_center_id' });
 MedicalExam.belongsTo(MedicalCenter, { foreignKey: 'medical_center_id' });
 MedicalExam.hasMany(MedicalExamRegistration, { foreignKey: 'medical_exam_id' });
-MedicalExamRegistration.belongsTo(MedicalExam, { foreignKey: 'medical_exam_id' });
+MedicalExamRegistration.belongsTo(MedicalExam, {
+  foreignKey: 'medical_exam_id',
+});
 User.hasMany(MedicalExamRegistration, { foreignKey: 'user_id' });
 MedicalExamRegistration.belongsTo(User, { foreignKey: 'user_id' });
 

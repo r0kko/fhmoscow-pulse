@@ -66,7 +66,11 @@ async function listUsers(options = {}) {
   }
   const include = [];
   if (options.role) {
-    include.push({ model: Role, where: { alias: options.role }, required: true });
+    include.push({
+      model: Role,
+      where: { alias: options.role },
+      required: true,
+    });
   } else {
     include.push(Role);
   }
