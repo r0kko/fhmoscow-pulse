@@ -838,7 +838,7 @@ async function updateRegistration(reg) {
     <div v-if="typesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="trainingTypes.length" class="card section-card tile fade-in shadow-sm">
+    <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Типы тренировок</h2>
         <button class="btn btn-brand" @click="openCreateType">
@@ -846,7 +846,7 @@ async function updateRegistration(reg) {
         </button>
       </div>
       <div class="card-body p-3">
-        <div class="table-responsive d-none d-sm-block">
+        <div v-if="trainingTypes.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
         <thead>
         <tr>
@@ -881,8 +881,9 @@ async function updateRegistration(reg) {
             </div>
           </div>
         </div>
+        <div v-else-if="!typesLoading" class="alert alert-info mb-0">Типов тренировок нет.</div>
+      </div>
     </div>
-  </div>
 
 </div>
     <nav class="mt-3" v-if="typesTotalPages > 1">
