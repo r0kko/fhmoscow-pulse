@@ -1,16 +1,18 @@
 function sanitize(obj) {
-  const { id, start_at, end_at, capacity, MedicalCenter, MedicalExamStatus } =
-    obj;
+  const {
+    id,
+    start_at,
+    end_at,
+    capacity,
+    MedicalCenter,
+    available,
+    user_registered,
+  } = obj;
   const out = { id, start_at, end_at, capacity };
+  if (typeof available !== 'undefined') out.available = available;
+  if (typeof user_registered !== 'undefined') out.registered = user_registered;
   if (MedicalCenter) {
     out.center = { id: MedicalCenter.id, name: MedicalCenter.name };
-  }
-  if (MedicalExamStatus) {
-    out.status = {
-      id: MedicalExamStatus.id,
-      name: MedicalExamStatus.name,
-      alias: MedicalExamStatus.alias,
-    };
   }
   return out;
 }

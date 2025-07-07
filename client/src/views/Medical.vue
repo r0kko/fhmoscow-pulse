@@ -8,6 +8,9 @@ const history = ref([]);
 const files = ref([]);
 const error = ref('');
 const loading = ref(true);
+const exams = ref([]);
+const examsError = ref('');
+const examsLoading = ref(true);
 const isValid = (cert) => {
   const today = new Date();
   return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
@@ -92,7 +95,42 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+  loadExams();
 });
+
+async function loadExams() {
+  examsLoading.value = true;
+  try {
+    const data = await apiFetch('/medical-exams/available');
+    exams.value = data.exams || [];
+    examsError.value = '';
+  } catch (e) {
+    exams.value = [];
+    examsError.value = e.message;
+  } finally {
+    examsLoading.value = false;
+  }
+}
+
+async function toggleExam(exam) {
+  try {
+    if (exam.registered) {
+      await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'DELETE' });
+    } else {
+      await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'POST' });
+    }
+    await loadExams();
+  } catch (e) {
+    examsError.value = e.message;
+  }
+}
+
+function formatDateTime(val) {
+  return new Date(val).toLocaleString('ru-RU', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
 </script>
 
 <template>
@@ -180,6 +218,48 @@ onMounted(async () => {
         </div>
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
+      <div class="card section-card tile fade-in shadow-sm mb-3 mt-3">
+        <div class="card-body">
+          <h5 class="card-title mb-3 text-brand">Ближайшие медосмотры</h5>
+          <div v-if="examsError" class="alert alert-danger">{{ examsError }}</div>
+          <div v-if="examsLoading" class="text-center my-3">
+            <div class="spinner-border" role="status"></div>
+          </div>
+          <div v-if="exams.length" class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Центр</th>
+                  <th>Начало</th>
+                  <th>Окончание</th>
+                  <th class="text-center">Места</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ex in exams" :key="ex.id">
+                  <td>{{ ex.center?.name }}</td>
+                  <td>{{ formatDateTime(ex.start_at) }}</td>
+                  <td>{{ formatDateTime(ex.end_at) }}</td>
+                  <td class="text-center">{{ ex.available ?? '—' }}</td>
+                  <td class="text-end">
+                    <button
+                      class="btn"
+                      :class="ex.registered ? 'btn-danger' : 'btn-brand'"
+                      @click="toggleExam(ex)"
+                    >
+                      {{ ex.registered ? 'Отменить' : 'Записаться' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!examsLoading" class="text-muted mb-0">
+            Нет доступных медосмотров
+          </p>
+        </div>
+      </div>
     </div>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-body">
