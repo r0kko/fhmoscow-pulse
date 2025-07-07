@@ -49,6 +49,11 @@ async function rotateTokens(refreshToken) {
   const user = await User.findByPk(payload.sub);
   if (!user) throw new ServiceError('user_not_found', 401);
 
+  const inactive = await UserStatus.findOne({ where: { alias: 'INACTIVE' } });
+  if (inactive && user.status_id === inactive.id) {
+    throw new ServiceError('account_locked', 401);
+  }
+
   const tokens = issueTokens(user);
   return { user, ...tokens };
 }
