@@ -1,0 +1,92 @@
+<script setup>
+import { computed } from 'vue';
+
+const props = defineProps({
+  exam: { type: Object, required: true },
+  loading: { type: Boolean, default: false },
+});
+const emit = defineEmits(['toggle']);
+
+function formatStart(date) {
+  const d = new Date(date);
+  const text = d.toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function seatStatus(e) {
+  if (typeof e.available === 'number' && e.available <= 0) {
+    return '';
+  }
+  if (typeof e.available === 'number' && typeof e.capacity === 'number') {
+    return `${e.available} / ${e.capacity} мест свободно`;
+  }
+  if (typeof e.available === 'number') {
+    return `${e.available} мест свободно`;
+  }
+  return '';
+}
+
+const btnClass = computed(() => {
+  if (!props.exam.registered) return 'btn-brand';
+  if (props.exam.registration_status === 'pending') return 'btn-secondary';
+  if (props.exam.registration_status === 'approved') return 'btn-success';
+  return 'btn-danger';
+});
+
+const btnText = computed(() => {
+  if (!props.exam.registered) return 'Записаться';
+  if (props.exam.registration_status === 'pending') return 'На рассмотрении';
+  if (props.exam.registration_status === 'approved') return 'Подтверждено';
+  return 'Отклонено';
+});
+
+const disabled = computed(() =>
+  props.exam.registration_status === 'approved' ||
+  props.exam.registration_status === 'rejected'
+);
+</script>
+
+<template>
+  <div class="card h-100 exam-card tile">
+    <div class="card-body d-flex flex-column p-3">
+      <h6 class="card-title mb-1">{{ formatStart(exam.start_at) }}</h6>
+      <p class="text-muted mb-2 small">{{ exam.center?.name }}</p>
+      <p v-if="seatStatus(exam)" class="seat-status text-muted text-center mb-2">
+        {{ seatStatus(exam) }}
+      </p>
+      <button
+        class="btn btn-sm mt-auto"
+        :class="btnClass"
+        :disabled="disabled || loading"
+        @click="emit('toggle', exam)"
+      >
+        <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+        <small>{{ btnText }}</small>
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.exam-card {
+  width: clamp(16rem, 75vw, 20rem);
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.exam-card .card-title {
+  font-size: var(--fs-base);
+}
+.exam-card .card-body {
+  padding: 0.75rem;
+}
+.seat-status {
+  font-size: 0.75rem;
+}
+</style>

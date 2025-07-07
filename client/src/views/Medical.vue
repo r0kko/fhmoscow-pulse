@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
+import MedicalExamCard from '../components/MedicalExamCard.vue';
 
 const certificate = ref(null);
 const history = ref([]);
@@ -11,6 +12,7 @@ const loading = ref(true);
 const exams = ref([]);
 const examsError = ref('');
 const examsLoading = ref(true);
+const registering = ref(null);
 const isValid = (cert) => {
   const today = new Date();
   return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
@@ -113,6 +115,8 @@ async function loadExams() {
 }
 
 async function toggleExam(exam) {
+  if (registering.value) return;
+  registering.value = exam.id;
   try {
     if (exam.registered) {
       if (exam.registration_status !== 'pending') return;
@@ -123,22 +127,11 @@ async function toggleExam(exam) {
     await loadExams();
   } catch (e) {
     examsError.value = e.message;
+  } finally {
+    registering.value = null;
   }
 }
 
-function formatDateTime(val) {
-  return new Date(val).toLocaleString('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
-}
-
-function statusLabel(exam) {
-  if (!exam.registration_status) return '';
-  if (exam.registration_status === 'approved') return 'Подтверждено';
-  if (exam.registration_status === 'rejected') return 'Отклонено';
-  return 'На рассмотрении';
-}
 </script>
 
 <template>
@@ -233,44 +226,15 @@ function statusLabel(exam) {
           <div v-if="examsLoading" class="text-center my-3">
             <div class="spinner-border" role="status"></div>
           </div>
-          <div v-if="exams.length" class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Центр</th>
-                  <th>Начало</th>
-                  <th>Окончание</th>
-                  <th class="text-center">Места</th>
-                  <th>Статус</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="ex in exams" :key="ex.id">
-                  <td>{{ ex.center?.name }}</td>
-                  <td>{{ formatDateTime(ex.start_at) }}</td>
-                  <td>{{ formatDateTime(ex.end_at) }}</td>
-                  <td class="text-center">{{ ex.available ?? '—' }}</td>
-                  <td>{{ statusLabel(ex) }}</td>
-                  <td class="text-end">
-                    <button
-                      v-if="!ex.registered"
-                      class="btn btn-brand"
-                      @click="toggleExam(ex)"
-                    >
-                      Записаться
-                    </button>
-                    <button
-                      v-else-if="ex.registration_status === 'pending'"
-                      class="btn btn-danger"
-                      @click="toggleExam(ex)"
-                    >
-                      Отменить
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="exams.length" class="exam-scroll d-flex flex-nowrap gap-3">
+            <MedicalExamCard
+              v-for="ex in exams"
+              :key="ex.id"
+              :exam="ex"
+              :loading="registering === ex.id"
+              class="flex-shrink-0"
+              @toggle="toggleExam"
+            />
           </div>
           <p v-else-if="!examsLoading" class="text-muted mb-0">
             Нет доступных медосмотров
@@ -333,6 +297,18 @@ function statusLabel(exam) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.exam-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+  justify-content: flex-start;
+  margin: 0;
 }
 
 @media (max-width: 575.98px) {
