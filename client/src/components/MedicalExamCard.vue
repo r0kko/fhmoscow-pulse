@@ -35,7 +35,8 @@ function seatStatus(e) {
   if (typeof e.registration_count === 'number' && typeof e.capacity === 'number') {
     const appWord = pluralize(e.registration_count, ['заявка', 'заявки', 'заявок']);
     const seatWord = pluralize(e.capacity, ['место', 'места', 'мест']);
-    return `Получено ${e.registration_count} ${appWord} на ${e.capacity} ${seatWord}`;
+    const receivedWord = pluralize(e.registration_count, ['Получена', 'Получено', 'Получено']);
+    return `${receivedWord} ${e.registration_count} ${appWord} на ${e.capacity} ${seatWord}`;
   }
   if (typeof e.capacity === 'number') {
     const seatWord = pluralize(e.capacity, ['место', 'места', 'мест']);
