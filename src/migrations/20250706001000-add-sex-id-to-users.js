@@ -16,20 +16,25 @@ module.exports = {
     });
 
     let [male] = await queryInterface.sequelize.query(
-      'SELECT id FROM sexes WHERE alias = \'MALE\' LIMIT 1;',
+      // eslint-disable-next-line
+      "SELECT id FROM sexes WHERE alias = 'MALE' LIMIT 1;",
       { type: Sequelize.QueryTypes.SELECT }
     );
     if (!male) {
       const ids = await queryInterface.sequelize.query(
         'INSERT INTO sexes (id, name, alias, created_at, updated_at) VALUES ' +
-          '(uuid_generate_v4(), \'Мужской\', \'MALE\', NOW(), NOW()),' +
-          '(uuid_generate_v4(), \'Женский\', \'FEMALE\', NOW(), NOW()) RETURNING id;',
+          // eslint-disable-next-line
+          "(uuid_generate_v4(), 'Мужской', 'MALE', NOW(), NOW())," +
+          // eslint-disable-next-line
+          "(uuid_generate_v4(), 'Женский', 'FEMALE', NOW(), NOW()) RETURNING id;",
         { type: Sequelize.QueryTypes.SELECT }
       );
       male = ids[0];
     }
     await queryInterface.sequelize.query(
-      `UPDATE users SET sex_id = '${male.id}' WHERE sex_id IS NULL;`
+      `-- noinspection SqlConstantExpressionForFile
+
+UPDATE users SET sex_id = '${male.id}' WHERE sex_id IS NULL;`
     );
     await queryInterface.changeColumn('users', 'sex_id', {
       type: Sequelize.UUID,

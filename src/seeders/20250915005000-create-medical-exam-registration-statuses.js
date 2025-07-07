@@ -7,16 +7,41 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
+      // eslint-disable-next-line
       "SELECT COUNT(*) AS cnt FROM medical_exam_registration_statuses WHERE alias IN ('PENDING','APPROVED','CANCELED','COMPLETED');"
     );
     if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(
       'medical_exam_registration_statuses',
       [
-        { id: uuidv4(), name: 'На рассмотрении', alias: 'PENDING', created_at: now, updated_at: now },
-        { id: uuidv4(), name: 'Подтверждена', alias: 'APPROVED', created_at: now, updated_at: now },
-        { id: uuidv4(), name: 'Отменена', alias: 'CANCELED', created_at: now, updated_at: now },
-        { id: uuidv4(), name: 'Завершена', alias: 'COMPLETED', created_at: now, updated_at: now },
+        {
+          id: uuidv4(),
+          name: 'На рассмотрении',
+          alias: 'PENDING',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: uuidv4(),
+          name: 'Подтверждена',
+          alias: 'APPROVED',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: uuidv4(),
+          name: 'Отменена',
+          alias: 'CANCELED',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: uuidv4(),
+          name: 'Завершена',
+          alias: 'COMPLETED',
+          created_at: now,
+          updated_at: now,
+        },
       ],
       { ignoreDuplicates: true }
     );

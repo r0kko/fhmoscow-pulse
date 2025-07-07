@@ -231,7 +231,7 @@ async function toggleExam(exam) {
         class="card section-card tile fade-in shadow-sm mb-3 mt-3"
       >
         <div class="card-body">
-          <h5 class="card-title mb-3 text-brand">Ближайшие медосмотры</h5>
+          <h5 class="card-title mb-3 text-brand">Ближайшие запланированные обследования</h5>
           <div v-if="examsError" class="alert alert-danger">{{ examsError }}</div>
           <div v-if="examsLoading" class="text-center my-3">
             <div class="spinner-border" role="status"></div>

@@ -19,16 +19,22 @@ module.exports = {
        ON CONFLICT (alias) DO NOTHING;`
     );
     await queryInterface.sequelize.query(
+      // eslint-disable-next-line
       `UPDATE medical_exam_registrations r SET status_id = s.id FROM medical_exam_registration_statuses s WHERE UPPER(r.status) = s.alias`
     );
     const [pending] = await queryInterface.sequelize.query(
+      // eslint-disable-next-line
       "SELECT id FROM medical_exam_registration_statuses WHERE alias = 'PENDING' LIMIT 1;"
     );
-    await queryInterface.changeColumn('medical_exam_registrations', 'status_id', {
-      type: Sequelize.UUID,
-      allowNull: false,
-      defaultValue: pending[0].id,
-    });
+    await queryInterface.changeColumn(
+      'medical_exam_registrations',
+      'status_id',
+      {
+        type: Sequelize.UUID,
+        allowNull: false,
+        defaultValue: pending[0].id,
+      }
+    );
     await queryInterface.removeColumn('medical_exam_registrations', 'status');
   },
 
@@ -39,8 +45,11 @@ module.exports = {
       defaultValue: 'pending',
     });
     await queryInterface.sequelize.query(
-      `UPDATE medical_exam_registrations r SET status = LOWER(s.alias) FROM medical_exam_registration_statuses s WHERE r.status_id = s.id`
+      'UPDATE medical_exam_registrations r SET status = LOWER(s.alias) FROM medical_exam_registration_statuses s WHERE r.status_id = s.id'
     );
-    await queryInterface.removeColumn('medical_exam_registrations', 'status_id');
+    await queryInterface.removeColumn(
+      'medical_exam_registrations',
+      'status_id'
+    );
   },
 };

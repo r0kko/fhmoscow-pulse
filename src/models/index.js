@@ -165,8 +165,12 @@ MedicalExamRegistration.belongsTo(MedicalExam, {
 });
 User.hasMany(MedicalExamRegistration, { foreignKey: 'user_id' });
 MedicalExamRegistration.belongsTo(User, { foreignKey: 'user_id' });
-MedicalExamRegistrationStatus.hasMany(MedicalExamRegistration, { foreignKey: 'status_id' });
-MedicalExamRegistration.belongsTo(MedicalExamRegistrationStatus, { foreignKey: 'status_id' });
+MedicalExamRegistrationStatus.hasMany(MedicalExamRegistration, {
+  foreignKey: 'status_id',
+});
+MedicalExamRegistration.belongsTo(MedicalExamRegistrationStatus, {
+  foreignKey: 'status_id',
+});
 
 /* external systems */
 User.hasMany(UserExternalId, { foreignKey: 'user_id' });

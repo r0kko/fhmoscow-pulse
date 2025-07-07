@@ -13,8 +13,7 @@ import swaggerSpec from './src/docs/swagger.js';
 import { ALLOWED_ORIGINS } from './src/config/cors.js';
 
 const app = express();
-// Trust reverse proxy to get correct protocol and IP
-app.set('trust proxy', 1);
+app.set('trust proxy', 2);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
