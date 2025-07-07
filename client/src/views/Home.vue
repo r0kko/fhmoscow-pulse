@@ -55,7 +55,9 @@ async function loadUpcoming() {
       ...t
     }))
     const exams = (examData.exams || [])
-      .filter((e) => e.registration_status === 'APPROVED')
+      .filter(
+        (e) => e.registration_status === 'APPROVED' || e.registration_status === 'COMPLETED'
+      )
       .map((e) => ({
         type: 'exam',
         ...e
