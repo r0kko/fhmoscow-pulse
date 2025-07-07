@@ -51,10 +51,17 @@ function seatStatus(e) {
   return '';
 }
 
+const approvedFull = computed(
+  () =>
+    typeof props.exam.capacity === 'number' &&
+    typeof props.exam.approved_count === 'number' &&
+    props.exam.approved_count >= props.exam.capacity
+);
+
 const btnClass = computed(() => {
   if (hasOtherActive.value) return 'btn-secondary';
   if (!props.exam.registered) {
-    if (props.exam.available === 0) return 'btn-secondary';
+    if (approvedFull.value) return 'btn-secondary';
     return 'btn-brand';
   }
   if (props.exam.registration_status === 'PENDING') return 'btn-secondary';
@@ -66,7 +73,7 @@ const btnClass = computed(() => {
 const btnText = computed(() => {
   if (hasOtherActive.value) return 'Есть активная заявка';
   if (!props.exam.registered)
-    return props.exam.available === 0 ? 'Мест нет' : 'Оставить заявку';
+    return approvedFull.value ? 'Мест нет' : 'Оставить заявку';
   if (props.exam.registration_status === 'PENDING') return 'На рассмотрении';
   if (props.exam.registration_status === 'APPROVED') return 'Подтверждена';
   if (props.exam.registration_status === 'COMPLETED') return 'Завершена';
@@ -76,7 +83,7 @@ const btnText = computed(() => {
 const btnIcon = computed(() => {
   if (hasOtherActive.value) return 'bi-hourglass';
   if (!props.exam.registered) {
-    if (props.exam.available === 0) return 'bi-slash-circle';
+    if (approvedFull.value) return 'bi-slash-circle';
     return 'bi-plus-lg';
   }
   if (props.exam.registration_status === 'PENDING') return 'bi-hourglass';
@@ -91,9 +98,7 @@ const disabled = computed(
     props.exam.registration_status === 'APPROVED' ||
     props.exam.registration_status === 'COMPLETED' ||
     props.exam.registration_status === 'CANCELED' ||
-    (typeof props.exam.capacity === 'number' &&
-      typeof props.exam.approved_count === 'number' &&
-      props.exam.approved_count >= props.exam.capacity)
+    approvedFull.value
 );
 </script>
 

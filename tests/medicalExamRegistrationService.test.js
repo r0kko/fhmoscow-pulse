@@ -108,7 +108,7 @@ test('listAvailable returns mapped exams', async () => {
   });
   const { rows } = await service.listAvailable('u1');
   expect(findAllMock).toHaveBeenCalled();
-  expect(rows[0].available).toBe(0);
+  expect(rows[0].available).toBe(1);
   expect(rows[0].registration_count).toBe(1);
   expect(rows[0].approved_count).toBe(0);
   expect(rows[0].registration_status).toBe('PENDING');
