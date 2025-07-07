@@ -46,8 +46,23 @@ onMounted(loadUpcoming)
 async function loadUpcoming() {
   loadingUpcoming.value = true
   try {
-    const data = await apiFetch('/camp-trainings/me/upcoming?limit=3')
-    upcoming.value = data.trainings || []
+    const [trainingData, examData] = await Promise.all([
+      apiFetch('/camp-trainings/me/upcoming?limit=3'),
+      apiFetch('/medical-exams/me/upcoming?limit=3')
+    ])
+    const trainings = (trainingData.trainings || []).map((t) => ({
+      type: 'training',
+      ...t
+    }))
+    const exams = (examData.exams || [])
+      .filter((e) => e.registration_status === 'APPROVED')
+      .map((e) => ({
+        type: 'exam',
+        ...e
+      }))
+    upcoming.value = [...trainings, ...exams]
+      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at))
+      .slice(0, 3)
   } catch (_err) {
     upcoming.value = []
   } finally {
@@ -85,30 +100,52 @@ function formatStart(date) {
           </div>
           <p v-else-if="!upcoming.length" class="text-muted mb-0">У вас нет записей</p>
           <div v-else class="upcoming-scroll d-flex flex-nowrap gap-3">
-            <a
-              v-for="t in upcoming"
-              :key="t.id"
-              :href="withHttp(t.stadium?.yandex_url)"
-              target="_blank"
-              class="text-decoration-none text-body"
-            >
-              <div class="card h-100 upcoming-card">
-                <div class="card-body d-flex align-items-start p-3">
-                  <i class="bi bi-people-fill fs-3 me-3 text-brand" aria-hidden="true"></i>
-                  <div>
-                    <h6 class="card-title mb-1">Тренировка</h6>
-                    <p class="mb-1 small">
-                      <i class="bi bi-clock me-1" aria-hidden="true"></i>
-                      {{ formatStart(t.start_at) }}
-                    </p>
-                    <p class="mb-0 small">
-                      <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
-                      {{ t.stadium?.address?.result }}
-                    </p>
+            <template v-for="item in upcoming" :key="item.type + '-' + item.id">
+              <a
+                v-if="item.type === 'training'"
+                :href="withHttp(item.stadium?.yandex_url)"
+                target="_blank"
+                class="text-decoration-none text-body"
+              >
+                <div class="card h-100 upcoming-card">
+                  <div class="card-body d-flex align-items-start p-3">
+                    <i class="bi bi-people-fill fs-3 me-3 text-brand" aria-hidden="true"></i>
+                    <div>
+                      <h6 class="card-title mb-1">Тренировка</h6>
+                      <p class="mb-1 small">
+                        <i class="bi bi-clock me-1" aria-hidden="true"></i>
+                        {{ formatStart(item.start_at) }}
+                      </p>
+                      <p class="mb-0 small">
+                        <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+                        {{ item.stadium?.address?.result }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </a>
+              <div
+                v-else
+                class="text-decoration-none text-body"
+              >
+                <div class="card h-100 upcoming-card">
+                  <div class="card-body d-flex align-items-start p-3">
+                    <i class="bi bi-heart-pulse fs-3 me-3 text-brand" aria-hidden="true"></i>
+                    <div>
+                      <h6 class="card-title mb-1">Медосмотр</h6>
+                      <p class="mb-1 small">
+                        <i class="bi bi-clock me-1" aria-hidden="true"></i>
+                        {{ formatStart(item.start_at) }}
+                      </p>
+                      <p class="mb-0 small">
+                        <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+                        {{ item.center?.address?.result }}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </a>
+            </template>
           </div>
         </div>
       </div>
