@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import Modal from 'bootstrap/js/dist/modal'
 import { apiFetch } from '../api.js'
 
@@ -22,18 +23,6 @@ const modalRef = ref(null)
 let modal
 const formError = ref('')
 
-const registrationModalRef = ref(null)
-let registrationModal
-const registrationExam = ref(null)
-const registrationList = ref([])
-const registrationTotal = ref(0)
-const registrationPage = ref(1)
-const registrationLoading = ref(false)
-const registrationError = ref('')
-
-const registrationsTotalPages = computed(() =>
-  Math.max(1, Math.ceil(registrationTotal.value / pageSize))
-)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -44,9 +33,6 @@ onMounted(() => {
 })
 
 watch(currentPage, load)
-watch(registrationPage, () => {
-  if (registrationExam.value) loadRegistrations(registrationExam.value.id)
-})
 
 function formatDateTime(value) {
   if (!value) return ''
@@ -140,41 +126,10 @@ async function removeExam(exam) {
   }
 }
 
-async function loadRegistrations(id) {
-  try {
-    registrationLoading.value = true
-    const params = new URLSearchParams({ page: registrationPage.value, limit: pageSize })
-    const data = await apiFetch(`/medical-exams/${id}/registrations?${params}`)
-    registrationList.value = data.registrations
-    registrationTotal.value = data.total
-  } catch (e) {
-    registrationError.value = e.message
-  } finally {
-    registrationLoading.value = false
-  }
-}
+const router = useRouter()
 
 function openRegistrations(exam) {
-  if (!registrationModal) registrationModal = new Modal(registrationModalRef.value)
-  registrationExam.value = exam
-  registrationPage.value = 1
-  registrationError.value = ''
-  loadRegistrations(exam.id)
-  registrationModal.show()
-}
-
-async function setStatus(userId, status) {
-  if (!registrationExam.value) return
-  try {
-    await apiFetch(
-      `/medical-exams/${registrationExam.value.id}/registrations/${userId}`,
-      { method: 'PUT', body: JSON.stringify({ status }) }
-    )
-    await loadRegistrations(registrationExam.value.id)
-    await load()
-  } catch (e) {
-    alert(e.message)
-  }
+  router.push(`/medical-exams/${exam.id}/registrations`)
 }
 </script>
 
@@ -288,85 +243,5 @@ async function setStatus(userId, status) {
     </div>
   </div>
 
-  <div ref="registrationModalRef" class="modal fade" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Заявки</h5>
-          <button type="button" class="btn-close" @click="registrationModal.hide()"></button>
-        </div>
-        <div class="modal-body">
-          <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
-          <div v-if="registrationLoading" class="text-center my-3"><div class="spinner-border" role="status"></div></div>
-          <div v-if="registrationList.length" class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Пользователь</th>
-                  <th>Дата заявки</th>
-                  <th>Email</th>
-                  <th>Телефон</th>
-                  <th>Статус</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in registrationList" :key="r.user.id">
-                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
-                  <td>{{ formatDateTime(r.created_at) }}</td>
-                  <td>{{ r.user.email }}</td>
-                  <td>{{ formatPhone(r.user.phone) }}</td>
-                  <td>
-                    {{
-                      r.status === 'PENDING'
-                        ? 'На рассмотрении'
-                        : r.status === 'APPROVED'
-                        ? 'Подтверждена'
-                        : r.status === 'COMPLETED'
-                        ? 'Завершена'
-                        : 'Отменена'
-                    }}
-                  </td>
-                  <td class="text-end">
-                    <button
-                      v-if="r.status === 'PENDING'"
-                      class="btn btn-sm btn-success me-2"
-                      @click="setStatus(r.user.id, 'APPROVED')"
-                    >✓</button>
-                    <button
-                      v-if="r.status === 'APPROVED'"
-                      class="btn btn-sm btn-primary me-2"
-                      @click="setStatus(r.user.id, 'COMPLETED')"
-                    >
-                      <i class="bi bi-check2-all"></i>
-                    </button>
-                    <button
-                      v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
-                      class="btn btn-sm btn-danger"
-                      @click="setStatus(r.user.id, 'CANCELED')"
-                    >✕</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p v-else-if="!registrationLoading" class="text-muted mb-0">Нет заявок.</p>
-        </div>
-        <div class="modal-footer" v-if="registrationsTotalPages > 1">
-          <ul class="pagination pagination-sm mb-0">
-            <li class="page-item" :class="{ disabled: registrationPage === 1 }">
-              <button class="page-link" @click="registrationPage--" :disabled="registrationPage === 1">Пред</button>
-            </li>
-            <li class="page-item" v-for="p in registrationsTotalPages" :key="p" :class="{ active: registrationPage === p }">
-              <button class="page-link" @click="registrationPage = p">{{ p }}</button>
-            </li>
-            <li class="page-item" :class="{ disabled: registrationPage === registrationsTotalPages }">
-              <button class="page-link" @click="registrationPage++" :disabled="registrationPage === registrationsTotalPages">След</button>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 </template>

@@ -15,6 +15,7 @@ import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminCampStadiums from './views/AdminCampStadiums.vue';
 import AdminRefereeGroups from './views/AdminRefereeGroups.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
+import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
@@ -48,6 +49,11 @@ const routes = [
   {
     path: '/medical-admin',
     component: AdminMedicalManagement,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/medical-exams/:id/registrations',
+    component: AdminExamRegistrations,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
