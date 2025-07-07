@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import metroIcon from '../assets/metro.svg';
+import { pluralize } from '../utils/plural.js';
 
 const props = defineProps({
   exam: { type: Object, required: true },
@@ -37,10 +38,13 @@ function metroNames(address) {
 
 function seatStatus(e) {
   if (typeof e.registration_count === 'number' && typeof e.capacity === 'number') {
-    return `Получено ${e.registration_count} заявок на ${e.capacity} мест`;
+    const appWord = pluralize(e.registration_count, ['заявка', 'заявки', 'заявок']);
+    const seatWord = pluralize(e.capacity, ['место', 'места', 'мест']);
+    return `Получено ${e.registration_count} ${appWord} на ${e.capacity} ${seatWord}`;
   }
   if (typeof e.capacity === 'number') {
-    return `Всего мест: ${e.capacity}`;
+    const seatWord = pluralize(e.capacity, ['место', 'места', 'мест']);
+    return `Всего ${e.capacity} ${seatWord}`;
   }
   return '';
 }
