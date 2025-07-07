@@ -79,6 +79,8 @@ const trainingForm = ref({
 const trainingEditing = ref(null);
 const trainingModalRef = ref(null);
 let trainingModal;
+const trainingFilterModalRef = ref(null);
+let trainingFilterModal;
 const trainingFormError = ref('');
 const registrationList = ref([]);
 const registrationTotal = ref(0);
@@ -452,6 +454,15 @@ function openCreateTraining() {
   trainingModal.show();
 }
 
+function openTrainingFilters() {
+  if (!trainingFilterModal) {
+    trainingFilterModal = new Modal(trainingFilterModalRef.value);
+  }
+  if (!stadiumOptions.value.length) loadStadiumOptions();
+  if (!refereeGroups.value.length) loadRefereeGroups();
+  trainingFilterModal.show();
+}
+
 function toInputValue(str) {
   if (!str) return '';
   const d = new Date(str);
@@ -807,9 +818,47 @@ async function updateRegistration(reg) {
         </tr>
         </tbody>
           </table>
+    </div>
+  </div>
+
+  <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Фильтры</h5>
+          <button type="button" class="btn-close" @click="trainingFilterModal.hide()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Стадион</label>
+            <select v-model="trainingsFilterStadium" class="form-select">
+              <option value="">Все стадионы</option>
+              <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Группа</label>
+            <select v-model="trainingsFilterGroup" class="form-select">
+              <option value="">Все группы</option>
+              <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">На странице</label>
+            <select v-model.number="trainingsPageSize" class="form-select">
+              <option :value="8">8</option>
+              <option :value="15">15</option>
+              <option :value="30">30</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="trainingFilterModal.hide()">Закрыть</button>
         </div>
       </div>
-      </div>
+    </div>
+  </div>
+</div>
     <nav class="mt-3" v-if="typesTotalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: typesPage === 1 }">
@@ -868,35 +917,16 @@ async function updateRegistration(reg) {
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Тренировки</h2>
-        <button class="btn btn-brand" @click="openCreateTraining">
-          <i class="bi bi-plus-lg me-1"></i>Добавить
-        </button>
+        <div>
+          <button class="btn btn-light me-2" @click="openTrainingFilters" title="Фильтры">
+            <i class="bi bi-funnel"></i>
+          </button>
+          <button class="btn btn-brand" @click="openCreateTraining">
+            <i class="bi bi-plus-lg me-1"></i>Добавить
+          </button>
+        </div>
       </div>
       <div class="card-body p-3">
-        <div class="row g-2 align-items-end mb-3">
-          <div class="col">
-            <label class="form-label">Стадион</label>
-            <select v-model="trainingsFilterStadium" class="form-select">
-              <option value="">Все стадионы</option>
-              <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </div>
-          <div class="col">
-            <label class="form-label">Группа</label>
-            <select v-model="trainingsFilterGroup" class="form-select">
-              <option value="">Все группы</option>
-              <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
-          </div>
-          <div class="col-auto">
-            <label class="form-label">На странице</label>
-            <select v-model.number="trainingsPageSize" class="form-select">
-              <option :value="8">8</option>
-              <option :value="15">15</option>
-              <option :value="30">30</option>
-            </select>
-          </div>
-        </div>
         <div v-if="trainings.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
         <thead>
@@ -996,8 +1026,13 @@ async function updateRegistration(reg) {
         <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
         </div>
       </div>
-    <nav class="mt-3" v-if="trainingsTotalPages > 1">
-      <ul class="pagination justify-content-center">
+    <nav class="mt-3 d-flex align-items-center justify-content-between" v-if="trainings.length">
+      <select v-model.number="trainingsPageSize" class="form-select form-select-sm w-auto">
+        <option :value="8">8</option>
+        <option :value="15">15</option>
+        <option :value="30">30</option>
+      </select>
+      <ul class="pagination mb-0">
         <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
           <button class="page-link" @click="trainingsPage--" :disabled="trainingsPage === 1">Пред</button>
         </li>
