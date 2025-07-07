@@ -3,6 +3,7 @@ import {
   MedicalExamRegistration,
   User,
   MedicalCenter,
+  Address,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -26,7 +27,10 @@ async function listAvailable(userId, options = {}) {
   const offset = (page - 1) * limit;
   const now = new Date();
   const { rows, count } = await MedicalExam.findAndCountAll({
-    include: [MedicalCenter, MedicalExamRegistration],
+    include: [
+      { model: MedicalCenter, include: [Address] },
+      MedicalExamRegistration,
+    ],
     where: { start_at: { [Op.gt]: now } },
     order: [['start_at', 'ASC']],
     distinct: true,
@@ -43,9 +47,12 @@ async function listAvailable(userId, options = {}) {
     }
     const available =
       typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
+    const approvedCount = regs.filter((r) => r.approved === true).length;
     return {
       ...e.get({ plain: true }),
       available,
+      registration_count: regs.length,
+      approved_count: approvedCount,
       user_registered: registered,
       registration_status: status,
     };
@@ -61,12 +68,13 @@ async function listUpcomingByUser(userId, options = {}) {
   const now = new Date();
   const { rows } = await MedicalExam.findAndCountAll({
     include: [
-      MedicalCenter,
+      { model: MedicalCenter, include: [Address] },
       {
         model: MedicalExamRegistration,
         where: { user_id: userId },
         required: true,
       },
+      MedicalExamRegistration,
     ],
     where: { start_at: { [Op.gt]: now } },
     order: [['start_at', 'ASC']],
@@ -79,9 +87,12 @@ async function listUpcomingByUser(userId, options = {}) {
       typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
     const reg = regs.find((r) => r.user_id === userId);
     const status = reg.approved === null ? 'pending' : reg.approved ? 'approved' : 'rejected';
+    const approvedCount = regs.filter((r) => r.approved === true).length;
     return {
       ...e.get({ plain: true }),
       available,
+      registration_count: regs.length,
+      approved_count: approvedCount,
       user_registered: true,
       registration_status: status,
     };
@@ -99,15 +110,18 @@ async function register(userId, examId, actorId) {
   const count = exam.MedicalExamRegistrations.filter((r) => !r.deletedAt).length;
   if (exam.capacity && count >= exam.capacity)
     throw new ServiceError('exam_full');
-  const existing = exam.MedicalExamRegistrations.find(
-    (r) => r.user_id === userId
-  );
+
+  const existing = await MedicalExamRegistration.findOne({
+    where: { medical_exam_id: examId, user_id: userId },
+    paranoid: false,
+  });
   if (existing) {
     if (!existing.deletedAt) throw new ServiceError('already_registered');
     await existing.restore();
     await existing.update({ approved: null, updated_by: actorId });
     return;
   }
+
   await MedicalExamRegistration.create({
     medical_exam_id: examId,
     user_id: userId,

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import metroIcon from '../assets/metro.svg';
 
 const props = defineProps({
   exam: { type: Object, required: true },
@@ -19,15 +20,22 @@ function formatStart(date) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function seatStatus(e) {
-  if (typeof e.available === 'number' && e.available <= 0) {
+function metroNames(address) {
+  if (!address || !Array.isArray(address.metro) || !address.metro.length) {
     return '';
   }
-  if (typeof e.available === 'number' && typeof e.capacity === 'number') {
-    return `${e.available} / ${e.capacity} мест свободно`;
+  return address.metro
+    .slice(0, 2)
+    .map((m) => m.name)
+    .join(', ');
+}
+
+function seatStatus(e) {
+  if (typeof e.registration_count === 'number' && typeof e.capacity === 'number') {
+    return `Получено ${e.registration_count} заявок на ${e.capacity} мест`;
   }
-  if (typeof e.available === 'number') {
-    return `${e.available} мест свободно`;
+  if (typeof e.capacity === 'number') {
+    return `Всего мест: ${e.capacity}`;
   }
   return '';
 }
@@ -46,9 +54,13 @@ const btnText = computed(() => {
   return 'Отклонено';
 });
 
-const disabled = computed(() =>
-  props.exam.registration_status === 'approved' ||
-  props.exam.registration_status === 'rejected'
+const disabled = computed(
+  () =>
+    props.exam.registration_status === 'approved' ||
+    props.exam.registration_status === 'rejected' ||
+    (typeof props.exam.capacity === 'number' &&
+      typeof props.exam.approved_count === 'number' &&
+      props.exam.approved_count >= props.exam.capacity)
 );
 </script>
 
@@ -56,7 +68,17 @@ const disabled = computed(() =>
   <div class="card h-100 exam-card tile">
     <div class="card-body d-flex flex-column p-3">
       <h6 class="card-title mb-1">{{ formatStart(exam.start_at) }}</h6>
-      <p class="text-muted mb-2 small">{{ exam.center?.name }}</p>
+      <p class="text-muted mb-1 small">{{ exam.center?.name }}</p>
+      <p v-if="exam.center?.address" class="text-muted mb-1 small">
+        {{ exam.center.address.result }}
+      </p>
+      <p
+        v-if="metroNames(exam.center?.address)"
+        class="text-muted mb-2 small d-flex align-items-center"
+      >
+        <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
+        <span>{{ metroNames(exam.center.address) }}</span>
+      </p>
       <p v-if="seatStatus(exam)" class="seat-status text-muted text-center mb-2">
         {{ seatStatus(exam) }}
       </p>

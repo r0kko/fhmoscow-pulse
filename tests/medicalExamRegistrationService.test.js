@@ -16,6 +16,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findOne: findRegMock,
   },
   MedicalCenter: {},
+  Address: {},
   User: {},
 }));
 
@@ -40,7 +41,12 @@ const exam = {
 
 test('register creates new registration', async () => {
   findExamMock.mockResolvedValue(exam);
+  findRegMock.mockResolvedValue(null);
   await service.register('u1', 'e1', 'u1');
+  expect(findRegMock).toHaveBeenCalledWith({
+    where: { medical_exam_id: 'e1', user_id: 'u1' },
+    paranoid: false,
+  });
   expect(createRegMock).toHaveBeenCalledWith({
     medical_exam_id: 'e1',
     user_id: 'u1',
@@ -51,13 +57,15 @@ test('register creates new registration', async () => {
 });
 
 test('register restores deleted registration', async () => {
-  findExamMock.mockResolvedValue({
-    ...exam,
-    MedicalExamRegistrations: [
-      { user_id: 'u1', deletedAt: new Date(), restore: restoreMock, update: updateMock },
-    ],
+  findExamMock.mockResolvedValue(exam);
+  findRegMock.mockResolvedValue({
+    user_id: 'u1',
+    deletedAt: new Date(),
+    restore: restoreMock,
+    update: updateMock,
   });
   await service.register('u1', 'e1', 'u1');
+  expect(findRegMock).toHaveBeenCalled();
   expect(restoreMock).toHaveBeenCalled();
   expect(updateMock).toHaveBeenCalledWith({ approved: null, updated_by: 'u1' });
 });
@@ -79,7 +87,7 @@ test('listAvailable returns mapped exams', async () => {
       {
         capacity: 1,
         MedicalExamRegistrations: [{ user_id: 'u1', approved: null }],
-        get: () => ({ id: 'e1', start_at: '2025-07-10T10:00:00Z', capacity: 1, MedicalCenter: { id: 'c1', name: 'C1' } })
+        get: () => ({ id: 'e1', start_at: '2025-07-10T10:00:00Z', capacity: 1, MedicalCenter: { id: 'c1', name: 'C1', Address: { result: 'addr', metro: [] } } })
       }
     ],
     count: 1,
@@ -87,6 +95,8 @@ test('listAvailable returns mapped exams', async () => {
   const { rows } = await service.listAvailable('u1');
   expect(findAllMock).toHaveBeenCalled();
   expect(rows[0].available).toBe(0);
+  expect(rows[0].registration_count).toBe(1);
+  expect(rows[0].approved_count).toBe(0);
   expect(rows[0].registration_status).toBe('pending');
 });
 
@@ -100,7 +110,7 @@ test('listUpcomingByUser filters by user', async () => {
           id: 'e1',
           start_at: '2025-07-10T10:00:00Z',
           capacity: 1,
-          MedicalCenter: { id: 'c1', name: 'C1' },
+          MedicalCenter: { id: 'c1', name: 'C1', Address: { result: 'addr', metro: [] } },
         }),
       },
     ],
@@ -109,6 +119,8 @@ test('listUpcomingByUser filters by user', async () => {
   const { rows } = await service.listUpcomingByUser('u1');
   expect(findAllMock).toHaveBeenCalled();
   expect(rows[0].user_registered).toBe(true);
+  expect(rows[0].registration_count).toBe(1);
+  expect(rows[0].approved_count).toBe(1);
   expect(rows[0].registration_status).toBe('approved');
 });
 
