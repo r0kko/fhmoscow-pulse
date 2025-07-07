@@ -40,7 +40,12 @@ const exam = {
 
 test('register creates new registration', async () => {
   findExamMock.mockResolvedValue(exam);
+  findRegMock.mockResolvedValue(null);
   await service.register('u1', 'e1', 'u1');
+  expect(findRegMock).toHaveBeenCalledWith({
+    where: { medical_exam_id: 'e1', user_id: 'u1' },
+    paranoid: false,
+  });
   expect(createRegMock).toHaveBeenCalledWith({
     medical_exam_id: 'e1',
     user_id: 'u1',
@@ -51,13 +56,15 @@ test('register creates new registration', async () => {
 });
 
 test('register restores deleted registration', async () => {
-  findExamMock.mockResolvedValue({
-    ...exam,
-    MedicalExamRegistrations: [
-      { user_id: 'u1', deletedAt: new Date(), restore: restoreMock, update: updateMock },
-    ],
+  findExamMock.mockResolvedValue(exam);
+  findRegMock.mockResolvedValue({
+    user_id: 'u1',
+    deletedAt: new Date(),
+    restore: restoreMock,
+    update: updateMock,
   });
   await service.register('u1', 'e1', 'u1');
+  expect(findRegMock).toHaveBeenCalled();
   expect(restoreMock).toHaveBeenCalled();
   expect(updateMock).toHaveBeenCalledWith({ approved: null, updated_by: 'u1' });
 });

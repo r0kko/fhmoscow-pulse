@@ -99,15 +99,18 @@ async function register(userId, examId, actorId) {
   const count = exam.MedicalExamRegistrations.filter((r) => !r.deletedAt).length;
   if (exam.capacity && count >= exam.capacity)
     throw new ServiceError('exam_full');
-  const existing = exam.MedicalExamRegistrations.find(
-    (r) => r.user_id === userId
-  );
+
+  const existing = await MedicalExamRegistration.findOne({
+    where: { medical_exam_id: examId, user_id: userId },
+    paranoid: false,
+  });
   if (existing) {
     if (!existing.deletedAt) throw new ServiceError('already_registered');
     await existing.restore();
     await existing.update({ approved: null, updated_by: actorId });
     return;
   }
+
   await MedicalExamRegistration.create({
     medical_exam_id: examId,
     user_id: userId,
