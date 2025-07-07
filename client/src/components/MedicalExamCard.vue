@@ -75,7 +75,10 @@ const btnText = computed(() => {
 
 const btnIcon = computed(() => {
   if (hasOtherPending.value) return 'bi-hourglass';
-  if (!props.exam.registered) return 'bi-plus-lg';
+  if (!props.exam.registered) {
+    if (props.exam.available === 0) return 'bi-slash-circle';
+    return 'bi-plus-lg';
+  }
   if (props.exam.registration_status === 'PENDING') return 'bi-hourglass';
   if (props.exam.registration_status === 'APPROVED') return 'bi-check-lg';
   if (props.exam.registration_status === 'COMPLETED') return 'bi-check2-all';
