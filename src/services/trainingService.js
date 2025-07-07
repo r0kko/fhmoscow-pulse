@@ -25,16 +25,25 @@ async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
+  const where = {};
+  if (options.stadium_id) {
+    where.camp_stadium_id = options.stadium_id;
+  }
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
       { model: CampStadium, include: [Address] },
       { model: Season, where: { active: true }, required: true },
-      { model: RefereeGroup, through: { attributes: [] } },
+      {
+        model: RefereeGroup,
+        through: { attributes: [] },
+        ...(options.group_id ? { where: { id: options.group_id } } : {}),
+      },
       { model: TrainingRegistration },
     ],
     distinct: true,
     order: [['start_at', 'ASC']],
+    where,
     limit,
     offset,
   });
