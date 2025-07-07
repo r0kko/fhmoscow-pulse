@@ -6,7 +6,7 @@ const props = defineProps({
   event: { type: Object, required: true }
 })
 
-const isTraining = computed(() => props.event.type === 'training')
+const isTraining = computed(() => props.event.kind === 'training')
 const icon = computed(() => (isTraining.value ? 'bi-people-fill' : 'bi-heart-pulse'))
 const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'))
 const location = computed(() => {
