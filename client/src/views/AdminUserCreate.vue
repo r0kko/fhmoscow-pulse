@@ -6,6 +6,8 @@ import UserForm from '../components/UserForm.vue'
 import Modal from 'bootstrap/js/dist/modal'
 import Toast from 'bootstrap/js/dist/toast'
 
+const sexes = ref([])
+
 const router = useRouter()
 
 const user = ref({
@@ -13,6 +15,7 @@ const user = ref({
   first_name: '',
   patronymic: '',
   birth_date: '',
+  sex_id: '',
   phone: '',
   email: ''
 })
@@ -35,7 +38,17 @@ function generatePassword(len = 8) {
 
 onMounted(() => {
   passwordModal = new Modal(passwordModalRef.value)
+  loadSexes()
 })
+
+async function loadSexes() {
+  try {
+    const data = await apiFetch('/sexes')
+    sexes.value = data.sexes
+  } catch (_) {
+    sexes.value = []
+  }
+}
 
 async function save() {
   if (!formRef.value?.validate || !formRef.value.validate()) return
@@ -80,7 +93,7 @@ async function copyToClipboard(text) {
     </nav>
     <h1 class="mb-3">Новый пользователь</h1>
     <form @submit.prevent="save">
-      <UserForm ref="formRef" v-model="user" :isNew="true" />
+      <UserForm ref="formRef" v-model="user" :isNew="true" :sexes="sexes" />
       <div class="mt-3">
         <button type="submit" class="btn btn-brand me-2">Сохранить</button>
         <button type="button" class="btn btn-secondary" @click="close">Отмена</button>

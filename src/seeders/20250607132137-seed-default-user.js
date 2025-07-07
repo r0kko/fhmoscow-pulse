@@ -30,6 +30,13 @@ module.exports = {
              LIMIT 1;`,
       { type: Sequelize.QueryTypes.SELECT }
     );
+    const [sex] = await queryInterface.sequelize.query(
+      `SELECT id
+             FROM sexes
+             WHERE alias = 'MALE'
+             LIMIT 1;`,
+      { type: Sequelize.QueryTypes.SELECT }
+    );
 
     const userId = uuidv4();
 
@@ -45,6 +52,7 @@ module.exports = {
         password:
           '$2y$10$QRGlP7C.Ezw7Gbg3nLOAi..IV2UnRqy.DbGQ9TQ9v7IuM6xuK11Mi',
         status_id: status.id,
+        sex_id: sex.id,
         created_at: now,
         updated_at: now,
       },

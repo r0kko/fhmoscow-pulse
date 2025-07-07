@@ -5,7 +5,8 @@ import { suggestFio, cleanFio } from '../dadata.js'
 const props = defineProps({
   modelValue: Object,
   isNew: Boolean,
-  locked: Boolean
+  locked: Boolean,
+  sexes: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['update:modelValue', 'editing-changed'])
 
@@ -14,6 +15,7 @@ const form = reactive({
   first_name: '',
   patronymic: '',
   birth_date: '',
+  sex_id: '',
   phone: '',
   email: '',
 })
@@ -115,6 +117,7 @@ function applySuggestion(sug) {
 function validate() {
   errors.last_name = form.last_name ? '' : 'Введите фамилию'
   errors.first_name = form.first_name ? '' : 'Введите имя'
+  errors.sex_id = form.sex_id ? '' : 'Выберите пол'
   if (!form.birth_date) {
     errors.birth_date = 'Введите дату рождения'
   } else {
@@ -258,6 +261,23 @@ defineExpose({ validate, unlock, lock, editing })
                 <label for="birthDate">Дата рождения</label>
                 <div class="invalid-feedback">{{ errors.birth_date }}</div>
               </div>
+            </div>
+          </div>
+          <div class="row g-3 mt-3">
+            <div class="col">
+              <label class="form-label">Пол</label>
+              <select
+                v-model="form.sex_id"
+                class="form-select"
+                :class="{ 'is-invalid': errors.sex_id }"
+                required
+              >
+                <option value="" disabled>Выберите...</option>
+                <option v-for="s in props.sexes" :key="s.id" :value="s.id">
+                  {{ s.name }}
+                </option>
+              </select>
+              <div class="invalid-feedback">{{ errors.sex_id }}</div>
             </div>
           </div>
           <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">

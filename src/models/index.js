@@ -35,10 +35,15 @@ import MedicalExam from './medicalExam.js';
 import MedicalExamRegistration from './medicalExamRegistration.js';
 import TrainingRegistration from './trainingRegistration.js';
 import TrainingRole from './trainingRole.js';
+import Sex from './sex.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
 User.belongsTo(UserStatus, { foreignKey: 'status_id' });
+
+/* sex → users */
+Sex.hasMany(User, { foreignKey: 'sex_id' });
+User.belongsTo(Sex, { foreignKey: 'sex_id' });
 
 /* многие-ко-многим: пользователь ↔ роли */
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'user_id' });
@@ -215,4 +220,5 @@ export {
   MedicalExamRegistration,
   TrainingRole,
   TrainingRegistration,
+  Sex,
 };

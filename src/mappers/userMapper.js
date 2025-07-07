@@ -58,6 +58,10 @@ function toPublic(user) {
     sanitized.status = plain.UserStatus.alias;
     sanitized.status_name = plain.UserStatus.name;
   }
+  if (plain.Sex) {
+    sanitized.sex = plain.Sex.alias;
+    sanitized.sex_name = plain.Sex.name;
+  }
   return sanitized;
 }
 
