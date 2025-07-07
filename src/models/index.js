@@ -31,8 +31,8 @@ import RefereeGroup from './refereeGroup.js';
 import RefereeGroupUser from './refereeGroupUser.js';
 import TrainingRefereeGroup from './trainingRefereeGroup.js';
 import MedicalCenter from './medicalCenter.js';
-import MedicalExamStatus from './medicalExamStatus.js';
 import MedicalExam from './medicalExam.js';
+import MedicalExamRegistration from './medicalExamRegistration.js';
 import TrainingRegistration from './trainingRegistration.js';
 import TrainingRole from './trainingRole.js';
 
@@ -153,8 +153,10 @@ MedicalCenter.belongsTo(Address, { foreignKey: 'address_id' });
 Address.hasMany(MedicalCenter, { foreignKey: 'address_id' });
 MedicalCenter.hasMany(MedicalExam, { foreignKey: 'medical_center_id' });
 MedicalExam.belongsTo(MedicalCenter, { foreignKey: 'medical_center_id' });
-MedicalExamStatus.hasMany(MedicalExam, { foreignKey: 'status_id' });
-MedicalExam.belongsTo(MedicalExamStatus, { foreignKey: 'status_id' });
+MedicalExam.hasMany(MedicalExamRegistration, { foreignKey: 'medical_exam_id' });
+MedicalExamRegistration.belongsTo(MedicalExam, { foreignKey: 'medical_exam_id' });
+User.hasMany(MedicalExamRegistration, { foreignKey: 'user_id' });
+MedicalExamRegistration.belongsTo(User, { foreignKey: 'user_id' });
 
 /* external systems */
 User.hasMany(UserExternalId, { foreignKey: 'user_id' });
@@ -207,8 +209,8 @@ export {
   MedicalCertificateType,
   MedicalCertificateFile,
   MedicalCenter,
-  MedicalExamStatus,
   MedicalExam,
+  MedicalExamRegistration,
   TrainingRole,
   TrainingRegistration,
 };

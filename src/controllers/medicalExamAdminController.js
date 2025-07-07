@@ -61,15 +61,4 @@ export default {
       return sendError(res, err, 404);
     }
   },
-
-  async statuses(_req, res) {
-    const statuses = await medicalExamService.listStatuses();
-    return res.json({
-      statuses: statuses.map((s) => ({
-        id: s.id,
-        name: s.name,
-        alias: s.alias,
-      })),
-    });
-  },
 };
