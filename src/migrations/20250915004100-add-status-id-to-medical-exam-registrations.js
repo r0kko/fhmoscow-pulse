@@ -10,6 +10,15 @@ module.exports = {
       onDelete: 'SET NULL',
     });
     await queryInterface.sequelize.query(
+      `INSERT INTO medical_exam_registration_statuses (id, name, alias, created_at, updated_at)
+       VALUES
+         (uuid_generate_v4(), 'На рассмотрении', 'PENDING', NOW(), NOW()),
+         (uuid_generate_v4(), 'Подтверждена', 'APPROVED', NOW(), NOW()),
+         (uuid_generate_v4(), 'Отменена', 'CANCELED', NOW(), NOW()),
+         (uuid_generate_v4(), 'Завершена', 'COMPLETED', NOW(), NOW())
+       ON CONFLICT (alias) DO NOTHING;`
+    );
+    await queryInterface.sequelize.query(
       `UPDATE medical_exam_registrations r SET status_id = s.id FROM medical_exam_registration_statuses s WHERE UPPER(r.status) = s.alias`
     );
     const [pending] = await queryInterface.sequelize.query(
