@@ -41,7 +41,13 @@ const exam = {
 test('register creates new registration', async () => {
   findExamMock.mockResolvedValue(exam);
   await service.register('u1', 'e1', 'u1');
-  expect(createRegMock).toHaveBeenCalled();
+  expect(createRegMock).toHaveBeenCalledWith({
+    medical_exam_id: 'e1',
+    user_id: 'u1',
+    approved: null,
+    created_by: 'u1',
+    updated_by: 'u1',
+  });
 });
 
 test('register restores deleted registration', async () => {
@@ -53,13 +59,18 @@ test('register restores deleted registration', async () => {
   });
   await service.register('u1', 'e1', 'u1');
   expect(restoreMock).toHaveBeenCalled();
-  expect(updateMock).toHaveBeenCalled();
+  expect(updateMock).toHaveBeenCalledWith({ approved: null, updated_by: 'u1' });
 });
 
 test('unregister removes registration', async () => {
-  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  findRegMock.mockResolvedValue({ approved: null, destroy: destroyMock });
   await service.unregister('u1', 'e1');
   expect(destroyMock).toHaveBeenCalled();
+});
+
+test('unregister fails when approved', async () => {
+  findRegMock.mockResolvedValue({ approved: true });
+  await expect(service.unregister('u1', 'e1')).rejects.toBeTruthy();
 });
 
 test('listAvailable returns mapped exams', async () => {
@@ -67,7 +78,7 @@ test('listAvailable returns mapped exams', async () => {
     rows: [
       {
         capacity: 1,
-        MedicalExamRegistrations: [],
+        MedicalExamRegistrations: [{ user_id: 'u1', approved: null }],
         get: () => ({ id: 'e1', start_at: '2025-07-10T10:00:00Z', capacity: 1, MedicalCenter: { id: 'c1', name: 'C1' } })
       }
     ],
@@ -75,7 +86,8 @@ test('listAvailable returns mapped exams', async () => {
   });
   const { rows } = await service.listAvailable('u1');
   expect(findAllMock).toHaveBeenCalled();
-  expect(rows[0].available).toBe(1);
+  expect(rows[0].available).toBe(0);
+  expect(rows[0].registration_status).toBe('pending');
 });
 
 test('listUpcomingByUser filters by user', async () => {
@@ -83,7 +95,7 @@ test('listUpcomingByUser filters by user', async () => {
     rows: [
       {
         capacity: 1,
-        MedicalExamRegistrations: [{ user_id: 'u1' }],
+        MedicalExamRegistrations: [{ user_id: 'u1', approved: true }],
         get: () => ({
           id: 'e1',
           start_at: '2025-07-10T10:00:00Z',
@@ -97,5 +109,6 @@ test('listUpcomingByUser filters by user', async () => {
   const { rows } = await service.listUpcomingByUser('u1');
   expect(findAllMock).toHaveBeenCalled();
   expect(rows[0].user_registered).toBe(true);
+  expect(rows[0].registration_status).toBe('approved');
 });
 

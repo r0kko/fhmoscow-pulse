@@ -115,6 +115,7 @@ async function loadExams() {
 async function toggleExam(exam) {
   try {
     if (exam.registered) {
+      if (exam.registration_status !== 'pending') return;
       await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'DELETE' });
     } else {
       await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'POST' });
@@ -130,6 +131,13 @@ function formatDateTime(val) {
     dateStyle: 'short',
     timeStyle: 'short',
   });
+}
+
+function statusLabel(exam) {
+  if (!exam.registration_status) return '';
+  if (exam.registration_status === 'approved') return 'Подтверждено';
+  if (exam.registration_status === 'rejected') return 'Отклонено';
+  return 'На рассмотрении';
 }
 </script>
 
@@ -233,6 +241,7 @@ function formatDateTime(val) {
                   <th>Начало</th>
                   <th>Окончание</th>
                   <th class="text-center">Места</th>
+                  <th>Статус</th>
                   <th></th>
                 </tr>
               </thead>
@@ -242,13 +251,21 @@ function formatDateTime(val) {
                   <td>{{ formatDateTime(ex.start_at) }}</td>
                   <td>{{ formatDateTime(ex.end_at) }}</td>
                   <td class="text-center">{{ ex.available ?? '—' }}</td>
+                  <td>{{ statusLabel(ex) }}</td>
                   <td class="text-end">
                     <button
-                      class="btn"
-                      :class="ex.registered ? 'btn-danger' : 'btn-brand'"
+                      v-if="!ex.registered"
+                      class="btn btn-brand"
                       @click="toggleExam(ex)"
                     >
-                      {{ ex.registered ? 'Отменить' : 'Записаться' }}
+                      Записаться
+                    </button>
+                    <button
+                      v-else-if="ex.registration_status === 'pending'"
+                      class="btn btn-danger"
+                      @click="toggleExam(ex)"
+                    >
+                      Отменить
                     </button>
                   </td>
                 </tr>

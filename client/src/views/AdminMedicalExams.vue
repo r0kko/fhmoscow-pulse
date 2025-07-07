@@ -22,6 +22,19 @@ const modalRef = ref(null)
 let modal
 const formError = ref('')
 
+const registrationModalRef = ref(null)
+let registrationModal
+const registrationExam = ref(null)
+const registrationList = ref([])
+const registrationTotal = ref(0)
+const registrationPage = ref(1)
+const registrationLoading = ref(false)
+const registrationError = ref('')
+
+const registrationsTotalPages = computed(() =>
+  Math.max(1, Math.ceil(registrationTotal.value / pageSize))
+)
+
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 onMounted(() => {
@@ -31,6 +44,9 @@ onMounted(() => {
 })
 
 watch(currentPage, load)
+watch(registrationPage, () => {
+  if (registrationExam.value) loadRegistrations(registrationExam.value.id)
+})
 
 function formatDateTime(value) {
   if (!value) return ''
@@ -112,6 +128,43 @@ async function removeExam(exam) {
     alert(e.message)
   }
 }
+
+async function loadRegistrations(id) {
+  try {
+    registrationLoading.value = true
+    const params = new URLSearchParams({ page: registrationPage.value, limit: pageSize })
+    const data = await apiFetch(`/medical-exams/${id}/registrations?${params}`)
+    registrationList.value = data.registrations
+    registrationTotal.value = data.total
+  } catch (e) {
+    registrationError.value = e.message
+  } finally {
+    registrationLoading.value = false
+  }
+}
+
+function openRegistrations(exam) {
+  if (!registrationModal) registrationModal = new Modal(registrationModalRef.value)
+  registrationExam.value = exam
+  registrationPage.value = 1
+  registrationError.value = ''
+  loadRegistrations(exam.id)
+  registrationModal.show()
+}
+
+async function setApproval(userId, approved) {
+  if (!registrationExam.value) return
+  try {
+    await apiFetch(
+      `/medical-exams/${registrationExam.value.id}/registrations/${userId}`,
+      { method: 'PUT', body: JSON.stringify({ approved }) }
+    )
+    await loadRegistrations(registrationExam.value.id)
+    await load()
+  } catch (e) {
+    alert(e.message)
+  }
+}
 </script>
 
 <template>
@@ -142,6 +195,9 @@ async function removeExam(exam) {
             <td>{{ formatDateTime(ex.start_at) }} - {{ formatDateTime(ex.end_at) }}</td>
             <td>{{ ex.capacity }}</td>
             <td class="text-end">
+              <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(ex)">
+                <i class="bi bi-people"></i>
+              </button>
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(ex)">
                 <i class="bi bi-pencil"></i>
               </button>
@@ -170,10 +226,10 @@ async function removeExam(exam) {
       </ul>
     </nav>
 
-    <div ref="modalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form @submit.prevent="save">
+  <div ref="modalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form @submit.prevent="save">
             <div class="modal-header">
               <h5 class="modal-title">{{ editing ? 'Изменить запись' : 'Добавить запись' }}</h5>
               <button type="button" class="btn-close" @click="modal.hide()"></button>
@@ -217,8 +273,58 @@ async function removeExam(exam) {
               <button type="submit" class="btn btn-brand">Сохранить</button>
             </div>
           </form>
+      </div>
+    </div>
+  </div>
+
+  <div ref="registrationModalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Заявки</h5>
+          <button type="button" class="btn-close" @click="registrationModal.hide()"></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
+          <div v-if="registrationLoading" class="text-center my-3"><div class="spinner-border" role="status"></div></div>
+          <div v-if="registrationList.length" class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Пользователь</th>
+                  <th>Статус</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in registrationList" :key="r.user.id">
+                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                  <td>{{ r.approved === null ? 'На рассмотрении' : r.approved ? 'Подтверждено' : 'Отклонено' }}</td>
+                  <td class="text-end">
+                    <button v-if="r.approved !== true" class="btn btn-sm btn-success me-2" @click="setApproval(r.user.id, true)">✓</button>
+                    <button v-if="r.approved !== false" class="btn btn-sm btn-danger" @click="setApproval(r.user.id, false)">✕</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!registrationLoading" class="text-muted mb-0">Нет заявок.</p>
+        </div>
+        <div class="modal-footer" v-if="registrationsTotalPages > 1">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" :class="{ disabled: registrationPage === 1 }">
+              <button class="page-link" @click="registrationPage--" :disabled="registrationPage === 1">Пред</button>
+            </li>
+            <li class="page-item" v-for="p in registrationsTotalPages" :key="p" :class="{ active: registrationPage === p }">
+              <button class="page-link" @click="registrationPage = p">{{ p }}</button>
+            </li>
+            <li class="page-item" :class="{ disabled: registrationPage === registrationsTotalPages }">
+              <button class="page-link" @click="registrationPage++" :disabled="registrationPage === registrationsTotalPages">След</button>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
   </div>
+</div>
 </template>
