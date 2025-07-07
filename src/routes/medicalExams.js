@@ -14,8 +14,8 @@ import { updateRegistrationRules } from '../validators/medicalExamRegistrationVa
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
-router.get('/available', auth, selfController.available);
-router.get('/me/upcoming', auth, selfController.upcoming);
+router.get('/available', auth, authorize('REFEREE'), selfController.available);
+router.get('/me/upcoming', auth, authorize('REFEREE'), selfController.upcoming);
 router.post(
   '/',
   auth,
@@ -53,7 +53,17 @@ router.delete(
   registrationsController.remove
 );
 
-router.post('/:id/register', auth, selfController.register);
-router.delete('/:id/register', auth, selfController.unregister);
+router.post(
+  '/:id/register',
+  auth,
+  authorize('REFEREE'),
+  selfController.register
+);
+router.delete(
+  '/:id/register',
+  auth,
+  authorize('REFEREE'),
+  selfController.unregister
+);
 
 export default router;

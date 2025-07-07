@@ -23,8 +23,16 @@ import ServerError from './views/ServerError.vue';
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true, fluid: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
-  { path: '/medical', component: Medical, meta: { requiresAuth: true } },
-  { path: '/camps', component: Camps, meta: { requiresAuth: true } },
+  {
+    path: '/medical',
+    component: Medical,
+    meta: { requiresAuth: true, requiresReferee: true },
+  },
+  {
+    path: '/camps',
+    component: Camps,
+    meta: { requiresAuth: true, requiresReferee: true },
+  },
   {
     path: '/admin',
     component: AdminHome,
@@ -113,6 +121,8 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');
   } else if (to.meta.requiresAdmin && !roles.includes('ADMIN')) {
+    next('/forbidden');
+  } else if (to.meta.requiresReferee && !roles.includes('REFEREE')) {
     next('/forbidden');
   } else if (
     isAuthenticated &&
