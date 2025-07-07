@@ -160,38 +160,38 @@ async function copy(text) {
         <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
       </ol>
     </nav>
-    <h1 class="mb-3">Пользователи</h1>
-    <div class="row g-2 mb-3">
-      <div class="col">
-        <input
-          type="text"
-          class="form-control"
-          placeholder="Поиск"
-          v-model="search"
-        />
-      </div>
-      <div class="col-auto">
-        <select v-model="statusFilter" class="form-select">
-          <option value="">Все статусы</option>
-          <option value="ACTIVE">Активные</option>
-          <option value="INACTIVE">Заблокированные</option>
-          <option value="AWAITING_CONFIRMATION">Требуют подтверждения</option>
-        </select>
-      </div>
-      <div class="col-auto order-md-last">
-        <button class="btn btn-brand w-100" @click="openCreate">
+    <div class="card tile fade-in">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Пользователи</h2>
+        <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-    </div>
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <div v-if="isLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
-    </div>
-    <div v-if="users.length" class="card tile fade-in">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover table-striped align-middle mb-0">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col">
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Поиск"
+              v-model="search"
+            />
+          </div>
+          <div class="col-auto">
+            <select v-model="statusFilter" class="form-select">
+              <option value="">Все статусы</option>
+              <option value="ACTIVE">Активные</option>
+              <option value="INACTIVE">Заблокированные</option>
+              <option value="AWAITING_CONFIRMATION">Требуют подтверждения</option>
+            </select>
+          </div>
+        </div>
+        <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
+        <div v-if="isLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div v-if="users.length" class="table-responsive">
+          <table class="table admin-table table-hover table-striped align-middle mb-0">
         <thead>
           <tr>
             <th @click="toggleSort('last_name')" class="sortable">
@@ -306,9 +306,9 @@ async function copy(text) {
         </tbody>
           </table>
         </div>
+        <p v-else-if="!isLoading" class="text-muted mb-0">Нет пользователей.</p>
       </div>
     </div>
-    <p v-else>Нет пользователей.</p>
     <nav class="mt-3" v-if="totalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
