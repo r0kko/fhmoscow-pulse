@@ -79,12 +79,12 @@ defineExpose({ refresh });
     <div v-if="loading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="judges.length" class="card tile fade-in">
+    <div v-if="judges.length" class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Назначение судей</h2>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
@@ -107,8 +107,48 @@ defineExpose({ refresh });
             </tbody>
           </table>
         </div>
+        <div class="d-block d-sm-none p-2">
+          <div v-for="j in judges" :key="j.user.id" class="card training-card mb-2">
+            <div class="card-body p-2">
+              <p class="mb-1 fw-semibold">{{ formatName(j.user) }}</p>
+              <p class="mb-1 text-muted">{{ formatDate(j.user.birth_date) }}</p>
+              <select v-model="j.group_id" class="form-select mt-1" @change="setGroup(j)">
+                <option value="">Без группы</option>
+                <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <p v-else-if="!loading" class="text-muted">Судьи не найдены.</p>
   </div>
 </template>
+
+<style scoped>
+.training-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
