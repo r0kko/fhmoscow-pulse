@@ -2,6 +2,7 @@ import {
   MedicalExam,
   MedicalExamRegistration,
   User,
+  MedicalCenter,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -16,6 +17,67 @@ async function listByExam(examId, options = {}) {
     limit,
     offset,
   });
+}
+
+async function listAvailable(userId, options = {}) {
+  const { Op } = await import('sequelize');
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const now = new Date();
+  const { rows, count } = await MedicalExam.findAndCountAll({
+    include: [MedicalCenter, MedicalExamRegistration],
+    where: { start_at: { [Op.gt]: now } },
+    order: [['start_at', 'ASC']],
+    distinct: true,
+    limit,
+    offset,
+  });
+  const mapped = rows.map((e) => {
+    const regs = e.MedicalExamRegistrations.filter((r) => !r.deletedAt);
+    const registered = regs.some((r) => r.user_id === userId);
+    const available =
+      typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
+    return {
+      ...e.get({ plain: true }),
+      available,
+      user_registered: registered,
+    };
+  });
+  return { rows: mapped, count };
+}
+
+async function listUpcomingByUser(userId, options = {}) {
+  const { Op } = await import('sequelize');
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const now = new Date();
+  const { rows } = await MedicalExam.findAndCountAll({
+    include: [
+      MedicalCenter,
+      {
+        model: MedicalExamRegistration,
+        where: { user_id: userId },
+        required: true,
+      },
+    ],
+    where: { start_at: { [Op.gt]: now } },
+    order: [['start_at', 'ASC']],
+    limit,
+    offset,
+  });
+  const mapped = rows.map((e) => {
+    const regs = e.MedicalExamRegistrations.filter((r) => !r.deletedAt);
+    const available =
+      typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
+    return {
+      ...e.get({ plain: true }),
+      available,
+      user_registered: true,
+    };
+  });
+  return { rows: mapped, count: mapped.length };
 }
 
 async function register(userId, examId, actorId) {
@@ -70,4 +132,12 @@ async function remove(examId, userId) {
   await reg.destroy();
 }
 
-export default { listByExam, register, unregister, setApproval, remove };
+export default {
+  listByExam,
+  listAvailable,
+  listUpcomingByUser,
+  register,
+  unregister,
+  setApproval,
+  remove,
+};

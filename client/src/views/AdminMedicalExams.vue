@@ -11,14 +11,11 @@ const isLoading = ref(false)
 const error = ref('')
 
 const centers = ref([])
-const statuses = ref([])
-
 const form = ref({
   medical_center_id: '',
   start_at: '',
   end_at: '',
-  capacity: '',
-  status: ''
+  capacity: ''
 })
 const editing = ref(null)
 const modalRef = ref(null)
@@ -31,10 +28,18 @@ onMounted(() => {
   modal = new Modal(modalRef.value)
   load()
   loadCenters()
-  loadStatuses()
 })
 
 watch(currentPage, load)
+
+function formatDateTime(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  return d.toLocaleString('ru-RU', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  })
+}
 
 async function loadCenters() {
   try {
@@ -45,14 +50,6 @@ async function loadCenters() {
   }
 }
 
-async function loadStatuses() {
-  try {
-    const data = await apiFetch('/medical-exams/statuses')
-    statuses.value = data.statuses
-  } catch (_e) {
-    statuses.value = []
-  }
-}
 
 async function load() {
   try {
@@ -70,7 +67,7 @@ async function load() {
 
 function openCreate() {
   editing.value = null
-  Object.assign(form.value, { medical_center_id: '', start_at: '', end_at: '', capacity: '', status: '' })
+  Object.assign(form.value, { medical_center_id: '', start_at: '', end_at: '', capacity: '' })
   formError.value = ''
   modal.show()
 }
@@ -78,10 +75,9 @@ function openCreate() {
 function openEdit(exam) {
   editing.value = exam
   form.value.medical_center_id = exam.center?.id || ''
-  form.value.start_at = exam.start_at
-  form.value.end_at = exam.end_at
+  form.value.start_at = exam.start_at?.slice(0, 16)
+  form.value.end_at = exam.end_at?.slice(0, 16)
   form.value.capacity = exam.capacity || ''
-  form.value.status = exam.status?.alias || ''
   formError.value = ''
   modal.show()
 }
@@ -96,7 +92,6 @@ async function save() {
       capacity: form.value.capacity
     }
     if (editing.value) {
-      if (form.value.status) body.status = form.value.status
       await apiFetch(`/medical-exams/${editing.value.id}`, { method: 'PUT', body: JSON.stringify(body) })
     } else {
       await apiFetch('/medical-exams', { method: 'POST', body: JSON.stringify(body) })
@@ -138,16 +133,14 @@ async function removeExam(exam) {
             <th>Центр</th>
             <th>Период</th>
             <th>Места</th>
-            <th>Статус</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="ex in exams" :key="ex.id">
             <td>{{ ex.center?.name }}</td>
-            <td>{{ ex.start_at }} - {{ ex.end_at }}</td>
+            <td>{{ formatDateTime(ex.start_at) }} - {{ formatDateTime(ex.end_at) }}</td>
             <td>{{ ex.capacity }}</td>
-            <td>{{ ex.status?.name }}</td>
             <td class="text-end">
               <button class="btn btn-sm btn-secondary me-2" @click="openEdit(ex)">
                 <i class="bi bi-pencil"></i>
@@ -195,23 +188,28 @@ async function removeExam(exam) {
                 </select>
               </div>
               <div class="form-floating mb-3">
-                <input id="exStart" type="date" v-model="form.start_at" class="form-control" required />
+                <input
+                  id="exStart"
+                  type="datetime-local"
+                  v-model="form.start_at"
+                  class="form-control"
+                  required
+                />
                 <label for="exStart">Начало</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="exEnd" type="date" v-model="form.end_at" class="form-control" required />
+                <input
+                  id="exEnd"
+                  type="datetime-local"
+                  v-model="form.end_at"
+                  class="form-control"
+                  required
+                />
                 <label for="exEnd">Окончание</label>
               </div>
               <div class="form-floating mb-3">
                 <input id="exCap" type="number" min="0" v-model="form.capacity" class="form-control" />
                 <label for="exCap">Количество мест</label>
-              </div>
-              <div class="mb-3" v-if="editing">
-                <label class="form-label">Статус</label>
-                <select v-model="form.status" class="form-select">
-                  <option value="" disabled>Выберите статус</option>
-                  <option v-for="s in statuses" :key="s.alias" :value="s.alias">{{ s.name }}</option>
-                </select>
               </div>
             </div>
             <div class="modal-footer">

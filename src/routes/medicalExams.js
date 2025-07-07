@@ -14,6 +14,8 @@ import { updateRegistrationRules } from '../validators/medicalExamRegistrationVa
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
+router.get('/available', auth, selfController.available);
+router.get('/me/upcoming', auth, selfController.upcoming);
 router.post(
   '/',
   auth,
