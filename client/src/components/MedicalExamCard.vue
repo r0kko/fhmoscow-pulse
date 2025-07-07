@@ -42,33 +42,33 @@ function seatStatus(e) {
 
 const btnClass = computed(() => {
   if (!props.exam.registered) return 'btn-brand';
-  if (props.exam.registration_status === 'pending') return 'btn-secondary';
-  if (props.exam.registration_status === 'approved') return 'btn-success';
-  if (props.exam.registration_status === 'completed') return 'btn-primary';
+  if (props.exam.registration_status === 'PENDING') return 'btn-secondary';
+  if (props.exam.registration_status === 'APPROVED') return 'btn-success';
+  if (props.exam.registration_status === 'COMPLETED') return 'btn-primary';
   return 'btn-danger';
 });
 
 const btnText = computed(() => {
   if (!props.exam.registered) return 'Записаться';
-  if (props.exam.registration_status === 'pending') return 'На рассмотрении';
-  if (props.exam.registration_status === 'approved') return 'Подтверждена';
-  if (props.exam.registration_status === 'completed') return 'Завершена';
+  if (props.exam.registration_status === 'PENDING') return 'На рассмотрении';
+  if (props.exam.registration_status === 'APPROVED') return 'Подтверждена';
+  if (props.exam.registration_status === 'COMPLETED') return 'Завершена';
   return 'Отменена';
 });
 
 const btnIcon = computed(() => {
   if (!props.exam.registered) return 'bi-plus-lg';
-  if (props.exam.registration_status === 'pending') return 'bi-hourglass';
-  if (props.exam.registration_status === 'approved') return 'bi-check-lg';
-  if (props.exam.registration_status === 'completed') return 'bi-check2-all';
+  if (props.exam.registration_status === 'PENDING') return 'bi-hourglass';
+  if (props.exam.registration_status === 'APPROVED') return 'bi-check-lg';
+  if (props.exam.registration_status === 'COMPLETED') return 'bi-check2-all';
   return 'bi-x-lg';
 });
 
 const disabled = computed(
   () =>
-    props.exam.registration_status === 'approved' ||
-    props.exam.registration_status === 'completed' ||
-    props.exam.registration_status === 'canceled' ||
+    props.exam.registration_status === 'APPROVED' ||
+    props.exam.registration_status === 'COMPLETED' ||
+    props.exam.registration_status === 'CANCELED' ||
     (typeof props.exam.capacity === 'number' &&
       typeof props.exam.approved_count === 'number' &&
       props.exam.approved_count >= props.exam.capacity)

@@ -10,14 +10,7 @@ MedicalExamRegistration.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    status: {
-      type: DataTypes.STRING(20),
-      allowNull: false,
-      defaultValue: 'pending',
-      validate: {
-        isIn: [['pending', 'approved', 'canceled', 'completed']],
-      },
-    },
+    status_id: { type: DataTypes.UUID, allowNull: false },
   },
   {
     sequelize,

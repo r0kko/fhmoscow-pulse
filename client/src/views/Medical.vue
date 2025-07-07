@@ -126,7 +126,7 @@ async function toggleExam(exam) {
   registering.value = exam.id;
   try {
     if (exam.registered) {
-      if (exam.registration_status !== 'pending') return;
+      if (exam.registration_status !== 'PENDING') return;
       await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'DELETE' });
     } else {
       await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'POST' });

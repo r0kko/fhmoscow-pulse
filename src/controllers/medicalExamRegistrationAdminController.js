@@ -13,7 +13,7 @@ export default {
       );
       const registrations = rows.map((r) => ({
         user: userMapper.toPublic(r.User),
-        status: r.status,
+        status: r.MedicalExamRegistrationStatus?.alias,
       }));
       return res.json({ registrations, total: count });
     } catch (err) {

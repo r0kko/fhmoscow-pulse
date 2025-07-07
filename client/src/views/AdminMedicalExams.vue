@@ -301,32 +301,32 @@ async function setStatus(userId, status) {
                   <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                   <td>
                     {{
-                      r.status === 'pending'
+                      r.status === 'PENDING'
                         ? 'На рассмотрении'
-                        : r.status === 'approved'
+                        : r.status === 'APPROVED'
                         ? 'Подтверждена'
-                        : r.status === 'completed'
+                        : r.status === 'COMPLETED'
                         ? 'Завершена'
                         : 'Отменена'
                     }}
                   </td>
                   <td class="text-end">
                     <button
-                      v-if="r.status === 'pending'"
+                      v-if="r.status === 'PENDING'"
                       class="btn btn-sm btn-success me-2"
-                      @click="setStatus(r.user.id, 'approved')"
+                      @click="setStatus(r.user.id, 'APPROVED')"
                     >✓</button>
                     <button
-                      v-if="r.status === 'approved'"
+                      v-if="r.status === 'APPROVED'"
                       class="btn btn-sm btn-primary me-2"
-                      @click="setStatus(r.user.id, 'completed')"
+                      @click="setStatus(r.user.id, 'COMPLETED')"
                     >
                       <i class="bi bi-check2-all"></i>
                     </button>
                     <button
-                      v-if="r.status !== 'completed' && r.status !== 'canceled'"
+                      v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
                       class="btn btn-sm btn-danger"
-                      @click="setStatus(r.user.id, 'canceled')"
+                      @click="setStatus(r.user.id, 'CANCELED')"
                     >✕</button>
                   </td>
                 </tr>

@@ -1,5 +1,5 @@
 import { body } from 'express-validator';
 
 export const updateRegistrationRules = [
-  body('status').isIn(['pending', 'approved', 'canceled', 'completed']),
+  body('status').isIn(['PENDING', 'APPROVED', 'CANCELED', 'COMPLETED']),
 ];
