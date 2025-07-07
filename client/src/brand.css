@@ -79,6 +79,16 @@
   word-wrap: break-word;
 }
 
+/* brand colors for pagination */
+.pagination .page-link {
+  color: var(--brand-color);
+}
+.pagination .page-item.active .page-link {
+  background-color: var(--brand-color);
+  border-color: var(--brand-color);
+  color: #fff;
+}
+
 .skip-link {
   position: absolute;
   top: -40px;

@@ -64,7 +64,12 @@ async function listUsers(options = {}) {
       { email: { [Op.iLike]: term } },
     ];
   }
-  const include = [Role];
+  const include = [];
+  if (options.role) {
+    include.push({ model: Role, where: { alias: options.role }, required: true });
+  } else {
+    include.push(Role);
+  }
   if (options.status) {
     include.push({
       model: UserStatus,

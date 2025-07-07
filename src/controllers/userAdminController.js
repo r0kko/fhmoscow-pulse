@@ -16,6 +16,7 @@ export default {
       sort = 'last_name',
       order = 'asc',
       status = '',
+      role = '',
     } = req.query;
     const { rows, count } = await userService.listUsers({
       search,
@@ -24,6 +25,7 @@ export default {
       sort,
       order,
       status,
+      role,
     });
     return res.json({
       users: userMapper.toPublicArray(rows),

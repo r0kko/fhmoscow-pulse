@@ -12,8 +12,10 @@ const router = useRouter()
 const isLoading = ref(false)
 const search = ref('')
 const statusFilter = ref('')
+const roleFilter = ref('')
 const currentPage = ref(1)
-const pageSize = 8
+const pageSize = ref(8)
+const roles = ref([])
 const sortField = ref('last_name')
 const sortOrder = ref('asc')
 
@@ -22,8 +24,17 @@ const toastMessage = ref('')
 let toast
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize.value))
 )
+
+async function loadRoles() {
+  try {
+    const data = await apiFetch('/roles')
+    roles.value = data.roles
+  } catch (_e) {
+    roles.value = []
+  }
+}
 
 
 let searchTimeout
@@ -35,7 +46,7 @@ watch(search, () => {
   }, 300)
 })
 
-watch([sortField, sortOrder, statusFilter], () => {
+watch([sortField, sortOrder, statusFilter, roleFilter, pageSize], () => {
   currentPage.value = 1
   loadUsers()
 })
@@ -50,8 +61,9 @@ async function loadUsers() {
     const params = new URLSearchParams({
       search: search.value,
       status: statusFilter.value,
+      role: roleFilter.value,
       page: currentPage.value,
-      limit: pageSize,
+      limit: pageSize.value,
       sort: sortField.value,
       order: sortOrder.value,
     })
@@ -66,7 +78,10 @@ async function loadUsers() {
   }
 }
 
-onMounted(loadUsers)
+onMounted(() => {
+  loadUsers()
+  loadRoles()
+})
 
 function openCreate() {
   router.push('/users/new')
@@ -161,6 +176,7 @@ async function copy(text) {
         <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
       </ol>
     </nav>
+    <h1 class="mb-3">Пользователи</h1>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Пользователи</h2>
@@ -170,7 +186,7 @@ async function copy(text) {
       </div>
       <div class="card-body p-3">
         <div class="row g-2 align-items-end mb-3">
-          <div class="col">
+          <div class="col-12 col-sm">
             <input
               type="text"
               class="form-control"
@@ -178,12 +194,25 @@ async function copy(text) {
               v-model="search"
             />
           </div>
-          <div class="col-auto">
+          <div class="col-6 col-sm-auto">
             <select v-model="statusFilter" class="form-select">
               <option value="">Все статусы</option>
               <option value="ACTIVE">Активные</option>
               <option value="INACTIVE">Заблокированные</option>
               <option value="AWAITING_CONFIRMATION">Требуют подтверждения</option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-auto">
+            <select v-model="roleFilter" class="form-select">
+              <option value="">Все роли</option>
+              <option v-for="r in roles" :key="r.id" :value="r.alias">{{ r.name }}</option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-auto">
+            <select v-model.number="pageSize" class="form-select">
+              <option :value="5">5</option>
+              <option :value="10">10</option>
+              <option :value="20">20</option>
             </select>
           </div>
         </div>
