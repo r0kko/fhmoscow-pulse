@@ -646,7 +646,8 @@ async function updateRegistration(reg) {
 </script>
 
 <template>
-  <div class="container mt-4">
+  <div class="py-3 admin-camps-page">
+    <div class="container">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
@@ -655,9 +656,9 @@ async function updateRegistration(reg) {
         <li class="breadcrumb-item active" aria-current="page">Сборы</li>
       </ol>
     </nav>
-    <div class="card tile mb-4">
+    <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
       <div class="card-body p-2">
-        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+        <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
               Тренировки
@@ -686,7 +687,7 @@ async function updateRegistration(reg) {
       <div v-if="isLoading" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
       </div>
-      <div class="card tile fade-in">
+      <div class="card section-card tile fade-in shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h2 class="h5 mb-0">Стадионы</h2>
           <button class="btn btn-brand" @click="openCreate">
@@ -761,7 +762,7 @@ async function updateRegistration(reg) {
     <div v-if="typesLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div v-if="trainingTypes.length" class="card tile fade-in">
+    <div v-if="trainingTypes.length" class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Типы тренировок</h2>
         <button class="btn btn-brand" @click="openCreateType">
@@ -848,7 +849,7 @@ async function updateRegistration(reg) {
     <div v-if="trainingsLoading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div class="card tile fade-in">
+    <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Тренировки</h2>
         <button class="btn btn-brand" @click="openCreateTraining">
@@ -1144,6 +1145,7 @@ async function updateRegistration(reg) {
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <style scoped>
@@ -1155,5 +1157,61 @@ async function updateRegistration(reg) {
 .group-col {
   width: 2.5rem;
   white-space: nowrap;
+}
+
+.stadium-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 0;
+}
+
+.tab-selector {
+  gap: 0.5rem;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .admin-camps-page {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .admin-camps-page nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+
+  .stadium-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
