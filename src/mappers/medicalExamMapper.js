@@ -7,10 +7,12 @@ function sanitize(obj) {
     MedicalCenter,
     available,
     user_registered,
+    registration_status,
   } = obj;
   const out = { id, start_at, end_at, capacity };
   if (typeof available !== 'undefined') out.available = available;
   if (typeof user_registered !== 'undefined') out.registered = user_registered;
+  if (typeof registration_status !== 'undefined') out.registration_status = registration_status;
   if (MedicalCenter) {
     out.center = { id: MedicalCenter.id, name: MedicalCenter.name };
   }

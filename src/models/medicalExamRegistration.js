@@ -10,7 +10,7 @@ MedicalExamRegistration.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    approved: { type: DataTypes.BOOLEAN, defaultValue: false },
+    approved: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: null },
   },
   {
     sequelize,

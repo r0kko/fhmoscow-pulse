@@ -35,13 +35,19 @@ async function listAvailable(userId, options = {}) {
   });
   const mapped = rows.map((e) => {
     const regs = e.MedicalExamRegistrations.filter((r) => !r.deletedAt);
-    const registered = regs.some((r) => r.user_id === userId);
+    const reg = regs.find((r) => r.user_id === userId);
+    const registered = !!reg;
+    let status = null;
+    if (reg) {
+      status = reg.approved === null ? 'pending' : reg.approved ? 'approved' : 'rejected';
+    }
     const available =
       typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
     return {
       ...e.get({ plain: true }),
       available,
       user_registered: registered,
+      registration_status: status,
     };
   });
   return { rows: mapped, count };
@@ -71,10 +77,13 @@ async function listUpcomingByUser(userId, options = {}) {
     const regs = e.MedicalExamRegistrations.filter((r) => !r.deletedAt);
     const available =
       typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
+    const reg = regs.find((r) => r.user_id === userId);
+    const status = reg.approved === null ? 'pending' : reg.approved ? 'approved' : 'rejected';
     return {
       ...e.get({ plain: true }),
       available,
       user_registered: true,
+      registration_status: status,
     };
   });
   return { rows: mapped, count: mapped.length };
@@ -96,13 +105,13 @@ async function register(userId, examId, actorId) {
   if (existing) {
     if (!existing.deletedAt) throw new ServiceError('already_registered');
     await existing.restore();
-    await existing.update({ approved: false, updated_by: actorId });
+    await existing.update({ approved: null, updated_by: actorId });
     return;
   }
   await MedicalExamRegistration.create({
     medical_exam_id: examId,
     user_id: userId,
-    approved: false,
+    approved: null,
     created_by: actorId,
     updated_by: actorId,
   });
@@ -113,6 +122,7 @@ async function unregister(userId, examId) {
     where: { medical_exam_id: examId, user_id: userId },
   });
   if (!reg) throw new ServiceError('registration_not_found', 404);
+  if (reg.approved === true) throw new ServiceError('cancellation_forbidden');
   await reg.destroy();
 }
 
