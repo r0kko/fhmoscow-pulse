@@ -60,6 +60,13 @@ const statusInfo = computed(() => {
   return { label: 'OK', icon: 'bi-check-circle', class: 'bg-success' };
 });
 
+const showExams = computed(
+  () =>
+    !certificate.value ||
+    !isValid(certificate.value) ||
+    daysLeft(certificate.value.valid_until) < 30
+);
+
 
 onMounted(async () => {
   try {
@@ -97,7 +104,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-  loadExams();
+  if (showExams.value) loadExams();
 });
 
 async function loadExams() {
@@ -219,7 +226,10 @@ async function toggleExam(exam) {
         </div>
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
-      <div class="card section-card tile fade-in shadow-sm mb-3 mt-3">
+      <div
+        v-if="showExams"
+        class="card section-card tile fade-in shadow-sm mb-3 mt-3"
+      >
         <div class="card-body">
           <h5 class="card-title mb-3 text-brand">Ближайшие медосмотры</h5>
           <div v-if="examsError" class="alert alert-danger">{{ examsError }}</div>
