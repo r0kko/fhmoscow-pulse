@@ -57,6 +57,17 @@ function formatDateTime(value) {
   })
 }
 
+function formatPhone(digits) {
+  if (!digits) return ''
+  let out = '+7'
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4)
+  if (digits.length >= 4) out += ') '
+  if (digits.length >= 4) out += digits.slice(4, 7)
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9)
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11)
+  return out
+}
+
 async function loadCenters() {
   try {
     const data = await apiFetch('/medical-centers?page=1&limit=100')
@@ -292,6 +303,9 @@ async function setStatus(userId, status) {
               <thead>
                 <tr>
                   <th>Пользователь</th>
+                  <th>Дата заявки</th>
+                  <th>Email</th>
+                  <th>Телефон</th>
                   <th>Статус</th>
                   <th></th>
                 </tr>
@@ -299,6 +313,9 @@ async function setStatus(userId, status) {
               <tbody>
                 <tr v-for="r in registrationList" :key="r.user.id">
                   <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                  <td>{{ formatDateTime(r.created_at) }}</td>
+                  <td>{{ r.user.email }}</td>
+                  <td>{{ formatPhone(r.user.phone) }}</td>
                   <td>
                     {{
                       r.status === 'PENDING'
