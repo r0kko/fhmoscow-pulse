@@ -14,7 +14,10 @@ async function listByExam(examId, options = {}) {
   return MedicalExamRegistration.findAndCountAll({
     where: { medical_exam_id: examId },
     include: [User],
-    order: [[User, 'last_name', 'ASC'], [User, 'first_name', 'ASC']],
+    order: [
+      [User, 'last_name', 'ASC'],
+      [User, 'first_name', 'ASC'],
+    ],
     limit,
     offset,
   });
@@ -43,10 +46,17 @@ async function listAvailable(userId, options = {}) {
     const registered = !!reg;
     let status = null;
     if (reg) {
-      status = reg.approved === null ? 'pending' : reg.approved ? 'approved' : 'rejected';
+      status =
+        reg.approved === null
+          ? 'pending'
+          : reg.approved
+            ? 'approved'
+            : 'rejected';
     }
     const available =
-      typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
+      typeof e.capacity === 'number'
+        ? Math.max(0, e.capacity - regs.length)
+        : null;
     const approvedCount = regs.filter((r) => r.approved === true).length;
     return {
       ...e.get({ plain: true }),
@@ -84,9 +94,16 @@ async function listUpcomingByUser(userId, options = {}) {
   const mapped = rows.map((e) => {
     const regs = e.MedicalExamRegistrations.filter((r) => !r.deletedAt);
     const available =
-      typeof e.capacity === 'number' ? Math.max(0, e.capacity - regs.length) : null;
+      typeof e.capacity === 'number'
+        ? Math.max(0, e.capacity - regs.length)
+        : null;
     const reg = regs.find((r) => r.user_id === userId);
-    const status = reg.approved === null ? 'pending' : reg.approved ? 'approved' : 'rejected';
+    const status =
+      reg.approved === null
+        ? 'pending'
+        : reg.approved
+          ? 'approved'
+          : 'rejected';
     const approvedCount = regs.filter((r) => r.approved === true).length;
     return {
       ...e.get({ plain: true }),
@@ -107,7 +124,9 @@ async function register(userId, examId, actorId) {
   if (!exam) throw new ServiceError('exam_not_found', 404);
   if (new Date(exam.start_at) <= new Date())
     throw new ServiceError('registration_closed');
-  const count = exam.MedicalExamRegistrations.filter((r) => !r.deletedAt).length;
+  const count = exam.MedicalExamRegistrations.filter(
+    (r) => !r.deletedAt
+  ).length;
   if (exam.capacity && count >= exam.capacity)
     throw new ServiceError('exam_full');
 

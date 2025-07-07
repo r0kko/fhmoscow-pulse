@@ -14,10 +14,12 @@ function sanitize(obj) {
   const out = { id, start_at, end_at, capacity };
   if (typeof available !== 'undefined') out.available = available;
   if (typeof user_registered !== 'undefined') out.registered = user_registered;
-  if (typeof registration_status !== 'undefined') out.registration_status = registration_status;
+  if (typeof registration_status !== 'undefined')
+    out.registration_status = registration_status;
   if (typeof registration_count !== 'undefined')
     out.registration_count = registration_count;
-  if (typeof approved_count !== 'undefined') out.approved_count = approved_count;
+  if (typeof approved_count !== 'undefined')
+    out.approved_count = approved_count;
   if (MedicalCenter) {
     out.center = { id: MedicalCenter.id, name: MedicalCenter.name };
     if (MedicalCenter.Address) {

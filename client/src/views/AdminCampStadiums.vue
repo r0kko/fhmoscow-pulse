@@ -1,9 +1,9 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
-import { RouterLink } from 'vue-router';
+import {ref, onMounted, watch, computed} from 'vue';
+import {RouterLink} from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiFetch } from '../api.js';
-import { suggestAddress, cleanAddress } from '../dadata.js';
+import {apiFetch} from '../api.js';
+import {suggestAddress, cleanAddress} from '../dadata.js';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 
 const activeTab = ref('trainings');
@@ -52,7 +52,7 @@ const typesTotal = ref(0);
 const typesPage = ref(1);
 const typesLoading = ref(false);
 const typesError = ref('');
-const typeForm = ref({ name: '', default_capacity: '' });
+const typeForm = ref({name: '', default_capacity: ''});
 const typeEditing = ref(null);
 const typeModalRef = ref(null);
 let typeModal;
@@ -93,7 +93,7 @@ const registrationError = ref('');
 const registrationModalRef = ref(null);
 let registrationModal;
 const registrationTraining = ref(null);
-const addForm = ref({ user_id: '', training_role_id: '' });
+const addForm = ref({user_id: '', training_role_id: ''});
 const addLoading = ref(false);
 const judges = ref([]);
 const trainingRoles = ref([]);
@@ -101,7 +101,7 @@ const assignmentsRef = ref(null);
 
 const form = ref({
   name: '',
-  address: { result: '' },
+  address: {result: ''},
   yandex_url: '',
   capacity: '',
   phone: '',
@@ -118,10 +118,10 @@ let addrTimeout;
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
 const registrationsTotalPages = computed(() =>
-  Math.max(1, Math.ceil(registrationTotal.value / pageSize))
+    Math.max(1, Math.ceil(registrationTotal.value / pageSize))
 );
 const trainingsTotalPages = computed(() =>
-  Math.max(1, Math.ceil(trainingsTotal.value / trainingsPageSize.value))
+    Math.max(1, Math.ceil(trainingsTotal.value / trainingsPageSize.value))
 );
 
 
@@ -133,7 +133,7 @@ onMounted(() => {
   loadTrainings();
   loadStadiumOptions();
   loadRefereeGroups();
-  });
+});
 
 watch(currentPage, () => {
   if (activeTab.value === 'stadiums') load();
@@ -181,36 +181,36 @@ watch(
 );
 
 watch(
-  () => trainingForm.value.type_id,
-  (val) => {
-    const tt = trainingTypes.value.find((t) => t.id === val);
-    if (tt && tt.default_capacity && (!trainingEditing.value || !trainingForm.value.capacity)) {
-      trainingForm.value.capacity = tt.default_capacity;
+    () => trainingForm.value.type_id,
+    (val) => {
+      const tt = trainingTypes.value.find((t) => t.id === val);
+      if (tt && tt.default_capacity && (!trainingEditing.value || !trainingForm.value.capacity)) {
+        trainingForm.value.capacity = tt.default_capacity;
+      }
     }
-  }
 );
 
 watch(
-  () => trainingForm.value.start_at,
-  (val) => {
-    if (!val) return;
-    const start = new Date(val);
-    const end = new Date(start.getTime() + 90 * 60000);
-    if (!trainingEditing.value) {
-      trainingForm.value.end_at = toInputValue(end);
+    () => trainingForm.value.start_at,
+    (val) => {
+      if (!val) return;
+      const start = new Date(val);
+      const end = new Date(start.getTime() + 90 * 60000);
+      if (!trainingEditing.value) {
+        trainingForm.value.end_at = toInputValue(end);
+      }
     }
-  }
 );
 
 watch(
-  [() => trainingForm.value.start_at, () => trainingForm.value.end_at],
-  ([start, end]) => {
-    if (start && end && new Date(end) <= new Date(start)) {
-      trainingFormError.value = 'Время окончания должно быть позже начала';
-    } else {
-      trainingFormError.value = '';
+    [() => trainingForm.value.start_at, () => trainingForm.value.end_at],
+    ([start, end]) => {
+      if (start && end && new Date(end) <= new Date(start)) {
+        trainingFormError.value = 'Время окончания должно быть позже начала';
+      } else {
+        trainingFormError.value = '';
+      }
     }
-  }
 );
 
 async function loadParkingTypes() {
@@ -240,14 +240,14 @@ async function load() {
 }
 
 function makeParkingForm() {
-  return parkingTypes.value.map((t) => ({ type: t.alias, price: '', enabled: false }));
+  return parkingTypes.value.map((t) => ({type: t.alias, price: '', enabled: false}));
 }
 
 function openCreate() {
   editing.value = null;
   form.value = {
     name: '',
-    address: { result: '' },
+    address: {result: ''},
     yandex_url: '',
     capacity: '',
     phone: '',
@@ -264,14 +264,14 @@ function openEdit(s) {
   editing.value = s;
   form.value = {
     name: s.name,
-    address: { result: s.address?.result || '' },
+    address: {result: s.address?.result || ''},
     yandex_url: s.yandex_url || '',
     capacity: s.capacity || '',
     phone: s.phone || '',
     website: s.website || '',
     parking: parkingTypes.value.map((t) => {
       const found = (s.parking || []).find((p) => p.type === t.alias);
-      return { type: t.alias, price: found?.price || '', enabled: !!found };
+      return {type: t.alias, price: found?.price || '', enabled: !!found};
     }),
   };
   phoneInput.value = formatPhone(form.value.phone);
@@ -283,14 +283,14 @@ function openEdit(s) {
 async function save() {
   const payload = {
     name: form.value.name,
-    address: { result: form.value.address.result },
+    address: {result: form.value.address.result},
     yandex_url: form.value.yandex_url || undefined,
     capacity: form.value.capacity || undefined,
     phone: form.value.phone || undefined,
     website: form.value.website || undefined,
     parking: form.value.parking
         .filter((p) => p.enabled)
-        .map((p) => ({ type: p.type, price: p.price || null })),
+        .map((p) => ({type: p.type, price: p.price || null})),
   };
   try {
     saveLoading.value = true;
@@ -316,7 +316,7 @@ async function save() {
 
 async function removeStadium(s) {
   if (!confirm('Удалить стадион?')) return;
-  await apiFetch(`/camp-stadiums/${s.id}`, { method: 'DELETE' });
+  await apiFetch(`/camp-stadiums/${s.id}`, {method: 'DELETE'});
   await load();
 }
 
@@ -355,7 +355,7 @@ function openCreateType() {
     typeModal = new Modal(typeModalRef.value)
   }
   typeEditing.value = null;
-  typeForm.value = { name: '', default_capacity: '' };
+  typeForm.value = {name: '', default_capacity: ''};
   typeFormError.value = '';
   typeModal.show();
 }
@@ -427,7 +427,7 @@ async function loadTrainings() {
 
 async function loadStadiumOptions() {
   try {
-    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const params = new URLSearchParams({page: 1, limit: 100});
     const data = await apiFetch(`/camp-stadiums?${params}`);
     stadiumOptions.value = data.stadiums;
   } catch (_) {
@@ -437,7 +437,7 @@ async function loadStadiumOptions() {
 
 async function loadRefereeGroups(seasonId) {
   try {
-    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const params = new URLSearchParams({page: 1, limit: 100});
     if (seasonId) params.set('season_id', seasonId);
     const data = await apiFetch(`/referee-groups?${params}`);
     refereeGroups.value = data.groups;
@@ -486,7 +486,7 @@ function formatDateTimeRange(start, end) {
   const startDate = new Date(start);
   const endDate = new Date(end);
   const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${
-    startDate.getFullYear()}`;
+      startDate.getFullYear()}`;
   const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
   const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
   return `${date} ${startTime} - ${endTime}`;
@@ -495,18 +495,18 @@ function formatDateTimeRange(start, end) {
 function shortGroupName(name) {
   if (!name) return '';
   return name
-    .split(/\s+/)
-    .map((w) => w.charAt(0))
-    .join('')
-    .toUpperCase();
+      .split(/\s+/)
+      .map((w) => w.charAt(0))
+      .join('')
+      .toUpperCase();
 }
 
 function shortName(u) {
   if (!u) return '';
   const initials = [u.first_name, u.patronymic]
-    .filter(Boolean)
-    .map((n) => n.charAt(0) + '.')
-    .join(' ');
+      .filter(Boolean)
+      .map((n) => n.charAt(0) + '.')
+      .join(' ');
   return `${u.last_name} ${initials}`.trim();
 }
 
@@ -528,7 +528,7 @@ function openEditTraining(t) {
 
 async function saveTraining() {
   if (
-    new Date(trainingForm.value.end_at) <= new Date(trainingForm.value.start_at)
+      new Date(trainingForm.value.end_at) <= new Date(trainingForm.value.start_at)
   ) {
     trainingFormError.value = 'Время окончания должно быть позже начала';
     return;
@@ -564,19 +564,19 @@ async function saveTraining() {
 
 async function removeTraining(t) {
   if (!confirm('Удалить запись?')) return;
-  await apiFetch(`/camp-trainings/${t.id}`, { method: 'DELETE' });
+  await apiFetch(`/camp-trainings/${t.id}`, {method: 'DELETE'});
   await loadTrainings();
 }
 
 async function toggleTrainingGroup(training, groupId, checked) {
   const currentIds = (training.groups || []).map((g) => g.id);
   const newIds = checked
-    ? Array.from(new Set([...currentIds, groupId]))
-    : currentIds.filter((id) => id !== groupId);
+      ? Array.from(new Set([...currentIds, groupId]))
+      : currentIds.filter((id) => id !== groupId);
   try {
     await apiFetch(`/camp-trainings/${training.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ groups: newIds }),
+      body: JSON.stringify({groups: newIds}),
     });
     training.groups = refereeGroups.value.filter((g) => newIds.includes(g.id));
   } catch (e) {
@@ -592,7 +592,7 @@ async function loadRegistrations(trainingId) {
       limit: pageSize,
     });
     const data = await apiFetch(
-      `/camp-trainings/${trainingId}/registrations?${params}`
+        `/camp-trainings/${trainingId}/registrations?${params}`
     );
     registrationList.value = data.registrations.map((r) => ({
       ...r,
@@ -630,11 +630,11 @@ async function addRegistration() {
   try {
     addLoading.value = true;
     await apiFetch(
-      `/camp-trainings/${registrationTraining.value.id}/registrations`,
-      {
-        method: 'POST',
-        body: JSON.stringify(addForm.value),
-      }
+        `/camp-trainings/${registrationTraining.value.id}/registrations`,
+        {
+          method: 'POST',
+          body: JSON.stringify(addForm.value),
+        }
     );
     addForm.value.user_id = '';
     addForm.value.training_role_id = '';
@@ -665,8 +665,8 @@ async function removeRegistration(userId) {
   if (!confirm('Удалить запись?')) return;
   try {
     await apiFetch(
-      `/camp-trainings/${registrationTraining.value.id}/registrations/${userId}`,
-      { method: 'DELETE' }
+        `/camp-trainings/${registrationTraining.value.id}/registrations/${userId}`,
+        {method: 'DELETE'}
     );
     await loadRegistrations(registrationTraining.value.id);
     await loadTrainings();
@@ -679,11 +679,11 @@ async function updateRegistration(reg) {
   if (!registrationTraining.value) return;
   try {
     await apiFetch(
-      `/camp-trainings/${registrationTraining.value.id}/registrations/${reg.user.id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ training_role_id: reg.role_id }),
-      }
+        `/camp-trainings/${registrationTraining.value.id}/registrations/${reg.user.id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({training_role_id: reg.role_id}),
+        }
     );
     reg.role = trainingRoles.value.find((r) => r.id === reg.role_id) || null;
     await loadTrainings();
@@ -696,196 +696,196 @@ async function updateRegistration(reg) {
 <template>
   <div class="py-3 admin-camps-page">
     <div class="container">
-    <nav aria-label="breadcrumb" class="mb-3">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <RouterLink to="/admin">Администрирование</RouterLink>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Сборы</li>
-      </ol>
-    </nav>
-    <h1 class="mb-3">Сборы</h1>
-    <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
-      <div class="card-body p-2">
-        <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
-              Тренировки
-            </button>
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
-              Судьи
-            </button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
-              Типы тренировок
-            </button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
-              Стадионы
-            </button>
-          </li>
-        </ul>
+          <li class="breadcrumb-item active" aria-current="page">Сборы</li>
+        </ol>
+      </nav>
+      <h1 class="mb-3">Сборы</h1>
+      <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
+        <div class="card-body p-2">
+          <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
+            <li class="nav-item">
+              <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
+                Тренировки
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
+                Судьи
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
+                Типы тренировок
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
+                Стадионы
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
+      <div v-if="activeTab === 'stadiums'">
+        <div v-if="error" class="alert alert-danger">{{ error }}</div>
+        <div v-if="isLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div class="card section-card tile fade-in shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">Стадионы</h2>
+            <button class="btn btn-brand" @click="openCreate">
+              <i class="bi bi-plus-lg me-1"></i>Добавить
+            </button>
+          </div>
+          <div class="card-body p-3">
+            <div v-if="stadiums.length" class="table-responsive d-none d-sm-block">
+              <table class="table admin-table table-striped align-middle mb-0">
+                <thead>
+                <tr>
+                  <th>Название</th>
+                  <th>Адрес</th>
+                  <th class="text-center">Вместимость</th>
+                  <th>Телефон</th>
+                  <th class="d-none d-md-table-cell">Сайт</th>
+                  <th class="d-none d-lg-table-cell">Парковка</th>
+                  <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="st in stadiums" :key="st.id">
+                  <td>{{ st.name }}</td>
+                  <td>{{ st.address?.result }}</td>
+                  <td class="text-center">{{ st.capacity }}</td>
+                  <td>{{ formatPhone(st.phone) }}</td>
+                  <td class="d-none d-md-table-cell">
+                    <a v-if="st.website" :href="st.website" target="_blank">{{ st.website }}</a>
+                  </td>
+                  <td class="d-none d-lg-table-cell">
+                    <div v-if="st.parking?.length">
+                <span v-for="p in st.parking" :key="p.type" class="d-block">
+                  {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
+                </span>
+                    </div>
+                    <span v-else class="text-muted">Нет</span>
+                  </td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="stadiums.length" class="d-block d-sm-none">
+              <div v-for="st in stadiums" :key="st.id" class="card training-card mb-2">
+                <div class="card-body p-2">
+                  <h6 class="mb-1">{{ st.name }}</h6>
+                  <p class="mb-1">{{ st.address?.result }}</p>
+                  <p class="mb-1">Вместимость: {{ st.capacity }}</p>
+                  <p class="mb-1">Телефон: {{ formatPhone(st.phone) }}</p>
+                  <p class="mb-1" v-if="st.website">
+                    <a :href="st.website" target="_blank">{{ st.website }}</a>
+                  </p>
+                  <div class="mb-1" v-if="st.parking?.length">
+                  <span v-for="p in st.parking" :key="p.type" class="d-block">
+                    {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
+                  </span>
+                  </div>
+                  <p v-else class="mb-1 text-muted">Парковка: нет</p>
+                  <div class="text-end">
+                    <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="!isLoading" class="alert alert-warning mb-0">Стадионов нет.</div>
+          </div>
+        </div>
+        <nav class="mt-3" v-if="totalPages > 1">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
+            </li>
+            <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
+              <button class="page-link" @click="currentPage = p">{{ p }}</button>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
     </div>
-    <div v-if="activeTab === 'stadiums'">
-      <div v-if="error" class="alert alert-danger">{{ error }}</div>
-      <div v-if="isLoading" class="text-center my-3">
+
+    <div v-if="activeTab === 'types'">
+      <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
+      <div v-if="typesLoading" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
       </div>
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">Стадионы</h2>
-          <button class="btn btn-brand" @click="openCreate">
+          <h2 class="h5 mb-0">Типы тренировок</h2>
+          <button class="btn btn-brand" @click="openCreateType">
             <i class="bi bi-plus-lg me-1"></i>Добавить
           </button>
         </div>
         <div class="card-body p-3">
-          <div v-if="stadiums.length" class="table-responsive d-none d-sm-block">
+          <div v-if="trainingTypes.length" class="table-responsive d-none d-sm-block">
             <table class="table admin-table table-striped align-middle mb-0">
-          <thead>
-          <tr>
-            <th>Название</th>
-            <th>Адрес</th>
-            <th class="text-center">Вместимость</th>
-            <th>Телефон</th>
-            <th class="d-none d-md-table-cell">Сайт</th>
-            <th class="d-none d-lg-table-cell">Парковка</th>
-            <th></th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="st in stadiums" :key="st.id">
-            <td>{{ st.name }}</td>
-            <td>{{ st.address?.result }}</td>
-            <td class="text-center">{{ st.capacity }}</td>
-            <td>{{ formatPhone(st.phone) }}</td>
-            <td class="d-none d-md-table-cell">
-              <a v-if="st.website" :href="st.website" target="_blank">{{ st.website }}</a>
-            </td>
-            <td class="d-none d-lg-table-cell">
-              <div v-if="st.parking?.length">
-                <span v-for="p in st.parking" :key="p.type" class="d-block">
-                  {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
-                </span>
-              </div>
-              <span v-else class="text-muted">Нет</span>
-            </td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
-                <i class="bi bi-trash"></i>
-              </button>
-            </td>
-          </tr>
-          </tbody>
-            </table>
-          </div>
-          <div v-if="stadiums.length" class="d-block d-sm-none">
-            <div v-for="st in stadiums" :key="st.id" class="card training-card mb-2">
-              <div class="card-body p-2">
-                <h6 class="mb-1">{{ st.name }}</h6>
-                <p class="mb-1">{{ st.address?.result }}</p>
-                <p class="mb-1">Вместимость: {{ st.capacity }}</p>
-                <p class="mb-1">Телефон: {{ formatPhone(st.phone) }}</p>
-                <p class="mb-1" v-if="st.website">
-                  <a :href="st.website" target="_blank">{{ st.website }}</a>
-                </p>
-                <div class="mb-1" v-if="st.parking?.length">
-                  <span v-for="p in st.parking" :key="p.type" class="d-block">
-                    {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
-                  </span>
-                </div>
-                <p v-else class="mb-1 text-muted">Парковка: нет</p>
-                <div class="text-end">
-                  <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
+              <thead>
+              <tr>
+                <th>Название</th>
+                <th class="text-center">Емкость</th>
+                <th></th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="t in trainingTypes" :key="t.id">
+                <td>{{ t.name }}</td>
+                <td class="text-center">{{ t.default_capacity }}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
-                    <i class="bi bi-trash"></i>
-                  </button>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="trainingTypes.length" class="d-block d-sm-none">
+            <div v-for="t in trainingTypes" :key="t.id" class="card training-card mb-2">
+              <div class="card-body p-2 d-flex justify-content-between">
+                <div>
+                  <h6 class="mb-1">{{ t.name }}</h6>
+                  <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
                 </div>
+                <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
+                  <i class="bi bi-pencil"></i>
+                </button>
               </div>
             </div>
           </div>
-          <div v-else-if="!isLoading" class="alert alert-warning mb-0">Стадионов нет.</div>
+          <div v-else-if="!typesLoading" class="alert alert-info mb-0">Типов тренировок нет.</div>
         </div>
       </div>
-      <nav class="mt-3" v-if="totalPages > 1">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: currentPage === 1 }">
-            <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
-          </li>
-          <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
-            <button class="page-link" @click="currentPage = p">{{ p }}</button>
-          </li>
-          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-            <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
-          </li>
-        </ul>
-      </nav>
-    </div>
 
-  </div>
-
-  <div v-if="activeTab === 'types'">
-    <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
-    <div v-if="typesLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
     </div>
-    <div class="card section-card tile fade-in shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Типы тренировок</h2>
-        <button class="btn btn-brand" @click="openCreateType">
-          <i class="bi bi-plus-lg me-1"></i>Добавить
-        </button>
-      </div>
-      <div class="card-body p-3">
-        <div v-if="trainingTypes.length" class="table-responsive d-none d-sm-block">
-          <table class="table admin-table table-striped align-middle mb-0">
-        <thead>
-        <tr>
-          <th>Название</th>
-          <th class="text-center">Емкость</th>
-          <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="t in trainingTypes" :key="t.id">
-          <td>{{ t.name }}</td>
-          <td class="text-center">{{ t.default_capacity }}</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
-              <i class="bi bi-pencil"></i>
-            </button>
-          </td>
-        </tr>
-        </tbody>
-          </table>
-        </div>
-        <div v-if="trainingTypes.length" class="d-block d-sm-none">
-          <div v-for="t in trainingTypes" :key="t.id" class="card training-card mb-2">
-            <div class="card-body p-2 d-flex justify-content-between">
-              <div>
-                <h6 class="mb-1">{{ t.name }}</h6>
-                <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
-              </div>
-              <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
-                <i class="bi bi-pencil"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div v-else-if="!typesLoading" class="alert alert-info mb-0">Типов тренировок нет.</div>
-      </div>
-    </div>
-
-</div>
     <nav class="mt-3" v-if="typesTotalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: typesPage === 1 }">
@@ -912,17 +912,18 @@ async function updateRegistration(reg) {
               <div v-if="typeFormError" class="alert alert-danger">{{ typeFormError }}</div>
               <div class="form-floating mb-3">
                 <input
-                  id="ttName"
-                  v-model="typeForm.name"
-                  class="form-control"
-                  placeholder="Название"
-                  required
-                  :disabled="!!typeEditing"
+                    id="ttName"
+                    v-model="typeForm.name"
+                    class="form-control"
+                    placeholder="Название"
+                    required
+                    :disabled="!!typeEditing"
                 />
                 <label for="ttName">Наименование</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control" placeholder="Емкость" />
+                <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control"
+                       placeholder="Емкость"/>
                 <label for="ttCap">Стандартная емкость группы</label>
               </div>
             </div>
@@ -959,69 +960,69 @@ async function updateRegistration(reg) {
       <div class="card-body p-3">
         <div v-if="trainings.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
-        <thead>
-        <tr>
-          <th>Тип</th>
-          <th class="d-none d-sm-table-cell">Стадион</th>
-          <th>Дата и время</th>
-          <th class="text-center">Участников</th>
-          <th class="d-none d-md-table-cell">Тренеры</th>
-          <th class="d-none d-md-table-cell">Инвентарь</th>
-          <th
-            v-for="g in refereeGroups"
-            :key="g.id"
-            class="text-center group-col"
-            :title="g.name"
-          >
-            {{ shortGroupName(g.name) }}
-          </th>
-          <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="t in trainings" :key="t.id">
-          <td>{{ t.type?.name }}</td>
-          <td class="d-none d-sm-table-cell">{{ t.stadium?.name }}</td>
-          <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-          <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
-          <td class="d-none d-md-table-cell">
+            <thead>
+            <tr>
+              <th>Тип</th>
+              <th class="d-none d-sm-table-cell">Стадион</th>
+              <th>Дата и время</th>
+              <th class="text-center">Участников</th>
+              <th class="d-none d-md-table-cell">Тренеры</th>
+              <th class="d-none d-md-table-cell">Инвентарь</th>
+              <th
+                  v-for="g in refereeGroups"
+                  :key="g.id"
+                  class="text-center group-col"
+                  :title="g.name"
+              >
+                {{ shortGroupName(g.name) }}
+              </th>
+              <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="t in trainings" :key="t.id">
+              <td>{{ t.type?.name }}</td>
+              <td class="d-none d-sm-table-cell">{{ t.stadium?.name }}</td>
+              <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+              <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
+              <td class="d-none d-md-table-cell">
             <span v-if="t.coaches?.length">
               {{ t.coaches.map(shortName).join(', ') }}
             </span>
-            <span v-else class="text-muted">—</span>
-          </td>
-          <td class="d-none d-md-table-cell">
+                <span v-else class="text-muted">—</span>
+              </td>
+              <td class="d-none d-md-table-cell">
             <span v-if="t.equipment_managers?.length">
               {{ t.equipment_managers.map(shortName).join(', ') }}
             </span>
-            <span v-else class="text-muted">—</span>
-          </td>
-          <td
-            v-for="g in refereeGroups"
-            :key="g.id"
-            class="text-center group-col"
-            :title="g.name"
-          >
-            <input
-              type="checkbox"
-              class="form-check-input m-0"
-              :checked="t.groups?.some((gr) => gr.id === g.id)"
-              @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
-            />
-          </td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
-              <i class="bi bi-people"></i>
-            </button>
-            <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn btn-sm btn-danger" @click="removeTraining(t)">
-              <i class="bi bi-trash"></i>
-            </button>
-          </td>
-        </tr>
-        </tbody>
+                <span v-else class="text-muted">—</span>
+              </td>
+              <td
+                  v-for="g in refereeGroups"
+                  :key="g.id"
+                  class="text-center group-col"
+                  :title="g.name"
+              >
+                <input
+                    type="checkbox"
+                    class="form-check-input m-0"
+                    :checked="t.groups?.some((gr) => gr.id === g.id)"
+                    @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
+                />
+              </td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
+                  <i class="bi bi-people"></i>
+                </button>
+                <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" @click="removeTraining(t)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            </tbody>
           </table>
         </div>
         <div v-if="trainings.length" class="d-block d-sm-none">
@@ -1056,16 +1057,16 @@ async function updateRegistration(reg) {
               </div>
               <div class="mt-2">
                 <div
-                  v-for="g in refereeGroups"
-                  :key="g.id"
-                  class="form-check form-check-inline"
+                    v-for="g in refereeGroups"
+                    :key="g.id"
+                    class="form-check form-check-inline"
                 >
                   <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :id="`tm-${t.id}-${g.id}`"
-                    :checked="t.groups?.some((gr) => gr.id === g.id)"
-                    @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
+                      class="form-check-input"
+                      type="checkbox"
+                      :id="`tm-${t.id}-${g.id}`"
+                      :checked="t.groups?.some((gr) => gr.id === g.id)"
+                      @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
                   />
                   <label class="form-check-label" :for="`tm-${t.id}-${g.id}`">
                     {{ shortGroupName(g.name) }}
@@ -1076,8 +1077,8 @@ async function updateRegistration(reg) {
           </div>
         </div>
         <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
-        </div>
       </div>
+    </div>
     <nav class="mt-3 d-flex align-items-center justify-content-between" v-if="trainings.length">
       <select v-model.number="trainingsPageSize" class="form-select form-select-sm w-auto">
         <option :value="8">8</option>
@@ -1092,7 +1093,8 @@ async function updateRegistration(reg) {
           <button class="page-link" @click="trainingsPage = p">{{ p }}</button>
         </li>
         <li class="page-item" :class="{ disabled: trainingsPage === trainingsTotalPages }">
-          <button class="page-link" @click="trainingsPage++" :disabled="trainingsPage === trainingsTotalPages">След</button>
+          <button class="page-link" @click="trainingsPage++" :disabled="trainingsPage === trainingsTotalPages">След
+          </button>
         </li>
       </ul>
     </nav>
@@ -1160,15 +1162,16 @@ async function updateRegistration(reg) {
                 </select>
               </div>
               <div class="form-floating mb-3">
-                <input id="trStart" v-model="trainingForm.start_at" type="datetime-local" class="form-control" required />
+                <input id="trStart" v-model="trainingForm.start_at" type="datetime-local" class="form-control"
+                       required/>
                 <label for="trStart">Начало</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="trEnd" v-model="trainingForm.end_at" type="datetime-local" class="form-control" required />
+                <input id="trEnd" v-model="trainingForm.end_at" type="datetime-local" class="form-control" required/>
                 <label for="trEnd">Окончание</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="trCap" v-model="trainingForm.capacity" type="number" min="0" class="form-control" />
+                <input id="trCap" v-model="trainingForm.capacity" type="number" min="0" class="form-control"/>
                 <label for="trCap">Вместимость</label>
               </div>
             </div>
@@ -1192,46 +1195,46 @@ async function updateRegistration(reg) {
           <h5 class="modal-title">Участники</h5>
           <button type="button" class="btn-close" @click="registrationModal.hide()"></button>
         </div>
-      <div class="modal-body">
-        <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
-        <div v-if="registrationLoading" class="text-center my-3">
-          <div class="spinner-border" role="status"></div>
-        </div>
-        <div class="row g-2 align-items-end mb-3">
-          <div class="col">
-            <label class="form-label">Судья</label>
-            <select v-model="addForm.user_id" class="form-select">
-              <option value="" disabled>Выберите судью</option>
-              <option v-for="j in judges" :key="j.user.id" :value="j.user.id">
-                {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
-              </option>
-            </select>
+        <div class="modal-body">
+          <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
+          <div v-if="registrationLoading" class="text-center my-3">
+            <div class="spinner-border" role="status"></div>
           </div>
-          <div class="col">
-            <label class="form-label">Роль</label>
-            <select v-model="addForm.training_role_id" class="form-select">
-              <option value="" disabled>Выберите роль</option>
-              <option v-for="r in trainingRoles" :key="r.id" :value="r.id">
-                {{ r.name }}
-              </option>
-            </select>
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col">
+              <label class="form-label">Судья</label>
+              <select v-model="addForm.user_id" class="form-select">
+                <option value="" disabled>Выберите судью</option>
+                <option v-for="j in judges" :key="j.user.id" :value="j.user.id">
+                  {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
+                </option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="form-label">Роль</label>
+              <select v-model="addForm.training_role_id" class="form-select">
+                <option value="" disabled>Выберите роль</option>
+                <option v-for="r in trainingRoles" :key="r.id" :value="r.id">
+                  {{ r.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
+                Добавить
+              </button>
+            </div>
           </div>
-          <div class="col-auto">
-            <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
-              Добавить
-            </button>
-          </div>
-        </div>
-        <div v-if="registrationList.length" class="table-responsive">
-          <table class="table admin-table table-striped align-middle mb-0">
-            <thead>
+          <div v-if="registrationList.length" class="table-responsive">
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
               <tr>
                 <th>ФИО</th>
                 <th>Роль</th>
                 <th></th>
               </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
               <tr v-for="r in registrationList" :key="r.user.id">
                 <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                 <td>
@@ -1246,7 +1249,7 @@ async function updateRegistration(reg) {
                   <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
                 </td>
               </tr>
-            </tbody>
+              </tbody>
             </table>
           </div>
           <p v-else-if="!registrationLoading" class="text-muted mb-0">Нет записей.</p>
@@ -1257,21 +1260,21 @@ async function updateRegistration(reg) {
               <button class="page-link" @click="registrationPage--" :disabled="registrationPage === 1">Пред</button>
             </li>
             <li
-              class="page-item"
-              v-for="p in registrationsTotalPages"
-              :key="p"
-              :class="{ active: registrationPage === p }"
+                class="page-item"
+                v-for="p in registrationsTotalPages"
+                :key="p"
+                :class="{ active: registrationPage === p }"
             >
               <button class="page-link" @click="registrationPage = p">{{ p }}</button>
             </li>
             <li
-              class="page-item"
-              :class="{ disabled: registrationPage === registrationsTotalPages }"
+                class="page-item"
+                :class="{ disabled: registrationPage === registrationsTotalPages }"
             >
               <button
-                class="page-link"
-                @click="registrationPage++"
-                :disabled="registrationPage === registrationsTotalPages"
+                  class="page-link"
+                  @click="registrationPage++"
+                  :disabled="registrationPage === registrationsTotalPages"
               >
                 След
               </button>
@@ -1283,7 +1286,7 @@ async function updateRegistration(reg) {
   </div>
 
   <div v-if="activeTab === 'judges'" class="mb-4">
-    <RefereeGroupAssignments ref="assignmentsRef" />
+    <RefereeGroupAssignments ref="assignmentsRef"/>
   </div>
 
   <div ref="modalRef" class="modal fade" tabindex="-1">
@@ -1297,24 +1300,27 @@ async function updateRegistration(reg) {
           <div class="modal-body">
             <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
             <div class="form-floating mb-3">
-              <input id="stadName" v-model="form.name" class="form-control" placeholder="Название" required />
+              <input id="stadName" v-model="form.name" class="form-control" placeholder="Название" required/>
               <label for="stadName">Наименование</label>
             </div>
             <div class="form-floating mb-3 position-relative">
-              <textarea id="stadAddr" v-model="form.address.result" @blur="onAddressBlur" class="form-control" rows="2" placeholder="Адрес"></textarea>
+              <textarea id="stadAddr" v-model="form.address.result" @blur="onAddressBlur" class="form-control" rows="2"
+                        placeholder="Адрес"></textarea>
               <label for="stadAddr">Адрес</label>
               <ul v-if="addressSuggestions.length" class="list-group position-absolute w-100" style="z-index: 1050">
-                <li v-for="s in addressSuggestions" :key="s.value" class="list-group-item list-group-item-action" @mousedown.prevent="applyAddressSuggestion(s)">
+                <li v-for="s in addressSuggestions" :key="s.value" class="list-group-item list-group-item-action"
+                    @mousedown.prevent="applyAddressSuggestion(s)">
                   {{ s.value }}
                 </li>
               </ul>
             </div>
             <div class="form-floating mb-3">
-              <input id="stadYandex" v-model="form.yandex_url" class="form-control" placeholder="URL в Яндекс.Картах" />
+              <input id="stadYandex" v-model="form.yandex_url" class="form-control" placeholder="URL в Яндекс.Картах"/>
               <label for="stadYandex">URL в Яндекс.Картах</label>
             </div>
             <div class="form-floating mb-3">
-              <input id="stadCapacity" v-model="form.capacity" type="number" class="form-control" placeholder="Вместимость" />
+              <input id="stadCapacity" v-model="form.capacity" type="number" class="form-control"
+                     placeholder="Вместимость"/>
               <label for="stadCapacity">Вместимость</label>
             </div>
             <div class="form-floating mb-3">
@@ -1330,7 +1336,7 @@ async function updateRegistration(reg) {
               <label for="stadPhone">Телефон</label>
             </div>
             <div class="form-floating mb-3">
-              <input id="stadWebsite" v-model="form.website" class="form-control" placeholder="Сайт" />
+              <input id="stadWebsite" v-model="form.website" class="form-control" placeholder="Сайт"/>
               <label for="stadWebsite">Сайт</label>
             </div>
             <div class="mb-3" v-if="parkingTypes.length">
@@ -1338,28 +1344,27 @@ async function updateRegistration(reg) {
               <div v-for="(p, idx) in form.parking" :key="p.type" class="row g-2 align-items-center mb-2">
                 <div class="col-auto">
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" v-model="p.enabled" :id="`p-${idx}`" />
+                    <input class="form-check-input" type="checkbox" v-model="p.enabled" :id="`p-${idx}`"/>
                     <label class="form-check-label" :for="`p-${idx}`">{{ parkingTypes[idx].name }}</label>
                   </div>
                 </div>
                 <div class="col" v-if="p.enabled">
-                  <input v-model="p.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена" />
+                  <input v-model="p.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена"/>
                 </div>
               </div>
             </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-          <button type="submit" class="btn btn-brand" :disabled="saveLoading">
-            <span v-if="saveLoading" class="spinner-border spinner-border-sm me-2"></span>
-            Сохранить
-          </button>
-        </div>
-      </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+            <button type="submit" class="btn btn-brand" :disabled="saveLoading">
+              <span v-if="saveLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Сохранить
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <style scoped>
