@@ -89,6 +89,17 @@
   color: #fff;
 }
 
+/* brand colors for breadcrumb links */
+.breadcrumb-item > a {
+  color: var(--brand-color);
+  text-decoration: none;
+}
+.breadcrumb-item > a:hover,
+.breadcrumb-item > a:focus {
+  color: #0d2747;
+  text-decoration: underline;
+}
+
 .skip-link {
   position: absolute;
   top: -40px;
