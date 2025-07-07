@@ -13,6 +13,12 @@ const hasOtherPending = computed(
   () => props.pendingExamId && props.pendingExamId !== props.exam.id
 );
 
+const pendingTooltip = computed(() =>
+  props.exam.registration_status === 'PENDING'
+    ? 'Нажмите, чтобы отменить заявку'
+    : null
+);
+
 function formatStart(date) {
   const d = new Date(date);
   const text = d.toLocaleDateString('ru-RU', {
@@ -47,7 +53,10 @@ function seatStatus(e) {
 
 const btnClass = computed(() => {
   if (hasOtherPending.value) return 'btn-secondary';
-  if (!props.exam.registered) return 'btn-brand';
+  if (!props.exam.registered) {
+    if (props.exam.available === 0) return 'btn-secondary';
+    return 'btn-brand';
+  }
   if (props.exam.registration_status === 'PENDING') return 'btn-secondary';
   if (props.exam.registration_status === 'APPROVED') return 'btn-success';
   if (props.exam.registration_status === 'COMPLETED') return 'btn-primary';
@@ -56,7 +65,8 @@ const btnClass = computed(() => {
 
 const btnText = computed(() => {
   if (hasOtherPending.value) return 'Есть активная заявка';
-  if (!props.exam.registered) return 'Записаться';
+  if (!props.exam.registered)
+    return props.exam.available === 0 ? 'Мест нет' : 'Оставить заявку';
   if (props.exam.registration_status === 'PENDING') return 'На рассмотрении';
   if (props.exam.registration_status === 'APPROVED') return 'Подтверждена';
   if (props.exam.registration_status === 'COMPLETED') return 'Завершена';
@@ -104,6 +114,8 @@ const disabled = computed(
         :class="btnClass"
         :disabled="disabled || loading"
         @click="emit('toggle', exam)"
+        :data-bs-toggle="pendingTooltip ? 'tooltip' : null"
+        :title="pendingTooltip"
       >
         <span v-if="loading" class="spinner-border spinner-border-sm"></span>
         <template v-else>
