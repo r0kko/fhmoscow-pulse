@@ -55,16 +55,16 @@ async function loadUpcoming() {
       apiFetch('/medical-exams/me/upcoming?limit=3')
     ])
     const trainings = (trainingData.trainings || []).map((t) => ({
-      type: 'training',
-      ...t
+      ...t,
+      kind: 'training'
     }))
     const exams = (examData.exams || [])
       .filter(
         (e) => e.registration_status === 'APPROVED' || e.registration_status === 'COMPLETED'
       )
       .map((e) => ({
-        type: 'exam',
-        ...e
+        ...e,
+        kind: 'exam'
       }))
     upcoming.value = [...trainings, ...exams]
       .sort((a, b) => new Date(a.start_at) - new Date(b.start_at))
@@ -95,7 +95,7 @@ async function loadUpcoming() {
           <div v-else class="upcoming-scroll d-flex flex-nowrap gap-3">
             <UpcomingEventCard
               v-for="item in upcoming"
-              :key="item.type + '-' + item.id"
+              :key="item.kind + '-' + item.id"
               :event="item"
             />
           </div>
