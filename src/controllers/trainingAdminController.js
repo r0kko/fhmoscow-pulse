@@ -6,10 +6,12 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', stadium_id, group_id } = req.query;
     const { rows, count } = await trainingService.listAll({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
+      stadium_id,
+      group_id,
     });
     return res.json({ trainings: rows.map(mapper.toPublic), total: count });
   },

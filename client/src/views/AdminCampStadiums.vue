@@ -62,8 +62,11 @@ const typeFormError = ref('');
 const trainings = ref([]);
 const trainingsTotal = ref(0);
 const trainingsPage = ref(1);
+const trainingsPageSize = ref(8);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
+const trainingsFilterStadium = ref('');
+const trainingsFilterGroup = ref('');
 const stadiumOptions = ref([]);
 const refereeGroups = ref([]);
 const trainingForm = ref({
@@ -112,6 +115,9 @@ const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / 
 const registrationsTotalPages = computed(() =>
   Math.max(1, Math.ceil(registrationTotal.value / pageSize))
 );
+const trainingsTotalPages = computed(() =>
+  Math.max(1, Math.ceil(trainingsTotal.value / trainingsPageSize.value))
+);
 
 
 onMounted(() => {
@@ -131,6 +137,10 @@ watch(typesPage, () => {
   if (activeTab.value === 'types') loadTypes();
 });
 watch(trainingsPage, () => {
+  if (activeTab.value === 'trainings') loadTrainings();
+});
+watch([trainingsPageSize, trainingsFilterStadium, trainingsFilterGroup], () => {
+  trainingsPage.value = 1;
   if (activeTab.value === 'trainings') loadTrainings();
 });
 watch(registrationPage, () => {
@@ -385,8 +395,14 @@ async function loadTrainings() {
     trainingsLoading.value = true;
     const params = new URLSearchParams({
       page: trainingsPage.value,
-      limit: pageSize,
+      limit: trainingsPageSize.value,
     });
+    if (trainingsFilterStadium.value) {
+      params.set('stadium_id', trainingsFilterStadium.value);
+    }
+    if (trainingsFilterGroup.value) {
+      params.set('group_id', trainingsFilterGroup.value);
+    }
     const data = await apiFetch(`/camp-trainings?${params}`);
     trainings.value = data.trainings;
     trainingsTotal.value = data.total;
@@ -857,7 +873,31 @@ async function updateRegistration(reg) {
         </button>
       </div>
       <div class="card-body p-3">
-        <div v-if="trainings.length" class="table-responsive">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col">
+            <label class="form-label">Стадион</label>
+            <select v-model="trainingsFilterStadium" class="form-select">
+              <option value="">Все стадионы</option>
+              <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="form-label">Группа</label>
+            <select v-model="trainingsFilterGroup" class="form-select">
+              <option value="">Все группы</option>
+              <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <label class="form-label">На странице</label>
+            <select v-model.number="trainingsPageSize" class="form-select">
+              <option :value="8">8</option>
+              <option :value="15">15</option>
+              <option :value="30">30</option>
+            </select>
+          </div>
+        </div>
+        <div v-if="trainings.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
         <thead>
         <tr>
@@ -910,19 +950,62 @@ async function updateRegistration(reg) {
         </tbody>
           </table>
         </div>
+        <div v-if="trainings.length" class="d-block d-sm-none">
+          <div v-for="t in trainings" :key="t.id" class="card training-card mb-2">
+            <div class="card-body p-2">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <h6 class="mb-1">{{ t.type?.name }}</h6>
+                  <p class="mb-1">{{ t.stadium?.name }}</p>
+                  <p class="mb-1">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
+                  <p class="mb-1">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</p>
+                </div>
+                <div class="text-end">
+                  <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
+                    <i class="bi bi-people"></i>
+                  </button>
+                  <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" @click="removeTraining(t)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2">
+                <div
+                  v-for="g in refereeGroups"
+                  :key="g.id"
+                  class="form-check form-check-inline"
+                >
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    :id="`tm-${t.id}-${g.id}`"
+                    :checked="t.groups?.some((gr) => gr.id === g.id)"
+                    @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
+                  />
+                  <label class="form-check-label" :for="`tm-${t.id}-${g.id}`">
+                    {{ shortGroupName(g.name) }}
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
         </div>
       </div>
-    <nav class="mt-3" v-if="Math.ceil(trainingsTotal / pageSize) > 1">
+    <nav class="mt-3" v-if="trainingsTotalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
           <button class="page-link" @click="trainingsPage--" :disabled="trainingsPage === 1">Пред</button>
         </li>
-        <li class="page-item" v-for="p in Math.max(1, Math.ceil(trainingsTotal / pageSize))" :key="p" :class="{ active: trainingsPage === p }">
+        <li class="page-item" v-for="p in trainingsTotalPages" :key="p" :class="{ active: trainingsPage === p }">
           <button class="page-link" @click="trainingsPage = p">{{ p }}</button>
         </li>
-        <li class="page-item" :class="{ disabled: trainingsPage === Math.max(1, Math.ceil(trainingsTotal / pageSize)) }">
-          <button class="page-link" @click="trainingsPage++" :disabled="trainingsPage === Math.max(1, Math.ceil(trainingsTotal / pageSize))">След</button>
+        <li class="page-item" :class="{ disabled: trainingsPage === trainingsTotalPages }">
+          <button class="page-link" @click="trainingsPage++" :disabled="trainingsPage === trainingsTotalPages">След</button>
         </li>
       </ul>
     </nav>
@@ -1181,6 +1264,11 @@ async function updateRegistration(reg) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.training-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
 }
 
 @media (max-width: 575.98px) {
