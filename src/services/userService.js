@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 
-import { User, Role, UserRole, UserStatus } from '../models/index.js';
+import { User, Role, UserRole, UserStatus, Sex } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function createUser(data) {
@@ -8,6 +8,11 @@ async function createUser(data) {
   if (Number.isNaN(birth.getTime()) || birth < new Date('1945-01-01')) {
     throw new ServiceError('invalid_birth_date');
   }
+  if (!data.sex_id) {
+    throw new ServiceError('sex_required');
+  }
+  const sex = await Sex.findByPk(data.sex_id);
+  if (!sex) throw new ServiceError('sex_not_found', 404);
   const [activeStatus, unconfirmedStatus] = await Promise.all([
     UserStatus.findOne({ where: { alias: 'ACTIVE' } }),
     UserStatus.findOne({ where: { alias: 'EMAIL_UNCONFIRMED' } }),
@@ -74,6 +79,7 @@ async function listUsers(options = {}) {
   } else {
     include.push(UserStatus);
   }
+  include.push(Sex);
 
   return User.findAndCountAll({
     include,
@@ -85,7 +91,7 @@ async function listUsers(options = {}) {
 }
 
 async function getUser(id) {
-  const user = await User.findByPk(id, { include: [Role, UserStatus] });
+  const user = await User.findByPk(id, { include: [Role, UserStatus, Sex] });
   if (!user) throw new ServiceError('user_not_found', 404);
   return user;
 }
@@ -93,6 +99,13 @@ async function getUser(id) {
 async function updateUser(id, data) {
   const user = await User.findByPk(id);
   if (!user) throw new ServiceError('user_not_found', 404);
+  if (Object.prototype.hasOwnProperty.call(data, 'sex_id')) {
+    if (!data.sex_id) {
+      throw new ServiceError('sex_required');
+    }
+    const sex = await Sex.findByPk(data.sex_id);
+    if (!sex) throw new ServiceError('sex_not_found', 404);
+  }
   await user.update(data);
   return user;
 }

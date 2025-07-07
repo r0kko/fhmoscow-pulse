@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 export const createUserRules = [
   body('first_name').isString().notEmpty(),
   body('last_name').isString().notEmpty(),
+  body('sex_id').isUUID().withMessage('sex_required'),
   body('birth_date')
     .isISO8601()
     .custom((v) => {
@@ -19,6 +20,7 @@ export const updateUserRules = [
   body('first_name').optional().isString().notEmpty(),
   body('last_name').optional().isString().notEmpty(),
   body('patronymic').optional().isString(),
+  body('sex_id').optional().isUUID(),
   body('birth_date')
     .optional()
     .isISO8601()

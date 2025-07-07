@@ -14,6 +14,7 @@ const updateMock = jest.fn();
 const user = { addRole: addRoleMock, removeRole: removeRoleMock, update: updateMock };
 const findRoleMock = jest.fn();
 const statusFindMock = jest.fn();
+const sexFindMock = jest.fn();
 
 beforeEach(() => {
   addRoleMock.mockClear();
@@ -27,6 +28,7 @@ beforeEach(() => {
   updateMock.mockClear();
   findRoleMock.mockClear();
   statusFindMock.mockClear();
+  sexFindMock.mockClear();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -40,6 +42,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Role: { findOne: findRoleMock },
   UserRole: { findOne: userRoleFindMock },
   UserStatus: { findOne: statusFindMock },
+  Sex: { findByPk: sexFindMock },
 }));
 
 const { default: service } = await import('../src/services/userService.js');
@@ -122,7 +125,9 @@ test('createUser passes data to model', async () => {
     phone: '123',
     email: 'test@example.com',
     password: 'pass',
+    sex_id: 's1',
   };
+  sexFindMock.mockResolvedValueOnce({ id: 's1' });
   const res = await service.createUser(data);
   expect(createMock).toHaveBeenCalledWith({ ...data, status_id: unconfirmed.id });
   expect(res).toBe(user);
@@ -135,8 +140,9 @@ test('createUser throws if phone exists', async () => {
   findOneMock.mockResolvedValueOnce({}); // phone
   findOneMock.mockResolvedValueOnce(null); // email
   findOneMock.mockResolvedValueOnce(null); // name
+  sexFindMock.mockResolvedValueOnce({ id: 's1' });
   await expect(
-    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p' })
+    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p', sex_id: 's1' })
   ).rejects.toThrow('phone_exists');
 });
 
@@ -146,8 +152,9 @@ test('createUser throws if email exists', async () => {
   findOneMock.mockResolvedValueOnce(null); // phone
   findOneMock.mockResolvedValueOnce({}); // email
   findOneMock.mockResolvedValueOnce(null); // name
+  sexFindMock.mockResolvedValueOnce({ id: 's1' });
   await expect(
-    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p' })
+    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p', sex_id: 's1' })
   ).rejects.toThrow('email_exists');
 });
 
@@ -157,8 +164,9 @@ test('createUser throws if user exists by name', async () => {
   findOneMock.mockResolvedValueOnce(null); // phone
   findOneMock.mockResolvedValueOnce(null); // email
   findOneMock.mockResolvedValueOnce({}); // name
+  sexFindMock.mockResolvedValueOnce({ id: 's1' });
   await expect(
-    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p' })
+    service.createUser({ phone: '123', email: 'e', last_name: 'L', first_name: 'F', patronymic: 'P', birth_date: '2000-01-01', password: 'p', sex_id: 's1' })
   ).rejects.toThrow('user_exists');
 });
 

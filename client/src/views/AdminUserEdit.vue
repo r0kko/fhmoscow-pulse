@@ -20,6 +20,7 @@ const formRef = ref(null);
 const passportModalRef = ref(null);
 const passport = ref(null);
 const passportError = ref('');
+const sexes = ref([]);
 // Placeholder sections hidden until inventory feature is ready
 const placeholderSections = [];
 
@@ -56,7 +57,17 @@ async function loadUser() {
   }
 }
 
+async function loadSexes() {
+  try {
+    const data = await apiFetch('/sexes');
+    sexes.value = data.sexes;
+  } catch (_) {
+    sexes.value = [];
+  }
+}
+
 onMounted(loadUser);
+onMounted(loadSexes);
 
 async function loadPassport() {
   try {
@@ -172,6 +183,7 @@ async function save() {
           ref="formRef"
           v-model="user"
           :locked="true"
+          :sexes="sexes"
           @editing-changed="onEditingChanged"
         >
           <template #actions>
