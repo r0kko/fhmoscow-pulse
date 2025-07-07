@@ -11,7 +11,7 @@ MedicalExamRegistration.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    approved: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: null },
+    status_id: { type: DataTypes.UUID, allowNull: false },
   },
   {
     sequelize,

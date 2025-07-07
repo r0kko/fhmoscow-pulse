@@ -152,12 +152,12 @@ function openRegistrations(exam) {
   registrationModal.show()
 }
 
-async function setApproval(userId, approved) {
+async function setStatus(userId, status) {
   if (!registrationExam.value) return
   try {
     await apiFetch(
       `/medical-exams/${registrationExam.value.id}/registrations/${userId}`,
-      { method: 'PUT', body: JSON.stringify({ approved }) }
+      { method: 'PUT', body: JSON.stringify({ status }) }
     )
     await loadRegistrations(registrationExam.value.id)
     await load()
@@ -299,10 +299,35 @@ async function setApproval(userId, approved) {
               <tbody>
                 <tr v-for="r in registrationList" :key="r.user.id">
                   <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
-                  <td>{{ r.approved === null ? 'На рассмотрении' : r.approved ? 'Подтверждено' : 'Отклонено' }}</td>
+                  <td>
+                    {{
+                      r.status === 'PENDING'
+                        ? 'На рассмотрении'
+                        : r.status === 'APPROVED'
+                        ? 'Подтверждена'
+                        : r.status === 'COMPLETED'
+                        ? 'Завершена'
+                        : 'Отменена'
+                    }}
+                  </td>
                   <td class="text-end">
-                    <button v-if="r.approved !== true" class="btn btn-sm btn-success me-2" @click="setApproval(r.user.id, true)">✓</button>
-                    <button v-if="r.approved !== false" class="btn btn-sm btn-danger" @click="setApproval(r.user.id, false)">✕</button>
+                    <button
+                      v-if="r.status === 'PENDING'"
+                      class="btn btn-sm btn-success me-2"
+                      @click="setStatus(r.user.id, 'APPROVED')"
+                    >✓</button>
+                    <button
+                      v-if="r.status === 'APPROVED'"
+                      class="btn btn-sm btn-primary me-2"
+                      @click="setStatus(r.user.id, 'COMPLETED')"
+                    >
+                      <i class="bi bi-check2-all"></i>
+                    </button>
+                    <button
+                      v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
+                      class="btn btn-sm btn-danger"
+                      @click="setStatus(r.user.id, 'CANCELED')"
+                    >✕</button>
                   </td>
                 </tr>
               </tbody>

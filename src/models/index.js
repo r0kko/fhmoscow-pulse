@@ -33,6 +33,7 @@ import TrainingRefereeGroup from './trainingRefereeGroup.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExam from './medicalExam.js';
 import MedicalExamRegistration from './medicalExamRegistration.js';
+import MedicalExamRegistrationStatus from './medicalExamRegistrationStatus.js';
 import TrainingRegistration from './trainingRegistration.js';
 import TrainingRole from './trainingRole.js';
 import Sex from './sex.js';
@@ -164,6 +165,8 @@ MedicalExamRegistration.belongsTo(MedicalExam, {
 });
 User.hasMany(MedicalExamRegistration, { foreignKey: 'user_id' });
 MedicalExamRegistration.belongsTo(User, { foreignKey: 'user_id' });
+MedicalExamRegistrationStatus.hasMany(MedicalExamRegistration, { foreignKey: 'status_id' });
+MedicalExamRegistration.belongsTo(MedicalExamRegistrationStatus, { foreignKey: 'status_id' });
 
 /* external systems */
 User.hasMany(UserExternalId, { foreignKey: 'user_id' });
@@ -218,6 +221,7 @@ export {
   MedicalCenter,
   MedicalExam,
   MedicalExamRegistration,
+  MedicalExamRegistrationStatus,
   TrainingRole,
   TrainingRegistration,
   Sex,

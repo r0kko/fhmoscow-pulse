@@ -14,7 +14,7 @@ export default {
       );
       const registrations = rows.map((r) => ({
         user: userMapper.toPublic(r.User),
-        approved: r.approved,
+        status: r.MedicalExamRegistrationStatus?.alias,
       }));
       return res.json({ registrations, total: count });
     } catch (err) {
@@ -28,10 +28,10 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      await medicalExamRegistrationService.setApproval(
+      await medicalExamRegistrationService.setStatus(
         req.params.id,
         req.params.userId,
-        req.body.approved,
+        req.body.status,
         req.user.id
       );
       return res.status(204).end();
