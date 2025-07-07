@@ -60,6 +60,7 @@ const user = { id: '1', password: 'hash', update: updateMock };
 beforeEach(async () => {
   updateMock.mockClear();
   await attemptStore._reset();
+  user.status_id = undefined;
 });
 
 test('verifyCredentials returns user when valid', async () => {
@@ -128,8 +129,16 @@ test('verifyCredentials resets attempts on success', async () => {
   await expect(authService.rotateTokens(accessToken)).rejects.toThrow('invalid_token');
 });
 
- test('rotateTokens rejects missing user', async () => {
+test('rotateTokens rejects missing user', async () => {
   findByPkMock.mockResolvedValue(null);
   const { refreshToken } = authService.issueTokens(user);
   await expect(authService.rotateTokens(refreshToken)).rejects.toThrow('user_not_found');
+});
+
+test('rotateTokens rejects inactive user', async () => {
+  user.status_id = 'i';
+  findByPkMock.mockResolvedValue(user);
+  findStatusMock.mockResolvedValue({ id: 'i' });
+  const { refreshToken } = authService.issueTokens(user);
+  await expect(authService.rotateTokens(refreshToken)).rejects.toThrow('account_locked');
 });
