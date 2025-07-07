@@ -13,12 +13,7 @@ const upload = multer();
 
 const router = express.Router();
 
-router.get(
-  '/me',
-  auth,
-  authorize('REFEREE'),
-  medicalCertificateController.me
-);
+router.get('/me', auth, authorize('REFEREE'), medicalCertificateController.me);
 router.get(
   '/me/history',
   auth,
