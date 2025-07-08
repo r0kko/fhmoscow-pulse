@@ -19,7 +19,11 @@ export default {
         status: r.MedicalExamRegistrationStatus?.alias,
         created_at: r.createdAt ?? r.created_at,
       }));
-      return res.json({ registrations, total: count, approved_before: approvedBefore });
+      return res.json({
+        registrations,
+        total: count,
+        approved_before: approvedBefore,
+      });
     } catch (err) {
       return sendError(res, err, 404);
     }
