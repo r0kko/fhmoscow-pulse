@@ -5,6 +5,7 @@ const findAllMock = jest.fn();
 const createRegMock = jest.fn();
 const findRegMock = jest.fn();
 const updateMock = jest.fn();
+const restoreMock = jest.fn();
 const destroyMock = jest.fn();
 const findStatusMock = jest.fn();
 
@@ -29,6 +30,7 @@ beforeEach(() => {
   createRegMock.mockReset();
   findRegMock.mockReset();
   updateMock.mockReset();
+  restoreMock.mockReset();
   destroyMock.mockReset();
   findStatusMock.mockReset();
   findStatusMock.mockImplementation(({ where: { alias } }) => statuses[alias]);
@@ -50,10 +52,13 @@ const statuses = {
 
 test('register creates new registration', async () => {
   findExamMock.mockResolvedValue(exam);
-  findRegMock.mockResolvedValue(null);
+  findRegMock
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce(null);
   await service.register('u1', 'e1', 'u1');
-  expect(findRegMock).toHaveBeenCalledWith({
+  expect(findRegMock).toHaveBeenNthCalledWith(1, {
     where: { medical_exam_id: 'e1', user_id: 'u1' },
+    paranoid: false,
   });
   expect(createRegMock).toHaveBeenCalledWith({
     medical_exam_id: 'e1',
@@ -76,6 +81,21 @@ test('register fails when another active registration exists', async () => {
     .mockResolvedValueOnce(null) // check same exam
     .mockResolvedValueOnce({ id: 'r2' }); // check other active
   await expect(service.register('u1', 'e1', 'u1')).rejects.toBeTruthy();
+});
+
+test('register restores soft deleted registration', async () => {
+  findExamMock.mockResolvedValue(exam);
+  findRegMock
+    .mockResolvedValueOnce({ deletedAt: new Date(), restore: restoreMock, update: updateMock })
+    .mockResolvedValueOnce(null);
+  await service.register('u1', 'e1', 'u1');
+  expect(restoreMock).toHaveBeenCalled();
+  expect(updateMock).toHaveBeenCalledWith({
+    status_id: statuses.PENDING.id,
+    created_by: 'u1',
+    updated_by: 'u1',
+  });
+  expect(createRegMock).not.toHaveBeenCalled();
 });
 
 test('unregister removes pending registration', async () => {

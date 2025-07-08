@@ -156,8 +156,10 @@ async function register(userId, examId, actorId) {
 
   const existing = await MedicalExamRegistration.findOne({
     where: { medical_exam_id: examId, user_id: userId },
+    paranoid: false,
   });
-  if (existing) throw new ServiceError('already_registered');
+  if (existing && !existing.deletedAt)
+    throw new ServiceError('already_registered');
 
   const pendingId = await getStatusId('PENDING');
   const approvedId = await getStatusId('APPROVED');
@@ -170,6 +172,15 @@ async function register(userId, examId, actorId) {
     },
   });
   if (other) throw new ServiceError('other_active');
+  if (existing && existing.deletedAt) {
+    await existing.restore();
+    await existing.update({
+      status_id: pendingId,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+    return;
+  }
   await MedicalExamRegistration.create({
     medical_exam_id: examId,
     user_id: userId,
