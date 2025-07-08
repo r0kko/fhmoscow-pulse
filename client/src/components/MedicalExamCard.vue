@@ -6,12 +6,12 @@ import { pluralize } from '../utils/plural.js';
 const props = defineProps({
   exam: { type: Object, required: true },
   loading: { type: Boolean, default: false },
-  pendingExamId: { type: String, default: null },
+  activeExamId: { type: String, default: null },
 });
 const emit = defineEmits(['toggle']);
 
-const hasOtherPending = computed(
-  () => props.pendingExamId && props.pendingExamId !== props.exam.id
+const hasOtherActive = computed(
+  () => props.activeExamId && props.activeExamId !== props.exam.id
 );
 
 const pendingTooltip = computed(() =>
@@ -56,10 +56,17 @@ function seatStatus(e) {
   return '';
 }
 
+const approvedFull = computed(
+  () =>
+    typeof props.exam.capacity === 'number' &&
+    typeof props.exam.approved_count === 'number' &&
+    props.exam.approved_count >= props.exam.capacity
+);
+
 const btnClass = computed(() => {
-  if (hasOtherPending.value) return 'btn-secondary';
+  if (hasOtherActive.value) return 'btn-secondary';
   if (!props.exam.registered) {
-    if (props.exam.available === 0) return 'btn-secondary';
+    if (approvedFull.value) return 'btn-secondary';
     return 'btn-brand';
   }
   if (props.exam.registration_status === 'PENDING') return 'btn-secondary';
@@ -69,9 +76,9 @@ const btnClass = computed(() => {
 });
 
 const btnText = computed(() => {
-  if (hasOtherPending.value) return 'Есть активная заявка';
+  if (hasOtherActive.value) return 'Есть активная заявка';
   if (!props.exam.registered)
-    return props.exam.available === 0 ? 'Мест нет' : 'Оставить заявку';
+    return approvedFull.value ? 'Мест нет' : 'Оставить заявку';
   if (props.exam.registration_status === 'PENDING') return 'На рассмотрении';
   if (props.exam.registration_status === 'APPROVED') return 'Подтверждена';
   if (props.exam.registration_status === 'COMPLETED') return 'Завершена';
@@ -79,9 +86,9 @@ const btnText = computed(() => {
 });
 
 const btnIcon = computed(() => {
-  if (hasOtherPending.value) return 'bi-hourglass';
+  if (hasOtherActive.value) return 'bi-hourglass';
   if (!props.exam.registered) {
-    if (props.exam.available === 0) return 'bi-slash-circle';
+    if (approvedFull.value) return 'bi-slash-circle';
     return 'bi-plus-lg';
   }
   if (props.exam.registration_status === 'PENDING') return 'bi-hourglass';
@@ -92,13 +99,11 @@ const btnIcon = computed(() => {
 
 const disabled = computed(
   () =>
-    hasOtherPending.value ||
+    hasOtherActive.value ||
     props.exam.registration_status === 'APPROVED' ||
     props.exam.registration_status === 'COMPLETED' ||
     props.exam.registration_status === 'CANCELED' ||
-    (typeof props.exam.capacity === 'number' &&
-      typeof props.exam.approved_count === 'number' &&
-      props.exam.approved_count >= props.exam.capacity)
+    approvedFull.value
 );
 </script>
 
