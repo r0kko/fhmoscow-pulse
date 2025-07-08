@@ -91,6 +91,7 @@ async function listUpcomingByUser(userId, options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   const now = new Date();
+  const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const { rows } = await MedicalExam.findAndCountAll({
     include: [
       { model: MedicalCenter, include: [Address] },
@@ -105,7 +106,7 @@ async function listUpcomingByUser(userId, options = {}) {
         include: [MedicalExamRegistrationStatus],
       },
     ],
-    where: { start_at: { [Op.gt]: now } },
+    where: { start_at: { [Op.between]: [now, end] } },
     order: [['start_at', 'ASC']],
     limit,
     offset,
