@@ -8,7 +8,7 @@ const userSections = [
 
 const refereeSections = [
   { title: 'Управление сборами', icon: 'bi-building', to: '/camp-stadiums' },
-  { title: 'Группы судей', icon: 'bi-people-fill', to: '/referee-groups' },
+  { title: 'Группы судей', icon: 'bi-people-fill', to: '/camp-stadiums?tab=groups' },
 ]
 </script>
 

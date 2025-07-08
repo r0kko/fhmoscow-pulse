@@ -1,12 +1,16 @@
 <script setup>
-import {ref, onMounted, watch, computed} from 'vue';
-import {RouterLink} from 'vue-router';
+import { ref, onMounted, watch, computed } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import {apiFetch} from '../api.js';
 import {suggestAddress, cleanAddress} from '../dadata.js';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 
-const activeTab = ref('trainings');
+import RefereeGroups from '../components/RefereeGroups.vue';
+
+const route = useRoute();
+const router = useRouter();
+const activeTab = ref(route.query.tab || 'trainings');
 
 const phoneInput = ref('');
 
@@ -98,6 +102,7 @@ const addLoading = ref(false);
 const judges = ref([]);
 const trainingRoles = ref([]);
 const assignmentsRef = ref(null);
+const groupsRef = ref(null);
 
 const form = ref({
   name: '',
@@ -133,6 +138,7 @@ onMounted(() => {
   loadTrainings();
   loadStadiumOptions();
   loadRefereeGroups();
+  if (activeTab.value === 'groups') groupsRef.value?.refresh();
 });
 
 watch(currentPage, () => {
@@ -154,7 +160,17 @@ watch(registrationPage, () => {
   }
 });
 
+watch(
+  () => route.query.tab,
+  (val) => {
+    if (typeof val === 'string' && val !== activeTab.value) {
+      activeTab.value = val;
+    }
+  }
+);
+
 watch(activeTab, (val) => {
+  router.replace({ query: { ...route.query, tab: val } });
   if (val === 'types' && !trainingTypes.value.length) {
     loadTypes();
   } else if (val === 'trainings' && !trainings.value.length) {
@@ -162,6 +178,8 @@ watch(activeTab, (val) => {
     if (!stadiumOptions.value.length) loadStadiumOptions();
   } else if (val === 'judges') {
     assignmentsRef.value?.refresh();
+  } else if (val === 'groups') {
+    groupsRef.value?.refresh();
   }
 });
 
@@ -716,6 +734,11 @@ async function updateRegistration(reg) {
             <li class="nav-item">
               <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
                 Судьи
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" :class="{ active: activeTab === 'groups' }" @click="activeTab = 'groups'">
+                Группы
               </button>
             </li>
             <li class="nav-item">
@@ -1287,6 +1310,10 @@ async function updateRegistration(reg) {
 
   <div v-if="activeTab === 'judges'" class="mb-4">
     <RefereeGroupAssignments ref="assignmentsRef"/>
+  </div>
+
+  <div v-if="activeTab === 'groups'" class="mb-4">
+    <RefereeGroups ref="groupsRef"/>
   </div>
 
   <div ref="modalRef" class="modal fade" tabindex="-1">

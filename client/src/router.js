@@ -13,7 +13,6 @@ import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminCampStadiums from './views/AdminCampStadiums.vue';
-import AdminRefereeGroups from './views/AdminRefereeGroups.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import PasswordReset from './views/PasswordReset.vue';
@@ -71,7 +70,7 @@ const routes = [
   },
   {
     path: '/referee-groups',
-    component: AdminRefereeGroups,
+    redirect: { path: '/camp-stadiums', query: { tab: 'groups' } },
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
