@@ -14,11 +14,13 @@ const page = ref(1);
 const pageSize = 8;
 const loading = ref(false);
 const error = ref('');
+const search = ref('');
+const approvedBefore = ref(0);
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 
 const approvedIndices = computed(() => {
-  let num = 0;
+  let num = approvedBefore.value;
   return list.value.map((r) => {
     if (r.status === 'APPROVED') {
       num += 1;
@@ -34,6 +36,14 @@ onMounted(() => {
 });
 
 watch(page, loadRegistrations);
+let searchTimeout;
+watch(search, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    page.value = 1;
+    loadRegistrations();
+  }, 300);
+});
 
 function formatDateTime(value) {
   if (!value) return '';
@@ -72,10 +82,17 @@ async function loadExam() {
 async function loadRegistrations() {
   loading.value = true;
   try {
-    const params = new URLSearchParams({ page: page.value, limit: pageSize });
-    const data = await apiFetch(`/medical-exams/${route.params.id}/registrations?${params}`);
+    const params = new URLSearchParams({
+      page: page.value,
+      limit: pageSize,
+      search: search.value,
+    });
+    const data = await apiFetch(
+      `/medical-exams/${route.params.id}/registrations?${params}`
+    );
     list.value = data.registrations;
     total.value = data.total;
+    approvedBefore.value = data.approved_before || 0;
     error.value = '';
   } catch (e) {
     list.value = [];
@@ -117,6 +134,16 @@ async function setStatus(userId, status) {
         <strong>{{ exam.center?.name }}</strong>,
         {{ formatDateTime(exam.start_at) }} - {{ formatDateTime(exam.end_at) }}
       </p>
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-12 col-sm">
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Поиск"
+            v-model="search"
+          />
+        </div>
+      </div>
       <div v-if="examError" class="alert alert-danger mb-3">{{ examError }}</div>
       <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
       <div v-if="loading || loadingExam" class="text-center my-3">

@@ -22,12 +22,31 @@ async function getStatusId(alias) {
 }
 
 async function listByExam(examId, options = {}) {
+  const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
-  return MedicalExamRegistration.findAndCountAll({
+  const include = [
+    {
+      model: User,
+    },
+    MedicalExamRegistrationStatus,
+  ];
+  if (options.search) {
+    const term = `%${options.search}%`;
+    include[0].where = {
+      [Op.or]: [
+        { last_name: { [Op.iLike]: term } },
+        { first_name: { [Op.iLike]: term } },
+        { patronymic: { [Op.iLike]: term } },
+        { email: { [Op.iLike]: term } },
+      ],
+    };
+    include[0].required = true;
+  }
+  const { rows, count } = await MedicalExamRegistration.findAndCountAll({
     where: { medical_exam_id: examId },
-    include: [User, MedicalExamRegistrationStatus],
+    include,
     order: [
       [User, 'last_name', 'ASC'],
       [User, 'first_name', 'ASC'],
@@ -36,6 +55,26 @@ async function listByExam(examId, options = {}) {
     limit,
     offset,
   });
+
+  let approvedBefore = 0;
+  if (offset > 0) {
+    const before = await MedicalExamRegistration.findAll({
+      where: { medical_exam_id: examId },
+      include,
+      order: [
+        [User, 'last_name', 'ASC'],
+        [User, 'first_name', 'ASC'],
+        [User, 'patronymic', 'ASC'],
+      ],
+      limit: offset,
+    });
+    approvedBefore = before.filter(
+      (r) =>
+        r.MedicalExamRegistrationStatus?.alias === 'APPROVED' ||
+        r.MedicalExamRegistrationStatus?.alias === 'COMPLETED'
+    ).length;
+  }
+  return { rows, count, approvedBefore };
 }
 
 async function listAvailable(userId, options = {}) {
