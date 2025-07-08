@@ -96,27 +96,35 @@ export async function sendTrainingRoleChangedEmail(user, training, role) {
 }
 
 export async function sendMedicalExamRegistrationCreatedEmail(user, exam) {
-  const { subject, text, html } = renderMedicalExamRegistrationCreatedEmail(exam);
+  const { subject, text, html } =
+    renderMedicalExamRegistrationCreatedEmail(exam);
   await sendMail(user.email, subject, text, html);
 }
 
 export async function sendMedicalExamRegistrationApprovedEmail(user, exam) {
-  const { subject, text, html } = renderMedicalExamRegistrationApprovedEmail(exam);
+  const { subject, text, html } =
+    renderMedicalExamRegistrationApprovedEmail(exam);
   await sendMail(user.email, subject, text, html);
 }
 
 export async function sendMedicalExamRegistrationCancelledEmail(user, exam) {
-  const { subject, text, html } = renderMedicalExamRegistrationCancelledEmail(exam);
+  const { subject, text, html } =
+    renderMedicalExamRegistrationCancelledEmail(exam);
   await sendMail(user.email, subject, text, html);
 }
 
-export async function sendMedicalExamRegistrationSelfCancelledEmail(user, exam) {
-  const { subject, text, html } = renderMedicalExamRegistrationSelfCancelledEmail(exam);
+export async function sendMedicalExamRegistrationSelfCancelledEmail(
+  user,
+  exam
+) {
+  const { subject, text, html } =
+    renderMedicalExamRegistrationSelfCancelledEmail(exam);
   await sendMail(user.email, subject, text, html);
 }
 
 export async function sendMedicalExamRegistrationCompletedEmail(user, exam) {
-  const { subject, text, html } = renderMedicalExamRegistrationCompletedEmail(exam);
+  const { subject, text, html } =
+    renderMedicalExamRegistrationCompletedEmail(exam);
   await sendMail(user.email, subject, text, html);
 }
 export default {

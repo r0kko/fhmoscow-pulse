@@ -15,8 +15,7 @@ export function renderMedicalExamRegistrationCreatedEmail(exam) {
 
   let text = `Вы записались на медицинский осмотр ${date}.`;
   if (address) text += `\nМесто проведения: ${address}.`;
-  text +=
-    '\n\nЕсли вы не подавали эту заявку, сообщите администратору.';
+  text += '\n\nЕсли вы не подавали эту заявку, сообщите администратору.';
 
   const htmlAddress = address
     ? `<p style="font-size:16px;margin:0 0 16px;">Место проведения: ${address}.</p>`

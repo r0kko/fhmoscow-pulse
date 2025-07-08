@@ -7,6 +7,7 @@ import {
   Address,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+
 import emailService from './emailService.js';
 
 const statusCache = new Map();
@@ -211,11 +212,16 @@ async function unregister(userId, examId) {
     throw new ServiceError('cancellation_forbidden');
   await reg.destroy();
   const [exam, user] = await Promise.all([
-    MedicalExam.findByPk(examId, { include: [{ model: MedicalCenter, include: [Address] }] }),
+    MedicalExam.findByPk(examId, {
+      include: [{ model: MedicalCenter, include: [Address] }],
+    }),
     User.findByPk(userId),
   ]);
   if (user && exam) {
-    await emailService.sendMedicalExamRegistrationSelfCancelledEmail(user, exam);
+    await emailService.sendMedicalExamRegistrationSelfCancelledEmail(
+      user,
+      exam
+    );
   }
 }
 
@@ -227,7 +233,9 @@ async function setStatus(examId, userId, status, actorId) {
   const statusId = await getStatusId(status);
   await reg.update({ status_id: statusId, updated_by: actorId });
   const [exam, user] = await Promise.all([
-    MedicalExam.findByPk(examId, { include: [{ model: MedicalCenter, include: [Address] }] }),
+    MedicalExam.findByPk(examId, {
+      include: [{ model: MedicalCenter, include: [Address] }],
+    }),
     User.findByPk(userId),
   ]);
   if (user && exam) {
@@ -236,10 +244,16 @@ async function setStatus(examId, userId, status, actorId) {
         await emailService.sendMedicalExamRegistrationApprovedEmail(user, exam);
         break;
       case 'CANCELED':
-        await emailService.sendMedicalExamRegistrationCancelledEmail(user, exam);
+        await emailService.sendMedicalExamRegistrationCancelledEmail(
+          user,
+          exam
+        );
         break;
       case 'COMPLETED':
-        await emailService.sendMedicalExamRegistrationCompletedEmail(user, exam);
+        await emailService.sendMedicalExamRegistrationCompletedEmail(
+          user,
+          exam
+        );
         break;
       default:
         await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
@@ -254,7 +268,9 @@ async function remove(examId, userId) {
   if (!reg) throw new ServiceError('registration_not_found', 404);
   await reg.destroy();
   const [exam, user] = await Promise.all([
-    MedicalExam.findByPk(examId, { include: [{ model: MedicalCenter, include: [Address] }] }),
+    MedicalExam.findByPk(examId, {
+      include: [{ model: MedicalCenter, include: [Address] }],
+    }),
     User.findByPk(userId),
   ]);
   if (user && exam) {
