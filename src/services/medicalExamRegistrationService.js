@@ -7,6 +7,7 @@ import {
   Address,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import emailService from './emailService.js';
 
 const statusCache = new Map();
 async function getStatusId(alias) {
@@ -137,6 +138,7 @@ async function listUpcomingByUser(userId, options = {}) {
 async function register(userId, examId, actorId) {
   const exam = await MedicalExam.findByPk(examId, {
     include: [
+      { model: MedicalCenter, include: [Address] },
       {
         model: MedicalExamRegistration,
         include: [MedicalExamRegistrationStatus],
@@ -180,6 +182,10 @@ async function register(userId, examId, actorId) {
       created_by: actorId,
       updated_by: actorId,
     });
+    const user = await User.findByPk(userId);
+    if (user) {
+      await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
+    }
     return;
   }
   await MedicalExamRegistration.create({
@@ -189,6 +195,10 @@ async function register(userId, examId, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
+  const user = await User.findByPk(userId);
+  if (user) {
+    await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
+  }
 }
 
 async function unregister(userId, examId) {
@@ -200,6 +210,13 @@ async function unregister(userId, examId) {
   if (reg.status_id !== pendingId)
     throw new ServiceError('cancellation_forbidden');
   await reg.destroy();
+  const [exam, user] = await Promise.all([
+    MedicalExam.findByPk(examId, { include: [{ model: MedicalCenter, include: [Address] }] }),
+    User.findByPk(userId),
+  ]);
+  if (user && exam) {
+    await emailService.sendMedicalExamRegistrationSelfCancelledEmail(user, exam);
+  }
 }
 
 async function setStatus(examId, userId, status, actorId) {
@@ -209,6 +226,25 @@ async function setStatus(examId, userId, status, actorId) {
   if (!reg) throw new ServiceError('registration_not_found', 404);
   const statusId = await getStatusId(status);
   await reg.update({ status_id: statusId, updated_by: actorId });
+  const [exam, user] = await Promise.all([
+    MedicalExam.findByPk(examId, { include: [{ model: MedicalCenter, include: [Address] }] }),
+    User.findByPk(userId),
+  ]);
+  if (user && exam) {
+    switch (status) {
+      case 'APPROVED':
+        await emailService.sendMedicalExamRegistrationApprovedEmail(user, exam);
+        break;
+      case 'CANCELED':
+        await emailService.sendMedicalExamRegistrationCancelledEmail(user, exam);
+        break;
+      case 'COMPLETED':
+        await emailService.sendMedicalExamRegistrationCompletedEmail(user, exam);
+        break;
+      default:
+        await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
+    }
+  }
 }
 
 async function remove(examId, userId) {
@@ -217,6 +253,13 @@ async function remove(examId, userId) {
   });
   if (!reg) throw new ServiceError('registration_not_found', 404);
   await reg.destroy();
+  const [exam, user] = await Promise.all([
+    MedicalExam.findByPk(examId, { include: [{ model: MedicalCenter, include: [Address] }] }),
+    User.findByPk(userId),
+  ]);
+  if (user && exam) {
+    await emailService.sendMedicalExamRegistrationCancelledEmail(user, exam);
+  }
 }
 
 export default {
