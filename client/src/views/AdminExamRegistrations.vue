@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
@@ -16,6 +16,7 @@ const loading = ref(false);
 const error = ref('');
 const search = ref('');
 const approvedBefore = ref(0);
+const statusLoading = reactive({});
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 
@@ -82,6 +83,7 @@ async function loadExam() {
 async function loadRegistrations() {
   loading.value = true;
   try {
+    Object.keys(statusLoading).forEach((k) => delete statusLoading[k]);
     const params = new URLSearchParams({
       page: page.value,
       limit: pageSize,
@@ -103,6 +105,8 @@ async function loadRegistrations() {
 }
 
 async function setStatus(userId, status) {
+  if (statusLoading[userId]) return;
+  statusLoading[userId] = true;
   try {
     await apiFetch(`/medical-exams/${route.params.id}/registrations/${userId}`, {
       method: 'PUT',
@@ -111,6 +115,8 @@ async function setStatus(userId, status) {
     await loadRegistrations();
   } catch (e) {
     alert(e.message);
+  } finally {
+    statusLoading[userId] = false;
   }
 }
 </script>
@@ -186,19 +192,38 @@ async function setStatus(userId, status) {
                     v-if="r.status === 'PENDING'"
                     class="btn btn-sm btn-success me-2"
                     @click="setStatus(r.user.id, 'APPROVED')"
-                  >✓</button>
+                    :disabled="statusLoading[r.user.id]"
+                  >
+                    <span
+                      v-if="statusLoading[r.user.id]"
+                      class="spinner-border spinner-border-sm me-2"
+                    ></span>
+                    ✓
+                  </button>
                   <button
                     v-if="r.status === 'APPROVED'"
                     class="btn btn-sm btn-primary me-2"
                     @click="setStatus(r.user.id, 'COMPLETED')"
+                    :disabled="statusLoading[r.user.id]"
                   >
+                    <span
+                      v-if="statusLoading[r.user.id]"
+                      class="spinner-border spinner-border-sm me-2"
+                    ></span>
                     <i class="bi bi-check2-all"></i>
                   </button>
                   <button
                     v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
                     class="btn btn-sm btn-danger"
                     @click="setStatus(r.user.id, 'CANCELED')"
-                  >✕</button>
+                    :disabled="statusLoading[r.user.id]"
+                  >
+                    <span
+                      v-if="statusLoading[r.user.id]"
+                      class="spinner-border spinner-border-sm me-2"
+                    ></span>
+                    ✕
+                  </button>
                 </td>
               </tr>
             </tbody>
