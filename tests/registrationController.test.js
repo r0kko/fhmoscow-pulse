@@ -53,6 +53,13 @@ jest.unstable_mockModule('../src/services/addressService.js', () => ({
   default: { fetchFromLegacy: fetchAddressMock },
 }));
 
+const getByAliasMock = jest.fn();
+
+jest.unstable_mockModule('../src/services/sexService.js', () => ({
+  __esModule: true,
+  default: { getByAlias: getByAliasMock },
+}));
+
 
 const issueTokensMock = jest.fn(() => ({
   accessToken: 'a',
@@ -109,12 +116,15 @@ test('start returns code_sent when data is valid', async () => {
   };
   findUserMock.mockResolvedValueOnce(null); // no existing
   findLegacyMock.mockResolvedValueOnce(legacyUser);
+  getByAliasMock.mockResolvedValueOnce({ id: 'm1' });
   createUserMock.mockResolvedValueOnce({ id: 'u1' });
   findSystemMock.mockResolvedValueOnce(null);
   const req = { body: { email: 't@example.com' } };
   const res = createRes();
   await controller.start(req, res);
-  expect(createUserMock).toHaveBeenCalled();
+  expect(createUserMock).toHaveBeenCalledWith(
+    expect.objectContaining({ sex_id: 'm1' })
+  );
   expect(sendCodeMock).toHaveBeenCalled();
   expect(res.json).toHaveBeenCalledWith({ message: 'code_sent' });
 });
@@ -131,13 +141,14 @@ test('start keeps leading zeros in phone number', async () => {
   };
   findUserMock.mockResolvedValueOnce(null);
   findLegacyMock.mockResolvedValueOnce(legacyUser);
+  getByAliasMock.mockResolvedValueOnce({ id: 'm1' });
   createUserMock.mockResolvedValueOnce({ id: 'u1' });
   findSystemMock.mockResolvedValueOnce(null);
   const req = { body: { email: 't@example.com' } };
   const res = createRes();
   await controller.start(req, res);
   expect(createUserMock).toHaveBeenCalledWith(
-    expect.objectContaining({ phone: '7990123456' })
+    expect.objectContaining({ phone: '7990123456', sex_id: 'm1' })
   );
 });
 

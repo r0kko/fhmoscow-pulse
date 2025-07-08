@@ -5,6 +5,7 @@ import { User } from '../models/index.js';
 import emailVerificationService from '../services/emailVerificationService.js';
 import legacyService from '../services/legacyUserService.js';
 import userService from '../services/userService.js';
+import sexService from '../services/sexService.js';
 import authService from '../services/authService.js';
 import passportService from '../services/passportService.js';
 import bankAccountService from '../services/bankAccountService.js';
@@ -42,7 +43,8 @@ export default {
     };
     let user;
     try {
-      user = await userService.createUser(data);
+      const male = await sexService.getByAlias('MALE');
+      user = await userService.createUser({ ...data, sex_id: male.id });
     } catch (err) {
       return sendError(res, err);
     }
