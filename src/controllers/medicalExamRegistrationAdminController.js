@@ -6,18 +6,20 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', search = '' } = req.query;
     try {
-      const { rows, count } = await medicalExamRegistrationService.listByExam(
-        req.params.id,
-        { page: parseInt(page, 10), limit: parseInt(limit, 10) }
-      );
+      const { rows, count, approvedBefore } =
+        await medicalExamRegistrationService.listByExam(req.params.id, {
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          search: search.trim(),
+        });
       const registrations = rows.map((r) => ({
         user: userMapper.toPublic(r.User),
         status: r.MedicalExamRegistrationStatus?.alias,
         created_at: r.createdAt ?? r.created_at,
       }));
-      return res.json({ registrations, total: count });
+      return res.json({ registrations, total: count, approved_before: approvedBefore });
     } catch (err) {
       return sendError(res, err, 404);
     }
