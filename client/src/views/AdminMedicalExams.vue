@@ -54,6 +54,13 @@ function formatPhone(digits) {
   return out
 }
 
+function toInputValue(str) {
+  if (!str) return ''
+  const d = new Date(str)
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
+
 async function loadCenters() {
   try {
     const data = await apiFetch('/medical-centers?page=1&limit=100')
@@ -88,8 +95,8 @@ function openCreate() {
 function openEdit(exam) {
   editing.value = exam
   form.value.medical_center_id = exam.center?.id || ''
-  form.value.start_at = exam.start_at?.slice(0, 16)
-  form.value.end_at = exam.end_at?.slice(0, 16)
+  form.value.start_at = toInputValue(exam.start_at)
+  form.value.end_at = toInputValue(exam.end_at)
   form.value.capacity = exam.capacity || ''
   formError.value = ''
   modal.show()
@@ -100,8 +107,8 @@ async function save() {
     formError.value = ''
     const body = {
       medical_center_id: form.value.medical_center_id,
-      start_at: form.value.start_at,
-      end_at: form.value.end_at,
+      start_at: new Date(form.value.start_at).toISOString(),
+      end_at: new Date(form.value.end_at).toISOString(),
       capacity: form.value.capacity
     }
     if (editing.value) {
