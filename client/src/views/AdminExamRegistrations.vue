@@ -17,6 +17,17 @@ const error = ref('');
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 
+const approvedIndices = computed(() => {
+  let num = 0;
+  return list.value.map((r) => {
+    if (r.status === 'APPROVED') {
+      num += 1;
+      return num;
+    }
+    return null;
+  });
+});
+
 onMounted(() => {
   loadExam();
   loadRegistrations();
@@ -127,7 +138,7 @@ async function setStatus(userId, status) {
             </thead>
             <tbody>
               <tr v-for="(r, idx) in list" :key="r.user.id">
-                <td>{{ (page - 1) * pageSize + idx + 1 }}</td>
+                <td>{{ approvedIndices[idx] !== null ? approvedIndices[idx] : '' }}</td>
                 <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                 <td>{{ formatDateTime(r.created_at) }}</td>
                 <td>{{ r.user.email }}</td>
