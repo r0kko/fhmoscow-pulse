@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/users' },
+  { title: 'Документы', icon: 'bi-file-earmark', to: '/documents-admin' },
   { title: 'Медицина', icon: 'bi-file-earmark-medical', to: '/medical-admin' },
 ]
 
