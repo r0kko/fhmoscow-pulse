@@ -26,7 +26,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await medicalCertificateService.removeForUser(req.user.id);
+      await medicalCertificateService.removeForUser(req.user.id, req.user.id);
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

@@ -52,7 +52,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await snilsService.remove(req.params.id);
+      await snilsService.remove(req.params.id, req.user.id);
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

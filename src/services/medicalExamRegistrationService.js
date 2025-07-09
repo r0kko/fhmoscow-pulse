@@ -242,7 +242,7 @@ async function register(userId, examId, actorId) {
   }
 }
 
-async function unregister(userId, examId) {
+async function unregister(userId, examId, actorId = null) {
   const reg = await MedicalExamRegistration.findOne({
     where: { medical_exam_id: examId, user_id: userId },
   });
@@ -250,6 +250,7 @@ async function unregister(userId, examId) {
   const pendingId = await getStatusId('PENDING');
   if (reg.status_id !== pendingId)
     throw new ServiceError('cancellation_forbidden');
+  await reg.update({ updated_by: actorId });
   await reg.destroy();
   const [exam, user] = await Promise.all([
     MedicalExam.findByPk(examId, {
@@ -301,11 +302,12 @@ async function setStatus(examId, userId, status, actorId) {
   }
 }
 
-async function remove(examId, userId) {
+async function remove(examId, userId, actorId = null) {
   const reg = await MedicalExamRegistration.findOne({
     where: { medical_exam_id: examId, user_id: userId },
   });
   if (!reg) throw new ServiceError('registration_not_found', 404);
+  await reg.update({ updated_by: actorId });
   await reg.destroy();
   const [exam, user] = await Promise.all([
     MedicalExam.findByPk(examId, {

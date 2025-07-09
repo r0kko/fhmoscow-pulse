@@ -69,7 +69,7 @@ async function updateForUser(userId, alias, data, actorId) {
   return addr;
 }
 
-async function removeForUser(userId, alias) {
+async function removeForUser(userId, alias, actorId = null) {
   const type = await AddressType.findOne({ where: { alias } });
   if (!type) throw new ServiceError('address_type_not_found', 404);
   const ua = await UserAddress.findOne({
@@ -77,7 +77,9 @@ async function removeForUser(userId, alias) {
     include: [Address],
   });
   if (!ua) throw new ServiceError('address_not_found', 404);
+  await ua.Address.update({ updated_by: actorId });
   await ua.Address.destroy();
+  await ua.update({ updated_by: actorId });
   await ua.destroy();
 }
 

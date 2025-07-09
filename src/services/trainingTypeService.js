@@ -45,9 +45,10 @@ async function update(id, data, actorId) {
   return type;
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const type = await TrainingType.findByPk(id);
   if (!type) throw new ServiceError('training_type_not_found', 404);
+  await type.update({ updated_by: actorId });
   await type.destroy();
 }
 

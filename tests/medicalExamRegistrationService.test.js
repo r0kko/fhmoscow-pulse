@@ -133,17 +133,18 @@ test('unregister removes pending registration', async () => {
   findRegMock.mockResolvedValue({
     status_id: statuses.PENDING.id,
     destroy: destroyMock,
+    update: jest.fn(),
   });
   findExamMock.mockResolvedValue(exam);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
-  await service.unregister('u1', 'e1');
+  await service.unregister('u1', 'e1', 'u1');
   expect(destroyMock).toHaveBeenCalled();
   expect(sendSelfCancelledMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, exam);
 });
 
 test('unregister fails when approved', async () => {
   findRegMock.mockResolvedValue({ status_id: statuses.APPROVED.id });
-  await expect(service.unregister('u1', 'e1')).rejects.toBeTruthy();
+  await expect(service.unregister('u1', 'e1', 'u1')).rejects.toBeTruthy();
 });
 
 test('listAvailable returns mapped exams', async () => {
@@ -205,10 +206,12 @@ test('setStatus sends email on approval', async () => {
 });
 
 test('remove sends cancellation email', async () => {
-  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  const updateMockLocal = jest.fn();
+  findRegMock.mockResolvedValue({ destroy: destroyMock, update: updateMockLocal });
   findExamMock.mockResolvedValue(exam);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
-  await service.remove('e1', 'u1');
+  await service.remove('e1', 'u1', 'admin');
+  expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
   expect(sendCancelledMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, exam);
 });

@@ -1,3 +1,6 @@
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/database.js';
+
 import User from './user.js';
 import Role from './role.js';
 import UserRole from './userRole.js';
@@ -188,6 +191,15 @@ Passport.belongsTo(Country, { foreignKey: 'country_id' });
 /* email verification codes */
 User.hasMany(EmailCode, { foreignKey: 'user_id' });
 EmailCode.belongsTo(User, { foreignKey: 'user_id' });
+
+const auditExclude = ['Log'];
+for (const model of Object.values(sequelize.models)) {
+  if (!auditExclude.includes(model.name)) {
+    model.rawAttributes.created_by = { type: DataTypes.UUID };
+    model.rawAttributes.updated_by = { type: DataTypes.UUID };
+    model.refreshAttributes();
+  }
+}
 
 export {
   User,

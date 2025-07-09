@@ -184,7 +184,7 @@ test('finish issues tokens after valid code', async () => {
     '123',
     'REGISTRATION_STEP_1'
   );
-  expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd');
+  expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd', 'u1');
   expect(fetchAddressMock).toHaveBeenCalledWith('u1');
   expect(fetchBankMock).toHaveBeenCalledWith('u1');
   expect(fetchPassportMock).toHaveBeenCalledWith('u1');

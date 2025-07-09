@@ -80,7 +80,7 @@ test('finish resets password when code valid', async () => {
   const res = createRes();
   await controller.finish(req, res);
   expect(verifyCodeMock).toHaveBeenCalledWith(user, '123');
-  expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd');
+  expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd', 'u1');
   expect(res.json).toHaveBeenCalledWith({ message: 'password_updated' });
 });
 

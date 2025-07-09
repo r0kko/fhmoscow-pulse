@@ -55,7 +55,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await medicalCenterService.remove(req.params.id);
+      await medicalCenterService.remove(req.params.id, req.user.id);
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

@@ -88,12 +88,14 @@ async function getDownloadUrl(file) {
   );
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const attachment = await MedicalCertificateFile.findOne({
     where: { file_id: id },
     include: [File],
   });
   if (!attachment) throw new ServiceError('file_not_found', 404);
+  await attachment.update({ updated_by: actorId });
+  await attachment.File.update({ updated_by: actorId });
   await attachment.destroy();
   await attachment.File.destroy();
 }

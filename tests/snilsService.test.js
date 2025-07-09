@@ -56,12 +56,18 @@ test('update throws when record missing', async () => {
 
 test('remove deletes snils', async () => {
   const destroyMock = jest.fn();
-  findOneMock.mockResolvedValueOnce({ ...snilsInstance, destroy: destroyMock });
-  await service.remove('u1');
+  const updateMockLocal = jest.fn();
+  findOneMock.mockResolvedValueOnce({
+    ...snilsInstance,
+    destroy: destroyMock,
+    update: updateMockLocal,
+  });
+  await service.remove('u1', 'admin');
+  expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
 });
 
 test('remove throws when not found', async () => {
   findOneMock.mockResolvedValueOnce(null);
-  await expect(service.remove('u1')).rejects.toThrow('snils_not_found');
+  await expect(service.remove('u1', 'admin')).rejects.toThrow('snils_not_found');
 });

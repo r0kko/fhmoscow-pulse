@@ -82,7 +82,7 @@ export default {
         code,
         'REGISTRATION_STEP_1'
       );
-      await userService.resetPassword(user.id, password);
+      await userService.resetPassword(user.id, password, user.id);
       await addressService.fetchFromLegacy(user.id);
       await bankAccountService.fetchFromLegacy(user.id);
       await passportService.fetchFromLegacy(user.id);

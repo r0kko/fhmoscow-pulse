@@ -11,7 +11,11 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const user = await userService.updateUser(req.user.id, req.body);
+      const user = await userService.updateUser(
+        req.user.id,
+        req.body,
+        req.user.id
+      );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err);

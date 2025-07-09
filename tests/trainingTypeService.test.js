@@ -51,12 +51,16 @@ test('create generates alias from name', async () => {
 });
 
 test('remove deletes training type', async () => {
-  findByPkMock.mockResolvedValue({ ...instance });
-  await service.remove('t1');
+  const updateMockLocal = jest.fn();
+  findByPkMock.mockResolvedValue({ ...instance, update: updateMockLocal });
+  await service.remove('t1', 'admin');
+  expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
 });
 
 test('remove throws when not found', async () => {
   findByPkMock.mockResolvedValue(null);
-  await expect(service.remove('t1')).rejects.toThrow('training_type_not_found');
+  await expect(service.remove('t1', 'admin')).rejects.toThrow(
+    'training_type_not_found'
+  );
 });

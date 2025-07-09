@@ -56,7 +56,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await refereeGroupService.remove(req.params.id);
+      await refereeGroupService.remove(req.params.id, req.user.id);
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

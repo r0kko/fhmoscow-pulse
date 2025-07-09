@@ -28,7 +28,7 @@ export default {
     if (!user) return res.status(404).json({ error: 'not_found' });
     try {
       await passwordResetService.verifyCode(user, code);
-      await userService.resetPassword(user.id, password);
+      await userService.resetPassword(user.id, password, user.id);
       return res.json({ message: 'password_updated' });
     } catch (err) {
       return sendError(res, err);

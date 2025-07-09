@@ -58,7 +58,11 @@ export default {
 
   async remove(req, res) {
     try {
-      await addressService.removeForUser(req.params.id, req.params.type);
+      await addressService.removeForUser(
+        req.params.id,
+        req.params.type,
+        req.user.id
+      );
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);

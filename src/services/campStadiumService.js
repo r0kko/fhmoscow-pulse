@@ -103,10 +103,14 @@ async function update(id, data, actorId) {
   return getById(id);
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const stadium = await CampStadium.findByPk(id, { include: [Address] });
   if (!stadium) throw new ServiceError('stadium_not_found', 404);
-  if (stadium.Address) await stadium.Address.destroy();
+  if (stadium.Address) {
+    await stadium.Address.update({ updated_by: actorId });
+    await stadium.Address.destroy();
+  }
+  await stadium.update({ updated_by: actorId });
   await stadium.destroy();
 }
 

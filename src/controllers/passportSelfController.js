@@ -26,7 +26,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await passportService.removeByUser(req.user.id);
+      await passportService.removeByUser(req.user.id, req.user.id);
       return res.status(204).send();
     } catch (err) {
       return sendError(res, err, 404);

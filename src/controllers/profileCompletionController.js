@@ -6,7 +6,8 @@ export default {
     try {
       const user = await userService.setStatus(
         req.user.id,
-        'AWAITING_CONFIRMATION'
+        'AWAITING_CONFIRMATION',
+        req.user.id
       );
       return res.json({
         user: { id: user.id, status: 'AWAITING_CONFIRMATION' },
@@ -22,7 +23,7 @@ export default {
       return res.status(400).json({ error: 'status_required' });
     }
     try {
-      const user = await userService.setStatus(req.user.id, status);
+      const user = await userService.setStatus(req.user.id, status, req.user.id);
       return res.json({ user: { id: user.id, status } });
     } catch (err) {
       return sendError(res, err);
