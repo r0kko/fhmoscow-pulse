@@ -6,7 +6,8 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS cnt FROM document_types WHERE alias = \'PERSONAL_DATA_CONSENT\';'
+        // eslint-disable-next-line
+      "SELECT COUNT(*) AS cnt FROM document_types WHERE alias = 'PERSONAL_DATA_CONSENT';"
     );
     if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(

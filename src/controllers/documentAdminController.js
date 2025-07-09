@@ -4,7 +4,9 @@ import { sendError } from '../utils/api.js';
 export default {
   async downloadConsent(req, res) {
     try {
-      const pdf = await documentService.generatePersonalDataConsent(req.params.id);
+      const pdf = await documentService.generatePersonalDataConsent(
+        req.params.id
+      );
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
         'Content-Disposition',

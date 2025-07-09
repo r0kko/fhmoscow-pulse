@@ -6,6 +6,11 @@ import controller from '../controllers/documentAdminController.js';
 
 const router = express.Router();
 
-router.get('/consent/:id', auth, authorize('ADMIN'), controller.downloadConsent);
+router.get(
+  '/consent/:id',
+  auth,
+  authorize('ADMIN'),
+  controller.downloadConsent
+);
 
 export default router;

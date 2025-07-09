@@ -15,7 +15,9 @@ async function generatePersonalDataConsent(userId) {
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
   doc.registerFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
   doc.font('DejaVu');
-  doc.fontSize(14).text('Согласие на обработку персональных данных', { align: 'center' });
+  doc
+    .fontSize(14)
+    .text('Согласие на обработку персональных данных', { align: 'center' });
   doc.moveDown();
   const fullName = [user.last_name, user.first_name, user.patronymic]
     .filter(Boolean)
