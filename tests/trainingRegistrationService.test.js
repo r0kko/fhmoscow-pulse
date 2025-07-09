@@ -244,3 +244,20 @@ test('listUpcomingByUser includes my role', async () => {
   expect(res.rows[0].my_role).toEqual({ id: 'r1', name: 'Участник', alias: 'PARTICIPANT' });
   expect(findAndCountAllMock).toHaveBeenCalled();
 });
+
+test('updatePresence updates value for admin', async () => {
+  const updateMock = jest.fn();
+  findRegMock.mockResolvedValueOnce({ update: updateMock });
+  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'ADMIN' }] });
+  await service.updatePresence('t1', 'u1', true, 'admin');
+  expect(updateMock).toHaveBeenCalledWith({ present: true, updated_by: 'admin' });
+});
+
+test('updatePresence rejects when not coach', async () => {
+  findRegMock.mockResolvedValueOnce({});
+  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'REFEREE' }] });
+  findRegMock.mockResolvedValueOnce(null);
+  await expect(
+    service.updatePresence('t1', 'u1', false, 'u2')
+  ).rejects.toThrow('access_denied');
+});

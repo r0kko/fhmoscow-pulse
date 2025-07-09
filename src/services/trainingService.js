@@ -8,6 +8,7 @@ import {
   Address,
   User,
   TrainingRole,
+  Role,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import TrainingRegistration from '../models/trainingRegistration.js';
@@ -174,11 +175,34 @@ async function remove(id, actorId = null) {
   await training.destroy();
 }
 
+async function setAttendanceMarked(id, marked, actorId) {
+  const training = await Training.findByPk(id);
+  if (!training) throw new ServiceError('training_not_found', 404);
+  const actor = await User.findByPk(actorId, { include: [Role] });
+  if (!actor) throw new ServiceError('user_not_found', 404);
+  const isAdmin = actor.Roles.some((r) => r.alias === 'ADMIN');
+  if (!isAdmin) {
+    if (!actor.Roles.some((r) => r.alias === 'REFEREE')) {
+      throw new ServiceError('access_denied');
+    }
+    const coachReg = await TrainingRegistration.findOne({
+      where: { training_id: id, user_id: actorId },
+      include: [TrainingRole],
+    });
+    if (coachReg?.TrainingRole?.alias !== 'COACH') {
+      throw new ServiceError('access_denied');
+    }
+  }
+  await training.update({ attendance_marked: marked, updated_by: actorId });
+  return getById(id);
+}
+
 export default {
   listAll,
   getById,
   create,
   update,
+  setAttendanceMarked,
   remove,
   isRegistrationOpen,
 };

@@ -11,6 +11,7 @@ TrainingRegistration.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    present: { type: DataTypes.BOOLEAN, allowNull: true },
   },
   {
     sequelize,

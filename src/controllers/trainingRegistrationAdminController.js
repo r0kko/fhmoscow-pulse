@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 
 import trainingRegistrationService from '../services/trainingRegistrationService.js';
 import userMapper from '../mappers/userMapper.js';
+import trainingMapper from '../mappers/trainingMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
@@ -21,8 +22,35 @@ export default {
               alias: r.TrainingRole.alias,
             }
           : null,
+        present: r.present,
       }));
       return res.json({ registrations, total: count });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
+  async listForAttendance(req, res) {
+    try {
+      const { rows, training } = await trainingRegistrationService.listForAttendance(
+        req.params.id,
+        req.user.id
+      );
+      const registrations = rows.map((r) => ({
+        user: userMapper.toPublic(r.User),
+        role: r.TrainingRole
+          ? {
+              id: r.TrainingRole.id,
+              name: r.TrainingRole.name,
+              alias: r.TrainingRole.alias,
+            }
+          : null,
+        present: r.present,
+      }));
+      return res.json({
+        training: trainingMapper.toPublic(training),
+        registrations,
+      });
     } catch (err) {
       return sendError(res, err, 404);
     }
@@ -56,6 +84,20 @@ export default {
         req.params.id,
         req.params.userId,
         req.body.training_role_id,
+        req.user.id
+      );
+      return res.status(204).end();
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
+  async updatePresence(req, res) {
+    try {
+      await trainingRegistrationService.updatePresence(
+        req.params.id,
+        req.params.userId,
+        req.body.present,
         req.user.id
       );
       return res.status(204).end();
