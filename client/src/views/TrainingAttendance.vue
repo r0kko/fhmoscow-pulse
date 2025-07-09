@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import Toast from 'bootstrap/js/dist/toast';
@@ -7,6 +7,15 @@ import Toast from 'bootstrap/js/dist/toast';
 const route = useRoute();
 const training = ref(null);
 const registrations = ref([]);
+const visibleRegistrations = computed(() =>
+  registrations.value
+    .filter((r) => r.role?.alias !== 'COACH')
+    .sort((a, b) => {
+      const aName = `${a.user.last_name} ${a.user.first_name}`;
+      const bName = `${b.user.last_name} ${b.user.first_name}`;
+      return aName.localeCompare(bName, 'ru');
+    })
+);
 const loading = ref(false);
 const error = ref('');
 const toastRef = ref(null);
@@ -97,30 +106,53 @@ function showToast(message) {
           {{ formatDateTime(training.start_at) }} –
           {{ new Date(training.end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
         </p>
-        <div v-if="registrations.length" class="card section-card tile fade-in shadow-sm">
+        <div v-if="visibleRegistrations.length" class="card section-card tile fade-in shadow-sm">
           <div class="card-body table-responsive p-3">
             <table class="table table-striped align-middle mb-0">
               <thead>
                 <tr>
                   <th>Участник</th>
-                  <th>Роль</th>
+                  <th>Год рождения</th>
                   <th class="text-end">Присутствие</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="r in registrations" :key="r.user.id">
+                <tr v-for="r in visibleRegistrations" :key="r.user.id">
                   <td>{{ r.user.last_name }} {{ r.user.first_name }}</td>
-                  <td>{{ r.role?.name }}</td>
+                  <td>{{ new Date(r.user.birth_date).getFullYear() }}</td>
                   <td class="text-end">
-                    <select
-                      class="form-select form-select-sm w-auto d-inline"
-                      :value="r.present === null ? '' : r.present"
-                      @change="setPresence(r.user.id, $event.target.value === '' ? null : $event.target.value === 'true')"
-                    >
-                      <option value="">Не отмечено</option>
-                      <option :value="true">Да</option>
-                      <option :value="false">Нет</option>
-                    </select>
+                    <div class="btn-group btn-group-sm" role="group">
+                      <input
+                        type="radio"
+                        class="btn-check"
+                        :id="`present-yes-${r.user.id}`"
+                        :name="`present-${r.user.id}`"
+                        autocomplete="off"
+                        :checked="r.present === true"
+                        @change="setPresence(r.user.id, true)"
+                      />
+                      <label
+                        class="btn btn-outline-success"
+                        :for="`present-yes-${r.user.id}`"
+                      >
+                        Да
+                      </label>
+                      <input
+                        type="radio"
+                        class="btn-check"
+                        :id="`present-no-${r.user.id}`"
+                        :name="`present-${r.user.id}`"
+                        autocomplete="off"
+                        :checked="r.present !== true"
+                        @change="setPresence(r.user.id, false)"
+                      />
+                      <label
+                        class="btn btn-outline-danger"
+                        :for="`present-no-${r.user.id}`"
+                      >
+                        Нет
+                      </label>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -128,7 +160,7 @@ function showToast(message) {
           </div>
         </div>
         <p v-else class="text-muted">Нет записей</p>
-        <button class="btn btn-brand mt-3" @click="finish" :disabled="!registrations.length">
+        <button class="btn btn-brand mt-3" @click="finish" :disabled="!visibleRegistrations.length">
           Завершить
         </button>
       </div>

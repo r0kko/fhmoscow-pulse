@@ -264,6 +264,10 @@ async function listForAttendance(trainingId, actorId) {
     page: 1,
     limit: 1000,
   });
+
+  const filtered = isAdmin
+    ? rows
+    : rows.filter((r) => r.TrainingRole?.alias !== 'COACH');
   const training = await Training.findByPk(trainingId, {
     include: [
       TrainingType,
@@ -271,7 +275,7 @@ async function listForAttendance(trainingId, actorId) {
       { model: Season, where: { active: true }, required: true },
     ],
   });
-  return { rows, count, training: training ? training.get() : null };
+  return { rows: filtered, count: filtered.length, training: training ? training.get() : null };
 }
 
 async function listUpcomingByUser(userId, options = {}) {
