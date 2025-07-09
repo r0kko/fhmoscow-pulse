@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch, apiFetchBlob } from '../api.js';
 
 const route = useRoute();
 const exam = ref(null);
@@ -11,14 +11,17 @@ const loadingExam = ref(false);
 const list = ref([]);
 const total = ref(0);
 const page = ref(1);
-const pageSize = 8;
+const pageSize = ref(8);
+const downloading = ref(false);
 const loading = ref(false);
 const error = ref('');
 const search = ref('');
 const approvedBefore = ref(0);
 const statusLoading = reactive({});
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(total.value / pageSize.value))
+);
 
 const approvedIndices = computed(() => {
   let num = approvedBefore.value;
@@ -36,7 +39,7 @@ onMounted(() => {
   loadRegistrations();
 });
 
-watch(page, loadRegistrations);
+watch([page, pageSize], loadRegistrations);
 let searchTimeout;
 watch(search, () => {
   clearTimeout(searchTimeout);
@@ -86,7 +89,7 @@ async function loadRegistrations() {
     Object.keys(statusLoading).forEach((k) => delete statusLoading[k]);
     const params = new URLSearchParams({
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       search: search.value,
     });
     const data = await apiFetch(
@@ -119,6 +122,25 @@ async function setStatus(userId, status) {
     statusLoading[userId] = false;
   }
 }
+
+async function exportPdf() {
+  downloading.value = true;
+  try {
+    const blob = await apiFetchBlob(
+      `/medical-exams/${route.params.id}/registrations/export`
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'registrations.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    downloading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -148,6 +170,22 @@ async function setStatus(userId, status) {
             placeholder="Поиск"
             v-model="search"
           />
+        </div>
+        <div class="col-auto">
+          <select v-model.number="pageSize" class="form-select">
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-secondary" @click="exportPdf" :disabled="downloading">
+            <span
+              v-if="downloading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            PDF
+          </button>
         </div>
       </div>
       <div v-if="examError" class="alert alert-danger mb-3">{{ examError }}</div>

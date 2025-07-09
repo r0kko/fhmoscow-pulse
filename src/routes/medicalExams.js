@@ -39,6 +39,12 @@ router.get(
   authorize('ADMIN'),
   registrationsController.list
 );
+router.get(
+  '/:id/registrations/export',
+  auth,
+  authorize('ADMIN'),
+  registrationsController.exportPdf
+);
 router.put(
   '/:id/registrations/:userId',
   auth,
