@@ -9,6 +9,7 @@ function sanitize(obj) {
     capacity,
     camp_stadium_id,
     season_id,
+    attendance_marked,
     TrainingType,
     CampStadium,
     Season,
@@ -26,6 +27,7 @@ function sanitize(obj) {
     registration_open: obj.registration_open,
     registered: obj.user_registered,
     registered_count,
+    attendance_marked,
   };
   if (TrainingType) {
     res.type = {

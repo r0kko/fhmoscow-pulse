@@ -216,6 +216,64 @@ async function updateRole(trainingId, userId, roleId, actorId) {
   }
 }
 
+async function updatePresence(trainingId, userId, present, actorId) {
+  const registration = await TrainingRegistration.findOne({
+    where: { training_id: trainingId, user_id: userId },
+  });
+  if (!registration) throw new ServiceError('registration_not_found', 404);
+
+  const actor = await User.findByPk(actorId, { include: [Role] });
+  if (!actor) throw new ServiceError('user_not_found', 404);
+  const isAdmin = actor.Roles.some((r) => r.alias === 'ADMIN');
+
+  if (!isAdmin) {
+    if (!actor.Roles.some((r) => r.alias === 'REFEREE')) {
+      throw new ServiceError('access_denied');
+    }
+    const coachReg = await TrainingRegistration.findOne({
+      where: { training_id: trainingId, user_id: actorId },
+      include: [TrainingRole],
+    });
+    if (coachReg?.TrainingRole?.alias !== 'COACH') {
+      throw new ServiceError('access_denied');
+    }
+  }
+
+  await registration.update({ present, updated_by: actorId });
+}
+
+async function listForAttendance(trainingId, actorId) {
+  const actor = await User.findByPk(actorId, { include: [Role] });
+  if (!actor) throw new ServiceError('user_not_found', 404);
+  const isAdmin = actor.Roles.some((r) => r.alias === 'ADMIN');
+
+  if (!isAdmin) {
+    if (!actor.Roles.some((r) => r.alias === 'REFEREE')) {
+      throw new ServiceError('access_denied');
+    }
+    const coachReg = await TrainingRegistration.findOne({
+      where: { training_id: trainingId, user_id: actorId },
+      include: [TrainingRole],
+    });
+    if (coachReg?.TrainingRole?.alias !== 'COACH') {
+      throw new ServiceError('access_denied');
+    }
+  }
+
+  const { rows, count } = await listByTraining(trainingId, {
+    page: 1,
+    limit: 1000,
+  });
+  const training = await Training.findByPk(trainingId, {
+    include: [
+      TrainingType,
+      { model: CampStadium, include: [Address] },
+      { model: Season, where: { active: true }, required: true },
+    ],
+  });
+  return { rows, count, training: training ? training.get() : null };
+}
+
 async function listUpcomingByUser(userId, options = {}) {
   const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -316,6 +374,8 @@ export default {
   unregister,
   listUpcomingByUser,
   listByTraining,
+  listForAttendance,
   updateRole,
+  updatePresence,
   remove,
 };

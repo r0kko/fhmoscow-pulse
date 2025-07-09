@@ -6,3 +6,7 @@ export const createRegistrationRules = [
 ];
 
 export const updateRegistrationRules = [body('training_role_id').isUUID()];
+
+export const updatePresenceRules = [
+  body('present').optional({ nullable: true }).isBoolean(),
+];

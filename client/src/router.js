@@ -16,6 +16,7 @@ import AdminCampStadiums from './views/AdminCampStadiums.vue';
 import AdminRefereeGroups from './views/AdminRefereeGroups.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
+import TrainingAttendance from './views/TrainingAttendance.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
@@ -33,6 +34,11 @@ const routes = [
     path: '/camps',
     component: Camps,
     meta: { requiresAuth: true, requiresReferee: true },
+  },
+  {
+    path: '/trainings/:id/attendance',
+    component: TrainingAttendance,
+    meta: { requiresAuth: true },
   },
   {
     path: '/admin',

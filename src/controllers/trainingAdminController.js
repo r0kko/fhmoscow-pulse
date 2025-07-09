@@ -55,6 +55,23 @@ export default {
     }
   },
 
+  async setAttendance(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const training = await trainingService.setAttendanceMarked(
+        req.params.id,
+        req.body.attendance_marked,
+        req.user.id
+      );
+      return res.json({ training: mapper.toPublic(training) });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
   async remove(req, res) {
     try {
       await trainingService.remove(req.params.id);

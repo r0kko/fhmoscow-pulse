@@ -8,6 +8,8 @@ const destroyMock = jest.fn();
 const bulkCreateMock = jest.fn();
 const findAllGroupsMock = jest.fn();
 const findOneSeasonMock = jest.fn();
+const findUserMock = jest.fn();
+const findRegMock = jest.fn();
 
 const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
@@ -24,6 +26,8 @@ beforeEach(() => {
   bulkCreateMock.mockReset();
   findAllGroupsMock.mockReset();
   findOneSeasonMock.mockReset();
+  findUserMock.mockReset();
+  findRegMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -38,8 +42,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Address: {},
   Season: { findOne: findOneSeasonMock },
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
-  User: {},
+  User: { findByPk: findUserMock },
   TrainingRole: {},
+  TrainingRegistration: { findOne: findRegMock },
   RefereeGroup: { findAll: findAllGroupsMock },
 }));
 
@@ -183,5 +188,19 @@ test('listAll returns trainings ordered by start date', async () => {
       ]),
     })
   );
+});
+
+test('setAttendanceMarked updates for admin', async () => {
+  findByPkMock.mockResolvedValue({ update: updateMock });
+  findUserMock.mockResolvedValue({ Roles: [{ alias: 'ADMIN' }] });
+  await service.setAttendanceMarked('t1', true, 'admin');
+  expect(updateMock).toHaveBeenCalledWith({ attendance_marked: true, updated_by: 'admin' });
+});
+
+test('setAttendanceMarked rejects when not coach', async () => {
+  findByPkMock.mockResolvedValue({ update: updateMock });
+  findUserMock.mockResolvedValue({ Roles: [{ alias: 'REFEREE' }] });
+  findRegMock.mockResolvedValue(null);
+  await expect(service.setAttendanceMarked('t1', true, 'u1')).rejects.toThrow('access_denied');
 });
 

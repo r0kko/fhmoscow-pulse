@@ -12,7 +12,9 @@ import {
 import {
   createRegistrationRules,
   updateRegistrationRules,
+  updatePresenceRules,
 } from '../validators/trainingRegistrationValidators.js';
+import { updateAttendanceRules } from '../validators/trainingValidators.js';
 
 const router = express.Router();
 
@@ -56,6 +58,18 @@ router.put(
   updateRegistrationRules,
   registrationsController.update
 );
+router.put(
+  '/:id/registrations/:userId/presence',
+  auth,
+  updatePresenceRules,
+  registrationsController.updatePresence
+);
+router.get(
+  '/:id/attendance',
+  auth,
+  registrationsController.listForAttendance
+);
+router.put('/:id/attendance', auth, updateAttendanceRules, controller.setAttendance);
 router.delete(
   '/:id/registrations/:userId',
   auth,
