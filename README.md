@@ -145,6 +145,12 @@ VITE_API_BASE=/api
 VITE_ALLOWED_HOSTS=pulse.fhmoscow.com
 ```
 
+To enable Cyrillic text in exported PDF documents, provide the
+`PDF_FONT_PATH` variable with the full path to a TrueType font that
+supports the Russian alphabet, for example `DejaVuSans.ttf`. The file
+is not included in the repository; place it in `assets/fonts` or
+reference an existing system font.
+
 Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application
 starts in HTTP mode and relies on nginx for TLS termination.
 

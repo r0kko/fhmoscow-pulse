@@ -12,4 +12,14 @@ const defaultPath = path.resolve(
 );
 
 const candidate = process.env.PDF_FONT_PATH || defaultPath;
-export const PDF_FONT_PATH = fs.existsSync(candidate) ? candidate : undefined;
+let fontPath;
+if (fs.existsSync(candidate)) {
+  fontPath = candidate;
+} else {
+  if (process.env.PDF_FONT_PATH) {
+    console.warn(`PDF font not found at ${candidate}, falling back to default`);
+  }
+  fontPath = undefined;
+}
+
+export const PDF_FONT_PATH = fontPath;
