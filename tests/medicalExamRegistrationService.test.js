@@ -21,6 +21,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   MedicalCenter: {},
   Address: {},
   User: { findByPk: findUserMock },
+  Sex: {},
 }));
 
 const sendCreatedMock = jest.fn();

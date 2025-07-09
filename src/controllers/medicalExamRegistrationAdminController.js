@@ -59,4 +59,20 @@ export default {
       return sendError(res, err, 404);
     }
   },
+
+  async exportPdf(req, res) {
+    try {
+      const pdf = await medicalExamRegistrationService.exportApprovedPdf(
+        req.params.id
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename="registrations.pdf"'
+      );
+      return res.end(pdf);
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
 };

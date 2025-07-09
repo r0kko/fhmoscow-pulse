@@ -1,3 +1,5 @@
+import PDFDocument from 'pdfkit-table';
+
 import {
   MedicalExam,
   MedicalExamRegistration,
@@ -5,6 +7,7 @@ import {
   User,
   MedicalCenter,
   Address,
+  Sex,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -320,6 +323,84 @@ async function remove(examId, userId, actorId = null) {
   }
 }
 
+async function listApproved(examId) {
+  const { Op } = await import('sequelize');
+  const approvedId = await getStatusId('APPROVED');
+  const completedId = await getStatusId('COMPLETED');
+  return MedicalExamRegistration.findAll({
+    where: {
+      medical_exam_id: examId,
+      status_id: { [Op.in]: [approvedId, completedId] },
+    },
+    include: [{ model: User, include: [Sex] }],
+    order: [
+      [User, 'last_name', 'ASC'],
+      [User, 'first_name', 'ASC'],
+      [User, 'patronymic', 'ASC'],
+    ],
+  });
+}
+
+function formatPhone(digits) {
+  if (!digits) return '';
+  let out = '+7';
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
+  if (digits.length >= 4) out += ') ';
+  if (digits.length >= 4) out += digits.slice(4, 7);
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
+  return out;
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  const [year, month, day] = str.split('-');
+  return `${day}.${month}.${year}`;
+}
+
+async function exportApprovedPdf(examId) {
+  const regs = await listApproved(examId);
+  const doc = new PDFDocument({ margin: 30, size: 'A4' });
+  doc.registerFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
+  doc.font('DejaVu');
+  doc.fontSize(14).text('Подтверждённые заявки', { align: 'center' });
+  doc.moveDown();
+
+  const table = {
+    headers: [
+      { label: 'Фамилия', property: 'last', width: 70 },
+      { label: 'Имя', property: 'first', width: 60 },
+      { label: 'Отчество', property: 'patronymic', width: 70 },
+      { label: 'Пол', property: 'sex', width: 40 },
+      { label: 'Дата рождения', property: 'birth', width: 60 },
+      { label: 'Email', property: 'email', width: 120 },
+      { label: 'Телефон', property: 'phone', width: 70 },
+    ],
+    datas: regs.map((r) => ({
+      last: r.User.last_name,
+      first: r.User.first_name,
+      patronymic: r.User.patronymic || '',
+      sex: r.User.Sex ? r.User.Sex.name : '',
+      birth: formatDate(r.User.birth_date),
+      email: r.User.email,
+      phone: formatPhone(r.User.phone),
+    })),
+  };
+
+  await doc.table(table, {
+    prepareHeader: () => doc.font('DejaVu').fontSize(10),
+    prepareRow: () => doc.font('DejaVu').fontSize(10),
+  });
+
+  const chunks = [];
+  return new Promise((resolve, reject) => {
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+    doc.end();
+  });
+}
+
 export default {
   listByExam,
   listAvailable,
@@ -328,4 +409,6 @@ export default {
   unregister,
   setStatus,
   remove,
+  listApproved,
+  exportApprovedPdf,
 };

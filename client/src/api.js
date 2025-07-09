@@ -176,3 +176,44 @@ export async function apiFetchForm(path, form, options = {}) {
   }
   return data;
 }
+
+export async function apiFetchBlob(path, options = {}) {
+  const { redirectOn401 = true, ...rest } = options;
+  const opts = { credentials: 'include', ...rest };
+  opts.headers = { ...(opts.headers || {}) };
+  const xsrf = getXsrfToken();
+  if (xsrf) {
+    opts.headers['X-XSRF-TOKEN'] = xsrf;
+  }
+  if (accessToken) {
+    opts.headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, opts);
+  } catch (_err) {
+    throw new Error('Сетевая ошибка');
+  }
+  if (res.status === 401) {
+    if (path !== '/auth/refresh' && !refreshFailed) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return apiFetchBlob(path, options);
+      }
+    }
+    clearAuth();
+    if (
+      redirectOn401 &&
+      typeof window !== 'undefined' &&
+      window.location &&
+      window.location.pathname !== '/login'
+    ) {
+      window.location.href = '/login';
+    }
+    throw new Error(`Ошибка запроса, код ${res.status}`);
+  }
+  if (!res.ok) {
+    throw new Error(`Ошибка запроса, код ${res.status}`);
+  }
+  return res.blob();
+}
