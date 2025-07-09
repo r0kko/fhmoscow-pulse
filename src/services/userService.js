@@ -165,7 +165,9 @@ async function assignRole(userId, alias, actorId = null) {
     return user;
   }
 
-  await user.addRole(role, { through: { created_by: actorId, updated_by: actorId } });
+  await user.addRole(role, {
+    through: { created_by: actorId, updated_by: actorId },
+  });
   return user;
 }
 
@@ -176,7 +178,9 @@ async function removeRole(userId, alias, actorId = null) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('role_not_found', 404);
-  const link = await UserRole.findOne({ where: { user_id: userId, role_id: role.id } });
+  const link = await UserRole.findOne({
+    where: { user_id: userId, role_id: role.id },
+  });
   if (link) {
     await link.update({ updated_by: actorId });
   }
