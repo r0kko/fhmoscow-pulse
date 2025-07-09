@@ -1,6 +1,6 @@
-import { Op } from 'sequelize';
+import {Op} from 'sequelize';
 
-import { User, Role, UserRole, UserStatus, Sex } from '../models/index.js';
+import {Role, Sex, User, UserRole, UserStatus} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function createUser(data, actorId = null) {
@@ -38,13 +38,12 @@ async function createUser(data, actorId = null) {
   if (personalExisting) throw new ServiceError('user_exists');
 
   const status = unconfirmedStatus || activeStatus;
-  const user = await User.create({
+  return await User.create({
     ...data,
     status_id: status.id,
     created_by: actorId,
     updated_by: actorId,
   });
-  return user;
 }
 
 async function listUsers(options = {}) {
