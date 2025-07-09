@@ -121,7 +121,7 @@ function showToast(message) {
                   <td>{{ r.user.last_name }} {{ r.user.first_name }}</td>
                   <td>{{ new Date(r.user.birth_date).getFullYear() }}</td>
                   <td class="text-end">
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="btn-group btn-group-sm presence-group" role="group">
                       <input
                         type="radio"
                         class="btn-check"
@@ -132,10 +132,11 @@ function showToast(message) {
                         @change="setPresence(r.user.id, true)"
                       />
                       <label
-                        class="btn btn-outline-success"
+                        class="btn btn-outline-success presence-btn"
                         :for="`present-yes-${r.user.id}`"
                       >
-                        Да
+                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        <span class="visually-hidden">Да</span>
                       </label>
                       <input
                         type="radio"
@@ -147,10 +148,11 @@ function showToast(message) {
                         @change="setPresence(r.user.id, false)"
                       />
                       <label
-                        class="btn btn-outline-danger"
+                        class="btn btn-outline-danger presence-btn"
                         :for="`present-no-${r.user.id}`"
                       >
-                        Нет
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                        <span class="visually-hidden">Нет</span>
                       </label>
                     </div>
                   </td>
@@ -178,6 +180,14 @@ function showToast(message) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.presence-group .presence-btn {
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0;
 }
 
 @media (max-width: 575.98px) {
