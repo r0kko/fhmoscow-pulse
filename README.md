@@ -146,12 +146,11 @@ VITE_ALLOWED_HOSTS=pulse.fhmoscow.com
 ```
 
 To enable Cyrillic text in exported PDF documents, provide the
-`PDF_FONT_PATH` variable with the full path to a TrueType font that
-supports the Russian alphabet (for example `DejaVuSans.ttf`). The file is
-not included in the repository; place it in `assets/fonts` or reference an
-existing system font. If the configured font cannot be read, the service
-falls back to the default PDF font which may render Cyrillic characters
-incorrectly.
+`PDF_FONT_DIR` variable pointing to a directory that contains the
+`SBSansText` TrueType fonts. Copy the font files into `assets/fonts` or
+reference an existing directory on the system. If the fonts are missing or
+cannot be read, the service falls back to builtin PDF fonts which may render
+Cyrillic characters incorrectly.
 
 Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application
 starts in HTTP mode and relies on nginx for TLS termination.
