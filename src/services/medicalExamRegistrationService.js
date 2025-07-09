@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit-table';
-import { PDF_FONTS } from '../config/pdf.js';
 
+import { PDF_FONTS } from '../config/pdf.js';
 import {
   MedicalExam,
   MedicalExamRegistration,
@@ -368,25 +368,36 @@ async function exportApprovedPdf(examId) {
   if (PDF_FONTS.regular) {
     try {
       doc.registerFont('SB-Regular', PDF_FONTS.regular);
-    } catch {}
+    } catch {
+      /* empty */
+    }
   }
   if (PDF_FONTS.bold) {
     try {
       doc.registerFont('SB-Bold', PDF_FONTS.bold);
-    } catch {}
+    } catch {
+      /* empty */
+    }
   }
   if (PDF_FONTS.italic) {
     try {
       doc.registerFont('SB-Italic', PDF_FONTS.italic);
-    } catch {}
+    } catch {
+      /* empty */
+    }
   }
   if (PDF_FONTS.boldItalic) {
     try {
       doc.registerFont('SB-BoldItalic', PDF_FONTS.boldItalic);
-    } catch {}
+    } catch {
+      /* empty */
+    }
   }
 
-  doc.font(bold).fontSize(16).text('Подтверждённые заявки', { align: 'center' });
+  doc
+    .font(bold)
+    .fontSize(16)
+    .text('Подтверждённые заявки', { align: 'center' });
   doc.moveDown();
 
   const table = {
@@ -434,6 +445,5 @@ export default {
   unregister,
   setStatus,
   remove,
-  listApproved,
   exportApprovedPdf,
 };
