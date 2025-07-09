@@ -261,7 +261,7 @@ async function listForAttendance(trainingId, actorId) {
     }
   }
 
-  const { rows, count } = await listByTraining(trainingId, {
+  const { rows } = await listByTraining(trainingId, {
     page: 1,
     limit: 1000,
   });
@@ -276,7 +276,11 @@ async function listForAttendance(trainingId, actorId) {
       { model: Season, where: { active: true }, required: true },
     ],
   });
-  return { rows: filtered, count: filtered.length, training: training ? training.get() : null };
+  return {
+    rows: filtered,
+    count: filtered.length,
+    training: training ? training.get() : null,
+  };
 }
 
 async function listUpcomingByUser(userId, options = {}) {

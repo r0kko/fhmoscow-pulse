@@ -32,6 +32,4 @@ export const trainingUpdateRules = [
   body('groups.*').isUUID(),
 ];
 
-export const updateAttendanceRules = [
-  body('attendance_marked').isBoolean(),
-];
+export const updateAttendanceRules = [body('attendance_marked').isBoolean()];

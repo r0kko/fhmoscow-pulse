@@ -32,10 +32,11 @@ export default {
 
   async listForAttendance(req, res) {
     try {
-      const { rows, training } = await trainingRegistrationService.listForAttendance(
-        req.params.id,
-        req.user.id
-      );
+      const { rows, training } =
+        await trainingRegistrationService.listForAttendance(
+          req.params.id,
+          req.user.id
+        );
       const registrations = rows.map((r) => ({
         user: userMapper.toPublic(r.User),
         role: r.TrainingRole

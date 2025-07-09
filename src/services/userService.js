@@ -1,6 +1,6 @@
-import {Op} from 'sequelize';
+import { Op } from 'sequelize';
 
-import {Role, Sex, User, UserRole, UserStatus} from '../models/index.js';
+import { Role, Sex, User, UserRole, UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function createUser(data, actorId = null) {

@@ -64,12 +64,13 @@ router.put(
   updatePresenceRules,
   registrationsController.updatePresence
 );
-router.get(
+router.get('/:id/attendance', auth, registrationsController.listForAttendance);
+router.put(
   '/:id/attendance',
   auth,
-  registrationsController.listForAttendance
+  updateAttendanceRules,
+  controller.setAttendance
 );
-router.put('/:id/attendance', auth, updateAttendanceRules, controller.setAttendance);
 router.delete(
   '/:id/registrations/:userId',
   auth,
