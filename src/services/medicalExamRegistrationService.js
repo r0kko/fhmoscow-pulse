@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit-table';
+import { PDF_FONTS } from '../config/pdf.js';
 
-import { PDF_FONT_PATH } from '../config/pdf.js';
 import {
   MedicalExam,
   MedicalExamRegistration,
@@ -361,29 +361,43 @@ function formatDate(str) {
 
 async function exportApprovedPdf(examId) {
   const regs = await listApproved(examId);
-  const doc = new PDFDocument({ margin: 30, size: 'A4' });
-  let fontName = 'Helvetica';
-  if (PDF_FONT_PATH) {
+  const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'landscape' });
+  const regular = PDF_FONTS.regular ? 'SB-Regular' : 'Helvetica';
+  const bold = PDF_FONTS.bold ? 'SB-Bold' : 'Helvetica-Bold';
+
+  if (PDF_FONTS.regular) {
     try {
-      doc.registerFont('DejaVu', PDF_FONT_PATH);
-      fontName = 'DejaVu';
-    } catch (_err) {
-      // keep default Helvetica font
-    }
+      doc.registerFont('SB-Regular', PDF_FONTS.regular);
+    } catch {}
   }
-  doc.font(fontName);
-  doc.fontSize(14).text('Подтверждённые заявки', { align: 'center' });
+  if (PDF_FONTS.bold) {
+    try {
+      doc.registerFont('SB-Bold', PDF_FONTS.bold);
+    } catch {}
+  }
+  if (PDF_FONTS.italic) {
+    try {
+      doc.registerFont('SB-Italic', PDF_FONTS.italic);
+    } catch {}
+  }
+  if (PDF_FONTS.boldItalic) {
+    try {
+      doc.registerFont('SB-BoldItalic', PDF_FONTS.boldItalic);
+    } catch {}
+  }
+
+  doc.font(bold).fontSize(16).text('Подтверждённые заявки', { align: 'center' });
   doc.moveDown();
 
   const table = {
     headers: [
-      { label: 'Фамилия', property: 'last', width: 70 },
-      { label: 'Имя', property: 'first', width: 60 },
-      { label: 'Отчество', property: 'patronymic', width: 70 },
-      { label: 'Пол', property: 'sex', width: 40 },
-      { label: 'Дата рождения', property: 'birth', width: 60 },
-      { label: 'Email', property: 'email', width: 120 },
-      { label: 'Телефон', property: 'phone', width: 70 },
+      { label: 'Фамилия', property: 'last', width: 90 },
+      { label: 'Имя', property: 'first', width: 80 },
+      { label: 'Отчество', property: 'patronymic', width: 90 },
+      { label: 'Пол', property: 'sex', width: 50 },
+      { label: 'Дата рождения', property: 'birth', width: 70 },
+      { label: 'Email', property: 'email', width: 150 },
+      { label: 'Телефон', property: 'phone', width: 90 },
     ],
     datas: regs.map((r) => ({
       last: r.User.last_name,
@@ -397,8 +411,10 @@ async function exportApprovedPdf(examId) {
   };
 
   await doc.table(table, {
-    prepareHeader: () => doc.font(fontName).fontSize(10),
-    prepareRow: () => doc.font(fontName).fontSize(10),
+    prepareHeader: () => doc.font(bold).fontSize(10),
+    prepareRow: () => doc.font(regular).fontSize(10),
+    columnSpacing: 5,
+    padding: 4,
   });
 
   const chunks = [];

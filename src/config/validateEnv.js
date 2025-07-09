@@ -26,7 +26,7 @@ const schema = Joi.object({
   SSL_KEY_PATH: Joi.string().optional(),
   COOKIE_DOMAIN: Joi.string().optional(),
   ALLOWED_ORIGINS: Joi.string().optional(),
-  PDF_FONT_PATH: Joi.string().optional(),
+  PDF_FONT_DIR: Joi.string().optional(),
 }).unknown(true);
 
 export default function validateEnv() {
