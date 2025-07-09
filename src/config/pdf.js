@@ -5,14 +5,23 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-const defaultPath = path.resolve(
+const DEFAULT_FONT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../assets/fonts/DejaVuSans.ttf'
 );
 
-const candidate = process.env.PDF_FONT_PATH || defaultPath;
+function isReadable(file) {
+  try {
+    fs.accessSync(file, fs.constants.R_OK);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+const candidate = process.env.PDF_FONT_PATH || DEFAULT_FONT;
 let fontPath;
-if (fs.existsSync(candidate)) {
+if (isReadable(candidate)) {
   fontPath = candidate;
 } else {
   if (process.env.PDF_FONT_PATH) {
