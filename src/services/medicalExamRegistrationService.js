@@ -361,8 +361,15 @@ function formatDate(str) {
 async function exportApprovedPdf(examId) {
   const regs = await listApproved(examId);
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
-  doc.registerFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
-  doc.font('DejaVu');
+  let fontName = 'Helvetica';
+  try {
+    const { PDF_FONT_PATH } = await import('../config/pdf.js');
+    doc.registerFont('DejaVu', PDF_FONT_PATH);
+    fontName = 'DejaVu';
+  } catch (_err) {
+    // keep default Helvetica font
+  }
+  doc.font(fontName);
   doc.fontSize(14).text('Подтверждённые заявки', { align: 'center' });
   doc.moveDown();
 
@@ -388,8 +395,8 @@ async function exportApprovedPdf(examId) {
   };
 
   await doc.table(table, {
-    prepareHeader: () => doc.font('DejaVu').fontSize(10),
-    prepareRow: () => doc.font('DejaVu').fontSize(10),
+    prepareHeader: () => doc.font(fontName).fontSize(10),
+    prepareRow: () => doc.font(fontName).fontSize(10),
   });
 
   const chunks = [];
