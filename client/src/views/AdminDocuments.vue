@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch, apiFetchBlob } from '../api.js';
 
@@ -7,10 +7,11 @@ const userQuery = ref('');
 const userSuggestions = ref([]);
 const selectedUser = ref(null);
 let userTimeout;
+let selecting = false;
 
 watch(userQuery, () => {
   clearTimeout(userTimeout);
-  if (selectedUser.value) selectedUser.value = null;
+  if (!selecting && selectedUser.value) selectedUser.value = null;
   if (!userQuery.value || userQuery.value.length < 2) {
     userSuggestions.value = [];
     return;
@@ -27,9 +28,13 @@ watch(userQuery, () => {
 });
 
 function selectUser(u) {
+  selecting = true;
   selectedUser.value = u;
   userQuery.value = `${u.last_name} ${u.first_name}`;
   userSuggestions.value = [];
+  nextTick(() => {
+    selecting = false;
+  });
 }
 
 async function downloadConsent() {
