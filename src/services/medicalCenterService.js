@@ -83,10 +83,14 @@ async function update(id, data, actorId) {
   return getById(id);
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const center = await MedicalCenter.findByPk(id, { include: [Address] });
   if (!center) throw new ServiceError('center_not_found', 404);
-  if (center.Address) await center.Address.destroy();
+  if (center.Address) {
+    await center.Address.update({ updated_by: actorId });
+    await center.Address.destroy();
+  }
+  await center.update({ updated_by: actorId });
   await center.destroy();
 }
 

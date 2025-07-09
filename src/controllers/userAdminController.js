@@ -46,7 +46,7 @@ export default {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const user = await userService.createUser(req.body);
+    const user = await userService.createUser(req.body, req.user.id);
     return res.status(201).json({ user: userMapper.toPublic(user) });
   },
 
@@ -56,7 +56,11 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const user = await userService.updateUser(req.params.id, req.body);
+      const user = await userService.updateUser(
+        req.params.id,
+        req.body,
+        req.user.id
+      );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err, 404);
@@ -65,7 +69,11 @@ export default {
 
   async block(req, res) {
     try {
-      const user = await userService.setStatus(req.params.id, 'INACTIVE');
+      const user = await userService.setStatus(
+        req.params.id,
+        'INACTIVE',
+        req.user.id
+      );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err, 404);
@@ -74,7 +82,11 @@ export default {
 
   async unblock(req, res) {
     try {
-      const user = await userService.setStatus(req.params.id, 'ACTIVE');
+      const user = await userService.setStatus(
+        req.params.id,
+        'ACTIVE',
+        req.user.id
+      );
       await emailService.sendAccountActivatedEmail(user);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
@@ -84,7 +96,11 @@ export default {
 
   async approve(req, res) {
     try {
-      const user = await userService.setStatus(req.params.id, 'ACTIVE');
+      const user = await userService.setStatus(
+        req.params.id,
+        'ACTIVE',
+        req.user.id
+      );
       await emailService.sendAccountActivatedEmail(user);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
@@ -100,7 +116,8 @@ export default {
     try {
       const user = await userService.resetPassword(
         req.params.id,
-        req.body.password
+        req.body.password,
+        req.user.id
       );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
@@ -112,7 +129,8 @@ export default {
     try {
       const user = await userService.assignRole(
         req.params.id,
-        req.params.roleAlias
+        req.params.roleAlias,
+        req.user.id
       );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
@@ -124,7 +142,8 @@ export default {
     try {
       const user = await userService.removeRole(
         req.params.id,
-        req.params.roleAlias
+        req.params.roleAlias,
+        req.user.id
       );
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {

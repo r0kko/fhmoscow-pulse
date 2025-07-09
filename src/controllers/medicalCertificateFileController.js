@@ -56,7 +56,7 @@ async function remove(req, res) {
     if (cert.user_id !== req.user.id && !admin) {
       return res.status(403).json({ error: 'Доступ запрещён' });
     }
-    await fileService.remove(req.params.fileId);
+    await fileService.remove(req.params.fileId, req.user.id);
     return res.status(204).send();
   } catch (err) {
     return sendError(res, err, 400);

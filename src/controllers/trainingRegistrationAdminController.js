@@ -68,7 +68,8 @@ export default {
     try {
       await trainingRegistrationService.remove(
         req.params.id,
-        req.params.userId
+        req.params.userId,
+        req.user.id
       );
       return res.status(204).end();
     } catch (err) {

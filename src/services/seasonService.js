@@ -51,9 +51,10 @@ async function getActive() {
   return Season.findOne({ where: { active: true } });
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const season = await Season.findByPk(id);
   if (!season) throw new ServiceError('season_not_found', 404);
+  await season.update({ updated_by: actorId });
   await season.destroy();
 }
 

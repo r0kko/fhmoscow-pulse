@@ -51,7 +51,7 @@ test('assignRole adds role to user', async () => {
   findByPkMock.mockResolvedValue(user);
   findRoleMock.mockResolvedValue({});
   userRoleFindMock.mockResolvedValue(null);
-  await service.assignRole('1', 'ADMIN');
+  await service.assignRole('1', 'ADMIN', 'a1');
   expect(addRoleMock).toHaveBeenCalled();
 });
 
@@ -60,16 +60,21 @@ test('assignRole restores removed role', async () => {
   findRoleMock.mockResolvedValue({ id: 2 });
   addRoleMock.mockClear();
   userRoleRestoreMock.mockClear();
-  userRoleFindMock.mockResolvedValue({ deletedAt: new Date(), restore: userRoleRestoreMock });
-  await service.assignRole('1', 'ADMIN');
+  const updateExistingMock = jest.fn();
+  userRoleFindMock.mockResolvedValue({ deletedAt: new Date(), restore: userRoleRestoreMock, update: updateExistingMock });
+  await service.assignRole('1', 'ADMIN', 'a1');
   expect(userRoleRestoreMock).toHaveBeenCalled();
+  expect(updateExistingMock).toHaveBeenCalledWith({ updated_by: 'a1' });
   expect(addRoleMock).not.toHaveBeenCalled();
 });
 
 test('removeRole removes role from user', async () => {
   findByPkMock.mockResolvedValue(user);
   findRoleMock.mockResolvedValue({});
-  await service.removeRole('1', 'ADMIN');
+  const linkUpdateMock = jest.fn();
+  userRoleFindMock.mockResolvedValueOnce({ update: linkUpdateMock });
+  await service.removeRole('1', 'ADMIN', 'a1');
+  expect(linkUpdateMock).toHaveBeenCalledWith({ updated_by: 'a1' });
   expect(removeRoleMock).toHaveBeenCalled();
 });
 
@@ -145,7 +150,12 @@ test('createUser passes data to model', async () => {
   };
   sexFindMock.mockResolvedValueOnce({ id: 's1' });
   const res = await service.createUser(data);
-  expect(createMock).toHaveBeenCalledWith({ ...data, status_id: unconfirmed.id });
+  expect(createMock).toHaveBeenCalledWith({
+    ...data,
+    status_id: unconfirmed.id,
+    created_by: null,
+    updated_by: null,
+  });
   expect(res).toBe(user);
   expect(findOneMock).toHaveBeenCalledTimes(3);
 });
@@ -190,7 +200,7 @@ test('updateUser updates found user', async () => {
   findByPkMock.mockResolvedValue(user);
   updateMock.mockResolvedValue(user);
   const res = await service.updateUser('1', { first_name: 'B' });
-  expect(updateMock).toHaveBeenCalledWith({ first_name: 'B' });
+  expect(updateMock).toHaveBeenCalledWith({ first_name: 'B', updated_by: null });
   expect(res).toBe(user);
 });
 

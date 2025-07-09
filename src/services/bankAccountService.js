@@ -37,9 +37,10 @@ async function updateForUser(userId, data, actorId) {
   return acc;
 }
 
-async function removeForUser(userId) {
+async function removeForUser(userId, actorId = null) {
   const acc = await BankAccount.findOne({ where: { user_id: userId } });
   if (!acc) throw new ServiceError('bank_account_not_found', 404);
+  await acc.update({ updated_by: actorId });
   await acc.destroy();
 }
 

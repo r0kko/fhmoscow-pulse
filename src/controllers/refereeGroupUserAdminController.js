@@ -44,7 +44,7 @@ export default {
 
   async clearGroup(req, res) {
     try {
-      await refereeGroupService.removeUser(req.params.id);
+      await refereeGroupService.removeUser(req.params.id, req.user.id);
       const user = await refereeGroupService.getReferee(req.params.id);
       return res.json({
         judge: {

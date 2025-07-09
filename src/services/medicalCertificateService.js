@@ -47,12 +47,13 @@ async function createForUser(userId, data, actorId) {
   return certificate;
 }
 
-async function removeForUser(userId) {
+async function removeForUser(userId, actorId = null) {
   const cert = await MedicalCertificate.findOne({
     where: { user_id: userId },
     order: [['valid_until', 'DESC']],
   });
   if (!cert) throw new ServiceError('certificate_not_found', 404);
+  await cert.update({ updated_by: actorId });
   await cert.destroy();
 }
 
@@ -157,9 +158,10 @@ async function update(id, data, actorId) {
   return cert;
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const cert = await MedicalCertificate.findByPk(id);
   if (!cert) throw new ServiceError('certificate_not_found', 404);
+  await cert.update({ updated_by: actorId });
   await cert.destroy();
 }
 

@@ -31,9 +31,10 @@ async function update(userId, number, actorId) {
   return snils;
 }
 
-async function remove(userId) {
+async function remove(userId, actorId = null) {
   const snils = await Snils.findOne({ where: { user_id: userId } });
   if (!snils) throw new ServiceError('snils_not_found', 404);
+  await snils.update({ updated_by: actorId });
   await snils.destroy();
 }
 

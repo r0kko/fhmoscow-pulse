@@ -30,14 +30,15 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 const { default: service } = await import('../src/services/refereeGroupService.js');
 
 test('removeUser soft deletes assignment', async () => {
-  findOneMock.mockResolvedValue({ destroy: destroyMock });
-  await service.removeUser('u1');
+  findOneMock.mockResolvedValue({ destroy: destroyMock, update: updateMock });
+  await service.removeUser('u1', 'admin');
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
 });
 
 test('removeUser does nothing when link missing', async () => {
   findOneMock.mockResolvedValue(null);
-  await service.removeUser('u1');
+  await service.removeUser('u1', 'admin');
   expect(destroyMock).not.toHaveBeenCalled();
 });
 
@@ -53,8 +54,8 @@ test('setUserGroup restores deleted record', async () => {
 
 test('user can be reassigned after removal', async () => {
   // soft delete existing assignment
-  findOneMock.mockResolvedValueOnce({ destroy: destroyMock });
-  await service.removeUser('u1');
+  findOneMock.mockResolvedValueOnce({ destroy: destroyMock, update: updateMock });
+  await service.removeUser('u1', 'admin');
   expect(destroyMock).toHaveBeenCalled();
 
   // assign user to a group again

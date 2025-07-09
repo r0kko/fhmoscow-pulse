@@ -134,16 +134,20 @@ async function setUserGroup(userId, groupId, actorId) {
   return link;
 }
 
-async function removeUser(userId) {
+async function removeUser(userId, actorId = null) {
   const link = await RefereeGroupUser.findOne({ where: { user_id: userId } });
-  if (link) await link.destroy();
+  if (link) {
+    await link.update({ updated_by: actorId });
+    await link.destroy();
+  }
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const group = await RefereeGroup.findByPk(id);
   if (!group) throw new ServiceError('referee_group_not_found', 404);
   const userCount = await RefereeGroupUser.count({ where: { group_id: id } });
   if (userCount > 0) throw new ServiceError('referee_group_not_empty');
+  await group.update({ updated_by: actorId });
   await group.destroy();
 }
 

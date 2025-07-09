@@ -81,9 +81,10 @@ async function createForUser(userId, data, adminId) {
   return getByUser(userId);
 }
 
-async function removeByUser(userId) {
+async function removeByUser(userId, actorId = null) {
   const passport = await Passport.findOne({ where: { user_id: userId } });
   if (!passport) throw new ServiceError('passport_not_found', 404);
+  await passport.update({ updated_by: actorId });
   await passport.destroy();
   return true;
 }

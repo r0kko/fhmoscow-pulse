@@ -136,7 +136,7 @@ async function register(userId, trainingId, actorId) {
   }
 }
 
-async function unregister(userId, trainingId) {
+async function unregister(userId, trainingId, actorId = null) {
   const registration = await TrainingRegistration.findOne({
     where: { training_id: trainingId, user_id: userId },
     include: [TrainingRole],
@@ -162,6 +162,7 @@ async function unregister(userId, trainingId) {
   if (!training || !trainingService.isRegistrationOpen(training, count)) {
     throw new ServiceError('registration_closed');
   }
+  await registration.update({ updated_by: actorId });
   await registration.destroy();
 
   const user = await User.findByPk(userId);
@@ -292,11 +293,12 @@ async function listByTraining(trainingId, options = {}) {
   });
 }
 
-async function remove(trainingId, userId) {
+async function remove(trainingId, userId, actorId = null) {
   const registration = await TrainingRegistration.findOne({
     where: { training_id: trainingId, user_id: userId },
   });
   if (!registration) throw new ServiceError('registration_not_found', 404);
+  await registration.update({ updated_by: actorId });
   await registration.destroy();
   const [training, user] = await Promise.all([
     Training.findByPk(trainingId, {

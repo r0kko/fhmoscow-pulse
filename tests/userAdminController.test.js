@@ -55,29 +55,29 @@ beforeEach(() => {
 
 test('approve updates user status to ACTIVE', async () => {
   setStatusMock.mockResolvedValue({ id: '1' });
-  const req = { params: { id: '1' } };
+  const req = { params: { id: '1' }, user: { id: 'admin' } };
   const res = { json: jest.fn() };
   await controller.approve(req, res);
-  expect(setStatusMock).toHaveBeenCalledWith('1', 'ACTIVE');
+  expect(setStatusMock).toHaveBeenCalledWith('1', 'ACTIVE', 'admin');
   expect(sendActivationEmailMock).toHaveBeenCalledWith({ id: '1' });
   expect(res.json).toHaveBeenCalledWith({ user: { id: '1' } });
 });
 
 test('block updates user status to INACTIVE', async () => {
   setStatusMock.mockResolvedValue({ id: '2' });
-  const req = { params: { id: '2' } };
+  const req = { params: { id: '2' }, user: { id: 'admin' } };
   const res = { json: jest.fn() };
   await controller.block(req, res);
-  expect(setStatusMock).toHaveBeenCalledWith('2', 'INACTIVE');
+  expect(setStatusMock).toHaveBeenCalledWith('2', 'INACTIVE', 'admin');
   expect(res.json).toHaveBeenCalledWith({ user: { id: '2' } });
 });
 
 test('unblock updates user status to ACTIVE', async () => {
   setStatusMock.mockResolvedValue({ id: '3' });
-  const req = { params: { id: '3' } };
+  const req = { params: { id: '3' }, user: { id: 'admin' } };
   const res = { json: jest.fn() };
   await controller.unblock(req, res);
-  expect(setStatusMock).toHaveBeenCalledWith('3', 'ACTIVE');
+  expect(setStatusMock).toHaveBeenCalledWith('3', 'ACTIVE', 'admin');
   expect(sendActivationEmailMock).toHaveBeenCalledWith({ id: '3' });
   expect(res.json).toHaveBeenCalledWith({ user: { id: '3' } });
 });
@@ -85,28 +85,28 @@ test('unblock updates user status to ACTIVE', async () => {
 
 test('resetPassword returns updated user', async () => {
   resetPasswordMock.mockResolvedValue({ id: '4' });
-  const req = { params: { id: '4' }, body: { password: 'P' } };
+  const req = { params: { id: '4' }, body: { password: 'P' }, user: { id: 'admin' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.resetPassword(req, res);
-  expect(resetPasswordMock).toHaveBeenCalledWith('4', 'P');
+  expect(resetPasswordMock).toHaveBeenCalledWith('4', 'P', 'admin');
   expect(res.json).toHaveBeenCalledWith({ user: { id: '4' } });
 });
 
 test('assignRole assigns role to user', async () => {
   assignRoleMock.mockResolvedValue({ id: '5' });
-  const req = { params: { id: '5', roleAlias: 'ADMIN' } };
+  const req = { params: { id: '5', roleAlias: 'ADMIN' }, user: { id: 'admin' } };
   const res = { json: jest.fn() };
   await controller.assignRole(req, res);
-  expect(assignRoleMock).toHaveBeenCalledWith('5', 'ADMIN');
+  expect(assignRoleMock).toHaveBeenCalledWith('5', 'ADMIN', 'admin');
   expect(res.json).toHaveBeenCalledWith({ user: { id: '5' } });
 });
 
 test('removeRole removes role from user', async () => {
   removeRoleMock.mockResolvedValue({ id: '6' });
-  const req = { params: { id: '6', roleAlias: 'ADMIN' } };
+  const req = { params: { id: '6', roleAlias: 'ADMIN' }, user: { id: 'admin' } };
   const res = { json: jest.fn() };
   await controller.removeRole(req, res);
-  expect(removeRoleMock).toHaveBeenCalledWith('6', 'ADMIN');
+  expect(removeRoleMock).toHaveBeenCalledWith('6', 'ADMIN', 'admin');
   expect(res.json).toHaveBeenCalledWith({ user: { id: '6' } });
 });
 

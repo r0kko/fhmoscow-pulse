@@ -53,7 +53,8 @@ export default {
     try {
       await medicalExamRegistrationService.unregister(
         req.user.id,
-        req.params.id
+        req.params.id,
+        req.user.id
       );
       return res.status(204).end();
     } catch (err) {

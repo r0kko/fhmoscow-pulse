@@ -3,7 +3,7 @@ import { Op } from 'sequelize';
 import { User, Role, UserRole, UserStatus, Sex } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
-async function createUser(data) {
+async function createUser(data, actorId = null) {
   const birth = new Date(data.birth_date);
   if (Number.isNaN(birth.getTime()) || birth < new Date('1945-01-01')) {
     throw new ServiceError('invalid_birth_date');
@@ -38,7 +38,12 @@ async function createUser(data) {
   if (personalExisting) throw new ServiceError('user_exists');
 
   const status = unconfirmedStatus || activeStatus;
-  const user = await User.create({ ...data, status_id: status.id });
+  const user = await User.create({
+    ...data,
+    status_id: status.id,
+    created_by: actorId,
+    updated_by: actorId,
+  });
   return user;
 }
 
@@ -105,7 +110,7 @@ async function getUser(id) {
   return user;
 }
 
-async function updateUser(id, data) {
+async function updateUser(id, data, actorId = null) {
   const user = await User.findByPk(id);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (Object.prototype.hasOwnProperty.call(data, 'sex_id')) {
@@ -115,30 +120,31 @@ async function updateUser(id, data) {
     const sex = await Sex.findByPk(data.sex_id);
     if (!sex) throw new ServiceError('sex_not_found', 404);
   }
-  await user.update(data);
+  await user.update({ ...data, updated_by: actorId });
   return user;
 }
 
-async function setStatus(id, alias) {
+async function setStatus(id, alias, actorId = null) {
   const [user, status] = await Promise.all([
     User.findByPk(id),
     UserStatus.findOne({ where: { alias } }),
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!status) throw new ServiceError('status_not_found', 404);
-  await user.update({ status_id: status.id });
+  await user.update({ status_id: status.id, updated_by: actorId });
   return user;
 }
 
-async function resetPassword(id, password) {
+async function resetPassword(id, password, actorId = null) {
   const user = await User.scope('withPassword').findByPk(id);
   if (!user) throw new ServiceError('user_not_found', 404);
   user.password = password;
+  user.updated_by = actorId;
   await user.save();
   return user;
 }
 
-async function assignRole(userId, alias) {
+async function assignRole(userId, alias, actorId = null) {
   const [user, role] = await Promise.all([
     User.findByPk(userId),
     Role.findOne({ where: { alias } }),
@@ -154,21 +160,26 @@ async function assignRole(userId, alias) {
   if (existing) {
     if (existing.deletedAt) {
       await existing.restore();
+      await existing.update({ updated_by: actorId });
     }
     return user;
   }
 
-  await user.addRole(role);
+  await user.addRole(role, { through: { created_by: actorId, updated_by: actorId } });
   return user;
 }
 
-async function removeRole(userId, alias) {
+async function removeRole(userId, alias, actorId = null) {
   const [user, role] = await Promise.all([
     User.findByPk(userId),
     Role.findOne({ where: { alias } }),
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('role_not_found', 404);
+  const link = await UserRole.findOne({ where: { user_id: userId, role_id: role.id } });
+  if (link) {
+    await link.update({ updated_by: actorId });
+  }
   await user.removeRole(role);
   return user;
 }

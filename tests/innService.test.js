@@ -60,15 +60,21 @@ test('update throws when record missing', async () => {
 
 test('remove destroys record and taxation removed', async () => {
   const destroyMock = jest.fn();
-  findOneMock.mockResolvedValueOnce({ ...innInstance, destroy: destroyMock });
+  const updateMockLocal = jest.fn();
+  findOneMock.mockResolvedValueOnce({
+    ...innInstance,
+    destroy: destroyMock,
+    update: updateMockLocal,
+  });
   const taxation = await import('../src/services/taxationService.js');
-  await service.remove('u1');
+  await service.remove('u1', 'admin');
+  expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
   expect(taxation.default.removeByUser).toHaveBeenCalledWith('u1');
 });
 
 test('remove throws when record not found', async () => {
   findOneMock.mockResolvedValueOnce(null);
-  await expect(service.remove('u1')).rejects.toThrow('inn_not_found');
+  await expect(service.remove('u1', 'admin')).rejects.toThrow('inn_not_found');
 });
 

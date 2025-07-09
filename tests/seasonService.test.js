@@ -72,13 +72,15 @@ test('update modifies existing season', async () => {
 });
 
 test('remove deletes season', async () => {
-  findByPkMock.mockResolvedValue({ destroy: destroyMock });
-  await service.remove('s1');
+  const updateMockLocal = jest.fn();
+  findByPkMock.mockResolvedValue({ destroy: destroyMock, update: updateMockLocal });
+  await service.remove('s1', 'admin');
+  expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
 });
 
 test('remove throws when missing', async () => {
   findByPkMock.mockResolvedValue(null);
-  await expect(service.remove('s1')).rejects.toThrow('season_not_found');
+  await expect(service.remove('s1', 'admin')).rejects.toThrow('season_not_found');
 });
 

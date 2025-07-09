@@ -47,9 +47,10 @@ async function update(id, data, actorId) {
   return getById(id);
 }
 
-async function remove(id) {
+async function remove(id, actorId = null) {
   const exam = await MedicalExam.findByPk(id);
   if (!exam) throw new ServiceError('exam_not_found', 404);
+  await exam.update({ updated_by: actorId });
   await exam.destroy();
 }
 

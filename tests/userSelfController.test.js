@@ -39,6 +39,6 @@ test('update returns updated user', async () => {
   const req = { user: { id: '1' }, body: { first_name: 'A' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.update(req, res);
-  expect(updateUserMock).toHaveBeenCalledWith('1', { first_name: 'A' });
+  expect(updateUserMock).toHaveBeenCalledWith('1', { first_name: 'A' }, '1');
   expect(res.json).toHaveBeenCalledWith({ user: { id: '1' } });
 });

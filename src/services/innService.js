@@ -34,9 +34,10 @@ async function update(userId, number, actorId) {
   return inn;
 }
 
-async function remove(userId) {
+async function remove(userId, actorId = null) {
   const inn = await Inn.findOne({ where: { user_id: userId } });
   if (!inn) throw new ServiceError('inn_not_found', 404);
+  await inn.update({ updated_by: actorId });
   await inn.destroy();
   await taxationService.removeByUser(userId);
 }

@@ -114,10 +114,12 @@ test('register restores deleted registration', async () => {
 });
 
 test('remove sends cancellation email', async () => {
-  findRegMock.mockResolvedValue({ destroy: destroyMock });
+  const updateMock = jest.fn();
+  findRegMock.mockResolvedValue({ destroy: destroyMock, update: updateMock });
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   findTrainingMock.mockResolvedValue(training);
-  await service.remove('t1', 'u1');
+  await service.remove('t1', 'u1', 'admin');
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
   expect(sendCancelEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
 });
@@ -189,13 +191,16 @@ test('updateRole sends notification', async () => {
 });
 
 test('unregister sends notification', async () => {
+  const updateMock = jest.fn();
   findRegMock.mockResolvedValue({
     destroy: destroyMock,
+    update: updateMock,
     TrainingRole: { alias: 'PARTICIPANT' },
   });
   findTrainingMock.mockResolvedValue(training);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
-  await service.unregister('u1', 't1');
+  await service.unregister('u1', 't1', 'u1');
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'u1' });
   expect(destroyMock).toHaveBeenCalled();
   expect(sendSelfCancelEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
 });
@@ -207,7 +212,9 @@ test('unregister rejects when deadline passed', async () => {
     TrainingRole: { alias: 'PARTICIPANT' },
   });
   findTrainingMock.mockResolvedValue(soon);
-  await expect(service.unregister('u1', 't1')).rejects.toThrow('cancellation_deadline_passed');
+  await expect(
+    service.unregister('u1', 't1', 'u1')
+  ).rejects.toThrow('cancellation_deadline_passed');
 });
 
 test('unregister rejects when role not participant', async () => {
@@ -216,7 +223,9 @@ test('unregister rejects when role not participant', async () => {
     TrainingRole: { alias: 'COACH' },
   });
   findTrainingMock.mockResolvedValue(training);
-  await expect(service.unregister('u1', 't1')).rejects.toThrow('cancellation_forbidden');
+  await expect(
+    service.unregister('u1', 't1', 'u1')
+  ).rejects.toThrow('cancellation_forbidden');
 });
 
 test('listUpcomingByUser includes my role', async () => {
