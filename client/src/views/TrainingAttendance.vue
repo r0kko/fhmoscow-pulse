@@ -16,6 +16,11 @@ const visibleRegistrations = computed(() =>
       return aName.localeCompare(bName, 'ru');
     })
 );
+const allMarked = computed(() =>
+  visibleRegistrations.value.every(
+    (r) => r.present === true || r.present === false
+  )
+);
 const loading = ref(false);
 const error = ref('');
 const toastRef = ref(null);
@@ -65,6 +70,10 @@ async function setPresence(userId, value) {
 }
 
 async function finish() {
+  if (!allMarked.value) {
+    alert('Отметьте посещаемость для всех участников');
+    return;
+  }
   try {
     await apiFetch(`/camp-trainings/${route.params.id}/attendance`, {
       method: 'PUT',
@@ -166,7 +175,11 @@ function showToast(message) {
           </div>
         </div>
         <p v-else class="text-muted">Нет записей</p>
-        <button class="btn btn-brand mt-3" @click="finish" :disabled="!visibleRegistrations.length">
+        <button
+          class="btn btn-brand mt-3"
+          @click="finish"
+          :disabled="!visibleRegistrations.length || !allMarked"
+        >
           Завершить
         </button>
       </div>
