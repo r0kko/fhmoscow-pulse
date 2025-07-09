@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit-table';
-import { PDF_FONT_PATH } from '../config/pdf.js';
 
+import { PDF_FONT_PATH } from '../config/pdf.js';
 import {
   MedicalExam,
   MedicalExamRegistration,
