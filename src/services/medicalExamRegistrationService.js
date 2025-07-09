@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit-table';
+import { PDF_FONT_PATH } from '../config/pdf.js';
 
 import {
   MedicalExam,
@@ -362,12 +363,13 @@ async function exportApprovedPdf(examId) {
   const regs = await listApproved(examId);
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
   let fontName = 'Helvetica';
-  try {
-    const { PDF_FONT_PATH } = await import('../config/pdf.js');
-    doc.registerFont('DejaVu', PDF_FONT_PATH);
-    fontName = 'DejaVu';
-  } catch (_err) {
-    // keep default Helvetica font
+  if (PDF_FONT_PATH) {
+    try {
+      doc.registerFont('DejaVu', PDF_FONT_PATH);
+      fontName = 'DejaVu';
+    } catch (_err) {
+      // keep default Helvetica font
+    }
   }
   doc.font(fontName);
   doc.fontSize(14).text('Подтверждённые заявки', { align: 'center' });
