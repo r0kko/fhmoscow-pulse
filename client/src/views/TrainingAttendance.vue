@@ -11,8 +11,8 @@ const visibleRegistrations = computed(() =>
   registrations.value
     .filter((r) => r.role?.alias !== 'COACH')
     .sort((a, b) => {
-      const aName = `${a.user.last_name} ${a.user.first_name}`;
-      const bName = `${b.user.last_name} ${b.user.first_name}`;
+      const aName = formatName(a.user);
+      const bName = formatName(b.user);
       return aName.localeCompare(bName, 'ru');
     })
 );
@@ -21,6 +21,10 @@ const error = ref('');
 const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
+
+function formatName(u) {
+  return `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.trim();
+}
 
 onMounted(loadData);
 
@@ -118,7 +122,7 @@ function showToast(message) {
               </thead>
               <tbody>
                 <tr v-for="r in visibleRegistrations" :key="r.user.id">
-                  <td>{{ r.user.last_name }} {{ r.user.first_name }}</td>
+                  <td>{{ formatName(r.user) }}</td>
                   <td>{{ new Date(r.user.birth_date).getFullYear() }}</td>
                   <td class="text-end">
                     <div class="btn-group btn-group-sm presence-group" role="group">
@@ -144,7 +148,7 @@ function showToast(message) {
                         :id="`present-no-${r.user.id}`"
                         :name="`present-${r.user.id}`"
                         autocomplete="off"
-                        :checked="r.present !== true"
+                        :checked="r.present === false"
                         @change="setPresence(r.user.id, false)"
                       />
                       <label
