@@ -2,7 +2,7 @@ import PDFDocument from 'pdfkit';
 
 import { User, Sex } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
-import { applyFonts, applyFirstPageFooter } from '../utils/pdf.js';
+import { applyFonts, applyFirstPageHeader } from '../utils/pdf.js';
 
 function formatDate(str) {
   if (!str) return '';
@@ -15,7 +15,7 @@ async function generatePersonalDataConsent(userId) {
   if (!user) throw new ServiceError('user_not_found', 404);
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
   const { regular } = applyFonts(doc);
-  applyFirstPageFooter(doc);
+  applyFirstPageHeader(doc);
   doc.font(regular);
   doc
     .fontSize(14)

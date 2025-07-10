@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit-table';
 
-import { applyFonts, applyFirstPageFooter } from '../utils/pdf.js';
+import { applyFonts, applyFirstPageHeader } from '../utils/pdf.js';
 import {
   MedicalExam,
   MedicalExamRegistration,
@@ -363,7 +363,7 @@ async function exportApprovedPdf(examId) {
   const regs = await listApproved(examId);
   const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'landscape' });
   const { regular, bold } = applyFonts(doc);
-  applyFirstPageFooter(doc);
+  applyFirstPageHeader(doc);
 
   doc
     .font(bold)

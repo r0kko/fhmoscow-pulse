@@ -67,8 +67,8 @@ test('applyFonts falls back when fonts missing', async () => {
   expect(res).toEqual({ regular: 'Default-Regular', bold: 'Default-Bold' });
 });
 
-test('applyFirstPageFooter draws logos and text', async () => {
-  const { applyFirstPageFooter } = await setup({
+test('applyFirstPageHeader draws logos and text', async () => {
+  const { applyFirstPageHeader } = await setup({
     federation: '/fhm.png',
     system: '/sys.png',
   });
@@ -80,14 +80,14 @@ test('applyFirstPageFooter draws logos and text', async () => {
     fontSize: fontSizeMock,
   };
   docStub = doc;
-  applyFirstPageFooter(doc);
-  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 230, { height: 40 });
-  expect(imageMock).toHaveBeenCalledWith('/sys.png', 130, 230, { height: 40 });
+  applyFirstPageHeader(doc);
+  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 40 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 130, 30, { height: 40 });
   expect(textMock).toHaveBeenCalled();
 });
 
-test('applyFirstPageFooter works without logos', async () => {
-  const { applyFirstPageFooter } = await setup({});
+test('applyFirstPageHeader works without logos', async () => {
+  const { applyFirstPageHeader } = await setup({});
   const doc = {
     page: { width: 100, height: 150 },
     image: imageMock,
@@ -96,7 +96,7 @@ test('applyFirstPageFooter works without logos', async () => {
     fontSize: fontSizeMock,
   };
   docStub = doc;
-  applyFirstPageFooter(doc);
+  applyFirstPageHeader(doc);
   expect(imageMock).not.toHaveBeenCalled();
   expect(textMock).toHaveBeenCalled();
 });
