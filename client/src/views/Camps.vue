@@ -327,7 +327,7 @@ function dayOpen(day) {
                     :key="t.id"
                     class="schedule-item d-flex justify-content-between align-items-start"
                 >
-                  <div>
+                  <div class="me-3">
                     <div>
                       <strong>{{ formatTime(t.start_at) }}–{{ formatTime(t.end_at) }}</strong>
                       <span class="ms-2">{{ t.stadium?.name }}</span>
@@ -353,26 +353,28 @@ function dayOpen(day) {
                       </span>
                     </p>
                   </div>
-                  <button
-                    class="btn btn-link p-0"
-                    :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
-                    @click="canCancel(t) ? confirmUnregister(t.id) : null"
-                    :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
-                    :title="cancelTooltip(t)"
-                  >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>
-                    <span class="visually-hidden">Отменить</span>
-                  </button>
-                  <RouterLink
-                    v-if="t.my_role?.alias === 'COACH'"
-                    :to="`/trainings/${t.id}/attendance`"
-                    class="btn btn-link p-0 ms-2"
-                    :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
-                    :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
-                  >
-                    <i class="bi bi-check2-square" aria-hidden="true"></i>
-                    <span class="visually-hidden">Посещаемость</span>
-                  </RouterLink>
+                  <div class="d-flex align-items-center ms-auto">
+                    <button
+                      class="btn btn-link p-0"
+                      :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
+                      @click="canCancel(t) ? confirmUnregister(t.id) : null"
+                      :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
+                      :title="cancelTooltip(t)"
+                    >
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Отменить</span>
+                    </button>
+                    <RouterLink
+                      v-if="t.my_role?.alias === 'COACH'"
+                      :to="`/trainings/${t.id}/attendance`"
+                      class="btn btn-link p-0 ms-2"
+                      :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
+                      :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
+                    >
+                      <i class="bi bi-check2-square" aria-hidden="true"></i>
+                      <span class="visually-hidden">Посещаемость</span>
+                    </RouterLink>
+                  </div>
                 </li>
               </ul>
             </div>
