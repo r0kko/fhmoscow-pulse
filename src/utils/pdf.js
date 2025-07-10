@@ -69,35 +69,35 @@ export function applyFonts(doc) {
   return { regular, bold };
 }
 
-export function applyFirstPageFooter(doc) {
+export function applyFirstPageHeader(doc) {
   const margin = 30;
   const logoHeight = 40;
-  const bottom = doc.page.height - margin - logoHeight;
+  const top = margin;
   const { federation, system } = PDF_LOGOS;
 
   if (federation) {
     try {
-      doc.image(federation, margin, bottom, { height: logoHeight });
+      doc.image(federation, margin, top, { height: logoHeight });
     } catch {
-      /* empty */
+      /* image failed to load */
     }
   }
 
   doc
     .fillColor('#0E3869')
     .fontSize(10)
-    .text('Федерация хоккея Москвы', margin, bottom, {
+    .text('Федерация хоккея Москвы', margin, top, {
       align: 'center',
       width: doc.page.width - margin * 2,
     });
 
   if (system) {
     try {
-      doc.image(system, doc.page.width - margin - logoHeight, bottom, {
+      doc.image(system, doc.page.width - margin - logoHeight, top, {
         height: logoHeight,
       });
     } catch {
-      /* empty */
+      /* image failed to load */
     }
   }
 }
