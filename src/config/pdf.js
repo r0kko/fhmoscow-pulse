@@ -33,3 +33,20 @@ export const PDF_FONTS = {
   italic: resolveFont('SBSansText-Italic.ttf'),
   boldItalic: resolveFont('SBSansText-BoldItalic.ttf'),
 };
+
+const DEFAULT_LOGO_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../assets'
+);
+
+function resolveLogo(envName, fallback) {
+  const envPath = process.env[envName];
+  if (envPath && readable(envPath)) return envPath;
+  const file = path.join(DEFAULT_LOGO_DIR, fallback);
+  return readable(file) ? file : undefined;
+}
+
+export const PDF_LOGOS = {
+  federation: resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png'),
+  system: resolveLogo('PDF_SYSTEM_LOGO', 'system-logo.png'),
+};

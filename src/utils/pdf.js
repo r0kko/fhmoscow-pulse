@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-import { PDF_FONTS } from '../config/pdf.js';
+import { PDF_FONTS, PDF_LOGOS } from '../config/pdf.js';
 
 const FALLBACK_REGULAR = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
 const FALLBACK_BOLD = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
@@ -67,4 +67,37 @@ export function applyFonts(doc) {
   }
 
   return { regular, bold };
+}
+
+export function applyFirstPageFooter(doc) {
+  const margin = 30;
+  const logoHeight = 40;
+  const bottom = doc.page.height - margin - logoHeight;
+  const { federation, system } = PDF_LOGOS;
+
+  if (federation) {
+    try {
+      doc.image(federation, margin, bottom, { height: logoHeight });
+    } catch {
+      /* empty */
+    }
+  }
+
+  doc
+    .fillColor('#0E3869')
+    .fontSize(10)
+    .text('Федерация хоккея Москвы', margin, bottom, {
+      align: 'center',
+      width: doc.page.width - margin * 2,
+    });
+
+  if (system) {
+    try {
+      doc.image(system, doc.page.width - margin - logoHeight, bottom, {
+        height: logoHeight,
+      });
+    } catch {
+      /* empty */
+    }
+  }
 }
