@@ -300,7 +300,15 @@ async function listUpcomingByUser(userId, options = {}) {
         include: [User, TrainingRole],
       },
     ],
-    where: { start_at: { [Op.between]: [now, end] } },
+    where: {
+      [Op.or]: [
+        { start_at: { [Op.between]: [now, end] } },
+        {
+          attendance_marked: false,
+          start_at: { [Op.lt]: now },
+        },
+      ],
+    },
     order: [['start_at', 'ASC']],
     limit,
     offset,

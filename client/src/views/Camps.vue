@@ -186,6 +186,9 @@ const weekTrainings = computed(() => {
   return myTrainings.value.filter((t) => {
     const start = new Date(t.start_at);
     const finish = new Date(t.end_at);
+    if (!t.attendance_marked && t.my_role?.alias === 'COACH') {
+      return true;
+    }
     // show only trainings that have not finished yet
     // and start within the next week
     return finish > now && start < end;
@@ -253,6 +256,12 @@ function dayTrainings(id) {
   if (!iso) return [];
   const day = group.days.find((d) => d.date.toISOString() === iso);
   return day ? day.trainings : [];
+}
+
+function showAttendanceWarning(t) {
+  if (t.my_role?.alias !== 'COACH') return false;
+  if (t.attendance_marked) return false;
+  return new Date(t.end_at) <= new Date();
 }
 
 function dayOpen(day) {
@@ -326,6 +335,7 @@ function dayOpen(day) {
                     v-for="t in g.trainings"
                     :key="t.id"
                     class="schedule-item d-flex justify-content-between align-items-start"
+                    :class="{ 'bg-warning bg-opacity-25': showAttendanceWarning(t) }"
                 >
                   <div class="me-3">
                     <div>
@@ -333,6 +343,13 @@ function dayOpen(day) {
                       <span class="ms-2">{{ t.stadium?.name }}</span>
                     </div>
                     <div class="text-muted small">{{ t.type?.name }}</div>
+                    <p
+                      v-if="showAttendanceWarning(t)"
+                      class="small text-warning mb-1 d-flex align-items-center"
+                    >
+                      <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                      <span>Посещаемость не отмечена</span>
+                    </p>
                     <p class="text-muted small mb-1 d-flex mt-1">
                       <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
                       <span>
@@ -355,7 +372,7 @@ function dayOpen(day) {
                   </div>
                   <div class="d-flex align-items-center ms-auto">
                     <RouterLink
-                      v-if="t.my_role?.alias === 'COACH'"
+                      v-if="t.my_role?.alias === 'COACH' && !t.attendance_marked"
                       :to="`/trainings/${t.id}/attendance`"
                       class="btn btn-link p-0"
                       :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
