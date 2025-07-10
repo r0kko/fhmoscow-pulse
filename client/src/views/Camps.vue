@@ -354,8 +354,18 @@ function dayOpen(day) {
                     </p>
                   </div>
                   <div class="d-flex align-items-center ms-auto">
-                    <button
+                    <RouterLink
+                      v-if="t.my_role?.alias === 'COACH'"
+                      :to="`/trainings/${t.id}/attendance`"
                       class="btn btn-link p-0"
+                      :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
+                      :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
+                    >
+                      <i class="bi bi-check2-square" aria-hidden="true"></i>
+                      <span class="visually-hidden">Посещаемость</span>
+                    </RouterLink>
+                    <button
+                      class="btn btn-link p-0 ms-2"
                       :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
                       @click="canCancel(t) ? confirmUnregister(t.id) : null"
                       :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
@@ -364,16 +374,6 @@ function dayOpen(day) {
                       <i class="bi bi-x-lg" aria-hidden="true"></i>
                       <span class="visually-hidden">Отменить</span>
                     </button>
-                    <RouterLink
-                      v-if="t.my_role?.alias === 'COACH'"
-                      :to="`/trainings/${t.id}/attendance`"
-                      class="btn btn-link p-0 ms-2"
-                      :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
-                      :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
-                    >
-                      <i class="bi bi-check2-square" aria-hidden="true"></i>
-                      <span class="visually-hidden">Посещаемость</span>
-                    </RouterLink>
                   </div>
                 </li>
               </ul>
