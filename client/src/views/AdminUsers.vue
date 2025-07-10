@@ -203,7 +203,7 @@ async function copy(text) {
     <h1 class="mb-3">Пользователи</h1>
     <div class="card tile mb-3">
       <div class="card-body p-2">
-        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+        <ul class="nav nav-pills nav-fill mb-0 tab-selector">
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">Пользователи</button>
           </li>
@@ -413,7 +413,7 @@ async function copy(text) {
         <div v-if="completionLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="completion.length" class="table-responsive">
+        <div v-if="completion.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-hover table-striped align-middle mb-0">
             <thead>
               <tr>
@@ -441,6 +441,22 @@ async function copy(text) {
             </tbody>
           </table>
         </div>
+        <div v-if="completion.length" class="d-block d-sm-none">
+          <div v-for="p in completion" :key="p.id" class="card profile-card mb-2">
+            <div class="card-body p-2">
+              <h6 class="mb-1">{{ p.last_name }} {{ p.first_name }} {{ p.patronymic }}</h6>
+              <p class="mb-1 small">{{ formatDate(p.birth_date) }}</p>
+              <div class="d-flex flex-wrap gap-2">
+                <span><i :class="p.passport ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> Паспорт</span>
+                <span><i :class="p.inn ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> ИНН</span>
+                <span><i :class="p.snils ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> СНИЛС</span>
+                <span><i :class="p.bank_account ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> Банк</span>
+                <span><i :class="p.addresses ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> Адрес</span>
+                <span><i class="bi"></i> {{ p.taxation_type }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
         <p v-else-if="!completionLoading" class="text-muted mb-0">Нет данных.</p>
       </div>
     </div>
@@ -458,10 +474,21 @@ async function copy(text) {
 .sortable i {
   margin-left: 4px;
 }
+.tab-selector {
+  gap: 0.5rem;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
+}
 .section-card {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+.profile-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
 }
 
 @media (max-width: 575.98px) {
