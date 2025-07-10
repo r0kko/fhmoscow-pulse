@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 
 import { User, Sex } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import { applyFonts } from '../utils/pdf.js';
 
 function formatDate(str) {
   if (!str) return '';
@@ -13,8 +14,8 @@ async function generatePersonalDataConsent(userId) {
   const user = await User.findByPk(userId, { include: [Sex] });
   if (!user) throw new ServiceError('user_not_found', 404);
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
-  doc.registerFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
-  doc.font('DejaVu');
+  const { regular } = applyFonts(doc);
+  doc.font(regular);
   doc
     .fontSize(14)
     .text('Согласие на обработку персональных данных', { align: 'center' });

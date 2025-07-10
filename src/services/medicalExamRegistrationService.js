@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit-table';
 
-import { PDF_FONTS } from '../config/pdf.js';
+import { applyFonts } from '../utils/pdf.js';
 import {
   MedicalExam,
   MedicalExamRegistration,
@@ -362,37 +362,7 @@ function formatDate(str) {
 async function exportApprovedPdf(examId) {
   const regs = await listApproved(examId);
   const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'landscape' });
-  const regular = PDF_FONTS.regular ? 'SB-Regular' : 'Helvetica';
-  const bold = PDF_FONTS.bold ? 'SB-Bold' : 'Helvetica-Bold';
-
-  if (PDF_FONTS.regular) {
-    try {
-      doc.registerFont('SB-Regular', PDF_FONTS.regular);
-    } catch {
-      /* empty */
-    }
-  }
-  if (PDF_FONTS.bold) {
-    try {
-      doc.registerFont('SB-Bold', PDF_FONTS.bold);
-    } catch {
-      /* empty */
-    }
-  }
-  if (PDF_FONTS.italic) {
-    try {
-      doc.registerFont('SB-Italic', PDF_FONTS.italic);
-    } catch {
-      /* empty */
-    }
-  }
-  if (PDF_FONTS.boldItalic) {
-    try {
-      doc.registerFont('SB-BoldItalic', PDF_FONTS.boldItalic);
-    } catch {
-      /* empty */
-    }
-  }
+  const { regular, bold } = applyFonts(doc);
 
   doc
     .font(bold)
