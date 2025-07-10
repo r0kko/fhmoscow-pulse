@@ -3,6 +3,8 @@ import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
+const ROLE_ORDER = ['COACH', 'EQUIPMENT_MANAGER', 'PARTICIPANT'];
+
 const route = useRoute();
 const training = ref(null);
 const trainingError = ref('');
@@ -113,7 +115,18 @@ async function loadJudges() {
 async function loadTrainingRoles() {
   try {
     const data = await apiFetch('/training-roles');
-    trainingRoles.value = data.roles;
+    trainingRoles.value = data.roles
+      .slice()
+      .sort((a, b) => {
+        const i1 = ROLE_ORDER.indexOf(a.alias);
+        const i2 = ROLE_ORDER.indexOf(b.alias);
+        if (i1 === -1 && i2 === -1) {
+          return a.name.localeCompare(b.name);
+        }
+        if (i1 === -1) return 1;
+        if (i2 === -1) return -1;
+        return i1 - i2;
+      });
   } catch (_) {
     trainingRoles.value = [];
   }
