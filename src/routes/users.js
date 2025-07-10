@@ -11,6 +11,7 @@ import bankAccountAdmin from '../controllers/bankAccountAdminController.js';
 import taxationAdmin from '../controllers/taxationAdminController.js';
 import addressAdmin from '../controllers/addressAdminController.js';
 import medicalCertificateAdmin from '../controllers/medicalCertificateAdminController.js';
+import taskAdmin from '../controllers/taskAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -21,6 +22,7 @@ import { bankAccountRules } from '../validators/bankAccountValidators.js';
 import { addressRules } from '../validators/addressValidators.js';
 import { medicalCertificateRules } from '../validators/medicalCertificateValidators.js';
 import { createPassportRules } from '../validators/passportValidators.js';
+import { createTaskRules, updateTaskRules } from '../validators/taskValidators.js';
 
 const router = express.Router();
 
@@ -827,6 +829,48 @@ router.get(
   auth,
   authorize('ADMIN'),
   medicalCertificateAdmin.get
+);
+
+/**
+ * @swagger
+ * /users/{id}/tasks:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List user's tasks
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Array of tasks
+ */
+router.get('/:id/tasks', auth, authorize('ADMIN'), taskAdmin.list);
+
+router.post(
+  '/:id/tasks',
+  auth,
+  authorize('ADMIN'),
+  createTaskRules,
+  taskAdmin.create
+);
+
+router.put(
+  '/:id/tasks/:taskId',
+  auth,
+  authorize('ADMIN'),
+  updateTaskRules,
+  taskAdmin.update
+);
+
+router.delete(
+  '/:id/tasks/:taskId',
+  auth,
+  authorize('ADMIN'),
+  taskAdmin.remove
 );
 
 export default router;
