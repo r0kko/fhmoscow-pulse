@@ -9,6 +9,11 @@ const total = ref(0)
 const error = ref('')
 const router = useRouter()
 
+const activeTab = ref('users')
+const completion = ref([])
+const completionLoading = ref(false)
+const completionError = ref('')
+
 const isLoading = ref(false)
 const search = ref('')
 const statusFilter = ref('')
@@ -55,6 +60,12 @@ watch(currentPage, () => {
   loadUsers()
 })
 
+watch(activeTab, (tab) => {
+  if (tab === 'profiles' && completion.value.length === 0 && !completionLoading.value) {
+    loadCompletion()
+  }
+})
+
 
 async function loadUsers() {
   try {
@@ -78,9 +89,22 @@ async function loadUsers() {
   }
 }
 
+async function loadCompletion() {
+  try {
+    completionLoading.value = true
+    const data = await apiFetch('/users/profile-completion')
+    completion.value = data.profiles
+  } catch (e) {
+    completionError.value = e.message
+  } finally {
+    completionLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadUsers()
   loadRoles()
+  if (activeTab.value === 'profiles') loadCompletion()
 })
 
 function openCreate() {
@@ -177,7 +201,19 @@ async function copy(text) {
       </ol>
     </nav>
     <h1 class="mb-3">Пользователи</h1>
-    <div class="card section-card tile fade-in shadow-sm">
+    <div class="card tile mb-3">
+      <div class="card-body p-2">
+        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">Пользователи</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'profiles' }" @click="activeTab = 'profiles'">Заполнение профиля</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div v-show="activeTab === 'users'" class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Пользователи</h2>
         <button class="btn btn-brand" @click="openCreate">
@@ -366,6 +402,46 @@ async function copy(text) {
         data-bs-autohide="true"
       >
         <div class="toast-body">{{ toastMessage }}</div>
+      </div>
+    </div>
+    <div v-show="activeTab === 'profiles'" class="card section-card tile fade-in shadow-sm mt-3">
+      <div class="card-header">
+        <h2 class="h5 mb-0">Заполнение профиля</h2>
+      </div>
+      <div class="card-body p-3">
+        <div v-if="completionError" class="alert alert-danger mb-3">{{ completionError }}</div>
+        <div v-if="completionLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div v-if="completion.length" class="table-responsive">
+          <table class="table admin-table table-hover table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>ФИО</th>
+                <th class="d-none d-sm-table-cell">Дата рождения</th>
+                <th class="text-center">Паспорт</th>
+                <th class="text-center">ИНН</th>
+                <th class="text-center">СНИЛС</th>
+                <th class="text-center">Банк</th>
+                <th class="text-center">Адрес</th>
+                <th class="d-none d-md-table-cell">Налоговый статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in completion" :key="p.id">
+                <td>{{ p.last_name }} {{ p.first_name }} {{ p.patronymic }}</td>
+                <td class="d-none d-sm-table-cell">{{ formatDate(p.birth_date) }}</td>
+                <td class="text-center"><i :class="p.passport ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
+                <td class="text-center"><i :class="p.inn ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
+                <td class="text-center"><i :class="p.snils ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
+                <td class="text-center"><i :class="p.bank_account ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
+                <td class="text-center"><i :class="p.addresses ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
+                <td class="d-none d-md-table-cell">{{ p.taxation_type }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else-if="!completionLoading" class="text-muted mb-0">Нет данных.</p>
       </div>
     </div>
     </div>

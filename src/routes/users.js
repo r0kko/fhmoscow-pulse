@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import userMapper from '../mappers/userMapper.js';
 import admin from '../controllers/userAdminController.js';
+import profileCompletionAdmin from '../controllers/profileCompletionAdminController.js';
 import selfController from '../controllers/userSelfController.js';
 import innAdmin from '../controllers/innAdminController.js';
 import snilsAdmin from '../controllers/snilsAdminController.js';
@@ -827,6 +828,24 @@ router.get(
   auth,
   authorize('ADMIN'),
   medicalCertificateAdmin.get
+);
+
+/**
+ * @swagger
+ * /users/profile-completion:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List profile completion for referees
+ *     responses:
+ *       200:
+ *         description: Array of profile statuses
+ */
+router.get(
+  '/profile-completion',
+  auth,
+  authorize('ADMIN'),
+  profileCompletionAdmin.list
 );
 
 export default router;
