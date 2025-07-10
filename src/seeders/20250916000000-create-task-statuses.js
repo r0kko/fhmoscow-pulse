@@ -6,7 +6,7 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
-        // eslint-disable-next-line
+      // eslint-disable-next-line
       "SELECT COUNT(*) AS cnt FROM task_statuses WHERE alias IN ('PENDING','IN_PROGRESS','COMPLETED');"
     );
     if (Number(existing[0].cnt) > 0) return;
