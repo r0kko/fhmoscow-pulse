@@ -20,7 +20,8 @@ function sanitize(obj) {
 
 function toPublic(task) {
   if (!task) return null;
-  const plain = typeof task.get === 'function' ? task.get({ plain: true }) : task;
+  const plain =
+    typeof task.get === 'function' ? task.get({ plain: true }) : task;
   return sanitize(plain);
 }
 

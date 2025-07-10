@@ -1,6 +1,7 @@
 function toPublic(entry) {
   if (!entry) return null;
-  const plain = typeof entry.get === 'function' ? entry.get({ plain: true }) : entry;
+  const plain =
+    typeof entry.get === 'function' ? entry.get({ plain: true }) : entry;
   return {
     id: plain.id,
     first_name: plain.first_name,

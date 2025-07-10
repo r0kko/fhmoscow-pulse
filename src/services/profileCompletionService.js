@@ -1,9 +1,24 @@
-import { User, Role, Passport, Inn, Snils, BankAccount, UserAddress, Taxation, TaxationType } from '../models/index.js';
+import {
+  User,
+  Role,
+  Passport,
+  Inn,
+  Snils,
+  BankAccount,
+  UserAddress,
+  Taxation,
+  TaxationType,
+} from '../models/index.js';
 
 async function listByRole(alias) {
   return User.findAll({
     include: [
-      { model: Role, where: { alias }, through: { attributes: [] }, required: true },
+      {
+        model: Role,
+        where: { alias },
+        through: { attributes: [] },
+        required: true,
+      },
       { model: Passport, attributes: ['id'], required: false },
       { model: Inn, attributes: ['id'], required: false },
       { model: Snils, attributes: ['id'], required: false },

@@ -45,7 +45,9 @@ async function updateForUser(userId, taskId, data, actorId) {
 
   let statusId = task.status_id;
   if (data.status_alias) {
-    const status = await TaskStatus.findOne({ where: { alias: data.status_alias } });
+    const status = await TaskStatus.findOne({
+      where: { alias: data.status_alias },
+    });
     if (!status) throw new ServiceError('task_status_not_found', 404);
     statusId = status.id;
   }

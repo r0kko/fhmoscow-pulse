@@ -23,7 +23,10 @@ import { bankAccountRules } from '../validators/bankAccountValidators.js';
 import { addressRules } from '../validators/addressValidators.js';
 import { medicalCertificateRules } from '../validators/medicalCertificateValidators.js';
 import { createPassportRules } from '../validators/passportValidators.js';
-import { createTaskRules, updateTaskRules } from '../validators/taskValidators.js';
+import {
+  createTaskRules,
+  updateTaskRules,
+} from '../validators/taskValidators.js';
 
 const router = express.Router();
 
@@ -903,11 +906,6 @@ router.put(
   taskAdmin.update
 );
 
-router.delete(
-  '/:id/tasks/:taskId',
-  auth,
-  authorize('ADMIN'),
-  taskAdmin.remove
-);
+router.delete('/:id/tasks/:taskId', auth, authorize('ADMIN'), taskAdmin.remove);
 
 export default router;
