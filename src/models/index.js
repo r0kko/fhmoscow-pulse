@@ -41,6 +41,9 @@ import MedicalExamRegistrationStatus from './medicalExamRegistrationStatus.js';
 import TrainingRegistration from './trainingRegistration.js';
 import TrainingRole from './trainingRole.js';
 import Sex from './sex.js';
+import TaskType from './taskType.js';
+import TaskStatus from './taskStatus.js';
+import Task from './task.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -193,6 +196,14 @@ Passport.belongsTo(Country, { foreignKey: 'country_id' });
 User.hasMany(EmailCode, { foreignKey: 'user_id' });
 EmailCode.belongsTo(User, { foreignKey: 'user_id' });
 
+/* tasks */
+TaskType.hasMany(Task, { foreignKey: 'type_id' });
+Task.belongsTo(TaskType, { foreignKey: 'type_id' });
+TaskStatus.hasMany(Task, { foreignKey: 'status_id' });
+Task.belongsTo(TaskStatus, { foreignKey: 'status_id' });
+User.hasMany(Task, { foreignKey: 'user_id' });
+Task.belongsTo(User, { foreignKey: 'user_id' });
+
 const auditExclude = ['Log'];
 for (const model of Object.values(sequelize.models)) {
   if (!auditExclude.includes(model.name)) {
@@ -242,4 +253,7 @@ export {
   TrainingRole,
   TrainingRegistration,
   Sex,
+  Task,
+  TaskType,
+  TaskStatus,
 };
