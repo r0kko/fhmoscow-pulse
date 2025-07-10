@@ -258,10 +258,20 @@ function dayTrainings(id) {
   return day ? day.trainings : [];
 }
 
-function showAttendanceWarning(t) {
-  if (t.my_role?.alias !== 'COACH') return false;
-  if (t.attendance_marked) return false;
-  return new Date(t.end_at) <= new Date();
+function attendanceAlertType(t) {
+  if (t.my_role?.alias !== 'COACH') return null;
+  if (t.attendance_marked) return null;
+  const now = new Date();
+  const start = new Date(t.start_at);
+  const end = new Date(t.end_at);
+  const diffMinutes = (start.getTime() - now.getTime()) / 60000;
+  if (now < end && diffMinutes <= 45) {
+    return 'primary';
+  }
+  if (now >= end) {
+    return 'warning';
+  }
+  return null;
 }
 
 function dayOpen(day) {
@@ -335,7 +345,6 @@ function dayOpen(day) {
                     v-for="t in g.trainings"
                     :key="t.id"
                     class="schedule-item d-flex justify-content-between align-items-start"
-                    :class="{ 'bg-warning bg-opacity-25': showAttendanceWarning(t) }"
                 >
                   <div class="me-3">
                     <div>
@@ -343,13 +352,13 @@ function dayOpen(day) {
                       <span class="ms-2">{{ t.stadium?.name }}</span>
                     </div>
                     <div class="text-muted small">{{ t.type?.name }}</div>
-                    <p
-                      v-if="showAttendanceWarning(t)"
-                      class="small text-warning mb-1 d-flex align-items-center"
+                    <div
+                      v-if="attendanceAlertType(t)"
+                      :class="['alert', `alert-${attendanceAlertType(t)}`, 'py-1', 'px-2', 'small', 'mb-1', 'd-flex', 'align-items-center']"
                     >
-                      <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                      <span>Посещаемость не отмечена</span>
-                    </p>
+                      <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                      <span>Отметьте посещаемость</span>
+                    </div>
                     <p class="text-muted small mb-1 d-flex mt-1">
                       <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
                       <span>
