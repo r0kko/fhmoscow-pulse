@@ -44,8 +44,14 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
   User: { findByPk: findUserMock },
   TrainingRole: {},
+  Role: {},
   TrainingRegistration: { findOne: findRegMock },
   RefereeGroup: { findAll: findAllGroupsMock },
+}));
+
+jest.unstable_mockModule('../src/models/trainingRegistration.js', () => ({
+  __esModule: true,
+  default: { findOne: findRegMock },
 }));
 
 const { default: service } = await import('../src/services/trainingService.js');

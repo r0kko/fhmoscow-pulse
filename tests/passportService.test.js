@@ -3,6 +3,7 @@ import { expect, jest, test } from '@jest/globals';
 const findOneMock = jest.fn();
 const createMock = jest.fn();
 const destroyMock = jest.fn();
+const updateMock = jest.fn();
 const findByPkMock = jest.fn();
 const findTypeMock = jest.fn();
 const findCountryMock = jest.fn();
@@ -10,7 +11,7 @@ const findExtMock = jest.fn();
 const legacyFindMock = jest.fn();
 const cleanPassportMock = jest.fn();
 
-const passportInstance = { destroy: destroyMock };
+const passportInstance = { destroy: destroyMock, update: updateMock };
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
