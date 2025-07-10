@@ -9,10 +9,10 @@ function toPublic(entry) {
     birth_date: plain.birth_date,
     passport: !!plain.Passport,
     inn: !!plain.Inn,
-    snils: !!plain.Snils,
+    snils: !!(plain.Snils || plain.Snil),
     bank_account: !!plain.BankAccount,
     addresses: plain.UserAddresses && plain.UserAddresses.length > 0,
-    taxation_type: plain.Taxation?.TaxationType?.alias || null,
+    taxation_type: plain.Taxation?.TaxationType?.name || null,
   };
 }
 
