@@ -24,6 +24,25 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
+const groupedRegistrations = computed(() => {
+  const map = {};
+  trainingRoles.value.forEach((r) => {
+    map[r.id] = { role: r, registrations: [] };
+  });
+  const none = { role: null, registrations: [] };
+  for (const r of list.value) {
+    const group = map[r.role_id] || none;
+    group.registrations.push(r);
+  }
+  const groups = [];
+  trainingRoles.value.forEach((r) => {
+    const g = map[r.id];
+    if (g.registrations.length) groups.push(g);
+  });
+  if (none.registrations.length) groups.push(none);
+  return groups;
+});
+
 onMounted(() => {
   loadTraining();
   loadRegistrations();
@@ -192,37 +211,41 @@ async function updateRegistration(reg) {
         </div>
         <div class="col-auto">
           <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
+            <span v-if="addLoading" class="spinner-border spinner-border-sm me-2"></span>
             Добавить
           </button>
         </div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3 table-responsive">
-          <table class="table admin-table table-striped align-middle mb-0">
-            <thead>
-              <tr>
-                <th>ФИО</th>
-                <th>Роль</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in list" :key="r.user.id">
-                <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
-                <td>
-                  <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
-                    <option value="" disabled>Выберите роль</option>
-                    <option v-for="role in trainingRoles" :key="role.id" :value="role.id">
-                      {{ role.name }}
-                    </option>
-                  </select>
-                </td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="card-body p-3">
+          <div v-for="group in groupedRegistrations" :key="group.role ? group.role.id : 'none'" class="mb-4 table-responsive">
+            <h5 class="mb-2">{{ group.role ? group.role.name : 'Без роли' }}</h5>
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Роль</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in group.registrations" :key="r.user.id">
+                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                  <td>
+                    <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
+                      <option value="" disabled>Выберите роль</option>
+                      <option v-for="role in trainingRoles" :key="role.id" :value="role.id">
+                        {{ role.name }}
+                      </option>
+                    </select>
+                  </td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">Нет записей.</p>
