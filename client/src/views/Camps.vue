@@ -344,63 +344,74 @@ function dayOpen(day) {
                 <li
                     v-for="t in g.trainings"
                     :key="t.id"
-                    class="schedule-item d-flex justify-content-between align-items-start"
+                    class="schedule-item"
                 >
-                  <div class="me-3">
-                    <div>
-                      <strong>{{ formatTime(t.start_at) }}–{{ formatTime(t.end_at) }}</strong>
-                      <span class="ms-2">{{ t.stadium?.name }}</span>
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="me-3 flex-grow-1">
+                      <div>
+                        <strong>{{ formatTime(t.start_at) }}–{{ formatTime(t.end_at) }}</strong>
+                        <span class="ms-2">{{ t.stadium?.name }}</span>
+                      </div>
+                      <div class="text-muted small">{{ t.type?.name }}</div>
                     </div>
-                    <div class="text-muted small">{{ t.type?.name }}</div>
-                    <div
-                      v-if="attendanceAlertType(t)"
-                      :class="['alert', `alert-${attendanceAlertType(t)}`, 'py-1', 'px-2', 'small', 'mb-1', 'd-flex', 'align-items-center']"
-                    >
-                      <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
-                      <span>Отметьте посещаемость</span>
+                    <div class="d-flex align-items-center">
+                      <RouterLink
+                        v-if="t.my_role?.alias === 'COACH' && !t.attendance_marked"
+                        :to="`/trainings/${t.id}/attendance`"
+                        class="btn btn-link p-0"
+                        :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
+                        :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
+                      >
+                        <i class="bi bi-check2-square" aria-hidden="true"></i>
+                        <span class="visually-hidden">Посещаемость</span>
+                      </RouterLink>
+                      <button
+                        class="btn btn-link p-0 ms-2"
+                        :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
+                        @click="canCancel(t) ? confirmUnregister(t.id) : null"
+                        :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
+                        :title="cancelTooltip(t)"
+                      >
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                        <span class="visually-hidden">Отменить</span>
+                      </button>
                     </div>
-                    <p class="text-muted small mb-1 d-flex mt-1">
-                      <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
-                      <span>
-                        Роль: {{ t.my_role?.name || '—' }}<br />
-                        Тренеры:
-                        <span v-if="t.coaches && t.coaches.length">
-                          {{ t.coaches.map(shortName).join(', ') }}
-                        </span>
-                        <span v-else>не назначены</span><br />
-                        Инвентарь:
-                        <span
-                          v-if="t.equipment_managers && t.equipment_managers.length"
-                        >
-                          {{ t.equipment_managers.map(shortName).join(', ') }}
-                        </span>
-                        <span v-else>не назначен</span><br />
-                        Адрес: {{ t.stadium?.address?.result || '—' }}
+                  </div>
+                  <div
+                    v-if="attendanceAlertType(t)"
+                    :class="[
+                      'alert',
+                      `alert-${attendanceAlertType(t)}`,
+                      'py-1',
+                      'px-2',
+                      'small',
+                      'my-2',
+                      'd-flex',
+                      'align-items-center'
+                    ]"
+                  >
+                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                    <span>Отметьте посещаемость</span>
+                  </div>
+                  <p class="text-muted small mb-1 d-flex mt-1">
+                    <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
+                    <span>
+                      Роль: {{ t.my_role?.name || '—' }}<br />
+                      Тренеры:
+                      <span v-if="t.coaches && t.coaches.length">
+                        {{ t.coaches.map(shortName).join(', ') }}
                       </span>
-                    </p>
-                  </div>
-                  <div class="d-flex align-items-center ms-auto">
-                    <RouterLink
-                      v-if="t.my_role?.alias === 'COACH' && !t.attendance_marked"
-                      :to="`/trainings/${t.id}/attendance`"
-                      class="btn btn-link p-0"
-                      :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
-                      :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
-                    >
-                      <i class="bi bi-check2-square" aria-hidden="true"></i>
-                      <span class="visually-hidden">Посещаемость</span>
-                    </RouterLink>
-                    <button
-                      class="btn btn-link p-0 ms-2"
-                      :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
-                      @click="canCancel(t) ? confirmUnregister(t.id) : null"
-                      :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
-                      :title="cancelTooltip(t)"
-                    >
-                      <i class="bi bi-x-lg" aria-hidden="true"></i>
-                      <span class="visually-hidden">Отменить</span>
-                    </button>
-                  </div>
+                      <span v-else>не назначены</span><br />
+                      Инвентарь:
+                      <span
+                        v-if="t.equipment_managers && t.equipment_managers.length"
+                      >
+                        {{ t.equipment_managers.map(shortName).join(', ') }}
+                      </span>
+                      <span v-else>не назначен</span><br />
+                      Адрес: {{ t.stadium?.address?.result || '—' }}
+                    </span>
+                  </p>
                 </li>
               </ul>
             </div>
