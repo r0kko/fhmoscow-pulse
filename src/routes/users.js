@@ -70,6 +70,24 @@ router.get('/', auth, authorize('ADMIN'), admin.list);
 
 /**
  * @swagger
+ * /users/profile-completion:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List profile completion for referees
+ *     responses:
+ *       200:
+ *         description: Array of profile statuses
+ */
+router.get(
+  '/profile-completion',
+  auth,
+  authorize('ADMIN'),
+  profileCompletionAdmin.list
+);
+
+/**
+ * @swagger
  * /users/{id}:
  *   get:
  *     security:
@@ -828,24 +846,6 @@ router.get(
   auth,
   authorize('ADMIN'),
   medicalCertificateAdmin.get
-);
-
-/**
- * @swagger
- * /users/profile-completion:
- *   get:
- *     security:
- *       - bearerAuth: []
- *     summary: List profile completion for referees
- *     responses:
- *       200:
- *         description: Array of profile statuses
- */
-router.get(
-  '/profile-completion',
-  auth,
-  authorize('ADMIN'),
-  profileCompletionAdmin.list
 );
 
 export default router;
