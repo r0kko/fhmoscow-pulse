@@ -2,32 +2,44 @@ import { expect, jest, test, beforeEach } from '@jest/globals';
 
 const accessMock = jest.fn();
 const registerFontMock = jest.fn();
+const imageMock = jest.fn();
+const textMock = jest.fn();
+let docStub;
+const fillColorMock = jest.fn(() => docStub);
+const fontSizeMock = jest.fn(() => docStub);
 
-jest.unstable_mockModule('fs', () => ({
-  __esModule: true,
-  default: { accessSync: accessMock, constants: { R_OK: 4 } },
-  accessSync: accessMock,
-  constants: { R_OK: 4 },
-}));
+function setup(logos) {
+  jest.unstable_mockModule('fs', () => ({
+    __esModule: true,
+    default: { accessSync: accessMock, constants: { R_OK: 4 } },
+    accessSync: accessMock,
+    constants: { R_OK: 4 },
+  }));
 
-jest.unstable_mockModule('../src/config/pdf.js', () => ({
-  __esModule: true,
-  PDF_FONTS: {
-    regular: '/reg.ttf',
-    bold: '/bold.ttf',
-    italic: '/italic.ttf',
-    boldItalic: '/bi.ttf',
-  },
-}));
+  jest.unstable_mockModule('../src/config/pdf.js', () => ({
+    __esModule: true,
+    PDF_FONTS: {
+      regular: '/reg.ttf',
+      bold: '/bold.ttf',
+      italic: '/italic.ttf',
+      boldItalic: '/bi.ttf',
+    },
+    PDF_LOGOS: logos,
+  }));
 
-const { applyFonts } = await import('../src/utils/pdf.js');
+  return import('../src/utils/pdf.js');
+}
 
 beforeEach(() => {
+  jest.resetModules();
   accessMock.mockReset();
   registerFontMock.mockReset();
+  imageMock.mockReset();
+  textMock.mockReset();
 });
 
-test('applyFonts registers provided fonts', () => {
+test('applyFonts registers provided fonts', async () => {
+  const { applyFonts } = await setup({});
   const doc = { registerFont: registerFontMock };
   applyFonts(doc);
   expect(accessMock).toHaveBeenCalledTimes(4);
@@ -37,7 +49,8 @@ test('applyFonts registers provided fonts', () => {
   expect(registerFontMock).toHaveBeenCalledWith('SB-BoldItalic', '/bi.ttf');
 });
 
-test('applyFonts falls back when fonts missing', () => {
+test('applyFonts falls back when fonts missing', async () => {
+  const { applyFonts } = await setup({});
   accessMock.mockImplementation(() => {
     throw new Error('missing');
   });
@@ -52,4 +65,38 @@ test('applyFonts falls back when fonts missing', () => {
     '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
   );
   expect(res).toEqual({ regular: 'Default-Regular', bold: 'Default-Bold' });
+});
+
+test('applyFirstPageFooter draws logos and text', async () => {
+  const { applyFirstPageFooter } = await setup({
+    federation: '/fhm.png',
+    system: '/sys.png',
+  });
+  const doc = {
+    page: { width: 200, height: 300 },
+    image: imageMock,
+    text: textMock,
+    fillColor: fillColorMock,
+    fontSize: fontSizeMock,
+  };
+  docStub = doc;
+  applyFirstPageFooter(doc);
+  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 230, { height: 40 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 130, 230, { height: 40 });
+  expect(textMock).toHaveBeenCalled();
+});
+
+test('applyFirstPageFooter works without logos', async () => {
+  const { applyFirstPageFooter } = await setup({});
+  const doc = {
+    page: { width: 100, height: 150 },
+    image: imageMock,
+    text: textMock,
+    fillColor: fillColorMock,
+    fontSize: fontSizeMock,
+  };
+  docStub = doc;
+  applyFirstPageFooter(doc);
+  expect(imageMock).not.toHaveBeenCalled();
+  expect(textMock).toHaveBeenCalled();
 });
