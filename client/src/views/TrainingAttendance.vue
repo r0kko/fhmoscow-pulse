@@ -21,6 +21,7 @@ const allMarked = computed(() =>
     (r) => r.present === true || r.present === false
   )
 );
+const attendanceMarked = computed(() => training.value?.attendance_marked);
 const loading = ref(false);
 const error = ref('');
 const toastRef = ref(null);
@@ -143,6 +144,7 @@ function showToast(message) {
                         autocomplete="off"
                         :checked="r.present === true"
                         @change="setPresence(r.user.id, true)"
+                        :disabled="attendanceMarked"
                       />
                       <label
                         class="btn btn-outline-success presence-btn"
@@ -159,6 +161,7 @@ function showToast(message) {
                         autocomplete="off"
                         :checked="r.present === false"
                         @change="setPresence(r.user.id, false)"
+                        :disabled="attendanceMarked"
                       />
                       <label
                         class="btn btn-outline-danger presence-btn"
@@ -176,12 +179,14 @@ function showToast(message) {
         </div>
         <p v-else class="text-muted">Нет записей</p>
         <button
+          v-if="!attendanceMarked"
           class="btn btn-brand mt-3"
           @click="finish"
           :disabled="!visibleRegistrations.length || !allMarked"
         >
           Завершить
         </button>
+        <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
       </div>
       <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div ref="toastRef" class="toast text-bg-secondary" role="status" data-bs-delay="1500" data-bs-autohide="true">
