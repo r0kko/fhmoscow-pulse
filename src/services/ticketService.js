@@ -108,6 +108,27 @@ async function update(id, data, actorId) {
   return updateForUser(ticket.user_id, id, data, actorId);
 }
 
+async function progressStatus(id, actorId) {
+  const ticket = await Ticket.findByPk(id, { include: [TicketStatus] });
+  if (!ticket) throw new ServiceError('ticket_not_found', 404);
+  const current = ticket.TicketStatus.alias;
+  let next = null;
+  switch (current) {
+    case 'CREATED':
+      next = 'IN_PROGRESS';
+      break;
+    case 'IN_PROGRESS':
+      next = 'CONFIRMED';
+      break;
+    case 'CONFIRMED':
+      next = 'REJECTED';
+      break;
+    default:
+      return Ticket.findByPk(id, { include: [TicketType, TicketStatus] });
+  }
+  return updateForUser(ticket.user_id, id, { status_alias: next }, actorId);
+}
+
 export default {
   listByUser,
   createForUser,
@@ -116,4 +137,5 @@ export default {
   getById,
   listAll,
   update,
+  progressStatus,
 };

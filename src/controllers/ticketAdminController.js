@@ -108,6 +108,31 @@ export default {
     }
   },
 
+  async progressStatus(req, res) {
+    try {
+      const ticket = await ticketService.progressStatus(
+        req.params.id,
+        req.user.id,
+      );
+      const user = await ticket.getUser();
+      const files = await fileService.listForTicket(ticket.id);
+      const result = ticketMapper.toPublic(ticket);
+      result.user = {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      };
+      result.files = [];
+      for (const f of files) {
+        const url = await fileService.getDownloadUrl(f.File);
+        result.files.push(fileMapper.toPublic(f, url));
+      }
+      return res.json({ ticket: result });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
   async remove(req, res) {
     try {
       await ticketService.removeForUser(
