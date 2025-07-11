@@ -42,7 +42,11 @@ export default {
 
   async remove(req, res) {
     try {
-      await ticketService.removeForUser(req.user.id, req.params.id, req.user.id);
+      await ticketService.removeForUser(
+        req.user.id,
+        req.params.id,
+        req.user.id
+      );
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);
