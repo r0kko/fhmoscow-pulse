@@ -44,6 +44,9 @@ import Sex from './sex.js';
 import TaskType from './taskType.js';
 import TaskStatus from './taskStatus.js';
 import Task from './task.js';
+import TicketType from './ticketType.js';
+import TicketStatus from './ticketStatus.js';
+import Ticket from './ticket.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -204,6 +207,14 @@ Task.belongsTo(TaskStatus, { foreignKey: 'status_id' });
 User.hasMany(Task, { foreignKey: 'user_id' });
 Task.belongsTo(User, { foreignKey: 'user_id' });
 
+/* tickets */
+TicketType.hasMany(Ticket, { foreignKey: 'type_id' });
+Ticket.belongsTo(TicketType, { foreignKey: 'type_id' });
+TicketStatus.hasMany(Ticket, { foreignKey: 'status_id' });
+Ticket.belongsTo(TicketStatus, { foreignKey: 'status_id' });
+User.hasMany(Ticket, { foreignKey: 'user_id' });
+Ticket.belongsTo(User, { foreignKey: 'user_id' });
+
 const auditExclude = ['Log'];
 for (const model of Object.values(sequelize.models)) {
   if (!auditExclude.includes(model.name)) {
@@ -256,4 +267,7 @@ export {
   Task,
   TaskType,
   TaskStatus,
+  Ticket,
+  TicketType,
+  TicketStatus,
 };

@@ -13,6 +13,7 @@ import taxationAdmin from '../controllers/taxationAdminController.js';
 import addressAdmin from '../controllers/addressAdminController.js';
 import medicalCertificateAdmin from '../controllers/medicalCertificateAdminController.js';
 import taskAdmin from '../controllers/taskAdminController.js';
+import ticketAdmin from '../controllers/ticketAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -27,6 +28,10 @@ import {
   createTaskRules,
   updateTaskRules,
 } from '../validators/taskValidators.js';
+import {
+  createTicketRules,
+  updateTicketRules,
+} from '../validators/ticketValidators.js';
 
 const router = express.Router();
 
@@ -907,5 +912,25 @@ router.put(
 );
 
 router.delete('/:id/tasks/:taskId', auth, authorize('ADMIN'), taskAdmin.remove);
+
+router.get('/:id/tickets', auth, authorize('ADMIN'), ticketAdmin.list);
+
+router.post(
+  '/:id/tickets',
+  auth,
+  authorize('ADMIN'),
+  createTicketRules,
+  ticketAdmin.create
+);
+
+router.put(
+  '/:id/tickets/:ticketId',
+  auth,
+  authorize('ADMIN'),
+  updateTicketRules,
+  ticketAdmin.update
+);
+
+router.delete('/:id/tickets/:ticketId', auth, authorize('ADMIN'), ticketAdmin.remove);
 
 export default router;
