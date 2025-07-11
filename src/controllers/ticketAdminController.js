@@ -2,9 +2,38 @@ import { validationResult } from 'express-validator';
 
 import ticketService from '../services/ticketService.js';
 import ticketMapper from '../mappers/ticketMapper.js';
+import fileService from '../services/fileService.js';
+import fileMapper from '../mappers/fileMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
+  async listAll(req, res) {
+    const { page = '1', limit = '20' } = req.query;
+    try {
+      const { rows, count } = await ticketService.listAll({
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+      });
+      const result = [];
+      for (const t of rows) {
+        const ticket = ticketMapper.toPublic(t);
+        ticket.user = {
+          id: t.User.id,
+          first_name: t.User.first_name,
+          last_name: t.User.last_name,
+        };
+        ticket.files = [];
+        for (const f of t.TicketFiles) {
+          const url = await fileService.getDownloadUrl(f.File);
+          ticket.files.push(fileMapper.toPublic(f, url));
+        }
+        result.push(ticket);
+      }
+      return res.json({ tickets: result, total: count });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async list(req, res) {
     try {
       const tickets = await ticketService.listByUser(req.params.id);
@@ -44,6 +73,36 @@ export default {
         req.user.id
       );
       return res.json({ ticket: ticketMapper.toPublic(ticket) });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
+  async updateById(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const ticket = await ticketService.update(
+        req.params.id,
+        req.body,
+        req.user.id,
+      );
+      const user = await ticket.getUser();
+      const files = await fileService.listForTicket(ticket.id);
+      const result = ticketMapper.toPublic(ticket);
+      result.user = {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      };
+      result.files = [];
+      for (const f of files) {
+        const url = await fileService.getDownloadUrl(f.File);
+        result.files.push(fileMapper.toPublic(f, url));
+      }
+      return res.json({ ticket: result });
     } catch (err) {
       return sendError(res, err, 404);
     }

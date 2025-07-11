@@ -4,8 +4,9 @@ import multer from 'multer';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import selfController from '../controllers/ticketSelfController.js';
+import adminController from '../controllers/ticketAdminController.js';
 import fileController from '../controllers/ticketFileController.js';
-import { createTicketRules } from '../validators/ticketValidators.js';
+import { createTicketRules, updateTicketRules } from '../validators/ticketValidators.js';
 
 const router = express.Router();
 const upload = multer();
@@ -22,6 +23,8 @@ const upload = multer();
  *         description: Array of tickets
  */
 router.get('/me', auth, authorize('REFEREE'), selfController.list);
+
+router.get('/', auth, authorize('ADMIN'), adminController.listAll);
 
 /**
  * @swagger
@@ -40,6 +43,14 @@ router.post(
   authorize('REFEREE'),
   createTicketRules,
   selfController.create
+);
+
+router.put(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  updateTicketRules,
+  adminController.updateById,
 );
 
 router.post('/:id/files', auth, upload.single('file'), fileController.upload);
