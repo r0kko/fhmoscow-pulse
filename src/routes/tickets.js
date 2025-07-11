@@ -63,5 +63,6 @@ router.post(
 router.post('/:id/files', auth, upload.single('file'), fileController.upload);
 router.get('/:id/files', auth, fileController.list);
 router.delete('/:id/files/:fileId', auth, fileController.remove);
+router.delete('/:id', auth, authorize('REFEREE'), selfController.remove);
 
 export default router;

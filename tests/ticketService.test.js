@@ -102,10 +102,23 @@ test('updateForUser updates ticket', async () => {
 });
 
 test('removeForUser deletes ticket', async () => {
-  ticketFindOneMock.mockResolvedValue({ update: updateMock, destroy: destroyMock });
+  ticketFindOneMock.mockResolvedValue({
+    update: updateMock,
+    destroy: destroyMock,
+    TicketStatus: { alias: 'CREATED' },
+  });
   await service.removeForUser('u1', 't1', 'adm');
   expect(updateMock).toHaveBeenCalledWith({ updated_by: 'adm' });
   expect(destroyMock).toHaveBeenCalled();
+});
+
+test('removeForUser rejects when not created', async () => {
+  ticketFindOneMock.mockResolvedValue({
+    update: updateMock,
+    destroy: destroyMock,
+    TicketStatus: { alias: 'IN_PROGRESS' },
+  });
+  await expect(service.removeForUser('u1', 't1')).rejects.toThrow('ticket_locked');
 });
 
 test('progressStatus moves ticket forward', async () => {

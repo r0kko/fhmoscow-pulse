@@ -79,8 +79,13 @@ async function updateForUser(userId, ticketId, data, actorId) {
 async function removeForUser(userId, ticketId, actorId = null) {
   const ticket = await Ticket.findOne({
     where: { id: ticketId, user_id: userId },
+    include: [TicketStatus],
   });
   if (!ticket) throw new ServiceError('ticket_not_found', 404);
+  const statusAlias = ticket.TicketStatus?.alias;
+  if (statusAlias && statusAlias !== 'CREATED') {
+    throw new ServiceError('ticket_locked');
+  }
   await ticket.update({ updated_by: actorId });
   await ticket.destroy();
 }
