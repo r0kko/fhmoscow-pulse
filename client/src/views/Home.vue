@@ -25,6 +25,8 @@ const docsSections = [
   { title: 'Персональные данные', icon: 'bi-person-circle', to: '/profile' }
 ]
 
+const activePrepTab = ref('sections')
+
 const isAdmin = computed(() => auth.roles.includes('ADMIN'))
 const isReferee = computed(() => auth.roles.includes('REFEREE'))
 const preparationSections = computed(() =>
@@ -111,7 +113,27 @@ async function loadUpcoming() {
     <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
-          <div class="scroll-container">
+          <ul class="nav nav-pills nav-fill mb-3 tab-selector">
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activePrepTab === 'sections' }"
+                @click="activePrepTab = 'sections'"
+              >
+                Разделы
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activePrepTab === 'tasks' }"
+                @click="activePrepTab = 'tasks'"
+              >
+                Задачи
+              </button>
+            </li>
+          </ul>
+          <div v-show="activePrepTab === 'sections'" class="scroll-container">
             <component
               v-for="item in preparationSections"
               :key="item.title"
@@ -126,10 +148,11 @@ async function loadUpcoming() {
               </div>
             </component>
           </div>
+          <div v-show="activePrepTab === 'tasks'">
+            <TaskList />
+          </div>
       </div>
     </div>
-
-    <TaskList />
 
     <div class="card section-card mb-2">
         <div class="card-body">
@@ -275,6 +298,14 @@ async function loadUpcoming() {
   font-weight: normal;
   line-height: 1;
   vertical-align: -.125em;
+}
+
+.tab-selector {
+  gap: 0.5rem;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
 }
 
 @keyframes fadeIn {
