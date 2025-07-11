@@ -21,6 +21,7 @@ const addForm = ref({ user_id: '', training_role_id: '' });
 const addLoading = ref(false);
 const judges = ref([]);
 const trainingRoles = ref([]);
+const lastAddedUserId = ref(null);
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
@@ -92,9 +93,20 @@ async function loadRegistrations() {
     list.value = data.registrations.map((r) => ({
       ...r,
       role_id: r.role ? r.role.id : '',
+      highlight: false,
     }));
     total.value = data.total;
     error.value = '';
+    if (lastAddedUserId.value) {
+      const added = list.value.find((r) => r.user.id === lastAddedUserId.value);
+      if (added) {
+        added.highlight = true;
+        setTimeout(() => {
+          added.highlight = false;
+        }, 1500);
+      }
+      lastAddedUserId.value = null;
+    }
   } catch (e) {
     list.value = [];
     error.value = e.message;
@@ -140,6 +152,7 @@ async function addRegistration() {
       method: 'POST',
       body: JSON.stringify(addForm.value),
     });
+    lastAddedUserId.value = addForm.value.user_id;
     addForm.value.user_id = '';
     addForm.value.training_role_id = '';
     await loadRegistrations();
@@ -173,6 +186,10 @@ async function updateRegistration(reg) {
       }
     );
     reg.role = trainingRoles.value.find((r) => r.id === reg.role_id) || null;
+    reg.highlight = true;
+    setTimeout(() => {
+      reg.highlight = false;
+    }, 1500);
   } catch (e) {
     alert(e.message);
   }
@@ -241,8 +258,12 @@ async function updateRegistration(reg) {
                   <th></th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="r in group.registrations" :key="r.user.id">
+              <TransitionGroup tag="tbody" name="fade-list">
+                <tr
+                  v-for="r in group.registrations"
+                  :key="r.user.id"
+                  :class="{ highlight: r.highlight }"
+                >
                   <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                   <td>
                     <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
@@ -256,7 +277,7 @@ async function updateRegistration(reg) {
                     <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
                   </td>
                 </tr>
-              </tbody>
+              </TransitionGroup>
             </table>
           </div>
         </div>
@@ -280,6 +301,19 @@ async function updateRegistration(reg) {
 </template>
 
 <style scoped>
+.fade-list-enter-active,
+.fade-list-leave-active,
+.fade-list-move {
+  transition: all 0.2s ease;
+}
+.fade-list-enter-from,
+.fade-list-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.highlight {
+  animation: highlightBg 2s ease-out;
+}
 .section-card {
   border-radius: 1rem;
   overflow: hidden;
@@ -299,6 +333,15 @@ async function updateRegistration(reg) {
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+}
+
+@keyframes highlightBg {
+  from {
+    background-color: #fff3cd;
+  }
+  to {
+    background-color: transparent;
   }
 }
 </style>
