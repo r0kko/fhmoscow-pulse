@@ -17,6 +17,8 @@ import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
 import AdminDocuments from './views/AdminDocuments.vue';
+import Tickets from './views/Tickets.vue';
+import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import NotFound from './views/NotFound.vue';
@@ -34,6 +36,11 @@ const routes = [
   {
     path: '/camps',
     component: Camps,
+    meta: { requiresAuth: true, requiresReferee: true },
+  },
+  {
+    path: '/tickets',
+    component: Tickets,
     meta: { requiresAuth: true, requiresReferee: true },
   },
   {
@@ -69,6 +76,11 @@ const routes = [
   {
     path: '/documents-admin',
     component: AdminDocuments,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/tickets-admin',
+    component: AdminTickets,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {

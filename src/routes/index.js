@@ -30,6 +30,7 @@ import medicalExamsRouter from './medicalExams.js';
 import trainingRolesRouter from './trainingRoles.js';
 import sexesRouter from './sexes.js';
 import documentsRouter from './documents.js';
+import ticketsRouter from './tickets.js';
 
 const router = express.Router();
 
@@ -59,6 +60,7 @@ router.use('/referee-group-users', refereeGroupUsersRouter);
 router.use('/medical-centers', medicalCentersRouter);
 router.use('/medical-exams', medicalExamsRouter);
 router.use('/documents', documentsRouter);
+router.use('/tickets', ticketsRouter);
 
 /**
  * @swagger
