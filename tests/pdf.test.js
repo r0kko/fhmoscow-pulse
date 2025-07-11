@@ -73,7 +73,7 @@ test('applyFirstPageHeader draws logos and text', async () => {
     system: '/sys.png',
   });
   const doc = {
-    page: { width: 200, height: 300 },
+    page: { width: 500, height: 300 },
     image: imageMock,
     text: textMock,
     fillColor: fillColorMock,
@@ -82,7 +82,7 @@ test('applyFirstPageHeader draws logos and text', async () => {
   docStub = doc;
   applyFirstPageHeader(doc);
   expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 40 });
-  expect(imageMock).toHaveBeenCalledWith('/sys.png', 130, 30, { height: 40 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 80, 30, { width: 200 });
   expect(textMock).toHaveBeenCalled();
 });
 
