@@ -1,4 +1,11 @@
-import { Ticket, TicketType, TicketStatus, User } from '../models/index.js';
+import {
+  Ticket,
+  TicketType,
+  TicketStatus,
+  User,
+  TicketFile,
+  File,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listByUser(userId) {
@@ -78,10 +85,35 @@ async function removeForUser(userId, ticketId, actorId = null) {
   await ticket.destroy();
 }
 
+async function listAll(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  return Ticket.findAndCountAll({
+    include: [
+      User,
+      TicketType,
+      TicketStatus,
+      { model: TicketFile, include: [File] },
+    ],
+    order: [['created_at', 'DESC']],
+    limit,
+    offset,
+  });
+}
+
+async function update(id, data, actorId) {
+  const ticket = await Ticket.findByPk(id);
+  if (!ticket) throw new ServiceError('ticket_not_found', 404);
+  return updateForUser(ticket.user_id, id, data, actorId);
+}
+
 export default {
   listByUser,
   createForUser,
   updateForUser,
   removeForUser,
   getById,
+  listAll,
+  update,
 };
