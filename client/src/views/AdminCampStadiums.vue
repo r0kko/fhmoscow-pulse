@@ -66,9 +66,10 @@ const typeFormError = ref('');
 const trainings = ref([]);
 const trainingsTotal = ref(0);
 const trainingsPage = ref(1);
-const trainingsPageSize = ref(8);
+const trainingsPageSize = ref(20);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
+const trainingsView = ref('upcoming');
 const trainingsFilterStadium = ref('');
 const trainingsFilterGroup = ref('');
 const stadiumOptions = ref([]);
@@ -89,6 +90,18 @@ const trainingFormError = ref('');
 const saveLoading = ref(false);
 const typeSaveLoading = ref(false);
 const trainingSaveLoading = ref(false);
+const registrationList = ref([]);
+const registrationTotal = ref(0);
+const registrationPage = ref(1);
+const registrationLoading = ref(false);
+const registrationError = ref('');
+const registrationModalRef = ref(null);
+let registrationModal;
+const registrationTraining = ref(null);
+const addForm = ref({user_id: '', training_role_id: ''});
+const addLoading = ref(false);
+const judges = ref([]);
+const trainingRoles = ref([]);
 const assignmentsRef = ref(null);
 const groupsRef = ref(null);
 
@@ -110,6 +123,7 @@ let addrTimeout;
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
+const registrationsTotalPages = computed(() =>
     Math.max(1, Math.ceil(registrationTotal.value / pageSize))
 );
 const trainingsTotalPages = computed(() =>
@@ -140,6 +154,15 @@ watch(trainingsPage, () => {
 watch([trainingsPageSize, trainingsFilterStadium, trainingsFilterGroup], () => {
   trainingsPage.value = 1;
   if (activeTab.value === 'trainings') loadTrainings();
+});
+watch(trainingsView, () => {
+  trainingsPage.value = 1;
+  if (activeTab.value === 'trainings') loadTrainings();
+});
+watch(registrationPage, () => {
+  if (registrationTraining.value) {
+    loadRegistrations(registrationTraining.value.id);
+  }
 });
 
 watch(
@@ -414,7 +437,13 @@ async function loadTrainings() {
     if (trainingsFilterGroup.value) {
       params.set('group_id', trainingsFilterGroup.value);
     }
-    const data = await apiFetch(`/camp-trainings?${params}`);
+    let url = '/camp-trainings';
+    if (trainingsView.value === 'upcoming') {
+      url += '/upcoming';
+    } else if (trainingsView.value === 'past') {
+      url += '/past';
+    }
+    const data = await apiFetch(`${url}?${params}`);
     trainings.value = data.trainings;
     trainingsTotal.value = data.total;
   } catch (e) {
@@ -584,6 +613,113 @@ async function toggleTrainingGroup(training, groupId, checked) {
   }
 }
 
+async function loadRegistrations(trainingId) {
+  try {
+    registrationLoading.value = true;
+    const params = new URLSearchParams({
+      page: registrationPage.value,
+      limit: pageSize,
+    });
+    const data = await apiFetch(
+        `/camp-trainings/${trainingId}/registrations?${params}`
+    );
+    registrationList.value = data.registrations.map((r) => ({
+      ...r,
+      role_id: r.role ? r.role.id : '',
+    }));
+    registrationTotal.value = data.total;
+  } catch (e) {
+    registrationError.value = e.message;
+  } finally {
+    registrationLoading.value = false;
+  }
+}
+
+async function loadJudges() {
+  try {
+    const data = await apiFetch('/referee-group-users');
+    judges.value = data.judges;
+  } catch (_) {
+    judges.value = [];
+  }
+}
+
+async function loadTrainingRoles() {
+  try {
+    const data = await apiFetch('/training-roles');
+    trainingRoles.value = data.roles;
+  } catch (_) {
+    trainingRoles.value = [];
+  }
+}
+
+async function addRegistration() {
+  if (!registrationTraining.value) return;
+  if (!addForm.value.user_id || !addForm.value.training_role_id) return;
+  try {
+    addLoading.value = true;
+    await apiFetch(
+        `/camp-trainings/${registrationTraining.value.id}/registrations`,
+        {
+          method: 'POST',
+          body: JSON.stringify(addForm.value),
+        }
+    );
+    addForm.value.user_id = '';
+    addForm.value.training_role_id = '';
+    await loadRegistrations(registrationTraining.value.id);
+    await loadTrainings();
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    addLoading.value = false;
+  }
+}
+
+function openRegistrations(t) {
+  if (!registrationModal) {
+    registrationModal = new Modal(registrationModalRef.value);
+  }
+  registrationTraining.value = t;
+  registrationPage.value = 1;
+  registrationError.value = '';
+  if (!judges.value.length) loadJudges();
+  if (!trainingRoles.value.length) loadTrainingRoles();
+  loadRegistrations(t.id);
+  registrationModal.show();
+}
+
+async function removeRegistration(userId) {
+  if (!registrationTraining.value) return;
+  if (!confirm('Удалить запись?')) return;
+  try {
+    await apiFetch(
+        `/camp-trainings/${registrationTraining.value.id}/registrations/${userId}`,
+        {method: 'DELETE'}
+    );
+    await loadRegistrations(registrationTraining.value.id);
+    await loadTrainings();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function updateRegistration(reg) {
+  if (!registrationTraining.value) return;
+  try {
+    await apiFetch(
+        `/camp-trainings/${registrationTraining.value.id}/registrations/${reg.user.id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({training_role_id: reg.role_id}),
+        }
+    );
+    reg.role = trainingRoles.value.find((r) => r.id === reg.role_id) || null;
+    await loadTrainings();
+  } catch (e) {
+    alert(e.message);
+  }
+}
 </script>
 
 <template>
@@ -856,6 +992,18 @@ async function toggleTrainingGroup(training, groupId, checked) {
         </div>
       </div>
       <div class="card-body p-3">
+        <ul class="nav nav-pills nav-fill mb-3 tab-selector">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: trainingsView === 'upcoming' }" @click="trainingsView = 'upcoming'">
+              Ближайшие
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: trainingsView === 'past' }" @click="trainingsView = 'past'">
+              Прошедшие
+            </button>
+          </li>
+        </ul>
         <div v-if="trainings.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
@@ -909,12 +1057,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 />
               </td>
               <td class="text-end">
-                <RouterLink
-                  class="btn btn-sm btn-primary me-2"
-                  :to="`/camp-trainings/${t.id}/registrations`"
-                >
+                <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
                   <i class="bi bi-people"></i>
-                </RouterLink>
+                </button>
                 <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
                   <i class="bi bi-pencil"></i>
                 </button>
@@ -945,12 +1090,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <p class="mb-1" v-else>Инвентарь: —</p>
                 </div>
                 <div class="text-end">
-                  <RouterLink
-                    class="btn btn-sm btn-primary me-2"
-                    :to="`/camp-trainings/${t.id}/registrations`"
-                  >
+                  <button class="btn btn-sm btn-primary me-2" @click="openRegistrations(t)">
                     <i class="bi bi-people"></i>
-                  </RouterLink>
+                  </button>
                   <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
                     <i class="bi bi-pencil"></i>
                   </button>
@@ -985,9 +1127,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
     </div>
     <nav class="mt-3 d-flex align-items-center justify-content-between" v-if="trainings.length">
       <select v-model.number="trainingsPageSize" class="form-select form-select-sm w-auto">
-        <option :value="8">8</option>
-        <option :value="15">15</option>
-        <option :value="30">30</option>
+        <option :value="20">20</option>
+        <option :value="40">40</option>
+        <option :value="100">100</option>
       </select>
       <ul class="pagination mb-0">
         <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
@@ -1028,9 +1170,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
             <div class="mb-3">
               <label class="form-label">На странице</label>
               <select v-model.number="trainingsPageSize" class="form-select">
-                <option :value="8">8</option>
-                <option :value="15">15</option>
-                <option :value="30">30</option>
+                <option :value="20">20</option>
+                <option :value="40">40</option>
+                <option :value="100">100</option>
               </select>
             </div>
           </div>
@@ -1087,6 +1229,103 @@ async function toggleTrainingGroup(training, groupId, checked) {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div ref="registrationModalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Участники</h5>
+          <button type="button" class="btn-close" @click="registrationModal.hide()"></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="registrationError" class="alert alert-danger">{{ registrationError }}</div>
+          <div v-if="registrationLoading" class="text-center my-3">
+            <div class="spinner-border" role="status"></div>
+          </div>
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col">
+              <label class="form-label">Судья</label>
+              <select v-model="addForm.user_id" class="form-select">
+                <option value="" disabled>Выберите судью</option>
+                <option v-for="j in judges" :key="j.user.id" :value="j.user.id">
+                  {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
+                </option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="form-label">Роль</label>
+              <select v-model="addForm.training_role_id" class="form-select">
+                <option value="" disabled>Выберите роль</option>
+                <option v-for="r in trainingRoles" :key="r.id" :value="r.id">
+                  {{ r.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
+                Добавить
+              </button>
+            </div>
+          </div>
+          <div v-if="registrationList.length" class="table-responsive">
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
+              <tr>
+                <th>ФИО</th>
+                <th>Роль</th>
+                <th></th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="r in registrationList" :key="r.user.id">
+                <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                <td>
+                  <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
+                    <option value="" disabled>Выберите роль</option>
+                    <option v-for="role in trainingRoles" :key="role.id" :value="role.id">
+                      {{ role.name }}
+                    </option>
+                  </select>
+                </td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!registrationLoading" class="text-muted mb-0">Нет записей.</p>
+        </div>
+        <div class="modal-footer" v-if="registrationsTotalPages > 1">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" :class="{ disabled: registrationPage === 1 }">
+              <button class="page-link" @click="registrationPage--" :disabled="registrationPage === 1">Пред</button>
+            </li>
+            <li
+                class="page-item"
+                v-for="p in registrationsTotalPages"
+                :key="p"
+                :class="{ active: registrationPage === p }"
+            >
+              <button class="page-link" @click="registrationPage = p">{{ p }}</button>
+            </li>
+            <li
+                class="page-item"
+                :class="{ disabled: registrationPage === registrationsTotalPages }"
+            >
+              <button
+                  class="page-link"
+                  @click="registrationPage++"
+                  :disabled="registrationPage === registrationsTotalPages"
+              >
+                След
+              </button>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
