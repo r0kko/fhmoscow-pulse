@@ -60,7 +60,7 @@ router.post(
   '/:id/progress',
   auth,
   authorize('ADMIN'),
-  adminController.progressStatus,
+  adminController.progressStatus
 );
 
 router.post('/:id/files', auth, upload.single('file'), fileController.upload);

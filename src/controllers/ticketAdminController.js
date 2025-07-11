@@ -112,7 +112,7 @@ export default {
     try {
       const ticket = await ticketService.progressStatus(
         req.params.id,
-        req.user.id,
+        req.user.id
       );
       const user = await ticket.getUser();
       const files = await fileService.listForTicket(ticket.id);
