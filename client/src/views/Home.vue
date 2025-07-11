@@ -4,12 +4,12 @@ import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UpcomingEventCard from '../components/UpcomingEventCard.vue'
-import TaskList from '../components/TaskList.vue'
 
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
   { title: 'Результаты тестов', icon: 'bi-graph-up' },
+  { title: 'Задачи', icon: 'bi-list-check', to: '/tasks' },
 ]
 
 const workSections = [
@@ -24,7 +24,6 @@ const docsSections = [
   { title: 'Персональные данные', icon: 'bi-person-circle', to: '/profile' }
 ]
 
-const activePrepTab = ref('sections')
 
 const isAdmin = computed(() => auth.roles.includes('ADMIN'))
 const isReferee = computed(() => auth.roles.includes('REFEREE'))
@@ -112,27 +111,7 @@ async function loadUpcoming() {
     <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
-          <ul class="nav nav-pills nav-fill mb-3 tab-selector">
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activePrepTab === 'sections' }"
-                @click="activePrepTab = 'sections'"
-              >
-                Разделы
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activePrepTab === 'tasks' }"
-                @click="activePrepTab = 'tasks'"
-              >
-                Задачи
-              </button>
-            </li>
-          </ul>
-          <div v-show="activePrepTab === 'sections'" class="scroll-container">
+          <div class="scroll-container">
             <component
               v-for="item in preparationSections"
               :key="item.title"
@@ -146,9 +125,6 @@ async function loadUpcoming() {
                 <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
               </div>
             </component>
-          </div>
-          <div v-show="activePrepTab === 'tasks'">
-            <TaskList />
           </div>
       </div>
     </div>
@@ -299,13 +275,6 @@ async function loadUpcoming() {
   vertical-align: -.125em;
 }
 
-.tab-selector {
-  gap: 0.5rem;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
-}
 
 @keyframes fadeIn {
   from {
