@@ -108,6 +108,27 @@ test('removeForUser deletes ticket', async () => {
   expect(destroyMock).toHaveBeenCalled();
 });
 
+test('progressStatus moves ticket forward', async () => {
+  findByPkMock
+    .mockResolvedValueOnce({
+      id: 't1',
+      user_id: 'u1',
+      TicketStatus: { alias: 'CREATED' },
+    })
+    .mockResolvedValueOnce({ id: 't1', TicketStatus: { alias: 'IN_PROGRESS' } });
+  ticketFindOneMock.mockResolvedValue({
+    id: 't1',
+    user_id: 'u1',
+    type_id: 'type1',
+    status_id: 's1',
+    update: updateMock,
+  });
+  findOneStatusMock.mockResolvedValue({ id: 's2' });
+  const res = await service.progressStatus('t1', 'admin');
+  expect(updateMock).toHaveBeenCalled();
+  expect(res).toEqual({ id: 't1', TicketStatus: { alias: 'IN_PROGRESS' } });
+});
+
 
 
 test('createForUser throws when user missing', async () => {

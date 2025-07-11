@@ -56,6 +56,13 @@ router.put(
   adminController.updateById
 );
 
+router.post(
+  '/:id/progress',
+  auth,
+  authorize('ADMIN'),
+  adminController.progressStatus,
+);
+
 router.post('/:id/files', auth, upload.single('file'), fileController.upload);
 router.get('/:id/files', auth, fileController.list);
 router.delete('/:id/files/:fileId', auth, fileController.remove);

@@ -30,9 +30,32 @@ async function changeStatus(ticket, alias) {
       body: JSON.stringify({ status_alias: alias }),
     });
     const idx = tickets.value.findIndex((t) => t.id === ticket.id);
-    if (idx !== -1) tickets.value[idx] = updated;
+    if (idx !== -1) tickets.value[idx] = { ...updated, _flash: true };
+    setTimeout(() => {
+      const t = tickets.value.find((tt) => tt.id === ticket.id);
+      if (t) t._flash = false;
+    }, 1000);
   } catch (e) {
     alert(e.message);
+  }
+}
+
+async function progress(ticket) {
+  ticket._changing = true;
+  try {
+    const { ticket: updated } = await apiFetch(`/tickets/${ticket.id}/progress`, {
+      method: 'POST',
+    });
+    const idx = tickets.value.findIndex((t) => t.id === ticket.id);
+    if (idx !== -1) tickets.value[idx] = { ...updated, _flash: true };
+    setTimeout(() => {
+      const t = tickets.value.find((tt) => tt.id === ticket.id);
+      if (t) t._flash = false;
+    }, 1000);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    ticket._changing = false;
   }
 }
 </script>
@@ -67,7 +90,7 @@ async function changeStatus(ticket, alias) {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in tickets" :key="t.id">
+              <tr v-for="t in tickets" :key="t.id" :class="{ flash: t._flash }">
                 <td>{{ t.user.last_name }} {{ t.user.first_name }}</td>
                 <td>{{ t.type.name }}</td>
                 <td>{{ t.description }}</td>
@@ -110,6 +133,17 @@ async function changeStatus(ticket, alias) {
                       </li>
                     </ul>
                   </div>
+                  <button
+                    class="btn btn-sm btn-brand ms-2"
+                    @click="progress(t)"
+                    :disabled="t._changing"
+                  >
+                    <span
+                      v-if="t._changing"
+                      class="spinner-border spinner-border-sm me-1"
+                    ></span>
+                    Далее
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -126,5 +160,18 @@ async function changeStatus(ticket, alias) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.flash {
+  animation: flash-bg 1s ease-out;
+}
+
+@keyframes flash-bg {
+  from {
+    background-color: #fff3cd;
+  }
+  to {
+    background-color: transparent;
+  }
 }
 </style>
