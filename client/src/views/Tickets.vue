@@ -7,9 +7,7 @@ const tickets = ref([]);
 const loading = ref(true);
 const error = ref('');
 
-const description = ref('');
-const creating = ref(false);
-const creationError = ref('');
+
 
 onMounted(loadTickets);
 
@@ -27,24 +25,13 @@ async function loadTickets() {
   }
 }
 
-async function createTicket() {
-  if (creating.value) return;
-  creating.value = true;
+async function deleteTicket(ticket) {
+  if (!confirm('Удалить обращение?')) return;
   try {
-    const { ticket } = await apiFetch('/tickets', {
-      method: 'POST',
-      body: JSON.stringify({
-        type_alias: 'MED_CERT_UPLOAD',
-        description: description.value,
-      }),
-    });
-    tickets.value.push(ticket);
-    description.value = '';
-    creationError.value = '';
+    await apiFetch(`/tickets/${ticket.id}`, { method: 'DELETE' });
+    tickets.value = tickets.value.filter((t) => t.id !== ticket.id);
   } catch (e) {
-    creationError.value = e.message;
-  } finally {
-    creating.value = false;
+    alert(e.message);
   }
 }
 </script>
@@ -59,22 +46,6 @@ async function createTicket() {
         </ol>
       </nav>
       <h1 class="mb-3">Мои обращения</h1>
-      <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <h5 class="mb-3">Новое обращение</h5>
-          <div v-if="creationError" class="alert alert-danger">{{ creationError }}</div>
-          <textarea
-            class="form-control mb-2"
-            rows="3"
-            v-model="description"
-            placeholder="Описание"
-          ></textarea>
-          <button class="btn btn-brand" @click="createTicket" :disabled="creating">
-            <span v-if="creating" class="spinner-border spinner-border-sm me-2"></span>
-            Отправить
-          </button>
-        </div>
-      </div>
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
           <h5 class="mb-3">История</h5>
@@ -82,23 +53,39 @@ async function createTicket() {
           <div v-if="loading" class="text-center py-3">
             <div class="spinner-border" role="status"></div>
           </div>
-          <div v-if="tickets.length" class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Тип</th>
-                  <th>Описание</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="t in tickets" :key="t.id">
-                  <td>{{ t.type.name }}</td>
-                  <td>{{ t.description }}</td>
-                  <td>{{ t.status.name }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="tickets.length" class="vstack gap-3">
+            <div
+              v-for="t in tickets"
+              :key="t.id"
+              class="border rounded p-3 tile"
+            >
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="mb-0">{{ t.type.name }}</h6>
+                <span class="badge bg-secondary">{{ t.status.name }}</span>
+              </div>
+              <p class="mb-2">{{ t.description || '—' }}</p>
+              <div v-if="t.files && t.files.length" class="d-flex flex-wrap gap-2">
+                <a
+                  v-for="f in t.files"
+                  :key="f.id"
+                  :href="f.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="file-tile d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                >
+                  <i class="bi bi-file-earmark" aria-hidden="true"></i>
+                  <span class="text-break">{{ f.name }}</span>
+                </a>
+              </div>
+              <p v-else class="text-muted small mb-0">Нет файлов</p>
+              <button
+                v-if="t.status.alias === 'CREATED'"
+                class="btn btn-sm btn-outline-danger mt-2"
+                @click="deleteTicket(t)"
+              >
+                Удалить
+              </button>
+            </div>
           </div>
           <p v-else-if="!loading" class="text-muted mb-0">Нет обращений.</p>
         </div>
