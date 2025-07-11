@@ -8,6 +8,7 @@ import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
 import Medical from './views/Medical.vue';
 import Camps from './views/Camps.vue';
+import Tasks from './views/Tasks.vue';
 import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
@@ -42,6 +43,11 @@ const routes = [
     path: '/tickets',
     component: Tickets,
     meta: { requiresAuth: true, requiresReferee: true },
+  },
+  {
+    path: '/tasks',
+    component: Tasks,
+    meta: { requiresAuth: true },
   },
   {
     path: '/trainings/:id/attendance',
