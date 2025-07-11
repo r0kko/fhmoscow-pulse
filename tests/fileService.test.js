@@ -19,6 +19,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   MedicalCertificate: { findByPk: findByPkMock },
   MedicalCertificateFile: { create: mcCreateMock, findByPk: mcFindMock },
   MedicalCertificateType: { findOne: findOneMock },
+  Ticket: {},
+  TicketFile: {},
 }));
 
 beforeEach(() => {

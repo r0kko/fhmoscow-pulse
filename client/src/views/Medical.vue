@@ -1,9 +1,10 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch, apiFetchForm } from '../api.js';
 import MedicalExamCard from '../components/MedicalExamCard.vue';
 import Tooltip from 'bootstrap/js/dist/tooltip';
+import Modal from 'bootstrap/js/dist/modal';
 
 const certificate = ref(null);
 const history = ref([]);
@@ -14,6 +15,10 @@ const exams = ref([]);
 const examsError = ref('');
 const examsLoading = ref(true);
 const registering = ref(null);
+const ticketModalRef = ref(null);
+const fileInput = ref(null);
+const ticketError = ref('');
+let ticketModal;
 const activeExamId = computed(() => {
   const e = exams.value.find(
     (ex) =>
@@ -123,6 +128,7 @@ onMounted(async () => {
     loading.value = false;
   }
   if (showExams.value) loadExams();
+  ticketModal = new Modal(ticketModalRef.value);
 });
 
 async function loadExams() {
@@ -156,6 +162,29 @@ async function toggleExam(exam) {
     examsError.value = e.message;
   } finally {
     registering.value = null;
+  }
+}
+
+function openTicketModal() {
+  ticketError.value = '';
+  fileInput.value.value = '';
+  ticketModal.show();
+}
+
+async function createTicket() {
+  const file = fileInput.value?.files[0];
+  if (!file) return;
+  try {
+    const { ticket } = await apiFetch('/tickets', {
+      method: 'POST',
+      body: JSON.stringify({ type_alias: 'MED_CERT_UPLOAD' }),
+    });
+    const form = new FormData();
+    form.append('file', file);
+    await apiFetchForm(`/tickets/${ticket.id}/files`, form, { method: 'POST' });
+    ticketModal.hide();
+  } catch (e) {
+    ticketError.value = e.message;
   }
 }
 
@@ -240,8 +269,11 @@ async function toggleExam(exam) {
             <p v-else class="text-muted mb-0">Нет файлов</p>
           </div>
           </template>
-          <div v-else class="alert alert-warning mb-0" role="alert">
-            Действующее медицинское заключение отсутствует
+          <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
+            <span>Действующее медицинское заключение отсутствует</span>
+            <button class="btn btn-sm btn-brand" @click="openTicketModal">
+              Загрузить справку
+            </button>
           </div>
         </div>
       </div>
@@ -312,6 +344,24 @@ async function toggleExam(exam) {
         </div>
       </div>
     </div>
+    </div>
+  </div>
+  <div ref="ticketModalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Загрузка справки</h5>
+          <button type="button" class="btn-close" @click="ticketModal.hide()"></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="ticketError" class="alert alert-danger">{{ ticketError }}</div>
+          <input type="file" accept="application/pdf" class="form-control" ref="fileInput" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="ticketModal.hide()">Отмена</button>
+          <button type="button" class="btn btn-brand" @click="createTicket">Отправить</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

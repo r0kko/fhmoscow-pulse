@@ -20,7 +20,8 @@ function sanitize(obj) {
 
 function toPublic(ticket) {
   if (!ticket) return null;
-  const plain = typeof ticket.get === 'function' ? ticket.get({ plain: true }) : ticket;
+  const plain =
+    typeof ticket.get === 'function' ? ticket.get({ plain: true }) : ticket;
   return sanitize(plain);
 }
 

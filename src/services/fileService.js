@@ -11,6 +11,8 @@ import {
   MedicalCertificate,
   MedicalCertificateFile,
   MedicalCertificateType,
+  Ticket,
+  TicketFile,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -100,9 +102,85 @@ async function remove(id, actorId = null) {
   await attachment.File.destroy();
 }
 
+async function uploadForTicket(ticketId, file, actorId) {
+  if (!S3_BUCKET) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ['application/pdf'];
+  if (file.size > MAX_FILE_SIZE) {
+    throw new ServiceError('file_too_large', 400);
+  }
+  if (!ALLOWED_TYPES.includes(file.mimetype)) {
+    throw new ServiceError('invalid_file_type', 400);
+  }
+  const ticket = await Ticket.findByPk(ticketId);
+  if (!ticket) throw new ServiceError('ticket_not_found', 404);
+
+  const key = `${ticketId}/${uuidv4()}${path.extname(file.originalname)}`;
+  const user = await ticket.getUser();
+  const displayName = `Медицинская справка - ${user.last_name} ${user.first_name}${path.extname(
+    file.originalname
+  )}`;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+  } catch (err) {
+    console.error('S3 upload failed', err);
+    throw new ServiceError('s3_upload_failed');
+  }
+
+  const dbFile = await File.create({
+    key,
+    original_name: displayName,
+    mime_type: file.mimetype,
+    size: file.size,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+
+  const attachment = await TicketFile.create({
+    ticket_id: ticketId,
+    file_id: dbFile.id,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+
+  return TicketFile.findByPk(attachment.id, { include: [File] });
+}
+
+async function listForTicket(ticketId) {
+  return TicketFile.findAll({
+    where: { ticket_id: ticketId },
+    include: [File],
+    order: [['created_at', 'DESC']],
+  });
+}
+
+async function removeTicketFile(id, actorId = null) {
+  const attachment = await TicketFile.findOne({
+    where: { file_id: id },
+    include: [File],
+  });
+  if (!attachment) throw new ServiceError('file_not_found', 404);
+  await attachment.update({ updated_by: actorId });
+  await attachment.File.update({ updated_by: actorId });
+  await attachment.destroy();
+  await attachment.File.destroy();
+}
+
 export default {
   uploadForCertificate,
   listForCertificate,
   getDownloadUrl,
   remove,
+  uploadForTicket,
+  listForTicket,
+  removeTicketFile,
 };

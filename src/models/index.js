@@ -47,6 +47,7 @@ import Task from './task.js';
 import TicketType from './ticketType.js';
 import TicketStatus from './ticketStatus.js';
 import Ticket from './ticket.js';
+import TicketFile from './ticketFile.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -214,6 +215,10 @@ TicketStatus.hasMany(Ticket, { foreignKey: 'status_id' });
 Ticket.belongsTo(TicketStatus, { foreignKey: 'status_id' });
 User.hasMany(Ticket, { foreignKey: 'user_id' });
 Ticket.belongsTo(User, { foreignKey: 'user_id' });
+Ticket.hasMany(TicketFile, { foreignKey: 'ticket_id' });
+TicketFile.belongsTo(Ticket, { foreignKey: 'ticket_id' });
+File.hasMany(TicketFile, { foreignKey: 'file_id' });
+TicketFile.belongsTo(File, { foreignKey: 'file_id' });
 
 const auditExclude = ['Log'];
 for (const model of Object.values(sequelize.models)) {
@@ -270,4 +275,5 @@ export {
   Ticket,
   TicketType,
   TicketStatus,
+  TicketFile,
 };
