@@ -76,11 +76,9 @@ export function applyFirstPageHeader(doc) {
   const top = margin;
   const { federation, system } = PDF_LOGOS;
 
-  let x = margin;
   if (federation) {
     try {
-      doc.image(federation, x, top, { height: logoHeight });
-      x += logoHeight + 10;
+      doc.image(federation, margin, top, { height: logoHeight });
     } catch {
       /* image failed to load */
     }
@@ -88,8 +86,9 @@ export function applyFirstPageHeader(doc) {
 
   if (system) {
     try {
-      doc.image(system, x, top, { width: systemWidth });
-      x += systemWidth + 10;
+      doc.image(system, doc.page.width - margin - systemWidth, top, {
+        width: systemWidth,
+      });
     } catch {
       /* image failed to load */
     }

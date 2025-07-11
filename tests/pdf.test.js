@@ -82,7 +82,7 @@ test('applyFirstPageHeader draws logos and text', async () => {
   docStub = doc;
   applyFirstPageHeader(doc);
   expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 40 });
-  expect(imageMock).toHaveBeenCalledWith('/sys.png', 80, 30, { width: 200 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 270, 30, { width: 200 });
   expect(textMock).toHaveBeenCalled();
 });
 
