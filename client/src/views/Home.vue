@@ -4,6 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import UpcomingEventCard from '../components/UpcomingEventCard.vue'
+import TaskList from '../components/TaskList.vue'
 
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
@@ -104,9 +105,9 @@ async function loadUpcoming() {
               :event="item"
             />
           </div>
-        </div>
       </div>
-      <div class="card section-card mb-2">
+    </div>
+    <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
           <div class="scroll-container">
@@ -124,10 +125,12 @@ async function loadUpcoming() {
               </div>
             </component>
           </div>
-        </div>
       </div>
+    </div>
 
-      <div class="card section-card mb-2">
+    <TaskList />
+
+    <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Рабочие сервисы</h5>
           <div class="scroll-container">
