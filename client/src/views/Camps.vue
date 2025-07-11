@@ -12,7 +12,9 @@ import { withHttp } from '../utils/url.js';
 const selectedDates = ref({});
 
 const trainings = ref([]);
-const mine = ref([]);
+const mineUpcoming = ref([]);
+const minePast = ref([]);
+const mineTab = ref('upcoming');
 const page = ref(1);
 const pageSize = 50;
 const loading = ref(true);
@@ -64,10 +66,12 @@ async function loadAvailable() {
 
 async function loadMine() {
   try {
-    const data = await apiFetch(
-        `/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize}`
-    );
-    mine.value = data.trainings || [];
+    const [upcomingData, pastData] = await Promise.all([
+      apiFetch(`/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize}`),
+      apiFetch(`/camp-trainings/me/past?page=${page.value}&limit=${pageSize}`),
+    ]);
+    mineUpcoming.value = upcomingData.trainings || [];
+    minePast.value = pastData.trainings || [];
   } catch (e) {
     // ignore, handled by caller
   }
@@ -113,7 +117,7 @@ function cancelTooltip(t) {
   return 'Отменить можно не позднее чем за 48 часов';
 }
 
-const myTrainings = computed(() => mine.value);
+const myTrainings = computed(() => mineUpcoming.value);
 
 function groupDetailed(list) {
   const map = {};
@@ -196,6 +200,11 @@ const weekTrainings = computed(() => {
 });
 
 const groupedMine = computed(() => groupByDay(weekTrainings.value));
+
+const groupedPast = computed(() => {
+  const groups = groupByDay(minePast.value);
+  return groups.sort((a, b) => b.date - a.date);
+});
 
 function formatDay(date) {
   const text = date.toLocaleDateString('ru-RU', {
@@ -326,26 +335,52 @@ function dayOpen(day) {
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-show="activeTab === 'mine'">
-        <div v-if="!groupedMine.length" class="alert alert-warning">
-          У вас нет тренировок. Перейдите во вкладку
-          <button
-              class="btn btn-link p-0"
-              @click="activeTab = 'register'"
-          >
-            Запись на тренировки
-          </button>
-          , чтобы записаться
-        </div>
-        <div v-else class="card section-card tile fade-in shadow-sm">
-          <div class="card-body">
-            <div v-for="g in groupedMine" :key="g.date" class="mb-3 schedule-day">
-              <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
-              <ul class="list-unstyled mb-0">
-                <li
-                    v-for="t in g.trainings"
-                    :key="t.id"
-                    class="schedule-item"
+        <div class="card section-card tile fade-in shadow-sm mb-3">
+          <div class="card-body p-2">
+            <ul class="nav nav-pills nav-fill mb-0 tab-selector">
+              <li class="nav-item">
+                <button
+                    class="nav-link"
+                    :class="{ active: mineTab === 'upcoming' }"
+                    @click="mineTab = 'upcoming'"
                 >
+                  Ближайшие
+                </button>
+              </li>
+              <li class="nav-item">
+                <button
+                    class="nav-link"
+                    :class="{ active: mineTab === 'past' }"
+                    @click="mineTab = 'past'"
+                >
+                  Прошедшие
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div v-if="mineTab === 'upcoming'">
+          <div v-if="!groupedMine.length" class="alert alert-warning">
+            У вас нет тренировок. Перейдите во вкладку
+            <button
+                class="btn btn-link p-0"
+                @click="activeTab = 'register'"
+            >
+              Запись на тренировки
+            </button>
+            , чтобы записаться
+          </div>
+          <div v-else class="card section-card tile fade-in shadow-sm">
+            <div class="card-body">
+              <div v-for="g in groupedMine" :key="g.date" class="mb-3 schedule-day">
+                <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+                <ul class="list-unstyled mb-0">
+                  <li
+                      v-for="t in g.trainings"
+                      :key="t.id"
+                      class="schedule-item"
+                  >
                   <div class="d-flex justify-content-between align-items-start">
                     <div class="me-3 flex-grow-1">
                       <div>
@@ -417,6 +452,54 @@ function dayOpen(day) {
             </div>
           </div>
         </div>
+      </div>
+        <div v-else>
+          <p v-if="!groupedPast.length" class="text-muted">Нет прошедших тренировок</p>
+          <div v-else class="card section-card tile fade-in shadow-sm">
+            <div class="card-body">
+              <div v-for="g in groupedPast" :key="g.date" class="mb-3 schedule-day">
+                <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+                <ul class="list-unstyled mb-0">
+                  <li
+                      v-for="t in g.trainings"
+                      :key="t.id"
+                      class="schedule-item"
+                  >
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div class="me-3 flex-grow-1">
+                        <div>
+                          <strong>{{ formatTime(t.start_at) }}–{{ formatTime(t.end_at) }}</strong>
+                          <span class="ms-2">{{ t.stadium?.name }}</span>
+                        </div>
+                        <div class="text-muted small">{{ t.type?.name }}</div>
+                      </div>
+                    </div>
+                    <p class="text-muted small mb-1 d-flex mt-1">
+                      <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
+                      <span>
+                        Роль: {{ t.my_role?.name || '—' }}<br />
+                        Тренеры:
+                        <span v-if="t.coaches && t.coaches.length">
+                          {{ t.coaches.map(shortName).join(', ') }}
+                        </span>
+                        <span v-else>не назначены</span><br />
+                        Инвентарь:
+                        <span
+                          v-if="t.equipment_managers && t.equipment_managers.length"
+                        >
+                          {{ t.equipment_managers.map(shortName).join(', ') }}
+                        </span>
+                        <span v-else>не назначен</span><br />
+                        Адрес: {{ t.stadium?.address?.result || '—' }}
+                      </span>
+                    </p>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <div v-show="activeTab === 'register'">
