@@ -18,6 +18,11 @@ const registering = ref(null);
 const ticketModalRef = ref(null);
 const fileInput = ref(null);
 const ticketError = ref('');
+const fileError = ref('');
+const selectedFile = ref(null);
+const uploadSuccess = ref(false);
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ['application/pdf'];
 let ticketModal;
 const activeExamId = computed(() => {
   const e = exams.value.find(
@@ -168,12 +173,23 @@ async function toggleExam(exam) {
 function openTicketModal() {
   ticketError.value = '';
   fileInput.value.value = '';
+  selectedFile.value = null;
+  fileError.value = '';
+  uploadSuccess.value = false;
   ticketModal.show();
 }
 
 async function createTicket() {
-  const file = fileInput.value?.files[0];
+  const file = selectedFile.value;
   if (!file) return;
+  if (file.size > MAX_FILE_SIZE) {
+    fileError.value = 'Файл превышает 5 МБ';
+    return;
+  }
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    fileError.value = 'Недопустимый формат файла';
+    return;
+  }
   try {
     const { ticket } = await apiFetch('/tickets', {
       method: 'POST',
@@ -183,9 +199,16 @@ async function createTicket() {
     form.append('file', file);
     await apiFetchForm(`/tickets/${ticket.id}/files`, form, { method: 'POST' });
     ticketModal.hide();
+    uploadSuccess.value = true;
+    selectedFile.value = null;
   } catch (e) {
     ticketError.value = e.message;
   }
+}
+
+function onFileChange(e) {
+  fileError.value = '';
+  selectedFile.value = e.target.files[0] || null;
 }
 
 </script>
@@ -271,13 +294,17 @@ async function createTicket() {
           </template>
           <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
             <span>Действующее медицинское заключение отсутствует</span>
-            <button class="btn btn-sm btn-brand" @click="openTicketModal">
-              Загрузить справку
+            <button class="btn btn-brand d-flex align-items-center gap-1" @click="openTicketModal">
+              <i class="bi bi-upload"></i>
+              <span>Загрузить справку</span>
             </button>
           </div>
         </div>
       </div>
       <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
+      <div v-if="uploadSuccess" class="alert alert-success mt-3" role="alert">
+        Файл отправлен. После проверки он будет добавлен в список.
+      </div>
       <div
         v-if="showExams"
         class="card section-card tile fade-in shadow-sm mb-3 mt-3"
@@ -355,7 +382,18 @@ async function createTicket() {
         </div>
         <div class="modal-body">
           <div v-if="ticketError" class="alert alert-danger">{{ ticketError }}</div>
-          <input type="file" accept="application/pdf" class="form-control" ref="fileInput" />
+          <div class="mb-3">
+            <input
+              type="file"
+              accept="application/pdf"
+              class="form-control"
+              ref="fileInput"
+              @change="onFileChange"
+            />
+            <div class="form-text">Допустимый формат: PDF, размер до 5&nbsp;МБ</div>
+            <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
+            <div v-if="selectedFile" class="small mt-2">{{ selectedFile.name }}</div>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="ticketModal.hide()">Отмена</button>
