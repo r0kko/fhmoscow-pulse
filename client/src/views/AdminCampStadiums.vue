@@ -66,9 +66,10 @@ const typeFormError = ref('');
 const trainings = ref([]);
 const trainingsTotal = ref(0);
 const trainingsPage = ref(1);
-const trainingsPageSize = ref(8);
+const trainingsPageSize = ref(20);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
+const trainingsView = ref('upcoming');
 const trainingsFilterStadium = ref('');
 const trainingsFilterGroup = ref('');
 const stadiumOptions = ref([]);
@@ -151,6 +152,10 @@ watch(trainingsPage, () => {
   if (activeTab.value === 'trainings') loadTrainings();
 });
 watch([trainingsPageSize, trainingsFilterStadium, trainingsFilterGroup], () => {
+  trainingsPage.value = 1;
+  if (activeTab.value === 'trainings') loadTrainings();
+});
+watch(trainingsView, () => {
   trainingsPage.value = 1;
   if (activeTab.value === 'trainings') loadTrainings();
 });
@@ -432,7 +437,13 @@ async function loadTrainings() {
     if (trainingsFilterGroup.value) {
       params.set('group_id', trainingsFilterGroup.value);
     }
-    const data = await apiFetch(`/camp-trainings?${params}`);
+    let url = '/camp-trainings';
+    if (trainingsView.value === 'upcoming') {
+      url += '/upcoming';
+    } else if (trainingsView.value === 'past') {
+      url += '/past';
+    }
+    const data = await apiFetch(`${url}?${params}`);
     trainings.value = data.trainings;
     trainingsTotal.value = data.total;
   } catch (e) {
@@ -981,6 +992,18 @@ async function updateRegistration(reg) {
         </div>
       </div>
       <div class="card-body p-3">
+        <ul class="nav nav-pills nav-fill mb-3 tab-selector">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: trainingsView === 'upcoming' }" @click="trainingsView = 'upcoming'">
+              Ближайшие
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: trainingsView === 'past' }" @click="trainingsView = 'past'">
+              Прошедшие
+            </button>
+          </li>
+        </ul>
         <div v-if="trainings.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
@@ -1104,9 +1127,9 @@ async function updateRegistration(reg) {
     </div>
     <nav class="mt-3 d-flex align-items-center justify-content-between" v-if="trainings.length">
       <select v-model.number="trainingsPageSize" class="form-select form-select-sm w-auto">
-        <option :value="8">8</option>
-        <option :value="15">15</option>
-        <option :value="30">30</option>
+        <option :value="20">20</option>
+        <option :value="40">40</option>
+        <option :value="100">100</option>
       </select>
       <ul class="pagination mb-0">
         <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
@@ -1147,9 +1170,9 @@ async function updateRegistration(reg) {
             <div class="mb-3">
               <label class="form-label">На странице</label>
               <select v-model.number="trainingsPageSize" class="form-select">
-                <option :value="8">8</option>
-                <option :value="15">15</option>
-                <option :value="30">30</option>
+                <option :value="20">20</option>
+                <option :value="40">40</option>
+                <option :value="100">100</option>
               </select>
             </div>
           </div>

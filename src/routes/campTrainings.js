@@ -19,6 +19,8 @@ import { updateAttendanceRules } from '../validators/trainingValidators.js';
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
+router.get('/upcoming', auth, authorize('ADMIN'), controller.upcoming);
+router.get('/past', auth, authorize('ADMIN'), controller.past);
 router.post(
   '/',
   auth,

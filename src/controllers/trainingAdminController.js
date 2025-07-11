@@ -16,6 +16,28 @@ export default {
     return res.json({ trainings: rows.map(mapper.toPublic), total: count });
   },
 
+  async upcoming(req, res) {
+    const { page = '1', limit = '20', stadium_id, group_id } = req.query;
+    const { rows, count } = await trainingService.listUpcoming({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      stadium_id,
+      group_id,
+    });
+    return res.json({ trainings: rows.map(mapper.toPublic), total: count });
+  },
+
+  async past(req, res) {
+    const { page = '1', limit = '20', stadium_id, group_id } = req.query;
+    const { rows, count } = await trainingService.listPast({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      stadium_id,
+      group_id,
+    });
+    return res.json({ trainings: rows.map(mapper.toPublic), total: count });
+  },
+
   async get(req, res) {
     try {
       const training = await trainingService.getById(req.params.id);
