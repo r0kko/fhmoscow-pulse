@@ -28,6 +28,7 @@ router.post(
 );
 router.get('/available', auth, authorize('REFEREE'), selfController.available);
 router.get('/me/upcoming', auth, authorize('REFEREE'), selfController.upcoming);
+router.get('/me/past', auth, authorize('REFEREE'), selfController.past);
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
 router.put(
   '/:id',

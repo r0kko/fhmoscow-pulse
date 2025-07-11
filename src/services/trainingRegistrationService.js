@@ -351,6 +351,68 @@ async function listUpcomingByUser(userId, options = {}) {
   };
 }
 
+async function listPastByUser(userId, options = {}) {
+  const { Op } = await import('sequelize');
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const now = new Date();
+  const { rows } = await Training.findAndCountAll({
+    include: [
+      TrainingType,
+      { model: CampStadium, include: [Address] },
+      { model: Season, where: { active: true }, required: true },
+      {
+        model: TrainingRegistration,
+        include: [User, TrainingRole],
+      },
+    ],
+    where: {
+      end_at: { [Op.lt]: now },
+      attendance_marked: true,
+    },
+    order: [['start_at', 'DESC']],
+    limit,
+    offset,
+    distinct: true,
+  });
+  const mine = rows.filter((t) =>
+    t.TrainingRegistrations.some((r) => r.user_id === userId)
+  );
+  return {
+    rows: mine.map((t) => {
+      const participantRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      );
+      const registeredCount = participantRegs.length;
+      const plain = t.get();
+      const available =
+        typeof plain.capacity === 'number'
+          ? Math.max(0, plain.capacity - registeredCount)
+          : null;
+      const myReg = t.TrainingRegistrations.find((r) => r.user_id === userId);
+      const myRole = myReg?.TrainingRole
+        ? {
+            id: myReg.TrainingRole.id,
+            name: myReg.TrainingRole.name,
+            alias: myReg.TrainingRole.alias,
+          }
+        : null;
+      return {
+        ...plain,
+        available,
+        registration_open: trainingService.isRegistrationOpen(
+          t,
+          registeredCount
+        ),
+        user_registered: true,
+        my_role: myRole,
+      };
+    }),
+    count: mine.length,
+  };
+}
+
 async function listByTraining(trainingId, options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
@@ -391,6 +453,7 @@ export default {
   add,
   unregister,
   listUpcomingByUser,
+  listPastByUser,
   listByTraining,
   listForAttendance,
   updateRole,
