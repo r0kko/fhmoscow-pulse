@@ -6,7 +6,7 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
-      "SELECT COUNT(*) AS cnt FROM ticket_types WHERE alias = 'MED_CERT_UPLOAD';"
+      'SELECT COUNT(*) AS cnt FROM ticket_types WHERE alias = \'MED_CERT_UPLOAD\';'
     );
     if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(

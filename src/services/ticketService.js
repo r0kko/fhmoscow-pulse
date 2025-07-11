@@ -29,6 +29,12 @@ async function createForUser(userId, data, actorId) {
   return Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
 }
 
+async function getById(id) {
+  const ticket = await Ticket.findByPk(id);
+  if (!ticket) throw new ServiceError('ticket_not_found', 404);
+  return ticket;
+}
+
 async function updateForUser(userId, ticketId, data, actorId) {
   const ticket = await Ticket.findOne({
     where: { id: ticketId, user_id: userId },
@@ -37,14 +43,18 @@ async function updateForUser(userId, ticketId, data, actorId) {
 
   let typeId = ticket.type_id;
   if (data.type_alias) {
-    const type = await TicketType.findOne({ where: { alias: data.type_alias } });
+    const type = await TicketType.findOne({
+      where: { alias: data.type_alias },
+    });
     if (!type) throw new ServiceError('ticket_type_not_found', 404);
     typeId = type.id;
   }
 
   let statusId = ticket.status_id;
   if (data.status_alias) {
-    const status = await TicketStatus.findOne({ where: { alias: data.status_alias } });
+    const status = await TicketStatus.findOne({
+      where: { alias: data.status_alias },
+    });
     if (!status) throw new ServiceError('ticket_status_not_found', 404);
     statusId = status.id;
   }
@@ -60,10 +70,18 @@ async function updateForUser(userId, ticketId, data, actorId) {
 }
 
 async function removeForUser(userId, ticketId, actorId = null) {
-  const ticket = await Ticket.findOne({ where: { id: ticketId, user_id: userId } });
+  const ticket = await Ticket.findOne({
+    where: { id: ticketId, user_id: userId },
+  });
   if (!ticket) throw new ServiceError('ticket_not_found', 404);
   await ticket.update({ updated_by: actorId });
   await ticket.destroy();
 }
 
-export default { listByUser, createForUser, updateForUser, removeForUser };
+export default {
+  listByUser,
+  createForUser,
+  updateForUser,
+  removeForUser,
+  getById,
+};
