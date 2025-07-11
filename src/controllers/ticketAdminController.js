@@ -87,7 +87,7 @@ export default {
       const ticket = await ticketService.update(
         req.params.id,
         req.body,
-        req.user.id,
+        req.user.id
       );
       const user = await ticket.getUser();
       const files = await fileService.listForTicket(ticket.id);

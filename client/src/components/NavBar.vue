@@ -3,7 +3,7 @@
     <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2" to="/">
         <!--suppress CheckImageSize -->
-        <img src="../assets/system-logo-placeholder.png" alt="Логотип системы" height="30" loading="lazy" />
+        <img src="../assets/system-logo-placeholder.png" alt="Логотип системы" height="30" loading="lazy"/>
       </RouterLink>
       <div class="d-flex align-items-center ms-auto">
         <span class="navbar-text me-3 d-none d-md-inline" v-if="user">

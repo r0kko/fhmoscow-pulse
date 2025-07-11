@@ -931,6 +931,11 @@ router.put(
   ticketAdmin.update
 );
 
-router.delete('/:id/tickets/:ticketId', auth, authorize('ADMIN'), ticketAdmin.remove);
+router.delete(
+  '/:id/tickets/:ticketId',
+  auth,
+  authorize('ADMIN'),
+  ticketAdmin.remove
+);
 
 export default router;

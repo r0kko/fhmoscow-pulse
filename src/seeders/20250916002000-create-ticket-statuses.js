@@ -6,7 +6,8 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS cnt FROM ticket_statuses WHERE alias IN (\'CREATED\',\'IN_PROGRESS\',\'CONFIRMED\',\'REJECTED\');'
+      // eslint-disable-next-line
+      "SELECT COUNT(*) AS cnt FROM ticket_statuses WHERE alias IN ('CREATED','IN_PROGRESS','CONFIRMED','REJECTED');"
     );
     if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(

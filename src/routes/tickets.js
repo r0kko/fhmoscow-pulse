@@ -6,7 +6,10 @@ import authorize from '../middlewares/authorize.js';
 import selfController from '../controllers/ticketSelfController.js';
 import adminController from '../controllers/ticketAdminController.js';
 import fileController from '../controllers/ticketFileController.js';
-import { createTicketRules, updateTicketRules } from '../validators/ticketValidators.js';
+import {
+  createTicketRules,
+  updateTicketRules,
+} from '../validators/ticketValidators.js';
 
 const router = express.Router();
 const upload = multer();
@@ -50,7 +53,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateTicketRules,
-  adminController.updateById,
+  adminController.updateById
 );
 
 router.post('/:id/files', auth, upload.single('file'), fileController.upload);
