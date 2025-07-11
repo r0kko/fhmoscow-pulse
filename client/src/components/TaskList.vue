@@ -21,15 +21,14 @@ onMounted(loadTasks);
 </script>
 
 <template>
-  <div class="card section-card mb-2">
-    <div class="card-body">
-      <h5 class="card-title mb-3">Задания</h5>
+  <div>
+    <h5 class="card-title mb-3">Задачи</h5>
       <div v-if="loading" class="text-center py-3">
         <div class="spinner-border" role="status" aria-label="Загрузка">
           <span class="visually-hidden">Загрузка…</span>
         </div>
       </div>
-      <p v-else-if="!tasks.length" class="text-muted mb-0">У вас нет заданий</p>
+      <p v-else-if="!tasks.length" class="text-muted mb-0">У вас нет задач</p>
       <ul v-else class="list-group list-group-flush">
         <li v-for="task in tasks" :key="task.id" class="list-group-item">
           <div class="d-flex justify-content-between">
@@ -51,6 +50,5 @@ onMounted(loadTasks);
           </div>
         </li>
       </ul>
-    </div>
   </div>
 </template>
