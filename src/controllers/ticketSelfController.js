@@ -47,6 +47,7 @@ export default {
             ticket.id,
             req.user.id
           );
+          // noinspection ExceptionCaughtLocallyJS
           throw err;
         }
       }
