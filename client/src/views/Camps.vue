@@ -1,5 +1,5 @@
 <script setup>
-import {ref, onMounted, computed, nextTick} from 'vue';
+import {ref, onMounted, computed, nextTick, watch} from 'vue';
 import {RouterLink} from 'vue-router';
 import {apiFetch} from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
@@ -194,6 +194,18 @@ function groupByDay(list) {
         return g;
       });
 }
+
+watch(groupedAllByDay, (groups) => {
+  const current = { ...selectedDates.value };
+  let changed = false;
+  groups.forEach((g) => {
+    if (g.days.length && !current[g.stadium.id]) {
+      current[g.stadium.id] = g.days[0].date.toISOString();
+      changed = true;
+    }
+  });
+  if (changed) selectedDates.value = current;
+});
 
 const weekTrainings = computed(() => {
   const now = new Date();
