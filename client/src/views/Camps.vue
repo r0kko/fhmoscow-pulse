@@ -156,7 +156,7 @@ const upcoming = computed(() => {
 });
 
 const availableTrainings = computed(() =>
-    upcoming.value.filter((t) => !t.registered)
+    upcoming.value.filter((t) => !t.registered && !t.user_registered)
 );
 
 const groupedAll = computed(() => groupDetailed(availableTrainings.value));
@@ -195,17 +195,21 @@ function groupByDay(list) {
       });
 }
 
-watch(groupedAllByDay, (groups) => {
-  const current = { ...selectedDates.value };
-  let changed = false;
-  groups.forEach((g) => {
-    if (g.days.length && !current[g.stadium.id]) {
-      current[g.stadium.id] = g.days[0].date.toISOString();
-      changed = true;
-    }
-  });
-  if (changed) selectedDates.value = current;
-});
+watch(
+    groupedAllByDay,
+    (groups) => {
+      const current = { ...selectedDates.value };
+      let changed = false;
+      groups.forEach((g) => {
+        if (g.days.length && !current[g.stadium.id]) {
+          current[g.stadium.id] = g.days[0].date.toISOString();
+          changed = true;
+        }
+      });
+      if (changed) selectedDates.value = current;
+    },
+    { immediate: true }
+);
 
 const weekTrainings = computed(() => {
   const now = new Date();
