@@ -43,9 +43,12 @@ async function changeStatus(ticket, alias) {
 async function progress(ticket) {
   ticket._changing = true;
   try {
-    const { ticket: updated } = await apiFetch(`/tickets/${ticket.id}/progress`, {
-      method: 'POST',
-    });
+    const { ticket: updated } = await apiFetch(
+      `/tickets/${ticket.id}/progress`,
+      {
+        method: 'POST',
+      }
+    );
     const idx = tickets.value.findIndex((t) => t.id === ticket.id);
     if (idx !== -1) tickets.value[idx] = { ...updated, _flash: true };
     setTimeout(() => {
@@ -96,45 +99,33 @@ async function progress(ticket) {
                 <td>{{ t.description }}</td>
                 <td>
                   <div v-for="f in t.files" :key="f.id">
-                    <a :href="f.url" target="_blank" rel="noopener">{{ f.name }}</a>
+                    <a :href="f.url" target="_blank" rel="noopener">{{
+                      f.name
+                    }}</a>
                   </div>
                 </td>
                 <td>{{ t.status.name }}</td>
                 <td class="text-end">
-                  <div class="btn-group">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
-                    >
-                      Статус
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                      <li>
-                        <button class="dropdown-item" @click="changeStatus(t, 'CREATED')">
-                          Создан
-                        </button>
-                      </li>
-                      <li>
-                        <button class="dropdown-item" @click="changeStatus(t, 'IN_PROGRESS')">
-                          В работе
-                        </button>
-                      </li>
-                      <li>
-                        <button class="dropdown-item" @click="changeStatus(t, 'CONFIRMED')">
-                          Подтвержден
-                        </button>
-                      </li>
-                      <li>
-                        <button class="dropdown-item" @click="changeStatus(t, 'REJECTED')">
-                          Отклонен
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
                   <button
-                    class="btn btn-sm btn-brand ms-2"
+                    class="btn btn-sm btn-outline-secondary me-2"
+                    @click="changeStatus(t, 'IN_PROGRESS')"
+                  >
+                    В работу
+                  </button>
+                  <button
+                    class="btn btn-sm btn-success me-2"
+                    @click="changeStatus(t, 'CONFIRMED')"
+                  >
+                    Подтвердить
+                  </button>
+                  <button
+                    class="btn btn-sm btn-danger me-2"
+                    @click="changeStatus(t, 'REJECTED')"
+                  >
+                    Отклонить
+                  </button>
+                  <button
+                    class="btn btn-sm btn-brand"
                     @click="progress(t)"
                     :disabled="t._changing"
                   >
