@@ -21,6 +21,7 @@ const ticketError = ref('');
 const fileError = ref('');
 const selectedFile = ref(null);
 const uploadSuccess = ref(false);
+const uploading = ref(false);
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['application/pdf'];
 let ticketModal;
@@ -190,6 +191,7 @@ async function createTicket() {
     fileError.value = 'Недопустимый формат файла';
     return;
   }
+  uploading.value = true;
   try {
     const { ticket } = await apiFetch('/tickets', {
       method: 'POST',
@@ -203,6 +205,8 @@ async function createTicket() {
     selectedFile.value = null;
   } catch (e) {
     ticketError.value = e.message;
+  } finally {
+    uploading.value = false;
   }
 }
 
@@ -397,7 +401,15 @@ function onFileChange(e) {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="ticketModal.hide()">Отмена</button>
-          <button type="button" class="btn btn-brand" @click="createTicket">Отправить</button>
+          <button
+            type="button"
+            class="btn btn-brand"
+            @click="createTicket"
+            :disabled="uploading"
+          >
+            <span v-if="uploading" class="spinner-border spinner-border-sm me-2"></span>
+            Отправить
+          </button>
         </div>
       </div>
     </div>
