@@ -39,6 +39,7 @@ async function loadAll() {
   loading.value = true;
   try {
     await Promise.all([loadAvailable(), loadMine()]);
+    initSelectedDates();
     error.value = '';
     await nextTick();
     applyTooltips();
@@ -166,6 +167,16 @@ const groupedAllByDay = computed(() =>
       days: groupByDay(g.trainings),
     }))
 );
+
+function initSelectedDates() {
+  const result = {};
+  groupedAllByDay.value.forEach((g) => {
+    if (g.days.length) {
+      result[g.stadium.id] = g.days[0].date.toISOString();
+    }
+  });
+  selectedDates.value = result;
+}
 
 function groupByDay(list) {
   const map = {};
