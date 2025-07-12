@@ -669,7 +669,7 @@ function dayOpen(day) {
   padding-bottom: 0;
 }
 
-.schedule-item + .schedule-item {
+.schedule-item {
   margin-top: 0.5rem;
 }
 
