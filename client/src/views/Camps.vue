@@ -352,6 +352,7 @@ function dayOpen(day) {
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item">
               <button
+                  type="button"
                   class="nav-link"
                   :class="{ active: activeTab === 'mine' }"
                   @click="activeTab = 'mine'"
@@ -361,6 +362,7 @@ function dayOpen(day) {
             </li>
             <li class="nav-item">
               <button
+                  type="button"
                   class="nav-link"
                   :class="{ active: activeTab === 'register' }"
                   @click="activeTab = 'register'"
@@ -431,6 +433,7 @@ function dayOpen(day) {
               <div v-if="!groupedMine.length" class="alert alert-warning">
                 У вас нет тренировок. Перейдите во вкладку
                 <button
+                    type="button"
                     class="btn btn-link p-0"
                     @click="activeTab = 'register'"
                 >
