@@ -1,10 +1,10 @@
 <template>
   <div
     v-if="visible"
-    class="cookie-notice alert alert-info d-flex align-items-center position-fixed bottom-0 start-50 translate-middle-x mb-3 fade show"
+    class="cookie-notice alert alert-info d-flex align-items-center justify-content-between position-fixed bottom-0 start-50 translate-middle-x mb-3 fade show"
     role="alert"
   >
-    <span class="me-3">
+    <span class="me-3 flex-grow-1">
       Продолжая работу с сайтом, вы соглашаетесь с использованием файлов cookie и обработкой персональных данных в соответствии с законодательством.
     </span>
     <button type="button" class="btn btn-brand btn-sm" @click="accept">Принять</button>
@@ -40,6 +40,11 @@ onMounted(() => {
     left: auto !important;
     bottom: auto !important;
     margin-bottom: 0 !important;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    border-radius: 0;
+    width: 100%;
   }
 }
 </style>
