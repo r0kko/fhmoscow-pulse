@@ -42,7 +42,11 @@ export default {
         try {
           await fileService.uploadForTicket(ticket.id, req.file, req.user.id);
         } catch (err) {
-          await ticketService.removeForUser(req.user.id, ticket.id, req.user.id);
+          await ticketService.removeForUser(
+            req.user.id,
+            ticket.id,
+            req.user.id
+          );
           throw err;
         }
       }
