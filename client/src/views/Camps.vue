@@ -118,6 +118,12 @@ function cancelTooltip(t) {
   return 'Отменить можно не позднее чем за 48 часов';
 }
 
+watch(activeTab, (tab) => {
+  if (tab === 'register' && !trainings.value.length) {
+    loadAvailable();
+  }
+});
+
 const myTrainings = computed(() => mineUpcoming.value);
 
 function groupDetailed(list) {
