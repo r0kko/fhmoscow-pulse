@@ -25,6 +25,16 @@ import { RouterLink } from 'vue-router';
 </template>
 
 <style scoped>
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
 .tasks-page nav[aria-label='breadcrumb'] {
   margin-bottom: 1rem;
 }
@@ -42,6 +52,17 @@ import { RouterLink } from 'vue-router';
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>
