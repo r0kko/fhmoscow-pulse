@@ -40,27 +40,6 @@ async function changeStatus(ticket, alias) {
   }
 }
 
-async function progress(ticket) {
-  ticket._changing = true;
-  try {
-    const { ticket: updated } = await apiFetch(
-      `/tickets/${ticket.id}/progress`,
-      {
-        method: 'POST',
-      }
-    );
-    const idx = tickets.value.findIndex((t) => t.id === ticket.id);
-    if (idx !== -1) tickets.value[idx] = { ...updated, _flash: true };
-    setTimeout(() => {
-      const t = tickets.value.find((tt) => tt.id === ticket.id);
-      if (t) t._flash = false;
-    }, 1000);
-  } catch (e) {
-    alert(e.message);
-  } finally {
-    ticket._changing = false;
-  }
-}
 </script>
 
 <template>
@@ -130,17 +109,6 @@ async function progress(ticket) {
                       <i class="bi bi-x-lg"></i>
                     </button>
                   </template>
-                  <button
-                    class="btn btn-sm btn-brand"
-                    @click="progress(t)"
-                    :disabled="t._changing"
-                  >
-                    <span
-                      v-if="t._changing"
-                      class="spinner-border spinner-border-sm me-1"
-                    ></span>
-                    Далее
-                  </button>
                 </td>
               </tr>
             </tbody>
