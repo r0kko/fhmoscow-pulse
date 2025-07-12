@@ -195,16 +195,11 @@ async function createTicket() {
   }
   uploading.value = true;
   try {
-    const { ticket } = await apiFetch('/tickets', {
-      method: 'POST',
-      body: JSON.stringify({
-        type_alias: 'MED_CERT_UPLOAD',
-        description: DEFAULT_DESCRIPTION,
-      }),
-    });
     const form = new FormData();
+    form.append('type_alias', 'MED_CERT_UPLOAD');
+    form.append('description', DEFAULT_DESCRIPTION);
     form.append('file', file);
-    await apiFetchForm(`/tickets/${ticket.id}/files`, form, { method: 'POST' });
+    await apiFetchForm('/tickets', form, { method: 'POST' });
     ticketModal.hide();
     uploadSuccess.value = true;
     selectedFile.value = null;

@@ -28,12 +28,24 @@ export default {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+    const requiresFile = req.body.type_alias === 'MED_CERT_UPLOAD';
+    if (requiresFile && !req.file) {
+      return res.status(400).json({ error: 'file_required' });
+    }
     try {
       const ticket = await ticketService.createForUser(
         req.user.id,
         req.body,
         req.user.id
       );
+      if (req.file) {
+        try {
+          await fileService.uploadForTicket(ticket.id, req.file, req.user.id);
+        } catch (err) {
+          await ticketService.removeForUser(req.user.id, ticket.id, req.user.id);
+          throw err;
+        }
+      }
       return res.status(201).json({ ticket: ticketMapper.toPublic(ticket) });
     } catch (err) {
       return sendError(res, err);

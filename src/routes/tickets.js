@@ -36,6 +36,19 @@ router.get('/', auth, authorize('ADMIN'), adminController.listAll);
  *     security:
  *       - bearerAuth: []
  *     summary: Create ticket
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type_alias:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               file:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Created ticket
@@ -44,6 +57,7 @@ router.post(
   '/',
   auth,
   authorize('REFEREE'),
+  upload.single('file'),
   createTicketRules,
   selfController.create
 );
