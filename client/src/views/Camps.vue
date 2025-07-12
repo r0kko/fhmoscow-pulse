@@ -211,6 +211,13 @@ watch(
     { immediate: true }
 );
 
+watch(activeTab, async (tab) => {
+  if (tab === 'register' && !trainings.value.length) {
+    await loadAvailable();
+    initSelectedDates();
+  }
+});
+
 const weekTrainings = computed(() => {
   const now = new Date();
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
