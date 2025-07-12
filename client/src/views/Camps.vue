@@ -39,13 +39,13 @@ async function loadAll() {
   loading.value = true;
   try {
     await Promise.all([loadAvailable(), loadMine()]);
-    initSelectedDates();
     error.value = '';
-    await nextTick();
-    applyTooltips();
   } catch (e) {
     error.value = e.message;
   } finally {
+    initSelectedDates();
+    await nextTick();
+    applyTooltips();
     loading.value = false;
   }
 }
@@ -58,6 +58,9 @@ async function loadAvailable() {
     );
     trainings.value = data.trainings || [];
     error.value = '';
+    initSelectedDates();
+    await nextTick();
+    applyTooltips();
   } catch (e) {
     error.value = e.message;
   } finally {
