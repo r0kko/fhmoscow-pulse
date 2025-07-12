@@ -261,3 +261,9 @@ test('updatePresence rejects when not coach', async () => {
     service.updatePresence('t1', 'u1', false, 'u2')
   ).rejects.toThrow('access_denied');
 });
+
+test('listAvailable returns empty when no referee group', async () => {
+  findGroupUserMock.mockResolvedValue(null);
+  const res = await service.listAvailable('u1');
+  expect(res).toEqual({ rows: [], count: 0 });
+});
