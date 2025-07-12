@@ -337,21 +337,35 @@ function dayOpen(day) {
       <div v-show="activeTab === 'mine'">
         <div class="card section-card tile fade-in shadow-sm mb-3">
           <div class="card-body p-2">
-            <ul class="nav nav-pills nav-fill mb-0 tab-selector">
-              <li class="nav-item">
+            <ul class="nav nav-pills nav-fill mb-0 tab-selector" role="tablist">
+              <li class="nav-item" role="presentation">
                 <button
-                    class="nav-link"
-                    :class="{ active: mineTab === 'upcoming' }"
-                    @click="mineTab = 'upcoming'"
+                  id="mine-upcoming-tab"
+                  class="nav-link"
+                  :class="{ active: mineTab === 'upcoming' }"
+                  data-bs-toggle="tab"
+                  data-bs-target="#mine-upcoming"
+                  type="button"
+                  role="tab"
+                  aria-controls="mine-upcoming"
+                  :aria-selected="mineTab === 'upcoming'"
+                  @click="mineTab = 'upcoming'"
                 >
                   Ближайшие
                 </button>
               </li>
-              <li class="nav-item">
+              <li class="nav-item" role="presentation">
                 <button
-                    class="nav-link"
-                    :class="{ active: mineTab === 'past' }"
-                    @click="mineTab = 'past'"
+                  id="mine-past-tab"
+                  class="nav-link"
+                  :class="{ active: mineTab === 'past' }"
+                  data-bs-toggle="tab"
+                  data-bs-target="#mine-past"
+                  type="button"
+                  role="tab"
+                  aria-controls="mine-past"
+                  :aria-selected="mineTab === 'past'"
+                  @click="mineTab = 'past'"
                 >
                   Прошедшие
                 </button>
@@ -360,7 +374,14 @@ function dayOpen(day) {
           </div>
         </div>
 
-        <div v-if="mineTab === 'upcoming'">
+        <div class="tab-content">
+          <div
+            id="mine-upcoming"
+            class="tab-pane fade"
+            :class="{ 'show active': mineTab === 'upcoming' }"
+            role="tabpanel"
+            aria-labelledby="mine-upcoming-tab"
+          >
           <div v-if="!groupedMine.length" class="alert alert-warning">
             У вас нет тренировок. Перейдите во вкладку
             <button
@@ -451,9 +472,15 @@ function dayOpen(day) {
               </ul>
             </div>
           </div>
+          </div>
         </div>
-      </div>
-        <div v-else>
+        <div
+          id="mine-past"
+          class="tab-pane fade"
+          :class="{ 'show active': mineTab === 'past' }"
+          role="tabpanel"
+          aria-labelledby="mine-past-tab"
+        >
           <p v-if="!groupedPast.length" class="text-muted">Нет прошедших тренировок</p>
           <div v-else class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
