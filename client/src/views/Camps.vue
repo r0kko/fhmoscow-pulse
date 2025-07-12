@@ -25,6 +25,14 @@ const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
 
+function setActiveTab(tab) {
+  activeTab.value = tab;
+}
+
+function setMineTab(tab) {
+  mineTab.value = tab;
+}
+
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
       .filter(Boolean)
@@ -276,6 +284,9 @@ function applyTooltips() {
   });
 }
 
+watch(activeTab, () => nextTick(applyTooltips));
+watch(mineTab, () => nextTick(applyTooltips));
+
 function selectDate(id, iso) {
   const current = selectedDates.value[id];
   const next = current === iso ? undefined : iso;
@@ -335,7 +346,7 @@ function dayOpen(day) {
               <button
                   class="nav-link"
                   :class="{ active: activeTab === 'mine' }"
-                  @click="activeTab = 'mine'"
+                  @click="setActiveTab('mine')"
               >
                 Мои тренировки
               </button>
@@ -344,7 +355,7 @@ function dayOpen(day) {
               <button
                   class="nav-link"
                   :class="{ active: activeTab === 'register' }"
-                  @click="activeTab = 'register'"
+                  @click="setActiveTab('register')"
               >
                 Запись на тренировки
               </button>
@@ -376,7 +387,7 @@ function dayOpen(day) {
                       role="tab"
                       aria-controls="mine-upcoming"
                       :aria-selected="mineTab === 'upcoming'"
-                      @click="mineTab = 'upcoming'"
+                      @click="setMineTab('upcoming')"
                   >
                     Ближайшие
                   </button>
@@ -392,7 +403,7 @@ function dayOpen(day) {
                       role="tab"
                       aria-controls="mine-past"
                       :aria-selected="mineTab === 'past'"
-                      @click="mineTab = 'past'"
+                      @click="setMineTab('past')"
                   >
                     Прошедшие
                   </button>
@@ -413,7 +424,7 @@ function dayOpen(day) {
                 У вас нет тренировок. Перейдите во вкладку
                 <button
                     class="btn btn-link p-0"
-                    @click="activeTab = 'register'"
+                    @click="setActiveTab('register')"
                 >
                   Запись на тренировки
                 </button>
