@@ -530,7 +530,7 @@ function dayOpen(day) {
       </div>
 
       <div v-show="activeTab === 'register'">
-        <p v-if="!groupedAllByDay.length" class="text-muted">Нет доступных тренировок</p>
+        <div v-if="!groupedAllByDay.length" class="alert alert-warning" role="alert">Нет доступных тренировок</div>
         <div v-else class="stadium-list">
           <div
               v-for="g in groupedAllByDay"
