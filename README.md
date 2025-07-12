@@ -97,6 +97,7 @@ DADATA_SECRET=your_dadata_secret
 `src/templates/verificationEmail.js` и `src/templates/passwordResetEmail.js`.
 Письма о создании и смене статуса обращения формируются в
 `src/templates/ticketCreatedEmail.js` и `src/templates/ticketStatusChangedEmail.js`.
+Письмо об изменении статуса дополнительно включает тип обращения для удобства пользователя.
 
 `PASSWORD_MIN_LENGTH` and `PASSWORD_PATTERN` allow customizing the
 password policy for user registration. By default passwords must be at
