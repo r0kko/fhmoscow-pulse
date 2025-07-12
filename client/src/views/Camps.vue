@@ -1,6 +1,6 @@
 <script setup>
 import {ref, onMounted, computed, nextTick, watch} from 'vue';
-import {RouterLink} from 'vue-router';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {apiFetch} from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
@@ -11,6 +11,9 @@ import {withHttp} from '../utils/url.js';
 
 const selectedDates = ref({});
 
+const route = useRoute();
+const router = useRouter();
+
 const trainings = ref([]);
 const mineUpcoming = ref([]);
 const minePast = ref([]);
@@ -19,7 +22,7 @@ const page = ref(1);
 const pageSize = 50;
 const loading = ref(true);
 const error = ref('');
-const activeTab = ref('mine');
+const activeTab = ref(route.query.tab || 'mine');
 const registering = ref(null);
 const toastRef = ref(null);
 const toastMessage = ref('');
@@ -210,6 +213,22 @@ watch(
     },
     { immediate: true }
 );
+
+watch(
+    () => route.query.tab,
+    (val) => {
+      if (typeof val === 'string' && val !== activeTab.value) {
+        activeTab.value = val;
+      }
+    }
+);
+
+watch(activeTab, (val) => {
+  router.replace({ query: { ...route.query, tab: val } });
+  if (val === 'register' && !trainings.value.length) {
+    loadAvailable().then(initSelectedDates);
+  }
+});
 
 const weekTrainings = computed(() => {
   const now = new Date();
