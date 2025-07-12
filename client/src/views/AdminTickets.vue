@@ -106,24 +106,30 @@ async function progress(ticket) {
                 </td>
                 <td>{{ t.status.name }}</td>
                 <td class="text-end">
-                  <button
-                    class="btn btn-sm btn-outline-secondary me-2"
-                    @click="changeStatus(t, 'IN_PROGRESS')"
-                  >
-                    В работу
-                  </button>
-                  <button
-                    class="btn btn-sm btn-success me-2"
-                    @click="changeStatus(t, 'CONFIRMED')"
-                  >
-                    Подтвердить
-                  </button>
-                  <button
-                    class="btn btn-sm btn-danger me-2"
-                    @click="changeStatus(t, 'REJECTED')"
-                  >
-                    Отклонить
-                  </button>
+                  <template v-if="t.status.alias === 'CREATED'">
+                    <button
+                      class="btn btn-sm btn-outline-secondary me-2"
+                      @click="changeStatus(t, 'IN_PROGRESS')"
+                    >
+                      В работу
+                    </button>
+                  </template>
+                  <template v-else-if="t.status.alias === 'IN_PROGRESS'">
+                    <button
+                      class="btn btn-sm btn-success me-2"
+                      @click="changeStatus(t, 'CONFIRMED')"
+                      title="Подтвердить"
+                    >
+                      <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger me-2"
+                      @click="changeStatus(t, 'REJECTED')"
+                      title="Отклонить"
+                    >
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </template>
                   <button
                     class="btn btn-sm btn-brand"
                     @click="progress(t)"
