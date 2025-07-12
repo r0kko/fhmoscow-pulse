@@ -437,7 +437,7 @@ function dayOpen(day) {
             <div
                 id="mine-upcoming"
                 class="tab-pane fade"
-                :class="{ 'show active': mineTab === 'upcoming' }"
+                :class="{ show: mineTab === 'upcoming', active: mineTab === 'upcoming' }"
                 role="tabpanel"
                 aria-labelledby="mine-upcoming-tab"
             >
@@ -537,7 +537,7 @@ function dayOpen(day) {
             <div
                 id="mine-past"
                 class="tab-pane fade"
-                :class="{ 'show active': mineTab === 'past' }"
+                :class="{ show: mineTab === 'past', active: mineTab === 'past' }"
                 role="tabpanel"
                 aria-labelledby="mine-past-tab"
             >
