@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, RouterLink } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import Toast from 'bootstrap/js/dist/toast';
 
 const route = useRoute();
+const router = useRouter();
 const training = ref(null);
 const registrations = ref([]);
 const visibleRegistrations = computed(() =>
@@ -82,6 +83,7 @@ async function finish() {
     });
     showToast('Посещаемость отмечена');
     await loadData();
+    router.push('/camps');
   } catch (e) {
     alert(e.message);
   }
