@@ -24,6 +24,8 @@ const uploadSuccess = ref(false);
 const uploading = ref(false);
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['application/pdf'];
+const DEFAULT_DESCRIPTION =
+  'Прошу приобщить к материалам личного дела мое медицинское заключение-допуск к обслуживанию соревнований. Подтверждаю, что направляемый документ является подлинным.';
 let ticketModal;
 const activeExamId = computed(() => {
   const e = exams.value.find(
@@ -195,7 +197,10 @@ async function createTicket() {
   try {
     const { ticket } = await apiFetch('/tickets', {
       method: 'POST',
-      body: JSON.stringify({ type_alias: 'MED_CERT_UPLOAD' }),
+      body: JSON.stringify({
+        type_alias: 'MED_CERT_UPLOAD',
+        description: DEFAULT_DESCRIPTION,
+      }),
     });
     const form = new FormData();
     form.append('file', file);
