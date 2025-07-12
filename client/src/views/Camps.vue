@@ -25,6 +25,15 @@ const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
 
+watch(activeTab, async (tab) => {
+  if (tab === 'register' && !trainings.value.length && !loading.value) {
+    await loadAvailable();
+    initSelectedDates();
+    await nextTick();
+    applyTooltips();
+  }
+});
+
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
       .filter(Boolean)
