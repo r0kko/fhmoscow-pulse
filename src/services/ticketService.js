@@ -7,6 +7,7 @@ import {
   File,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import emailService from './emailService.js';
 
 async function listByUser(userId) {
   return Ticket.findAll({
@@ -33,7 +34,13 @@ async function createForUser(userId, data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  return Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
+  const result = await Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
+  try {
+    await emailService.sendTicketCreatedEmail(user, result);
+  } catch (err) {
+    console.error('Email send failed', err);
+  }
+  return result;
 }
 
 async function getById(id) {
@@ -72,8 +79,18 @@ async function updateForUser(userId, ticketId, data, actorId) {
     status_id: statusId,
     updated_by: actorId,
   });
-
-  return Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
+  const result = await Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
+  if (data.status_alias) {
+    try {
+      const user = await User.findByPk(userId);
+      if (user) {
+        await emailService.sendTicketStatusChangedEmail(user, result);
+      }
+    } catch (err) {
+      console.error('Email send failed', err);
+    }
+  }
+  return result;
 }
 
 async function removeForUser(userId, ticketId, actorId = null) {

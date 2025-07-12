@@ -95,6 +95,8 @@ DADATA_SECRET=your_dadata_secret
 Приложение отправляет HTML-письма для подтверждения электронной почты и сброса
 пароля. Настроить внешний вид и текст этих писем можно в файлах
 `src/templates/verificationEmail.js` и `src/templates/passwordResetEmail.js`.
+Письма о создании и смене статуса обращения формируются в
+`src/templates/ticketCreatedEmail.js` и `src/templates/ticketStatusChangedEmail.js`.
 
 `PASSWORD_MIN_LENGTH` and `PASSWORD_PATTERN` allow customizing the
 password policy for user registration. By default passwords must be at

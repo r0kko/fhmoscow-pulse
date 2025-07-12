@@ -21,6 +21,8 @@ import { renderMedicalExamRegistrationApprovedEmail } from '../templates/medical
 import { renderMedicalExamRegistrationCancelledEmail } from '../templates/medicalExamRegistrationCancelledEmail.js';
 import { renderMedicalExamRegistrationSelfCancelledEmail } from '../templates/medicalExamRegistrationSelfCancelledEmail.js';
 import { renderMedicalExamRegistrationCompletedEmail } from '../templates/medicalExamRegistrationCompletedEmail.js';
+import { renderTicketCreatedEmail } from '../templates/ticketCreatedEmail.js';
+import { renderTicketStatusChangedEmail } from '../templates/ticketStatusChangedEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -127,6 +129,16 @@ export async function sendMedicalExamRegistrationCompletedEmail(user, exam) {
     renderMedicalExamRegistrationCompletedEmail(exam);
   await sendMail(user.email, subject, text, html);
 }
+
+export async function sendTicketCreatedEmail(user, ticket) {
+  const { subject, text, html } = renderTicketCreatedEmail(ticket);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendTicketStatusChangedEmail(user, ticket) {
+  const { subject, text, html } = renderTicketStatusChangedEmail(ticket);
+  await sendMail(user.email, subject, text, html);
+}
 export default {
   sendMail,
   sendVerificationEmail,
@@ -142,4 +154,6 @@ export default {
   sendMedicalExamRegistrationCancelledEmail,
   sendMedicalExamRegistrationSelfCancelledEmail,
   sendMedicalExamRegistrationCompletedEmail,
+  sendTicketCreatedEmail,
+  sendTicketStatusChangedEmail,
 };

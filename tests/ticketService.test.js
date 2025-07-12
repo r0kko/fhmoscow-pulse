@@ -10,6 +10,8 @@ const ticketFindOneMock = jest.fn();
 const findOneTypeMock = jest.fn();
 const findOneStatusMock = jest.fn();
 const userFindByPkMock = jest.fn();
+const sendCreatedEmailMock = jest.fn();
+const sendStatusChangedEmailMock = jest.fn();
 
 beforeEach(() => {
   findAndCountAllMock.mockReset();
@@ -22,6 +24,8 @@ beforeEach(() => {
   findOneTypeMock.mockReset();
   findOneStatusMock.mockReset();
   userFindByPkMock.mockReset();
+  sendCreatedEmailMock.mockReset();
+  sendStatusChangedEmailMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -38,6 +42,14 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: { findByPk: userFindByPkMock },
   TicketFile: {},
   File: {},
+}));
+
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
+  __esModule: true,
+  default: {
+    sendTicketCreatedEmail: sendCreatedEmailMock,
+    sendTicketStatusChangedEmail: sendStatusChangedEmailMock,
+  },
 }));
 
 const { default: service } = await import('../src/services/ticketService.js');
@@ -84,6 +96,7 @@ test('createForUser creates ticket', async () => {
   const ticket = await service.createForUser('u1', { type_alias: 'A' }, 'admin');
   expect(createMock).toHaveBeenCalled();
   expect(ticket).toEqual({ id: 't1' });
+  expect(sendCreatedEmailMock).toHaveBeenCalled();
 });
 
 test('updateForUser updates ticket', async () => {
@@ -95,10 +108,12 @@ test('updateForUser updates ticket', async () => {
     update: updateMock,
   });
   findOneStatusMock.mockResolvedValue({ id: 'status2' });
+  userFindByPkMock.mockResolvedValue({ id: 'u1', email: 'e' });
   findByPkMock.mockResolvedValue({ id: 't1' });
   const res = await service.updateForUser('u1', 't1', { status_alias: 'X' }, 'adm');
   expect(updateMock).toHaveBeenCalled();
   expect(res).toEqual({ id: 't1' });
+  expect(sendStatusChangedEmailMock).toHaveBeenCalled();
 });
 
 test('removeForUser deletes ticket', async () => {
@@ -137,9 +152,11 @@ test('progressStatus moves ticket forward', async () => {
     update: updateMock,
   });
   findOneStatusMock.mockResolvedValue({ id: 's2' });
+  userFindByPkMock.mockResolvedValue({ id: 'u1', email: 'e' });
   const res = await service.progressStatus('t1', 'admin');
   expect(updateMock).toHaveBeenCalled();
   expect(res).toEqual({ id: 't1', TicketStatus: { alias: 'IN_PROGRESS' } });
+  expect(sendStatusChangedEmailMock).toHaveBeenCalled();
 });
 
 
