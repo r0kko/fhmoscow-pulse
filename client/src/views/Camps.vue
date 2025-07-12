@@ -25,6 +25,10 @@ const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
 
+watch(activeTab, (val) => {
+  if (val === 'register') loadAvailable();
+});
+
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
       .filter(Boolean)
