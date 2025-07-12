@@ -156,7 +156,7 @@ const upcoming = computed(() => {
 });
 
 const availableTrainings = computed(() =>
-    upcoming.value.filter((t) => !t.registered && !t.user_registered)
+    upcoming.value.filter((t) => !t.registered)
 );
 
 const groupedAll = computed(() => groupDetailed(availableTrainings.value));
