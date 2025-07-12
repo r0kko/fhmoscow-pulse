@@ -34,7 +34,9 @@ async function createForUser(userId, data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  const result = await Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
+  const result = await Ticket.findByPk(ticket.id, {
+    include: [TicketType, TicketStatus],
+  });
   try {
     await emailService.sendTicketCreatedEmail(user, result);
   } catch (err) {
@@ -79,7 +81,9 @@ async function updateForUser(userId, ticketId, data, actorId) {
     status_id: statusId,
     updated_by: actorId,
   });
-  const result = await Ticket.findByPk(ticket.id, { include: [TicketType, TicketStatus] });
+  const result = await Ticket.findByPk(ticket.id, {
+    include: [TicketType, TicketStatus],
+  });
   if (data.status_alias) {
     try {
       const user = await User.findByPk(userId);
