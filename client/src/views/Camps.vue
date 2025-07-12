@@ -361,7 +361,7 @@ function dayOpen(day) {
       <div v-else>
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
-        <div v-show="activeTab === 'mine'">
+        <div v-if="activeTab === 'mine'">
           <div class="card section-card tile fade-in shadow-sm mb-3">
             <div class="card-body p-2">
               <ul class="nav nav-pills nav-fill mb-0 tab-selector" role="tablist">
@@ -556,7 +556,7 @@ function dayOpen(day) {
 
           </div>
 
-          <div v-show="activeTab === 'register'">
+          <div v-if="activeTab === 'register'">
             <div v-if="!groupedAllByDay.length" class="alert alert-warning" role="alert">Нет доступных тренировок</div>
             <div v-else class="stadium-list">
               <div
