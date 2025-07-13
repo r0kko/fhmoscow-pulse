@@ -14,8 +14,12 @@ export default {
     const { email } = req.body;
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(404).json({ error: 'not_found' });
-    await passwordResetService.sendCode(user);
-    return res.json({ message: 'code_sent' });
+    try {
+      await passwordResetService.sendCode(user);
+      return res.json({ message: 'code_sent' });
+    } catch (err) {
+      return sendError(res, err, 500);
+    }
   },
 
   async finish(req, res) {

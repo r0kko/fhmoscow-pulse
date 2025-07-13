@@ -24,7 +24,11 @@ export async function sendCode(user) {
     expires_at: expires,
   });
   attempts.clear(user.id);
-  await emailService.sendPasswordResetEmail(user, code);
+  try {
+    await emailService.sendPasswordResetEmail(user, code);
+  } catch (err) {
+    throw new ServiceError('email_send_failed', 500, err.message);
+  }
 }
 
 export async function verifyCode(user, code) {
