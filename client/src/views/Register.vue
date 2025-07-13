@@ -4,6 +4,7 @@ import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import { auth, setAuthToken } from '../auth.js'
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue'
+import CookieNotice from '../components/CookieNotice.vue'
 
 const router = useRouter()
 const step = ref(1)
@@ -68,7 +69,7 @@ async function finish() {
 </script>
 
 <template>
-  <div class="d-flex align-items-center justify-content-center min-vh-100">
+  <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
       <h1 class="mb-3 text-center">Регистрация</h1>
       <p class="text-center mb-3">с использованием существующей учетной записи в личном кабинете судьи</p>
@@ -140,6 +141,7 @@ async function finish() {
         </button>
       </form>
     </div>
+    <CookieNotice />
   </div>
 </template>
 
