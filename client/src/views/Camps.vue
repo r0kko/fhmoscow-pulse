@@ -1,6 +1,6 @@
 <script setup>
 import {ref, onMounted, computed, nextTick, watch} from 'vue';
-import {RouterLink, useRoute, useRouter} from 'vue-router';
+import {RouterLink} from 'vue-router';
 import {apiFetch} from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
@@ -11,9 +11,6 @@ import {withHttp} from '../utils/url.js';
 
 const selectedDates = ref({});
 
-const route = useRoute();
-const router = useRouter();
-
 const trainings = ref([]);
 const mineUpcoming = ref([]);
 const minePast = ref([]);
@@ -22,19 +19,11 @@ const page = ref(1);
 const pageSize = 50;
 const loading = ref(true);
 const error = ref('');
-const activeTab = ref(route.query.tab || 'mine');
+const activeTab = ref('mine');
 const registering = ref(null);
 const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
-
-function setActiveTab(tab) {
-  activeTab.value = tab;
-}
-
-function setMineTab(tab) {
-  mineTab.value = tab;
-}
 
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
@@ -46,6 +35,11 @@ function shortName(u) {
 
 onMounted(loadAll);
 
+watch(activeTab, (tab) => {
+  if (tab === 'register') loadAvailable();
+  else loadMine();
+});
+
 async function loadAll() {
   loading.value = true;
   try {
@@ -54,9 +48,6 @@ async function loadAll() {
   } catch (e) {
     error.value = e.message;
   } finally {
-    initSelectedDates();
-    await nextTick();
-    applyTooltips();
     loading.value = false;
   }
 }
@@ -68,8 +59,8 @@ async function loadAvailable() {
         `/camp-trainings/available?page=${page.value}&limit=${pageSize}`
     );
     trainings.value = data.trainings || [];
-    error.value = '';
     initSelectedDates();
+    error.value = '';
     await nextTick();
     applyTooltips();
   } catch (e) {
@@ -87,6 +78,8 @@ async function loadMine() {
     ]);
     mineUpcoming.value = upcomingData.trainings || [];
     minePast.value = pastData.trainings || [];
+    await nextTick();
+    applyTooltips();
   } catch (e) {
     // ignore, handled by caller
   }
@@ -225,22 +218,6 @@ watch(
     { immediate: true }
 );
 
-watch(
-    () => route.query.tab,
-    (val) => {
-      if (typeof val === 'string' && val !== activeTab.value) {
-        activeTab.value = val;
-      }
-    }
-);
-
-watch(activeTab, (val) => {
-  router.replace({ query: { ...route.query, tab: val } });
-  if (val === 'register' && !trainings.value.length) {
-    loadAvailable().then(initSelectedDates);
-  }
-});
-
 const weekTrainings = computed(() => {
   const now = new Date();
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -306,9 +283,6 @@ function applyTooltips() {
   });
 }
 
-watch(activeTab, () => nextTick(applyTooltips));
-watch(mineTab, () => nextTick(applyTooltips));
-
 function selectDate(id, iso) {
   const current = selectedDates.value[id];
   const next = current === iso ? undefined : iso;
@@ -366,20 +340,18 @@ function dayOpen(day) {
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item">
               <button
-                  type="button"
                   class="nav-link"
                   :class="{ active: activeTab === 'mine' }"
-                  @click="setActiveTab('mine')"
+                  @click="activeTab = 'mine'"
               >
                 Мои тренировки
               </button>
             </li>
             <li class="nav-item">
               <button
-                  type="button"
                   class="nav-link"
                   :class="{ active: activeTab === 'register' }"
-                  @click="setActiveTab('register')"
+                  @click="activeTab = 'register'"
               >
                 Запись на тренировки
               </button>
@@ -411,7 +383,7 @@ function dayOpen(day) {
                       role="tab"
                       aria-controls="mine-upcoming"
                       :aria-selected="mineTab === 'upcoming'"
-                      @click="setMineTab('upcoming')"
+                      @click="mineTab = 'upcoming'"
                   >
                     Ближайшие
                   </button>
@@ -427,7 +399,7 @@ function dayOpen(day) {
                       role="tab"
                       aria-controls="mine-past"
                       :aria-selected="mineTab === 'past'"
-                      @click="setMineTab('past')"
+                      @click="mineTab = 'past'"
                   >
                     Прошедшие
                   </button>
@@ -440,16 +412,15 @@ function dayOpen(day) {
             <div
                 id="mine-upcoming"
                 class="tab-pane fade"
-                :class="{ show: mineTab === 'upcoming', active: mineTab === 'upcoming' }"
+                :class="{ 'show active': mineTab === 'upcoming' }"
                 role="tabpanel"
                 aria-labelledby="mine-upcoming-tab"
             >
               <div v-if="!groupedMine.length" class="alert alert-warning">
                 У вас нет тренировок. Перейдите во вкладку
                 <button
-                    type="button"
                     class="btn btn-link p-0"
-                    @click="setActiveTab('register')"
+                    @click="activeTab = 'register'"
                 >
                   Запись на тренировки
                 </button>
@@ -540,7 +511,7 @@ function dayOpen(day) {
             <div
                 id="mine-past"
                 class="tab-pane fade"
-                :class="{ show: mineTab === 'past', active: mineTab === 'past' }"
+                :class="{ 'show active': mineTab === 'past' }"
                 role="tabpanel"
                 aria-labelledby="mine-past-tab"
             >
@@ -592,7 +563,7 @@ function dayOpen(day) {
 
           </div>
 
-          <div v-if="activeTab === 'register'">
+          <div v-if="activeTab === 'register'" :key="'register'">
             <div v-if="!groupedAllByDay.length" class="alert alert-warning" role="alert">Нет доступных тренировок</div>
             <div v-else class="stadium-list">
               <div
