@@ -220,7 +220,8 @@ TicketFile.belongsTo(Ticket, { foreignKey: 'ticket_id' });
 File.hasMany(TicketFile, { foreignKey: 'file_id' });
 TicketFile.belongsTo(File, { foreignKey: 'file_id' });
 
-const auditExclude = ['Log'];
+// models that don't have standard audit columns
+const auditExclude = ['Log', 'EmailCode'];
 for (const model of Object.values(sequelize.models)) {
   if (!auditExclude.includes(model.name)) {
     model.rawAttributes.created_by = { type: DataTypes.UUID };
