@@ -196,18 +196,17 @@ async function create(data, actorId) {
     });
     if (zones.length) await NormativeTypeZone.bulkCreate(zones);
   }
-  if (Array.isArray(data.groups)) {
-    await NormativeGroupType.bulkCreate(
-      data.groups.map((g) => ({
-        group_id: g.group_id,
-        type_id: type.id,
-        required: Boolean(g.required),
-        created_by: actorId,
-        updated_by: actorId,
-        created_at: new Date(),
-        updated_at: new Date(),
-      }))
-    );
+  if (Array.isArray(data.groups) && data.groups.length) {
+    const g = data.groups[0];
+    await NormativeGroupType.create({
+      group_id: g.group_id,
+      type_id: type.id,
+      required: Boolean(g.required),
+      created_by: actorId,
+      updated_by: actorId,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
   }
   return getById(type.id);
 }
@@ -248,18 +247,17 @@ async function update(id, data, actorId) {
   }
   if (data.groups) {
     await NormativeGroupType.destroy({ where: { type_id: id } });
-    if (Array.isArray(data.groups)) {
-      await NormativeGroupType.bulkCreate(
-        data.groups.map((g) => ({
-          group_id: g.group_id,
-          type_id: id,
-          required: Boolean(g.required),
-          created_by: actorId,
-          updated_by: actorId,
-          created_at: new Date(),
-          updated_at: new Date(),
-        }))
-      );
+    if (Array.isArray(data.groups) && data.groups.length) {
+      const g = data.groups[0];
+      await NormativeGroupType.create({
+        group_id: g.group_id,
+        type_id: id,
+        required: Boolean(g.required),
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
     }
   }
   return getById(id);
