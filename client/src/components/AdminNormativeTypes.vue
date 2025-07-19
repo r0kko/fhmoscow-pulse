@@ -16,6 +16,16 @@ const pageSize = 8;
 const isLoading = ref(false);
 const error = ref('');
 
+const currentValueType = computed(() =>
+  valueTypes.value.find((v) => v.id === form.value.value_type_id) || null
+);
+const filteredZones = computed(() =>
+  zonesDict.value.filter((z) => ['GREEN', 'YELLOW'].includes(z.alias))
+);
+const isMoreBetter = computed(
+  () => currentValueType.value?.alias === 'MORE_BETTER'
+);
+
 const form = ref({
   season_id: '',
   name: '',
@@ -63,6 +73,13 @@ watch(
 );
 
 watch(currentPage, load);
+
+watch([zonesDict, sexes], () => {
+  const allowedIds = filteredZones.value.map((z) => z.id);
+  form.value.zones = form.value.zones.filter(
+    (z) => allowedIds.includes(z.zone_id) && sexes.value.some((s) => s.id === z.sex_id)
+  );
+});
 
 const currentUnit = computed(() =>
   units.value.find((u) => u.id === form.value.unit_id) || null
@@ -131,7 +148,10 @@ function openEdit(t) {
     value_type_id: t.value_type_id,
     unit_id: t.unit_id,
     groups: t.groups || [],
-    zones: t.zones || [],
+    zones:
+      (t.zones || []).filter((z) =>
+        filteredZones.value.some((f) => f.id === z.zone_id)
+      ),
   };
   formError.value = '';
   modal.show();
@@ -140,6 +160,15 @@ function openEdit(t) {
 async function save() {
   const payload = { ...form.value };
   payload.required = !!payload.required;
+  const allowedIds = filteredZones.value.map((z) => z.id);
+  payload.zones = payload.zones
+    .filter((z) => allowedIds.includes(z.zone_id))
+    .map((z) => ({
+      zone_id: z.zone_id,
+      sex_id: z.sex_id,
+      min_value: isMoreBetter.value ? z.min_value : null,
+      max_value: isMoreBetter.value ? null : z.max_value,
+    }));
   try {
     if (editing.value) {
       await apiFetch(`/normative-types/${editing.value.id}`, {
@@ -413,7 +442,7 @@ defineExpose({ refresh });
               </div>
               <div class="mb-3">
                 <label class="form-label">Зоны</label>
-                <div v-if="zonesDict.length && sexes.length" class="table-responsive">
+                <div v-if="filteredZones.length && sexes.length" class="table-responsive">
                   <table class="table table-sm align-middle">
                     <thead>
                       <tr>
@@ -422,24 +451,20 @@ defineExpose({ refresh });
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="z in zonesDict" :key="z.id">
+                      <tr v-for="z in filteredZones" :key="z.id">
                         <td>{{ z.name }}</td>
                         <td v-for="s in sexes" :key="s.id">
-                          <input
-                            :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
-                            class="form-control form-control-sm mb-1"
-                            :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
-                            :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
-                            placeholder="Мин"
-                            v-model="getZone(z.id, s.id).min_value"
-                          />
                           <input
                             :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
                             class="form-control form-control-sm"
                             :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
                             :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
-                            placeholder="Макс"
-                            v-model="getZone(z.id, s.id).max_value"
+                            :placeholder="isMoreBetter ? 'Мин' : 'Макс'"
+                            v-model="
+                              isMoreBetter
+                                ? getZone(z.id, s.id).min_value
+                                : getZone(z.id, s.id).max_value
+                            "
                           />
                         </td>
                       </tr>

@@ -49,9 +49,10 @@ async function buildZones({
   const step = stepForUnit(unit);
   const bySex = {};
   for (const z of zones) {
-    if (!zoneById[z.zone_id]) continue;
+    const zn = zoneById[z.zone_id];
+    if (!zn || (zn.alias !== 'GREEN' && zn.alias !== 'YELLOW')) continue;
     if (!bySex[z.sex_id]) bySex[z.sex_id] = {};
-    bySex[z.sex_id][zoneById[z.zone_id].alias] = z;
+    bySex[z.sex_id][zn.alias] = z;
   }
   const result = [];
   for (const [sexId, data] of Object.entries(bySex)) {
