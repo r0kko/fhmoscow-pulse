@@ -25,7 +25,6 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: {},
   User: { findByPk: findUserMock },
   Role: {},
-  CampStadium: {},
   Training: {},
   TrainingRegistration: {},
 }));

@@ -2,7 +2,6 @@ import {
   RefereeGroup,
   RefereeGroupUser,
   Season,
-  CampStadium,
   User,
   Role,
   Training,
@@ -23,11 +22,8 @@ async function listAll(options = {}) {
     const active = await seasonService.getActive();
     if (active) where.season_id = active.id;
   }
-  if (options.camp_stadium_id) {
-    where.camp_stadium_id = options.camp_stadium_id;
-  }
   return RefereeGroup.findAndCountAll({
-    include: [Season, CampStadium],
+    include: [Season],
     where,
     order: [['name', 'ASC']],
     limit,
@@ -36,9 +32,7 @@ async function listAll(options = {}) {
 }
 
 async function getById(id) {
-  const group = await RefereeGroup.findByPk(id, {
-    include: [Season, CampStadium, User],
-  });
+  const group = await RefereeGroup.findByPk(id, { include: [Season, User] });
   if (!group || !group.Season?.active) {
     throw new ServiceError('referee_group_not_found', 404);
   }
@@ -48,7 +42,6 @@ async function getById(id) {
 async function create(data, actorId) {
   return await RefereeGroup.create({
     season_id: data.season_id,
-    camp_stadium_id: data.camp_stadium_id || null,
     name: data.name,
     created_by: actorId,
     updated_by: actorId,
@@ -61,10 +54,6 @@ async function update(id, data, actorId) {
   await group.update(
     {
       season_id: data.season_id ?? group.season_id,
-      camp_stadium_id:
-        data.camp_stadium_id !== undefined
-          ? data.camp_stadium_id
-          : group.camp_stadium_id,
       name: data.name ?? group.name,
       updated_by: actorId,
     },
@@ -168,10 +157,7 @@ async function getReferee(id) {
         through: { attributes: [] },
         required: true,
       },
-      {
-        model: RefereeGroupUser,
-        include: [{ model: RefereeGroup, include: [CampStadium] }],
-      },
+      { model: RefereeGroupUser, include: [RefereeGroup] },
     ],
   });
   if (!user) throw new ServiceError('user_not_found', 404);

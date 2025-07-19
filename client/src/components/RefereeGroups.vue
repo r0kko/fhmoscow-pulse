@@ -6,14 +6,12 @@ import { apiFetch } from '../api.js'
 const groups = ref([])
 const total = ref(0)
 const seasons = ref([])
-const stadiums = ref([])
 const filterSeason = ref('')
-const filterStadium = ref('')
 const currentPage = ref(1)
 const pageSize = 8
 const isLoading = ref(false)
 const error = ref('')
-const form = ref({ season_id: '', camp_stadium_id: '', name: '' })
+const form = ref({ season_id: '', name: '' })
 const editing = ref(null)
 const modalRef = ref(null)
 let modal
@@ -25,11 +23,10 @@ onMounted(() => {
   modal = new Modal(modalRef.value)
   load()
   loadSeasons()
-  loadStadiums()
 })
 
 watch(currentPage, load)
-watch([filterSeason, filterStadium], () => {
+watch(filterSeason, () => {
   currentPage.value = 1
   load()
 })
@@ -40,7 +37,6 @@ async function load() {
   try {
     const params = new URLSearchParams({ page: currentPage.value, limit: pageSize })
     if (filterSeason.value) params.set('season_id', filterSeason.value)
-    if (filterStadium.value) params.set('camp_stadium_id', filterStadium.value)
     const data = await apiFetch(`/referee-groups?${params}`)
     groups.value = data.groups
     total.value = data.total
@@ -61,36 +57,25 @@ async function loadSeasons() {
   }
 }
 
-async function loadStadiums() {
-  try {
-    const params = new URLSearchParams({ page: 1, limit: 100 })
-    const data = await apiFetch(`/camp-stadiums?${params}`)
-    stadiums.value = data.stadiums
-  } catch (_) {
-    stadiums.value = []
-  }
-}
 
 function openCreate() {
   editing.value = null
-  form.value = { season_id: '', camp_stadium_id: '', name: '' }
+  form.value = { season_id: '', name: '' }
   formError.value = ''
   if (!seasons.value.length) loadSeasons()
-  if (!stadiums.value.length) loadStadiums()
   modal.show()
 }
 
 function openEdit(group) {
   editing.value = group
-  form.value = { season_id: group.season_id, camp_stadium_id: group.camp_stadium_id, name: group.name }
+  form.value = { season_id: group.season_id, name: group.name }
   formError.value = ''
   if (!seasons.value.length) loadSeasons()
-  if (!stadiums.value.length) loadStadiums()
   modal.show()
 }
 
 async function save() {
-  const payload = { season_id: form.value.season_id, camp_stadium_id: form.value.camp_stadium_id || null, name: form.value.name }
+  const payload = { season_id: form.value.season_id, name: form.value.name }
   try {
     if (editing.value) {
       await apiFetch(`/referee-groups/${editing.value.id}`, { method: 'PUT', body: JSON.stringify(payload) })
@@ -116,7 +101,6 @@ async function removeGroup(group) {
 const refresh = () => {
   load();
   loadSeasons();
-  loadStadiums();
 };
 
 defineExpose({ refresh });
@@ -141,12 +125,6 @@ defineExpose({ refresh });
                 <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
               </select>
             </div>
-            <div class="col-sm">
-              <select v-model="filterStadium" class="form-select">
-                <option value="">Все стадионы</option>
-                <option v-for="s in stadiums" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
           </div>
         </div>
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
@@ -158,7 +136,6 @@ defineExpose({ refresh });
             <thead>
               <tr>
                 <th>Сезон</th>
-                <th>Стадион</th>
                 <th>Название</th>
                 <th></th>
               </tr>
@@ -166,7 +143,6 @@ defineExpose({ refresh });
             <tbody>
               <tr v-for="g in groups" :key="g.id">
                 <td>{{ g.season ? g.season.name : '' }}</td>
-                <td>{{ g.stadium ? g.stadium.name : '' }}</td>
                 <td>{{ g.name }}</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-secondary me-2" @click="openEdit(g)">
@@ -212,13 +188,6 @@ defineExpose({ refresh });
                   <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
                 </select>
                 <label for="groupSeason">Сезон</label>
-              </div>
-              <div class="form-floating mb-3">
-                <select id="groupStadium" v-model="form.camp_stadium_id" class="form-select">
-                  <option value="">Без стадиона</option>
-                  <option v-for="s in stadiums" :key="s.id" :value="s.id">{{ s.name }}</option>
-                </select>
-                <label for="groupStadium">Стадион</label>
               </div>
               <div class="form-floating mb-3">
                 <input id="groupName" v-model="form.name" class="form-control" placeholder="Название" required />
