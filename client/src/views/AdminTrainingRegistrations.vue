@@ -225,7 +225,7 @@ async function updateRegistration(reg) {
         <div class="spinner-border" role="status"></div>
       </div>
       <div class="row g-2 align-items-end mb-3">
-        <div class="col">
+        <div class="col-12 col-sm">
           <label class="form-label">Судья</label>
           <select v-model="addForm.user_id" class="form-select">
             <option value="" disabled>Выберите судью</option>
@@ -234,7 +234,7 @@ async function updateRegistration(reg) {
             </option>
           </select>
         </div>
-        <div class="col">
+        <div class="col-12 col-sm">
           <label class="form-label">Роль</label>
           <select v-model="addForm.training_role_id" class="form-select">
             <option value="" disabled>Выберите роль</option>
@@ -243,7 +243,7 @@ async function updateRegistration(reg) {
             </option>
           </select>
         </div>
-        <div class="col-auto">
+        <div class="col-12 col-sm-auto d-grid d-sm-block">
           <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
             <span v-if="addLoading" class="spinner-border spinner-border-sm me-2"></span>
             Добавить
