@@ -8,11 +8,13 @@ const loading = ref(true);
 const error = ref('');
 const userFilter = ref('');
 const typeFilter = ref('');
+const statusFilter = ref('active');
 const ticketTypes = ref([]);
 
 onMounted(loadTickets);
 
 watch(typeFilter, loadTickets);
+watch(statusFilter, loadTickets);
 let searchTimeout;
 watch(userFilter, () => {
   clearTimeout(searchTimeout);
@@ -34,6 +36,7 @@ async function loadTickets() {
     const params = new URLSearchParams();
     if (userFilter.value) params.set('user', userFilter.value);
     if (typeFilter.value) params.set('type', typeFilter.value);
+    if (statusFilter.value) params.set('status', statusFilter.value);
     const query = params.toString();
     const data = await apiFetch(`/tickets${query ? `?${query}` : ''}`);
     tickets.value = data.tickets || [];
@@ -100,6 +103,12 @@ async function changeStatus(ticket, alias) {
               <option v-for="t in ticketTypes" :key="t.alias" :value="t.alias">
                 {{ t.name }}
               </option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-auto">
+            <select v-model="statusFilter" class="form-select">
+              <option value="active">Активные</option>
+              <option value="completed">Завершенные</option>
             </select>
           </div>
         </div>
