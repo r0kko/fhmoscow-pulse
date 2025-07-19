@@ -10,17 +10,20 @@ import {
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
 
-function parseValue(val, unitAlias) {
-  if (val == null) return null;
-  if (unitAlias === 'MIN_SEC' && typeof val === 'string') {
-    const [m, s] = val.split(':');
-    const minutes = parseInt(m, 10);
-    const seconds = parseInt(s, 10);
+function parseValue(val, unit) {
+  if (val == null || val === '') return null;
+  if (unit.alias === 'MIN_SEC') {
+    const str = String(val);
+    const match = /^(\d{1,2}):(\d{2})$/.exec(str);
+    if (!match) return null;
+    const minutes = parseInt(match[1], 10);
+    const seconds = parseInt(match[2], 10);
     if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
     return minutes * 60 + seconds;
   }
-  const num = parseFloat(val);
-  return Number.isNaN(num) ? null : num;
+  const num = parseFloat(String(val).replace(',', '.'));
+  if (Number.isNaN(num)) return null;
+  return unit.fractional ? num : Math.round(num);
 }
 
 function stepForUnit(unit) {
@@ -56,8 +59,8 @@ async function buildZones({
       const g = data.GREEN;
       const y = data.YELLOW;
       if (!g || !y) continue;
-      const gMin = parseValue(g.min_value, unit.alias);
-      const yMin = parseValue(y.min_value, unit.alias);
+      const gMin = parseValue(g.min_value, unit);
+      const yMin = parseValue(y.min_value, unit);
       if (gMin == null || yMin == null) continue;
       result.push({
         season_id: seasonId,
@@ -97,8 +100,8 @@ async function buildZones({
       const g = data.GREEN;
       const y = data.YELLOW;
       if (!g || !y) continue;
-      const gMax = parseValue(g.max_value, unit.alias);
-      const yMax = parseValue(y.max_value, unit.alias);
+      const gMax = parseValue(g.max_value, unit);
+      const yMax = parseValue(y.max_value, unit);
       if (gMax == null || yMax == null) continue;
       result.push({
         season_id: seasonId,
