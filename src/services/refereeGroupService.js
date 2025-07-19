@@ -4,6 +4,8 @@ import {
   Season,
   User,
   Role,
+  Training,
+  TrainingRegistration,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -69,7 +71,30 @@ async function addUser(groupId, userId, actorId) {
   });
 }
 
-async function listReferees() {
+async function listReferees(options = {}) {
+  const { Op } = await import('sequelize');
+  const where = {};
+  if (options.search) {
+    const term = `%${options.search}%`;
+    where[Op.or] = [
+      { last_name: { [Op.iLike]: term } },
+      { first_name: { [Op.iLike]: term } },
+      { patronymic: { [Op.iLike]: term } },
+      { phone: { [Op.iLike]: term } },
+      { email: { [Op.iLike]: term } },
+    ];
+  }
+  const groupInclude = {
+    model: RefereeGroupUser,
+    include: [RefereeGroup],
+    required: false,
+  };
+  if (options.group_id) {
+    groupInclude.where = { group_id: options.group_id };
+    groupInclude.required = true;
+  } else if (options.season_id) {
+    groupInclude.include[0].where = { season_id: options.season_id };
+  }
   return User.findAll({
     include: [
       {
@@ -78,17 +103,49 @@ async function listReferees() {
         through: { attributes: [] },
         required: true,
       },
-      {
-        model: RefereeGroupUser,
-        include: [RefereeGroup],
-        required: false,
-      },
+      groupInclude,
     ],
+    where,
     order: [
       ['last_name', 'ASC'],
       ['first_name', 'ASC'],
     ],
   });
+}
+
+async function getTrainingStats(userId, groupId, seasonId) {
+  const [visited, total] = await Promise.all([
+    TrainingRegistration.count({
+      where: { user_id: userId, present: true },
+      include: [
+        {
+          model: Training,
+          required: true,
+          where: { season_id: seasonId },
+          include: [
+            {
+              model: RefereeGroup,
+              through: { attributes: [] },
+              where: { id: groupId },
+              required: true,
+            },
+          ],
+        },
+      ],
+    }),
+    Training.count({
+      where: { season_id: seasonId },
+      include: [
+        {
+          model: RefereeGroup,
+          through: { attributes: [] },
+          where: { id: groupId },
+          required: true,
+        },
+      ],
+    }),
+  ]);
+  return { visited, total };
 }
 
 async function getReferee(id) {
@@ -158,6 +215,7 @@ export default {
   update,
   addUser,
   listReferees,
+  getTrainingStats,
   getReferee,
   setUserGroup,
   removeUser,

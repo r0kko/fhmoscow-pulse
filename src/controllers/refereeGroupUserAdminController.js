@@ -7,13 +7,33 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const judges = await refereeGroupService.listReferees();
-    const data = judges.map((u) => ({
-      user: userMapper.toPublic(u),
-      group: u.RefereeGroupUser
-        ? groupMapper.toPublic(u.RefereeGroupUser.RefereeGroup)
-        : null,
-    }));
+    const { search, group_id, season_id } = req.query;
+    const judges = await refereeGroupService.listReferees({
+      search,
+      group_id,
+      season_id,
+    });
+    const data = await Promise.all(
+      judges.map(async (u) => {
+        const group = u.RefereeGroupUser
+          ? groupMapper.toPublic(u.RefereeGroupUser.RefereeGroup)
+          : null;
+        let stats = { visited: 0, total: 0 };
+        if (group) {
+          const seasonId = season_id || group.season_id;
+          stats = await refereeGroupService.getTrainingStats(
+            u.id,
+            group.id,
+            seasonId
+          );
+        }
+        return {
+          user: userMapper.toPublic(u),
+          group,
+          training_stats: stats,
+        };
+      })
+    );
     return res.json({ judges: data });
   },
 
