@@ -20,6 +20,23 @@ const judges = ref([]);
 const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
 
+function showAttendance(reg) {
+  const alias = reg.role?.alias;
+  return alias === 'PARTICIPANT' || alias === 'EQUIPMENT_MANAGER';
+}
+
+function attendanceIcon(reg) {
+  if (reg.present === true) return 'bi-check-lg text-success';
+  if (reg.present === false) return 'bi-x-lg text-danger';
+  return 'bi-question-lg text-muted';
+}
+
+function attendanceTitle(reg) {
+  if (reg.present === true) return 'Присутствовал';
+  if (reg.present === false) return 'Отсутствовал';
+  return 'Не отмечено';
+}
+
 
 const groupedRegistrations = computed(() => {
   const map = {};
@@ -242,6 +259,7 @@ async function updateRegistration(reg) {
                 <tr>
                   <th>ФИО</th>
                   <th>Роль</th>
+                  <th class="text-center">Посещение</th>
                   <th></th>
                 </tr>
               </thead>
@@ -259,6 +277,12 @@ async function updateRegistration(reg) {
                         {{ role.name }}
                       </option>
                     </select>
+                  </td>
+                  <td class="text-center">
+                    <template v-if="showAttendance(r)">
+                      <i :class="attendanceIcon(r)" :title="attendanceTitle(r)" aria-hidden="true"></i>
+                      <span class="visually-hidden">{{ attendanceTitle(r) }}</span>
+                    </template>
                   </td>
                   <td class="text-end">
                     <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">
