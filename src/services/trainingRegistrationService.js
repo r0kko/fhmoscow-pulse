@@ -340,6 +340,7 @@ async function listUpcomingByUser(userId, options = {}) {
             alias: myReg.TrainingRole.alias,
           }
         : null;
+      const myPresence = myReg?.present ?? null;
       return {
         ...plain,
         available,
@@ -349,6 +350,7 @@ async function listUpcomingByUser(userId, options = {}) {
         ),
         user_registered: true,
         my_role: myRole,
+        my_presence: myPresence,
       };
     }),
     count: mine.length,
@@ -373,7 +375,6 @@ async function listPastByUser(userId, options = {}) {
     ],
     where: {
       end_at: { [Op.lt]: now },
-      attendance_marked: true,
     },
     order: [['start_at', 'DESC']],
     limit,
@@ -402,6 +403,7 @@ async function listPastByUser(userId, options = {}) {
             alias: myReg.TrainingRole.alias,
           }
         : null;
+      const myPresence = myReg?.present ?? null;
       return {
         ...plain,
         available,
@@ -411,6 +413,7 @@ async function listPastByUser(userId, options = {}) {
         ),
         user_registered: true,
         my_role: myRole,
+        my_presence: myPresence,
       };
     }),
     count: mine.length,

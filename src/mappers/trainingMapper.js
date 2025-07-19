@@ -62,6 +62,9 @@ function sanitize(obj) {
   if (obj.my_role) {
     res.my_role = { ...obj.my_role };
   }
+  if (Object.prototype.hasOwnProperty.call(obj, 'my_presence')) {
+    res.my_presence = obj.my_presence;
+  }
   return res;
 }
 

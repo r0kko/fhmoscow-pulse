@@ -245,6 +245,24 @@ test('listUpcomingByUser includes my role', async () => {
   expect(findAndCountAllMock).toHaveBeenCalled();
 });
 
+test('listPastByUser includes my presence', async () => {
+  const trPlain = {
+    ...training,
+    end_at: new Date(Date.now() - 1000).toISOString(),
+    TrainingRegistrations: [
+      {
+        user_id: 'u1',
+        present: true,
+        TrainingRole: { id: 'r1', name: 'Участник', alias: 'PARTICIPANT' },
+      },
+    ],
+  };
+  const tr = { ...trPlain, get: () => trPlain };
+  findAndCountAllMock.mockResolvedValueOnce({ rows: [tr], count: 1 });
+  const res = await service.listPastByUser('u1', {});
+  expect(res.rows[0].my_presence).toBe(true);
+});
+
 test('updatePresence updates value for admin', async () => {
   const updateMock = jest.fn();
   findRegMock.mockResolvedValueOnce({ update: updateMock });

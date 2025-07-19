@@ -348,6 +348,16 @@ function attendanceAlertType(t) {
 function dayOpen(day) {
   return day.trainings.some((t) => t.registration_open);
 }
+
+function attendanceStatus(t) {
+  if (!t.attendance_marked) {
+    return { icon: 'bi-clock', text: 'Посещаемость тренировки не отмечена', class: 'text-muted' };
+  }
+  if (t.my_presence) {
+    return { icon: 'bi-check-circle-fill', text: 'Вы посетили тренировку', class: 'text-success' };
+  }
+  return { icon: 'bi-x-circle-fill', text: 'Тренер не подтвердил Ваше присутствие', class: 'text-danger' };
+}
 </script>
 
 <template>
@@ -493,9 +503,19 @@ function dayOpen(day) {
                               "
                             >
                               <i class="bi bi-check2-square" aria-hidden="true"></i>
-                              <span class="visually-hidden">Посещаемость</span>
+                            <span class="visually-hidden">Посещаемость</span>
                             </RouterLink>
                           </div>
+                        </div>
+                        <div
+                            v-if="mineView === 'past'"
+                            class="small d-flex align-items-center mb-1"
+                        >
+                          <i
+                              :class="['bi', attendanceStatus(t).icon, attendanceStatus(t).class, 'me-1']"
+                              aria-hidden="true"
+                          ></i>
+                          <span :class="attendanceStatus(t).class">{{ attendanceStatus(t).text }}</span>
                         </div>
                         <div
                             v-if="attendanceAlertType(t)"
@@ -601,8 +621,18 @@ function dayOpen(day) {
                               :title="cancelTooltip(t)"
                           >
                             <i class="bi bi-x-lg" aria-hidden="true"></i>
-                            <span class="visually-hidden">Отменить</span>
+                          <span class="visually-hidden">Отменить</span>
                           </button>
+                        </div>
+                        <div
+                            v-if="mineView === 'past'"
+                            class="small d-flex align-items-center mb-1"
+                        >
+                          <i
+                              :class="['bi', attendanceStatus(t).icon, attendanceStatus(t).class, 'me-1']"
+                              aria-hidden="true"
+                          ></i>
+                          <span :class="attendanceStatus(t).class">{{ attendanceStatus(t).text }}</span>
                         </div>
                       </div>
                       <div
