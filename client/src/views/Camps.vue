@@ -508,7 +508,7 @@ function attendanceStatus(t) {
                           </div>
                         </div>
                         <div
-                            v-if="mineView === 'past'"
+                            v-if="mineView === 'past' && t.my_role?.alias !== 'COACH'"
                             class="small d-flex align-items-center mb-1"
                         >
                           <i
@@ -625,7 +625,7 @@ function attendanceStatus(t) {
                           </button>
                         </div>
                         <div
-                            v-if="mineView === 'past'"
+                            v-if="mineView === 'past' && t.my_role?.alias !== 'COACH'"
                             class="small d-flex align-items-center mb-1"
                         >
                           <i
