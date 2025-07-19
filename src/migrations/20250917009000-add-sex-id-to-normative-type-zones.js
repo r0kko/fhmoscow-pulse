@@ -2,7 +2,10 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.removeIndex('normative_type_zones', 'uq_normative_type_zone');
+    await queryInterface.removeIndex(
+      'normative_type_zones',
+      'uq_normative_type_zone'
+    );
     await queryInterface.addColumn('normative_type_zones', 'sex_id', {
       type: Sequelize.UUID,
       allowNull: true,
@@ -29,21 +32,35 @@ module.exports = {
       type: Sequelize.UUID,
       allowNull: false,
     });
-    await queryInterface.addIndex('normative_type_zones', ['normative_type_id', 'zone_id', 'sex_id'], {
-      name: 'uq_normative_type_zone_sex',
-      unique: true,
-      where: { deleted_at: null },
-    });
+    await queryInterface.addIndex(
+      'normative_type_zones',
+      ['normative_type_id', 'zone_id', 'sex_id'],
+      {
+        name: 'uq_normative_type_zone_sex',
+        unique: true,
+        where: { deleted_at: null },
+      }
+    );
   },
 
   async down(queryInterface) {
-    await queryInterface.removeIndex('normative_type_zones', 'uq_normative_type_zone_sex');
-    await queryInterface.removeConstraint('normative_type_zones', 'fk_normative_type_zones_sex');
+    await queryInterface.removeIndex(
+      'normative_type_zones',
+      'uq_normative_type_zone_sex'
+    );
+    await queryInterface.removeConstraint(
+      'normative_type_zones',
+      'fk_normative_type_zones_sex'
+    );
     await queryInterface.removeColumn('normative_type_zones', 'sex_id');
-    await queryInterface.addIndex('normative_type_zones', ['normative_type_id', 'zone_id'], {
-      name: 'uq_normative_type_zone',
-      unique: true,
-      where: { deleted_at: null },
-    });
+    await queryInterface.addIndex(
+      'normative_type_zones',
+      ['normative_type_id', 'zone_id'],
+      {
+        name: 'uq_normative_type_zone',
+        unique: true,
+        where: { deleted_at: null },
+      }
+    );
   },
 };
