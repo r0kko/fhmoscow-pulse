@@ -8,7 +8,7 @@ import UpcomingEventCard from '../components/UpcomingEventCard.vue'
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
-  { title: 'Результаты тестов', icon: 'bi-graph-up' },
+  { title: 'Результаты тестов', icon: 'bi-graph-up', to: '/normative-results', referee: true },
   { title: 'Задачи', icon: 'bi-list-check', to: '/tasks' },
 ]
 

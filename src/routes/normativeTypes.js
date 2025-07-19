@@ -3,6 +3,7 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/normativeTypeAdminController.js';
+import selfController from '../controllers/normativeTypeSelfController.js';
 import {
   normativeTypeCreateRules,
   normativeTypeUpdateRules,
@@ -11,6 +12,7 @@ import {
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
+router.get('/available', auth, authorize('REFEREE'), selfController.list);
 router.post(
   '/',
   auth,

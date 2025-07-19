@@ -18,6 +18,7 @@ async function listAll(options = {}) {
   const offset = (page - 1) * limit;
   const where = {};
   if (options.season_id) where.season_id = options.season_id;
+  if (options.user_id) where.user_id = options.user_id;
   const { rows, count } = await NormativeResult.findAndCountAll({
     order: [['created_at', 'DESC']],
     limit,
