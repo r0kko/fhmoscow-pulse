@@ -5,6 +5,7 @@ const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/users' },
   { title: 'Документы', icon: 'bi-file-earmark', to: '/documents-admin' },
   { title: 'Медицина', icon: 'bi-file-earmark-medical', to: '/medical-admin' },
+  { title: 'Нормативы', icon: 'bi-speedometer2', to: '/normatives-admin' },
   { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets-admin' },
 ]
 

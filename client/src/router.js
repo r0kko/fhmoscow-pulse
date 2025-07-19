@@ -18,6 +18,7 @@ import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
 import AdminDocuments from './views/AdminDocuments.vue';
+import AdminNormatives from './views/AdminNormatives.vue';
 import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
@@ -82,6 +83,11 @@ const routes = [
   {
     path: '/documents-admin',
     component: AdminDocuments,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/normatives-admin',
+    component: AdminNormatives,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {

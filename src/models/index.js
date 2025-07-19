@@ -41,6 +41,14 @@ import MedicalExamRegistrationStatus from './medicalExamRegistrationStatus.js';
 import TrainingRegistration from './trainingRegistration.js';
 import TrainingRole from './trainingRole.js';
 import Sex from './sex.js';
+import NormativeValueType from './normativeValueType.js';
+import MeasurementUnit from './measurementUnit.js';
+import NormativeZone from './normativeZone.js';
+import NormativeGroup from './normativeGroup.js';
+import NormativeType from './normativeType.js';
+import NormativeTypeZone from './normativeTypeZone.js';
+import NormativeGroupType from './normativeGroupType.js';
+import NormativeResult from './normativeResult.js';
 import TaskType from './taskType.js';
 import TaskStatus from './taskStatus.js';
 import Task from './task.js';
@@ -220,6 +228,44 @@ TicketFile.belongsTo(Ticket, { foreignKey: 'ticket_id' });
 File.hasMany(TicketFile, { foreignKey: 'file_id' });
 TicketFile.belongsTo(File, { foreignKey: 'file_id' });
 
+/* normatives */
+NormativeValueType.hasMany(NormativeType, { foreignKey: 'value_type_id' });
+NormativeType.belongsTo(NormativeValueType, { foreignKey: 'value_type_id' });
+MeasurementUnit.hasMany(NormativeType, { foreignKey: 'unit_id' });
+NormativeType.belongsTo(MeasurementUnit, { foreignKey: 'unit_id' });
+NormativeType.belongsToMany(NormativeGroup, {
+  through: NormativeGroupType,
+  foreignKey: 'type_id',
+});
+NormativeGroup.belongsToMany(NormativeType, {
+  through: NormativeGroupType,
+  foreignKey: 'group_id',
+});
+Season.hasMany(NormativeGroup, { foreignKey: 'season_id' });
+NormativeGroup.belongsTo(Season, { foreignKey: 'season_id' });
+Season.hasMany(NormativeType, { foreignKey: 'season_id' });
+NormativeType.belongsTo(Season, { foreignKey: 'season_id' });
+Season.hasMany(NormativeZone, { foreignKey: 'season_id' });
+NormativeZone.belongsTo(Season, { foreignKey: 'season_id' });
+Season.hasMany(NormativeTypeZone, { foreignKey: 'season_id' });
+NormativeTypeZone.belongsTo(Season, { foreignKey: 'season_id' });
+NormativeType.hasMany(NormativeTypeZone, { foreignKey: 'normative_type_id' });
+NormativeTypeZone.belongsTo(NormativeType, { foreignKey: 'normative_type_id' });
+NormativeZone.hasMany(NormativeTypeZone, { foreignKey: 'zone_id' });
+NormativeTypeZone.belongsTo(NormativeZone, { foreignKey: 'zone_id' });
+User.hasMany(NormativeResult, { foreignKey: 'user_id' });
+NormativeResult.belongsTo(User, { foreignKey: 'user_id' });
+Season.hasMany(NormativeResult, { foreignKey: 'season_id' });
+NormativeResult.belongsTo(Season, { foreignKey: 'season_id' });
+Training.hasMany(NormativeResult, { foreignKey: 'training_id' });
+NormativeResult.belongsTo(Training, { foreignKey: 'training_id' });
+NormativeType.hasMany(NormativeResult, { foreignKey: 'type_id' });
+NormativeResult.belongsTo(NormativeType, { foreignKey: 'type_id' });
+NormativeValueType.hasMany(NormativeResult, { foreignKey: 'value_type_id' });
+NormativeResult.belongsTo(NormativeValueType, { foreignKey: 'value_type_id' });
+MeasurementUnit.hasMany(NormativeResult, { foreignKey: 'unit_id' });
+NormativeResult.belongsTo(MeasurementUnit, { foreignKey: 'unit_id' });
+
 // models that don't have standard audit columns
 const auditExclude = ['Log', 'EmailCode'];
 for (const model of Object.values(sequelize.models)) {
@@ -277,4 +323,12 @@ export {
   TicketType,
   TicketStatus,
   TicketFile,
+  NormativeValueType,
+  MeasurementUnit,
+  NormativeZone,
+  NormativeGroup,
+  NormativeType,
+  NormativeTypeZone,
+  NormativeGroupType,
+  NormativeResult,
 };
