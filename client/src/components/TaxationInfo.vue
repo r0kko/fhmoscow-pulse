@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 
@@ -7,6 +7,7 @@ const props = defineProps({
   userId: String,
   editable: { type: Boolean, default: true },
   showOkved: { type: Boolean, default: true },
+  modalOnly: { type: Boolean, default: false },
 });
 
 const taxation = ref(null);
@@ -103,10 +104,19 @@ onMounted(() => {
   }
   load();
 });
+
+watch(
+  () => props.userId,
+  () => {
+    load();
+  }
+);
+
+defineExpose({ openModal });
 </script>
 
 <template>
-  <div class="card section-card tile fade-in shadow-sm mt-4">
+  <div v-if="!props.modalOnly" class="card section-card tile fade-in shadow-sm mt-4">
     <div class="card-body">
       <div class="d-flex justify-content-between mb-3">
         <h5 class="card-title mb-0">Налоговый статус</h5>

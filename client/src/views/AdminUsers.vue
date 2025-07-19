@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { apiFetch } from '../api.js'
 import Toast from 'bootstrap/js/dist/toast'
+import TaxationInfo from '../components/TaxationInfo.vue'
 
 const users = ref([])
 const total = ref(0)
@@ -28,9 +29,35 @@ const toastRef = ref(null)
 const toastMessage = ref('')
 let toast
 
+const taxModal = ref(null)
+const taxUserId = ref('')
+
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 )
+
+const visiblePages = computed(() => {
+  const totalVal = totalPages.value
+  const current = currentPage.value
+  const pages = []
+
+  if (totalVal <= 7) {
+    for (let i = 1; i <= totalVal; i++) pages.push(i)
+    return pages
+  }
+
+  pages.push(1)
+
+  const start = Math.max(2, current - 1)
+  const end = Math.min(totalVal - 1, current + 1)
+
+  if (start > 2) pages.push('...')
+  for (let i = start; i <= end; i++) pages.push(i)
+  if (end < totalVal - 1) pages.push('...')
+
+  pages.push(totalVal)
+  return pages
+})
 
 async function loadRoles() {
   try {
@@ -113,6 +140,13 @@ function openCreate() {
 
 function openEdit(user) {
   router.push(`/users/${user.id}`)
+}
+
+function openTaxStatus(id) {
+  taxUserId.value = id
+  nextTick(() => {
+    taxModal.value.openModal()
+  })
 }
 
 
@@ -375,18 +409,25 @@ async function copy(text) {
         <p v-else-if="!isLoading" class="text-muted mb-0">Нет пользователей.</p>
       </div>
     </div>
-    <nav class="mt-3" v-if="totalPages > 1">
+    <nav class="mt-3" v-if="activeTab === 'users' && totalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
         </li>
         <li
           class="page-item"
-          v-for="page in totalPages"
-          :key="page"
-          :class="{ active: currentPage === page }"
+          v-for="page in visiblePages"
+          :key="page + '-page'"
+          :class="{ active: page === currentPage, disabled: page === '...' }"
         >
-          <button class="page-link" @click="currentPage = page">{{ page }}</button>
+          <span v-if="page === '...'" class="page-link">&hellip;</span>
+          <button
+            v-else
+            class="page-link"
+            @click="currentPage = page"
+          >
+            {{ page }}
+          </button>
         </li>
         <li class="page-item" :class="{ disabled: currentPage === totalPages }">
           <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
@@ -436,7 +477,16 @@ async function copy(text) {
                 <td class="text-center"><i :class="p.snils ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
                 <td class="text-center"><i :class="p.bank_account ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
                 <td class="text-center"><i :class="p.addresses ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i></td>
-                <td class="d-none d-md-table-cell">{{ p.taxation_type }}</td>
+                <td class="d-none d-md-table-cell">
+                  <span v-if="p.taxation_type">{{ p.taxation_type }}</span>
+                  <button
+                    v-else-if="p.inn"
+                    class="btn btn-link p-0"
+                    @click="openTaxStatus(p.id)"
+                  >
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -452,16 +502,28 @@ async function copy(text) {
                 <span><i :class="p.snils ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> СНИЛС</span>
                 <span><i :class="p.bank_account ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> Банк</span>
                 <span><i :class="p.addresses ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> Адрес</span>
-                <span><i class="bi"></i> {{ p.taxation_type }}</span>
+                <span>
+                  <i class="bi"></i>
+                  <span v-if="p.taxation_type">{{ p.taxation_type }}</span>
+                  <button
+                    v-else-if="p.inn"
+                    class="btn btn-link p-0 align-baseline"
+                    @click="openTaxStatus(p.id)"
+                  >
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                  <span v-else>—</span>
+                </span>
               </div>
             </div>
           </div>
         </div>
         <p v-else-if="!completionLoading" class="text-muted mb-0">Нет данных.</p>
-      </div>
+    </div>
     </div>
     </div>
   </div>
+  <TaxationInfo ref="taxModal" :userId="taxUserId" modalOnly />
 </template>
 
 <style scoped>
