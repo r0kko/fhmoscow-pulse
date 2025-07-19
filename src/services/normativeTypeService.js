@@ -15,16 +15,32 @@ function parseValue(val, unit) {
   if (val == null || val === '') return null;
   if (unit.alias === 'MIN_SEC') {
     const str = String(val);
-    const match = /^(\d{1,2}):(\d{2})$/.exec(str);
+    const match = /^(\d{1,2}):(\d{1,2})$/.exec(str);
     if (!match) return null;
     const minutes = parseInt(match[1], 10);
     const seconds = parseInt(match[2], 10);
-    if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
+    if (
+      Number.isNaN(minutes) ||
+      Number.isNaN(seconds) ||
+      seconds < 0 ||
+      seconds > 59
+    ) {
+      return null;
+    }
     return minutes * 60 + seconds;
   }
   const num = parseFloat(String(val).replace(',', '.'));
   if (Number.isNaN(num)) return null;
   return unit.fractional ? num : Math.round(num);
+}
+
+function parseResultValue(val, unit) {
+  const parsed = parseValue(val, unit);
+  if (parsed == null) return null;
+  if (unit.alias === 'SECONDS' && unit.fractional) {
+    return Math.round(parsed * 100) / 100;
+  }
+  return parsed;
 }
 
 function stepForUnit(unit) {
@@ -295,5 +311,5 @@ async function remove(id, actorId = null) {
   await type.destroy();
 }
 
-export { parseValue, stepForUnit, determineZone };
+export { parseValue, parseResultValue, stepForUnit, determineZone };
 export default { listAll, getById, create, update, remove };

@@ -14,6 +14,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Training: {},
   Season: {},
   User: {},
+  MeasurementUnit: {},
 }));
 
 const determineZoneMock = jest.fn((type) => type.NormativeTypeZones[0]);
@@ -21,6 +22,7 @@ const determineZoneMock = jest.fn((type) => type.NormativeTypeZones[0]);
 jest.unstable_mockModule('../src/services/normativeTypeService.js', () => ({
   __esModule: true,
   determineZone: determineZoneMock,
+  parseResultValue: jest.fn((v) => v),
 }));
 
 const { default: service } = await import('../src/services/normativeResultService.js');

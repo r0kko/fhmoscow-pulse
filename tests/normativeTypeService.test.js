@@ -1,6 +1,7 @@
 import { expect, test, describe } from '@jest/globals';
 import {
   parseValue,
+  parseResultValue,
   stepForUnit,
   determineZone,
 } from '../src/services/normativeTypeService.js';
@@ -34,5 +35,15 @@ describe('normativeTypeService helpers', () => {
     };
     const zone = determineZone(type, 7);
     expect(zone.NormativeZone.alias).toBe('YELLOW');
+  });
+
+  test('parseResultValue rounds seconds', () => {
+    const unit = { alias: 'SECONDS', fractional: true };
+    expect(parseResultValue('12.345', unit)).toBe(12.35);
+  });
+
+  test('parseResultValue parses MIN_SEC', () => {
+    const unit = { alias: 'MIN_SEC', fractional: false };
+    expect(parseResultValue('02:05', unit)).toBe(125);
   });
 });
