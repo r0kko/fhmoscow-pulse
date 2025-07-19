@@ -7,6 +7,7 @@ const results = ref([]);
 const total = ref(0);
 const seasons = ref([]);
 const types = ref([]);
+const units = ref([]);
 const currentPage = ref(1);
 const pageSize = 8;
 const isLoading = ref(false);
@@ -32,6 +33,10 @@ let skipWatch = false;
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize))
+);
+
+const currentUnit = computed(() =>
+  units.value.find((u) => u.id === unit_id.value) || null
 );
 
 onMounted(() => {
@@ -117,10 +122,15 @@ async function load() {
 
 async function loadSeasons() {
   try {
-    const data = await apiFetch('/camp-seasons?page=1&limit=100');
-    seasons.value = data.seasons;
+    const [seasonData, unitData] = await Promise.all([
+      apiFetch('/camp-seasons?page=1&limit=100'),
+      apiFetch('/measurement-units'),
+    ]);
+    seasons.value = seasonData.seasons;
+    units.value = unitData.units;
   } catch (_e) {
     seasons.value = [];
+    units.value = [];
   }
 }
 
@@ -383,8 +393,9 @@ defineExpose({ refresh });
               <div class="form-floating mb-3">
                 <input
                   id="resValue"
-                  type="number"
-                  step="any"
+                  :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
+                  :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                  :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
                   v-model="form.value"
                   class="form-control"
                   placeholder="Значение"

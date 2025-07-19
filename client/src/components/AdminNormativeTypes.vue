@@ -64,6 +64,10 @@ watch(
 
 watch(currentPage, load);
 
+const currentUnit = computed(() =>
+  units.value.find((u) => u.id === form.value.unit_id) || null
+);
+
 async function load() {
   try {
     isLoading.value = true;
@@ -422,16 +426,20 @@ defineExpose({ refresh });
                         <td>{{ z.name }}</td>
                         <td v-for="s in sexes" :key="s.id">
                           <input
-                            type="number"
+                            :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
                             class="form-control form-control-sm mb-1"
+                            :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                            :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
                             placeholder="Мин"
-                            v-model.number="getZone(z.id, s.id).min_value"
+                            v-model="getZone(z.id, s.id).min_value"
                           />
                           <input
-                            type="number"
+                            :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
                             class="form-control form-control-sm"
+                            :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                            :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
                             placeholder="Макс"
-                            v-model.number="getZone(z.id, s.id).max_value"
+                            v-model="getZone(z.id, s.id).max_value"
                           />
                         </td>
                       </tr>
