@@ -1,6 +1,19 @@
 function sanitize(obj) {
-  const { id, season_id, name, alias, required, value_type_id, unit_id } = obj;
-  return { id, season_id, name, alias, required, value_type_id, unit_id };
+  const {
+    id,
+    season_id,
+    name,
+    alias,
+    required,
+    value_type_id,
+    unit_id,
+    zones,
+    groups,
+  } = obj;
+  const res = { id, season_id, name, alias, required, value_type_id, unit_id };
+  if (Array.isArray(zones)) res.zones = zones;
+  if (Array.isArray(groups)) res.groups = groups;
+  return res;
 }
 
 function toPublic(type) {
