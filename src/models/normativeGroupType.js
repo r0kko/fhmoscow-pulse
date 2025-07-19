@@ -11,7 +11,11 @@ NormativeGroupType.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    required: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

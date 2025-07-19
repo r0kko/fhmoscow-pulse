@@ -1,4 +1,9 @@
-import { NormativeResult, User, Season, NormativeType } from '../models/index.js';
+import {
+  NormativeResult,
+  User,
+  Season,
+  NormativeType,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {

@@ -13,7 +13,11 @@ MeasurementUnit.init(
     },
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     alias: { type: DataTypes.STRING(100), allowNull: false, unique: true },
-    fractional: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    fractional: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

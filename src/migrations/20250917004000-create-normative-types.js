@@ -17,7 +17,11 @@ module.exports = {
       },
       name: { type: Sequelize.STRING(100), allowNull: false, unique: true },
       alias: { type: Sequelize.STRING(100), allowNull: false, unique: true },
-      required: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+      required: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       value_type_id: {
         type: Sequelize.UUID,
         allowNull: false,

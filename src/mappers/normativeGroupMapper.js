@@ -5,7 +5,8 @@ function sanitize(obj) {
 
 function toPublic(group) {
   if (!group) return null;
-  const plain = typeof group.get === 'function' ? group.get({ plain: true }) : group;
+  const plain =
+    typeof group.get === 'function' ? group.get({ plain: true }) : group;
   return sanitize(plain);
 }
 

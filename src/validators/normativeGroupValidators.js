@@ -5,4 +5,6 @@ export const normativeGroupCreateRules = [
   body('name').isString().notEmpty(),
 ];
 
-export const normativeGroupUpdateRules = [body('name').optional().isString().notEmpty()];
+export const normativeGroupUpdateRules = [
+  body('name').optional().isString().notEmpty(),
+];

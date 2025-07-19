@@ -10,7 +10,11 @@ module.exports = {
       },
       name: { type: Sequelize.STRING(100), allowNull: false, unique: true },
       alias: { type: Sequelize.STRING(100), allowNull: false, unique: true },
-      fractional: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+      fractional: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },

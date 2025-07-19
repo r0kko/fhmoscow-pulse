@@ -5,7 +5,8 @@ function sanitize(obj) {
 
 function toPublic(type) {
   if (!type) return null;
-  const plain = typeof type.get === 'function' ? type.get({ plain: true }) : type;
+  const plain =
+    typeof type.get === 'function' ? type.get({ plain: true }) : type;
   if (plain.NormativeTypeZones) {
     plain.zones = plain.NormativeTypeZones.map((z) => ({
       id: z.id,

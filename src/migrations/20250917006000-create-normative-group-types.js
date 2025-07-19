@@ -22,7 +22,11 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       },
-      required: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+      required: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },

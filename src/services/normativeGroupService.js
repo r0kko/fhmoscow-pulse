@@ -8,7 +8,12 @@ async function listAll(options = {}) {
   const offset = (page - 1) * limit;
   const where = {};
   if (options.season_id) where.season_id = options.season_id;
-  return NormativeGroup.findAndCountAll({ order: [['name', 'ASC']], limit, offset, where });
+  return NormativeGroup.findAndCountAll({
+    order: [['name', 'ASC']],
+    limit,
+    offset,
+    where,
+  });
 }
 
 async function getById(id) {

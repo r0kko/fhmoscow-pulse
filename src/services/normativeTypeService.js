@@ -1,4 +1,9 @@
-import { NormativeType, NormativeTypeZone, NormativeGroupType, Season } from '../models/index.js';
+import {
+  NormativeType,
+  NormativeTypeZone,
+  NormativeGroupType,
+  Season,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
 
@@ -18,7 +23,9 @@ async function listAll(options = {}) {
 }
 
 async function getById(id) {
-  const type = await NormativeType.findByPk(id, { include: [NormativeTypeZone] });
+  const type = await NormativeType.findByPk(id, {
+    include: [NormativeTypeZone],
+  });
   if (!type) throw new ServiceError('normative_type_not_found', 404);
   return type;
 }
