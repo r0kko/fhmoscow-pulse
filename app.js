@@ -51,7 +51,6 @@ app.use((req, res) => {
 });
 
 // Centralized error handler
-// eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   logger.error('Unhandled error processing request: %s', err.stack || err);
   sendError(res, err, 500);
