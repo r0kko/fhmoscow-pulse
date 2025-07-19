@@ -231,7 +231,7 @@ async function loadJudges() {
 
 <template>
   <div>
-    <div class="card tile fade-in shadow-sm mb-4">
+    <div class="card section-card tile fade-in shadow-sm mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Медицинские заключения</h5>
         <button class="btn btn-brand" @click="openCreate">
@@ -431,5 +431,35 @@ async function loadJudges() {
         </div>
       </div>
     </div>
-  </div>
+</div>
 </template>
+
+<style scoped>
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

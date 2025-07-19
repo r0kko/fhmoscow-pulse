@@ -9,7 +9,8 @@ const activeTab = ref('certificates');
 </script>
 
 <template>
-  <div class="container mt-4">
+  <div class="py-3 admin-medical-management-page">
+    <div class="container">
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
@@ -18,9 +19,9 @@ const activeTab = ref('certificates');
         <li class="breadcrumb-item active" aria-current="page">Медицина</li>
       </ol>
     </nav>
-    <div class="card tile mb-4">
+    <div class="card section-card tile fade-in shadow-sm mb-3">
       <div class="card-body p-2">
-        <ul class="nav nav-pills nav-fill justify-content-between mb-0">
+        <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
           <li class="nav-item">
             <button
               class="nav-link"
@@ -60,5 +61,53 @@ const activeTab = ref('certificates');
     <div v-else>
       <AdminMedicalExams />
     </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.tab-selector {
+  gap: 0.5rem;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .admin-medical-management-page {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .admin-medical-management-page nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
