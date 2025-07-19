@@ -1,5 +1,6 @@
 /* global process */
 import { expect, jest, test, beforeEach } from '@jest/globals';
+import { Buffer } from 'buffer';
 
 const sendMock = jest.fn();
 const findByPkMock = jest.fn();
