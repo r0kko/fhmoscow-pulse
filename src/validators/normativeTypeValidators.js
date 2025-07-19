@@ -6,8 +6,12 @@ export const normativeTypeCreateRules = [
   body('required').optional().isBoolean(),
   body('value_type_id').isUUID(),
   body('unit_id').isUUID(),
-  body('zones').optional().isArray(),
-  body('groups').optional().isArray(),
+  body('zones').isArray({ min: 1 }),
+  body('zones.*.zone_id').isUUID(),
+  body('zones.*.sex_id').isUUID(),
+  body('groups').isArray({ min: 1, max: 1 }),
+  body('groups.*.group_id').isUUID(),
+  body('groups.*.required').optional().isBoolean(),
 ];
 
 export const normativeTypeUpdateRules = [
@@ -15,6 +19,10 @@ export const normativeTypeUpdateRules = [
   body('required').optional().isBoolean(),
   body('value_type_id').optional().isUUID(),
   body('unit_id').optional().isUUID(),
-  body('zones').optional().isArray(),
-  body('groups').optional().isArray(),
+  body('zones').optional().isArray({ min: 1 }),
+  body('zones.*.zone_id').optional().isUUID(),
+  body('zones.*.sex_id').optional().isUUID(),
+  body('groups').optional().isArray({ min: 1, max: 1 }),
+  body('groups.*.group_id').optional().isUUID(),
+  body('groups.*.required').optional().isBoolean(),
 ];

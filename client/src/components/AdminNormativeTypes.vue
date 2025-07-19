@@ -141,6 +141,34 @@ function openCreate() {
   modal.show();
 }
 
+function validateForm() {
+  if (!form.value.group_id) {
+    formError.value = 'Выберите группу нормативов';
+    return false;
+  }
+  const unit = currentUnit.value;
+  for (const z of filteredZones.value) {
+    for (const s of sexes.value) {
+      const zone = getZone(z.id, s.id);
+      const val = isMoreBetter.value ? zone.min_value : zone.max_value;
+      if (val == null || val === '') {
+        formError.value = 'Заполните все значения зон';
+        return false;
+      }
+      if (unit?.alias === 'MIN_SEC') {
+        if (!/^\d{1,2}:\d{2}$/.test(String(val))) {
+          formError.value = 'Неверный формат времени';
+          return false;
+        }
+      } else if (isNaN(parseFloat(String(val).replace(',', '.')))) {
+        formError.value = 'Неверное числовое значение';
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 function openEdit(t) {
   editing.value = t;
   form.value = {
@@ -161,6 +189,7 @@ function openEdit(t) {
 }
 
 async function save() {
+  if (!validateForm()) return;
   const payload = { ...form.value };
   payload.required = !!payload.required;
   payload.groups = form.value.group_id
@@ -424,8 +453,9 @@ defineExpose({ refresh });
                   id="typeGroup"
                   v-model="form.group_id"
                   class="form-select"
+                  required
                 >
-                  <option value="">Без группы</option>
+                  <option value="" disabled>Выберите группу</option>
                   <option v-for="g in groupsDict" :key="g.id" :value="g.id">
                     {{ g.name }}
                   </option>
