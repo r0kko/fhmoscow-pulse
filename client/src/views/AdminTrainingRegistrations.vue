@@ -11,9 +11,6 @@ const trainingError = ref('');
 const loadingTraining = ref(false);
 
 const list = ref([]);
-const total = ref(0);
-const page = ref(1);
-const pageSize = ref(8);
 const loading = ref(false);
 const error = ref('');
 
@@ -23,9 +20,6 @@ const judges = ref([]);
 const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize.value))
-);
 
 const groupedRegistrations = computed(() => {
   const map = {};
@@ -52,8 +46,6 @@ onMounted(() => {
   loadJudges();
   loadTrainingRoles();
 });
-
-watch([page, pageSize], loadRegistrations);
 
 function formatDateTimeRange(start, end) {
   if (!start) return '';
@@ -83,19 +75,14 @@ async function loadTraining() {
 async function loadRegistrations() {
   loading.value = true;
   try {
-    const params = new URLSearchParams({
-      page: page.value,
-      limit: pageSize.value,
-    });
     const data = await apiFetch(
-      `/camp-trainings/${route.params.id}/registrations?${params}`
+      `/camp-trainings/${route.params.id}/registrations?limit=1000`
     );
     list.value = data.registrations.map((r) => ({
       ...r,
       role_id: r.role ? r.role.id : '',
       highlight: false,
     }));
-    total.value = data.total;
     error.value = '';
     if (lastAddedUserId.value) {
       const added = list.value.find((r) => r.user.id === lastAddedUserId.value);
@@ -274,7 +261,10 @@ async function updateRegistration(reg) {
                     </select>
                   </td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">Удалить</button>
+                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Удалить</span>
+                    </button>
                   </td>
                 </tr>
               </TransitionGroup>
@@ -283,19 +273,6 @@ async function updateRegistration(reg) {
         </div>
       </div>
       <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">Нет записей.</p>
-      <nav class="mt-3" v-if="totalPages > 1">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" @click="page--" :disabled="page === 1">Пред</button>
-          </li>
-          <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: page === p }">
-            <button class="page-link" @click="page = p">{{ p }}</button>
-          </li>
-          <li class="page-item" :class="{ disabled: page === totalPages }">
-            <button class="page-link" @click="page++" :disabled="page === totalPages">След</button>
-          </li>
-        </ul>
-      </nav>
     </div>
   </div>
 </template>
