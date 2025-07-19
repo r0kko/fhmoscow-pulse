@@ -32,7 +32,8 @@ const form = ref({
   required: false,
   value_type_id: '',
   unit_id: '',
-  groups: [],
+  group_id: '',
+  group_required: false,
   zones: [],
 });
 const editing = ref(null);
@@ -132,7 +133,8 @@ function openCreate() {
     required: false,
     value_type_id: '',
     unit_id: '',
-    groups: [],
+    group_id: '',
+    group_required: false,
     zones: [],
   };
   formError.value = '';
@@ -147,7 +149,8 @@ function openEdit(t) {
     required: t.required,
     value_type_id: t.value_type_id,
     unit_id: t.unit_id,
-    groups: t.groups || [],
+    group_id: t.groups?.[0]?.group_id || '',
+    group_required: t.groups?.[0]?.required || false,
     zones:
       (t.zones || []).filter((z) =>
         filteredZones.value.some((f) => f.id === z.zone_id)
@@ -160,6 +163,16 @@ function openEdit(t) {
 async function save() {
   const payload = { ...form.value };
   payload.required = !!payload.required;
+  payload.groups = form.value.group_id
+    ? [
+        {
+          group_id: form.value.group_id,
+          required: !!form.value.group_required,
+        },
+      ]
+    : [];
+  delete payload.group_id;
+  delete payload.group_required;
   const allowedIds = filteredZones.value.map((z) => z.id);
   payload.zones = payload.zones
     .filter((z) => allowedIds.includes(z.zone_id))
@@ -198,19 +211,6 @@ async function removeType(t) {
   }
 }
 
-function toggleGroup(id, checked) {
-  const idx = form.value.groups.findIndex((g) => g.group_id === id);
-  if (checked && idx === -1) {
-    form.value.groups.push({ group_id: id, required: false });
-  } else if (!checked && idx !== -1) {
-    form.value.groups.splice(idx, 1);
-  }
-}
-
-function toggleGroupRequired(id, checked) {
-  const item = form.value.groups.find((g) => g.group_id === id);
-  if (item) item.required = checked;
-}
 
 function getZone(zoneId, sexId) {
   let z = form.value.zones.find(
@@ -419,37 +419,29 @@ defineExpose({ refresh });
                 <label for="typeUnit">Ед. измерения</label>
               </div>
               <div class="mb-3">
-                <label class="form-label">Группы</label>
-                <div v-if="groupsDict.length" class="ms-2">
-                  <div v-for="g in groupsDict" :key="g.id" class="mb-1">
-                    <div class="form-check d-inline-block me-2">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        :id="`grp-${g.id}`"
-                        :checked="form.groups.some(gt => gt.group_id === g.id)"
-                        @change="toggleGroup(g.id, $event.target.checked)"
-                      />
-                      <label class="form-check-label" :for="`grp-${g.id}`">
-                        {{ g.name }}
-                      </label>
-                    </div>
-                    <div
-                      class="form-check d-inline-block"
-                      v-if="form.groups.some(gt => gt.group_id === g.id)"
-                    >
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        :id="`req-${g.id}`"
-                        :checked="form.groups.find(gt => gt.group_id === g.id)?.required"
-                        @change="toggleGroupRequired(g.id, $event.target.checked)"
-                      />
-                      <label class="form-check-label" :for="`req-${g.id}`">Обяз.</label>
-                    </div>
-                  </div>
-                </div>
-                <p v-else class="text-muted">Нет групп для сезона</p>
+                <label for="typeGroup" class="form-label">Группа</label>
+                <select
+                  id="typeGroup"
+                  v-model="form.group_id"
+                  class="form-select"
+                >
+                  <option value="">Без группы</option>
+                  <option v-for="g in groupsDict" :key="g.id" :value="g.id">
+                    {{ g.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-check mb-3">
+                <input
+                  id="typeGroupReq"
+                  type="checkbox"
+                  class="form-check-input"
+                  v-model="form.group_required"
+                  :disabled="!form.group_id"
+                />
+                <label for="typeGroupReq" class="form-check-label"
+                  >Обязательный в группе</label
+                >
               </div>
               <div class="mb-3">
                 <label class="form-label">Зоны</label>
