@@ -108,7 +108,7 @@ defineExpose({ refresh });
 </script>
 
 <template>
-  <div class="mb-4">
+  <div>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Группы судей</h2>
