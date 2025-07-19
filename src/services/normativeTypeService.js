@@ -5,6 +5,7 @@ import {
   MeasurementUnit,
   NormativeValueType,
   NormativeZone,
+  NormativeGroup,
   Season,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
@@ -175,6 +176,12 @@ async function create(data, actorId) {
   ]);
   if (!unit) throw new ServiceError('measurement_unit_not_found', 404);
   if (!valueType) throw new ServiceError('normative_value_type_not_found', 404);
+  if (!Array.isArray(data.groups) || data.groups.length !== 1) {
+    throw new ServiceError('normative_group_required');
+  }
+  const group = await NormativeGroup.findByPk(data.groups[0].group_id);
+  if (!group) throw new ServiceError('normative_group_not_found', 404);
+
   const type = await NormativeType.create({
     season_id: data.season_id,
     name: data.name,
@@ -185,29 +192,30 @@ async function create(data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  if (Array.isArray(data.zones)) {
-    const zones = await buildZones({
-      zones: data.zones,
-      unit,
-      valueType,
-      seasonId: data.season_id,
-      typeId: type.id,
-      actorId,
-    });
-    if (zones.length) await NormativeTypeZone.bulkCreate(zones);
+
+  if (!Array.isArray(data.zones)) {
+    throw new ServiceError('invalid_zones');
   }
-  if (Array.isArray(data.groups) && data.groups.length) {
-    const g = data.groups[0];
-    await NormativeGroupType.create({
-      group_id: g.group_id,
-      type_id: type.id,
-      required: Boolean(g.required),
-      created_by: actorId,
-      updated_by: actorId,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-  }
+  const zones = await buildZones({
+    zones: data.zones,
+    unit,
+    valueType,
+    seasonId: data.season_id,
+    typeId: type.id,
+    actorId,
+  });
+  if (!zones.length) throw new ServiceError('invalid_zones');
+  await NormativeTypeZone.bulkCreate(zones);
+
+  await NormativeGroupType.create({
+    group_id: group.id,
+    type_id: type.id,
+    required: Boolean(data.groups[0].required),
+    created_by: actorId,
+    updated_by: actorId,
+    created_at: new Date(),
+    updated_at: new Date(),
+  });
   return getById(type.id);
 }
 
@@ -233,32 +241,36 @@ async function update(id, data, actorId) {
   );
   if (data.zones) {
     await NormativeTypeZone.destroy({ where: { normative_type_id: id } });
-    if (Array.isArray(data.zones)) {
-      const zones = await buildZones({
-        zones: data.zones,
-        unit,
-        valueType,
-        seasonId: type.season_id,
-        typeId: id,
-        actorId,
-      });
-      if (zones.length) await NormativeTypeZone.bulkCreate(zones);
+    if (!Array.isArray(data.zones)) {
+      throw new ServiceError('invalid_zones');
     }
+    const zones = await buildZones({
+      zones: data.zones,
+      unit,
+      valueType,
+      seasonId: type.season_id,
+      typeId: id,
+      actorId,
+    });
+    if (!zones.length) throw new ServiceError('invalid_zones');
+    await NormativeTypeZone.bulkCreate(zones);
   }
   if (data.groups) {
     await NormativeGroupType.destroy({ where: { type_id: id } });
-    if (Array.isArray(data.groups) && data.groups.length) {
-      const g = data.groups[0];
-      await NormativeGroupType.create({
-        group_id: g.group_id,
-        type_id: id,
-        required: Boolean(g.required),
-        created_by: actorId,
-        updated_by: actorId,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
+    if (!Array.isArray(data.groups) || data.groups.length !== 1) {
+      throw new ServiceError('normative_group_required');
     }
+    const group = await NormativeGroup.findByPk(data.groups[0].group_id);
+    if (!group) throw new ServiceError('normative_group_not_found', 404);
+    await NormativeGroupType.create({
+      group_id: group.id,
+      type_id: id,
+      required: Boolean(data.groups[0].required),
+      created_by: actorId,
+      updated_by: actorId,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
   }
   return getById(id);
 }
