@@ -1,20 +1,31 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { apiFetch } from '../api.js';
 
 const judges = ref([]);
 const groups = ref([]);
+const seasons = ref([]);
 const loading = ref(false);
 const error = ref('');
+const search = ref('');
+const filterGroup = ref('');
+const filterSeason = ref('');
+let searchTimeout;
 
 async function loadJudges() {
   loading.value = true;
   error.value = '';
   try {
-    const data = await apiFetch('/referee-group-users');
+    const params = new URLSearchParams();
+    if (search.value) params.append('search', search.value);
+    if (filterGroup.value) params.append('group_id', filterGroup.value);
+    if (filterSeason.value) params.append('season_id', filterSeason.value);
+    const query = params.toString();
+    const url = query ? `/referee-group-users?${query}` : '/referee-group-users';
+    const data = await apiFetch(url);
     judges.value = data.judges.map((j) => ({
       ...j,
-      group_id: j.group ? j.group.id : ''
+      group_id: j.group ? j.group.id : '',
     }));
   } catch (e) {
     error.value = e.message;
@@ -26,10 +37,21 @@ async function loadJudges() {
 async function loadGroups() {
   try {
     const params = new URLSearchParams({ page: 1, limit: 100 });
+    if (filterSeason.value) params.append('season_id', filterSeason.value);
     const data = await apiFetch(`/referee-groups?${params}`);
     groups.value = data.groups;
   } catch (_) {
     groups.value = [];
+  }
+}
+
+async function loadSeasons() {
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const data = await apiFetch(`/camp-seasons?${params}`);
+    seasons.value = data.seasons;
+  } catch (_) {
+    seasons.value = [];
   }
 }
 
@@ -61,13 +83,27 @@ function formatDate(d) {
 }
 
 onMounted(() => {
-  loadJudges();
+  loadSeasons();
   loadGroups();
+  loadJudges();
+});
+
+watch(filterSeason, () => {
+  loadGroups();
+  loadJudges();
+});
+
+watch(filterGroup, loadJudges);
+
+watch(search, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(loadJudges, 300);
 });
 
 const refresh = () => {
-  loadJudges();
+  loadSeasons();
   loadGroups();
+  loadJudges();
 };
 
 defineExpose({ refresh });
@@ -84,6 +120,27 @@ defineExpose({ refresh });
         <h2 class="h5 mb-0">Назначение судей</h2>
       </div>
       <div class="card-body p-3">
+        <div class="row g-2 mb-3">
+          <div class="col-sm">
+            <input
+              v-model="search"
+              class="form-control"
+              placeholder="Поиск судьи"
+            />
+          </div>
+          <div class="col-sm">
+            <select v-model="filterSeason" class="form-select">
+              <option value="">Все сезоны</option>
+              <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+          <div class="col-sm">
+            <select v-model="filterGroup" class="form-select">
+              <option value="">Все группы</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+        </div>
         <div v-if="judges.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
@@ -91,6 +148,7 @@ defineExpose({ refresh });
                 <th>ФИО</th>
                 <th>Дата рождения</th>
                 <th>Группа</th>
+                <th>Тренировки</th>
               </tr>
             </thead>
             <tbody>
@@ -102,6 +160,12 @@ defineExpose({ refresh });
                     <option value="">Без группы</option>
                     <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                   </select>
+                </td>
+                <td>
+                  {{ j.training_stats.visited }} / {{ j.training_stats.total }}
+                  <span v-if="j.training_stats.total">
+                    ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -116,6 +180,12 @@ defineExpose({ refresh });
                 <option value="">Без группы</option>
                 <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
               </select>
+              <p class="mb-0 mt-1">
+                {{ j.training_stats.visited }} / {{ j.training_stats.total }}
+                <span v-if="j.training_stats.total">
+                  ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
+                </span>
+              </p>
             </div>
           </div>
         </div>
