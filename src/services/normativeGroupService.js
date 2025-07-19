@@ -1,4 +1,4 @@
-import {NormativeGroup, NormativeGroupType, Season} from '../models/index.js';
+import { NormativeGroup, NormativeGroupType, Season } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
 
