@@ -223,6 +223,17 @@ function getZone(zoneId, sexId) {
   return z;
 }
 
+function onZoneInput(zoneId, sexId, val) {
+  const zone = getZone(zoneId, sexId);
+  if (isMoreBetter.value) {
+    zone.min_value = val;
+    zone.max_value = null;
+  } else {
+    zone.max_value = val;
+    zone.min_value = null;
+  }
+}
+
 const refresh = () => {
   load();
   loadDictionaries();
@@ -460,11 +471,8 @@ defineExpose({ refresh });
                             :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
                             :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
                             :placeholder="isMoreBetter ? 'Мин' : 'Макс'"
-                            v-model="
-                              isMoreBetter
-                                ? getZone(z.id, s.id).min_value
-                                : getZone(z.id, s.id).max_value
-                            "
+                            :value="isMoreBetter ? getZone(z.id, s.id).min_value : getZone(z.id, s.id).max_value"
+                            @input="onZoneInput(z.id, s.id, $event.target.value)"
                           />
                         </td>
                       </tr>

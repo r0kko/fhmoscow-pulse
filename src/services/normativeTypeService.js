@@ -274,4 +274,5 @@ async function remove(id, actorId = null) {
   await type.destroy();
 }
 
+export { parseValue, stepForUnit };
 export default { listAll, getById, create, update, remove };
