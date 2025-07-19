@@ -24,7 +24,7 @@ jest.unstable_mockModule('../src/config/redis.js', () => ({
   },
 }));
 
-const { markFailed, clear, get, _reset, WINDOW_MS } = await import('../src/services/loginAttempts.js');
+const { markFailed, clear, get, _reset, WINDOW_MS, isReadonlyError } = await import('../src/services/loginAttempts.js');
 
 describe('loginAttempts service', () => {
   beforeEach(async () => {
@@ -51,4 +51,11 @@ describe('loginAttempts service', () => {
     await markFailed('u1', 0);
     await expect(get('u1', WINDOW_MS + 1)).resolves.toBe(0);
   });
+});
+
+test('isReadonlyError detects readonly errors', () => {
+  expect(isReadonlyError(new Error('READONLY you cannot write'))).toBe(true);
+  expect(isReadonlyError(new Error('other'))).toBe(false);
+  expect(isReadonlyError({ message: 'READONLY-ERR' })).toBe(true);
+  expect(Boolean(isReadonlyError(undefined))).toBe(false);
 });

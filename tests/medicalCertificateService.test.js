@@ -3,12 +3,24 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 const findOneMock = jest.fn();
 const findAllMock = jest.fn();
 const createMock = jest.fn();
+const updateMock = jest.fn();
+const destroyMock = jest.fn();
+const findByPkMock = jest.fn();
+const findAndCountAllMock = jest.fn();
+const findAllUsersMock = jest.fn();
 const sendEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  MedicalCertificate: { findOne: findOneMock, findAll: findAllMock, create: createMock },
-  User: { findByPk: jest.fn().mockResolvedValue({ id: 'u1', email: 'e' }) },
+  MedicalCertificate: {
+    findOne: findOneMock,
+    findAll: findAllMock,
+    create: createMock,
+    findByPk: findByPkMock,
+    findAndCountAll: findAndCountAllMock,
+  },
+  User: { findByPk: jest.fn().mockResolvedValue({ id: 'u1', email: 'e' }), findAll: findAllUsersMock },
+  Role: {},
 }));
 
 jest.unstable_mockModule('../src/services/emailService.js', () => ({
@@ -23,6 +35,11 @@ beforeEach(() => {
   createMock.mockClear();
   findOneMock.mockClear();
   findAllMock.mockClear();
+  updateMock.mockClear();
+  destroyMock.mockClear();
+  findByPkMock.mockClear();
+  findAndCountAllMock.mockClear();
+  findAllUsersMock.mockClear();
 });
 
 test('getByUser selects latest valid certificate', async () => {
@@ -76,4 +93,46 @@ test('listByUser selects only expired certificates', async () => {
   const key = Object.getOwnPropertySymbols(opts.where.valid_until)[0];
   expect(key.toString()).toContain('lt');
   expect(typeof opts.where.valid_until[key]).toBe('string');
+});
+
+test('getById returns certificate', async () => {
+  findByPkMock.mockResolvedValue({ id: 'c1' });
+  const res = await service.getById('c1');
+  expect(res).toEqual({ id: 'c1' });
+});
+
+test('getById throws when missing', async () => {
+  findByPkMock.mockResolvedValue(null);
+  await expect(service.getById('c2')).rejects.toThrow('certificate_not_found');
+});
+
+test('updateForUser updates certificate', async () => {
+  findOneMock.mockResolvedValue({ update: updateMock });
+  const data = { inn: '1' };
+  await service.updateForUser('u1', data, 'admin');
+  expect(updateMock).toHaveBeenCalled();
+});
+
+test('removeForUser deletes certificate', async () => {
+  findOneMock.mockResolvedValue({ update: updateMock, destroy: destroyMock });
+  await service.removeForUser('u1', 'adm');
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'adm' });
+  expect(destroyMock).toHaveBeenCalled();
+});
+
+test('listAll forwards pagination', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  const res = await service.listAll({ page: 2, limit: 5 });
+  const arg = findAndCountAllMock.mock.calls[0][0];
+  expect(arg.limit).toBe(5);
+  expect(arg.offset).toBe(5);
+  expect(res).toEqual({ rows: [], count: 0 });
+});
+
+test('listByRole groups certificates', async () => {
+  findAllUsersMock.mockResolvedValue([{ id: 'u1' }]);
+  findAllMock.mockResolvedValue([{ id: 'c1', user_id: 'u1' }]);
+  const res = await service.listByRole('REF');
+  expect(findAllUsersMock).toHaveBeenCalled();
+  expect(res).toEqual([{ user: { id: 'u1' }, certificates: [{ id: 'c1', user_id: 'u1' }] }]);
 });
