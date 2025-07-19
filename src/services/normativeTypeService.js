@@ -1,4 +1,9 @@
-import { NormativeType, NormativeTypeZone, NormativeGroupType, Season } from '../models/index.js';
+import {
+  NormativeType,
+  NormativeTypeZone,
+  NormativeGroupType,
+  Season,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
 
@@ -18,7 +23,9 @@ async function listAll(options = {}) {
 }
 
 async function getById(id) {
-  const type = await NormativeType.findByPk(id, { include: [NormativeTypeZone] });
+  const type = await NormativeType.findByPk(id, {
+    include: [NormativeTypeZone],
+  });
   if (!type) throw new ServiceError('normative_type_not_found', 404);
   return type;
 }
@@ -39,6 +46,7 @@ async function create(data, actorId) {
   if (Array.isArray(data.zones)) {
     await NormativeTypeZone.bulkCreate(
       data.zones.map((z) => ({
+        season_id: data.season_id,
         normative_type_id: type.id,
         zone_id: z.zone_id,
         min_value: z.min_value,
@@ -70,6 +78,7 @@ async function update(id, data, actorId) {
     if (Array.isArray(data.zones)) {
       await NormativeTypeZone.bulkCreate(
         data.zones.map((z) => ({
+          season_id: type.season_id,
           normative_type_id: id,
           zone_id: z.zone_id,
           min_value: z.min_value,

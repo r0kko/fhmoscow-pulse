@@ -12,7 +12,13 @@ const pageSize = 8;
 const isLoading = ref(false);
 const error = ref('');
 
-const form = ref({ user_id: '', season_id: '', training_id: '', type_id: '', value: '' });
+const form = ref({
+  user_id: '',
+  season_id: '',
+  training_id: '',
+  type_id: '',
+  value: '',
+});
 const value_type_id = ref('');
 const unit_id = ref('');
 const editing = ref(null);
@@ -24,7 +30,9 @@ const userSuggestions = ref([]);
 let userTimeout;
 let skipWatch = false;
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(total.value / pageSize))
+);
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -64,7 +72,11 @@ watch(
       return;
     }
     try {
-      const params = new URLSearchParams({ season_id: val, page: 1, limit: 100 });
+      const params = new URLSearchParams({
+        season_id: val,
+        page: 1,
+        limit: 100,
+      });
       const data = await apiFetch(`/normative-types?${params}`);
       types.value = data.types;
     } catch (_err) {
@@ -87,7 +99,10 @@ watch(
 async function load() {
   try {
     isLoading.value = true;
-    const params = new URLSearchParams({ page: currentPage.value, limit: pageSize });
+    const params = new URLSearchParams({
+      page: currentPage.value,
+      limit: pageSize,
+    });
     const data = await apiFetch(`/normative-results?${params}`);
     results.value = data.results;
     total.value = data.total;
@@ -111,7 +126,13 @@ async function loadSeasons() {
 
 function openCreate() {
   editing.value = null;
-  form.value = { user_id: '', season_id: '', training_id: '', type_id: '', value: '' };
+  form.value = {
+    user_id: '',
+    season_id: '',
+    training_id: '',
+    type_id: '',
+    value: '',
+  };
   value_type_id.value = '';
   unit_id.value = '';
   userQuery.value = '';
@@ -122,7 +143,13 @@ function openCreate() {
 
 function openEdit(r) {
   editing.value = r;
-  form.value = { user_id: r.user_id, season_id: r.season_id, training_id: r.training_id || '', type_id: r.type_id, value: r.value };
+  form.value = {
+    user_id: r.user_id,
+    season_id: r.season_id,
+    training_id: r.training_id || '',
+    type_id: r.type_id,
+    value: r.value,
+  };
   value_type_id.value = r.value_type_id;
   unit_id.value = r.unit_id;
   skipWatch = true;
@@ -147,9 +174,15 @@ async function save() {
   };
   try {
     if (editing.value) {
-      await apiFetch(`/normative-results/${editing.value.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      await apiFetch(`/normative-results/${editing.value.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
     } else {
-      await apiFetch('/normative-results', { method: 'POST', body: JSON.stringify(payload) });
+      await apiFetch('/normative-results', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
     }
     modal.hide();
     await load();
@@ -179,7 +212,9 @@ defineExpose({ refresh });
 <template>
   <div class="mb-4">
     <div class="card section-card tile fade-in shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
         <h2 class="h5 mb-0">Результаты нормативов</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
@@ -191,7 +226,7 @@ defineExpose({ refresh });
           <div class="spinner-border" role="status"></div>
         </div>
         <div v-if="results.length" class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
                 <th>User</th>
@@ -204,14 +239,27 @@ defineExpose({ refresh });
             <tbody>
               <tr v-for="r in results" :key="r.id">
                 <td>{{ r.user_id }}</td>
-                <td>{{ seasons.find(s => s.id === r.season_id)?.name || r.season_id }}</td>
-                <td>{{ types.find(t => t.id === r.type_id)?.name || r.type_id }}</td>
+                <td>
+                  {{
+                    seasons.find((s) => s.id === r.season_id)?.name ||
+                    r.season_id
+                  }}
+                </td>
+                <td>
+                  {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
+                </td>
                 <td>{{ r.value }}</td>
                 <td class="text-end">
-                  <button class="btn btn-sm btn-secondary me-2" @click="openEdit(r)">
+                  <button
+                    class="btn btn-sm btn-secondary me-2"
+                    @click="openEdit(r)"
+                  >
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-danger" @click="removeResult(r)">
+                  <button
+                    class="btn btn-sm btn-danger"
+                    @click="removeResult(r)"
+                  >
                     <i class="bi bi-trash"></i>
                   </button>
                 </td>
@@ -225,13 +273,30 @@ defineExpose({ refresh });
     <nav class="mt-3" v-if="totalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
+          <button
+            class="page-link"
+            @click="currentPage--"
+            :disabled="currentPage === 1"
+          >
+            Пред
+          </button>
         </li>
-        <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
+        <li
+          class="page-item"
+          v-for="p in totalPages"
+          :key="p"
+          :class="{ active: currentPage === p }"
+        >
           <button class="page-link" @click="currentPage = p">{{ p }}</button>
         </li>
         <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
+          <button
+            class="page-link"
+            @click="currentPage++"
+            :disabled="currentPage === totalPages"
+          >
+            След
+          </button>
         </li>
       </ul>
     </nav>
@@ -240,47 +305,102 @@ defineExpose({ refresh });
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">{{ editing ? 'Изменить результат' : 'Добавить результат' }}</h5>
-              <button type="button" class="btn-close" @click="modal.hide()"></button>
+              <h5 class="modal-title">
+                {{ editing ? 'Изменить результат' : 'Добавить результат' }}
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                @click="modal.hide()"
+              ></button>
             </div>
             <div class="modal-body">
-              <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
+              <div v-if="formError" class="alert alert-danger">
+                {{ formError }}
+              </div>
               <div class="mb-3 position-relative">
                 <div class="form-floating">
-                  <input id="userId" v-model="userQuery" class="form-control" placeholder="Пользователь" />
+                  <input
+                    id="userId"
+                    v-model="userQuery"
+                    class="form-control"
+                    placeholder="Пользователь"
+                  />
                   <label for="userId">Пользователь</label>
                 </div>
-                <ul v-if="userSuggestions.length" class="list-group position-absolute w-100" style="z-index: 1050">
-                  <li v-for="u in userSuggestions" :key="u.id" class="list-group-item list-group-item-action" @mousedown.prevent="selectUser(u)">
+                <ul
+                  v-if="userSuggestions.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
+                >
+                  <li
+                    v-for="u in userSuggestions"
+                    :key="u.id"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="selectUser(u)"
+                  >
                     {{ u.last_name }} {{ u.first_name }}
                   </li>
                 </ul>
               </div>
               <div class="form-floating mb-3">
-                <select id="resSeason" v-model="form.season_id" class="form-select" required>
+                <select
+                  id="resSeason"
+                  v-model="form.season_id"
+                  class="form-select"
+                  required
+                >
                   <option value="" disabled>Выберите сезон</option>
-                  <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  <option v-for="s in seasons" :key="s.id" :value="s.id">
+                    {{ s.name }}
+                  </option>
                 </select>
                 <label for="resSeason">Сезон</label>
               </div>
               <div class="form-floating mb-3">
-                <select id="resType" v-model="form.type_id" class="form-select" required>
+                <select
+                  id="resType"
+                  v-model="form.type_id"
+                  class="form-select"
+                  required
+                >
                   <option value="" disabled>Тип</option>
-                  <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
+                  <option v-for="t in types" :key="t.id" :value="t.id">
+                    {{ t.name }}
+                  </option>
                 </select>
                 <label for="resType">Тип</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="resTraining" v-model="form.training_id" class="form-control" placeholder="Тренировка" />
+                <input
+                  id="resTraining"
+                  v-model="form.training_id"
+                  class="form-control"
+                  placeholder="Тренировка"
+                />
                 <label for="resTraining">Тренировка</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="resValue" type="number" step="any" v-model="form.value" class="form-control" placeholder="Значение" required />
+                <input
+                  id="resValue"
+                  type="number"
+                  step="any"
+                  v-model="form.value"
+                  class="form-control"
+                  placeholder="Значение"
+                  required
+                />
                 <label for="resValue">Значение</label>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="modal.hide()"
+              >
+                Отмена
+              </button>
               <button type="submit" class="btn btn-primary">Сохранить</button>
             </div>
           </form>
