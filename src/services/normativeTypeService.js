@@ -27,6 +27,15 @@ function parseValue(val, unit) {
   return unit.fractional ? num : Math.round(num);
 }
 
+function parseResultValue(val, unit) {
+  const parsed = parseValue(val, unit);
+  if (parsed == null) return null;
+  if (unit.alias === 'SECONDS' && unit.fractional) {
+    return Math.round(parsed * 100) / 100;
+  }
+  return parsed;
+}
+
 function stepForUnit(unit) {
   if (unit.alias === 'SECONDS' && unit.fractional) return 0.01;
   return 1;
@@ -295,5 +304,5 @@ async function remove(id, actorId = null) {
   await type.destroy();
 }
 
-export { parseValue, stepForUnit, determineZone };
+export { parseValue, parseResultValue, stepForUnit, determineZone };
 export default { listAll, getById, create, update, remove };

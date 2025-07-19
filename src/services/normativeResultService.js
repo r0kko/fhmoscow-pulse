@@ -10,9 +10,10 @@ import {
   CampStadium,
   Season,
   User,
+  MeasurementUnit,
 } from '../models/index.js';
 
-import { determineZone } from './normativeTypeService.js';
+import { parseResultValue, determineZone } from './normativeTypeService.js';
 
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -81,7 +82,7 @@ async function create(data, actorId) {
   const [user, season, type] = await Promise.all([
     User.findByPk(data.user_id),
     Season.findByPk(data.season_id),
-    NormativeType.findByPk(data.type_id),
+    NormativeType.findByPk(data.type_id, { include: [MeasurementUnit] }),
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!season) throw new ServiceError('season_not_found', 404);
@@ -89,14 +90,16 @@ async function create(data, actorId) {
   if (type.season_id !== data.season_id) {
     throw new ServiceError('normative_type_invalid_season');
   }
+  const value = parseResultValue(data.value, type.MeasurementUnit);
+  if (value == null) throw new ServiceError('invalid_value');
   const res = await NormativeResult.create({
     user_id: data.user_id,
     season_id: data.season_id,
     training_id: data.training_id,
     type_id: data.type_id,
-    value_type_id: data.value_type_id,
-    unit_id: data.unit_id,
-    value: data.value,
+    value_type_id: type.value_type_id,
+    unit_id: type.unit_id,
+    value,
     created_by: actorId,
     updated_by: actorId,
   });
@@ -104,12 +107,19 @@ async function create(data, actorId) {
 }
 
 async function update(id, data, actorId) {
-  const res = await NormativeResult.findByPk(id);
+  const res = await NormativeResult.findByPk(id, {
+    include: [{ model: NormativeType, include: [MeasurementUnit] }],
+  });
   if (!res) throw new ServiceError('normative_result_not_found', 404);
+  let newValue = res.value;
+  if (Object.hasOwn(data, 'value')) {
+    newValue = parseResultValue(data.value, res.NormativeType.MeasurementUnit);
+    if (newValue == null) throw new ServiceError('invalid_value');
+  }
   await res.update(
     {
       training_id: data.training_id ?? res.training_id,
-      value: data.value ?? res.value,
+      value: newValue,
       updated_by: actorId,
     },
     { returning: false }

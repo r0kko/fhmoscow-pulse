@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import { formatMinutesSeconds, parseMinutesSeconds } from '../utils/time.js';
 
 const results = ref([]);
 const total = ref(0);
@@ -167,12 +168,19 @@ function openCreate() {
 
 function openEdit(r) {
   editing.value = r;
+  const unit = units.value.find((u) => u.id === r.unit_id);
+  let val = r.value;
+  if (unit?.alias === 'MIN_SEC') {
+    val = formatMinutesSeconds(val);
+  } else if (unit?.alias === 'SECONDS') {
+    val = Number(val).toFixed(2);
+  }
   form.value = {
     user_id: r.user_id,
     season_id: r.season_id,
     training_id: r.training_id || '',
     type_id: r.type_id,
-    value: r.value,
+    value: val,
   };
   value_type_id.value = r.value_type_id;
   unit_id.value = r.unit_id;
@@ -190,9 +198,48 @@ function selectUser(u) {
   userSuggestions.value = [];
 }
 
+function onValueInput(e) {
+  if (currentUnit.value?.alias !== 'MIN_SEC') return;
+  let digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+  let formatted = digits;
+  if (digits.length > 2) {
+    formatted = digits.slice(0, digits.length - 2) + ':' + digits.slice(-2);
+  } else if (digits.length === 2) {
+    formatted = digits + ':';
+  }
+  form.value.value = formatted;
+}
+
+function formatValue(r) {
+  const unit = units.value.find((u) => u.id === r.unit_id);
+  if (unit?.alias === 'MIN_SEC') {
+    return formatMinutesSeconds(r.value);
+  }
+  if (unit?.alias === 'SECONDS') {
+    return Number(r.value).toFixed(2);
+  }
+  return r.value;
+}
+
 async function save() {
+  const unit = currentUnit.value;
+  let val = form.value.value;
+  if (unit?.alias === 'MIN_SEC') {
+    val = parseMinutesSeconds(val);
+  } else {
+    val = parseFloat(val);
+    if (!Number.isNaN(val)) {
+      if (unit?.alias === 'SECONDS') val = Math.round(val * 100) / 100;
+      else if (!unit?.fractional) val = Math.round(val);
+    }
+  }
+  if (val == null || Number.isNaN(val)) {
+    formError.value = 'Неверное значение';
+    return;
+  }
   const payload = {
     ...form.value,
+    value: val,
     value_type_id: value_type_id.value,
     unit_id: unit_id.value,
   };
@@ -270,7 +317,7 @@ defineExpose({ refresh });
                 <td>
                   {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
                 </td>
-                <td>{{ r.value }}</td>
+                <td>{{ formatValue(r) }}</td>
                 <td>{{ r.zone?.name }}</td>
                 <td class="text-end">
                   <button
@@ -414,6 +461,7 @@ defineExpose({ refresh });
                   :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
                   :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
                   v-model="form.value"
+                  @input="onValueInput"
                   class="form-control"
                   placeholder="Значение"
                   required
