@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import {
   Ticket,
   TicketType,
@@ -6,7 +8,6 @@ import {
   TicketFile,
   File,
 } from '../models/index.js';
-import { Op } from 'sequelize';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
