@@ -200,16 +200,22 @@ function selectUser(u) {
 
 function onValueInput(e) {
   if (currentUnit.value?.alias !== 'MIN_SEC') return;
-  let digits = e.target.value.replace(/\D/g, '').slice(0, 4);
-  if (digits.length > 2) {
-    const minutes = digits.slice(0, digits.length - 2);
-    const seconds = digits.slice(-2);
-    form.value.value = `${minutes}:${seconds}`;
-  } else if (digits.length === 2) {
-    form.value.value = `${digits}:`;
-  } else {
-    form.value.value = digits;
+  let val = e.target.value.replace(/[^0-9:]/g, '');
+  const colon = val.indexOf(':');
+  if (colon === -1) {
+    const digits = val.replace(/\D/g, '').slice(0, 4);
+    if (digits.length > 2) {
+      form.value.value = `${digits.slice(0, digits.length - 2)}:${digits.slice(-2)}`;
+    } else {
+      form.value.value = digits;
+    }
+    return;
   }
+  val = val.slice(0, colon + 1) + val.slice(colon + 1).replace(/:/g, '');
+  let minutes = val.slice(0, colon).replace(/\D/g, '').slice(0, 2);
+  if (!minutes) minutes = '0';
+  let seconds = val.slice(colon + 1).replace(/\D/g, '').slice(0, 2);
+  form.value.value = `${minutes}:${seconds}`;
 }
 
 function formatValue(r) {
