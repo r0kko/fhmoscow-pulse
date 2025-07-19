@@ -33,7 +33,6 @@ const form = ref({
   value_type_id: '',
   unit_id: '',
   group_id: '',
-  group_required: false,
   zones: [],
 });
 const editing = ref(null);
@@ -134,7 +133,6 @@ function openCreate() {
     value_type_id: '',
     unit_id: '',
     group_id: '',
-    group_required: false,
     zones: [],
   };
   formError.value = '';
@@ -178,7 +176,6 @@ function openEdit(t) {
     value_type_id: t.value_type_id,
     unit_id: t.unit_id,
     group_id: t.groups?.[0]?.group_id || '',
-    group_required: t.groups?.[0]?.required || false,
     zones:
       (t.zones || []).filter((z) =>
         filteredZones.value.some((f) => f.id === z.zone_id)
@@ -196,12 +193,11 @@ async function save() {
     ? [
         {
           group_id: form.value.group_id,
-          required: !!form.value.group_required,
+          required: false,
         },
       ]
     : [];
   delete payload.group_id;
-  delete payload.group_required;
   const allowedIds = filteredZones.value.map((z) => z.id);
   payload.zones = payload.zones
     .filter((z) => allowedIds.includes(z.zone_id))
@@ -460,18 +456,6 @@ defineExpose({ refresh });
                     {{ g.name }}
                   </option>
                 </select>
-              </div>
-              <div class="form-check mb-3">
-                <input
-                  id="typeGroupReq"
-                  type="checkbox"
-                  class="form-check-input"
-                  v-model="form.group_required"
-                  :disabled="!form.group_id"
-                />
-                <label for="typeGroupReq" class="form-check-label"
-                  >Обязательный в группе</label
-                >
               </div>
               <div class="mb-3">
                 <label class="form-label">Зоны</label>
