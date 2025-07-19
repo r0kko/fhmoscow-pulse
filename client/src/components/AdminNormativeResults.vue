@@ -201,13 +201,15 @@ function selectUser(u) {
 function onValueInput(e) {
   if (currentUnit.value?.alias !== 'MIN_SEC') return;
   let digits = e.target.value.replace(/\D/g, '').slice(0, 4);
-  let formatted = digits;
   if (digits.length > 2) {
-    formatted = digits.slice(0, digits.length - 2) + ':' + digits.slice(-2);
+    const minutes = digits.slice(0, digits.length - 2);
+    const seconds = digits.slice(-2);
+    form.value.value = `${minutes}:${seconds}`;
   } else if (digits.length === 2) {
-    formatted = digits + ':';
+    form.value.value = `${digits}:`;
+  } else {
+    form.value.value = digits;
   }
-  form.value.value = formatted;
 }
 
 function formatValue(r) {
