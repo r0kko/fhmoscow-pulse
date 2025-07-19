@@ -46,6 +46,7 @@ async function create(data, actorId) {
   if (Array.isArray(data.zones)) {
     await NormativeTypeZone.bulkCreate(
       data.zones.map((z) => ({
+        season_id: data.season_id,
         normative_type_id: type.id,
         zone_id: z.zone_id,
         min_value: z.min_value,
@@ -77,6 +78,7 @@ async function update(id, data, actorId) {
     if (Array.isArray(data.zones)) {
       await NormativeTypeZone.bulkCreate(
         data.zones.map((z) => ({
+          season_id: type.season_id,
           normative_type_id: id,
           zone_id: z.zone_id,
           min_value: z.min_value,
