@@ -229,9 +229,37 @@ const upcomingWeekTrainings = computed(() => {
 
 const pastTrainings = computed(() => minePast.value);
 
+const pastSeasons = computed(() => {
+  const map = {};
+  minePast.value.forEach((t) => {
+    const s = t.season;
+    if (s && !map[s.id]) map[s.id] = s;
+  });
+  return Object.values(map);
+});
+
 const pastSeason = computed(() =>
-  minePast.value.length ? minePast.value[0].season : null
+  pastSeasons.value.length === 1 ? pastSeasons.value[0] : null
 );
+
+function groupBySeason(list) {
+  const map = {};
+  list.forEach((t) => {
+    const s = t.season;
+    if (!s) return;
+    if (!map[s.id]) map[s.id] = { season: s, trainings: [] };
+    map[s.id].trainings.push(t);
+  });
+  return Object.values(map).map((g) => ({
+    season: g.season,
+    days: groupByDay(g.trainings),
+  }));
+}
+
+const groupedPastBySeason = computed(() => {
+  if (pastSeasons.value.length <= 1) return [];
+  return groupBySeason(minePast.value);
+});
 
 const groupedMine = computed(() =>
   groupByDay(
@@ -389,7 +417,7 @@ function dayOpen(day) {
             </li>
           </ul>
           <p
-            v-if="mineView === 'past' && pastSeason"
+            v-if="mineView === 'past' && pastSeason && pastSeasons.length === 1"
             class="text-muted small mb-3"
           >
             Сезон: {{ pastSeason.name }}
@@ -406,54 +434,164 @@ function dayOpen(day) {
           </div>
           <div v-else class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
-              <div
-                v-for="g in groupedMine"
-                :key="g.date"
-                class="mb-3 schedule-day"
-              >
-                <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
-                <ul class="list-unstyled mb-0">
-                  <li
-                    v-for="t in g.trainings"
-                    :key="t.id"
-                    class="schedule-item"
-                  >
-                    <div
-                      class="d-flex justify-content-between align-items-start"
+              <template v-if="mineView === 'past' && pastSeasons.length > 1">
+                <div
+                  v-for="sg in groupedPastBySeason"
+                  :key="sg.season.id"
+                  class="mb-4"
+                >
+                  <p class="text-muted small mb-3">
+                    Сезон: {{ sg.season.name }}
+                    <span
+                      v-if="sg.season.active"
+                      class="badge bg-brand ms-1"
+                      >Текущий</span
                     >
-                      <div class="me-3 flex-grow-1">
-                        <div>
-                          <strong
-                            >{{ formatTime(t.start_at) }}–{{
-                              formatTime(t.end_at)
-                            }}</strong
-                          >
-                          <span class="ms-2">{{ t.stadium?.name }}</span>
-                        </div>
-                        <div class="text-muted small">{{ t.type?.name }}</div>
-                      </div>
-                      <div class="d-flex align-items-center">
-                        <RouterLink
-                          v-if="
-                            t.my_role?.alias === 'COACH' && !t.attendance_marked
-                          "
-                          :to="`/trainings/${t.id}/attendance`"
-                          class="btn btn-link p-0"
-                          :class="
-                            t.attendance_marked
-                              ? 'text-success'
-                              : 'text-secondary'
-                          "
-                          :title="
-                            t.attendance_marked
-                              ? 'Посещаемость отмечена'
-                              : 'Отметить посещаемость'
-                          "
+                  </p>
+                  <div
+                    v-for="g in sg.days"
+                    :key="g.date"
+                    class="mb-3 schedule-day"
+                  >
+                    <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+                    <ul class="list-unstyled mb-0">
+                      <li
+                        v-for="t in g.trainings"
+                        :key="t.id"
+                        class="schedule-item"
+                      >
+                        <div
+                          class="d-flex justify-content-between align-items-start"
                         >
-                          <i class="bi bi-check2-square" aria-hidden="true"></i>
-                          <span class="visually-hidden">Посещаемость</span>
-                        </RouterLink>
+                          <div class="me-3 flex-grow-1">
+                            <div>
+                              <strong
+                                >{{ formatTime(t.start_at) }}–{{
+                                  formatTime(t.end_at)
+                                }}</strong
+                              >
+                              <span class="ms-2">{{ t.stadium?.name }}</span>
+                            </div>
+                            <div class="text-muted small">{{ t.type?.name }}</div>
+                          </div>
+                          <div class="d-flex align-items-center">
+                            <RouterLink
+                              v-if="
+                                t.my_role?.alias === 'COACH' && !t.attendance_marked
+                              "
+                              :to="`/trainings/${t.id}/attendance`"
+                              class="btn btn-link p-0"
+                              :class="
+                                t.attendance_marked
+                                  ? 'text-success'
+                                  : 'text-secondary'
+                              "
+                              :title="
+                                t.attendance_marked
+                                  ? 'Посещаемость отмечена'
+                                  : 'Отметить посещаемость'
+                              "
+                            >
+                              <i class="bi bi-check2-square" aria-hidden="true"></i>
+                              <span class="visually-hidden">Посещаемость</span>
+                            </RouterLink>
+                          </div>
+                        </div>
+                        <div
+                          v-if="attendanceAlertType(t)"
+                          :class="[
+                            'alert',
+                            `alert-${attendanceAlertType(t)}`,
+                            'py-1',
+                            'px-2',
+                            'small',
+                            'my-2',
+                            'd-flex',
+                            'align-items-center',
+                          ]"
+                        >
+                          <i
+                            class="bi bi-exclamation-triangle-fill me-2"
+                            aria-hidden="true"
+                          ></i>
+                          <span>Отметьте посещаемость</span>
+                        </div>
+                        <p class="text-muted small mb-1 d-flex mt-1">
+                          <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
+                          <span>
+                            Роль: {{ t.my_role?.name || '—' }}<br />
+                            Тренеры:
+                            <span v-if="t.coaches && t.coaches.length">
+                              {{ t.coaches.map(shortName).join(', ') }}
+                            </span>
+                            <span v-else>не назначены</span><br />
+                            Инвентарь:
+                            <span
+                              v-if="
+                                t.equipment_managers && t.equipment_managers.length
+                              "
+                            >
+                              {{ t.equipment_managers.map(shortName).join(', ') }}
+                            </span>
+                            <span v-else>не назначен</span><br />
+                            Адрес: {{ t.stadium?.address?.result || '—' }}
+                          </span>
+                        </p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div
+                  v-for="g in groupedMine"
+                  :key="g.date"
+                  class="mb-3 schedule-day"
+                >
+                  <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+                  <ul class="list-unstyled mb-0">
+                    <li
+                      v-for="t in g.trainings"
+                      :key="t.id"
+                      class="schedule-item"
+                    >
+                      <div
+                        class="d-flex justify-content-between align-items-start"
+                      >
+                        <div class="me-3 flex-grow-1">
+                          <div>
+                            <strong
+                              >{{ formatTime(t.start_at) }}–{{
+                                formatTime(t.end_at)
+                              }}</strong
+                            >
+                            <span class="ms-2">{{ t.stadium?.name }}</span>
+                          </div>
+                          <div class="text-muted small">{{ t.type?.name }}</div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                          <RouterLink
+                            v-if="
+                              t.my_role?.alias === 'COACH' && !t.attendance_marked
+                            "
+                            :to="`/trainings/${t.id}/attendance`"
+                            class="btn btn-link p-0"
+                            :class="
+                              t.attendance_marked
+                                ? 'text-success'
+                                : 'text-secondary'
+                            "
+                            :title="
+                              t.attendance_marked
+                                ? 'Посещаемость отмечена'
+                                : 'Отметить посещаемость'
+                            "
+                          >
+                            <i class="bi bi-check2-square" aria-hidden="true"></i>
+                            <span class="visually-hidden">Посещаемость</span>
+                          </RouterLink>
                         <button
+                          v-if="mineView === 'upcoming'"
                           class="btn btn-link p-0 ms-2"
                           :class="
                             canCancel(t) ? 'text-danger' : 'text-secondary'
