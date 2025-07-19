@@ -19,7 +19,6 @@ import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
 import AdminDocuments from './views/AdminDocuments.vue';
 import AdminNormatives from './views/AdminNormatives.vue';
-import NormativeResults from './views/NormativeResults.vue';
 import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
@@ -50,11 +49,6 @@ const routes = [
     path: '/tasks',
     component: Tasks,
     meta: { requiresAuth: true },
-  },
-  {
-    path: '/normative-results',
-    component: NormativeResults,
-    meta: { requiresAuth: true, requiresReferee: true },
   },
   {
     path: '/trainings/:id/attendance',
