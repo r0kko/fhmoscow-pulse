@@ -32,6 +32,17 @@ function stepForUnit(unit) {
   return 1;
 }
 
+function determineZone(type, value, sexId = null) {
+  if (!type || !Array.isArray(type.NormativeTypeZones)) return null;
+  let zones = type.NormativeTypeZones;
+  if (sexId) zones = zones.filter((z) => z.sex_id === sexId);
+  return zones.find(
+    (z) =>
+      (z.min_value == null || value >= z.min_value) &&
+      (z.max_value == null || value <= z.max_value)
+  );
+}
+
 async function buildZones({
   zones,
   unit,
@@ -284,5 +295,5 @@ async function remove(id, actorId = null) {
   await type.destroy();
 }
 
-export { parseValue, stepForUnit };
+export { parseValue, stepForUnit, determineZone };
 export default { listAll, getById, create, update, remove };
