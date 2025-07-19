@@ -1,4 +1,4 @@
-import { NormativeGroup, NormativeGroupType, Season } from '../models/index.js';
+import {NormativeGroup, NormativeGroupType, Season} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
 
@@ -25,14 +25,13 @@ async function getById(id) {
 async function create(data, actorId) {
   const season = await Season.findByPk(data.season_id);
   if (!season) throw new ServiceError('season_not_found', 404);
-  const group = await NormativeGroup.create({
+  return await NormativeGroup.create({
     season_id: data.season_id,
     name: data.name,
     alias: generateAlias(data.name),
     created_by: actorId,
     updated_by: actorId,
   });
-  return group;
 }
 
 async function update(id, data, actorId) {

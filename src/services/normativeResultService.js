@@ -1,9 +1,4 @@
-import {
-  NormativeResult,
-  User,
-  Season,
-  NormativeType,
-} from '../models/index.js';
+import {NormativeResult, NormativeType, Season, User,} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -38,7 +33,7 @@ async function create(data, actorId) {
   if (type.season_id !== data.season_id) {
     throw new ServiceError('normative_type_invalid_season');
   }
-  const result = await NormativeResult.create({
+  return await NormativeResult.create({
     user_id: data.user_id,
     season_id: data.season_id,
     training_id: data.training_id,
@@ -49,7 +44,6 @@ async function create(data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  return result;
 }
 
 async function update(id, data, actorId) {
