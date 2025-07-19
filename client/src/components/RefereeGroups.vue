@@ -116,15 +116,13 @@ defineExpose({ refresh });
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-0">
-        <div class="p-3 border-bottom">
-          <div class="row g-2">
-            <div class="col-sm">
-              <select v-model="filterSeason" class="form-select">
-                <option value="">Все сезоны</option>
-                <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
+      <div class="card-body p-3">
+        <div class="row g-2 mb-3">
+          <div class="col-sm">
+            <select v-model="filterSeason" class="form-select">
+              <option value="">Все сезоны</option>
+              <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
           </div>
         </div>
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
@@ -222,3 +220,38 @@ defineExpose({ refresh });
     </div>
   </div>
 </template>
+
+<style scoped>
+.training-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
