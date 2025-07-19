@@ -12,7 +12,6 @@ RefereeGroup.init(
       primaryKey: true,
     },
     season_id: { type: DataTypes.UUID, allowNull: false },
-    camp_stadium_id: { type: DataTypes.UUID },
     name: { type: DataTypes.STRING(100), allowNull: false },
   },
   {
