@@ -11,6 +11,8 @@ import requestLogger from './src/middlewares/requestLogger.js';
 import rateLimiter from './src/middlewares/rateLimiter.js';
 import swaggerSpec from './src/docs/swagger.js';
 import { ALLOWED_ORIGINS } from './src/config/cors.js';
+import { sendError } from './src/utils/api.js';
+import logger from './logger.js';
 
 const app = express();
 app.set('trust proxy', 2);
@@ -42,6 +44,18 @@ app.use(requestLogger);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/', indexRouter);
+
+// Catch unhandled routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'not_found' });
+});
+
+// Centralized error handler
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  logger.error('Unhandled error processing request: %s', err.stack || err);
+  sendError(res, err, 500);
+});
 
 
 export default app;
