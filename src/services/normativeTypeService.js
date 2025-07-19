@@ -51,6 +51,8 @@ async function create(data, actorId) {
         zone_id: z.zone_id,
         min_value: z.min_value,
         max_value: z.max_value,
+        created_by: actorId,
+        updated_by: actorId,
         created_at: new Date(),
         updated_at: new Date(),
       }))
@@ -83,6 +85,8 @@ async function update(id, data, actorId) {
           zone_id: z.zone_id,
           min_value: z.min_value,
           max_value: z.max_value,
+          created_by: actorId,
+          updated_by: actorId,
           created_at: new Date(),
           updated_at: new Date(),
         }))

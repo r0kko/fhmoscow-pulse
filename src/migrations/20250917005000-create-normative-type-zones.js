@@ -31,6 +31,18 @@ module.exports = {
       },
       min_value: { type: Sequelize.FLOAT },
       max_value: { type: Sequelize.FLOAT },
+      created_by: {
+        type: Sequelize.UUID,
+        references: { model: 'users', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
+      },
+      updated_by: {
+        type: Sequelize.UUID,
+        references: { model: 'users', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
+      },
       created_at: {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('NOW()'),
