@@ -18,6 +18,18 @@ module.exports = {
       name: { type: Sequelize.STRING(50), allowNull: false, unique: true },
       alias: { type: Sequelize.STRING(50), allowNull: false, unique: true },
       color: { type: Sequelize.STRING(20) },
+      created_by: {
+        type: Sequelize.UUID,
+        references: { model: 'users', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
+      },
+      updated_by: {
+        type: Sequelize.UUID,
+        references: { model: 'users', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
+      },
       created_at: {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('NOW()'),
