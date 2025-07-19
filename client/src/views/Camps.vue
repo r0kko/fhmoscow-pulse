@@ -351,12 +351,12 @@ function dayOpen(day) {
 
 function attendanceStatus(t) {
   if (!t.attendance_marked) {
-    return { icon: 'bi-clock', text: 'Посещаемость тренировки не отмечена', class: 'text-muted' };
+    return { icon: 'bi-clock', text: 'Уточняется', class: 'text-muted' };
   }
   if (t.my_presence) {
-    return { icon: 'bi-check-circle-fill', text: 'Вы посетили тренировку', class: 'text-success' };
+    return { icon: 'bi-check-circle-fill', text: 'Посещено', class: 'text-success' };
   }
-  return { icon: 'bi-x-circle-fill', text: 'Тренер не подтвердил Ваше присутствие', class: 'text-danger' };
+  return { icon: 'bi-x-circle-fill', text: 'Не посещено', class: 'text-danger' };
 }
 </script>
 
