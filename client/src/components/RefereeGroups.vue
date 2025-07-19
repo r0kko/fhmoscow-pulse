@@ -109,7 +109,7 @@ defineExpose({ refresh });
 
 <template>
   <div>
-    <div class="card section-card tile fade-in shadow-sm">
+    <div class="card section-card stadium-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Группы судей</h2>
         <button class="btn btn-brand" @click="openCreate">
@@ -231,6 +231,12 @@ defineExpose({ refresh });
   animation: fadeIn 0.4s ease-out;
 }
 
+.stadium-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 0;
+}
+
 .section-card {
   border-radius: 1rem;
   overflow: hidden;
@@ -239,6 +245,11 @@ defineExpose({ refresh });
 
 @media (max-width: 575.98px) {
   .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+
+  .stadium-card {
     margin-left: -1rem;
     margin-right: -1rem;
   }
