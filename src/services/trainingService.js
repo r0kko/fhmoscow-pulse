@@ -261,19 +261,29 @@ async function setAttendanceMarked(id, marked, actorId) {
   const actor = await User.findByPk(actorId, { include: [Role] });
   if (!actor) throw new ServiceError('user_not_found', 404);
   const isAdmin = actor.Roles.some((r) => r.alias === 'ADMIN');
+  let coachReg = null;
   if (!isAdmin) {
     if (!actor.Roles.some((r) => r.alias === 'REFEREE')) {
       throw new ServiceError('access_denied');
     }
-    const coachReg = await TrainingRegistration.findOne({
+    coachReg = await TrainingRegistration.findOne({
       where: { training_id: id, user_id: actorId },
       include: [TrainingRole],
     });
     if (coachReg?.TrainingRole?.alias !== 'COACH') {
       throw new ServiceError('access_denied');
     }
+  } else {
+    coachReg = await TrainingRegistration.findOne({
+      where: { training_id: id, user_id: actorId },
+      include: [TrainingRole],
+    });
   }
+
   await training.update({ attendance_marked: marked, updated_by: actorId });
+  if (marked && coachReg?.TrainingRole?.alias === 'COACH') {
+    await coachReg.update({ present: true, updated_by: actorId });
+  }
   return getById(id);
 }
 
