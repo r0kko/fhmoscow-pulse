@@ -8,7 +8,13 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async listAll(req, res) {
-    const { page = '1', limit = '20', user = '', type = '', status = '' } = req.query;
+    const {
+      page = '1',
+      limit = '20',
+      user = '',
+      type = '',
+      status = '',
+    } = req.query;
     try {
       const { rows, count } = await ticketService.listAll({
         page: parseInt(page, 10),
