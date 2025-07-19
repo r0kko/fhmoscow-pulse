@@ -25,6 +25,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: {},
   User: { findByPk: findUserMock },
   Role: {},
+  CampStadium: {},
+  Training: {},
+  TrainingRegistration: {},
 }));
 
 const { default: service } = await import('../src/services/refereeGroupService.js');
