@@ -10,7 +10,7 @@ const currentPage = ref(1);
 const pageSize = 8;
 const isLoading = ref(false);
 const error = ref('');
-const form = ref({ season_id: '', name: '' });
+const form = ref({ season_id: '', name: '', required: false });
 const editing = ref(null);
 const modalRef = ref(null);
 let modal;
@@ -59,7 +59,7 @@ async function loadSeasons() {
 
 function openCreate() {
   editing.value = null;
-  form.value = { season_id: '', name: '' };
+  form.value = { season_id: '', name: '', required: false };
   formError.value = '';
   if (!seasons.value.length) loadSeasons();
   modal.show();
@@ -67,14 +67,18 @@ function openCreate() {
 
 function openEdit(g) {
   editing.value = g;
-  form.value = { season_id: g.season_id, name: g.name };
+  form.value = { season_id: g.season_id, name: g.name, required: g.required };
   formError.value = '';
   if (!seasons.value.length) loadSeasons();
   modal.show();
 }
 
 async function save() {
-  const payload = { season_id: form.value.season_id, name: form.value.name };
+  const payload = {
+    season_id: form.value.season_id,
+    name: form.value.name,
+    required: form.value.required,
+  };
   try {
     if (editing.value) {
       await apiFetch(`/normative-groups/${editing.value.id}`, {
@@ -134,6 +138,7 @@ defineExpose({ refresh });
               <tr>
                 <th>Сезон</th>
                 <th>Название</th>
+                <th>Обязательная</th>
                 <th></th>
               </tr>
             </thead>
@@ -146,6 +151,7 @@ defineExpose({ refresh });
                   }}
                 </td>
                 <td>{{ g.name }}</td>
+                <td>{{ g.required ? 'Да' : 'Нет' }}</td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
@@ -226,16 +232,25 @@ defineExpose({ refresh });
                 </select>
                 <label for="groupSeason">Сезон</label>
               </div>
-              <div class="form-floating mb-3">
-                <input
-                  id="groupName"
-                  v-model="form.name"
-                  class="form-control"
-                  placeholder="Название"
-                  required
-                />
-                <label for="groupName">Наименование</label>
-              </div>
+  <div class="form-floating mb-3">
+    <input
+      id="groupName"
+      v-model="form.name"
+      class="form-control"
+      placeholder="Название"
+      required
+    />
+    <label for="groupName">Наименование</label>
+  </div>
+  <div class="form-check mb-3">
+    <input
+      id="groupRequired"
+      type="checkbox"
+      class="form-check-input"
+      v-model="form.required"
+    />
+    <label class="form-check-label" for="groupRequired">Обязательная</label>
+  </div>
             </div>
             <div class="modal-footer">
               <button

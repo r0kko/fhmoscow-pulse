@@ -14,7 +14,7 @@ async function listAll(options = {}) {
   const where = {};
   if (options.season_id) where.season_id = options.season_id;
   return NormativeType.findAndCountAll({
-    include: [NormativeTypeZone],
+    include: [NormativeTypeZone, NormativeGroupType],
     order: [['name', 'ASC']],
     limit,
     offset,
@@ -24,7 +24,7 @@ async function listAll(options = {}) {
 
 async function getById(id) {
   const type = await NormativeType.findByPk(id, {
-    include: [NormativeTypeZone],
+    include: [NormativeTypeZone, NormativeGroupType],
   });
   if (!type) throw new ServiceError('normative_type_not_found', 404);
   return type;
@@ -49,8 +49,22 @@ async function create(data, actorId) {
         season_id: data.season_id,
         normative_type_id: type.id,
         zone_id: z.zone_id,
+        sex_id: z.sex_id,
         min_value: z.min_value,
         max_value: z.max_value,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      }))
+    );
+  }
+  if (Array.isArray(data.groups)) {
+    await NormativeGroupType.bulkCreate(
+      data.groups.map((g) => ({
+        group_id: g.group_id,
+        type_id: type.id,
+        required: Boolean(g.required),
         created_by: actorId,
         updated_by: actorId,
         created_at: new Date(),
@@ -83,8 +97,25 @@ async function update(id, data, actorId) {
           season_id: type.season_id,
           normative_type_id: id,
           zone_id: z.zone_id,
+          sex_id: z.sex_id,
           min_value: z.min_value,
           max_value: z.max_value,
+          created_by: actorId,
+          updated_by: actorId,
+          created_at: new Date(),
+          updated_at: new Date(),
+        }))
+      );
+    }
+  }
+  if (data.groups) {
+    await NormativeGroupType.destroy({ where: { type_id: id } });
+    if (Array.isArray(data.groups)) {
+      await NormativeGroupType.bulkCreate(
+        data.groups.map((g) => ({
+          group_id: g.group_id,
+          type_id: id,
+          required: Boolean(g.required),
           created_by: actorId,
           updated_by: actorId,
           created_at: new Date(),

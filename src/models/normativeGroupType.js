@@ -11,11 +11,9 @@ NormativeGroupType.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    required: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
+    group_id: { type: DataTypes.UUID, allowNull: false },
+    type_id: { type: DataTypes.UUID, allowNull: false },
+    required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   {
     sequelize,

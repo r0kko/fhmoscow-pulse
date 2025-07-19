@@ -253,6 +253,8 @@ NormativeType.hasMany(NormativeTypeZone, { foreignKey: 'normative_type_id' });
 NormativeTypeZone.belongsTo(NormativeType, { foreignKey: 'normative_type_id' });
 NormativeZone.hasMany(NormativeTypeZone, { foreignKey: 'zone_id' });
 NormativeTypeZone.belongsTo(NormativeZone, { foreignKey: 'zone_id' });
+Sex.hasMany(NormativeTypeZone, { foreignKey: 'sex_id' });
+NormativeTypeZone.belongsTo(Sex, { foreignKey: 'sex_id' });
 User.hasMany(NormativeResult, { foreignKey: 'user_id' });
 NormativeResult.belongsTo(User, { foreignKey: 'user_id' });
 Season.hasMany(NormativeResult, { foreignKey: 'season_id' });
