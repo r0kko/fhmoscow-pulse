@@ -203,6 +203,16 @@ test('setAttendanceMarked updates for admin', async () => {
   expect(updateMock).toHaveBeenCalledWith({ attendance_marked: true, updated_by: 'admin' });
 });
 
+test('setAttendanceMarked marks coach present', async () => {
+  const updateRegMock = jest.fn();
+  findByPkMock.mockResolvedValue({ update: updateMock });
+  findUserMock.mockResolvedValue({ Roles: [{ alias: 'REFEREE' }] });
+  findRegMock.mockResolvedValue({ TrainingRole: { alias: 'COACH' }, update: updateRegMock });
+  await service.setAttendanceMarked('t1', true, 'u1');
+  expect(updateMock).toHaveBeenCalledWith({ attendance_marked: true, updated_by: 'u1' });
+  expect(updateRegMock).toHaveBeenCalledWith({ present: true, updated_by: 'u1' });
+});
+
 test('setAttendanceMarked rejects when not coach', async () => {
   findByPkMock.mockResolvedValue({ update: updateMock });
   findUserMock.mockResolvedValue({ Roles: [{ alias: 'REFEREE' }] });

@@ -262,6 +262,15 @@ test('updatePresence rejects when not coach', async () => {
   ).rejects.toThrow('access_denied');
 });
 
+test('updatePresence rejects when updating coach presence', async () => {
+  findRegMock.mockResolvedValueOnce({ TrainingRole: { alias: 'COACH' } });
+  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'REFEREE' }] });
+  findRegMock.mockResolvedValueOnce({ TrainingRole: { alias: 'COACH' } });
+  await expect(
+    service.updatePresence('t1', 'u1', true, 'u1')
+  ).rejects.toThrow('access_denied');
+});
+
 test('listAvailable returns empty when no referee group', async () => {
   findGroupUserMock.mockResolvedValue(null);
   const res = await service.listAvailable('u1');

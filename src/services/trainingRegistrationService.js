@@ -220,6 +220,7 @@ async function updateRole(trainingId, userId, roleId, actorId) {
 async function updatePresence(trainingId, userId, present, actorId) {
   const registration = await TrainingRegistration.findOne({
     where: { training_id: trainingId, user_id: userId },
+    include: [TrainingRole],
   });
   if (!registration) throw new ServiceError('registration_not_found', 404);
 
@@ -236,6 +237,9 @@ async function updatePresence(trainingId, userId, present, actorId) {
       include: [TrainingRole],
     });
     if (coachReg?.TrainingRole?.alias !== 'COACH') {
+      throw new ServiceError('access_denied');
+    }
+    if (registration.TrainingRole?.alias === 'COACH') {
       throw new ServiceError('access_denied');
     }
   }
