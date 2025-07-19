@@ -32,6 +32,12 @@ import sexesRouter from './sexes.js';
 import documentsRouter from './documents.js';
 import ticketsRouter from './tickets.js';
 import tasksRouter from './tasks.js';
+import normativeTypesRouter from './normativeTypes.js';
+import normativeGroupsRouter from './normativeGroups.js';
+import normativeResultsRouter from './normativeResults.js';
+import measurementUnitsRouter from './measurementUnits.js';
+import normativeValueTypesRouter from './normativeValueTypes.js';
+import normativeZonesRouter from './normativeZones.js';
 
 const router = express.Router();
 
@@ -61,6 +67,12 @@ router.use('/referee-group-users', refereeGroupUsersRouter);
 router.use('/medical-centers', medicalCentersRouter);
 router.use('/medical-exams', medicalExamsRouter);
 router.use('/documents', documentsRouter);
+router.use('/normative-types', normativeTypesRouter);
+router.use('/normative-groups', normativeGroupsRouter);
+router.use('/normative-results', normativeResultsRouter);
+router.use('/measurement-units', measurementUnitsRouter);
+router.use('/normative-value-types', normativeValueTypesRouter);
+router.use('/normative-zones', normativeZonesRouter);
 router.use('/tasks', tasksRouter);
 router.use('/tickets', ticketsRouter);
 
