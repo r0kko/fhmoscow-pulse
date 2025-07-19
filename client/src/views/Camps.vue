@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue';
-import {RouterLink} from 'vue-router';
-import {apiFetch} from '../api.js';
+import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { RouterLink } from 'vue-router';
+import { apiFetch } from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
@@ -12,7 +12,9 @@ import { withHttp } from '../utils/url.js';
 const selectedDates = ref({});
 
 const trainings = ref([]);
-const mine = ref([]);
+const mineUpcoming = ref([]);
+const minePast = ref([]);
+const mineView = ref('upcoming');
 const page = ref(1);
 const pageSize = 50;
 const loading = ref(true);
@@ -25,18 +27,26 @@ let toast;
 
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
-      .filter(Boolean)
-      .map((n) => n.charAt(0) + '.')
-      .join(' ');
+    .filter(Boolean)
+    .map((n) => n.charAt(0) + '.')
+    .join(' ');
   return `${u.last_name} ${initials}`.trim();
 }
 
 onMounted(loadAll);
 
+watch(mineView, (val) => {
+  if (val === 'past' && !minePast.value.length) {
+    loadMinePast();
+  } else if (val === 'upcoming' && !mineUpcoming.value.length) {
+    loadMineUpcoming();
+  }
+});
+
 async function loadAll() {
   loading.value = true;
   try {
-    await Promise.all([loadAvailable(), loadMine()]);
+    await Promise.all([loadAvailable(), loadMineUpcoming()]);
     error.value = '';
     await nextTick();
     applyTooltips();
@@ -51,7 +61,7 @@ async function loadAvailable() {
   loading.value = true;
   try {
     const data = await apiFetch(
-        `/camp-trainings/available?page=${page.value}&limit=${pageSize}`
+      `/camp-trainings/available?page=${page.value}&limit=${pageSize}`
     );
     trainings.value = data.trainings || [];
     error.value = '';
@@ -62,14 +72,32 @@ async function loadAvailable() {
   }
 }
 
-async function loadMine() {
+async function loadMineUpcoming() {
   try {
     const data = await apiFetch(
-        `/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize}`
+      `/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize}`
     );
-    mine.value = data.trainings || [];
+    mineUpcoming.value = data.trainings || [];
+    await nextTick();
+    applyTooltips();
   } catch (e) {
     // ignore, handled by caller
+  }
+}
+
+async function loadMinePast() {
+  try {
+    loading.value = true;
+    const data = await apiFetch(
+      `/camp-trainings/me/past?page=${page.value}&limit=${pageSize}`
+    );
+    minePast.value = data.trainings || [];
+    await nextTick();
+    applyTooltips();
+  } catch (e) {
+    // ignore, handled by caller
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -77,9 +105,11 @@ async function register(id) {
   if (registering.value) return;
   registering.value = id;
   try {
-    await apiFetch(`/camp-trainings/${id}/register`, {method: 'POST'});
+    await apiFetch(`/camp-trainings/${id}/register`, { method: 'POST' });
     await loadAll();
-    showToast('Регистрация успешна. Тренировка доступна в разделе «Мои тренировки»');
+    showToast(
+      'Регистрация успешна. Тренировка доступна в разделе «Мои тренировки»'
+    );
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -89,7 +119,7 @@ async function register(id) {
 
 async function unregister(id) {
   try {
-    await apiFetch(`/camp-trainings/${id}/register`, {method: 'DELETE'});
+    await apiFetch(`/camp-trainings/${id}/register`, { method: 'DELETE' });
     await loadAll();
   } catch (e) {
     error.value = e.message;
@@ -113,14 +143,16 @@ function cancelTooltip(t) {
   return 'Отменить можно не позднее чем за 48 часов';
 }
 
-const myTrainings = computed(() => mine.value);
+const myTrainings = computed(() =>
+  mineView.value === 'past' ? minePast.value : mineUpcoming.value
+);
 
 function groupDetailed(list) {
   const map = {};
   list.forEach((t) => {
     const s = t.stadium;
     if (!s) return;
-    if (!map[s.id]) map[s.id] = {stadium: s, trainings: []};
+    if (!map[s.id]) map[s.id] = { stadium: s, trainings: [] };
     map[s.id].trainings.push(t);
   });
   return Object.values(map).map((g) => {
@@ -134,33 +166,33 @@ function metroNames(address) {
     return '';
   }
   return address.metro
-      .slice(0, 2)
-      .map((m) => m.name)
-      .join(', ');
+    .slice(0, 2)
+    .map((m) => m.name)
+    .join(', ');
 }
 
 const upcoming = computed(() => {
   const now = new Date();
   const cutoff = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   return trainings.value
-      .filter((t) => {
-        const start = new Date(t.start_at);
-        return start >= now && start <= cutoff;
-      })
-      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+    .filter((t) => {
+      const start = new Date(t.start_at);
+      return start >= now && start <= cutoff;
+    })
+    .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
 });
 
 const availableTrainings = computed(() =>
-    upcoming.value.filter((t) => !t.registered)
+  upcoming.value.filter((t) => !t.registered)
 );
 
 const groupedAll = computed(() => groupDetailed(availableTrainings.value));
 
 const groupedAllByDay = computed(() =>
-    groupedAll.value.map((g) => ({
-      stadium: g.stadium,
-      days: groupByDay(g.trainings),
-    }))
+  groupedAll.value.map((g) => ({
+    stadium: g.stadium,
+    days: groupByDay(g.trainings),
+  }))
 );
 
 function groupByDay(list) {
@@ -169,21 +201,21 @@ function groupByDay(list) {
     const d = new Date(t.start_at);
     const key = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const idx = key.toISOString();
-    if (!map[idx]) map[idx] = {date: key, trainings: []};
+    if (!map[idx]) map[idx] = { date: key, trainings: [] };
     map[idx].trainings.push(t);
   });
   return Object.values(map)
-      .sort((a, b) => a.date - b.date)
-      .map((g) => {
-        g.trainings.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
-        return g;
-      });
+    .sort((a, b) => a.date - b.date)
+    .map((g) => {
+      g.trainings.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+      return g;
+    });
 }
 
-const weekTrainings = computed(() => {
+const upcomingWeekTrainings = computed(() => {
   const now = new Date();
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  return myTrainings.value.filter((t) => {
+  return mineUpcoming.value.filter((t) => {
     const start = new Date(t.start_at);
     const finish = new Date(t.end_at);
     if (!t.attendance_marked && t.my_role?.alias === 'COACH') {
@@ -195,7 +227,19 @@ const weekTrainings = computed(() => {
   });
 });
 
-const groupedMine = computed(() => groupByDay(weekTrainings.value));
+const pastTrainings = computed(() => minePast.value);
+
+const pastSeason = computed(() =>
+  minePast.value.length ? minePast.value[0].season : null
+);
+
+const groupedMine = computed(() =>
+  groupByDay(
+    mineView.value === 'past'
+      ? pastTrainings.value
+      : upcomingWeekTrainings.value
+  )
+);
 
 function formatDay(date) {
   const text = date.toLocaleDateString('ru-RU', {
@@ -205,7 +249,6 @@ function formatDay(date) {
   });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
-
 
 function formatShortDate(date) {
   const text = date.toLocaleDateString('ru-RU', {
@@ -235,15 +278,15 @@ function showToast(message) {
 function applyTooltips() {
   nextTick(() => {
     document
-        .querySelectorAll('[data-bs-toggle="tooltip"]')
-        .forEach((el) => new Tooltip(el));
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
   });
 }
 
 function selectDate(id, iso) {
   const current = selectedDates.value[id];
   const next = current === iso ? undefined : iso;
-  const copy = {...selectedDates.value};
+  const copy = { ...selectedDates.value };
   if (next) copy[id] = next;
   else delete copy[id];
   selectedDates.value = copy;
@@ -277,7 +320,6 @@ function attendanceAlertType(t) {
 function dayOpen(day) {
   return day.trainings.some((t) => t.registration_open);
 }
-
 </script>
 
 <template>
@@ -297,18 +339,18 @@ function dayOpen(day) {
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item">
               <button
-                  class="nav-link"
-                  :class="{ active: activeTab === 'mine' }"
-                  @click="activeTab = 'mine'"
+                class="nav-link"
+                :class="{ active: activeTab === 'mine' }"
+                @click="activeTab = 'mine'"
               >
                 Мои тренировки
               </button>
             </li>
             <li class="nav-item">
               <button
-                  class="nav-link"
-                  :class="{ active: activeTab === 'register' }"
-                  @click="activeTab = 'register'"
+                class="nav-link"
+                :class="{ active: activeTab === 'register' }"
+                @click="activeTab = 'register'"
               >
                 Запись на тренировки
               </button>
@@ -326,51 +368,99 @@ function dayOpen(day) {
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
         <div v-show="activeTab === 'mine'">
+          <ul class="nav nav-pills nav-fill mb-3 tab-selector">
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: mineView === 'upcoming' }"
+                @click="mineView = 'upcoming'"
+              >
+                Будущие
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: mineView === 'past' }"
+                @click="mineView = 'past'"
+              >
+                Прошедшие
+              </button>
+            </li>
+          </ul>
+          <p
+            v-if="mineView === 'past' && pastSeason"
+            class="text-muted small mb-3"
+          >
+            Сезон: {{ pastSeason.name }}
+            <span v-if="pastSeason.active" class="badge bg-brand ms-1"
+              >Текущий</span
+            >
+          </p>
           <div v-if="!groupedMine.length" class="alert alert-warning">
             У вас нет тренировок. Перейдите во вкладку
-            <button
-                class="btn btn-link p-0"
-                @click="activeTab = 'register'"
-            >
+            <button class="btn btn-link p-0" @click="activeTab = 'register'">
               Запись на тренировки
             </button>
             , чтобы записаться
           </div>
           <div v-else class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
-              <div v-for="g in groupedMine" :key="g.date" class="mb-3 schedule-day">
+              <div
+                v-for="g in groupedMine"
+                :key="g.date"
+                class="mb-3 schedule-day"
+              >
                 <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
                 <ul class="list-unstyled mb-0">
                   <li
-                      v-for="t in g.trainings"
-                      :key="t.id"
-                      class="schedule-item"
+                    v-for="t in g.trainings"
+                    :key="t.id"
+                    class="schedule-item"
                   >
-                    <div class="d-flex justify-content-between align-items-start">
+                    <div
+                      class="d-flex justify-content-between align-items-start"
+                    >
                       <div class="me-3 flex-grow-1">
                         <div>
-                          <strong>{{ formatTime(t.start_at) }}–{{ formatTime(t.end_at) }}</strong>
+                          <strong
+                            >{{ formatTime(t.start_at) }}–{{
+                              formatTime(t.end_at)
+                            }}</strong
+                          >
                           <span class="ms-2">{{ t.stadium?.name }}</span>
                         </div>
                         <div class="text-muted small">{{ t.type?.name }}</div>
                       </div>
                       <div class="d-flex align-items-center">
                         <RouterLink
-                            v-if="t.my_role?.alias === 'COACH' && !t.attendance_marked"
-                            :to="`/trainings/${t.id}/attendance`"
-                            class="btn btn-link p-0"
-                            :class="t.attendance_marked ? 'text-success' : 'text-secondary'"
-                            :title="t.attendance_marked ? 'Посещаемость отмечена' : 'Отметить посещаемость'"
+                          v-if="
+                            t.my_role?.alias === 'COACH' && !t.attendance_marked
+                          "
+                          :to="`/trainings/${t.id}/attendance`"
+                          class="btn btn-link p-0"
+                          :class="
+                            t.attendance_marked
+                              ? 'text-success'
+                              : 'text-secondary'
+                          "
+                          :title="
+                            t.attendance_marked
+                              ? 'Посещаемость отмечена'
+                              : 'Отметить посещаемость'
+                          "
                         >
                           <i class="bi bi-check2-square" aria-hidden="true"></i>
                           <span class="visually-hidden">Посещаемость</span>
                         </RouterLink>
                         <button
-                            class="btn btn-link p-0 ms-2"
-                            :class="canCancel(t) ? 'text-danger' : 'text-secondary'"
-                            @click="canCancel(t) ? confirmUnregister(t.id) : null"
-                            :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
-                            :title="cancelTooltip(t)"
+                          class="btn btn-link p-0 ms-2"
+                          :class="
+                            canCancel(t) ? 'text-danger' : 'text-secondary'
+                          "
+                          @click="canCancel(t) ? confirmUnregister(t.id) : null"
+                          :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
+                          :title="cancelTooltip(t)"
                         >
                           <i class="bi bi-x-lg" aria-hidden="true"></i>
                           <span class="visually-hidden">Отменить</span>
@@ -378,39 +468,44 @@ function dayOpen(day) {
                       </div>
                     </div>
                     <div
-                        v-if="attendanceAlertType(t)"
-                        :class="[
-                      'alert',
-                      `alert-${attendanceAlertType(t)}`,
-                      'py-1',
-                      'px-2',
-                      'small',
-                      'my-2',
-                      'd-flex',
-                      'align-items-center'
-                    ]"
+                      v-if="attendanceAlertType(t)"
+                      :class="[
+                        'alert',
+                        `alert-${attendanceAlertType(t)}`,
+                        'py-1',
+                        'px-2',
+                        'small',
+                        'my-2',
+                        'd-flex',
+                        'align-items-center',
+                      ]"
                     >
-                      <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                      <i
+                        class="bi bi-exclamation-triangle-fill me-2"
+                        aria-hidden="true"
+                      ></i>
                       <span>Отметьте посещаемость</span>
                     </div>
                     <p class="text-muted small mb-1 d-flex mt-1">
                       <i class="bi bi-pin-angle me-1" aria-hidden="true"></i>
                       <span>
-                      Роль: {{ t.my_role?.name || '—' }}<br />
-                      Тренеры:
-                      <span v-if="t.coaches && t.coaches.length">
-                        {{ t.coaches.map(shortName).join(', ') }}
+                        Роль: {{ t.my_role?.name || '—' }}<br />
+                        Тренеры:
+                        <span v-if="t.coaches && t.coaches.length">
+                          {{ t.coaches.map(shortName).join(', ') }}
+                        </span>
+                        <span v-else>не назначены</span><br />
+                        Инвентарь:
+                        <span
+                          v-if="
+                            t.equipment_managers && t.equipment_managers.length
+                          "
+                        >
+                          {{ t.equipment_managers.map(shortName).join(', ') }}
+                        </span>
+                        <span v-else>не назначен</span><br />
+                        Адрес: {{ t.stadium?.address?.result || '—' }}
                       </span>
-                      <span v-else>не назначены</span><br />
-                      Инвентарь:
-                      <span
-                          v-if="t.equipment_managers && t.equipment_managers.length"
-                      >
-                        {{ t.equipment_managers.map(shortName).join(', ') }}
-                      </span>
-                      <span v-else>не назначен</span><br />
-                      Адрес: {{ t.stadium?.address?.result || '—' }}
-                    </span>
                     </p>
                   </li>
                 </ul>
@@ -420,75 +515,84 @@ function dayOpen(day) {
         </div>
 
         <div v-show="activeTab === 'register'">
-          <p v-if="!groupedAllByDay.length" class="text-muted">Нет доступных тренировок</p>
+          <p v-if="!groupedAllByDay.length" class="text-muted">
+            Нет доступных тренировок
+          </p>
           <div v-else class="stadium-list">
             <div
-                v-for="g in groupedAllByDay"
-                :key="g.stadium.id"
-                class="stadium-card card section-card tile fade-in shadow-sm"
+              v-for="g in groupedAllByDay"
+              :key="g.stadium.id"
+              class="stadium-card card section-card tile fade-in shadow-sm"
             >
               <div class="card-body stadium-body">
-                <div class="d-flex justify-content-between align-items-start mb-1">
+                <div
+                  class="d-flex justify-content-between align-items-start mb-1"
+                >
                   <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
                   <a
-                      v-if="g.stadium.yandex_url"
-                      :href="withHttp(g.stadium.yandex_url)"
-                      target="_blank"
-                      rel="noopener"
-                      aria-label="Открыть в Яндекс.Картах"
-                      class="ms-2"
+                    v-if="g.stadium.yandex_url"
+                    :href="withHttp(g.stadium.yandex_url)"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="Открыть в Яндекс.Картах"
+                    class="ms-2"
                   >
-                    <img :src="yandexLogo" alt="Яндекс.Карты" height="20"/>
+                    <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
                   </a>
                 </div>
                 <p class="text-muted mb-1 small d-flex align-items-center">
                   <span>{{ g.stadium.address?.result }}</span>
                 </p>
-                <p v-if="metroNames(g.stadium.address)" class="text-muted mb-3 small d-flex align-items-center">
-                  <img :src="metroIcon" alt="Метро" height="14" class="me-1"/>
+                <p
+                  v-if="metroNames(g.stadium.address)"
+                  class="text-muted mb-3 small d-flex align-items-center"
+                >
+                  <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
                   <span>{{ metroNames(g.stadium.address) }}</span>
                 </p>
                 <div class="date-scroll mb-3">
                   <button
-                      v-for="d in g.days"
-                      :key="d.date"
-                      class="btn btn-sm"
-                      :class="[
+                    v-for="d in g.days"
+                    :key="d.date"
+                    class="btn btn-sm"
+                    :class="[
                       selectedDates[g.stadium.id] === d.date.toISOString()
                         ? dayOpen(d)
                           ? 'btn-brand text-white'
                           : 'btn-secondary text-white'
                         : dayOpen(d)
-                        ? 'btn-outline-brand'
-                        : 'btn-outline-secondary',
+                          ? 'btn-outline-brand'
+                          : 'btn-outline-secondary',
                     ]"
-                      @click="selectDate(g.stadium.id, d.date.toISOString())"
+                    @click="selectDate(g.stadium.id, d.date.toISOString())"
                   >
                     <span class="d-block">{{ formatShortDate(d.date) }}</span>
                   </button>
                 </div>
-                <div v-if="selectedDates[g.stadium.id]" class="training-scroll d-flex flex-nowrap gap-3">
+                <div
+                  v-if="selectedDates[g.stadium.id]"
+                  class="training-scroll d-flex flex-nowrap gap-3"
+                >
                   <TrainingCard
-                      v-for="t in dayTrainings(g.stadium.id)"
-                      :key="t.id"
-                      :training="t"
-                      :loading="registering === t.id"
-                      class="flex-shrink-0"
-                      @register="register"
+                    v-for="t in dayTrainings(g.stadium.id)"
+                    :key="t.id"
+                    :training="t"
+                    :loading="registering === t.id"
+                    class="flex-shrink-0"
+                    @register="register"
                   />
                 </div>
-
               </div>
             </div>
           </div>
         </div>
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
           <div
-              ref="toastRef"
-              class="toast text-bg-secondary"
-              role="status"
-              data-bs-delay="1500"
-              data-bs-autohide="true"
+            ref="toastRef"
+            class="toast text-bg-secondary"
+            role="status"
+            data-bs-delay="1500"
+            data-bs-autohide="true"
           >
             <div class="toast-body">{{ toastMessage }}</div>
           </div>
@@ -616,5 +720,4 @@ function dayOpen(day) {
     transform: translateY(0);
   }
 }
-
 </style>
