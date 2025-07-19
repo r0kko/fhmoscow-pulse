@@ -310,7 +310,7 @@ function onFileChange(e) {
         Файл отправлен. После проверки он будет добавлен в список.
       </div>
       <div
-        v-if="showExams"
+        v-if="showExams && (examsLoading || exams.length)"
         class="card section-card tile fade-in shadow-sm mb-3 mt-3"
       >
         <div class="card-body">
@@ -330,9 +330,6 @@ function onFileChange(e) {
               @toggle="toggleExam"
             />
           </div>
-          <p v-else-if="!examsLoading" class="text-muted mb-0">
-            Нет доступных медосмотров
-          </p>
         </div>
       </div>
     </div>
