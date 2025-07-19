@@ -6,6 +6,7 @@ import {
   TicketFile,
   File,
 } from '../models/index.js';
+import { Op } from 'sequelize';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
@@ -116,16 +117,38 @@ async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
+  const include = [
+    { model: User },
+    TicketStatus,
+    { model: TicketFile, include: [File] },
+  ];
+  if (options.user) {
+    const term = `%${options.user}%`;
+    include[0].where = {
+      [Op.or]: [
+        { last_name: { [Op.iLike]: term } },
+        { first_name: { [Op.iLike]: term } },
+        { patronymic: { [Op.iLike]: term } },
+        { email: { [Op.iLike]: term } },
+      ],
+    };
+    include[0].required = true;
+  }
+  if (options.type) {
+    include.push({
+      model: TicketType,
+      where: { alias: options.type },
+      required: true,
+    });
+  } else {
+    include.push(TicketType);
+  }
   return Ticket.findAndCountAll({
-    include: [
-      User,
-      TicketType,
-      TicketStatus,
-      { model: TicketFile, include: [File] },
-    ],
+    include,
     order: [['created_at', 'DESC']],
     limit,
     offset,
+    distinct: true,
   });
 }
 
