@@ -2,10 +2,142 @@ import {
   NormativeType,
   NormativeTypeZone,
   NormativeGroupType,
+  MeasurementUnit,
+  NormativeValueType,
+  NormativeZone,
   Season,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
+
+function parseValue(val, unitAlias) {
+  if (val == null) return null;
+  if (unitAlias === 'MIN_SEC' && typeof val === 'string') {
+    const [m, s] = val.split(':');
+    const minutes = parseInt(m, 10);
+    const seconds = parseInt(s, 10);
+    if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
+    return minutes * 60 + seconds;
+  }
+  const num = parseFloat(val);
+  return Number.isNaN(num) ? null : num;
+}
+
+function stepForUnit(unit) {
+  if (unit.alias === 'SECONDS' && unit.fractional) return 0.01;
+  return 1;
+}
+
+async function buildZones({
+  zones,
+  unit,
+  valueType,
+  seasonId,
+  typeId,
+  actorId,
+}) {
+  if (!Array.isArray(zones) || !zones.length) return [];
+  const dict = await NormativeZone.findAll({ where: { season_id: seasonId } });
+  const zoneById = Object.fromEntries(dict.map((z) => [z.id, z]));
+  const greenZone = dict.find((z) => z.alias === 'GREEN');
+  const yellowZone = dict.find((z) => z.alias === 'YELLOW');
+  const redZone = dict.find((z) => z.alias === 'RED');
+  if (!greenZone || !yellowZone || !redZone) return [];
+  const step = stepForUnit(unit);
+  const bySex = {};
+  for (const z of zones) {
+    if (!zoneById[z.zone_id]) continue;
+    if (!bySex[z.sex_id]) bySex[z.sex_id] = {};
+    bySex[z.sex_id][zoneById[z.zone_id].alias] = z;
+  }
+  const result = [];
+  for (const [sexId, data] of Object.entries(bySex)) {
+    if (valueType.alias === 'MORE_BETTER') {
+      const g = data.GREEN;
+      const y = data.YELLOW;
+      if (!g || !y) continue;
+      const gMin = parseValue(g.min_value, unit.alias);
+      const yMin = parseValue(y.min_value, unit.alias);
+      if (gMin == null || yMin == null) continue;
+      result.push({
+        season_id: seasonId,
+        normative_type_id: typeId,
+        zone_id: greenZone.id,
+        sex_id: sexId,
+        min_value: gMin,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+      result.push({
+        season_id: seasonId,
+        normative_type_id: typeId,
+        zone_id: yellowZone.id,
+        sex_id: sexId,
+        min_value: yMin,
+        max_value: gMin - step,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+      result.push({
+        season_id: seasonId,
+        normative_type_id: typeId,
+        zone_id: redZone.id,
+        sex_id: sexId,
+        max_value: yMin - step,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+    } else {
+      const g = data.GREEN;
+      const y = data.YELLOW;
+      if (!g || !y) continue;
+      const gMax = parseValue(g.max_value, unit.alias);
+      const yMax = parseValue(y.max_value, unit.alias);
+      if (gMax == null || yMax == null) continue;
+      result.push({
+        season_id: seasonId,
+        normative_type_id: typeId,
+        zone_id: greenZone.id,
+        sex_id: sexId,
+        max_value: gMax,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+      result.push({
+        season_id: seasonId,
+        normative_type_id: typeId,
+        zone_id: yellowZone.id,
+        sex_id: sexId,
+        min_value: gMax + step,
+        max_value: yMax,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+      result.push({
+        season_id: seasonId,
+        normative_type_id: typeId,
+        zone_id: redZone.id,
+        sex_id: sexId,
+        min_value: yMax + step,
+        created_by: actorId,
+        updated_by: actorId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+    }
+  }
+  return result;
+}
 
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -33,6 +165,12 @@ async function getById(id) {
 async function create(data, actorId) {
   const season = await Season.findByPk(data.season_id);
   if (!season) throw new ServiceError('season_not_found', 404);
+  const [unit, valueType] = await Promise.all([
+    MeasurementUnit.findByPk(data.unit_id),
+    NormativeValueType.findByPk(data.value_type_id),
+  ]);
+  if (!unit) throw new ServiceError('measurement_unit_not_found', 404);
+  if (!valueType) throw new ServiceError('normative_value_type_not_found', 404);
   const type = await NormativeType.create({
     season_id: data.season_id,
     name: data.name,
@@ -44,20 +182,15 @@ async function create(data, actorId) {
     updated_by: actorId,
   });
   if (Array.isArray(data.zones)) {
-    await NormativeTypeZone.bulkCreate(
-      data.zones.map((z) => ({
-        season_id: data.season_id,
-        normative_type_id: type.id,
-        zone_id: z.zone_id,
-        sex_id: z.sex_id,
-        min_value: z.min_value,
-        max_value: z.max_value,
-        created_by: actorId,
-        updated_by: actorId,
-        created_at: new Date(),
-        updated_at: new Date(),
-      }))
-    );
+    const zones = await buildZones({
+      zones: data.zones,
+      unit,
+      valueType,
+      seasonId: data.season_id,
+      typeId: type.id,
+      actorId,
+    });
+    if (zones.length) await NormativeTypeZone.bulkCreate(zones);
   }
   if (Array.isArray(data.groups)) {
     await NormativeGroupType.bulkCreate(
@@ -78,6 +211,12 @@ async function create(data, actorId) {
 async function update(id, data, actorId) {
   const type = await NormativeType.findByPk(id);
   if (!type) throw new ServiceError('normative_type_not_found', 404);
+  const [unit, valueType] = await Promise.all([
+    MeasurementUnit.findByPk(data.unit_id ?? type.unit_id),
+    NormativeValueType.findByPk(data.value_type_id ?? type.value_type_id),
+  ]);
+  if (!unit) throw new ServiceError('measurement_unit_not_found', 404);
+  if (!valueType) throw new ServiceError('normative_value_type_not_found', 404);
   await type.update(
     {
       name: data.name ?? type.name,
@@ -92,20 +231,15 @@ async function update(id, data, actorId) {
   if (data.zones) {
     await NormativeTypeZone.destroy({ where: { normative_type_id: id } });
     if (Array.isArray(data.zones)) {
-      await NormativeTypeZone.bulkCreate(
-        data.zones.map((z) => ({
-          season_id: type.season_id,
-          normative_type_id: id,
-          zone_id: z.zone_id,
-          sex_id: z.sex_id,
-          min_value: z.min_value,
-          max_value: z.max_value,
-          created_by: actorId,
-          updated_by: actorId,
-          created_at: new Date(),
-          updated_at: new Date(),
-        }))
-      );
+      const zones = await buildZones({
+        zones: data.zones,
+        unit,
+        valueType,
+        seasonId: type.season_id,
+        typeId: id,
+        actorId,
+      });
+      if (zones.length) await NormativeTypeZone.bulkCreate(zones);
     }
   }
   if (data.groups) {

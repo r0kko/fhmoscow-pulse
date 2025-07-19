@@ -241,6 +241,10 @@ NormativeGroup.belongsToMany(NormativeType, {
   through: NormativeGroupType,
   foreignKey: 'group_id',
 });
+NormativeType.hasMany(NormativeGroupType, { foreignKey: 'type_id' });
+NormativeGroupType.belongsTo(NormativeType, { foreignKey: 'type_id' });
+NormativeGroup.hasMany(NormativeGroupType, { foreignKey: 'group_id' });
+NormativeGroupType.belongsTo(NormativeGroup, { foreignKey: 'group_id' });
 Season.hasMany(NormativeGroup, { foreignKey: 'season_id' });
 NormativeGroup.belongsTo(Season, { foreignKey: 'season_id' });
 Season.hasMany(NormativeType, { foreignKey: 'season_id' });
