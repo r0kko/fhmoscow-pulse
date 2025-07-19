@@ -6,6 +6,7 @@ import { apiFetch } from '../api.js';
 const results = ref([]);
 const total = ref(0);
 const seasons = ref([]);
+const trainings = ref([]);
 const types = ref([]);
 const units = ref([]);
 const currentPage = ref(1);
@@ -42,7 +43,7 @@ const currentUnit = computed(() =>
 onMounted(() => {
   modal = new Modal(modalRef.value);
   load();
-  loadSeasons();
+  loadAux();
 });
 
 watch(currentPage, load);
@@ -91,6 +92,16 @@ watch(
 );
 
 watch(
+  () => form.value.training_id,
+  (val) => {
+    const tr = trainings.value.find((t) => t.id === val);
+    if (tr) {
+      form.value.season_id = tr.season_id;
+    }
+  }
+);
+
+watch(
   () => form.value.type_id,
   (val) => {
     const t = types.value.find((x) => x.id === val);
@@ -120,16 +131,19 @@ async function load() {
   }
 }
 
-async function loadSeasons() {
+async function loadAux() {
   try {
-    const [seasonData, unitData] = await Promise.all([
+    const [seasonData, trainingData, unitData] = await Promise.all([
       apiFetch('/camp-seasons?page=1&limit=100'),
+      apiFetch('/camp-trainings/past?limit=100'),
       apiFetch('/measurement-units'),
     ]);
     seasons.value = seasonData.seasons;
+    trainings.value = trainingData.trainings;
     units.value = unitData.units;
   } catch (_e) {
     seasons.value = [];
+    trainings.value = [];
     units.value = [];
   }
 }
@@ -163,7 +177,7 @@ function openEdit(r) {
   value_type_id.value = r.value_type_id;
   unit_id.value = r.unit_id;
   skipWatch = true;
-  userQuery.value = r.user_id;
+  userQuery.value = `${r.user?.last_name || ''} ${r.user?.first_name || ''}`.trim();
   userSuggestions.value = [];
   formError.value = '';
   modal.show();
@@ -213,7 +227,7 @@ async function removeResult(r) {
 
 const refresh = () => {
   load();
-  loadSeasons();
+  loadAux();
 };
 
 defineExpose({ refresh });
@@ -239,26 +253,25 @@ defineExpose({ refresh });
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
-                <th>User</th>
-                <th>Сезон</th>
+                <th>ФИО</th>
+                <th>Группа</th>
                 <th>Тип</th>
                 <th>Значение</th>
+                <th>Зона</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in results" :key="r.id">
-                <td>{{ r.user_id }}</td>
                 <td>
-                  {{
-                    seasons.find((s) => s.id === r.season_id)?.name ||
-                    r.season_id
-                  }}
+                  {{ r.user?.last_name }} {{ r.user?.first_name }}
                 </td>
+                <td>{{ r.group?.name || '-' }}</td>
                 <td>
                   {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
                 </td>
                 <td>{{ r.value }}</td>
+                <td>{{ r.zone?.name }}</td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
@@ -382,12 +395,16 @@ defineExpose({ refresh });
                 <label for="resType">Тип</label>
               </div>
               <div class="form-floating mb-3">
-                <input
+                <select
                   id="resTraining"
                   v-model="form.training_id"
-                  class="form-control"
-                  placeholder="Тренировка"
-                />
+                  class="form-select"
+                >
+                  <option value="" disabled>Тренировка</option>
+                  <option v-for="t in trainings" :key="t.id" :value="t.id">
+                    {{ new Date(t.start_at).toLocaleString('ru-RU') }}
+                  </option>
+                </select>
                 <label for="resTraining">Тренировка</label>
               </div>
               <div class="form-floating mb-3">

@@ -1,5 +1,7 @@
 import normativeZoneMapper from './normativeZoneMapper.js';
 import normativeGroupMapper from './normativeGroupMapper.js';
+import userMapper from './userMapper.js';
+import trainingMapper from './trainingMapper.js';
 
 function sanitize(obj) {
   const {
@@ -13,6 +15,8 @@ function sanitize(obj) {
     value,
     zone,
     group,
+    User,
+    Training,
   } = obj;
   const res = {
     id,
@@ -26,6 +30,8 @@ function sanitize(obj) {
   };
   if (zone) res.zone = normativeZoneMapper.toPublic(zone);
   if (group) res.group = normativeGroupMapper.toPublic(group);
+  if (User) res.user = userMapper.toPublic(User);
+  if (Training) res.training = trainingMapper.toPublic(Training);
   return res;
 }
 

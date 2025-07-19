@@ -10,6 +10,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   NormativeGroupType: {},
   NormativeGroup: {},
   NormativeZone: {},
+  CampStadium: {},
+  Training: {},
   Season: {},
   User: {},
 }));

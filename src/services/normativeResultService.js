@@ -6,6 +6,8 @@ import {
   NormativeGroupType,
   NormativeGroup,
   NormativeZone,
+  Training,
+  CampStadium,
   Season,
   User,
 } from '../models/index.js';
@@ -29,6 +31,7 @@ async function listAll(options = {}) {
         model: User,
         attributes: ['id', 'last_name', 'first_name', 'patronymic'],
       },
+      { model: Training, include: [CampStadium] },
       {
         model: NormativeType,
         include: [
@@ -55,6 +58,7 @@ async function getById(id) {
         model: User,
         attributes: ['id', 'last_name', 'first_name', 'patronymic'],
       },
+      { model: Training, include: [CampStadium] },
       {
         model: NormativeType,
         include: [
