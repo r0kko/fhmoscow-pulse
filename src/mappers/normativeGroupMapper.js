@@ -1,6 +1,6 @@
 function sanitize(obj) {
-  const { id, season_id, name, alias } = obj;
-  return { id, season_id, name, alias };
+  const { id, season_id, name, alias, required } = obj;
+  return { id, season_id, name, alias, required };
 }
 
 function toPublic(group) {

@@ -7,6 +7,7 @@ export const normativeTypeCreateRules = [
   body('value_type_id').isUUID(),
   body('unit_id').isUUID(),
   body('zones').optional().isArray(),
+  body('groups').optional().isArray(),
 ];
 
 export const normativeTypeUpdateRules = [
@@ -15,4 +16,5 @@ export const normativeTypeUpdateRules = [
   body('value_type_id').optional().isUUID(),
   body('unit_id').optional().isUUID(),
   body('zones').optional().isArray(),
+  body('groups').optional().isArray(),
 ];

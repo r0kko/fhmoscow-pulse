@@ -8,6 +8,9 @@ const total = ref(0);
 const seasons = ref([]);
 const units = ref([]);
 const valueTypes = ref([]);
+const sexes = ref([]);
+const groupsDict = ref([]);
+const zonesDict = ref([]);
 const currentPage = ref(1);
 const pageSize = 8;
 const isLoading = ref(false);
@@ -19,6 +22,8 @@ const form = ref({
   required: false,
   value_type_id: '',
   unit_id: '',
+  groups: [],
+  zones: [],
 });
 const editing = ref(null);
 const modalRef = ref(null);
@@ -34,6 +39,28 @@ onMounted(() => {
   load();
   loadDictionaries();
 });
+
+watch(
+  () => form.value.season_id,
+  async (val) => {
+    if (!val) {
+      groupsDict.value = [];
+      zonesDict.value = [];
+      return;
+    }
+    try {
+      const [groupData, zoneData] = await Promise.all([
+        apiFetch(`/normative-groups?season_id=${val}&page=1&limit=100`),
+        apiFetch(`/normative-zones?season_id=${val}`),
+      ]);
+      groupsDict.value = groupData.groups;
+      zonesDict.value = zoneData.zones;
+    } catch (_e) {
+      groupsDict.value = [];
+      zonesDict.value = [];
+    }
+  }
+);
 
 watch(currentPage, load);
 
@@ -58,18 +85,21 @@ async function load() {
 
 async function loadDictionaries() {
   try {
-    const [seasonData, unitData, valueData] = await Promise.all([
+    const [seasonData, unitData, valueData, sexData] = await Promise.all([
       apiFetch('/camp-seasons?page=1&limit=100'),
       apiFetch('/measurement-units'),
       apiFetch('/normative-value-types'),
+      apiFetch('/sexes'),
     ]);
     seasons.value = seasonData.seasons;
     units.value = unitData.units;
     valueTypes.value = valueData.valueTypes;
+    sexes.value = sexData.sexes;
   } catch (_) {
     seasons.value = [];
     units.value = [];
     valueTypes.value = [];
+    sexes.value = [];
   }
 }
 
@@ -81,6 +111,8 @@ function openCreate() {
     required: false,
     value_type_id: '',
     unit_id: '',
+    groups: [],
+    zones: [],
   };
   formError.value = '';
   modal.show();
@@ -94,6 +126,8 @@ function openEdit(t) {
     required: t.required,
     value_type_id: t.value_type_id,
     unit_id: t.unit_id,
+    groups: t.groups || [],
+    zones: t.zones || [],
   };
   formError.value = '';
   modal.show();
@@ -129,6 +163,31 @@ async function removeType(t) {
   } catch (e) {
     alert(e.message);
   }
+}
+
+function toggleGroup(id, checked) {
+  const idx = form.value.groups.findIndex((g) => g.group_id === id);
+  if (checked && idx === -1) {
+    form.value.groups.push({ group_id: id, required: false });
+  } else if (!checked && idx !== -1) {
+    form.value.groups.splice(idx, 1);
+  }
+}
+
+function toggleGroupRequired(id, checked) {
+  const item = form.value.groups.find((g) => g.group_id === id);
+  if (item) item.required = checked;
+}
+
+function getZone(zoneId, sexId) {
+  let z = form.value.zones.find(
+    (v) => v.zone_id === zoneId && v.sex_id === sexId
+  );
+  if (!z) {
+    z = { zone_id: zoneId, sex_id: sexId, min_value: null, max_value: null };
+    form.value.zones.push(z);
+  }
+  return z;
 }
 
 const refresh = () => {
@@ -314,6 +373,72 @@ defineExpose({ refresh });
                   </option>
                 </select>
                 <label for="typeUnit">Ед. измерения</label>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Группы</label>
+                <div v-if="groupsDict.length" class="ms-2">
+                  <div v-for="g in groupsDict" :key="g.id" class="mb-1">
+                    <div class="form-check d-inline-block me-2">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        :id="`grp-${g.id}`"
+                        :checked="form.groups.some(gt => gt.group_id === g.id)"
+                        @change="toggleGroup(g.id, $event.target.checked)"
+                      />
+                      <label class="form-check-label" :for="`grp-${g.id}`">
+                        {{ g.name }}
+                      </label>
+                    </div>
+                    <div
+                      class="form-check d-inline-block"
+                      v-if="form.groups.some(gt => gt.group_id === g.id)"
+                    >
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        :id="`req-${g.id}`"
+                        :checked="form.groups.find(gt => gt.group_id === g.id)?.required"
+                        @change="toggleGroupRequired(g.id, $event.target.checked)"
+                      />
+                      <label class="form-check-label" :for="`req-${g.id}`">Обяз.</label>
+                    </div>
+                  </div>
+                </div>
+                <p v-else class="text-muted">Нет групп для сезона</p>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Зоны</label>
+                <div v-if="zonesDict.length && sexes.length" class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead>
+                      <tr>
+                        <th>Зона</th>
+                        <th v-for="s in sexes" :key="s.id">{{ s.name }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="z in zonesDict" :key="z.id">
+                        <td>{{ z.name }}</td>
+                        <td v-for="s in sexes" :key="s.id">
+                          <input
+                            type="number"
+                            class="form-control form-control-sm mb-1"
+                            placeholder="Мин"
+                            v-model.number="getZone(z.id, s.id).min_value"
+                          />
+                          <input
+                            type="number"
+                            class="form-control form-control-sm"
+                            placeholder="Макс"
+                            v-model.number="getZone(z.id, s.id).max_value"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p v-else class="text-muted">Нет зон для сезона</p>
               </div>
             </div>
             <div class="modal-footer">

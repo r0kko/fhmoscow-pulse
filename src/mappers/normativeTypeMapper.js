@@ -10,8 +10,16 @@ function toPublic(type) {
     plain.zones = plain.NormativeTypeZones.map((z) => ({
       id: z.id,
       zone_id: z.zone_id,
+      sex_id: z.sex_id,
       min_value: z.min_value,
       max_value: z.max_value,
+    }));
+  }
+  if (plain.NormativeGroupTypes) {
+    plain.groups = plain.NormativeGroupTypes.map((g) => ({
+      id: g.id,
+      group_id: g.group_id,
+      required: g.required,
     }));
   }
   return sanitize(plain);

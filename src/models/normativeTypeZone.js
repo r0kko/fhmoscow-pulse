@@ -14,6 +14,7 @@ NormativeTypeZone.init(
     season_id: { type: DataTypes.UUID, allowNull: false },
     normative_type_id: { type: DataTypes.UUID, allowNull: false },
     zone_id: { type: DataTypes.UUID, allowNull: false },
+    sex_id: { type: DataTypes.UUID, allowNull: false },
     min_value: { type: DataTypes.FLOAT },
     max_value: { type: DataTypes.FLOAT },
   },
@@ -26,7 +27,7 @@ NormativeTypeZone.init(
     indexes: [
       {
         unique: true,
-        fields: ['normative_type_id', 'zone_id'],
+        fields: ['normative_type_id', 'zone_id', 'sex_id'],
         where: { deleted_at: null },
       },
     ],

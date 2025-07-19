@@ -24,6 +24,7 @@ async function create(data, actorId) {
     season_id: data.season_id,
     name: data.name,
     alias: generateAlias(data.name),
+    required: Boolean(data.required),
     created_by: actorId,
     updated_by: actorId,
   });
@@ -37,6 +38,7 @@ async function update(id, data, actorId) {
     {
       name: data.name ?? group.name,
       alias: data.name ? generateAlias(data.name) : group.alias,
+      required: data.required ?? group.required,
       updated_by: actorId,
     },
     { returning: false }

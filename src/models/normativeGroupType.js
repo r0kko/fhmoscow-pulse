@@ -11,6 +11,8 @@ NormativeGroupType.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    group_id: { type: DataTypes.UUID, allowNull: false },
+    type_id: { type: DataTypes.UUID, allowNull: false },
     required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   {
