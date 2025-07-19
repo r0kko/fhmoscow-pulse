@@ -738,7 +738,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
         </nav>
       </div>
 
-    </div>
 
     <div v-if="activeTab === 'types'">
       <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
@@ -1198,6 +1197,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
       </div>
     </div>
   </div>
+</div>
+</div>
 </template>
 
 <style scoped>
