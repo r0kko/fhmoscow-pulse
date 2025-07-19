@@ -263,6 +263,24 @@ test('listPastByUser includes my presence', async () => {
   expect(res.rows[0].my_presence).toBe(true);
 });
 
+test('listPastByUser returns unmarked trainings', async () => {
+  const trPlain = {
+    ...training,
+    end_at: new Date(Date.now() - 1000).toISOString(),
+    attendance_marked: false,
+    TrainingRegistrations: [
+      {
+        user_id: 'u1',
+        TrainingRole: { id: 'r1', name: 'Участник', alias: 'PARTICIPANT' },
+      },
+    ],
+  };
+  const tr = { ...trPlain, get: () => trPlain };
+  findAndCountAllMock.mockResolvedValueOnce({ rows: [tr], count: 1 });
+  const res = await service.listPastByUser('u1', {});
+  expect(res.rows[0].attendance_marked).toBe(false);
+});
+
 test('updatePresence updates value for admin', async () => {
   const updateMock = jest.fn();
   findRegMock.mockResolvedValueOnce({ update: updateMock });

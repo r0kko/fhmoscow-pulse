@@ -351,12 +351,12 @@ function dayOpen(day) {
 
 function attendanceStatus(t) {
   if (!t.attendance_marked) {
-    return { icon: 'bi-clock', text: 'Посещаемость тренировки не отмечена', class: 'text-muted' };
+    return { icon: 'bi-clock', text: 'Уточняется', class: 'text-muted' };
   }
   if (t.my_presence) {
-    return { icon: 'bi-check-circle-fill', text: 'Вы посетили тренировку', class: 'text-success' };
+    return { icon: 'bi-check-circle-fill', text: 'Посещено', class: 'text-success' };
   }
-  return { icon: 'bi-x-circle-fill', text: 'Тренер не подтвердил Ваше присутствие', class: 'text-danger' };
+  return { icon: 'bi-x-circle-fill', text: 'Не посещено', class: 'text-danger' };
 }
 </script>
 
@@ -508,7 +508,7 @@ function attendanceStatus(t) {
                           </div>
                         </div>
                         <div
-                            v-if="mineView === 'past'"
+                            v-if="mineView === 'past' && t.my_role?.alias !== 'COACH'"
                             class="small d-flex align-items-center mb-1"
                         >
                           <i
@@ -625,7 +625,7 @@ function attendanceStatus(t) {
                           </button>
                         </div>
                         <div
-                            v-if="mineView === 'past'"
+                            v-if="mineView === 'past' && t.my_role?.alias !== 'COACH'"
                             class="small d-flex align-items-center mb-1"
                         >
                           <i
