@@ -1,5 +1,9 @@
 import { expect, test, describe } from '@jest/globals';
-import { parseValue, stepForUnit } from '../src/services/normativeTypeService.js';
+import {
+  parseValue,
+  stepForUnit,
+  determineZone,
+} from '../src/services/normativeTypeService.js';
 
 describe('normativeTypeService helpers', () => {
   test('parseValue parses MIN_SEC', () => {
@@ -18,5 +22,17 @@ describe('normativeTypeService helpers', () => {
 
   test('stepForUnit defaults to 1', () => {
     expect(stepForUnit({ alias: 'METERS', fractional: false })).toBe(1);
+  });
+
+  test('determineZone finds correct zone', () => {
+    const type = {
+      NormativeTypeZones: [
+        { min_value: 10, max_value: null, NormativeZone: { alias: 'GREEN' } },
+        { min_value: 5, max_value: 9, NormativeZone: { alias: 'YELLOW' } },
+        { min_value: null, max_value: 4, NormativeZone: { alias: 'RED' } },
+      ],
+    };
+    const zone = determineZone(type, 7);
+    expect(zone.NormativeZone.alias).toBe('YELLOW');
   });
 });
