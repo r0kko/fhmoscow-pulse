@@ -116,23 +116,21 @@ defineExpose({ refresh });
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-0">
-        <div class="p-3 border-bottom">
-          <div class="row g-2">
-            <div class="col-sm">
-              <select v-model="filterSeason" class="form-select">
-                <option value="">Все сезоны</option>
-                <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
+      <div class="card-body p-3">
+        <div class="row g-2 mb-3">
+          <div class="col-sm">
+            <select v-model="filterSeason" class="form-select">
+              <option value="">Все сезоны</option>
+              <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
           </div>
         </div>
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="groups.length" class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+        <div v-if="groups.length" class="table-responsive d-none d-sm-block">
+          <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
                 <th>Сезон</th>
@@ -155,6 +153,24 @@ defineExpose({ refresh });
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="groups.length" class="d-block d-sm-none">
+          <div v-for="g in groups" :key="g.id" class="card training-card mb-2">
+            <div class="card-body p-2 d-flex justify-content-between">
+              <div>
+                <h6 class="mb-1">{{ g.name }}</h6>
+                <p class="mb-1">{{ g.season ? g.season.name : '' }}</p>
+              </div>
+              <div>
+                <button class="btn btn-sm btn-secondary me-2" @click="openEdit(g)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
@@ -204,3 +220,38 @@ defineExpose({ refresh });
     </div>
   </div>
 </template>
+
+<style scoped>
+.training-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
