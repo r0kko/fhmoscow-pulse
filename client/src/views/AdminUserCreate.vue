@@ -22,6 +22,8 @@ const user = ref({
 const formRef = ref(null)
 const generatedPassword = ref('')
 const passwordModalRef = ref(null)
+const createdId = ref(null)
+const loading = ref(false)
 const toastRef = ref(null)
 const toastMessage = ref('')
 let passwordModal
@@ -38,6 +40,9 @@ function generatePassword(len = 8) {
 
 onMounted(() => {
   passwordModal = new Modal(passwordModalRef.value)
+  passwordModalRef.value.addEventListener('hidden.bs.modal', () => {
+    if (createdId.value) router.push(`/users/${createdId.value}`)
+  })
   loadSexes()
 })
 
@@ -55,13 +60,24 @@ async function save() {
   const payload = { ...user.value }
   const pass = generatePassword()
   payload.password = pass
-  await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) })
-  generatedPassword.value = pass
-  passwordModal.show()
+  loading.value = true
+  try {
+    const data = await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) })
+    generatedPassword.value = pass
+    createdId.value = data.user.id
+    passwordModal.show()
+  } finally {
+    loading.value = false
+  }
 }
 
 function close() {
   router.push('/users')
+}
+
+function confirmPassword() {
+  passwordModal.hide()
+  if (createdId.value) router.push(`/users/${createdId.value}`)
 }
 
 function showToast(message) {
@@ -95,7 +111,10 @@ async function copyToClipboard(text) {
     <form @submit.prevent="save">
       <UserForm ref="formRef" v-model="user" :isNew="true" :sexes="sexes" />
       <div class="mt-3">
-        <button type="submit" class="btn btn-brand me-2">Сохранить</button>
+        <button type="submit" class="btn btn-brand me-2" :disabled="loading">
+          <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+          Сохранить
+        </button>
         <button type="button" class="btn btn-secondary" @click="close">Отмена</button>
       </div>
     </form>
@@ -105,7 +124,7 @@ async function copyToClipboard(text) {
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Пароль пользователя</h5>
-            <button type="button" class="btn-close" @click="passwordModal.hide()"></button>
+            <button type="button" class="btn-close" @click="confirmPassword"></button>
           </div>
           <div class="modal-body">
             <p>Сгенерированный пароль:</p>
@@ -115,7 +134,7 @@ async function copyToClipboard(text) {
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-brand" @click="passwordModal.hide()">OK</button>
+            <button type="button" class="btn btn-brand" @click="confirmPassword">OK</button>
           </div>
         </div>
     </div>
