@@ -468,7 +468,7 @@ defineExpose({ refresh });
                   :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
                   :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
                   :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
-                  v-model="form.value"
+                  v-model="form.value.value"
                   @input="onValueInput"
                   class="form-control"
                   placeholder="Значение"
