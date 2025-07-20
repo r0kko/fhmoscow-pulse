@@ -340,10 +340,10 @@ defineExpose({ refresh });
                 <td>
                   {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
                 </td>
-                <td :style="{ color: r.zone?.color, fontWeight: 'bold' }">
+                <td :class="['zone-cell', `zone-${r.zone?.alias}`]">
                   {{ formatValue(r) }}
                 </td>
-                <td>
+                <td class="text-nowrap">
                   {{
                     r.training?.start_at
                       ? new Date(r.training.start_at).toLocaleString('ru-RU')

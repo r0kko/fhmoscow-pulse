@@ -130,3 +130,16 @@ body {
   white-space: nowrap;
 }
 
+.zone-cell {
+  font-weight: 600;
+  text-align: center;
+}
+.zone-GREEN {
+  background-color: rgba(0, 128, 0, 0.15);
+}
+.zone-YELLOW {
+  background-color: rgba(255, 255, 0, 0.15);
+}
+.zone-RED {
+  background-color: rgba(255, 0, 0, 0.15);
+}
