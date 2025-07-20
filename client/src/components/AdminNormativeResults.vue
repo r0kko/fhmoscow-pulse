@@ -247,7 +247,7 @@ async function save() {
       formError.value = 'Неверное значение';
       return;
     }
-    val = m * 60 + s;
+    val = `${m}:${String(s).padStart(2, '0')}`;
   } else {
     val = parseFloat(form.value.value);
     if (!Number.isNaN(val)) {
