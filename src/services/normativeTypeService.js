@@ -76,7 +76,7 @@ async function buildZones({
   actorId,
 }) {
   if (!Array.isArray(zones) || !zones.length) return [];
-  const dict = await NormativeZone.findAll({ where: { season_id: seasonId } });
+  const dict = await NormativeZone.findAll();
   const zoneById = Object.fromEntries(dict.map((z) => [z.id, z]));
   const greenZone = dict.find((z) => z.alias === 'GREEN');
   const yellowZone = dict.find((z) => z.alias === 'YELLOW');

@@ -5,11 +5,6 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
-    const [seasonRes] = await queryInterface.sequelize.query(
-      'SELECT id FROM seasons WHERE active = true LIMIT 1'
-    );
-    if (!seasonRes.length) return;
-    const seasonId = seasonRes[0].id;
     const [existing] = await queryInterface.sequelize.query(
       'SELECT COUNT(*) AS cnt FROM normative_zones;'
     );
@@ -19,7 +14,6 @@ module.exports = {
       [
         {
           id: uuidv4(),
-          season_id: seasonId,
           name: 'Зеленая',
           alias: 'GREEN',
           color: 'green',
@@ -28,7 +22,6 @@ module.exports = {
         },
         {
           id: uuidv4(),
-          season_id: seasonId,
           name: 'Желтая',
           alias: 'YELLOW',
           color: 'yellow',
@@ -37,7 +30,6 @@ module.exports = {
         },
         {
           id: uuidv4(),
-          season_id: seasonId,
           name: 'Красная',
           alias: 'RED',
           color: 'red',
