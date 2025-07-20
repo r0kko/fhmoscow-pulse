@@ -223,6 +223,17 @@ function formatValue(r) {
   return r.value;
 }
 
+function formatDateTime(dt) {
+  if (!dt) return '-';
+  return new Date(dt).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function goNext() {
   if (!form.value.user_id || !form.value.training_id || !form.value.type_id) {
     formError.value = 'Заполните все поля';
@@ -318,23 +329,27 @@ defineExpose({ refresh });
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="results.length" class="table-responsive d-none d-sm-block">
-          <table class="table admin-table table-striped align-middle mb-0">
+        <div v-if="results.length" class="table-responsive">
+          <table
+            class="table table-sm admin-table auto-cols table-striped align-middle mb-0"
+          >
             <thead>
               <tr>
-                <th>ФИО</th>
-                <th>Группа</th>
-                <th>Тип</th>
-                <th>Значение</th>
-                <th>Дата и время</th>
-                <th>Стадион</th>
+                <th class="text-center">ФИО</th>
+                <th class="text-center">Группа</th>
+                <th class="text-center">Тип</th>
+                <th class="text-center">Значение</th>
+                <th class="text-center">Дата и время</th>
+                <th class="text-center">Стадион</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in results" :key="r.id">
-                <td>
-                  {{ r.user?.last_name }} {{ r.user?.first_name }}
+                <td class="fio-col">
+                  {{ r.user?.last_name }}
+                  {{ r.user?.first_name }}
+                  {{ r.user?.patronymic }}
                 </td>
                 <td>{{ r.group?.name || '-' }}</td>
                 <td>
@@ -343,13 +358,7 @@ defineExpose({ refresh });
                 <td :class="['zone-cell', `zone-${r.zone?.alias}`]">
                   {{ formatValue(r) }}
                 </td>
-                <td class="text-nowrap">
-                  {{
-                    r.training?.start_at
-                      ? new Date(r.training.start_at).toLocaleString('ru-RU')
-                      : '-'
-                  }}
-                </td>
+                <td class="text-nowrap">{{ formatDateTime(r.training?.start_at) }}</td>
                 <td>{{ r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
@@ -368,27 +377,6 @@ defineExpose({ refresh });
               </tr>
             </tbody>
           </table>
-        </div>
-        <div v-if="results.length" class="d-block d-sm-none">
-          <div v-for="r in results" :key="r.id" class="card training-card mb-2">
-            <div class="card-body p-2">
-              <h6 class="mb-1">
-                {{ r.user?.last_name }} {{ r.user?.first_name }}
-              </h6>
-              <p class="mb-1">Тип: {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}</p>
-              <p class="mb-1">Группа: {{ r.group?.name || '-' }}</p>
-              <p class="mb-1">Значение: {{ formatValue(r) }}</p>
-              <p class="mb-1">Зона: {{ r.zone?.name }}</p>
-              <div class="text-end">
-                <button class="btn btn-sm btn-secondary me-2" @click="openEdit(r)">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" @click="removeResult(r)">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>

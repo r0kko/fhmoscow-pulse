@@ -74,6 +74,9 @@
   width: 100%;
   table-layout: fixed;
 }
+.admin-table.auto-cols {
+  table-layout: auto;
+}
 .admin-table th,
 .admin-table td {
   word-wrap: break-word;
@@ -130,6 +133,10 @@ body {
   white-space: nowrap;
 }
 
+.fio-col {
+  white-space: nowrap;
+}
+
 .zone-cell {
   font-weight: 600;
   text-align: center;
@@ -142,4 +149,12 @@ body {
 }
 .zone-RED {
   background-color: rgba(255, 0, 0, 0.15) !important;
+}
+
+@media (max-width: 576px) {
+  .admin-table.auto-cols th,
+  .admin-table.auto-cols td {
+    padding: 0.25rem;
+    font-size: 0.875rem;
+  }
 }
