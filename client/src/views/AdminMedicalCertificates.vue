@@ -31,6 +31,7 @@ const fileType = ref('CONCLUSION')
 const fileInput = ref(null)
 const saving = ref(false)
 const deleting = ref(false)
+const fileUploading = ref(false)
 
 onMounted(() => {
   modal = new Modal(modalRef.value)
@@ -50,7 +51,11 @@ watch(userQuery, () => {
   }
   userTimeout = setTimeout(async () => {
     try {
-      const params = new URLSearchParams({ search: userQuery.value, limit: 5 })
+      const params = new URLSearchParams({
+        search: userQuery.value,
+        limit: 5,
+        role: 'REFEREE',
+      })
       const data = await apiFetch(`/users?${params}`)
       userSuggestions.value = data.users
     } catch (_err) {
@@ -92,6 +97,7 @@ function openCreate() {
   files.value = []
   fileType.value = 'CONCLUSION'
   fileError.value = ''
+  fileUploading.value = false
   saving.value = false
   deleting.value = false
   modal.show()
@@ -104,6 +110,7 @@ function openEdit(cert) {
   userQuery.value = ''
   userSuggestions.value = []
   formError.value = ''
+  fileUploading.value = false
   saving.value = false
   deleting.value = false
   loadFiles()
@@ -113,7 +120,7 @@ function openEdit(cert) {
 function selectUser(u) {
   form.value.user_id = u.id
   skipUserWatch = true
-  userQuery.value = `${u.last_name} ${u.first_name}`
+  userQuery.value = `${u.last_name} ${u.first_name} ${u.patronymic}`
   userSuggestions.value = []
 }
 
@@ -126,11 +133,21 @@ async function save() {
       formError.value = 'Выберите пользователя'
       return
     }
-    const path = `/users/${form.value.user_id}/medical-certificate`
-    const method = editing.value ? 'PUT' : 'POST'
-    await apiFetch(path, { method, body: JSON.stringify(form.value) })
+  const path = `/users/${form.value.user_id}/medical-certificate`
+  if (editing.value) {
+    await apiFetch(path, { method: 'PUT', body: JSON.stringify(form.value) })
     modal.hide()
     await loadJudges()
+  } else {
+    const data = await apiFetch(path, {
+      method: 'POST',
+      body: JSON.stringify(form.value),
+    })
+    editing.value = data.certificate
+    Object.assign(form.value, data.certificate)
+    await loadJudges()
+    await loadFiles()
+  }
   } catch (e) {
     formError.value = e.message
   } finally {
@@ -155,10 +172,11 @@ async function loadFiles() {
 
 async function uploadFile() {
   const f = fileInput.value?.files[0]
-  if (!f || !editing.value) return
+  if (!f || !editing.value || fileUploading.value) return
   const formData = new FormData()
   formData.append('file', f)
   formData.append('type', fileType.value)
+  fileUploading.value = true
   try {
     await apiFetchForm(`/medical-certificates/${editing.value.id}/files`, formData, {
       method: 'POST',
@@ -168,6 +186,8 @@ async function uploadFile() {
     await loadFiles()
   } catch (e) {
     fileError.value = e.message
+  } finally {
+    fileUploading.value = false
   }
 }
 
@@ -330,7 +350,7 @@ async function loadJudges() {
                     class="list-group-item list-group-item-action"
                     @mousedown.prevent="selectUser(u)"
                   >
-                    {{ u.last_name }} {{ u.first_name }}
+                    {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
                   </li>
                 </ul>
               </div>
@@ -384,17 +404,23 @@ async function loadJudges() {
                 />
                 <label for="valid">Действительно до</label>
               </div>
-              <div v-if="editing" class="border-top pt-3 mt-3">
+              <div class="border-top pt-3 mt-3">
                 <h6 class="mb-2">Файлы</h6>
                 <div v-if="fileError" class="alert alert-danger">{{ fileError }}</div>
-                <div v-if="filesLoading" class="text-center py-2">Загрузка...</div>
-                <ul v-if="files.length" class="list-group mb-3">
-                  <li v-for="f in files" :key="f.id" class="list-group-item d-flex justify-content-between align-items-center">
-                    <a :href="f.url" target="_blank">{{ f.name }}</a>
-                    <button type="button" class="btn-close" aria-label="Удалить" @click="removeFile(f)"></button>
-                  </li>
-                </ul>
-                <p v-else-if="!filesLoading" class="text-muted">Нет файлов</p>
+                <div v-if="editing">
+                  <div v-if="filesLoading" class="text-center py-2">Загрузка...</div>
+                  <ul v-if="files.length" class="list-group mb-3">
+                    <li
+                      v-for="f in files"
+                      :key="f.id"
+                      class="list-group-item d-flex justify-content-between align-items-center"
+                    >
+                      <a :href="f.url" target="_blank">{{ f.name }}</a>
+                      <button type="button" class="btn-close" aria-label="Удалить" @click="removeFile(f)"></button>
+                    </li>
+                  </ul>
+                  <p v-else-if="!filesLoading" class="text-muted">Нет файлов</p>
+                </div>
                 <div class="mb-3">
                   <label class="form-label" for="fileType">Тип документа</label>
                   <select id="fileType" class="form-select" v-model="fileType">
@@ -405,7 +431,18 @@ async function loadJudges() {
                 <div class="mb-3">
                   <input type="file" class="form-control" ref="fileInput" />
                 </div>
-                <button type="button" class="btn btn-brand" @click="uploadFile">Загрузить</button>
+                <button
+                  type="button"
+                  class="btn btn-brand"
+                  @click="uploadFile"
+                  :disabled="!editing || fileUploading"
+                >
+                  <span
+                    v-if="fileUploading"
+                    class="spinner-border spinner-border-sm me-2"
+                  ></span>
+                  Загрузить
+                </button>
               </div>
             </div>
             <div class="modal-footer">
