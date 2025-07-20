@@ -135,11 +135,11 @@ body {
   text-align: center;
 }
 .zone-GREEN {
-  background-color: rgba(0, 128, 0, 0.15);
+  background-color: rgba(0, 128, 0, 0.15) !important;
 }
 .zone-YELLOW {
-  background-color: rgba(255, 255, 0, 0.15);
+  background-color: rgba(255, 255, 0, 0.15) !important;
 }
 .zone-RED {
-  background-color: rgba(255, 0, 0, 0.15);
+  background-color: rgba(255, 0, 0, 0.15) !important;
 }
