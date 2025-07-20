@@ -199,7 +199,10 @@ function selectUser(u) {
 }
 
 function onValueInput(e) {
-  if (currentUnit.value?.alias !== 'MIN_SEC') return;
+  if (currentUnit.value?.alias !== 'MIN_SEC') {
+    form.value.value = e.target.value;
+    return;
+  }
   let val = e.target.value.replace(/[^0-9:]/g, '');
   const colon = val.indexOf(':');
   if (colon === -1) {
@@ -468,7 +471,7 @@ defineExpose({ refresh });
                   :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
                   :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
                   :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
-                  v-model="form.value.value"
+                  :value="form.value.value"
                   @input="onValueInput"
                   class="form-control"
                   placeholder="Значение"
