@@ -223,6 +223,17 @@ function formatValue(r) {
   return r.value;
 }
 
+function formatDateTime(dt) {
+  if (!dt) return '-';
+  return new Date(dt).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function goNext() {
   if (!form.value.user_id || !form.value.training_id || !form.value.type_id) {
     formError.value = 'Заполните все поля';
@@ -319,22 +330,26 @@ defineExpose({ refresh });
           <div class="spinner-border" role="status"></div>
         </div>
         <div v-if="results.length" class="table-responsive">
-          <table class="table admin-table table-striped align-middle mb-0">
+          <table
+            class="table table-sm admin-table auto-cols table-striped align-middle mb-0"
+          >
             <thead>
               <tr>
-                <th>ФИО</th>
-                <th>Группа</th>
-                <th>Тип</th>
-                <th>Значение</th>
-                <th>Дата и время</th>
-                <th>Стадион</th>
+                <th class="text-center">ФИО</th>
+                <th class="text-center">Группа</th>
+                <th class="text-center">Тип</th>
+                <th class="text-center">Значение</th>
+                <th class="text-center">Дата и время</th>
+                <th class="text-center">Стадион</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in results" :key="r.id">
-                <td>
-                  {{ r.user?.last_name }} {{ r.user?.first_name }}
+                <td class="fio-col">
+                  {{ r.user?.last_name }}
+                  {{ r.user?.first_name }}
+                  {{ r.user?.patronymic }}
                 </td>
                 <td>{{ r.group?.name || '-' }}</td>
                 <td>
@@ -343,13 +358,7 @@ defineExpose({ refresh });
                 <td :class="['zone-cell', `zone-${r.zone?.alias}`]">
                   {{ formatValue(r) }}
                 </td>
-                <td class="text-nowrap">
-                  {{
-                    r.training?.start_at
-                      ? new Date(r.training.start_at).toLocaleString('ru-RU')
-                      : '-'
-                  }}
-                </td>
+                <td class="text-nowrap">{{ formatDateTime(r.training?.start_at) }}</td>
                 <td>{{ r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
