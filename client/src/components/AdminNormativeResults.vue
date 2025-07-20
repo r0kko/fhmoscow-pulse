@@ -24,6 +24,7 @@ const form = ref({
 });
 const value_type_id = ref('');
 const unit_id = ref('');
+const step = ref(1);
 const editing = ref(null);
 const modalRef = ref(null);
 let modal;
@@ -32,6 +33,7 @@ const userQuery = ref('');
 const userSuggestions = ref([]);
 let userTimeout;
 let skipWatch = false;
+const trainingUsers = ref([]);
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize))
@@ -56,19 +58,19 @@ watch(userQuery, () => {
     return;
   }
   form.value.user_id = '';
-  if (!userQuery.value || userQuery.value.length < 2) {
+  if (!userQuery.value || !form.value.training_id) {
     userSuggestions.value = [];
     return;
   }
-  userTimeout = setTimeout(async () => {
-    try {
-      const params = new URLSearchParams({ search: userQuery.value, limit: 5 });
-      const data = await apiFetch(`/users?${params}`);
-      userSuggestions.value = data.users;
-    } catch (_err) {
-      userSuggestions.value = [];
-    }
-  }, 300);
+  const query = userQuery.value.toLowerCase();
+  userTimeout = setTimeout(() => {
+    userSuggestions.value = trainingUsers.value
+      .filter((u) => {
+        const fio = `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.toLowerCase();
+        return fio.includes(query);
+      })
+      .slice(0, 5);
+  }, 200);
 });
 
 watch(
@@ -94,10 +96,24 @@ watch(
 
 watch(
   () => form.value.training_id,
-  (val) => {
+  async (val) => {
     const tr = trainings.value.find((t) => t.id === val);
     if (tr) {
       form.value.season_id = tr.season_id;
+    }
+    if (!val) {
+      trainingUsers.value = [];
+      return;
+    }
+    try {
+      const data = await apiFetch(`/camp-trainings/${val}/registrations?limit=1000`);
+      trainingUsers.value = data.registrations
+        .filter((r) =>
+          ['PARTICIPANT', 'EQUIPMENT_MANAGER'].includes(r.role?.alias)
+        )
+        .map((r) => r.user);
+    } catch (_err) {
+      trainingUsers.value = [];
     }
   }
 );
@@ -163,6 +179,7 @@ function openCreate() {
   userQuery.value = '';
   userSuggestions.value = [];
   formError.value = '';
+  step.value = 1;
   modal.show();
 }
 
@@ -188,6 +205,7 @@ function openEdit(r) {
   userQuery.value = `${r.user?.last_name || ''} ${r.user?.first_name || ''}`.trim();
   userSuggestions.value = [];
   formError.value = '';
+  step.value = 2;
   modal.show();
 }
 
@@ -230,6 +248,20 @@ function formatValue(r) {
     return Number(r.value).toFixed(2);
   }
   return r.value;
+}
+
+function goNext() {
+  if (!form.value.user_id || !form.value.training_id || !form.value.type_id) {
+    formError.value = 'Заполните все поля';
+    return;
+  }
+  formError.value = '';
+  step.value = 2;
+}
+
+function goBack() {
+  if (editing.value) return;
+  step.value = 1;
 }
 
 async function save() {
@@ -384,7 +416,7 @@ defineExpose({ refresh });
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
-          <form @submit.prevent="save">
+          <form @submit.prevent="step === 1 ? goNext() : save()">
             <div class="modal-header">
               <h5 class="modal-title">
                 {{ editing ? 'Изменить результат' : 'Добавить результат' }}
@@ -399,96 +431,102 @@ defineExpose({ refresh });
               <div v-if="formError" class="alert alert-danger">
                 {{ formError }}
               </div>
-              <div class="mb-3 position-relative">
-                <div class="form-floating">
-                  <input
-                    id="userId"
-                    v-model="userQuery"
-                    class="form-control"
-                    placeholder="Пользователь"
-                  />
-                  <label for="userId">Пользователь</label>
-                </div>
-                <ul
-                  v-if="userSuggestions.length"
-                  class="list-group position-absolute w-100"
-                  style="z-index: 1050"
-                >
-                  <li
-                    v-for="u in userSuggestions"
-                    :key="u.id"
-                    class="list-group-item list-group-item-action"
-                    @mousedown.prevent="selectUser(u)"
+              <template v-if="step === 1">
+                <div class="mb-3 position-relative">
+                  <div class="form-floating">
+                    <input
+                      id="userId"
+                      v-model="userQuery"
+                      class="form-control"
+                      placeholder="Пользователь"
+                    />
+                    <label for="userId">Пользователь</label>
+                  </div>
+                  <ul
+                    v-if="userSuggestions.length"
+                    class="list-group position-absolute w-100"
+                    style="z-index: 1050"
                   >
-                    {{ u.last_name }} {{ u.first_name }}
-                  </li>
-                </ul>
-              </div>
-              <div class="form-floating mb-3">
-                <select
-                  id="resSeason"
-                  v-model="form.season_id"
-                  class="form-select"
-                  required
-                >
-                  <option value="" disabled>Выберите сезон</option>
-                  <option v-for="s in seasons" :key="s.id" :value="s.id">
-                    {{ s.name }}
-                  </option>
-                </select>
-                <label for="resSeason">Сезон</label>
-              </div>
-              <div class="form-floating mb-3">
-                <select
-                  id="resType"
-                  v-model="form.type_id"
-                  class="form-select"
-                  required
-                >
-                  <option value="" disabled>Тип</option>
-                  <option v-for="t in types" :key="t.id" :value="t.id">
-                    {{ t.name }}
-                  </option>
-                </select>
-                <label for="resType">Тип</label>
-              </div>
-              <div class="form-floating mb-3">
-                <select
-                  id="resTraining"
-                  v-model="form.training_id"
-                  class="form-select"
-                >
-                  <option value="" disabled>Тренировка</option>
-                  <option v-for="t in trainings" :key="t.id" :value="t.id">
-                    {{ new Date(t.start_at).toLocaleString('ru-RU') }}
-                  </option>
-                </select>
-                <label for="resTraining">Тренировка</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input
-                  id="resValue"
-                  :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
-                  :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
-                  :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
-                  :value="form.value.value"
-                  @input="onValueInput"
-                  class="form-control"
-                  placeholder="Значение"
-                  required
-                />
-                <label for="resValue">Значение</label>
-              </div>
+                    <li
+                      v-for="u in userSuggestions"
+                      :key="u.id"
+                      class="list-group-item list-group-item-action"
+                      @mousedown.prevent="selectUser(u)"
+                    >
+                      {{ u.last_name }} {{ u.first_name }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="form-floating mb-3">
+                  <select
+                    id="resSeason"
+                    v-model="form.season_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Выберите сезон</option>
+                    <option v-for="s in seasons" :key="s.id" :value="s.id">
+                      {{ s.name }}
+                    </option>
+                  </select>
+                  <label for="resSeason">Сезон</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <select
+                    id="resType"
+                    v-model="form.type_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Тип</option>
+                    <option v-for="t in types" :key="t.id" :value="t.id">
+                      {{ t.name }}
+                    </option>
+                  </select>
+                  <label for="resType">Тип</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <select
+                    id="resTraining"
+                    v-model="form.training_id"
+                    class="form-select"
+                  >
+                    <option value="" disabled>Тренировка</option>
+                    <option v-for="t in trainings" :key="t.id" :value="t.id">
+                      {{ new Date(t.start_at).toLocaleString('ru-RU') }}
+                    </option>
+                  </select>
+                  <label for="resTraining">Тренировка</label>
+                </div>
+              </template>
+              <template v-else>
+                <div class="form-floating mb-3">
+                  <input
+                    id="resValue"
+                    :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
+                    :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                    :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
+                    :value="form.value.value"
+                    @input="onValueInput"
+                    class="form-control"
+                    placeholder="Значение"
+                    required
+                  />
+                  <label for="resValue">Значение</label>
+                </div>
+              </template>
             </div>
             <div class="modal-footer">
               <button
                 type="button"
                 class="btn btn-secondary"
-                @click="modal.hide()"
+                @click="step === 1 ? modal.hide() : goBack()"
               >
-                Отмена
+                {{ step === 1 ? 'Отмена' : 'Назад' }}
               </button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <button type="submit" class="btn btn-primary">
+                {{ step === 1 ? 'Далее' : 'Сохранить' }}
+              </button>
             </div>
           </form>
         </div>
