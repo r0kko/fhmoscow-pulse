@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Modal from 'bootstrap/js/dist/modal'
 import { apiFetch, apiFetchForm } from '../api.js'
 import { findOrganizationByInn } from '../dadata.js'
@@ -86,6 +86,10 @@ watch(
   }
 )
 
+onUnmounted(() => {
+  clearTimeout(userTimeout)
+})
+
 
 function openCreate() {
   editing.value = null
@@ -125,7 +129,7 @@ function selectUser(u) {
 }
 
 async function save() {
-  if (saving.value) return
+  if (saving.value || fileUploading.value) return
   saving.value = true
   try {
     formError.value = ''
@@ -435,7 +439,7 @@ async function loadJudges() {
                   type="button"
                   class="btn btn-brand"
                   @click="uploadFile"
-                  :disabled="!editing || fileUploading"
+                  :disabled="!editing || fileUploading || saving"
                 >
                   <span
                     v-if="fileUploading"
@@ -459,7 +463,7 @@ async function loadJudges() {
               <button type="button" class="btn btn-secondary" @click="modal.hide()">
                 Отмена
               </button>
-              <button type="submit" class="btn btn-brand" :disabled="editing || saving">
+              <button type="submit" class="btn btn-brand" :disabled="editing || saving || fileUploading">
                 <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                 Сохранить
               </button>
