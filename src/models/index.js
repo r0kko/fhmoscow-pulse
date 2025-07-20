@@ -249,8 +249,6 @@ Season.hasMany(NormativeGroup, { foreignKey: 'season_id' });
 NormativeGroup.belongsTo(Season, { foreignKey: 'season_id' });
 Season.hasMany(NormativeType, { foreignKey: 'season_id' });
 NormativeType.belongsTo(Season, { foreignKey: 'season_id' });
-Season.hasMany(NormativeZone, { foreignKey: 'season_id' });
-NormativeZone.belongsTo(Season, { foreignKey: 'season_id' });
 Season.hasMany(NormativeTypeZone, { foreignKey: 'season_id' });
 NormativeTypeZone.belongsTo(Season, { foreignKey: 'season_id' });
 NormativeType.hasMany(NormativeTypeZone, { foreignKey: 'normative_type_id' });

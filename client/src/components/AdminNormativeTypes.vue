@@ -61,7 +61,7 @@ watch(
     try {
       const [groupData, zoneData] = await Promise.all([
         apiFetch(`/normative-groups?season_id=${val}&page=1&limit=100`),
-        apiFetch(`/normative-zones?season_id=${val}`),
+        apiFetch('/normative-zones'),
       ]);
       groupsDict.value = groupData.groups;
       zonesDict.value = zoneData.zones;

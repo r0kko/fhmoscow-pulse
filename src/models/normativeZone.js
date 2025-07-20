@@ -11,7 +11,6 @@ NormativeZone.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    season_id: { type: DataTypes.UUID, allowNull: false },
     name: { type: DataTypes.STRING(50), allowNull: false, unique: true },
     alias: { type: DataTypes.STRING(50), allowNull: false, unique: true },
     color: { type: DataTypes.STRING(20) },

@@ -326,7 +326,8 @@ defineExpose({ refresh });
                 <th>Группа</th>
                 <th>Тип</th>
                 <th>Значение</th>
-                <th>Зона</th>
+                <th>Дата и время</th>
+                <th>Стадион</th>
                 <th></th>
               </tr>
             </thead>
@@ -339,8 +340,17 @@ defineExpose({ refresh });
                 <td>
                   {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
                 </td>
-                <td>{{ formatValue(r) }}</td>
-                <td>{{ r.zone?.name }}</td>
+                <td :style="{ color: r.zone?.color, fontWeight: 'bold' }">
+                  {{ formatValue(r) }}
+                </td>
+                <td>
+                  {{
+                    r.training?.start_at
+                      ? new Date(r.training.start_at).toLocaleString('ru-RU')
+                      : '-'
+                  }}
+                </td>
+                <td>{{ r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
