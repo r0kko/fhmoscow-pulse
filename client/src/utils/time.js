@@ -7,10 +7,18 @@ export function formatMinutesSeconds(total) {
 
 export function parseMinutesSeconds(str) {
   if (!str) return null;
+  let minutes;
+  let seconds;
   const match = /^(\d{1,2}):(\d{1,2})$/.exec(str);
-  if (!match) return null;
-  const minutes = parseInt(match[1], 10);
-  const seconds = parseInt(match[2], 10);
+  if (match) {
+    minutes = parseInt(match[1], 10);
+    seconds = parseInt(match[2], 10);
+  } else if (/^\d{3,4}$/.test(str)) {
+    minutes = parseInt(str.slice(0, str.length - 2), 10);
+    seconds = parseInt(str.slice(-2), 10);
+  } else {
+    return null;
+  }
   if (
     Number.isNaN(minutes) ||
     Number.isNaN(seconds) ||

@@ -12,6 +12,12 @@ describe('normativeTypeService helpers', () => {
     expect(parseValue('03:45', unit)).toBe(225);
   });
 
+  test('parseValue parses MIN_SEC without colon', () => {
+    const unit = { alias: 'MIN_SEC', fractional: false };
+    expect(parseValue('0345', unit)).toBe(225);
+    expect(parseValue('345', unit)).toBe(225);
+  });
+
   test('parseValue parses numeric with rounding', () => {
     const unit = { alias: 'REPS', fractional: false };
     expect(parseValue('12.7', unit)).toBe(13);
@@ -45,5 +51,11 @@ describe('normativeTypeService helpers', () => {
   test('parseResultValue parses MIN_SEC', () => {
     const unit = { alias: 'MIN_SEC', fractional: false };
     expect(parseResultValue('02:05', unit)).toBe(125);
+  });
+
+  test('parseResultValue parses MIN_SEC without colon', () => {
+    const unit = { alias: 'MIN_SEC', fractional: false };
+    expect(parseResultValue('0205', unit)).toBe(125);
+    expect(parseResultValue('205', unit)).toBe(125);
   });
 });
