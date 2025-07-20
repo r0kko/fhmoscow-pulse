@@ -127,7 +127,7 @@ defineExpose({ refresh });
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-0">
+      <div class="card-body p-3">
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
