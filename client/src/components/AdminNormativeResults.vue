@@ -2,11 +2,10 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
-import { formatMinutesSeconds, parseMinutesSeconds } from '../utils/time.js';
+import { formatMinutesSeconds } from '../utils/time.js';
 
 const results = ref([]);
 const total = ref(0);
-const seasons = ref([]);
 const trainings = ref([]);
 const types = ref([]);
 const units = ref([]);
@@ -34,6 +33,8 @@ const userSuggestions = ref([]);
 let userTimeout;
 let skipWatch = false;
 const trainingUsers = ref([]);
+const minutes = ref('');
+const seconds = ref('');
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize))
@@ -42,6 +43,11 @@ const totalPages = computed(() =>
 const currentUnit = computed(() =>
   units.value.find((u) => u.id === unit_id.value) || null
 );
+
+const filteredTrainings = computed(() => {
+  if (!form.value.season_id) return trainings.value;
+  return trainings.value.filter((t) => t.season_id === form.value.season_id);
+});
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -73,34 +79,10 @@ watch(userQuery, () => {
   }, 200);
 });
 
-watch(
-  () => form.value.season_id,
-  async (val) => {
-    if (!val) {
-      types.value = [];
-      return;
-    }
-    try {
-      const params = new URLSearchParams({
-        season_id: val,
-        page: 1,
-        limit: 100,
-      });
-      const data = await apiFetch(`/normative-types?${params}`);
-      types.value = data.types;
-    } catch (_err) {
-      types.value = [];
-    }
-  }
-);
 
 watch(
   () => form.value.training_id,
   async (val) => {
-    const tr = trainings.value.find((t) => t.id === val);
-    if (tr) {
-      form.value.season_id = tr.season_id;
-    }
     if (!val) {
       trainingUsers.value = [];
       return;
@@ -125,6 +107,15 @@ watch(
     if (t) {
       value_type_id.value = t.value_type_id;
       unit_id.value = t.unit_id;
+      form.value.season_id = t.season_id;
+      if (!editing.value) {
+        form.value.training_id = '';
+        form.value.user_id = '';
+        userQuery.value = '';
+        trainingUsers.value = [];
+      }
+      minutes.value = '';
+      seconds.value = '';
     }
   }
 );
@@ -150,17 +141,17 @@ async function load() {
 
 async function loadAux() {
   try {
-    const [seasonData, trainingData, unitData] = await Promise.all([
-      apiFetch('/camp-seasons?page=1&limit=100'),
+    const [trainingData, typeData, unitData] = await Promise.all([
       apiFetch('/camp-trainings/past?limit=100'),
+      apiFetch('/normative-types?limit=100'),
       apiFetch('/measurement-units'),
     ]);
-    seasons.value = seasonData.seasons;
     trainings.value = trainingData.trainings;
+    types.value = typeData.types;
     units.value = unitData.units;
   } catch (_e) {
-    seasons.value = [];
     trainings.value = [];
+    types.value = [];
     units.value = [];
   }
 }
@@ -174,6 +165,8 @@ function openCreate() {
     type_id: '',
     value: '',
   };
+  minutes.value = '';
+  seconds.value = '';
   value_type_id.value = '';
   unit_id.value = '';
   userQuery.value = '';
@@ -188,7 +181,9 @@ function openEdit(r) {
   const unit = units.value.find((u) => u.id === r.unit_id);
   let val = r.value;
   if (unit?.alias === 'MIN_SEC') {
-    val = formatMinutesSeconds(val);
+    minutes.value = Math.floor(val / 60);
+    seconds.value = Math.round(val % 60);
+    val = '';
   } else if (unit?.alias === 'SECONDS') {
     val = Number(val).toFixed(2);
   }
@@ -216,28 +211,6 @@ function selectUser(u) {
   userSuggestions.value = [];
 }
 
-function onValueInput(e) {
-  if (currentUnit.value?.alias !== 'MIN_SEC') {
-    form.value.value = e.target.value;
-    return;
-  }
-  let val = e.target.value.replace(/[^0-9:]/g, '');
-  const colon = val.indexOf(':');
-  if (colon === -1) {
-    const digits = val.replace(/\D/g, '').slice(0, 4);
-    if (digits.length > 2) {
-      form.value.value = `${digits.slice(0, digits.length - 2)}:${digits.slice(-2)}`;
-    } else {
-      form.value.value = digits;
-    }
-    return;
-  }
-  val = val.slice(0, colon + 1) + val.slice(colon + 1).replace(/:/g, '');
-  let minutes = val.slice(0, colon).replace(/\D/g, '').slice(0, 2);
-  if (!minutes) minutes = '0';
-  let seconds = val.slice(colon + 1).replace(/\D/g, '').slice(0, 2);
-  form.value.value = `${minutes}:${seconds}`;
-}
 
 function formatValue(r) {
   const unit = units.value.find((u) => u.id === r.unit_id);
@@ -266,11 +239,17 @@ function goBack() {
 
 async function save() {
   const unit = currentUnit.value;
-  let val = form.value.value;
+  let val;
   if (unit?.alias === 'MIN_SEC') {
-    val = parseMinutesSeconds(val);
+    const m = parseInt(minutes.value || '0', 10);
+    const s = parseInt(seconds.value || '0', 10);
+    if (Number.isNaN(m) || Number.isNaN(s) || s < 0 || s > 59) {
+      formError.value = 'Неверное значение';
+      return;
+    }
+    val = m * 60 + s;
   } else {
-    val = parseFloat(val);
+    val = parseFloat(form.value.value);
     if (!Number.isNaN(val)) {
       if (unit?.alias === 'SECONDS') val = Math.round(val * 100) / 100;
       else if (!unit?.fractional) val = Math.round(val);
@@ -432,7 +411,34 @@ defineExpose({ refresh });
                 {{ formError }}
               </div>
               <template v-if="step === 1">
-                <div class="mb-3 position-relative">
+                <div class="form-floating mb-3">
+                  <select
+                    id="resType"
+                    v-model="form.type_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Тип</option>
+                    <option v-for="t in types" :key="t.id" :value="t.id">
+                      {{ t.name }}
+                    </option>
+                  </select>
+                  <label for="resType">Тип</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <select
+                    id="resTraining"
+                    v-model="form.training_id"
+                    class="form-select"
+                  >
+                    <option value="" disabled>Тренировка</option>
+                    <option v-for="t in filteredTrainings" :key="t.id" :value="t.id">
+                      {{ new Date(t.start_at).toLocaleString('ru-RU') }}
+                    </option>
+                  </select>
+                  <label for="resTraining">Тренировка</label>
+                </div>
+                <div class="mb-3 position-relative" v-if="form.training_id">
                   <div class="form-floating">
                     <input
                       id="userId"
@@ -457,57 +463,45 @@ defineExpose({ refresh });
                     </li>
                   </ul>
                 </div>
-                <div class="form-floating mb-3">
-                  <select
-                    id="resSeason"
-                    v-model="form.season_id"
-                    class="form-select"
-                    required
-                  >
-                    <option value="" disabled>Выберите сезон</option>
-                    <option v-for="s in seasons" :key="s.id" :value="s.id">
-                      {{ s.name }}
-                    </option>
-                  </select>
-                  <label for="resSeason">Сезон</label>
-                </div>
-                <div class="form-floating mb-3">
-                  <select
-                    id="resType"
-                    v-model="form.type_id"
-                    class="form-select"
-                    required
-                  >
-                    <option value="" disabled>Тип</option>
-                    <option v-for="t in types" :key="t.id" :value="t.id">
-                      {{ t.name }}
-                    </option>
-                  </select>
-                  <label for="resType">Тип</label>
-                </div>
-                <div class="form-floating mb-3">
-                  <select
-                    id="resTraining"
-                    v-model="form.training_id"
-                    class="form-select"
-                  >
-                    <option value="" disabled>Тренировка</option>
-                    <option v-for="t in trainings" :key="t.id" :value="t.id">
-                      {{ new Date(t.start_at).toLocaleString('ru-RU') }}
-                    </option>
-                  </select>
-                  <label for="resTraining">Тренировка</label>
-                </div>
               </template>
               <template v-else>
-                <div class="form-floating mb-3">
+                <div v-if="currentUnit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
+                  <div class="col">
+                    <div class="form-floating">
+                      <input
+                        id="resMin"
+                        type="number"
+                        min="0"
+                        v-model.number="minutes"
+                        class="form-control"
+                        placeholder="Минуты"
+                        required
+                      />
+                      <label for="resMin">Минуты</label>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating">
+                      <input
+                        id="resSec"
+                        type="number"
+                        min="0"
+                        max="59"
+                        v-model.number="seconds"
+                        class="form-control"
+                        placeholder="Секунды"
+                        required
+                      />
+                      <label for="resSec">Секунды</label>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="form-floating mb-3">
                   <input
                     id="resValue"
-                    :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
+                    type="number"
+                    v-model="form.value"
                     :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
-                    :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
-                    :value="form.value.value"
-                    @input="onValueInput"
                     class="form-control"
                     placeholder="Значение"
                     required
