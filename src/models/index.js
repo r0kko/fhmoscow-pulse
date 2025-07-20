@@ -271,6 +271,8 @@ NormativeValueType.hasMany(NormativeResult, { foreignKey: 'value_type_id' });
 NormativeResult.belongsTo(NormativeValueType, { foreignKey: 'value_type_id' });
 MeasurementUnit.hasMany(NormativeResult, { foreignKey: 'unit_id' });
 NormativeResult.belongsTo(MeasurementUnit, { foreignKey: 'unit_id' });
+NormativeZone.hasMany(NormativeResult, { foreignKey: 'zone_id' });
+NormativeResult.belongsTo(NormativeZone, { foreignKey: 'zone_id' });
 
 // models that don't have standard audit columns
 const auditExclude = ['Log', 'EmailCode'];

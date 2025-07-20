@@ -17,12 +17,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   MeasurementUnit: {},
 }));
 
-const determineZoneMock = jest.fn((type) => type.NormativeTypeZones[0]);
-
+const determineZoneMock = jest.fn();
 jest.unstable_mockModule('../src/services/normativeTypeService.js', () => ({
   __esModule: true,
-  determineZone: determineZoneMock,
   parseResultValue: jest.fn((v) => v),
+  determineZone: determineZoneMock,
 }));
 
 const { default: service } = await import('../src/services/normativeResultService.js');
@@ -35,10 +34,8 @@ const dataRow = {
   user_id: 'u1',
   season_id: 's1',
   value: 7,
+  NormativeZone: { alias: 'YELLOW' },
   NormativeType: {
-    NormativeTypeZones: [
-      { min_value: 5, max_value: 9, NormativeZone: { alias: 'YELLOW' } },
-    ],
     NormativeGroupTypes: [{ NormativeGroup: { id: 'g1', name: 'G1' } }],
   },
 };
@@ -54,7 +51,6 @@ test('listAll filters by user and maps zone and group', async () => {
       include: expect.any(Array),
     })
   );
-  expect(determineZoneMock).toHaveBeenCalled();
   expect(rows[0].zone.alias).toBe('YELLOW');
   expect(rows[0].group.name).toBe('G1');
 });

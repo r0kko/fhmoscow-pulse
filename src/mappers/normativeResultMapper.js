@@ -14,6 +14,7 @@ function sanitize(obj) {
     unit_id,
     value,
     zone,
+    NormativeZone,
     group,
     User,
     Training,
@@ -28,7 +29,8 @@ function sanitize(obj) {
     unit_id,
     value,
   };
-  if (zone) res.zone = normativeZoneMapper.toPublic(zone);
+  const zoneObj = zone || NormativeZone;
+  if (zoneObj) res.zone = normativeZoneMapper.toPublic(zoneObj);
   if (group) res.group = normativeGroupMapper.toPublic(group);
   if (User) res.user = userMapper.toPublic(User);
   if (Training) res.training = trainingMapper.toPublic(Training);

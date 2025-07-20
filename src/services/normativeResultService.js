@@ -35,19 +35,16 @@ async function listAll(options = {}) {
       { model: Training, include: [CampStadium] },
       {
         model: NormativeType,
-        include: [
-          { model: NormativeTypeZone, include: [NormativeZone] },
-          { model: NormativeGroupType, include: [NormativeGroup] },
-        ],
+        include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
       },
+      { model: NormativeZone },
     ],
   });
   for (const r of rows) {
-    const zone = determineZone(r.NormativeType, r.value);
-    if (zone) r.setDataValue('zone', zone.NormativeZone);
     const group =
       r.NormativeType?.NormativeGroupTypes?.[0]?.NormativeGroup || null;
     if (group) r.setDataValue('group', group);
+    if (r.NormativeZone) r.setDataValue('zone', r.NormativeZone);
   }
   return { rows, count };
 }
@@ -62,19 +59,16 @@ async function getById(id) {
       { model: Training, include: [CampStadium] },
       {
         model: NormativeType,
-        include: [
-          { model: NormativeTypeZone, include: [NormativeZone] },
-          { model: NormativeGroupType, include: [NormativeGroup] },
-        ],
+        include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
       },
+      { model: NormativeZone },
     ],
   });
   if (!res) throw new ServiceError('normative_result_not_found', 404);
-  const zone = determineZone(res.NormativeType, res.value);
-  if (zone) res.setDataValue('zone', zone.NormativeZone);
   const group =
     res.NormativeType?.NormativeGroupTypes?.[0]?.NormativeGroup || null;
   if (group) res.setDataValue('group', group);
+  if (res.NormativeZone) res.setDataValue('zone', res.NormativeZone);
   return res;
 }
 
@@ -82,7 +76,9 @@ async function create(data, actorId) {
   const [user, season, type] = await Promise.all([
     User.findByPk(data.user_id),
     Season.findByPk(data.season_id),
-    NormativeType.findByPk(data.type_id, { include: [MeasurementUnit] }),
+    NormativeType.findByPk(data.type_id, {
+      include: [MeasurementUnit, NormativeTypeZone],
+    }),
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!season) throw new ServiceError('season_not_found', 404);
@@ -92,6 +88,7 @@ async function create(data, actorId) {
   }
   const value = parseResultValue(data.value, type.MeasurementUnit);
   if (value == null) throw new ServiceError('invalid_value');
+  const zone = determineZone(type, value);
   const res = await NormativeResult.create({
     user_id: data.user_id,
     season_id: data.season_id,
@@ -99,6 +96,7 @@ async function create(data, actorId) {
     type_id: data.type_id,
     value_type_id: type.value_type_id,
     unit_id: type.unit_id,
+    zone_id: zone?.zone_id || null,
     value,
     created_by: actorId,
     updated_by: actorId,
@@ -108,7 +106,12 @@ async function create(data, actorId) {
 
 async function update(id, data, actorId) {
   const res = await NormativeResult.findByPk(id, {
-    include: [{ model: NormativeType, include: [MeasurementUnit] }],
+    include: [
+      {
+        model: NormativeType,
+        include: [MeasurementUnit, NormativeTypeZone],
+      },
+    ],
   });
   if (!res) throw new ServiceError('normative_result_not_found', 404);
   let newValue = res.value;
@@ -116,10 +119,12 @@ async function update(id, data, actorId) {
     newValue = parseResultValue(data.value, res.NormativeType.MeasurementUnit);
     if (newValue == null) throw new ServiceError('invalid_value');
   }
+  const zone = determineZone(res.NormativeType, newValue);
   await res.update(
     {
       training_id: data.training_id ?? res.training_id,
       value: newValue,
+      zone_id: zone?.zone_id || null,
       updated_by: actorId,
     },
     { returning: false }

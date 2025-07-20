@@ -17,6 +17,7 @@ NormativeResult.init(
     type_id: { type: DataTypes.UUID, allowNull: false },
     value_type_id: { type: DataTypes.UUID, allowNull: false },
     unit_id: { type: DataTypes.UUID, allowNull: false },
+    zone_id: { type: DataTypes.UUID },
     value: { type: DataTypes.FLOAT, allowNull: false },
   },
   {
