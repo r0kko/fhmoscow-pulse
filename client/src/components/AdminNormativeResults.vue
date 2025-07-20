@@ -318,7 +318,7 @@ defineExpose({ refresh });
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="results.length" class="table-responsive">
+        <div v-if="results.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
@@ -358,6 +358,27 @@ defineExpose({ refresh });
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="results.length" class="d-block d-sm-none">
+          <div v-for="r in results" :key="r.id" class="card training-card mb-2">
+            <div class="card-body p-2">
+              <h6 class="mb-1">
+                {{ r.user?.last_name }} {{ r.user?.first_name }}
+              </h6>
+              <p class="mb-1">Тип: {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}</p>
+              <p class="mb-1">Группа: {{ r.group?.name || '-' }}</p>
+              <p class="mb-1">Значение: {{ formatValue(r) }}</p>
+              <p class="mb-1">Зона: {{ r.zone?.name }}</p>
+              <div class="text-end">
+                <button class="btn btn-sm btn-secondary me-2" @click="openEdit(r)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" @click="removeResult(r)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
@@ -528,3 +549,38 @@ defineExpose({ refresh });
     </div>
   </div>
 </template>
+
+<style scoped>
+.training-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
