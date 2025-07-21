@@ -51,7 +51,8 @@ function openHistory(t) {
 
 function formatValue(result) {
   if (!result) return '-';
-  if (result.unit?.alias === 'MIN_SEC') return formatMinutesSeconds(result.value);
+  if (result.unit?.alias === 'MIN_SEC')
+    return formatMinutesSeconds(result.value);
   if (result.unit?.alias === 'SECONDS') return Number(result.value).toFixed(2);
   return result.value;
 }
@@ -82,7 +83,10 @@ function formatValue(result) {
           <h2 class="h6 mb-0">{{ g.name }}</h2>
         </div>
         <div class="card-body p-3">
-          <div v-if="g.types && g.types.length" class="table-responsive d-none d-sm-block">
+          <div
+            v-if="g.types && g.types.length"
+            class="table-responsive d-none d-sm-block"
+          >
             <table class="table table-sm align-middle mb-0 normatives-table">
               <thead>
                 <tr>
@@ -114,7 +118,7 @@ function formatValue(result) {
                     </button>
                     <i
                       v-else
-                      class="bi bi-clock-history text-secondary"
+                      class="bi bi-clock-history invisible"
                       aria-label="Нет других попыток"
                     ></i>
                   </td>
@@ -129,7 +133,9 @@ function formatValue(result) {
               class="card training-card mb-2"
             >
               <div class="card-body p-2">
-                <div class="d-flex justify-content-between align-items-start mb-1">
+                <div
+                  class="d-flex justify-content-between align-items-start mb-1"
+                >
                   <span class="fw-semibold">{{ t.name }}</span>
                   <button
                     v-if="t.history && t.history.length"
@@ -141,7 +147,7 @@ function formatValue(result) {
                   </button>
                   <i
                     v-else
-                    class="bi bi-clock-history text-secondary"
+                    class="bi bi-clock-history invisible"
                     aria-label="Нет других попыток"
                   ></i>
                 </div>
@@ -161,15 +167,25 @@ function formatValue(result) {
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">{{ modalTitle }}</h5>
-              <button type="button" class="btn-close" @click="modal.hide()"></button>
+              <button
+                type="button"
+                class="btn-close"
+                @click="modal.hide()"
+              ></button>
             </div>
             <div class="modal-body">
               <div v-if="!modalResults.length" class="text-muted">
                 История пуста
               </div>
               <ul v-else class="list-group list-group-flush">
-                <li v-for="r in modalResults" :key="r.id" class="list-group-item">
-                  <div class="d-flex justify-content-between align-items-center">
+                <li
+                  v-for="r in modalResults"
+                  :key="r.id"
+                  class="list-group-item"
+                >
+                  <div
+                    class="d-flex justify-content-between align-items-center"
+                  >
                     <span>{{ formatValue(r) }}</span>
                     <span class="small text-nowrap">
                       {{ formatDateTime(r.training?.start_at) }}
@@ -182,7 +198,11 @@ function formatValue(result) {
               </ul>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="modal.hide()"
+              >
                 Закрыть
               </button>
             </div>
