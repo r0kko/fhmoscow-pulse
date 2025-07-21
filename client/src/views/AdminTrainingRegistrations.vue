@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
+import TrainingNormativeResultsModal from '../components/TrainingNormativeResultsModal.vue';
 
 const ROLE_ORDER = ['COACH', 'EQUIPMENT_MANAGER', 'PARTICIPANT'];
 
@@ -19,6 +20,8 @@ const addLoading = ref(false);
 const judges = ref([]);
 const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
+const normativeModalRef = ref(null);
+const selectedReg = ref(null);
 
 function showAttendance(reg) {
   const alias = reg.role?.alias;
@@ -37,6 +40,7 @@ function attendanceTitle(reg) {
   return 'Не отмечено';
 }
 
+const attendanceMarked = computed(() => training.value?.attendance_marked);
 
 const groupedRegistrations = computed(() => {
   const map = {};
@@ -56,6 +60,15 @@ const groupedRegistrations = computed(() => {
   if (none.registrations.length) groups.push(none);
   return groups;
 });
+
+const visibleRegistrations = computed(() =>
+  list.value.filter((r) => showAttendance(r))
+);
+const allMarked = computed(() =>
+  visibleRegistrations.value.every(
+    (r) => r.present === true || r.present === false
+  )
+);
 
 onMounted(() => {
   loadTraining();
@@ -131,18 +144,16 @@ async function loadJudges() {
 async function loadTrainingRoles() {
   try {
     const data = await apiFetch('/training-roles');
-    trainingRoles.value = data.roles
-      .slice()
-      .sort((a, b) => {
-        const i1 = ROLE_ORDER.indexOf(a.alias);
-        const i2 = ROLE_ORDER.indexOf(b.alias);
-        if (i1 === -1 && i2 === -1) {
-          return a.name.localeCompare(b.name);
-        }
-        if (i1 === -1) return 1;
-        if (i2 === -1) return -1;
-        return i1 - i2;
-      });
+    trainingRoles.value = data.roles.slice().sort((a, b) => {
+      const i1 = ROLE_ORDER.indexOf(a.alias);
+      const i2 = ROLE_ORDER.indexOf(b.alias);
+      if (i1 === -1 && i2 === -1) {
+        return a.name.localeCompare(b.name);
+      }
+      if (i1 === -1) return 1;
+      if (i2 === -1) return -1;
+      return i1 - i2;
+    });
   } catch (_) {
     trainingRoles.value = [];
   }
@@ -198,6 +209,42 @@ async function updateRegistration(reg) {
     alert(e.message);
   }
 }
+
+async function setPresence(userId, value) {
+  try {
+    await apiFetch(
+      `/camp-trainings/${route.params.id}/registrations/${userId}/presence`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ present: value }),
+      }
+    );
+    await loadRegistrations();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function finish() {
+  if (!allMarked.value) {
+    alert('Отметьте посещаемость для всех участников');
+    return;
+  }
+  try {
+    await apiFetch(`/camp-trainings/${route.params.id}/attendance`, {
+      method: 'PUT',
+      body: JSON.stringify({ attendance_marked: true }),
+    });
+    await loadTraining();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function openNormatives(reg) {
+  selectedReg.value = reg;
+  normativeModalRef.value.open();
+}
 </script>
 
 <template>
@@ -216,10 +263,13 @@ async function updateRegistration(reg) {
       </nav>
       <h1 class="mb-3">Участники тренировки</h1>
       <p v-if="training" class="mb-3">
-        <strong>{{ training.type?.name }}</strong>,
+        <strong>{{ training.type?.name }}</strong
+        >,
         {{ formatDateTimeRange(training.start_at, training.end_at) }}
       </p>
-      <div v-if="trainingError" class="alert alert-danger mb-3">{{ trainingError }}</div>
+      <div v-if="trainingError" class="alert alert-danger mb-3">
+        {{ trainingError }}
+      </div>
       <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
       <div v-if="loading || loadingTraining" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
@@ -230,7 +280,8 @@ async function updateRegistration(reg) {
           <select v-model="addForm.user_id" class="form-select">
             <option value="" disabled>Выберите судью</option>
             <option v-for="j in judges" :key="j.user.id" :value="j.user.id">
-              {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
+              {{ j.user.last_name }} {{ j.user.first_name }}
+              {{ j.user.patronymic }}
             </option>
           </select>
         </div>
@@ -244,22 +295,36 @@ async function updateRegistration(reg) {
           </select>
         </div>
         <div class="col-12 col-sm-auto d-grid d-sm-block">
-          <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
-            <span v-if="addLoading" class="spinner-border spinner-border-sm me-2"></span>
+          <button
+            class="btn btn-brand"
+            @click="addRegistration"
+            :disabled="addLoading"
+          >
+            <span
+              v-if="addLoading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
             Добавить
           </button>
         </div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
         <div class="card-body p-3">
-          <div v-for="group in groupedRegistrations" :key="group.role ? group.role.id : 'none'" class="mb-4 table-responsive">
-            <h5 class="mb-2">{{ group.role ? group.role.name : 'Без роли' }}</h5>
+          <div
+            v-for="group in groupedRegistrations"
+            :key="group.role ? group.role.id : 'none'"
+            class="mb-4 table-responsive"
+          >
+            <h5 class="mb-2">
+              {{ group.role ? group.role.name : 'Без роли' }}
+            </h5>
             <table class="table admin-table table-striped align-middle mb-0">
               <thead>
                 <tr>
                   <th>ФИО</th>
                   <th>Роль</th>
                   <th class="text-center">Посещение</th>
+                  <th class="text-center">Сдано нормативов</th>
                   <th></th>
                 </tr>
               </thead>
@@ -269,23 +334,84 @@ async function updateRegistration(reg) {
                   :key="r.user.id"
                   :class="{ highlight: r.highlight }"
                 >
-                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                   <td>
-                    <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
+                    {{ r.user.last_name }} {{ r.user.first_name }}
+                    {{ r.user.patronymic }}
+                  </td>
+                  <td>
+                    <select
+                      v-model="r.role_id"
+                      class="form-select form-select-sm"
+                      @change="updateRegistration(r)"
+                    >
                       <option value="" disabled>Выберите роль</option>
-                      <option v-for="role in trainingRoles" :key="role.id" :value="role.id">
+                      <option
+                        v-for="role in trainingRoles"
+                        :key="role.id"
+                        :value="role.id"
+                      >
                         {{ role.name }}
                       </option>
                     </select>
                   </td>
                   <td class="text-center">
                     <template v-if="showAttendance(r)">
-                      <i :class="attendanceIcon(r)" :title="attendanceTitle(r)" aria-hidden="true"></i>
-                      <span class="visually-hidden">{{ attendanceTitle(r) }}</span>
+                      <div
+                        class="btn-group btn-group-sm presence-group"
+                        role="group"
+                      >
+                        <input
+                          type="radio"
+                          class="btn-check"
+                          :id="`present-yes-${r.user.id}`"
+                          :name="`present-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === true"
+                          @change="setPresence(r.user.id, true)"
+                          :disabled="attendanceMarked"
+                        />
+                        <label
+                          class="btn btn-outline-success presence-btn"
+                          :for="`present-yes-${r.user.id}`"
+                        >
+                          <i class="bi bi-check-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Да</span>
+                        </label>
+                        <input
+                          type="radio"
+                          class="btn-check"
+                          :id="`present-no-${r.user.id}`"
+                          :name="`present-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === false"
+                          @change="setPresence(r.user.id, false)"
+                          :disabled="attendanceMarked"
+                        />
+                        <label
+                          class="btn btn-outline-danger presence-btn"
+                          :for="`present-no-${r.user.id}`"
+                        >
+                          <i class="bi bi-x-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Нет</span>
+                        </label>
+                      </div>
                     </template>
                   </td>
+                  <td class="text-center">
+                    <button
+                      v-if="r.normative_count"
+                      class="btn btn-link p-0"
+                      @click="openNormatives(r)"
+                    >
+                      {{ r.normative_count }}
+                    </button>
+                    <span v-else>0</span>
+                  </td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">
+                    <button
+                      class="btn btn-sm btn-danger"
+                      @click="removeRegistration(r.user.id)"
+                    >
                       <i class="bi bi-x-lg" aria-hidden="true"></i>
                       <span class="visually-hidden">Удалить</span>
                     </button>
@@ -296,7 +422,26 @@ async function updateRegistration(reg) {
           </div>
         </div>
       </div>
-      <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">Нет записей.</p>
+      <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">
+        Нет записей.
+      </p>
+      <button
+        v-if="!attendanceMarked"
+        class="btn btn-brand mt-3"
+        @click="finish"
+        :disabled="!visibleRegistrations.length || !allMarked"
+      >
+        Сохранить
+      </button>
+      <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
+      <TrainingNormativeResultsModal
+        ref="normativeModalRef"
+        v-if="selectedReg"
+        :training-id="route.params.id"
+        :season-id="training?.season_id"
+        :user="selectedReg.user"
+        @changed="loadRegistrations"
+      />
     </div>
   </div>
 </template>
@@ -319,6 +464,14 @@ async function updateRegistration(reg) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.presence-group .presence-btn {
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0;
 }
 
 @media (max-width: 575.98px) {
