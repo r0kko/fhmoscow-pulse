@@ -1,14 +1,22 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
 const groups = ref([]);
 const loading = ref(true);
 const error = ref('');
+const modalRef = ref(null);
+const modalResults = ref([]);
+const modalTitle = ref('');
+let modal;
 
-onMounted(load);
+onMounted(() => {
+  modal = new Modal(modalRef.value);
+  load();
+});
 
 async function load() {
   loading.value = true;
@@ -22,6 +30,23 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+function formatDateTime(dt) {
+  if (!dt) return '-';
+  return new Date(dt).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function openHistory(t) {
+  modalTitle.value = t.name;
+  modalResults.value = t.history || [];
+  modal.show();
 }
 
 function formatValue(result) {
@@ -48,28 +73,108 @@ function formatValue(result) {
       <div v-if="loading" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
       </div>
-      <div v-for="g in groups" :key="g.id" class="card section-card tile fade-in shadow-sm mb-3">
+      <div
+        v-for="g in groups"
+        :key="g.id"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
         <div class="card-header">
           <h2 class="h6 mb-0">{{ g.name }}</h2>
         </div>
         <div class="card-body p-3">
-          <div v-if="g.types && g.types.length" class="table-responsive">
+          <div v-if="g.types && g.types.length" class="table-responsive d-none d-sm-block">
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
                   <th>Норматив</th>
-                  <th class="text-nowrap">Мой результат</th>
+                  <th>Лучший результат</th>
+                  <th class="text-nowrap">Дата и время</th>
+                  <th class="d-none d-md-table-cell">Стадион</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="t in g.types" :key="t.id">
                   <td>{{ t.name }}</td>
                   <td>{{ formatValue(t.result) }}</td>
+                  <td class="text-nowrap">
+                    {{ formatDateTime(t.result?.training?.start_at) }}
+                  </td>
+                  <td class="d-none d-md-table-cell">
+                    {{ t.result?.training?.stadium?.name || '-' }}
+                  </td>
+                  <td class="text-end">
+                    <button
+                      v-if="t.history && t.history.length"
+                      class="btn btn-sm btn-link p-0"
+                      @click="openHistory(t)"
+                    >
+                      Другие попытки
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <div v-if="g.types && g.types.length" class="d-block d-sm-none">
+            <div
+              v-for="t in g.types"
+              :key="t.id"
+              class="card training-card mb-2"
+            >
+              <div class="card-body p-2">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <span class="fw-semibold">{{ t.name }}</span>
+                  <button
+                    v-if="t.history && t.history.length"
+                    class="btn btn-link btn-sm p-0"
+                    @click="openHistory(t)"
+                  >
+                    Другие попытки
+                  </button>
+                </div>
+                <p class="mb-1">Лучший: {{ formatValue(t.result) }}</p>
+                <p class="mb-1 small">
+                  {{ formatDateTime(t.result?.training?.start_at) }}
+                  , {{ t.result?.training?.stadium?.name || '-' }}
+                </p>
+              </div>
+            </div>
+          </div>
           <p v-else class="text-muted mb-0">Нормативы отсутствуют.</p>
+        </div>
+      </div>
+      <div ref="modalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">{{ modalTitle }}</h5>
+              <button type="button" class="btn-close" @click="modal.hide()"></button>
+            </div>
+            <div class="modal-body">
+              <div v-if="!modalResults.length" class="text-muted">
+                История пуста
+              </div>
+              <ul v-else class="list-group list-group-flush">
+                <li v-for="r in modalResults" :key="r.id" class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span>{{ formatValue(r) }}</span>
+                    <span class="small text-nowrap">
+                      {{ formatDateTime(r.training?.start_at) }}
+                    </span>
+                  </div>
+                  <div class="small text-muted">
+                    {{ r.training?.stadium?.name || '-' }}
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="modal.hide()">
+                Закрыть
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -81,6 +186,11 @@ function formatValue(result) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.training-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
 }
 
 .fade-in {
