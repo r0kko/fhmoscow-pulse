@@ -19,6 +19,7 @@ import {
 } from '../models/index.js';
 
 import { parseResultValue, determineZone } from './normativeTypeService.js';
+import emailService from './emailService.js';
 
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -159,7 +160,9 @@ async function create(data, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  return getById(res.id);
+  const created = await getById(res.id);
+  await emailService.sendNormativeResultAddedEmail(user, created);
+  return created;
 }
 
 async function update(id, data, actorId) {
@@ -190,14 +193,23 @@ async function update(id, data, actorId) {
     },
     { returning: false }
   );
-  return getById(res.id);
+  const updated = await getById(res.id);
+  const user = res.User || (await User.findByPk(res.user_id));
+  if (user) {
+    await emailService.sendNormativeResultUpdatedEmail(user, updated);
+  }
+  return updated;
 }
 
 async function remove(id, actorId = null) {
-  const res = await NormativeResult.findByPk(id);
+  const res = await getById(id);
   if (!res) throw new ServiceError('normative_result_not_found', 404);
   await res.update({ updated_by: actorId });
   await res.destroy();
+  const user = res.User || (await User.findByPk(res.user_id));
+  if (user) {
+    await emailService.sendNormativeResultRemovedEmail(user, res);
+  }
 }
 
 async function countByTraining(trainingId) {
