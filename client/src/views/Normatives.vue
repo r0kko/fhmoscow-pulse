@@ -81,6 +81,18 @@ function formatValue(result) {
   if (result.unit?.alias === 'SECONDS') return Number(result.value).toFixed(2);
   return result.value;
 }
+
+function zoneClass(result) {
+  return result?.zone?.alias ? `zone-${result.zone.alias}` : '';
+}
+
+function zoneEmoji(result) {
+  const alias = result?.zone?.alias;
+  if (alias === 'GREEN') return '🟢';
+  if (alias === 'YELLOW') return '🟡';
+  if (alias === 'RED') return '🔴';
+  return '';
+}
 </script>
 
 <template>
@@ -129,20 +141,22 @@ function formatValue(result) {
               <thead>
                 <tr>
                   <th>Норматив</th>
-                  <th>Лучший результат</th>
-                  <th class="text-nowrap">Дата и время</th>
-                  <th class="d-none d-md-table-cell">Стадион</th>
+                  <th class="text-center">Лучший результат</th>
+                  <th class="text-center text-nowrap">Дата и время</th>
+                  <th class="text-center d-none d-md-table-cell">Стадион</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="t in g.types" :key="t.id">
                   <td>{{ t.name }}</td>
-                  <td>{{ formatValue(t.result) }}</td>
-                  <td class="text-nowrap">
+                  <td :class="['text-center', 'zone-cell', zoneClass(t.result)]">
+                    {{ formatValue(t.result) }}
+                  </td>
+                  <td class="text-center text-nowrap">
                     {{ formatDateTime(t.result?.training?.start_at) }}
                   </td>
-                  <td class="d-none d-md-table-cell">
+                  <td class="text-center d-none d-md-table-cell">
                     {{ t.result?.training?.stadium?.name || '-' }}
                   </td>
                   <td class="text-end">
@@ -189,8 +203,13 @@ function formatValue(result) {
                     aria-label="Нет других попыток"
                   ></i>
                 </div>
-                <p class="mb-1">Лучший: {{ formatValue(t.result) }}</p>
-                <p class="mb-1 small">
+                <p class="mb-1">
+                  Лучший:
+                  <span :class="['zone-cell', zoneClass(t.result)]">
+                    {{ zoneEmoji(t.result) }} {{ formatValue(t.result) }}
+                  </span>
+                </p>
+                <p class="mb-1 small text-center text-sm-start">
                   {{ formatDateTime(t.result?.training?.start_at) }}
                   , {{ t.result?.training?.stadium?.name || '-' }}
                 </p>
