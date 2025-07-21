@@ -1198,7 +1198,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
     </div>
   </div>
 </div>
-</div>
 </template>
 
 <style scoped>
