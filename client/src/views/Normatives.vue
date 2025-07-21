@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
+import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
@@ -13,10 +14,13 @@ const error = ref('');
 const modalRef = ref(null);
 const modalResults = ref([]);
 const modalTitle = ref('');
+const seasonRef = ref(null);
 let modal;
+let seasonCanvas;
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
+  seasonCanvas = new Offcanvas(seasonRef.value);
   loadSeasons();
 });
 
@@ -74,6 +78,10 @@ function openHistory(t) {
   modal.show();
 }
 
+function openSeason() {
+  seasonCanvas.show();
+}
+
 function formatValue(result) {
   if (!result) return '-';
   if (result.unit?.alias === 'MIN_SEC')
@@ -100,8 +108,18 @@ function zoneClass(result) {
         </ol>
       </nav>
       <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 header-controls">
-        <h1 class="mb-0">Нормативы</h1>
-        <select v-model="filterSeason" class="form-select season-select mt-2 mt-sm-0">
+        <h1 class="mb-0 text-start">Нормативы</h1>
+        <button
+          class="btn btn-outline-secondary d-sm-none"
+          @click="openSeason"
+          aria-label="Выбрать сезон"
+        >
+          <i class="bi bi-funnel"></i>
+        </button>
+        <select
+          v-model="filterSeason"
+          class="form-select season-select mt-2 mt-sm-0 d-none d-sm-block"
+        >
           <option value="" disabled>Выберите сезон</option>
           <option
             v-for="s in seasons"
@@ -259,6 +277,25 @@ function zoneClass(result) {
           </div>
         </div>
       </div>
+      <div ref="seasonRef" class="offcanvas offcanvas-bottom" tabindex="-1">
+        <div class="offcanvas-header">
+          <h5 class="offcanvas-title">Выберите сезон</h5>
+          <button type="button" class="btn-close" @click="seasonCanvas.hide()"></button>
+        </div>
+        <div class="offcanvas-body">
+          <select v-model="filterSeason" class="form-select">
+            <option value="" disabled>Выберите сезон</option>
+            <option
+              v-for="s in seasons"
+              :key="s.id"
+              :value="s.id"
+              :disabled="!s.has_results"
+            >
+              {{ s.name }}
+            </option>
+          </select>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -315,15 +352,8 @@ function zoneClass(result) {
 
 @media (max-width: 575.98px) {
   .header-controls {
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
   }
-
-  .header-controls .season-select {
-    width: 100%;
-    margin-top: 0.5rem;
-  }
-
 }
 
 @media (max-width: 575.98px) {
