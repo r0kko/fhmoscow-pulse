@@ -158,6 +158,7 @@ watch(search, () => {
       </div>
     </div>
   </div>
+  </div>
   <nav
     class="mt-3 d-flex align-items-center justify-content-between"
     v-if="ledger.judges.length"
@@ -203,8 +204,8 @@ watch(search, () => {
   min-width: max-content;
 }
 .ledger-col {
-  width: 4.5rem;
-  max-width: 4.5rem;
+  width: 6rem;
+  max-width: 10rem;
   white-space: normal;
   word-wrap: break-word;
 }
