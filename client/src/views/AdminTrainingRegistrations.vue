@@ -319,27 +319,28 @@ function openNormatives(reg) {
           <div
             v-for="group in groupedRegistrations"
             :key="group.role ? group.role.id : 'none'"
-            class="mb-4 table-responsive"
+            class="mb-4"
           >
             <h5 class="mb-2">
               {{ group.role ? group.role.name : 'Без роли' }}
             </h5>
-            <table class="table admin-table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>ФИО</th>
-                  <th>Роль</th>
-                  <th class="text-center">Посещение</th>
-                  <th class="text-center">Сдано нормативов</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <TransitionGroup tag="tbody" name="fade-list">
-                <tr
-                  v-for="r in group.registrations"
-                  :key="r.user.id"
-                  :class="{ highlight: r.highlight }"
-                >
+            <div class="table-responsive d-none d-sm-block">
+              <table class="table admin-table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>ФИО</th>
+                    <th>Роль</th>
+                    <th class="text-center">Посещение</th>
+                    <th class="text-center">Сдано нормативов</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <TransitionGroup tag="tbody" name="fade-list">
+                  <tr
+                    v-for="r in group.registrations"
+                    :key="r.user.id"
+                    :class="{ highlight: r.highlight }"
+                  >
                   <td>
                     {{ r.user.last_name }} {{ r.user.first_name }}
                     {{ r.user.patronymic }}
@@ -404,11 +405,11 @@ function openNormatives(reg) {
                     </template>
                   </td>
                   <td class="text-center">{{ r.normative_count || 0 }}</td>
-                  <td class="text-end">
-                    <button
-                      class="btn btn-sm btn-secondary me-2 action-btn"
-                      @click="openNormatives(r)"
-                    >
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-secondary me-2 action-btn"
+                        @click="openNormatives(r)"
+                      >
                       <i class="bi bi-journal-text" aria-hidden="true"></i>
                       <span class="visually-hidden">Нормативы</span>
                     </button>
@@ -418,11 +419,97 @@ function openNormatives(reg) {
                     >
                       <i class="bi bi-x-lg" aria-hidden="true"></i>
                       <span class="visually-hidden">Удалить</span>
-                    </button>
-                  </td>
-                </tr>
-              </TransitionGroup>
-            </table>
+                      </button>
+                    </td>
+                  </tr>
+                </TransitionGroup>
+              </table>
+            </div>
+            <div class="d-block d-sm-none">
+              <div
+                v-for="r in group.registrations"
+                :key="r.user.id"
+                :class="['card', 'registration-card', 'mb-2', { highlight: r.highlight }]"
+              >
+                <div class="card-body p-2">
+                  <div class="fw-medium mb-1">
+                    {{ r.user.last_name }} {{ r.user.first_name }}
+                    {{ r.user.patronymic }}
+                  </div>
+                  <div class="mb-2">
+                    <select
+                      v-model="r.role_id"
+                      class="form-select form-select-sm"
+                      @change="updateRegistration(r)"
+                    >
+                      <option value="" disabled>Выберите роль</option>
+                      <option
+                        v-for="role in trainingRoles"
+                        :key="role.id"
+                        :value="role.id"
+                      >
+                        {{ role.name }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="d-flex align-items-center justify-content-between">
+                    <template v-if="showAttendance(r)">
+                      <div class="btn-group btn-group-sm presence-group me-2" role="group">
+                        <input
+                          type="radio"
+                          class="btn-check"
+                          :id="`present-yes-m-${r.user.id}`"
+                          :name="`present-m-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === true"
+                          @change="setPresence(r.user.id, true)"
+                          :disabled="attendanceMarked"
+                        />
+                        <label
+                          class="btn btn-outline-success presence-btn"
+                          :for="`present-yes-m-${r.user.id}`"
+                        >
+                          <i class="bi bi-check-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Да</span>
+                        </label>
+                        <input
+                          type="radio"
+                          class="btn-check"
+                          :id="`present-no-m-${r.user.id}`"
+                          :name="`present-m-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === false"
+                          @change="setPresence(r.user.id, false)"
+                          :disabled="attendanceMarked"
+                        />
+                        <label
+                          class="btn btn-outline-danger presence-btn"
+                          :for="`present-no-m-${r.user.id}`"
+                        >
+                          <i class="bi bi-x-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Нет</span>
+                        </label>
+                      </div>
+                    </template>
+                    <div class="ms-auto text-end">
+                      <span class="me-2">{{ r.normative_count || 0 }}</span>
+                      <button
+                        class="btn btn-sm btn-secondary me-2 action-btn"
+                        @click="openNormatives(r)"
+                      >
+                        <i class="bi bi-journal-text" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-danger action-btn"
+                        @click="removeRegistration(r.user.id)"
+                      >
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -494,6 +581,11 @@ function openNormatives(reg) {
   padding: 0.25rem 0;
 }
 
+.registration-card {
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
 @media (max-width: 575.98px) {
   .admin-training-registrations-page {
     padding-top: 0.5rem !important;
@@ -511,6 +603,11 @@ function openNormatives(reg) {
 
   .action-btn {
     width: 2rem;
+  }
+
+  .registration-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
   }
 }
 
