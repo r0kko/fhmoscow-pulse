@@ -6,6 +6,8 @@ import measurementUnitService from '../services/measurementUnitService.js';
 import groupMapper from '../mappers/normativeGroupMapper.js';
 import typeMapper from '../mappers/normativeTypeMapper.js';
 import resultMapper from '../mappers/normativeResultMapper.js';
+import seasonService from '../services/seasonService.js';
+import seasonMapper from '../mappers/seasonMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
@@ -72,6 +74,29 @@ export default {
       }
       const list = Object.values(groupMap).filter((g) => g.types.length > 0);
       return res.json({ groups: list });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async listSeasons(req, res) {
+    try {
+      const [seasons, active] = await Promise.all([
+        normativeResultService.listSeasonsForUser(req.user.id),
+        seasonService.getActive(),
+      ]);
+      const seasonList = seasons.map((s) => ({
+        ...seasonMapper.toPublic(s),
+        has_results: true,
+      }));
+      if (active && !seasonList.some((s) => s.id === active.id)) {
+        seasonList.push({
+          ...seasonMapper.toPublic(active),
+          has_results: false,
+        });
+      }
+      seasonList.sort((a, b) => a.name.localeCompare(b.name));
+      return res.json({ seasons: seasonList });
     } catch (err) {
       return sendError(res, err);
     }

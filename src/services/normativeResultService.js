@@ -139,4 +139,15 @@ async function remove(id, actorId = null) {
   await res.destroy();
 }
 
-export default { listAll, getById, create, update, remove };
+async function listSeasonsForUser(userId) {
+  const ids = await NormativeResult.findAll({
+    attributes: ['season_id'],
+    where: { user_id: userId },
+    group: ['season_id'],
+    raw: true,
+  }).then((rows) => rows.map((r) => r.season_id));
+  if (!ids.length) return [];
+  return Season.findAll({ where: { id: ids }, order: [['name', 'ASC']] });
+}
+
+export default { listAll, getById, create, update, remove, listSeasonsForUser };
