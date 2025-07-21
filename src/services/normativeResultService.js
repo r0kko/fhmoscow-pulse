@@ -122,6 +122,8 @@ async function create(data, actorId) {
     value_type_id: type.value_type_id,
     unit_id: type.unit_id,
     zone_id: zone?.zone_id || null,
+    online: false,
+    retake: false,
     value,
     created_by: actorId,
     updated_by: actorId,
@@ -150,6 +152,8 @@ async function update(id, data, actorId) {
       training_id: data.training_id ?? res.training_id,
       value: newValue,
       zone_id: zone?.zone_id || null,
+      online: false,
+      retake: false,
       updated_by: actorId,
     },
     { returning: false }
