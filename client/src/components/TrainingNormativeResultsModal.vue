@@ -26,6 +26,7 @@ const seconds = ref('');
 const unit = ref(null);
 const saving = ref(false);
 const formError = ref('');
+const deletingId = ref(null);
 
 watch(
   () => form.type_id,
@@ -168,11 +169,14 @@ async function save() {
 async function removeResult(r) {
   if (!confirm('Удалить запись?')) return;
   try {
+    deletingId.value = r.id;
     await apiFetch(`/normative-results/${r.id}`, { method: 'DELETE' });
     await load();
     emit('changed');
   } catch (e) {
     alert(e.message);
+  } finally {
+    deletingId.value = null;
   }
 }
 </script>
@@ -216,8 +220,13 @@ async function removeResult(r) {
                   <button
                     class="btn btn-sm btn-danger"
                     @click="removeResult(r)"
+                    :disabled="deletingId === r.id"
                   >
-                    <i class="bi bi-trash" />
+                    <span
+                      v-if="deletingId === r.id"
+                      class="spinner-border spinner-border-sm"
+                    ></span>
+                    <i v-else class="bi bi-trash" />
                   </button>
                 </td>
               </tr>

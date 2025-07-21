@@ -19,6 +19,7 @@ const typeFilter = ref('');
 const groupFilter = ref('');
 const isLoading = ref(false);
 const error = ref('');
+const deletingId = ref(null);
 
 const form = ref({
   user_id: '',
@@ -313,10 +314,13 @@ async function save() {
 async function removeResult(r) {
   if (!confirm('Удалить запись?')) return;
   try {
+    deletingId.value = r.id;
     await apiFetch(`/normative-results/${r.id}`, { method: 'DELETE' });
     await load();
   } catch (e) {
     alert(e.message);
+  } finally {
+    deletingId.value = null;
   }
 }
 
@@ -407,8 +411,13 @@ defineExpose({ refresh });
                   <button
                     class="btn btn-sm btn-danger"
                     @click="removeResult(r)"
+                    :disabled="deletingId === r.id"
                   >
-                    <i class="bi bi-trash"></i>
+                    <span
+                      v-if="deletingId === r.id"
+                      class="spinner-border spinner-border-sm"
+                    ></span>
+                    <i v-else class="bi bi-trash"></i>
                   </button>
                 </td>
               </tr>
