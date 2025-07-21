@@ -11,7 +11,9 @@ const types = ref([]);
 const groups = ref([]);
 const units = ref([]);
 const currentPage = ref(1);
-const pageSize = ref(15);
+const pageSize = ref(
+  parseInt(localStorage.getItem('normativeResultsPageSize') || '15', 10)
+);
 const search = ref('');
 const typeFilter = ref('');
 const groupFilter = ref('');
@@ -73,6 +75,10 @@ watch(search, () => {
 watch([typeFilter, groupFilter, pageSize], () => {
   currentPage.value = 1;
   load();
+});
+
+watch(pageSize, (val) => {
+  localStorage.setItem('normativeResultsPageSize', val);
 });
 
 watch(userQuery, () => {
@@ -151,6 +157,10 @@ async function load() {
     const data = await apiFetch(`/normative-results?${params}`);
     results.value = data.results;
     total.value = data.total;
+    const pages = Math.max(1, Math.ceil(total.value / pageSize.value));
+    if (currentPage.value > pages) {
+      currentPage.value = pages;
+    }
     error.value = '';
   } catch (e) {
     error.value = e.message;
