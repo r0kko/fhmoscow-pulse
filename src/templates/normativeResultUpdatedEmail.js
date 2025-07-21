@@ -34,6 +34,7 @@ export function renderNormativeResultUpdatedEmail(result) {
   }
   text += `\nЗначение: ${value}.`;
   if (zoneName) text += `\nЗона: ${zoneName}.`;
+  text += '\n\nЕсли вы считаете это ошибкой, обратитесь в службу поддержки.';
   const htmlAddress = address
     ? `<p style="font-size:16px;margin:0 0 16px;">Стадион: ${address}${
         yandexUrl
@@ -51,12 +52,13 @@ export function renderNormativeResultUpdatedEmail(result) {
     <div style="font-family: Arial, sans-serif; color: #333;">
       <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
       <p style="font-size:16px;margin:0 0 16px;">
-        Результат по нормативу ${typeName}${groupName ? ` (${groupName})` : ''} изменен.
+        Результат по нормативу <strong>${typeName}</strong>${groupName ? ` (${groupName})` : ''} изменен.
       </p>
       ${htmlDate}
       ${htmlAddress}
-      <p style="font-size:16px;margin:0 0 16px;">Значение: ${value}.</p>
+      <p style="font-size:16px;margin:0 0 16px;">Значение: <strong>${value}</strong>.</p>
       ${htmlZone}
+      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь в службу поддержки.</p>
     </div>`;
   return { subject, text, html };
 }
