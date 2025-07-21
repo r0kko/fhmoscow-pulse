@@ -87,7 +87,15 @@ watch(pageSize, (val) => {
               </td>
               <template v-for="g in ledger.groups" :key="g.id">
                 <template v-for="t in g.types" :key="t.id">
-                  <td class="text-center">
+                  <td
+                    :class="[
+                      'text-center',
+                      'zone-cell',
+                      j.results[t.id]?.zone?.alias
+                        ? `zone-${j.results[t.id].zone.alias}`
+                        : ''
+                    ]"
+                  >
                     {{ formatValue(t, j.results[t.id]) }}
                   </td>
                 </template>
