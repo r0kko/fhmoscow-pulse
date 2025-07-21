@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import { formatMinutesSeconds } from '../utils/time.js';
 
 const types = ref([]);
 const total = ref(0);
@@ -183,6 +184,7 @@ function validateForm() {
 
 function openEdit(t) {
   editing.value = t;
+  const unit = units.value.find((u) => u.id === t.unit_id);
   form.value = {
     season_id: t.season_id,
     name: t.name,
@@ -190,9 +192,16 @@ function openEdit(t) {
     value_type_id: t.value_type_id,
     unit_id: t.unit_id,
     group_id: t.groups?.[0]?.group_id || '',
-    zones: (t.zones || []).filter((z) =>
-      filteredZones.value.some((f) => f.id === z.zone_id)
-    ),
+    zones: (t.zones || []).map((z) => {
+      const res = { ...z };
+      if (unit?.alias === 'MIN_SEC') {
+        if (res.min_value != null)
+          res.min_value = formatMinutesSeconds(res.min_value);
+        if (res.max_value != null)
+          res.max_value = formatMinutesSeconds(res.max_value);
+      }
+      return res;
+    }),
   };
   formError.value = '';
   modal.show();
