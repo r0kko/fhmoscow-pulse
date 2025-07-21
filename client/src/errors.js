@@ -41,6 +41,12 @@ export const ERROR_MESSAGES = {
   user_not_found: 'Пользователь не найден',
   file_too_large: 'Файл слишком большой',
   invalid_file_type: 'Недопустимый тип файла',
+  address_not_found: 'Адрес не найден',
+  awaiting_confirmation: 'Ожидается подтверждение',
+  email_unconfirmed: 'Электронная почта не подтверждена',
+  file_required: 'Не выбран файл',
+  registration_incomplete: 'Регистрация не завершена',
+  status_unknown: 'Неизвестный статус',
   not_found: 'Не найдено'
 };
 
