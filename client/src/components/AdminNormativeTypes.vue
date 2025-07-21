@@ -105,6 +105,10 @@ async function load() {
     const data = await apiFetch(`/normative-types?${params}`);
     types.value = data.types;
     total.value = data.total;
+    const pages = Math.max(1, Math.ceil(total.value / pageSize.value));
+    if (currentPage.value > pages) {
+      currentPage.value = pages;
+    }
     error.value = '';
   } catch (e) {
     error.value = e.message;
@@ -291,15 +295,6 @@ defineExpose({ refresh });
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div class="row g-2 justify-content-end align-items-end mb-3">
-          <div class="col-6 col-sm-auto">
-            <select v-model.number="pageSize" class="form-select">
-              <option :value="15">15</option>
-              <option :value="30">30</option>
-              <option :value="50">50</option>
-            </select>
-          </div>
-        </div>
         <div v-if="types.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
@@ -378,8 +373,16 @@ defineExpose({ refresh });
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     </div>
-    <nav class="mt-3" v-if="totalPages > 1">
-      <ul class="pagination justify-content-center">
+    <nav
+      class="mt-3 d-flex align-items-center justify-content-between"
+      v-if="types.length"
+    >
+      <select v-model.number="pageSize" class="form-select form-select-sm w-auto">
+        <option :value="15">15</option>
+        <option :value="30">30</option>
+        <option :value="50">50</option>
+      </select>
+      <ul class="pagination mb-0">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <button
             class="page-link"
