@@ -6,11 +6,23 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const { page = '1', limit = '20', season_id } = req.query;
+    const {
+      page = '1',
+      limit = '15',
+      season_id,
+      search,
+      type_id,
+      group_id,
+      user_id,
+    } = req.query;
     const { rows, count } = await normativeResultService.listAll({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
       season_id,
+      search,
+      type_id,
+      group_id,
+      user_id,
     });
     return res.json({ results: rows.map(mapper.toPublic), total: count });
   },

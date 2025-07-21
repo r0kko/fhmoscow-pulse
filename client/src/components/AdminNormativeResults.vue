@@ -8,9 +8,13 @@ const results = ref([]);
 const total = ref(0);
 const trainings = ref([]);
 const types = ref([]);
+const groups = ref([]);
 const units = ref([]);
 const currentPage = ref(1);
-const pageSize = 8;
+const pageSize = ref(15);
+const search = ref('');
+const typeFilter = ref('');
+const groupFilter = ref('');
 const isLoading = ref(false);
 const error = ref('');
 
@@ -37,7 +41,7 @@ const minutes = ref('');
 const seconds = ref('');
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
 const currentUnit = computed(() =>
@@ -56,6 +60,20 @@ onMounted(() => {
 });
 
 watch(currentPage, load);
+
+let searchTimeout;
+watch(search, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1;
+    load();
+  }, 300);
+});
+
+watch([typeFilter, groupFilter, pageSize], () => {
+  currentPage.value = 1;
+  load();
+});
 
 watch(userQuery, () => {
   clearTimeout(userTimeout);
@@ -124,8 +142,11 @@ async function load() {
   try {
     isLoading.value = true;
     const params = new URLSearchParams({
+      search: search.value,
+      type_id: typeFilter.value,
+      group_id: groupFilter.value,
       page: currentPage.value,
-      limit: pageSize,
+      limit: pageSize.value,
     });
     const data = await apiFetch(`/normative-results?${params}`);
     results.value = data.results;
@@ -141,17 +162,20 @@ async function load() {
 
 async function loadAux() {
   try {
-    const [trainingData, typeData, unitData] = await Promise.all([
+    const [trainingData, typeData, groupData, unitData] = await Promise.all([
       apiFetch('/camp-trainings/past?limit=100'),
       apiFetch('/normative-types?limit=100'),
+      apiFetch('/normative-groups?limit=100'),
       apiFetch('/measurement-units'),
     ]);
     trainings.value = trainingData.trainings;
     types.value = typeData.types;
+    groups.value = groupData.groups;
     units.value = unitData.units;
   } catch (_e) {
     trainings.value = [];
     types.value = [];
+    groups.value = [];
     units.value = [];
   }
 }
@@ -325,6 +349,35 @@ defineExpose({ refresh });
         </button>
       </div>
       <div class="card-body p-3">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-12 col-sm">
+            <input
+              type="text"
+              class="form-control"
+              placeholder="ФИО судьи"
+              v-model="search"
+            />
+          </div>
+          <div class="col-6 col-sm-auto">
+            <select v-model="typeFilter" class="form-select">
+              <option value="">Все типы</option>
+              <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-auto">
+            <select v-model="groupFilter" class="form-select">
+              <option value="">Все группы</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-auto">
+            <select v-model.number="pageSize" class="form-select">
+              <option :value="15">15</option>
+              <option :value="30">30</option>
+              <option :value="50">50</option>
+            </select>
+          </div>
+        </div>
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>

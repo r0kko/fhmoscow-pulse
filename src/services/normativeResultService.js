@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import ServiceError from '../errors/ServiceError.js';
 import {
   NormativeResult,
@@ -17,28 +19,49 @@ import { parseResultValue, determineZone } from './normativeTypeService.js';
 
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
-  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const limit = Math.max(1, parseInt(options.limit || 15, 10));
   const offset = (page - 1) * limit;
   const where = {};
   if (options.season_id) where.season_id = options.season_id;
   if (options.user_id) where.user_id = options.user_id;
+  const include = [
+    {
+      model: User,
+      attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+    },
+    { model: Training, include: [CampStadium] },
+    {
+      model: NormativeType,
+      include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
+    },
+    { model: NormativeZone },
+  ];
+  if (options.search) {
+    const term = `%${options.search}%`;
+    include[0].where = {
+      [Op.or]: [
+        { last_name: { [Op.iLike]: term } },
+        { first_name: { [Op.iLike]: term } },
+        { patronymic: { [Op.iLike]: term } },
+      ],
+    };
+    include[0].required = true;
+  }
+  if (options.type_id) {
+    include[2].where = { id: options.type_id };
+    include[2].required = true;
+  }
+  if (options.group_id) {
+    include[2].include[0].where = { group_id: options.group_id };
+    include[2].include[0].required = true;
+    include[2].required = true;
+  }
   const { rows, count } = await NormativeResult.findAndCountAll({
     order: [['created_at', 'DESC']],
     limit,
     offset,
     where,
-    include: [
-      {
-        model: User,
-        attributes: ['id', 'last_name', 'first_name', 'patronymic'],
-      },
-      { model: Training, include: [CampStadium] },
-      {
-        model: NormativeType,
-        include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
-      },
-      { model: NormativeZone },
-    ],
+    include,
   });
   for (const r of rows) {
     const group =
