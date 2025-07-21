@@ -50,7 +50,10 @@ function formatValue(r) {
   return r.value;
 }
 
+let loadSeq = 0;
+
 async function load() {
+  const seq = ++loadSeq;
   loading.value = true;
   try {
     const [resData, typeData, unitData] = await Promise.all([
@@ -60,15 +63,21 @@ async function load() {
       apiFetch(`/normative-types?season_id=${props.seasonId}&limit=100`),
       apiFetch('/measurement-units'),
     ]);
-    results.value = resData.results;
-    types.value = typeData.types;
-    units.value = unitData.units;
-    error.value = '';
+    if (seq === loadSeq) {
+      results.value = resData.results;
+      types.value = typeData.types;
+      units.value = unitData.units;
+      error.value = '';
+    }
   } catch (e) {
-    error.value = e.message;
-    results.value = [];
+    if (seq === loadSeq) {
+      error.value = e.message;
+      results.value = [];
+    }
   } finally {
-    loading.value = false;
+    if (seq === loadSeq) {
+      loading.value = false;
+    }
   }
 }
 
@@ -79,9 +88,14 @@ function open() {
   minutes.value = '';
   seconds.value = '';
   formError.value = '';
+  results.value = [];
+  types.value = [];
+  units.value = [];
+  error.value = '';
+  loading.value = true;
   if (!modal) modal = new Modal(modalRef.value);
-  load();
   modal.show();
+  load();
 }
 
 defineExpose({ open });
@@ -179,7 +193,9 @@ async function removeResult(r) {
 
 <template>
   <div ref="modalRef" class="modal fade" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div
+      class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down"
+    >
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
@@ -192,79 +208,86 @@ async function removeResult(r) {
           <div v-if="loading" class="text-center my-3">
             <div class="spinner-border" role="status"></div>
           </div>
-          <table v-if="results.length" class="table table-sm align-middle mb-3">
-            <thead>
-              <tr>
-                <th>Тип</th>
-                <th>Значение</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in results" :key="r.id">
-                <td>
-                  {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
-                </td>
-                <td>{{ formatValue(r) }}</td>
-                <td class="text-end">
-                  <button
-                    class="btn btn-sm btn-secondary me-2"
-                    @click="startEdit(r)"
-                  >
-                    <i class="bi bi-pencil" />
-                  </button>
-                  <button
-                    class="btn btn-sm btn-danger"
-                    @click="removeResult(r)"
-                  >
-                    <i class="bi bi-trash" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="mb-3">
-            <select v-model="form.type_id" class="form-select">
-              <option value="" disabled>Тип норматива</option>
-              <option v-for="t in types" :key="t.id" :value="t.id">
-                {{ t.name }}
-              </option>
-            </select>
-          </div>
-          <div v-if="unit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
-            <div class="col">
+          <div v-else>
+            <table
+              v-if="results.length"
+              class="table table-sm align-middle mb-3"
+            >
+              <thead>
+                <tr>
+                  <th>Тип</th>
+                  <th>Значение</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in results" :key="r.id">
+                  <td>
+                    {{
+                      types.find((t) => t.id === r.type_id)?.name || r.type_id
+                    }}
+                  </td>
+                  <td>{{ formatValue(r) }}</td>
+                  <td class="text-end">
+                    <button
+                      class="btn btn-sm btn-secondary me-2"
+                      @click="startEdit(r)"
+                    >
+                      <i class="bi bi-pencil" />
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      @click="removeResult(r)"
+                    >
+                      <i class="bi bi-trash" />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="mb-3">
+              <select v-model="form.type_id" class="form-select">
+                <option value="" disabled>Тип норматива</option>
+                <option v-for="t in types" :key="t.id" :value="t.id">
+                  {{ t.name }}
+                </option>
+              </select>
+            </div>
+            <div v-if="unit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
+              <div class="col">
+                <input
+                  type="number"
+                  class="form-control"
+                  v-model.number="minutes"
+                  min="0"
+                  placeholder="Минуты"
+                />
+              </div>
+              <div class="col">
+                <input
+                  type="number"
+                  class="form-control"
+                  v-model.number="seconds"
+                  min="0"
+                  max="59"
+                  placeholder="Секунды"
+                />
+              </div>
+            </div>
+            <div v-else class="mb-3">
               <input
                 type="number"
                 class="form-control"
-                v-model.number="minutes"
-                min="0"
-                placeholder="Минуты"
+                v-model="form.value"
+                :step="
+                  unit?.alias === 'SECONDS' && unit.fractional ? '0.01' : '1'
+                "
+                placeholder="Значение"
               />
             </div>
-            <div class="col">
-              <input
-                type="number"
-                class="form-control"
-                v-model.number="seconds"
-                min="0"
-                max="59"
-                placeholder="Секунды"
-              />
+            <div v-if="formError" class="text-danger small mb-2">
+              {{ formError }}
             </div>
-          </div>
-          <div v-else class="mb-3">
-            <input
-              type="number"
-              class="form-control"
-              v-model="form.value"
-              :step="
-                unit?.alias === 'SECONDS' && unit.fractional ? '0.01' : '1'
-              "
-              placeholder="Значение"
-            />
-          </div>
-          <div v-if="formError" class="text-danger small mb-2">
-            {{ formError }}
           </div>
         </div>
         <div class="modal-footer">
