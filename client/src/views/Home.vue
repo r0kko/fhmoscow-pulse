@@ -9,6 +9,7 @@ const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
   { title: 'Задачи', icon: 'bi-list-check', to: '/tasks' },
+  { title: 'Нормативы', icon: 'bi-stopwatch', to: '/normatives', referee: true },
 ]
 
 const workSections = [

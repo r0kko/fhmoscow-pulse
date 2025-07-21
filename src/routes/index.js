@@ -38,6 +38,7 @@ import normativeResultsRouter from './normativeResults.js';
 import measurementUnitsRouter from './measurementUnits.js';
 import normativeValueTypesRouter from './normativeValueTypes.js';
 import normativeZonesRouter from './normativeZones.js';
+import normativesRouter from './normatives.js';
 
 const router = express.Router();
 
@@ -73,6 +74,7 @@ router.use('/normative-results', normativeResultsRouter);
 router.use('/measurement-units', measurementUnitsRouter);
 router.use('/normative-value-types', normativeValueTypesRouter);
 router.use('/normative-zones', normativeZonesRouter);
+router.use('/normatives', normativesRouter);
 router.use('/tasks', tasksRouter);
 router.use('/tickets', ticketsRouter);
 
