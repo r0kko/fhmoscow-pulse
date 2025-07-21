@@ -22,9 +22,11 @@ const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
 const normativeTypes = ref([]);
 const units = ref([]);
+const normativeCounts = ref({});
 const resultUser = ref(null);
 const resultForm = ref({ type_id: '', value: '', minutes: '', seconds: '' });
 const resultError = ref('');
+const resultSaving = ref(false);
 const resultModalRef = ref(null);
 let resultModal;
 
@@ -84,6 +86,13 @@ onMounted(() => {
   loadTrainingRoles();
   resultModal = new Modal(resultModalRef.value);
 });
+
+watch(
+  () => training.value && training.value.season_id,
+  (val) => {
+    if (val) loadNormativeCounts();
+  }
+);
 
 function formatDateTimeRange(start, end) {
   if (!start) return '';
@@ -182,6 +191,20 @@ async function loadNormativeData() {
   } catch (_e) {
     normativeTypes.value = [];
     units.value = [];
+  }
+}
+
+async function loadNormativeCounts() {
+  if (!training.value) return;
+  try {
+    const data = await apiFetch(
+      `/normative-ledger?season_id=${training.value.season_id}`
+    );
+    normativeCounts.value = Object.fromEntries(
+      data.ledger.judges.map((j) => [j.user.id, Object.keys(j.results).length])
+    );
+  } catch (_e) {
+    normativeCounts.value = {};
   }
 }
 
@@ -305,13 +328,17 @@ async function saveResult() {
     value: val,
   };
   try {
+    resultSaving.value = true;
     await apiFetch('/normative-results', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     resultModal.hide();
+    await loadNormativeCounts();
   } catch (e) {
     resultError.value = e.message;
+  } finally {
+    resultSaving.value = false;
   }
 }
 </script>
@@ -376,6 +403,7 @@ async function saveResult() {
                   <th>ФИО</th>
                   <th>Роль</th>
                   <th class="text-center">Посещение</th>
+                  <th class="text-center">Сдано нормативов</th>
                   <th></th>
                 </tr>
               </thead>
@@ -435,6 +463,9 @@ async function saveResult() {
                         <span class="visually-hidden">Нет</span>
                       </label>
                     </div>
+                  </td>
+                  <td class="text-center">
+                    {{ normativeCounts[r.user.id] || 0 }}
                   </td>
                   <td class="text-end">
                     <button
@@ -550,7 +581,17 @@ async function saveResult() {
                 >
                   Отмена
                 </button>
-                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="resultSaving"
+                >
+                  <span
+                    v-if="resultSaving"
+                    class="spinner-border spinner-border-sm me-2"
+                  ></span>
+                  Сохранить
+                </button>
               </div>
             </form>
           </div>
