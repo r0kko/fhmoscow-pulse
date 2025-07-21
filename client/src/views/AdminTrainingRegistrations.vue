@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
-import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import TrainingNormativeResultsModal from '../components/TrainingNormativeResultsModal.vue';
 
 const ROLE_ORDER = ['COACH', 'EQUIPMENT_MANAGER', 'PARTICIPANT'];
 
@@ -20,33 +20,8 @@ const addLoading = ref(false);
 const judges = ref([]);
 const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
-const normativeTypes = ref([]);
-const units = ref([]);
-const normativeCounts = ref({});
-const userResults = ref([]);
-const resultsLoading = ref(false);
-const resultsError = ref('');
-const resultUser = ref(null);
-const editingResult = ref(null);
-const resultForm = ref({ type_id: '', value: '', minutes: '', seconds: '' });
-const resultError = ref('');
-const resultSaving = ref(false);
-const resultModalRef = ref(null);
-const resultListModalRef = ref(null);
-let resultModal;
-let resultListModal;
-
-const attendanceMarked = computed(() => training.value?.attendance_marked);
-const allMarked = computed(() =>
-  list.value
-    .filter((r) => showAttendance(r))
-    .every((r) => r.present === true || r.present === false)
-);
-const currentUnit = computed(() => {
-  const t = normativeTypes.value.find((x) => x.id === resultForm.value.type_id);
-  if (!t) return null;
-  return units.value.find((u) => u.id === t.unit_id) || null;
-});
+const normativeModalRef = ref(null);
+const selectedReg = ref(null);
 
 function showAttendance(reg) {
   const alias = reg.role?.alias;
@@ -65,6 +40,7 @@ function attendanceTitle(reg) {
   return 'Не отмечено';
 }
 
+const attendanceMarked = computed(() => training.value?.attendance_marked);
 
 const groupedRegistrations = computed(() => {
   const map = {};
@@ -85,21 +61,21 @@ const groupedRegistrations = computed(() => {
   return groups;
 });
 
+const visibleRegistrations = computed(() =>
+  list.value.filter((r) => showAttendance(r))
+);
+const allMarked = computed(() =>
+  visibleRegistrations.value.every(
+    (r) => r.present === true || r.present === false
+  )
+);
+
 onMounted(() => {
   loadTraining();
   loadRegistrations();
   loadJudges();
   loadTrainingRoles();
-  resultModal = new Modal(resultModalRef.value);
-  resultListModal = new Modal(resultListModalRef.value);
 });
-
-watch(
-  () => training.value && training.value.id,
-  (val) => {
-    if (val) loadNormativeCounts();
-  }
-);
 
 function formatDateTimeRange(start, end) {
   if (!start) return '';
@@ -117,7 +93,6 @@ async function loadTraining() {
   try {
     const data = await apiFetch(`/camp-trainings/${route.params.id}`);
     training.value = data.training;
-    await loadNormativeData();
     trainingError.value = '';
   } catch (e) {
     training.value = null;
@@ -169,51 +144,18 @@ async function loadJudges() {
 async function loadTrainingRoles() {
   try {
     const data = await apiFetch('/training-roles');
-    trainingRoles.value = data.roles
-      .slice()
-      .sort((a, b) => {
-        const i1 = ROLE_ORDER.indexOf(a.alias);
-        const i2 = ROLE_ORDER.indexOf(b.alias);
-        if (i1 === -1 && i2 === -1) {
-          return a.name.localeCompare(b.name);
-        }
-        if (i1 === -1) return 1;
-        if (i2 === -1) return -1;
-        return i1 - i2;
-      });
+    trainingRoles.value = data.roles.slice().sort((a, b) => {
+      const i1 = ROLE_ORDER.indexOf(a.alias);
+      const i2 = ROLE_ORDER.indexOf(b.alias);
+      if (i1 === -1 && i2 === -1) {
+        return a.name.localeCompare(b.name);
+      }
+      if (i1 === -1) return 1;
+      if (i2 === -1) return -1;
+      return i1 - i2;
+    });
   } catch (_) {
     trainingRoles.value = [];
-  }
-}
-
-async function loadNormativeData() {
-  if (!training.value) return;
-  try {
-    const [typeData, unitData] = await Promise.all([
-      apiFetch(`/normative-types?limit=100&season_id=${training.value.season_id}`),
-      apiFetch('/measurement-units'),
-    ]);
-    normativeTypes.value = typeData.types || [];
-    units.value = unitData.units || [];
-  } catch (_e) {
-    normativeTypes.value = [];
-    units.value = [];
-  }
-}
-
-async function loadNormativeCounts() {
-  if (!training.value) return;
-  try {
-    const data = await apiFetch(
-      `/normative-results?training_id=${training.value.id}&limit=1000`
-    );
-    const counts = {};
-    data.results.forEach((r) => {
-      counts[r.user_id] = (counts[r.user_id] || 0) + 1;
-    });
-    normativeCounts.value = counts;
-  } catch (_e) {
-    normativeCounts.value = {};
   }
 }
 
@@ -268,149 +210,40 @@ async function updateRegistration(reg) {
   }
 }
 
-async function setPresence(reg, value) {
+async function setPresence(userId, value) {
   try {
     await apiFetch(
-      `/camp-trainings/${route.params.id}/registrations/${reg.user.id}/presence`,
+      `/camp-trainings/${route.params.id}/registrations/${userId}/presence`,
       {
         method: 'PUT',
         body: JSON.stringify({ present: value }),
       }
     );
-    reg.present = value;
+    await loadRegistrations();
   } catch (e) {
     alert(e.message);
   }
 }
 
-async function finishAttendance() {
+async function finish() {
   if (!allMarked.value) {
     alert('Отметьте посещаемость для всех участников');
     return;
   }
   try {
-    const data = await apiFetch(`/camp-trainings/${route.params.id}/attendance`, {
+    await apiFetch(`/camp-trainings/${route.params.id}/attendance`, {
       method: 'PUT',
       body: JSON.stringify({ attendance_marked: true }),
     });
-    training.value = data.training;
+    await loadTraining();
   } catch (e) {
     alert(e.message);
   }
 }
 
-function openResultModal(reg) {
-  editingResult.value = null;
-  resultUser.value = reg.user;
-  resultForm.value = { type_id: '', value: '', minutes: '', seconds: '' };
-  resultError.value = '';
-  resultModal.show();
-}
-
-function openEditResult(r) {
-  editingResult.value = r;
-  resultUser.value = r.user;
-  resultForm.value = { type_id: r.type_id, value: '', minutes: '', seconds: '' };
-  const unit = units.value.find((u) => u.id === r.unit_id);
-  if (unit?.alias === 'MIN_SEC') {
-    const [m, s] = r.value.split(':');
-    resultForm.value.minutes = parseInt(m, 10);
-    resultForm.value.seconds = parseInt(s, 10);
-  } else {
-    resultForm.value.value = r.value;
-  }
-  resultError.value = '';
-  resultModal.show();
-}
-
-async function loadUserResults(userId) {
-  if (!training.value) return;
-  resultsLoading.value = true;
-  try {
-    const data = await apiFetch(
-      `/normative-results?training_id=${training.value.id}&user_id=${userId}&limit=100`
-    );
-    userResults.value = data.results;
-    resultsError.value = '';
-  } catch (e) {
-    userResults.value = [];
-    resultsError.value = e.message;
-  } finally {
-    resultsLoading.value = false;
-  }
-}
-
-function openResults(reg) {
-  resultUser.value = reg.user;
-  userResults.value = [];
-  resultsError.value = '';
-  resultListModal.show();
-  loadUserResults(reg.user.id);
-}
-
-async function saveResult() {
-  const type = normativeTypes.value.find((t) => t.id === resultForm.value.type_id);
-  if (!type) {
-    resultError.value = 'Выберите норматив';
-    return;
-  }
-  const unit = units.value.find((u) => u.id === type.unit_id);
-  let val;
-  if (unit?.alias === 'MIN_SEC') {
-    const m = parseInt(resultForm.value.minutes || '0', 10);
-    const s = parseInt(resultForm.value.seconds || '0', 10);
-    if (Number.isNaN(m) || Number.isNaN(s) || s < 0 || s > 59) {
-      resultError.value = 'Неверное значение';
-      return;
-    }
-    val = `${m}:${String(s).padStart(2, '0')}`;
-  } else {
-    val = resultForm.value.value;
-    if (val === '' || val == null) {
-      resultError.value = 'Неверное значение';
-      return;
-    }
-  }
-  const payload = {
-    user_id: resultUser.value.id,
-    season_id: training.value.season_id,
-    training_id: training.value.id,
-    type_id: type.id,
-    value: val,
-  };
-  try {
-    resultSaving.value = true;
-    if (editingResult.value) {
-      await apiFetch(`/normative-results/${editingResult.value.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ training_id: training.value.id, value: val }),
-      });
-    } else {
-      await apiFetch('/normative-results', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    }
-    resultModal.hide();
-    await loadUserResults(resultUser.value.id);
-    await loadNormativeCounts();
-    editingResult.value = null;
-  } catch (e) {
-    resultError.value = e.message;
-  } finally {
-    resultSaving.value = false;
-  }
-}
-
-async function removeResult(r) {
-  if (!confirm('Удалить запись?')) return;
-  try {
-    await apiFetch(`/normative-results/${r.id}`, { method: 'DELETE' });
-    await loadUserResults(resultUser.value.id);
-    await loadNormativeCounts();
-  } catch (e) {
-    alert(e.message);
-  }
+function openNormatives(reg) {
+  selectedReg.value = reg;
+  normativeModalRef.value.open();
 }
 </script>
 
@@ -430,10 +263,13 @@ async function removeResult(r) {
       </nav>
       <h1 class="mb-3">Участники тренировки</h1>
       <p v-if="training" class="mb-3">
-        <strong>{{ training.type?.name }}</strong>,
+        <strong>{{ training.type?.name }}</strong
+        >,
         {{ formatDateTimeRange(training.start_at, training.end_at) }}
       </p>
-      <div v-if="trainingError" class="alert alert-danger mb-3">{{ trainingError }}</div>
+      <div v-if="trainingError" class="alert alert-danger mb-3">
+        {{ trainingError }}
+      </div>
       <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
       <div v-if="loading || loadingTraining" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
@@ -444,7 +280,8 @@ async function removeResult(r) {
           <select v-model="addForm.user_id" class="form-select">
             <option value="" disabled>Выберите судью</option>
             <option v-for="j in judges" :key="j.user.id" :value="j.user.id">
-              {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}
+              {{ j.user.last_name }} {{ j.user.first_name }}
+              {{ j.user.patronymic }}
             </option>
           </select>
         </div>
@@ -458,16 +295,29 @@ async function removeResult(r) {
           </select>
         </div>
         <div class="col-12 col-sm-auto d-grid d-sm-block">
-          <button class="btn btn-brand" @click="addRegistration" :disabled="addLoading">
-            <span v-if="addLoading" class="spinner-border spinner-border-sm me-2"></span>
+          <button
+            class="btn btn-brand"
+            @click="addRegistration"
+            :disabled="addLoading"
+          >
+            <span
+              v-if="addLoading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
             Добавить
           </button>
         </div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
         <div class="card-body p-3">
-          <div v-for="group in groupedRegistrations" :key="group.role ? group.role.id : 'none'" class="mb-4 table-responsive">
-            <h5 class="mb-2">{{ group.role ? group.role.name : 'Без роли' }}</h5>
+          <div
+            v-for="group in groupedRegistrations"
+            :key="group.role ? group.role.id : 'none'"
+            class="mb-4 table-responsive"
+          >
+            <h5 class="mb-2">
+              {{ group.role ? group.role.name : 'Без роли' }}
+            </h5>
             <table class="table admin-table table-striped align-middle mb-0">
               <thead>
                 <tr>
@@ -484,77 +334,84 @@ async function removeResult(r) {
                   :key="r.user.id"
                   :class="{ highlight: r.highlight }"
                 >
-                  <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
                   <td>
-                    <select v-model="r.role_id" class="form-select form-select-sm" @change="updateRegistration(r)">
+                    {{ r.user.last_name }} {{ r.user.first_name }}
+                    {{ r.user.patronymic }}
+                  </td>
+                  <td>
+                    <select
+                      v-model="r.role_id"
+                      class="form-select form-select-sm"
+                      @change="updateRegistration(r)"
+                    >
                       <option value="" disabled>Выберите роль</option>
-                      <option v-for="role in trainingRoles" :key="role.id" :value="role.id">
+                      <option
+                        v-for="role in trainingRoles"
+                        :key="role.id"
+                        :value="role.id"
+                      >
                         {{ role.name }}
                       </option>
                     </select>
                   </td>
                   <td class="text-center">
-                    <div
-                      v-if="showAttendance(r)"
-                      class="btn-group btn-group-sm presence-group"
-                      role="group"
-                    >
-                      <input
-                        type="radio"
-                        class="btn-check"
-                        :id="`present-yes-${r.user.id}`"
-                        :name="`present-${r.user.id}`"
-                        autocomplete="off"
-                        :checked="r.present === true"
-                        @change="setPresence(r, true)"
-                        :disabled="attendanceMarked"
-                      />
-                      <label
-                        class="btn btn-outline-success presence-btn"
-                        :for="`present-yes-${r.user.id}`"
+                    <template v-if="showAttendance(r)">
+                      <div
+                        class="btn-group btn-group-sm presence-group"
+                        role="group"
                       >
-                        <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        <span class="visually-hidden">Да</span>
-                      </label>
-                      <input
-                        type="radio"
-                        class="btn-check"
-                        :id="`present-no-${r.user.id}`"
-                        :name="`present-${r.user.id}`"
-                        autocomplete="off"
-                        :checked="r.present === false"
-                        @change="setPresence(r, false)"
-                        :disabled="attendanceMarked"
-                      />
-                      <label
-                        class="btn btn-outline-danger presence-btn"
-                        :for="`present-no-${r.user.id}`"
-                      >
-                        <i class="bi bi-x-lg" aria-hidden="true"></i>
-                        <span class="visually-hidden">Нет</span>
-                      </label>
-                    </div>
+                        <input
+                          type="radio"
+                          class="btn-check"
+                          :id="`present-yes-${r.user.id}`"
+                          :name="`present-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === true"
+                          @change="setPresence(r.user.id, true)"
+                          :disabled="attendanceMarked"
+                        />
+                        <label
+                          class="btn btn-outline-success presence-btn"
+                          :for="`present-yes-${r.user.id}`"
+                        >
+                          <i class="bi bi-check-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Да</span>
+                        </label>
+                        <input
+                          type="radio"
+                          class="btn-check"
+                          :id="`present-no-${r.user.id}`"
+                          :name="`present-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === false"
+                          @change="setPresence(r.user.id, false)"
+                          :disabled="attendanceMarked"
+                        />
+                        <label
+                          class="btn btn-outline-danger presence-btn"
+                          :for="`present-no-${r.user.id}`"
+                        >
+                          <i class="bi bi-x-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Нет</span>
+                        </label>
+                      </div>
+                    </template>
                   </td>
                   <td class="text-center">
-                    <a
-                      v-if="(normativeCounts[r.user.id] || 0) > 0"
-                      href="#"
-                      class="count-link"
-                      @click.prevent="openResults(r)"
+                    <button
+                      v-if="r.normative_count"
+                      class="btn btn-link p-0"
+                      @click="openNormatives(r)"
                     >
-                      {{ normativeCounts[r.user.id] }}
-                    </a>
+                      {{ r.normative_count }}
+                    </button>
                     <span v-else>0</span>
                   </td>
                   <td class="text-end">
                     <button
-                      v-if="showAttendance(r)"
-                      class="btn btn-sm btn-secondary me-2"
-                      @click="openResultModal(r)"
+                      class="btn btn-sm btn-danger"
+                      @click="removeRegistration(r.user.id)"
                     >
-                      <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" @click="removeRegistration(r.user.id)">
                       <i class="bi bi-x-lg" aria-hidden="true"></i>
                       <span class="visually-hidden">Удалить</span>
                     </button>
@@ -565,162 +422,26 @@ async function removeResult(r) {
           </div>
         </div>
       </div>
-      <button
-        v-if="list.length && !attendanceMarked"
-        class="btn btn-brand mt-3"
-        @click="finishAttendance"
-        :disabled="!allMarked"
-      >
-        Завершить
-      </button>
-      <p v-else-if="attendanceMarked" class="alert alert-success mt-3">
-        Посещаемость отмечена
-      </p>
       <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">
         Нет записей.
       </p>
-      <div ref="resultModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <form @submit.prevent="saveResult">
-              <div class="modal-header">
-                <h5 class="modal-title">Результат норматива</h5>
-                <button
-                  type="button"
-                  class="btn-close"
-                  @click="resultModal.hide()"
-                ></button>
-              </div>
-              <div class="modal-body">
-                <div v-if="resultError" class="alert alert-danger mb-2">
-                  {{ resultError }}
-                </div>
-                <div class="form-floating mb-3">
-                  <select
-                    id="resType"
-                    v-model="resultForm.type_id"
-                    class="form-select"
-                    required
-                  >
-                    <option value="" disabled>Тип норматива</option>
-                    <option v-for="t in normativeTypes" :key="t.id" :value="t.id">
-                      {{ t.name }}
-                    </option>
-                  </select>
-                  <label for="resType">Тип норматива</label>
-                </div>
-                <div v-if="currentUnit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
-                  <div class="col">
-                    <div class="form-floating">
-                      <input
-                        id="resMin"
-                        type="number"
-                        min="0"
-                        v-model.number="resultForm.minutes"
-                        class="form-control"
-                        placeholder="Минуты"
-                        required
-                      />
-                      <label for="resMin">Минуты</label>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating">
-                      <input
-                        id="resSec"
-                        type="number"
-                        min="0"
-                        max="59"
-                        v-model.number="resultForm.seconds"
-                        class="form-control"
-                        placeholder="Секунды"
-                        required
-                      />
-                      <label for="resSec">Секунды</label>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="form-floating mb-3">
-                  <input
-                    id="resValue"
-                    type="number"
-                    v-model="resultForm.value"
-                    class="form-control"
-                    placeholder="Значение"
-                    required
-                  />
-                  <label for="resValue">Значение</label>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  @click="resultModal.hide()"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  :disabled="resultSaving"
-                >
-                  <span
-                    v-if="resultSaving"
-                    class="spinner-border spinner-border-sm me-2"
-                  ></span>
-                  Сохранить
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <div ref="resultListModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">
-                Результаты
-                {{ resultUser ? resultUser.last_name + ' ' + resultUser.first_name : '' }}
-              </h5>
-              <button type="button" class="btn-close" @click="resultListModal.hide()"></button>
-            </div>
-            <div class="modal-body">
-              <div v-if="resultsError" class="alert alert-danger">{{ resultsError }}</div>
-              <div v-if="resultsLoading" class="text-center my-3">
-                <div class="spinner-border" role="status"></div>
-              </div>
-              <div v-else-if="userResults.length" class="table-responsive">
-                <table class="table table-sm table-striped align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th>Тип</th>
-                      <th class="text-center">Значение</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="res in userResults" :key="res.id">
-                      <td>{{ normativeTypes.find((t) => t.id === res.type_id)?.name || res.type_id }}</td>
-                      <td class="text-center">{{ res.value }}</td>
-                      <td class="text-end">
-                        <button class="btn btn-sm btn-secondary me-2" @click="openEditResult(res)">
-                          <i class="bi bi-pencil" aria-hidden="true"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" @click="removeResult(res)">
-                          <i class="bi bi-trash" aria-hidden="true"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p v-else class="text-muted mb-0">Записей нет.</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <button
+        v-if="!attendanceMarked"
+        class="btn btn-brand mt-3"
+        @click="finish"
+        :disabled="!visibleRegistrations.length || !allMarked"
+      >
+        Сохранить
+      </button>
+      <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
+      <TrainingNormativeResultsModal
+        ref="normativeModalRef"
+        v-if="selectedReg"
+        :training-id="route.params.id"
+        :season-id="training?.season_id"
+        :user="selectedReg.user"
+        @changed="loadRegistrations"
+      />
     </div>
   </div>
 </template>
@@ -753,11 +474,6 @@ async function removeResult(r) {
   padding: 0.25rem 0;
 }
 
-.count-link {
-  cursor: pointer;
-  text-decoration: underline;
-}
-
 @media (max-width: 575.98px) {
   .admin-training-registrations-page {
     padding-top: 0.5rem !important;
@@ -771,11 +487,6 @@ async function removeResult(r) {
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
-  }
-
-  .count-link {
-    display: inline-block;
-    margin-top: 0.25rem;
   }
 }
 

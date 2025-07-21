@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
 
+import sequelize from '../config/database.js';
 import ServiceError from '../errors/ServiceError.js';
 import {
   NormativeResult,
@@ -24,6 +25,7 @@ async function listAll(options = {}) {
   const where = {};
   if (options.season_id) where.season_id = options.season_id;
   if (options.user_id) where.user_id = options.user_id;
+  if (options.training_id) where.training_id = options.training_id;
   const include = [
     {
       model: User,
@@ -162,6 +164,20 @@ async function remove(id, actorId = null) {
   await res.destroy();
 }
 
+async function countByTraining(trainingId) {
+  const rows = await NormativeResult.findAll({
+    attributes: ['user_id', [sequelize.fn('COUNT', sequelize.col('*')), 'cnt']],
+    where: { training_id: trainingId },
+    group: ['user_id'],
+    raw: true,
+  });
+  const map = {};
+  for (const r of rows) {
+    map[r.user_id] = parseInt(r.cnt, 10);
+  }
+  return map;
+}
+
 async function listSeasonsForUser(userId) {
   const ids = await NormativeResult.findAll({
     attributes: ['season_id'],
@@ -173,4 +189,12 @@ async function listSeasonsForUser(userId) {
   return Season.findAll({ where: { id: ids }, order: [['name', 'ASC']] });
 }
 
-export default { listAll, getById, create, update, remove, listSeasonsForUser };
+export default {
+  listAll,
+  getById,
+  create,
+  update,
+  remove,
+  listSeasonsForUser,
+  countByTraining,
+};

@@ -14,6 +14,7 @@ export default {
       type_id,
       group_id,
       user_id,
+      training_id,
     } = req.query;
     const { rows, count } = await normativeResultService.listAll({
       page: parseInt(page, 10),
@@ -23,6 +24,7 @@ export default {
       type_id,
       group_id,
       user_id,
+      training_id,
     });
     return res.json({ results: rows.map(mapper.toPublic), total: count });
   },

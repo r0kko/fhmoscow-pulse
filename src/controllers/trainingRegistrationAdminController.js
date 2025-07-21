@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 
 import trainingRegistrationService from '../services/trainingRegistrationService.js';
+import normativeResultService from '../services/normativeResultService.js';
 import userMapper from '../mappers/userMapper.js';
 import trainingMapper from '../mappers/trainingMapper.js';
 import { sendError } from '../utils/api.js';
@@ -13,6 +14,9 @@ export default {
         req.params.id,
         { page: parseInt(page, 10), limit: parseInt(limit, 10) }
       );
+      const counts = await normativeResultService.countByTraining(
+        req.params.id
+      );
       const registrations = rows.map((r) => ({
         user: userMapper.toPublic(r.User),
         role: r.TrainingRole
@@ -23,6 +27,7 @@ export default {
             }
           : null,
         present: r.present,
+        normative_count: counts[r.user_id] || 0,
       }));
       return res.json({ registrations, total: count });
     } catch (err) {
