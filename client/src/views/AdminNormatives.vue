@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import AdminNormativeGroups from '../components/AdminNormativeGroups.vue';
 import AdminNormativeTypes from '../components/AdminNormativeTypes.vue';
 import AdminNormativeResults from '../components/AdminNormativeResults.vue';
+import AdminNormativeLedger from '../components/AdminNormativeLedger.vue';
 
 const activeTab = ref('groups');
 </script>
@@ -52,6 +53,15 @@ const activeTab = ref('groups');
                 Результаты
               </button>
             </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'ledger' }"
+                @click="activeTab = 'ledger'"
+              >
+                Ведомость
+              </button>
+            </li>
           </ul>
         </div>
       </div>
@@ -61,8 +71,11 @@ const activeTab = ref('groups');
       <div v-else-if="activeTab === 'types'">
         <AdminNormativeTypes />
       </div>
-      <div v-else>
+      <div v-else-if="activeTab === 'results'">
         <AdminNormativeResults />
+      </div>
+      <div v-else>
+        <AdminNormativeLedger />
       </div>
     </div>
   </div>
