@@ -19,6 +19,11 @@ NormativeType.init(
       allowNull: false,
       defaultValue: false,
     },
+    online_available: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     value_type_id: { type: DataTypes.UUID, allowNull: false },
     unit_id: { type: DataTypes.UUID, allowNull: false },
   },
