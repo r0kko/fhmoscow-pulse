@@ -5,6 +5,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
+import { calculateGroupStatus } from '../utils/groupStatus.js';
 
 const groups = ref([]);
 const seasons = ref([]);
@@ -95,38 +96,7 @@ function zoneClass(result) {
 }
 
 function groupStatus(group) {
-  let required = 0;
-  let doneRequired = 0;
-  let optional = 0;
-  let doneOptional = 0;
-  group.types.forEach((t) => {
-    const map = (t.groups || []).find((g) => g.group_id === group.id);
-    const isReq = map ? map.required : t.required;
-    const passed =
-      t.result && ['GREEN', 'YELLOW'].includes(t.result.zone?.alias);
-    if (isReq) {
-      required++;
-      if (passed) doneRequired++;
-    } else {
-      optional++;
-      if (passed) doneOptional++;
-    }
-  });
-  let total = required;
-  let done = doneRequired;
-  if (optional > 1) {
-    total += 1;
-    if (doneOptional > 0) done += 1;
-  }
-  if (total === 0 || done >= total)
-    return { icon: 'bi-check-circle text-success', text: 'Все сдано' };
-  if (done === 0)
-    return { icon: 'bi-x-circle text-danger', text: 'Нет сданных нормативов' };
-  const left = total - done;
-  return {
-    icon: 'bi-exclamation-triangle text-warning',
-    text: `Осталось сдать ${left} / ${total} нормативов`,
-  };
+  return calculateGroupStatus(group);
 }
 
 </script>
