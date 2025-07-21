@@ -153,7 +153,7 @@ async function save() {
           <RouterLink to="/admin">Администрирование</RouterLink>
         </li>
         <li class="breadcrumb-item">
-          <RouterLink to="/users">Пользователи</RouterLink>
+          <RouterLink to="/admin/users">Пользователи</RouterLink>
         </li>
         <li class="breadcrumb-item active" aria-current="page">
           Редактирование

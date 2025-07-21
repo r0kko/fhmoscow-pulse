@@ -152,7 +152,7 @@ async function exportPdf() {
             <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
           <li class="breadcrumb-item">
-            <RouterLink to="/medical-admin">Медицина</RouterLink>
+            <RouterLink to="/admin/medical">Медицина</RouterLink>
           </li>
           <li class="breadcrumb-item active" aria-current="page">Заявки</li>
         </ol>
