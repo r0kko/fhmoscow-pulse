@@ -6,6 +6,7 @@ import {
   NormativeGroup,
   NormativeResult,
   NormativeZone,
+  NormativeValueType,
   Season,
 } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
@@ -44,7 +45,7 @@ async function list(options = {}) {
       where: {
         season_id: season.id,
       },
-      include: [NormativeZone],
+      include: [NormativeZone, NormativeValueType],
     }),
   ]);
 
@@ -65,11 +66,20 @@ async function list(options = {}) {
   const resultMap = {};
   for (const r of results) {
     if (!resultMap[r.user_id]) resultMap[r.user_id] = {};
-    resultMap[r.user_id][r.type_id] = {
-      id: r.id,
-      value: r.value,
-      zone: normativeZoneMapper.toPublic(r.NormativeZone),
-    };
+    const existing = resultMap[r.user_id][r.type_id];
+    const alias = r.NormativeValueType?.alias;
+    const better =
+      !existing ||
+      (alias === 'LESS_BETTER'
+        ? r.value < existing.value
+        : r.value > existing.value);
+    if (better) {
+      resultMap[r.user_id][r.type_id] = {
+        id: r.id,
+        value: r.value,
+        zone: normativeZoneMapper.toPublic(r.NormativeZone),
+      };
+    }
   }
 
   const data = judges.map((u) => ({

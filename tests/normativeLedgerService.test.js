@@ -13,6 +13,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   NormativeGroup: {},
   NormativeResult: { findAll: findAllResultsMock },
   NormativeZone: {},
+  NormativeValueType: {},
   Season: { findOne: jest.fn(() => ({ id: 's1' })) },
 }));
 
@@ -40,14 +41,47 @@ findAllTypesMock.mockResolvedValue([
     name: 'N1',
     NormativeGroupTypes: [{ NormativeGroup: { id: 'g1', name: 'G1' } }],
   },
+  {
+    id: 't2',
+    name: 'N2',
+    NormativeGroupTypes: [{ NormativeGroup: { id: 'g1', name: 'G1' } }],
+  },
 ]);
 findAllResultsMock.mockResolvedValue([
-  { user_id: 'u1', type_id: 't1', value: 5, NormativeZone: { alias: 'GREEN' } },
+  {
+    user_id: 'u1',
+    type_id: 't1',
+    value: 5,
+    NormativeZone: { alias: 'GREEN' },
+    NormativeValueType: { alias: 'MORE_BETTER' },
+  },
+  {
+    user_id: 'u1',
+    type_id: 't1',
+    value: 7,
+    NormativeZone: { alias: 'YELLOW' },
+    NormativeValueType: { alias: 'MORE_BETTER' },
+  },
+  {
+    user_id: 'u1',
+    type_id: 't2',
+    value: 10,
+    NormativeZone: { alias: 'GREEN' },
+    NormativeValueType: { alias: 'LESS_BETTER' },
+  },
+  {
+    user_id: 'u1',
+    type_id: 't2',
+    value: 8,
+    NormativeZone: { alias: 'YELLOW' },
+    NormativeValueType: { alias: 'LESS_BETTER' },
+  },
 ]);
 
-test('list returns grouped data', async () => {
+test('list returns best results', async () => {
   const { judges, groups } = await service.list();
   expect(judges).toHaveLength(1);
-  expect(groups[0].types[0].id).toBe('t1');
-  expect(judges[0].results.t1.value).toBe(5);
+  expect(groups[0].types).toHaveLength(2);
+  expect(judges[0].results.t1.value).toBe(7);
+  expect(judges[0].results.t2.value).toBe(8);
 });
