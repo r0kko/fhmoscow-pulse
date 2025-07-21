@@ -87,7 +87,10 @@ async function getById(id) {
       { model: Training, include: [CampStadium] },
       {
         model: NormativeType,
-        include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
+        include: [
+          { model: MeasurementUnit },
+          { model: NormativeGroupType, include: [NormativeGroup] },
+        ],
       },
       { model: NormativeZone },
     ],

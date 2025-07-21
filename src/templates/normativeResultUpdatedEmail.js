@@ -1,3 +1,5 @@
+import { formatMinutesSeconds } from '../utils/time.js';
+
 export function renderNormativeResultUpdatedEmail(result) {
   const typeName = result.NormativeType?.name || result.type?.name || '';
   const groupName =
@@ -5,7 +7,10 @@ export function renderNormativeResultUpdatedEmail(result) {
     result.NormativeType?.NormativeGroupTypes?.[0]?.NormativeGroup?.name ||
     '';
   const zoneName = result.zone?.name || result.NormativeZone?.name || '';
-  const value = result.value;
+  let value = result.value;
+  if (result.NormativeType?.MeasurementUnit?.alias === 'MIN_SEC') {
+    value = formatMinutesSeconds(result.value);
+  }
   const training = result.Training || result.training || {};
   const date = training.start_at
     ? new Date(training.start_at)
