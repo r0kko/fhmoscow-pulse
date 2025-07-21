@@ -12,12 +12,14 @@ const sexes = ref([]);
 const groupsDict = ref([]);
 const zonesDict = ref([]);
 const currentPage = ref(1);
-const pageSize = 8;
+const pageSize = ref(
+  parseInt(localStorage.getItem('normativeTypesPageSize') || '15', 10)
+);
 const isLoading = ref(false);
 const error = ref('');
 
-const currentValueType = computed(() =>
-  valueTypes.value.find((v) => v.id === form.value.value_type_id) || null
+const currentValueType = computed(
+  () => valueTypes.value.find((v) => v.id === form.value.value_type_id) || null
 );
 const filteredZones = computed(() =>
   zonesDict.value.filter((z) => ['GREEN', 'YELLOW'].includes(z.alias))
@@ -41,7 +43,7 @@ let modal;
 const formError = ref('');
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
 onMounted(() => {
@@ -74,15 +76,23 @@ watch(
 
 watch(currentPage, load);
 
+watch(pageSize, (val) => {
+  localStorage.setItem('normativeTypesPageSize', val);
+  currentPage.value = 1;
+  load();
+});
+
 watch([zonesDict, sexes], () => {
   const allowedIds = filteredZones.value.map((z) => z.id);
   form.value.zones = form.value.zones.filter(
-    (z) => allowedIds.includes(z.zone_id) && sexes.value.some((s) => s.id === z.sex_id)
+    (z) =>
+      allowedIds.includes(z.zone_id) &&
+      sexes.value.some((s) => s.id === z.sex_id)
   );
 });
 
-const currentUnit = computed(() =>
-  units.value.find((u) => u.id === form.value.unit_id) || null
+const currentUnit = computed(
+  () => units.value.find((u) => u.id === form.value.unit_id) || null
 );
 
 async function load() {
@@ -90,7 +100,7 @@ async function load() {
     isLoading.value = true;
     const params = new URLSearchParams({
       page: currentPage.value,
-      limit: pageSize,
+      limit: pageSize.value,
     });
     const data = await apiFetch(`/normative-types?${params}`);
     types.value = data.types;
@@ -176,10 +186,9 @@ function openEdit(t) {
     value_type_id: t.value_type_id,
     unit_id: t.unit_id,
     group_id: t.groups?.[0]?.group_id || '',
-    zones:
-      (t.zones || []).filter((z) =>
-        filteredZones.value.some((f) => f.id === z.zone_id)
-      ),
+    zones: (t.zones || []).filter((z) =>
+      filteredZones.value.some((f) => f.id === z.zone_id)
+    ),
   };
   formError.value = '';
   modal.show();
@@ -236,7 +245,6 @@ async function removeType(t) {
   }
 }
 
-
 function getZone(zoneId, sexId) {
   let z = form.value.zones.find(
     (v) => v.zone_id === zoneId && v.sex_id === sexId
@@ -282,6 +290,15 @@ defineExpose({ refresh });
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
+        </div>
+        <div class="row g-2 justify-content-end align-items-end mb-3">
+          <div class="col-6 col-sm-auto">
+            <select v-model.number="pageSize" class="form-select">
+              <option :value="15">15</option>
+              <option :value="30">30</option>
+              <option :value="50">50</option>
+            </select>
+          </div>
         </div>
         <div v-if="types.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
@@ -335,12 +352,20 @@ defineExpose({ refresh });
               <div>
                 <h6 class="mb-1">{{ t.name }}</h6>
                 <p class="mb-1">
-                  {{ seasons.find((s) => s.id === t.season_id)?.name || t.season_id }}
+                  {{
+                    seasons.find((s) => s.id === t.season_id)?.name ||
+                    t.season_id
+                  }}
                 </p>
-                <p class="mb-1">Обязательный: {{ t.required ? 'Да' : 'Нет' }}</p>
+                <p class="mb-1">
+                  Обязательный: {{ t.required ? 'Да' : 'Нет' }}
+                </p>
               </div>
               <div>
-                <button class="btn btn-sm btn-secondary me-2" @click="openEdit(t)">
+                <button
+                  class="btn btn-sm btn-secondary me-2"
+                  @click="openEdit(t)"
+                >
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" @click="removeType(t)">
@@ -480,7 +505,10 @@ defineExpose({ refresh });
               </div>
               <div class="mb-3">
                 <label class="form-label">Зоны</label>
-                <div v-if="filteredZones.length && sexes.length" class="table-responsive">
+                <div
+                  v-if="filteredZones.length && sexes.length"
+                  class="table-responsive"
+                >
                   <table class="table table-sm align-middle">
                     <thead>
                       <tr>
@@ -493,13 +521,32 @@ defineExpose({ refresh });
                         <td>{{ z.name }}</td>
                         <td v-for="s in sexes" :key="s.id">
                           <input
-                            :type="currentUnit?.alias === 'MIN_SEC' ? 'text' : 'number'"
+                            :type="
+                              currentUnit?.alias === 'MIN_SEC'
+                                ? 'text'
+                                : 'number'
+                            "
                             class="form-control form-control-sm"
-                            :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
-                            :pattern="currentUnit?.alias === 'MIN_SEC' ? '\\d{1,2}:\\d{2}' : null"
+                            :step="
+                              currentUnit?.alias === 'SECONDS' &&
+                              currentUnit.fractional
+                                ? '0.01'
+                                : '1'
+                            "
+                            :pattern="
+                              currentUnit?.alias === 'MIN_SEC'
+                                ? '\\d{1,2}:\\d{2}'
+                                : null
+                            "
                             :placeholder="isMoreBetter ? 'Мин' : 'Макс'"
-                            :value="isMoreBetter ? getZone(z.id, s.id).min_value : getZone(z.id, s.id).max_value"
-                            @input="onZoneInput(z.id, s.id, $event.target.value)"
+                            :value="
+                              isMoreBetter
+                                ? getZone(z.id, s.id).min_value
+                                : getZone(z.id, s.id).max_value
+                            "
+                            @input="
+                              onZoneInput(z.id, s.id, $event.target.value)
+                            "
                           />
                         </td>
                       </tr>

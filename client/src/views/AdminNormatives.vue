@@ -6,7 +6,7 @@ import AdminNormativeTypes from '../components/AdminNormativeTypes.vue';
 import AdminNormativeResults from '../components/AdminNormativeResults.vue';
 import AdminNormativeLedger from '../components/AdminNormativeLedger.vue';
 
-const activeTab = ref('groups');
+const activeTab = ref('results');
 </script>
 
 <template>
@@ -29,24 +29,6 @@ const activeTab = ref('groups');
             <li class="nav-item">
               <button
                 class="nav-link"
-                :class="{ active: activeTab === 'groups' }"
-                @click="activeTab = 'groups'"
-              >
-                Группы
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'types' }"
-                @click="activeTab = 'types'"
-              >
-                Типы
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
                 :class="{ active: activeTab === 'results' }"
                 @click="activeTab = 'results'"
               >
@@ -62,20 +44,38 @@ const activeTab = ref('groups');
                 Ведомость
               </button>
             </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'types' }"
+                @click="activeTab = 'types'"
+              >
+                Типы
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'groups' }"
+                @click="activeTab = 'groups'"
+              >
+                Группы
+              </button>
+            </li>
           </ul>
         </div>
       </div>
-      <div v-if="activeTab === 'groups'">
-        <AdminNormativeGroups />
+      <div v-if="activeTab === 'results'">
+        <AdminNormativeResults />
+      </div>
+      <div v-else-if="activeTab === 'ledger'">
+        <AdminNormativeLedger />
       </div>
       <div v-else-if="activeTab === 'types'">
         <AdminNormativeTypes />
       </div>
-      <div v-else-if="activeTab === 'results'">
-        <AdminNormativeResults />
-      </div>
       <div v-else>
-        <AdminNormativeLedger />
+        <AdminNormativeGroups />
       </div>
     </div>
   </div>
