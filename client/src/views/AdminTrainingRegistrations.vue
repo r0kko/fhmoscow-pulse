@@ -22,6 +22,8 @@ const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
 const normativeModalRef = ref(null);
 const selectedReg = ref(null);
+const finishLoading = ref(false);
+const finishError = ref('');
 
 function showAttendance(reg) {
   const alias = reg.role?.alias;
@@ -231,13 +233,17 @@ async function finish() {
     return;
   }
   try {
+    finishLoading.value = true;
     await apiFetch(`/camp-trainings/${route.params.id}/attendance`, {
       method: 'PUT',
       body: JSON.stringify({ attendance_marked: true }),
     });
     await loadTraining();
+    finishError.value = '';
   } catch (e) {
-    alert(e.message);
+    finishError.value = e.message;
+  } finally {
+    finishLoading.value = false;
   }
 }
 
@@ -397,19 +403,17 @@ function openNormatives(reg) {
                       </div>
                     </template>
                   </td>
-                  <td class="text-center">
-                    <button
-                      v-if="r.normative_count"
-                      class="btn btn-link p-0"
-                      @click="openNormatives(r)"
-                    >
-                      {{ r.normative_count }}
-                    </button>
-                    <span v-else>0</span>
-                  </td>
+                  <td class="text-center">{{ r.normative_count || 0 }}</td>
                   <td class="text-end">
                     <button
-                      class="btn btn-sm btn-danger"
+                      class="btn btn-sm btn-secondary me-2 action-btn"
+                      @click="openNormatives(r)"
+                    >
+                      <i class="bi bi-journal-text" aria-hidden="true"></i>
+                      <span class="visually-hidden">Нормативы</span>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger action-btn"
                       @click="removeRegistration(r.user.id)"
                     >
                       <i class="bi bi-x-lg" aria-hidden="true"></i>
@@ -425,14 +429,22 @@ function openNormatives(reg) {
       <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">
         Нет записей.
       </p>
-      <button
-        v-if="!attendanceMarked"
-        class="btn btn-brand mt-3"
-        @click="finish"
-        :disabled="!visibleRegistrations.length || !allMarked"
-      >
-        Сохранить
-      </button>
+      <template v-if="!attendanceMarked">
+        <button
+          class="btn btn-brand mt-3"
+          @click="finish"
+          :disabled="!visibleRegistrations.length || !allMarked || finishLoading"
+        >
+          <span
+            v-if="finishLoading"
+            class="spinner-border spinner-border-sm me-2"
+          ></span>
+          Сохранить
+        </button>
+        <div v-if="finishError" class="alert alert-danger mt-3">
+          {{ finishError }}
+        </div>
+      </template>
       <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
       <TrainingNormativeResultsModal
         ref="normativeModalRef"
@@ -474,6 +486,14 @@ function openNormatives(reg) {
   padding: 0.25rem 0;
 }
 
+.action-btn {
+  width: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0;
+}
+
 @media (max-width: 575.98px) {
   .admin-training-registrations-page {
     padding-top: 0.5rem !important;
@@ -487,6 +507,10 @@ function openNormatives(reg) {
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+
+  .action-btn {
+    width: 2rem;
   }
 }
 

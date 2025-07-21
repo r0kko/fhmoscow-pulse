@@ -36,8 +36,10 @@ watch(
     } else {
       unit.value = null;
     }
-    minutes.value = '';
-    seconds.value = '';
+    if (!editing.value || editing.value.type_id !== val) {
+      minutes.value = '';
+      seconds.value = '';
+    }
   }
 );
 
@@ -177,7 +179,7 @@ async function removeResult(r) {
 
 <template>
   <div ref="modalRef" class="modal fade" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
@@ -291,4 +293,10 @@ async function removeResult(r) {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+@media (max-width: 575.98px) {
+  .modal-content {
+    height: 100vh;
+  }
+}
+</style>
