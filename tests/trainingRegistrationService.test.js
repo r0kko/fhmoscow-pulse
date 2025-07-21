@@ -245,6 +245,15 @@ test('listUpcomingByUser includes my role', async () => {
   expect(findAndCountAllMock).toHaveBeenCalled();
 });
 
+test('listUpcomingByUser excludes finished unmarked trainings', async () => {
+  findAndCountAllMock.mockResolvedValueOnce({ rows: [], count: 0 });
+  await service.listUpcomingByUser('u1', {});
+  const where = findAndCountAllMock.mock.calls[0][0].where;
+  const cond = where[Object.getOwnPropertySymbols(where)[0]][1];
+  expect(cond).not.toHaveProperty('attendance_marked');
+  expect(cond).toHaveProperty('end_at');
+});
+
 test('listPastByUser includes my presence', async () => {
   const trPlain = {
     ...training,

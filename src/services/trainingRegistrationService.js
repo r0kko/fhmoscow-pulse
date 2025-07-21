@@ -308,8 +308,8 @@ async function listUpcomingByUser(userId, options = {}) {
       [Op.or]: [
         { start_at: { [Op.between]: [now, end] } },
         {
-          attendance_marked: false,
           start_at: { [Op.lt]: now },
+          end_at: { [Op.gt]: now },
         },
       ],
     },

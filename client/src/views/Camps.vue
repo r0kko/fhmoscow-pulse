@@ -218,10 +218,7 @@ const upcomingWeekTrainings = computed(() => {
   return mineUpcoming.value.filter((t) => {
     const start = new Date(t.start_at);
     const finish = new Date(t.end_at);
-    if (!t.attendance_marked && t.my_role?.alias === 'COACH') {
-      return true;
-    }
-    // show only trainings that have not finished yet
+    // show trainings that have not finished yet
     // and start within the next week
     return finish > now && start < end;
   });
