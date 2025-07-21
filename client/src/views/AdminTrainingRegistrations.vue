@@ -321,7 +321,7 @@ function openNormatives(reg) {
             :key="group.role ? group.role.id : 'none'"
             class="mb-4"
           >
-            <h5 class="mb-2">
+            <h5 class="group-heading mb-2 px-2 py-1">
               {{ group.role ? group.role.name : 'Без роли' }}
             </h5>
             <div class="table-responsive d-none d-sm-block">
@@ -584,6 +584,12 @@ function openNormatives(reg) {
 .registration-card {
   border-radius: 0.5rem;
   border: 1px solid #dee2e6;
+}
+
+.group-heading {
+  background-color: #f8f9fa;
+  border-radius: 0.25rem;
+  font-weight: 600;
 }
 
 @media (max-width: 575.98px) {
