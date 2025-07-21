@@ -69,7 +69,7 @@ findTypeMock.mockResolvedValue({
   NormativeTypeZone: [],
 });
 findSeasonMock.mockResolvedValue({ id: 's1' });
-findUserMock.mockResolvedValue({ id: 'u1' });
+findUserMock.mockResolvedValue({ id: 'u1', sex_id: 'sx1' });
 findRegMock.mockResolvedValue(null);
 createRegMock.mockResolvedValue({});
 findRoleMock.mockResolvedValue({ id: 'role1' });
@@ -103,4 +103,15 @@ test('create ensures registration', async () => {
     expect.objectContaining({ training_id: 'tr1', user_id: 'u1', present: true })
   );
   expect(createResultMock).toHaveBeenCalled();
+});
+
+test('create passes user sex to zone determination', async () => {
+  await service.create({
+    user_id: 'u1',
+    season_id: 's1',
+    training_id: 'tr1',
+    type_id: 't1',
+    value: 5,
+  });
+  expect(determineZoneMock).toHaveBeenCalledWith(expect.any(Object), 5, 'sx1');
 });

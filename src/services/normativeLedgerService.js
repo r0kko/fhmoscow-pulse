@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import {
   User,
   Role,
@@ -27,6 +29,16 @@ async function list(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
 
+  const userWhere = {};
+  if (options.search) {
+    const term = `%${options.search}%`;
+    userWhere[Op.or] = [
+      { last_name: { [Op.iLike]: term } },
+      { first_name: { [Op.iLike]: term } },
+      { patronymic: { [Op.iLike]: term } },
+    ];
+  }
+
   const [{ rows: judges, count }, types] = await Promise.all([
     User.findAndCountAll({
       include: [
@@ -37,6 +49,7 @@ async function list(options = {}) {
           required: true,
         },
       ],
+      where: userWhere,
       order: [
         ['last_name', 'ASC'],
         ['first_name', 'ASC'],
