@@ -35,7 +35,9 @@ async function loadSeasons() {
       filterSeason.value = active.id;
     } else {
       const first = seasons.value.find((s) => s.has_results);
-      filterSeason.value = first ? first.id : seasons.value.find((s) => s.active)?.id || '';
+      filterSeason.value = first
+        ? first.id
+        : seasons.value.find((s) => s.active)?.id || '';
     }
   } catch (_e) {
     seasons.value = [];
@@ -94,6 +96,12 @@ function zoneClass(result) {
   return result?.zone?.alias ? `zone-${result.zone.alias}` : '';
 }
 
+function thresholdText(t, zone) {
+  const value = t.thresholds?.[zone];
+  if (value == null) return null;
+  const sign = t.value_type_alias === 'MORE_BETTER' ? '>=' : '<=';
+  return `${sign} ${formatValue({ value, unit: t.unit })}`;
+}
 </script>
 
 <template>
@@ -107,7 +115,9 @@ function zoneClass(result) {
           <li class="breadcrumb-item active" aria-current="page">Нормативы</li>
         </ol>
       </nav>
-      <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 header-controls">
+      <div
+        class="d-flex flex-wrap align-items-center justify-content-between mb-3 header-controls"
+      >
         <h1 class="mb-0 text-start">Нормативы</h1>
         <button
           class="btn btn-outline-secondary d-sm-none"
@@ -160,8 +170,22 @@ function zoneClass(result) {
               </thead>
               <tbody>
                 <tr v-for="t in g.types" :key="t.id">
-                  <td>{{ t.name }}</td>
-                  <td :class="['text-center', 'zone-cell', zoneClass(t.result)]">
+                  <td>
+                    {{ t.name }}
+                    <div v-if="t.thresholds" class="small mt-1 thresholds">
+                      <span
+                        v-if="t.thresholds.YELLOW"
+                        class="badge bg-warning text-dark me-1"
+                        >Желт. {{ thresholdText(t, 'YELLOW') }}</span
+                      >
+                      <span v-if="t.thresholds.GREEN" class="badge bg-success"
+                        >Зел. {{ thresholdText(t, 'GREEN') }}</span
+                      >
+                    </div>
+                  </td>
+                  <td
+                    :class="['text-center', 'zone-cell', zoneClass(t.result)]"
+                  >
                     {{ formatValue(t.result) }}
                   </td>
                   <td class="text-center text-nowrap">
@@ -214,6 +238,16 @@ function zoneClass(result) {
                     aria-label="Нет других попыток"
                   ></i>
                 </div>
+                <p v-if="t.thresholds" class="mb-1 small thresholds">
+                  <span
+                    v-if="t.thresholds.YELLOW"
+                    class="badge bg-warning text-dark me-1"
+                    >Желт. {{ thresholdText(t, 'YELLOW') }}</span
+                  >
+                  <span v-if="t.thresholds.GREEN" class="badge bg-success"
+                    >Зел. {{ thresholdText(t, 'GREEN') }}</span
+                  >
+                </p>
                 <p class="mb-1">
                   Лучший:
                   <span :class="['zone-cell', zoneClass(t.result)]">
@@ -280,7 +314,11 @@ function zoneClass(result) {
       <div ref="seasonRef" class="offcanvas offcanvas-bottom" tabindex="-1">
         <div class="offcanvas-header">
           <h5 class="offcanvas-title">Выберите сезон</h5>
-          <button type="button" class="btn-close" @click="seasonCanvas.hide()"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="seasonCanvas.hide()"
+          ></button>
         </div>
         <div class="offcanvas-body">
           <select v-model="filterSeason" class="form-select">
@@ -348,6 +386,15 @@ function zoneClass(result) {
 .header-controls .season-select {
   width: auto;
   min-width: 12rem;
+}
+
+.thresholds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.thresholds .badge {
+  font-size: 0.75rem;
 }
 
 @media (max-width: 575.98px) {

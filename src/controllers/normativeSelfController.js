@@ -3,9 +3,11 @@ import normativeTypeService from '../services/normativeTypeService.js';
 import normativeResultService from '../services/normativeResultService.js';
 import normativeValueTypeService from '../services/normativeValueTypeService.js';
 import measurementUnitService from '../services/measurementUnitService.js';
+import normativeZoneService from '../services/normativeZoneService.js';
 import groupMapper from '../mappers/normativeGroupMapper.js';
 import typeMapper from '../mappers/normativeTypeMapper.js';
 import resultMapper from '../mappers/normativeResultMapper.js';
+import normativeZoneMapper from '../mappers/normativeZoneMapper.js';
 import seasonService from '../services/seasonService.js';
 import seasonMapper from '../mappers/seasonMapper.js';
 import { sendError } from '../utils/api.js';
@@ -14,12 +16,13 @@ export default {
   async list(req, res) {
     const { season_id } = req.query;
     try {
-      const [groupData, typeData, valueTypes, units, resultData] =
+      const [groupData, typeData, valueTypes, units, zones, resultData] =
         await Promise.all([
           normativeGroupService.listAll({ page: 1, limit: 1000, season_id }),
           normativeTypeService.listAll({ page: 1, limit: 1000, season_id }),
           normativeValueTypeService.list(),
           measurementUnitService.list(),
+          normativeZoneService.list(),
           normativeResultService.listAll({
             page: 1,
             limit: 1000,
@@ -33,6 +36,9 @@ export default {
         valueTypes.map((v) => [v.id, v.alias])
       );
       const unitMap = Object.fromEntries(units.map((u) => [u.id, u]));
+      const zoneMap = Object.fromEntries(
+        zones.map((z) => [z.id, normativeZoneMapper.toPublic(z)])
+      );
       const results = resultData.rows.map(resultMapper.toPublic);
       for (const r of results) {
         r.unit = unitMap[r.unit_id];
@@ -65,6 +71,18 @@ export default {
         const res = bestResult[t.id] || null;
         const history = historyByType[t.id] || [];
         t.unit = unitMap[t.unit_id];
+        t.value_type_alias = valueTypeMap[t.value_type_id];
+        const thresholds = {};
+        for (const z of t.zones || []) {
+          if (z.sex_id !== req.user.sex_id) continue;
+          const zone = zoneMap[z.zone_id];
+          if (!zone) continue;
+          if (zone.alias === 'GREEN' || zone.alias === 'YELLOW') {
+            thresholds[zone.alias] =
+              t.value_type_alias === 'MORE_BETTER' ? z.min_value : z.max_value;
+          }
+        }
+        t.thresholds = thresholds;
         (t.groups || []).forEach((g) => {
           const grp = groupMap[g.group_id];
           if (grp) {
