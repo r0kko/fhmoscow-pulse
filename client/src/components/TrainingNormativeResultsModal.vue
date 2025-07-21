@@ -51,7 +51,10 @@ function formatValue(r) {
   return r.value;
 }
 
+let loadSeq = 0;
+
 async function load() {
+  const seq = ++loadSeq;
   loading.value = true;
   try {
     const [resData, typeData, unitData] = await Promise.all([
@@ -61,15 +64,21 @@ async function load() {
       apiFetch(`/normative-types?season_id=${props.seasonId}&limit=100`),
       apiFetch('/measurement-units'),
     ]);
-    results.value = resData.results;
-    types.value = typeData.types;
-    units.value = unitData.units;
-    error.value = '';
+    if (seq === loadSeq) {
+      results.value = resData.results;
+      types.value = typeData.types;
+      units.value = unitData.units;
+      error.value = '';
+    }
   } catch (e) {
-    error.value = e.message;
-    results.value = [];
+    if (seq === loadSeq) {
+      error.value = e.message;
+      results.value = [];
+    }
   } finally {
-    loading.value = false;
+    if (seq === loadSeq) {
+      loading.value = false;
+    }
   }
 }
 
