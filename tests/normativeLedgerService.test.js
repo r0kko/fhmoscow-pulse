@@ -14,6 +14,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   NormativeResult: { findAll: findAllResultsMock },
   NormativeZone: {},
   NormativeValueType: {},
+  MeasurementUnit: {},
   Season: { findOne: jest.fn(() => ({ id: 's1' })) },
 }));
 
@@ -39,11 +40,13 @@ findAllTypesMock.mockResolvedValue([
   {
     id: 't1',
     name: 'N1',
+    MeasurementUnit: { alias: 'MIN_SEC' },
     NormativeGroupTypes: [{ NormativeGroup: { id: 'g1', name: 'G1' } }],
   },
   {
     id: 't2',
     name: 'N2',
+    MeasurementUnit: { alias: 'REPS' },
     NormativeGroupTypes: [{ NormativeGroup: { id: 'g1', name: 'G1' } }],
   },
 ]);
@@ -82,6 +85,7 @@ test('list returns best results', async () => {
   const { judges, groups } = await service.list();
   expect(judges).toHaveLength(1);
   expect(groups[0].types).toHaveLength(2);
+  expect(groups[0].types[0].unit_alias).toBe('MIN_SEC');
   expect(judges[0].results.t1.value).toBe(7);
   expect(judges[0].results.t2.value).toBe(8);
 });

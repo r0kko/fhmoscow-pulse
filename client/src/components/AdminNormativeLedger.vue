@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { apiFetch } from '../api.js';
+import { formatMinutesSeconds } from '../utils/time.js';
 
 const ledger = ref({ judges: [], groups: [] });
 const isLoading = ref(false);
@@ -17,6 +18,14 @@ async function load() {
   } finally {
     isLoading.value = false;
   }
+}
+
+function formatValue(type, result) {
+  if (!result) return '';
+  if (type.unit_alias === 'MIN_SEC') {
+    return formatMinutesSeconds(result.value);
+  }
+  return result.value;
 }
 
 onMounted(load);
@@ -52,7 +61,7 @@ onMounted(load);
               <template v-for="g in ledger.groups" :key="g.id">
                 <template v-for="t in g.types" :key="t.id">
                   <td class="text-center">
-                    {{ j.results[t.id]?.value ?? '' }}
+                    {{ formatValue(t, j.results[t.id]) }}
                   </td>
                 </template>
               </template>

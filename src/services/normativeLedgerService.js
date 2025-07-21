@@ -7,6 +7,7 @@ import {
   NormativeResult,
   NormativeZone,
   NormativeValueType,
+  MeasurementUnit,
   Season,
 } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
@@ -38,7 +39,10 @@ async function list(options = {}) {
     }),
     NormativeType.findAll({
       where: { season_id: season.id },
-      include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
+      include: [
+        { model: NormativeGroupType, include: [NormativeGroup] },
+        MeasurementUnit,
+      ],
       order: [['name', 'ASC']],
     }),
     NormativeResult.findAll({
@@ -59,7 +63,11 @@ async function list(options = {}) {
         types: [],
       };
     }
-    groupMap[group.id].types.push({ id: t.id, name: t.name });
+    groupMap[group.id].types.push({
+      id: t.id,
+      name: t.name,
+      unit_alias: t.MeasurementUnit?.alias || null,
+    });
   }
   const groups = Object.values(groupMap);
 
