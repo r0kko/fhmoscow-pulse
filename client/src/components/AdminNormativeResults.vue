@@ -10,7 +10,7 @@ const trainings = ref([]);
 const types = ref([]);
 const units = ref([]);
 const currentPage = ref(1);
-const pageSize = 8;
+const pageSize = ref(8);
 const isLoading = ref(false);
 const error = ref('');
 
@@ -37,11 +37,11 @@ const minutes = ref('');
 const seconds = ref('');
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
-const currentUnit = computed(() =>
-  units.value.find((u) => u.id === unit_id.value) || null
+const currentUnit = computed(
+  () => units.value.find((u) => u.id === unit_id.value) || null
 );
 
 const filteredTrainings = computed(() => {
@@ -56,6 +56,10 @@ onMounted(() => {
 });
 
 watch(currentPage, load);
+watch(pageSize, () => {
+  currentPage.value = 1;
+  load();
+});
 
 watch(userQuery, () => {
   clearTimeout(userTimeout);
@@ -72,13 +76,13 @@ watch(userQuery, () => {
   userTimeout = setTimeout(() => {
     userSuggestions.value = trainingUsers.value
       .filter((u) => {
-        const fio = `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.toLowerCase();
+        const fio =
+          `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.toLowerCase();
         return fio.includes(query);
       })
       .slice(0, 5);
   }, 200);
 });
-
 
 watch(
   () => form.value.training_id,
@@ -88,7 +92,9 @@ watch(
       return;
     }
     try {
-      const data = await apiFetch(`/camp-trainings/${val}/registrations?limit=1000`);
+      const data = await apiFetch(
+        `/camp-trainings/${val}/registrations?limit=1000`
+      );
       trainingUsers.value = data.registrations
         .filter((r) =>
           ['PARTICIPANT', 'EQUIPMENT_MANAGER'].includes(r.role?.alias)
@@ -125,7 +131,7 @@ async function load() {
     isLoading.value = true;
     const params = new URLSearchParams({
       page: currentPage.value,
-      limit: pageSize,
+      limit: pageSize.value,
     });
     const data = await apiFetch(`/normative-results?${params}`);
     results.value = data.results;
@@ -197,7 +203,8 @@ function openEdit(r) {
   value_type_id.value = r.value_type_id;
   unit_id.value = r.unit_id;
   skipWatch = true;
-  userQuery.value = `${r.user?.last_name || ''} ${r.user?.first_name || ''}`.trim();
+  userQuery.value =
+    `${r.user?.last_name || ''} ${r.user?.first_name || ''}`.trim();
   userSuggestions.value = [];
   formError.value = '';
   step.value = 2;
@@ -210,7 +217,6 @@ function selectUser(u) {
   userQuery.value = `${u.last_name} ${u.first_name}`;
   userSuggestions.value = [];
 }
-
 
 function formatValue(r) {
   const unit = units.value.find((u) => u.id === r.unit_id);
@@ -325,6 +331,15 @@ defineExpose({ refresh });
         </button>
       </div>
       <div class="card-body p-3">
+        <div class="row g-2 justify-content-end align-items-end mb-3">
+          <div class="col-6 col-sm-auto">
+            <select v-model.number="pageSize" class="form-select">
+              <option :value="5">5</option>
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+            </select>
+          </div>
+        </div>
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
@@ -358,7 +373,9 @@ defineExpose({ refresh });
                 <td :class="['zone-cell', `zone-${r.zone?.alias}`]">
                   {{ formatValue(r) }}
                 </td>
-                <td class="text-nowrap">{{ formatDateTime(r.training?.start_at) }}</td>
+                <td class="text-nowrap">
+                  {{ formatDateTime(r.training?.start_at) }}
+                </td>
                 <td>{{ r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
@@ -451,7 +468,11 @@ defineExpose({ refresh });
                     class="form-select"
                   >
                     <option value="" disabled>Тренировка</option>
-                    <option v-for="t in filteredTrainings" :key="t.id" :value="t.id">
+                    <option
+                      v-for="t in filteredTrainings"
+                      :key="t.id"
+                      :value="t.id"
+                    >
                       {{ new Date(t.start_at).toLocaleString('ru-RU') }}
                     </option>
                   </select>
@@ -484,7 +505,10 @@ defineExpose({ refresh });
                 </div>
               </template>
               <template v-else>
-                <div v-if="currentUnit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
+                <div
+                  v-if="currentUnit?.alias === 'MIN_SEC'"
+                  class="row g-2 mb-3"
+                >
                   <div class="col">
                     <div class="form-floating">
                       <input
@@ -520,7 +544,11 @@ defineExpose({ refresh });
                     id="resValue"
                     type="number"
                     v-model="form.value"
-                    :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                    :step="
+                      currentUnit?.alias === 'SECONDS' && currentUnit.fractional
+                        ? '0.01'
+                        : '1'
+                    "
                     class="form-control"
                     placeholder="Значение"
                     required
