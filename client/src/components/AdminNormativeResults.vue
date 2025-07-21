@@ -38,7 +38,6 @@ const userQuery = ref('');
 const userSuggestions = ref([]);
 let userTimeout;
 let skipWatch = false;
-const trainingUsers = ref([]);
 const minutes = ref('');
 const seconds = ref('');
 
@@ -88,41 +87,23 @@ watch(userQuery, () => {
     return;
   }
   form.value.user_id = '';
-  if (!userQuery.value || !form.value.training_id) {
+  if (!userQuery.value) {
     userSuggestions.value = [];
     return;
   }
-  const query = userQuery.value.toLowerCase();
-  userTimeout = setTimeout(() => {
-    userSuggestions.value = trainingUsers.value
-      .filter((u) => {
-        const fio = `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.toLowerCase();
-        return fio.includes(query);
-      })
-      .slice(0, 5);
+  const query = userQuery.value.trim();
+  userTimeout = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams({ search: query });
+      const data = await apiFetch(`/referee-group-users?${params}`);
+      userSuggestions.value = data.judges.map((j) => j.user).slice(0, 5);
+    } catch (_) {
+      userSuggestions.value = [];
+    }
   }, 200);
 });
 
 
-watch(
-  () => form.value.training_id,
-  async (val) => {
-    if (!val) {
-      trainingUsers.value = [];
-      return;
-    }
-    try {
-      const data = await apiFetch(`/camp-trainings/${val}/registrations?limit=1000`);
-      trainingUsers.value = data.registrations
-        .filter((r) =>
-          ['PARTICIPANT', 'EQUIPMENT_MANAGER'].includes(r.role?.alias)
-        )
-        .map((r) => r.user);
-    } catch (_err) {
-      trainingUsers.value = [];
-    }
-  }
-);
 
 watch(
   () => form.value.type_id,
@@ -136,7 +117,7 @@ watch(
         form.value.training_id = '';
         form.value.user_id = '';
         userQuery.value = '';
-        trainingUsers.value = [];
+        userSuggestions.value = [];
       }
       minutes.value = '';
       seconds.value = '';
@@ -521,7 +502,7 @@ defineExpose({ refresh });
                   </select>
                   <label for="resTraining">Тренировка</label>
                 </div>
-                <div class="mb-3 position-relative" v-if="form.training_id">
+                <div class="mb-3 position-relative">
                   <div class="form-floating">
                     <input
                       id="userId"

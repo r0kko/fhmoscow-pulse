@@ -14,6 +14,8 @@ import {
   Season,
   User,
   MeasurementUnit,
+  TrainingRegistration,
+  TrainingRole,
 } from '../models/index.js';
 
 import { parseResultValue, determineZone } from './normativeTypeService.js';
@@ -110,6 +112,35 @@ async function create(data, actorId) {
   if (!type) throw new ServiceError('normative_type_not_found', 404);
   if (type.season_id !== data.season_id) {
     throw new ServiceError('normative_type_invalid_season');
+  }
+  if (data.training_id) {
+    const registration = await TrainingRegistration.findOne({
+      where: { training_id: data.training_id, user_id: data.user_id },
+      paranoid: false,
+    });
+    const role = await TrainingRole.findOne({
+      where: { alias: 'PARTICIPANT' },
+    });
+    if (!role) throw new ServiceError('training_role_not_found');
+    if (registration) {
+      if (registration.deletedAt) {
+        await registration.restore();
+      }
+      await registration.update({
+        training_role_id: role.id,
+        present: true,
+        updated_by: actorId,
+      });
+    } else {
+      await TrainingRegistration.create({
+        training_id: data.training_id,
+        user_id: data.user_id,
+        training_role_id: role.id,
+        present: true,
+        created_by: actorId,
+        updated_by: actorId,
+      });
+    }
   }
   const value = parseResultValue(data.value, type.MeasurementUnit);
   if (value == null) throw new ServiceError('invalid_value');
