@@ -84,8 +84,8 @@ watch(search, () => {
       </div>
       <div v-if="error" class="alert alert-danger mb-0">{{ error }}</div>
       <div v-else-if="isLoading" class="text-center py-3">Загрузка...</div>
-      <div v-else class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
+      <div v-else class="table-responsive d-none d-sm-block">
+        <table class="table table-bordered align-middle mb-0 admin-table auto-cols ledger-table">
           <thead>
             <tr>
               <th rowspan="2">Судья</th>
@@ -96,7 +96,7 @@ watch(search, () => {
             <tr>
               <template v-for="g in ledger.groups" :key="g.id">
                 <template v-for="t in g.types" :key="t.id">
-                  <th class="text-center">{{ t.name }}</th>
+                  <th class="text-center ledger-col">{{ t.name }}</th>
                 </template>
               </template>
             </tr>
@@ -116,6 +116,7 @@ watch(search, () => {
                         ? `zone-${j.results[t.id].zone.alias}`
                         : ''
                     ]"
+                    class="ledger-col"
                   >
                     {{ formatValue(t, j.results[t.id]) }}
                   </td>
@@ -124,6 +125,35 @@ watch(search, () => {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-else-if="ledger.judges.length" class="d-block d-sm-none">
+        <div v-for="j in ledger.judges" :key="j.user.id" class="card training-card mb-2">
+          <div class="card-body p-2">
+            <h6 class="mb-2">
+              {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic || '' }}
+            </h6>
+            <div v-for="g in ledger.groups" :key="g.id" class="mb-2">
+              <strong class="d-block mb-1">{{ g.name }}</strong>
+              <div
+                v-for="t in g.types"
+                :key="t.id"
+                class="d-flex justify-content-between small"
+              >
+                <span class="me-2">{{ t.name }}</span>
+                <span
+                  :class="[
+                    'zone-cell',
+                    j.results[t.id]?.zone?.alias
+                      ? `zone-${j.results[t.id].zone.alias}`
+                      : ''
+                  ]"
+                  >
+                  {{ formatValue(t, j.results[t.id]) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -170,6 +200,12 @@ watch(search, () => {
 <style scoped>
 .table-bordered {
   min-width: max-content;
+}
+.ledger-col {
+  width: 4.5rem;
+  max-width: 4.5rem;
+  white-space: normal;
+  word-wrap: break-word;
 }
 .fade-in {
   animation: fadeIn 0.4s ease-out;
