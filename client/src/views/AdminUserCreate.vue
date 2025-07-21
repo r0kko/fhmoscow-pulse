@@ -41,7 +41,7 @@ function generatePassword(len = 8) {
 onMounted(() => {
   passwordModal = new Modal(passwordModalRef.value)
   passwordModalRef.value.addEventListener('hidden.bs.modal', () => {
-    if (createdId.value) router.push(`/users/${createdId.value}`)
+    if (createdId.value) router.push(`/admin/users/${createdId.value}`)
   })
   loadSexes()
 })
@@ -72,12 +72,12 @@ async function save() {
 }
 
 function close() {
-  router.push('/users')
+  router.push('/admin/users')
 }
 
 function confirmPassword() {
   passwordModal.hide()
-  if (createdId.value) router.push(`/users/${createdId.value}`)
+  if (createdId.value) router.push(`/admin/users/${createdId.value}`)
 }
 
 function showToast(message) {
@@ -103,7 +103,7 @@ async function copyToClipboard(text) {
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/admin">Администрирование</RouterLink></li>
-        <li class="breadcrumb-item"><RouterLink to="/users">Пользователи</RouterLink></li>
+        <li class="breadcrumb-item"><RouterLink to="/admin/users">Пользователи</RouterLink></li>
         <li class="breadcrumb-item active" aria-current="page">Создание</li>
       </ol>
     </nav>

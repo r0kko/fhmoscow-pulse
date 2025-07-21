@@ -262,7 +262,7 @@ function openNormatives(reg) {
             <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
           <li class="breadcrumb-item">
-            <RouterLink to="/camp-stadiums">Сборы</RouterLink>
+            <RouterLink to="/admin/camp-stadiums">Сборы</RouterLink>
           </li>
           <li class="breadcrumb-item active" aria-current="page">Участники</li>
         </ol>

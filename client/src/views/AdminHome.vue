@@ -2,15 +2,15 @@
 import { RouterLink } from 'vue-router'
 
 const userSections = [
-  { title: 'Пользователи', icon: 'bi-people', to: '/users' },
-  { title: 'Документы', icon: 'bi-file-earmark', to: '/documents-admin' },
-  { title: 'Медицина', icon: 'bi-file-earmark-medical', to: '/medical-admin' },
-  { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets-admin' },
+  { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
+  { title: 'Документы', icon: 'bi-file-earmark', to: '/admin/documents' },
+  { title: 'Медицина', icon: 'bi-file-earmark-medical', to: '/admin/medical' },
+  { title: 'Обращения', icon: 'bi-chat-dots', to: '/admin/tickets' },
 ]
 
 const refereeSections = [
-  { title: 'Управление сборами', icon: 'bi-building', to: '/camp-stadiums' },
-  { title: 'Нормативы', icon: 'bi-speedometer2', to: '/normatives-admin' },
+  { title: 'Управление сборами', icon: 'bi-building', to: '/admin/camp-stadiums' },
+  { title: 'Нормативы', icon: 'bi-speedometer2', to: '/admin/normatives' },
 ]
 </script>
 

@@ -135,11 +135,11 @@ onMounted(() => {
 })
 
 function openCreate() {
-  router.push('/users/new')
+  router.push('/admin/users/new')
 }
 
 function openEdit(user) {
-  router.push(`/users/${user.id}`)
+  router.push(`/admin/users/${user.id}`)
 }
 
 function openTaxStatus(id) {
