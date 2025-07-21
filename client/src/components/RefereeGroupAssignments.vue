@@ -195,23 +195,23 @@ defineExpose({ refresh });
             <thead>
               <tr>
                 <th>ФИО</th>
-                <th>Дата рождения</th>
-                <th>Группа</th>
-                <th>Тренировки</th>
+                <th class="text-center">Дата рождения</th>
+                <th class="text-center">Группа</th>
+                <th class="text-center">Тренировки</th>
                 <th class="text-center">История</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="j in judges" :key="j.user.id">
                 <td>{{ formatName(j.user) }}</td>
-                <td>{{ formatDate(j.user.birth_date) }}</td>
-                <td>
+                <td class="text-center">{{ formatDate(j.user.birth_date) }}</td>
+                <td class="text-center">
                   <select v-model="j.group_id" class="form-select" @change="setGroup(j)">
                     <option value="">Без группы</option>
                     <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                   </select>
                 </td>
-                <td>
+                <td class="text-center">
                   {{ j.training_stats.visited }} / {{ j.training_stats.total }}
                   <span v-if="j.training_stats.total">
                     ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
@@ -265,29 +265,44 @@ defineExpose({ refresh });
           <div v-if="historyLoading" class="text-center my-3">
             <div class="spinner-border" role="status"></div>
           </div>
-          <div v-if="history.length" class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Время</th>
-                  <th>Тренер</th>
-                  <th>Тип</th>
-                  <th>Стадион</th>
-                  <th class="text-center">Факт</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="t in history" :key="t.id">
-                  <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-                  <td>{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</td>
-                  <td>{{ t.type?.name }}</td>
-                  <td>{{ t.stadium?.name }}</td>
-                  <td class="text-center">
+          <div v-if="history.length">
+            <div class="table-responsive d-none d-sm-block">
+              <table class="table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Время</th>
+                    <th>Тренер</th>
+                    <th>Тип</th>
+                    <th>Стадион</th>
+                    <th class="text-center">Факт</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="t in history" :key="t.id">
+                    <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+                    <td>{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</td>
+                    <td>{{ t.type?.name }}</td>
+                    <td>{{ t.stadium?.name }}</td>
+                    <td class="text-center">
+                      <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="d-block d-sm-none">
+              <div v-for="t in history" :key="t.id" class="card training-card mb-2">
+                <div class="card-body p-2">
+                  <p class="mb-1 fw-semibold">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
+                  <p class="mb-1">{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</p>
+                  <p class="mb-1">{{ t.type?.name }}</p>
+                  <p class="mb-1">{{ t.stadium?.name }}</p>
+                  <p class="mb-0 text-end">
                     <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           <p v-else-if="!historyLoading" class="mb-0 text-muted">Записей нет.</p>
         </div>
