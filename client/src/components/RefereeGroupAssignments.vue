@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 
 const judges = ref([]);
@@ -11,6 +12,13 @@ const search = ref('');
 const filterGroup = ref('');
 const filterSeason = ref('');
 let searchTimeout;
+
+const history = ref([]);
+const historyLoading = ref(false);
+const historyError = ref('');
+const historyJudgeName = ref('');
+const historyModalRef = ref(null);
+let historyModal;
 
 async function loadJudges() {
   loading.value = true;
@@ -82,7 +90,48 @@ function formatDate(d) {
   return `${day}.${m}.${y}`;
 }
 
+function formatDateTimeRange(start, end) {
+  if (!start) return '';
+  const pad = (n) => (n < 10 ? '0' + n : '' + n);
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${startDate.getFullYear()}`;
+  const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+  const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+  return `${date} ${startTime} - ${endTime}`;
+}
+
+function presenceIcon(val) {
+  if (val === true) return 'bi-check-lg text-success';
+  if (val === false) return 'bi-x-lg text-danger';
+  return 'bi-question-lg text-muted';
+}
+
+function presenceTitle(val) {
+  if (val === true) return 'Присутствовал';
+  if (val === false) return 'Отсутствовал';
+  return 'Не отмечено';
+}
+
+async function openHistory(judge) {
+  historyJudgeName.value = formatName(judge.user);
+  history.value = [];
+  historyLoading.value = true;
+  historyError.value = '';
+  historyModal.show();
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 50 });
+    const data = await apiFetch(`/camp-trainings/users/${judge.user.id}/history?${params}`);
+    history.value = data.trainings || [];
+  } catch (e) {
+    historyError.value = e.message;
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
 onMounted(() => {
+  historyModal = new Modal(historyModalRef.value);
   loadSeasons();
   loadGroups();
   loadJudges();
@@ -149,6 +198,7 @@ defineExpose({ refresh });
                 <th>Дата рождения</th>
                 <th>Группа</th>
                 <th>Тренировки</th>
+                <th class="text-center">История</th>
               </tr>
             </thead>
             <tbody>
@@ -166,6 +216,11 @@ defineExpose({ refresh });
                   <span v-if="j.training_stats.total">
                     ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
                   </span>
+                </td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-secondary" @click="openHistory(j)">
+                    <i class="bi bi-clock-history"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -186,13 +241,60 @@ defineExpose({ refresh });
                   ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
                 </span>
               </p>
+              <div class="text-end mt-1">
+                <button class="btn btn-sm btn-outline-secondary" @click="openHistory(j)">
+                  <i class="bi bi-clock-history"></i>
+                </button>
+              </div>
             </div>
           </div>
+      </div>
+      <p v-else class="text-muted mb-0">Судьи не найдены.</p>
+    </div>
+  </div>
+
+  <div ref="historyModalRef" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">История посещений — {{ historyJudgeName }}</h5>
+          <button type="button" class="btn-close" @click="historyModal.hide()"></button>
         </div>
-        <p v-else class="text-muted mb-0">Судьи не найдены.</p>
+        <div class="modal-body">
+          <div v-if="historyError" class="alert alert-danger">{{ historyError }}</div>
+          <div v-if="historyLoading" class="text-center my-3">
+            <div class="spinner-border" role="status"></div>
+          </div>
+          <div v-if="history.length" class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Тренер</th>
+                  <th>Тип</th>
+                  <th>Стадион</th>
+                  <th class="text-center">Факт</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="t in history" :key="t.id">
+                  <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+                  <td>{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</td>
+                  <td>{{ t.type?.name }}</td>
+                  <td>{{ t.stadium?.name }}</td>
+                  <td class="text-center">
+                    <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!historyLoading" class="mb-0 text-muted">Записей нет.</p>
+        </div>
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <style scoped>

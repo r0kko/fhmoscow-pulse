@@ -107,6 +107,20 @@ export default {
     }
   },
 
+  async history(req, res) {
+    const { page = '1', limit = '20' } = req.query;
+    try {
+      const { rows, count } = await trainingRegistrationService.listPastByUser(
+        req.params.userId,
+        { page: parseInt(page, 10), limit: parseInt(limit, 10) }
+      );
+      const trainings = rows.map(trainingMapper.toPublic);
+      return res.json({ trainings, total: count });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
   async remove(req, res) {
     try {
       await trainingRegistrationService.remove(
