@@ -206,8 +206,11 @@ async function remove(id, actorId = null) {
   if (!res) throw new ServiceError('normative_result_not_found', 404);
   await res.update({ updated_by: actorId });
   await res.destroy();
-  const user = res.User || (await User.findByPk(res.user_id));
-  if (user) {
+  let user = res.User;
+  if (!user || !user.email) {
+    user = await User.findByPk(res.user_id);
+  }
+  if (user && user.email) {
     await emailService.sendNormativeResultRemovedEmail(user, res);
   }
 }

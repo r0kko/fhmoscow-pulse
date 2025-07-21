@@ -134,3 +134,23 @@ test('create passes user sex to zone determination', async () => {
   });
   expect(determineZoneMock).toHaveBeenCalledWith(expect.any(Object), 5, 'sx1');
 });
+
+test('remove fetches user when email missing', async () => {
+  const updateMock = jest.fn();
+  const destroyMock = jest.fn();
+  findResultByPkMock.mockResolvedValueOnce({
+    id: 'nr1',
+    user_id: 'u1',
+    update: updateMock,
+    destroy: destroyMock,
+    User: { id: 'u1' },
+  });
+  findUserMock.mockResolvedValueOnce({ id: 'u1', email: 'test@ex.com' });
+
+  await service.remove('nr1', 'adm');
+
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'adm' });
+  expect(destroyMock).toHaveBeenCalled();
+  expect(findUserMock).toHaveBeenCalledWith('u1');
+  expect(sendRemoveEmailMock).toHaveBeenCalled();
+});
