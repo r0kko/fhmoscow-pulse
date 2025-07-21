@@ -137,6 +137,13 @@ body {
   white-space: nowrap;
 }
 
+.ledger-col {
+  width: 4.5rem;
+  max-width: 4.5rem;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
 .zone-cell {
   font-weight: 600;
   text-align: center;
