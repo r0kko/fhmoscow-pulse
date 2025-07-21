@@ -22,6 +22,7 @@ async function listAll(options = {}) {
   const where = {};
   if (options.season_id) where.season_id = options.season_id;
   if (options.user_id) where.user_id = options.user_id;
+  if (options.training_id) where.training_id = options.training_id;
   const { rows, count } = await NormativeResult.findAndCountAll({
     order: [['created_at', 'DESC']],
     limit,

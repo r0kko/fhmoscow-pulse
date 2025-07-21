@@ -23,12 +23,18 @@ const lastAddedUserId = ref(null);
 const normativeTypes = ref([]);
 const units = ref([]);
 const normativeCounts = ref({});
+const userResults = ref([]);
+const resultsLoading = ref(false);
+const resultsError = ref('');
 const resultUser = ref(null);
+const editingResult = ref(null);
 const resultForm = ref({ type_id: '', value: '', minutes: '', seconds: '' });
 const resultError = ref('');
 const resultSaving = ref(false);
 const resultModalRef = ref(null);
+const resultListModalRef = ref(null);
 let resultModal;
+let resultListModal;
 
 const attendanceMarked = computed(() => training.value?.attendance_marked);
 const allMarked = computed(() =>
@@ -85,10 +91,11 @@ onMounted(() => {
   loadJudges();
   loadTrainingRoles();
   resultModal = new Modal(resultModalRef.value);
+  resultListModal = new Modal(resultListModalRef.value);
 });
 
 watch(
-  () => training.value && training.value.season_id,
+  () => training.value && training.value.id,
   (val) => {
     if (val) loadNormativeCounts();
   }
@@ -198,11 +205,13 @@ async function loadNormativeCounts() {
   if (!training.value) return;
   try {
     const data = await apiFetch(
-      `/normative-ledger?season_id=${training.value.season_id}`
+      `/normative-results?training_id=${training.value.id}&limit=1000`
     );
-    normativeCounts.value = Object.fromEntries(
-      data.ledger.judges.map((j) => [j.user.id, Object.keys(j.results).length])
-    );
+    const counts = {};
+    data.results.forEach((r) => {
+      counts[r.user_id] = (counts[r.user_id] || 0) + 1;
+    });
+    normativeCounts.value = counts;
   } catch (_e) {
     normativeCounts.value = {};
   }
@@ -291,10 +300,52 @@ async function finishAttendance() {
 }
 
 function openResultModal(reg) {
+  editingResult.value = null;
   resultUser.value = reg.user;
   resultForm.value = { type_id: '', value: '', minutes: '', seconds: '' };
   resultError.value = '';
   resultModal.show();
+}
+
+function openEditResult(r) {
+  editingResult.value = r;
+  resultUser.value = r.user;
+  resultForm.value = { type_id: r.type_id, value: '', minutes: '', seconds: '' };
+  const unit = units.value.find((u) => u.id === r.unit_id);
+  if (unit?.alias === 'MIN_SEC') {
+    const [m, s] = r.value.split(':');
+    resultForm.value.minutes = parseInt(m, 10);
+    resultForm.value.seconds = parseInt(s, 10);
+  } else {
+    resultForm.value.value = r.value;
+  }
+  resultError.value = '';
+  resultModal.show();
+}
+
+async function loadUserResults(userId) {
+  if (!training.value) return;
+  resultsLoading.value = true;
+  try {
+    const data = await apiFetch(
+      `/normative-results?training_id=${training.value.id}&user_id=${userId}&limit=100`
+    );
+    userResults.value = data.results;
+    resultsError.value = '';
+  } catch (e) {
+    userResults.value = [];
+    resultsError.value = e.message;
+  } finally {
+    resultsLoading.value = false;
+  }
+}
+
+function openResults(reg) {
+  resultUser.value = reg.user;
+  userResults.value = [];
+  resultsError.value = '';
+  resultListModal.show();
+  loadUserResults(reg.user.id);
 }
 
 async function saveResult() {
@@ -329,16 +380,36 @@ async function saveResult() {
   };
   try {
     resultSaving.value = true;
-    await apiFetch('/normative-results', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    if (editingResult.value) {
+      await apiFetch(`/normative-results/${editingResult.value.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ training_id: training.value.id, value: val }),
+      });
+    } else {
+      await apiFetch('/normative-results', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    }
     resultModal.hide();
+    await loadUserResults(resultUser.value.id);
     await loadNormativeCounts();
+    editingResult.value = null;
   } catch (e) {
     resultError.value = e.message;
   } finally {
     resultSaving.value = false;
+  }
+}
+
+async function removeResult(r) {
+  if (!confirm('Удалить запись?')) return;
+  try {
+    await apiFetch(`/normative-results/${r.id}`, { method: 'DELETE' });
+    await loadUserResults(resultUser.value.id);
+    await loadNormativeCounts();
+  } catch (e) {
+    alert(e.message);
   }
 }
 </script>
@@ -465,7 +536,15 @@ async function saveResult() {
                     </div>
                   </td>
                   <td class="text-center">
-                    {{ normativeCounts[r.user.id] || 0 }}
+                    <a
+                      v-if="(normativeCounts[r.user.id] || 0) > 0"
+                      href="#"
+                      class="count-link"
+                      @click.prevent="openResults(r)"
+                    >
+                      {{ normativeCounts[r.user.id] }}
+                    </a>
+                    <span v-else>0</span>
                   </td>
                   <td class="text-end">
                     <button
@@ -597,6 +676,51 @@ async function saveResult() {
           </div>
         </div>
       </div>
+      <div ref="resultListModalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                Результаты
+                {{ resultUser ? resultUser.last_name + ' ' + resultUser.first_name : '' }}
+              </h5>
+              <button type="button" class="btn-close" @click="resultListModal.hide()"></button>
+            </div>
+            <div class="modal-body">
+              <div v-if="resultsError" class="alert alert-danger">{{ resultsError }}</div>
+              <div v-if="resultsLoading" class="text-center my-3">
+                <div class="spinner-border" role="status"></div>
+              </div>
+              <div v-else-if="userResults.length" class="table-responsive">
+                <table class="table table-sm table-striped align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Тип</th>
+                      <th class="text-center">Значение</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="res in userResults" :key="res.id">
+                      <td>{{ normativeTypes.find((t) => t.id === res.type_id)?.name || res.type_id }}</td>
+                      <td class="text-center">{{ res.value }}</td>
+                      <td class="text-end">
+                        <button class="btn btn-sm btn-secondary me-2" @click="openEditResult(res)">
+                          <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" @click="removeResult(res)">
+                          <i class="bi bi-trash" aria-hidden="true"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else class="text-muted mb-0">Записей нет.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -629,6 +753,11 @@ async function saveResult() {
   padding: 0.25rem 0;
 }
 
+.count-link {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 @media (max-width: 575.98px) {
   .admin-training-registrations-page {
     padding-top: 0.5rem !important;
@@ -642,6 +771,11 @@ async function saveResult() {
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+
+  .count-link {
+    display: inline-block;
+    margin-top: 0.25rem;
   }
 }
 
