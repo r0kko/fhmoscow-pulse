@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TrainingNormativeResultsModal from '../components/TrainingNormativeResultsModal.vue';
@@ -249,7 +249,9 @@ async function finish() {
 
 function openNormatives(reg) {
   selectedReg.value = reg;
-  normativeModalRef.value.open();
+  nextTick(() => {
+    normativeModalRef.value.open();
+  });
 }
 </script>
 
