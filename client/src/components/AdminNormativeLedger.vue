@@ -1,20 +1,39 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
 const ledger = ref({ judges: [], groups: [] });
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(
+  parseInt(localStorage.getItem('normativeLedgerPageSize') || '15', 10)
+);
 const isLoading = ref(false);
 const error = ref('');
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(total.value / pageSize.value))
+);
 
 async function load() {
   isLoading.value = true;
   try {
-    const data = await apiFetch('/normative-ledger');
+    const params = new URLSearchParams({
+      page: currentPage.value,
+      limit: pageSize.value,
+    });
+    const data = await apiFetch(`/normative-ledger?${params}`);
     ledger.value = data.ledger;
+    total.value = data.total;
+    const pages = Math.max(1, Math.ceil(total.value / pageSize.value));
+    if (currentPage.value > pages) {
+      currentPage.value = pages;
+    }
     error.value = '';
   } catch (err) {
     error.value = 'Не удалось загрузить данные';
+    ledger.value = { judges: [], groups: [] };
   } finally {
     isLoading.value = false;
   }
@@ -29,6 +48,14 @@ function formatValue(type, result) {
 }
 
 onMounted(load);
+
+watch(currentPage, load);
+
+watch(pageSize, (val) => {
+  localStorage.setItem('normativeLedgerPageSize', val);
+  currentPage.value = 1;
+  load();
+});
 </script>
 
 <template>
@@ -71,6 +98,44 @@ onMounted(load);
       </div>
     </div>
   </div>
+  <nav
+    class="mt-3 d-flex align-items-center justify-content-between"
+    v-if="ledger.judges.length"
+  >
+    <select v-model.number="pageSize" class="form-select form-select-sm w-auto">
+      <option :value="15">15</option>
+      <option :value="30">30</option>
+      <option :value="50">50</option>
+    </select>
+    <ul class="pagination mb-0">
+      <li class="page-item" :class="{ disabled: currentPage === 1 }">
+        <button
+          class="page-link"
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+        >
+          Пред
+        </button>
+      </li>
+      <li
+        class="page-item"
+        v-for="p in totalPages"
+        :key="p"
+        :class="{ active: currentPage === p }"
+      >
+        <button class="page-link" @click="currentPage = p">{{ p }}</button>
+      </li>
+      <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+        <button
+          class="page-link"
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+        >
+          След
+        </button>
+      </li>
+    </ul>
+  </nav>
 </template>
 
 <style scoped>
