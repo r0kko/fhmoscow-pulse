@@ -94,4 +94,11 @@ router.delete(
   selfController.unregister
 );
 
+router.get(
+  '/users/:userId/history',
+  auth,
+  authorize('ADMIN'),
+  registrationsController.history
+);
+
 export default router;
