@@ -1,4 +1,4 @@
-import { jest, expect, test } from '@jest/globals';
+import { jest, expect, test, beforeEach } from '@jest/globals';
 
 const findAndCountAllMock = jest.fn();
 const createResultMock = jest.fn();
@@ -9,6 +9,9 @@ const findRegMock = jest.fn();
 const createRegMock = jest.fn();
 const findRoleMock = jest.fn();
 const findResultByPkMock = jest.fn();
+const sendAddEmailMock = jest.fn();
+const sendUpdateEmailMock = jest.fn();
+const sendRemoveEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -39,6 +42,15 @@ jest.unstable_mockModule('../src/services/normativeTypeService.js', () => ({
   __esModule: true,
   parseResultValue: jest.fn((v) => v),
   determineZone: determineZoneMock,
+}));
+
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
+  __esModule: true,
+  default: {
+    sendNormativeResultAddedEmail: sendAddEmailMock,
+    sendNormativeResultUpdatedEmail: sendUpdateEmailMock,
+    sendNormativeResultRemovedEmail: sendRemoveEmailMock,
+  },
 }));
 
 const { default: service } = await import('../src/services/normativeResultService.js');
@@ -74,6 +86,12 @@ findRegMock.mockResolvedValue(null);
 createRegMock.mockResolvedValue({});
 findRoleMock.mockResolvedValue({ id: 'role1' });
 
+beforeEach(() => {
+  sendAddEmailMock.mockClear();
+  sendUpdateEmailMock.mockClear();
+  sendRemoveEmailMock.mockClear();
+});
+
 test('listAll filters by user and maps zone and group', async () => {
   const { rows, count } = await service.listAll({ user_id: 'u1' });
   expect(count).toBe(1);
@@ -103,6 +121,7 @@ test('create ensures registration', async () => {
     expect.objectContaining({ training_id: 'tr1', user_id: 'u1', present: true })
   );
   expect(createResultMock).toHaveBeenCalled();
+  expect(sendAddEmailMock).toHaveBeenCalled();
 });
 
 test('create passes user sex to zone determination', async () => {

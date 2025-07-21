@@ -23,6 +23,9 @@ import { renderMedicalExamRegistrationSelfCancelledEmail } from '../templates/me
 import { renderMedicalExamRegistrationCompletedEmail } from '../templates/medicalExamRegistrationCompletedEmail.js';
 import { renderTicketCreatedEmail } from '../templates/ticketCreatedEmail.js';
 import { renderTicketStatusChangedEmail } from '../templates/ticketStatusChangedEmail.js';
+import { renderNormativeResultAddedEmail } from '../templates/normativeResultAddedEmail.js';
+import { renderNormativeResultUpdatedEmail } from '../templates/normativeResultUpdatedEmail.js';
+import { renderNormativeResultRemovedEmail } from '../templates/normativeResultRemovedEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -139,6 +142,21 @@ export async function sendTicketStatusChangedEmail(user, ticket) {
   const { subject, text, html } = renderTicketStatusChangedEmail(ticket);
   await sendMail(user.email, subject, text, html);
 }
+
+export async function sendNormativeResultAddedEmail(user, result) {
+  const { subject, text, html } = renderNormativeResultAddedEmail(result);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendNormativeResultUpdatedEmail(user, result) {
+  const { subject, text, html } = renderNormativeResultUpdatedEmail(result);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendNormativeResultRemovedEmail(user, result) {
+  const { subject, text, html } = renderNormativeResultRemovedEmail(result);
+  await sendMail(user.email, subject, text, html);
+}
 export default {
   sendMail,
   sendVerificationEmail,
@@ -156,4 +174,7 @@ export default {
   sendMedicalExamRegistrationCompletedEmail,
   sendTicketCreatedEmail,
   sendTicketStatusChangedEmail,
+  sendNormativeResultAddedEmail,
+  sendNormativeResultUpdatedEmail,
+  sendNormativeResultRemovedEmail,
 };
