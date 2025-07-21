@@ -188,6 +188,7 @@ async function listAll(options = {}) {
   return NormativeType.findAndCountAll({
     include: [NormativeTypeZone, NormativeGroupType],
     order: [['name', 'ASC']],
+    distinct: true,
     limit,
     offset,
     where,

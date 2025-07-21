@@ -380,13 +380,6 @@ defineExpose({ refresh });
               <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
             </select>
           </div>
-          <div class="col-6 col-sm-auto">
-            <select v-model.number="pageSize" class="form-select">
-              <option :value="15">15</option>
-              <option :value="30">30</option>
-              <option :value="50">50</option>
-            </select>
-          </div>
         </div>
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
@@ -444,8 +437,16 @@ defineExpose({ refresh });
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     </div>
-    <nav class="mt-3" v-if="totalPages > 1">
-      <ul class="pagination justify-content-center">
+    <nav
+      class="mt-3 d-flex align-items-center justify-content-between"
+      v-if="results.length"
+    >
+      <select v-model.number="pageSize" class="form-select form-select-sm w-auto">
+        <option :value="15">15</option>
+        <option :value="30">30</option>
+        <option :value="50">50</option>
+      </select>
+      <ul class="pagination mb-0">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <button
             class="page-link"

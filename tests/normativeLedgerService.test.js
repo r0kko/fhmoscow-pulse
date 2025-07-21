@@ -1,12 +1,12 @@
 import { jest, expect, test } from '@jest/globals';
 
-const findAllUsersMock = jest.fn();
+const findAndCountAllUsersMock = jest.fn();
 const findAllTypesMock = jest.fn();
 const findAllResultsMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  User: { findAll: findAllUsersMock },
+  User: { findAndCountAll: findAndCountAllUsersMock },
   Role: {},
   NormativeType: { findAll: findAllTypesMock },
   NormativeGroupType: {},
@@ -35,7 +35,7 @@ jest.unstable_mockModule('../src/mappers/normativeZoneMapper.js', () => ({
 
 const { default: service } = await import('../src/services/normativeLedgerService.js');
 
-findAllUsersMock.mockResolvedValue([{ id: 'u1' }]);
+findAndCountAllUsersMock.mockResolvedValue({ rows: [{ id: 'u1' }], count: 1 });
 findAllTypesMock.mockResolvedValue([
   {
     id: 't1',
@@ -81,8 +81,12 @@ findAllResultsMock.mockResolvedValue([
   },
 ]);
 
-test('list returns best results', async () => {
-  const { judges, groups } = await service.list();
+test('list returns best results and total', async () => {
+  const { judges, groups, total } = await service.list({ page: 2, limit: 5 });
+  expect(total).toBe(1);
+  expect(findAndCountAllUsersMock).toHaveBeenCalledWith(
+    expect.objectContaining({ limit: 5, offset: 5 })
+  );
   expect(judges).toHaveLength(1);
   expect(groups[0].types).toHaveLength(2);
   expect(groups[0].types[0].unit_alias).toBe('MIN_SEC');

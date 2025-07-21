@@ -21,9 +21,14 @@ async function getSeason(id) {
 
 async function list(options = {}) {
   const season = await getSeason(options.season_id);
-  if (!season) return { judges: [], groups: [] };
-  const [judges, types, results] = await Promise.all([
-    User.findAll({
+  if (!season) return { judges: [], groups: [], total: 0 };
+
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+
+  const [{ rows: judges, count }, types] = await Promise.all([
+    User.findAndCountAll({
       include: [
         {
           model: Role,
@@ -36,6 +41,8 @@ async function list(options = {}) {
         ['last_name', 'ASC'],
         ['first_name', 'ASC'],
       ],
+      limit,
+      offset,
     }),
     NormativeType.findAll({
       where: { season_id: season.id },
@@ -45,13 +52,15 @@ async function list(options = {}) {
       ],
       order: [['name', 'ASC']],
     }),
-    NormativeResult.findAll({
-      where: {
-        season_id: season.id,
-      },
-      include: [NormativeZone, NormativeValueType],
-    }),
   ]);
+
+  const results = await NormativeResult.findAll({
+    where: {
+      season_id: season.id,
+      user_id: judges.map((u) => u.id),
+    },
+    include: [NormativeZone, NormativeValueType],
+  });
 
   const groupMap = {};
   for (const t of types) {
@@ -95,7 +104,7 @@ async function list(options = {}) {
     results: resultMap[u.id] || {},
   }));
 
-  return { judges: data, groups };
+  return { judges: data, groups, total: count };
 }
 
 export default { list };
