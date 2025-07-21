@@ -5,7 +5,6 @@ import Modal from 'bootstrap/js/dist/modal';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
-import { calculateGroupStatus } from '../utils/groupStatus.js';
 
 const groups = ref([]);
 const seasons = ref([]);
@@ -95,10 +94,6 @@ function zoneClass(result) {
   return result?.zone?.alias ? `zone-${result.zone.alias}` : '';
 }
 
-function groupStatus(group) {
-  return calculateGroupStatus(group);
-}
-
 </script>
 
 <template>
@@ -145,14 +140,8 @@ function groupStatus(group) {
         :key="g.id"
         class="card section-card tile fade-in shadow-sm mb-3"
       >
-        <div
-          class="card-header d-flex justify-content-between align-items-center"
-        >
+        <div class="card-header">
           <h2 class="h6 mb-0">{{ g.name }}</h2>
-          <span class="d-flex align-items-center gap-1 small">
-            <i :class="['bi', groupStatus(g).icon]"></i>
-            <span>{{ groupStatus(g).text }}</span>
-          </span>
         </div>
         <div class="card-body p-3">
           <div
