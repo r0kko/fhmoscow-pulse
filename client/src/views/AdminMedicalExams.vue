@@ -136,7 +136,7 @@ async function removeExam(exam) {
 const router = useRouter()
 
 function openRegistrations(exam) {
-  router.push(`/medical-exams/${exam.id}/registrations`)
+  router.push(`/admin/medical-exams/${exam.id}/registrations`)
 }
 </script>
 

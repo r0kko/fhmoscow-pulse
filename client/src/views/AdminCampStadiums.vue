@@ -930,7 +930,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               </td>
               <td class="text-end">
                 <RouterLink
-                    :to="`/camp-trainings/${t.id}/registrations`"
+                    :to="`/admin/camp-trainings/${t.id}/registrations`"
                     class="btn btn-sm btn-primary me-2"
                 >
                   <i class="bi bi-people"></i>
@@ -966,7 +966,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 </div>
                 <div class="text-end">
                   <RouterLink
-                      :to="`/camp-trainings/${t.id}/registrations`"
+                      :to="`/admin/camp-trainings/${t.id}/registrations`"
                       class="btn btn-sm btn-primary me-2"
                   >
                     <i class="bi bi-people"></i>
