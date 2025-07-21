@@ -80,9 +80,14 @@ function open() {
   minutes.value = '';
   seconds.value = '';
   formError.value = '';
+  results.value = [];
+  types.value = [];
+  units.value = [];
+  error.value = '';
+  loading.value = true;
   if (!modal) modal = new Modal(modalRef.value);
-  load();
   modal.show();
+  load();
 }
 
 defineExpose({ open });
