@@ -93,3 +93,10 @@ test('list returns best results and total', async () => {
   expect(judges[0].results.t1.value).toBe(7);
   expect(judges[0].results.t2.value).toBe(8);
 });
+
+test('list applies search filter', async () => {
+  await service.list({ search: 'Pet' });
+  expect(findAndCountAllUsersMock).toHaveBeenCalledWith(
+    expect.objectContaining({ where: expect.any(Object) })
+  );
+});

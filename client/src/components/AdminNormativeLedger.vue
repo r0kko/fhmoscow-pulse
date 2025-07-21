@@ -9,6 +9,7 @@ const currentPage = ref(1);
 const pageSize = ref(
   parseInt(localStorage.getItem('normativeLedgerPageSize') || '15', 10)
 );
+const search = ref('');
 const isLoading = ref(false);
 const error = ref('');
 
@@ -22,6 +23,7 @@ async function load() {
     const params = new URLSearchParams({
       page: currentPage.value,
       limit: pageSize.value,
+      search: search.value,
     });
     const data = await apiFetch(`/normative-ledger?${params}`);
     ledger.value = data.ledger;
@@ -56,11 +58,30 @@ watch(pageSize, (val) => {
   currentPage.value = 1;
   load();
 });
+
+let searchTimeout;
+watch(search, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1;
+    load();
+  }, 300);
+});
 </script>
 
 <template>
   <div class="card section-card tile fade-in shadow-sm mb-3">
     <div class="card-body p-2">
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col">
+          <input
+            type="text"
+            class="form-control"
+            placeholder="ФИО судьи"
+            v-model="search"
+          />
+        </div>
+      </div>
       <div v-if="error" class="alert alert-danger mb-0">{{ error }}</div>
       <div v-else-if="isLoading" class="text-center py-3">Загрузка...</div>
       <div v-else class="table-responsive">
@@ -148,7 +169,7 @@ watch(pageSize, (val) => {
 
 <style scoped>
 .table-bordered {
-  min-width: 600px;
+  min-width: max-content;
 }
 .fade-in {
   animation: fadeIn 0.4s ease-out;

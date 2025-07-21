@@ -144,7 +144,7 @@ async function create(data, actorId) {
   }
   const value = parseResultValue(data.value, type.MeasurementUnit);
   if (value == null) throw new ServiceError('invalid_value');
-  const zone = determineZone(type, value);
+  const zone = determineZone(type, value, user.sex_id);
   const res = await NormativeResult.create({
     user_id: data.user_id,
     season_id: data.season_id,
@@ -169,6 +169,7 @@ async function update(id, data, actorId) {
         model: NormativeType,
         include: [MeasurementUnit, NormativeTypeZone],
       },
+      { model: User },
     ],
   });
   if (!res) throw new ServiceError('normative_result_not_found', 404);
@@ -177,7 +178,7 @@ async function update(id, data, actorId) {
     newValue = parseResultValue(data.value, res.NormativeType.MeasurementUnit);
     if (newValue == null) throw new ServiceError('invalid_value');
   }
-  const zone = determineZone(res.NormativeType, newValue);
+  const zone = determineZone(res.NormativeType, newValue, res.User?.sex_id);
   await res.update(
     {
       training_id: data.training_id ?? res.training_id,
