@@ -12,6 +12,8 @@ function sanitize(obj) {
     type_id,
     value_type_id,
     unit_id,
+    online,
+    retake,
     value,
     zone,
     NormativeZone,
@@ -28,6 +30,8 @@ function sanitize(obj) {
     value_type_id,
     unit_id,
     value,
+    online,
+    retake,
   };
   const zoneObj = zone || NormativeZone;
   if (zoneObj) res.zone = normativeZoneMapper.toPublic(zoneObj);

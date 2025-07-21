@@ -18,6 +18,16 @@ NormativeResult.init(
     value_type_id: { type: DataTypes.UUID, allowNull: false },
     unit_id: { type: DataTypes.UUID, allowNull: false },
     zone_id: { type: DataTypes.UUID },
+    online: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    retake: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     value: { type: DataTypes.FLOAT, allowNull: false },
   },
   {

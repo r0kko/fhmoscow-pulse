@@ -18,6 +18,8 @@ const resultModel = {
     type_id: 'n1',
     value_type_id: 'v1',
     unit_id: 'u1',
+    online: false,
+    retake: false,
     value: 10,
     zone,
     group,
@@ -37,11 +39,16 @@ describe('normativeResultMapper', () => {
       type_id: 'n1',
       value_type_id: 'v1',
       unit_id: 'u1',
+      online: false,
+      retake: false,
       value: 10,
       zone: zoneMapper.default.toPublic(zone),
       group: groupMapper.default.toPublic(group),
       user: userMapper.default.toPublic({ id: 'u1', first_name: 'John' }),
-      training: trainingMapper.default.toPublic({ id: 't1', start_at: '2025-07-18T10:00:00Z' }),
+      training: trainingMapper.default.toPublic({
+        id: 't1',
+        start_at: '2025-07-18T10:00:00Z',
+      }),
     });
   });
 
