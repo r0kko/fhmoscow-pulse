@@ -99,7 +99,7 @@ function zoneClass(result) {
 function thresholdText(t, zone) {
   const value = t.thresholds?.[zone];
   if (value == null) return null;
-  const sign = t.value_type_alias === 'MORE_BETTER' ? '>=' : '<=';
+  const sign = t.value_type_alias === 'MORE_BETTER' ? '≥' : '≤';
   return `${sign} ${formatValue({ value, unit: t.unit })}`;
 }
 </script>
@@ -175,10 +175,12 @@ function thresholdText(t, zone) {
                     <div v-if="t.thresholds" class="small mt-1 thresholds">
                       <span
                         v-if="t.thresholds.YELLOW"
-                        class="badge bg-warning text-dark me-1"
+                        class="badge bg-warning-subtle text-warning-emphasis me-1"
                         >Желт. {{ thresholdText(t, 'YELLOW') }}</span
                       >
-                      <span v-if="t.thresholds.GREEN" class="badge bg-success"
+                      <span
+                        v-if="t.thresholds.GREEN"
+                        class="badge bg-success-subtle text-success-emphasis"
                         >Зел. {{ thresholdText(t, 'GREEN') }}</span
                       >
                     </div>
@@ -241,10 +243,12 @@ function thresholdText(t, zone) {
                 <p v-if="t.thresholds" class="mb-1 small thresholds">
                   <span
                     v-if="t.thresholds.YELLOW"
-                    class="badge bg-warning text-dark me-1"
+                    class="badge bg-warning-subtle text-warning-emphasis me-1"
                     >Желт. {{ thresholdText(t, 'YELLOW') }}</span
                   >
-                  <span v-if="t.thresholds.GREEN" class="badge bg-success"
+                  <span
+                    v-if="t.thresholds.GREEN"
+                    class="badge bg-success-subtle text-success-emphasis"
                     >Зел. {{ thresholdText(t, 'GREEN') }}</span
                   >
                 </p>
@@ -255,8 +259,7 @@ function thresholdText(t, zone) {
                   </span>
                 </p>
                 <p class="mb-1 small text-start">
-                  {{ formatDateTime(t.result?.training?.start_at) }}
-                  , {{ t.result?.training?.stadium?.name || '-' }}
+                  {{ formatDateTime(t.result?.training?.start_at) }}, {{ t.result?.training?.stadium?.name || '-' }}
                 </p>
               </div>
             </div>
