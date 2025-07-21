@@ -83,7 +83,7 @@ function formatValue(result) {
         </div>
         <div class="card-body p-3">
           <div v-if="g.types && g.types.length" class="table-responsive d-none d-sm-block">
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0 normatives-table">
               <thead>
                 <tr>
                   <th>Норматив</th>
@@ -106,11 +106,17 @@ function formatValue(result) {
                   <td class="text-end">
                     <button
                       v-if="t.history && t.history.length"
-                      class="btn btn-sm btn-link p-0"
+                      class="btn btn-sm p-0 text-brand"
                       @click="openHistory(t)"
+                      aria-label="Другие попытки"
                     >
-                      Другие попытки
+                      <i class="bi bi-clock-history"></i>
                     </button>
+                    <i
+                      v-else
+                      class="bi bi-clock-history text-secondary"
+                      aria-label="Нет других попыток"
+                    ></i>
                   </td>
                 </tr>
               </tbody>
@@ -127,11 +133,17 @@ function formatValue(result) {
                   <span class="fw-semibold">{{ t.name }}</span>
                   <button
                     v-if="t.history && t.history.length"
-                    class="btn btn-link btn-sm p-0"
+                    class="btn btn-link btn-sm p-0 text-brand"
                     @click="openHistory(t)"
+                    aria-label="Другие попытки"
                   >
-                    Другие попытки
+                    <i class="bi bi-clock-history"></i>
                   </button>
+                  <i
+                    v-else
+                    class="bi bi-clock-history text-secondary"
+                    aria-label="Нет других попыток"
+                  ></i>
                 </div>
                 <p class="mb-1">Лучший: {{ formatValue(t.result) }}</p>
                 <p class="mb-1 small">
@@ -195,6 +207,31 @@ function formatValue(result) {
 
 .fade-in {
   animation: fadeIn 0.4s ease-out;
+}
+
+.normatives-table {
+  width: 100%;
+  table-layout: fixed;
+}
+.normatives-table th:first-child,
+.normatives-table td:first-child {
+  width: 32%;
+}
+.normatives-table th:nth-child(2),
+.normatives-table td:nth-child(2) {
+  width: 18%;
+}
+.normatives-table th:nth-child(3),
+.normatives-table td:nth-child(3) {
+  width: 25%;
+}
+.normatives-table th:nth-child(4),
+.normatives-table td:nth-child(4) {
+  width: 20%;
+}
+.normatives-table th:last-child,
+.normatives-table td:last-child {
+  width: 5%;
 }
 
 .normatives-page nav[aria-label='breadcrumb'] {
