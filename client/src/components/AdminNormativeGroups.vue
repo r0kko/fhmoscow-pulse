@@ -7,7 +7,9 @@ const groups = ref([]);
 const total = ref(0);
 const seasons = ref([]);
 const currentPage = ref(1);
-const pageSize = 8;
+const pageSize = ref(
+  parseInt(localStorage.getItem('normativeGroupsPageSize') || '15', 10)
+);
 const isLoading = ref(false);
 const error = ref('');
 const form = ref({ season_id: '', name: '', required: false });
@@ -17,7 +19,7 @@ let modal;
 const formError = ref('');
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
 onMounted(() => {
@@ -28,12 +30,18 @@ onMounted(() => {
 
 watch(currentPage, load);
 
+watch(pageSize, (val) => {
+  localStorage.setItem('normativeGroupsPageSize', val);
+  currentPage.value = 1;
+  load();
+});
+
 async function load() {
   try {
     isLoading.value = true;
     const params = new URLSearchParams({
       page: currentPage.value,
-      limit: pageSize,
+      limit: pageSize.value,
     });
     const data = await apiFetch(`/normative-groups?${params}`);
     groups.value = data.groups;
@@ -132,6 +140,15 @@ defineExpose({ refresh });
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
+        <div class="row g-2 justify-content-end align-items-end mb-3">
+          <div class="col-6 col-sm-auto">
+            <select v-model.number="pageSize" class="form-select">
+              <option :value="15">15</option>
+              <option :value="30">30</option>
+              <option :value="50">50</option>
+            </select>
+          </div>
+        </div>
         <div v-if="groups.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
@@ -173,12 +190,20 @@ defineExpose({ refresh });
               <div>
                 <h6 class="mb-1">{{ g.name }}</h6>
                 <p class="mb-1">
-                  {{ seasons.find((s) => s.id === g.season_id)?.name || g.season_id }}
+                  {{
+                    seasons.find((s) => s.id === g.season_id)?.name ||
+                    g.season_id
+                  }}
                 </p>
-                <p class="mb-1">Обязательная: {{ g.required ? 'Да' : 'Нет' }}</p>
+                <p class="mb-1">
+                  Обязательная: {{ g.required ? 'Да' : 'Нет' }}
+                </p>
               </div>
               <div>
-                <button class="btn btn-sm btn-secondary me-2" @click="openEdit(g)">
+                <button
+                  class="btn btn-sm btn-secondary me-2"
+                  @click="openEdit(g)"
+                >
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
@@ -253,25 +278,27 @@ defineExpose({ refresh });
                 </select>
                 <label for="groupSeason">Сезон</label>
               </div>
-  <div class="form-floating mb-3">
-    <input
-      id="groupName"
-      v-model="form.name"
-      class="form-control"
-      placeholder="Название"
-      required
-    />
-    <label for="groupName">Наименование</label>
-  </div>
-  <div class="form-check mb-3">
-    <input
-      id="groupRequired"
-      type="checkbox"
-      class="form-check-input"
-      v-model="form.required"
-    />
-    <label class="form-check-label" for="groupRequired">Обязательная</label>
-  </div>
+              <div class="form-floating mb-3">
+                <input
+                  id="groupName"
+                  v-model="form.name"
+                  class="form-control"
+                  placeholder="Название"
+                  required
+                />
+                <label for="groupName">Наименование</label>
+              </div>
+              <div class="form-check mb-3">
+                <input
+                  id="groupRequired"
+                  type="checkbox"
+                  class="form-check-input"
+                  v-model="form.required"
+                />
+                <label class="form-check-label" for="groupRequired"
+                  >Обязательная</label
+                >
+              </div>
             </div>
             <div class="modal-footer">
               <button
