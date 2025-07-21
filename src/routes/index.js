@@ -39,6 +39,7 @@ import measurementUnitsRouter from './measurementUnits.js';
 import normativeValueTypesRouter from './normativeValueTypes.js';
 import normativeZonesRouter from './normativeZones.js';
 import normativesRouter from './normatives.js';
+import seasonsRouter from './seasons.js';
 
 const router = express.Router();
 
@@ -62,6 +63,7 @@ router.use('/password-reset', passwordResetRouter);
 router.use('/camp-stadiums', campStadiumsRouter);
 router.use('/camp-training-types', campTrainingTypesRouter);
 router.use('/camp-trainings', campTrainingsRouter);
+router.use('/seasons', seasonsRouter);
 router.use('/camp-seasons', campSeasonsRouter);
 router.use('/referee-groups', refereeGroupsRouter);
 router.use('/referee-group-users', refereeGroupUsersRouter);
