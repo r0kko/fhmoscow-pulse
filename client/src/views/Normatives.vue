@@ -1,11 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
 const groups = ref([]);
+const seasons = ref([]);
+const filterSeason = ref('');
 const loading = ref(true);
 const error = ref('');
 const modalRef = ref(null);
@@ -15,13 +17,32 @@ let modal;
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
-  load();
+  loadSeasons();
 });
+
+watch(filterSeason, load);
+
+async function loadSeasons() {
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const data = await apiFetch(`/seasons?${params}`);
+    seasons.value = data.seasons || [];
+    const active = seasons.value.find((s) => s.active);
+    filterSeason.value = active ? active.id : '';
+  } catch (_e) {
+    seasons.value = [];
+    filterSeason.value = '';
+  } finally {
+    load();
+  }
+}
 
 async function load() {
   loading.value = true;
   try {
-    const data = await apiFetch('/normatives');
+    const params = new URLSearchParams();
+    if (filterSeason.value) params.set('season_id', filterSeason.value);
+    const data = await apiFetch(`/normatives?${params}`);
     groups.value = data.groups || [];
     error.value = '';
   } catch (e) {
@@ -70,6 +91,16 @@ function formatValue(result) {
         </ol>
       </nav>
       <h1 class="mb-3">Нормативы</h1>
+      <div class="row g-2 mb-3">
+        <div class="col-sm-6 col-md-4 col-lg-3">
+          <select v-model="filterSeason" class="form-select">
+            <option value="" disabled>Выберите сезон</option>
+            <option v-for="s in seasons" :key="s.id" :value="s.id">
+              {{ s.name }}
+            </option>
+          </select>
+        </div>
+      </div>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-if="loading" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
