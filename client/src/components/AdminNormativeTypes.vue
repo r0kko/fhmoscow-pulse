@@ -18,6 +18,7 @@ const pageSize = ref(
 );
 const isLoading = ref(false);
 const error = ref('');
+const saving = ref(false);
 
 const currentValueType = computed(
   () => valueTypes.value.find((v) => v.id === form.value.value_type_id) || null
@@ -230,6 +231,7 @@ async function save() {
       max_value: isMoreBetter.value ? null : z.max_value,
     }));
   try {
+    saving.value = true;
     if (editing.value) {
       await apiFetch(`/normative-types/${editing.value.id}`, {
         method: 'PUT',
@@ -245,6 +247,8 @@ async function save() {
     await load();
   } catch (e) {
     formError.value = e.message;
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -386,7 +390,10 @@ defineExpose({ refresh });
       class="mt-3 d-flex align-items-center justify-content-between"
       v-if="types.length"
     >
-      <select v-model.number="pageSize" class="form-select form-select-sm w-auto">
+      <select
+        v-model.number="pageSize"
+        class="form-select form-select-sm w-auto"
+      >
         <option :value="15">15</option>
         <option :value="30">30</option>
         <option :value="50">50</option>
@@ -576,7 +583,13 @@ defineExpose({ refresh });
               >
                 Отмена
               </button>
-              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <button type="submit" class="btn btn-primary" :disabled="saving">
+                <span
+                  v-if="saving"
+                  class="spinner-border spinner-border-sm me-2"
+                ></span>
+                Сохранить
+              </button>
             </div>
           </form>
         </div>
