@@ -85,15 +85,15 @@ async function buildZones({
   const redZone = dict.find((z) => z.alias === 'RED');
   if (!greenZone || !yellowZone || !redZone) return [];
   const step = stepForUnit(unit);
-  const bySex = {};
+  const bySex = new Map();
   for (const z of zones) {
     const zn = zoneById[z.zone_id];
     if (!zn || (zn.alias !== 'GREEN' && zn.alias !== 'YELLOW')) continue;
-    if (!bySex[z.sex_id]) bySex[z.sex_id] = {};
-    bySex[z.sex_id][zn.alias] = z;
+    if (!bySex.has(z.sex_id)) bySex.set(z.sex_id, {});
+    bySex.get(z.sex_id)[zn.alias] = z;
   }
   const result = [];
-  for (const [sexId, data] of Object.entries(bySex)) {
+  for (const [sexId, data] of bySex.entries()) {
     if (valueType.alias === 'MORE_BETTER') {
       const g = data.GREEN;
       const y = data.YELLOW;
