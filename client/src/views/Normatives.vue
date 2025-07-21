@@ -86,13 +86,6 @@ function zoneClass(result) {
   return result?.zone?.alias ? `zone-${result.zone.alias}` : '';
 }
 
-function zoneEmoji(result) {
-  const alias = result?.zone?.alias;
-  if (alias === 'GREEN') return '🟢';
-  if (alias === 'YELLOW') return '🟡';
-  if (alias === 'RED') return '🔴';
-  return '';
-}
 </script>
 
 <template>
@@ -206,10 +199,10 @@ function zoneEmoji(result) {
                 <p class="mb-1">
                   Лучший:
                   <span :class="['zone-cell', zoneClass(t.result)]">
-                    {{ zoneEmoji(t.result) }} {{ formatValue(t.result) }}
+                    {{ formatValue(t.result) }}
                   </span>
                 </p>
-                <p class="mb-1 small text-center text-sm-start">
+                <p class="mb-1 small text-start">
                   {{ formatDateTime(t.result?.training?.start_at) }}
                   , {{ t.result?.training?.stadium?.name || '-' }}
                 </p>
