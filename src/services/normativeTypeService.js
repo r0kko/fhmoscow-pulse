@@ -7,6 +7,8 @@ import {
   NormativeZone,
   NormativeGroup,
   Season,
+  NormativeResult,
+  User,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import generateAlias from '../utils/alias.js';
@@ -179,6 +181,21 @@ async function buildZones({
   return result;
 }
 
+async function recalcResults(typeId) {
+  const type = await NormativeType.findByPk(typeId, {
+    include: [MeasurementUnit, NormativeTypeZone],
+  });
+  if (!type) return;
+  const results = await NormativeResult.findAll({
+    where: { type_id: typeId },
+    include: [{ model: User }],
+  });
+  for (const r of results) {
+    const zone = determineZone(type, r.value, r.User?.sex_id);
+    await r.update({ zone_id: zone?.zone_id || null }, { returning: false });
+  }
+}
+
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
@@ -292,6 +309,7 @@ async function update(id, data, actorId) {
     });
     if (!zones.length) throw new ServiceError('invalid_zones');
     await NormativeTypeZone.bulkCreate(zones);
+    await recalcResults(id);
   }
   if (data.groups) {
     await NormativeGroupType.destroy({ where: { type_id: id } });
@@ -322,5 +340,11 @@ async function remove(id, actorId = null) {
   await type.destroy();
 }
 
-export { parseValue, parseResultValue, stepForUnit, determineZone };
+export {
+  parseValue,
+  parseResultValue,
+  stepForUnit,
+  determineZone,
+  recalcResults,
+};
 export default { listAll, getById, create, update, remove };
