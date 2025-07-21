@@ -24,11 +24,15 @@ watch(filterSeason, load);
 
 async function loadSeasons() {
   try {
-    const params = new URLSearchParams({ page: 1, limit: 100 });
-    const data = await apiFetch(`/seasons?${params}`);
+    const data = await apiFetch('/normatives/seasons');
     seasons.value = data.seasons || [];
-    const active = seasons.value.find((s) => s.active);
-    filterSeason.value = active ? active.id : '';
+    const active = seasons.value.find((s) => s.active && s.has_results);
+    if (active) {
+      filterSeason.value = active.id;
+    } else {
+      const first = seasons.value.find((s) => s.has_results);
+      filterSeason.value = first ? first.id : seasons.value.find((s) => s.active)?.id || '';
+    }
   } catch (_e) {
     seasons.value = [];
     filterSeason.value = '';
@@ -90,16 +94,19 @@ function formatValue(result) {
           <li class="breadcrumb-item active" aria-current="page">Нормативы</li>
         </ol>
       </nav>
-      <h1 class="mb-3">Нормативы</h1>
-      <div class="row g-2 mb-3">
-        <div class="col-sm-6 col-md-4 col-lg-3">
-          <select v-model="filterSeason" class="form-select">
-            <option value="" disabled>Выберите сезон</option>
-            <option v-for="s in seasons" :key="s.id" :value="s.id">
-              {{ s.name }}
-            </option>
-          </select>
-        </div>
+      <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 header-controls">
+        <h1 class="mb-0">Нормативы</h1>
+        <select v-model="filterSeason" class="form-select season-select mt-2 mt-sm-0">
+          <option value="" disabled>Выберите сезон</option>
+          <option
+            v-for="s in seasons"
+            :key="s.id"
+            :value="s.id"
+            :disabled="!s.has_results"
+          >
+            {{ s.name }}
+          </option>
+        </select>
       </div>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-if="loading" class="text-center my-3">
@@ -287,6 +294,24 @@ function formatValue(result) {
 
 .normatives-page nav[aria-label='breadcrumb'] {
   margin-bottom: 1rem;
+}
+
+.header-controls .season-select {
+  width: auto;
+  min-width: 12rem;
+}
+
+@media (max-width: 575.98px) {
+  .header-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-controls .season-select {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
 }
 
 @media (max-width: 575.98px) {
