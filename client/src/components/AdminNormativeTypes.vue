@@ -48,10 +48,10 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
-onMounted(() => {
+onMounted(async () => {
   modal = new Modal(modalRef.value);
-  load();
-  loadDictionaries();
+  await loadDictionaries();
+  await load();
 });
 
 watch(

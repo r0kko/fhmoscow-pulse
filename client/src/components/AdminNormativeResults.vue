@@ -55,10 +55,10 @@ const filteredTrainings = computed(() => {
   return trainings.value.filter((t) => t.season_id === form.value.season_id);
 });
 
-onMounted(() => {
+onMounted(async () => {
   modal = new Modal(modalRef.value);
-  load();
-  loadAux();
+  await loadAux();
+  await load();
 });
 
 watch(currentPage, load);
