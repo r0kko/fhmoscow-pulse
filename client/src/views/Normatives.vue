@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
+import Tooltip from 'bootstrap/js/dist/tooltip';
 import { apiFetch } from '../api.js';
 import { apiUpload } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
@@ -27,6 +28,14 @@ const selectedFile = ref(null);
 const fileError = ref('');
 const uploading = ref(false);
 const progress = ref(0);
+
+function applyTooltips() {
+  nextTick(() => {
+    document
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
+  });
+}
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -66,6 +75,8 @@ async function load() {
     const data = await apiFetch(`/normatives?${params}`);
     groups.value = data.groups || [];
     error.value = '';
+    await nextTick();
+    applyTooltips();
   } catch (e) {
     error.value = e.message;
     groups.value = [];
@@ -281,7 +292,9 @@ function thresholdText(t, zone) {
                       v-if="t.online_available"
                       class="btn btn-sm p-0 text-brand ms-2"
                       @click="openUpload(t)"
-                      aria-label="Сдать онлайн"
+                      aria-label="Загрузить видео"
+                      data-bs-toggle="tooltip"
+                      title="Загрузить видео"
                     >
                       <i class="bi bi-upload"></i>
                     </button>
@@ -294,7 +307,7 @@ function thresholdText(t, zone) {
             <div
               v-for="t in g.types"
               :key="t.id"
-              class="card training-card mb-2"
+              :class="['card', 'training-card', zoneClass(t.result), 'mb-2']"
             >
               <div class="card-body p-2">
                 <div
@@ -316,14 +329,30 @@ function thresholdText(t, zone) {
                   ></i>
                   <button
                     v-if="t.online_available"
-                    class="btn btn-link btn-sm p-0 text-brand ms-2"
+                    class="btn btn-link btn-sm p-0 text-brand ms-2 d-flex align-items-center"
                     @click="openUpload(t)"
-                    aria-label="Сдать онлайн"
+                    aria-label="Загрузить видео"
+                    data-bs-toggle="tooltip"
+                    title="Загрузить видео"
                   >
                     <i class="bi bi-upload"></i>
+                    <span class="ms-1">Видео</span>
                   </button>
                 </div>
-                <p v-if="t.thresholds" class="mb-1 small thresholds">
+                <p class="mb-1">
+                  Лучший:
+                  <span class="fw-semibold">{{ formatValue(t.result) }}</span>
+                </p>
+                <p class="mb-1 small text-start">
+                  {{
+                    t.result?.online
+                      ? 'Онлайн'
+                      : `${formatDateTime(t.result?.training?.start_at)}, ${
+                          t.result?.training?.stadium?.name || '-'
+                        }`
+                  }}
+                </p>
+                <p v-if="t.thresholds" class="mb-0 small thresholds">
                   <span
                     v-if="t.thresholds.YELLOW"
                     class="badge bg-warning-subtle text-warning-emphasis me-1"
@@ -334,21 +363,6 @@ function thresholdText(t, zone) {
                     class="badge bg-success-subtle text-success-emphasis"
                     >{{ thresholdText(t, 'GREEN') }}</span
                   >
-                </p>
-                <p class="mb-1">
-                  Лучший:
-                  <span :class="['zone-cell', zoneClass(t.result)]">
-                    {{ formatValue(t.result) }}
-                  </span>
-                </p>
-                <p class="mb-1 small text-start">
-                  {{
-                    t.result?.online
-                      ? 'Онлайн'
-                      : `${formatDateTime(t.result?.training?.start_at)}, ${
-                          t.result?.training?.stadium?.name || '-' 
-                        }`
-                  }}
                 </p>
               </div>
             </div>
