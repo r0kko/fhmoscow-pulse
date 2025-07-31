@@ -55,7 +55,7 @@ async function deleteTicket(ticket) {
         </ol>
       </nav>
       <h1 class="mb-3">Мои обращения</h1>
-      <div class="card section-card tile fade-in shadow-sm">
+      <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <h5 class="mb-3">История</h5>
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -109,5 +109,40 @@ async function deleteTicket(ticket) {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.tickets-page nav[aria-label='breadcrumb'] {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 575.98px) {
+  .tickets-page {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .tickets-page nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

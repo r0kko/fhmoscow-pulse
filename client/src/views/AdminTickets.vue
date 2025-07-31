@@ -86,7 +86,7 @@ async function changeStatus(ticket, alias) {
       </ol>
     </nav>
     <h1 class="mb-3">Обращения</h1>
-    <div class="card section-card tile fade-in shadow-sm">
+    <div class="card section-card tile fade-in shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end mb-3">
           <div class="col-12 col-sm">
@@ -230,6 +230,14 @@ async function changeStatus(ticket, alias) {
   border: 0;
 }
 
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.admin-tickets-page nav[aria-label='breadcrumb'] {
+  margin-bottom: 1rem;
+}
+
 .flash {
   animation: flash-bg 1s ease-out;
 }
@@ -261,6 +269,17 @@ async function changeStatus(ticket, alias) {
   }
   to {
     background-color: transparent;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>
