@@ -20,6 +20,8 @@ const checkStatus = ref('');
 const checkError = ref('');
 const statuses = ref({ dadata: null, fns: null });
 
+const emit = defineEmits(['saved']);
+
 function statusIcon(code) {
   if (code === 200) return 'bi-check-circle text-success';
   if (code) return 'bi-exclamation-circle text-danger';
@@ -92,6 +94,7 @@ async function save() {
   try {
     const data = await apiFetch(path, { method: 'POST' });
     taxation.value = data.taxation;
+    emit('saved', data.taxation);
     modal.hide();
   } catch (e) {
     checkError.value = e.message;

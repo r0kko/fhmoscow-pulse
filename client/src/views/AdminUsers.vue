@@ -149,6 +149,10 @@ function openTaxStatus(id) {
   })
 }
 
+async function onTaxSaved() {
+  await loadCompletion()
+}
+
 
 async function blockUser(id) {
   if (!confirm('Заблокировать пользователя?')) return
@@ -496,7 +500,7 @@ async function copy(text) {
             <div class="card-body p-2">
               <h6 class="mb-1">{{ p.last_name }} {{ p.first_name }} {{ p.patronymic }}</h6>
               <p class="mb-1 small">{{ formatDate(p.birth_date) }}</p>
-              <div class="d-flex flex-wrap gap-2">
+              <div class="d-flex flex-wrap gap-1">
                 <span><i :class="p.passport ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> Паспорт</span>
                 <span><i :class="p.inn ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> ИНН</span>
                 <span><i :class="p.snils ? 'bi bi-check-lg text-success' : 'bi bi-x-lg text-danger'"></i> СНИЛС</span>
@@ -523,7 +527,12 @@ async function copy(text) {
     </div>
     </div>
   </div>
-  <TaxationInfo ref="taxModal" :userId="taxUserId" modalOnly />
+  <TaxationInfo
+    ref="taxModal"
+    :userId="taxUserId"
+    modalOnly
+    @saved="onTaxSaved"
+  />
 </template>
 
 <style scoped>
