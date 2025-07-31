@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
+import Pagination from './Pagination.vue';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
@@ -398,34 +399,7 @@ defineExpose({ refresh });
         <option :value="30">30</option>
         <option :value="50">50</option>
       </select>
-      <ul class="pagination mb-0">
-        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button
-            class="page-link"
-            @click="currentPage--"
-            :disabled="currentPage === 1"
-          >
-            Пред
-          </button>
-        </li>
-        <li
-          class="page-item"
-          v-for="p in totalPages"
-          :key="p"
-          :class="{ active: currentPage === p }"
-        >
-          <button class="page-link" @click="currentPage = p">{{ p }}</button>
-        </li>
-        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button
-            class="page-link"
-            @click="currentPage++"
-            :disabled="currentPage === totalPages"
-          >
-            След
-          </button>
-        </li>
-      </ul>
+      <Pagination v-model="currentPage" :total-pages="totalPages" />
     </nav>
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
+import Pagination from './Pagination.vue';
 import { apiFetch } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
@@ -46,8 +47,8 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
-const currentUnit = computed(() =>
-  units.value.find((u) => u.id === unit_id.value) || null
+const currentUnit = computed(
+  () => units.value.find((u) => u.id === unit_id.value) || null
 );
 
 const filteredTrainings = computed(() => {
@@ -103,8 +104,6 @@ watch(userQuery, () => {
     }
   }, 200);
 });
-
-
 
 watch(
   () => form.value.type_id,
@@ -213,7 +212,8 @@ function openEdit(r) {
   value_type_id.value = r.value_type_id;
   unit_id.value = r.unit_id;
   skipWatch = true;
-  userQuery.value = `${r.user?.last_name || ''} ${r.user?.first_name || ''}`.trim();
+  userQuery.value =
+    `${r.user?.last_name || ''} ${r.user?.first_name || ''}`.trim();
   userSuggestions.value = [];
   formError.value = '';
   step.value = 2;
@@ -226,7 +226,6 @@ function selectUser(u) {
   userQuery.value = `${u.last_name} ${u.first_name}`;
   userSuggestions.value = [];
 }
-
 
 function formatValue(r) {
   const unit = units.value.find((u) => u.id === r.unit_id);
@@ -356,13 +355,17 @@ defineExpose({ refresh });
           <div class="col-6 col-sm-auto">
             <select v-model="typeFilter" class="form-select">
               <option value="">Все типы</option>
-              <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
+              <option v-for="t in types" :key="t.id" :value="t.id">
+                {{ t.name }}
+              </option>
             </select>
           </div>
           <div class="col-6 col-sm-auto">
             <select v-model="groupFilter" class="form-select">
               <option value="">Все группы</option>
-              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">
+                {{ g.name }}
+              </option>
             </select>
           </div>
         </div>
@@ -399,7 +402,9 @@ defineExpose({ refresh });
                 <td :class="['zone-cell', `zone-${r.zone?.alias}`]">
                   {{ formatValue(r) }}
                 </td>
-                <td class="text-nowrap">{{ formatDateTime(r.training?.start_at) }}</td>
+                <td class="text-nowrap">
+                  {{ formatDateTime(r.training?.start_at) }}
+                </td>
                 <td>{{ r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
@@ -431,39 +436,15 @@ defineExpose({ refresh });
       class="mt-3 d-flex align-items-center justify-content-between"
       v-if="results.length"
     >
-      <select v-model.number="pageSize" class="form-select form-select-sm w-auto">
+      <select
+        v-model.number="pageSize"
+        class="form-select form-select-sm w-auto"
+      >
         <option :value="15">15</option>
         <option :value="30">30</option>
         <option :value="50">50</option>
       </select>
-      <ul class="pagination mb-0">
-        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button
-            class="page-link"
-            @click="currentPage--"
-            :disabled="currentPage === 1"
-          >
-            Пред
-          </button>
-        </li>
-        <li
-          class="page-item"
-          v-for="p in totalPages"
-          :key="p"
-          :class="{ active: currentPage === p }"
-        >
-          <button class="page-link" @click="currentPage = p">{{ p }}</button>
-        </li>
-        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button
-            class="page-link"
-            @click="currentPage++"
-            :disabled="currentPage === totalPages"
-          >
-            След
-          </button>
-        </li>
-      </ul>
+      <Pagination v-model="currentPage" :total-pages="totalPages" />
     </nav>
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">
@@ -505,7 +486,11 @@ defineExpose({ refresh });
                     class="form-select"
                   >
                     <option value="" disabled>Тренировка</option>
-                    <option v-for="t in filteredTrainings" :key="t.id" :value="t.id">
+                    <option
+                      v-for="t in filteredTrainings"
+                      :key="t.id"
+                      :value="t.id"
+                    >
                       {{ new Date(t.start_at).toLocaleString('ru-RU') }}
                     </option>
                   </select>
@@ -538,7 +523,10 @@ defineExpose({ refresh });
                 </div>
               </template>
               <template v-else>
-                <div v-if="currentUnit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
+                <div
+                  v-if="currentUnit?.alias === 'MIN_SEC'"
+                  class="row g-2 mb-3"
+                >
                   <div class="col">
                     <div class="form-floating">
                       <input
@@ -574,7 +562,11 @@ defineExpose({ refresh });
                     id="resValue"
                     type="number"
                     v-model="form.value"
-                    :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                    :step="
+                      currentUnit?.alias === 'SECONDS' && currentUnit.fractional
+                        ? '0.01'
+                        : '1'
+                    "
                     class="form-control"
                     placeholder="Значение"
                     required
