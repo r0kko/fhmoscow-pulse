@@ -49,6 +49,7 @@ import NormativeType from './normativeType.js';
 import NormativeTypeZone from './normativeTypeZone.js';
 import NormativeGroupType from './normativeGroupType.js';
 import NormativeResult from './normativeResult.js';
+import NormativeTicket from './normativeTicket.js';
 import TaskType from './taskType.js';
 import TaskStatus from './taskStatus.js';
 import Task from './task.js';
@@ -272,6 +273,20 @@ NormativeResult.belongsTo(MeasurementUnit, { foreignKey: 'unit_id' });
 NormativeZone.hasMany(NormativeResult, { foreignKey: 'zone_id' });
 NormativeResult.belongsTo(NormativeZone, { foreignKey: 'zone_id' });
 
+/* normative tickets */
+NormativeType.hasMany(NormativeTicket, { foreignKey: 'type_id' });
+NormativeTicket.belongsTo(NormativeType, { foreignKey: 'type_id' });
+User.hasMany(NormativeTicket, { foreignKey: 'user_id' });
+NormativeTicket.belongsTo(User, { foreignKey: 'user_id' });
+Season.hasMany(NormativeTicket, { foreignKey: 'season_id' });
+NormativeTicket.belongsTo(Season, { foreignKey: 'season_id' });
+Ticket.hasOne(NormativeTicket, { foreignKey: 'ticket_id' });
+NormativeTicket.belongsTo(Ticket, { foreignKey: 'ticket_id' });
+NormativeResult.hasOne(NormativeTicket, { foreignKey: 'normative_result_id' });
+NormativeTicket.belongsTo(NormativeResult, {
+  foreignKey: 'normative_result_id',
+});
+
 // models that don't have standard audit columns
 const auditExclude = ['Log', 'EmailCode'];
 for (const model of Object.values(sequelize.models)) {
@@ -337,4 +352,5 @@ export {
   NormativeTypeZone,
   NormativeGroupType,
   NormativeResult,
+  NormativeTicket,
 };

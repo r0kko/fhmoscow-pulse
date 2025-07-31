@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { apiFetch } from '../api.js';
+import { apiUpload } from '../api.js';
 import { formatMinutesSeconds } from '../utils/time.js';
 
 const groups = ref([]);
@@ -18,9 +19,19 @@ const seasonRef = ref(null);
 let modal;
 let seasonCanvas;
 
+const uploadModalRef = ref(null);
+let uploadModal;
+const selectedType = ref(null);
+const repetitions = ref('');
+const selectedFile = ref(null);
+const fileError = ref('');
+const uploading = ref(false);
+const progress = ref(0);
+
 onMounted(() => {
   modal = new Modal(modalRef.value);
   seasonCanvas = new Offcanvas(seasonRef.value);
+  uploadModal = new Modal(uploadModalRef.value);
   loadSeasons();
 });
 
@@ -82,6 +93,54 @@ function openHistory(t) {
 
 function openSeason() {
   seasonCanvas.show();
+}
+
+function openUpload(type) {
+  selectedType.value = type;
+  repetitions.value = '';
+  selectedFile.value = null;
+  fileError.value = '';
+  progress.value = 0;
+  uploading.value = false;
+  uploadModal.show();
+}
+
+function onFileChange(e) {
+  fileError.value = '';
+  selectedFile.value = e.target.files[0] || null;
+}
+
+async function submitOnline() {
+  const file = selectedFile.value;
+  if (!file) {
+    fileError.value = 'Файл не выбран';
+    return;
+  }
+  if (!file.type.startsWith('video/')) {
+    fileError.value = 'Неверный формат файла';
+    return;
+  }
+  if (file.size > 100 * 1024 * 1024) {
+    fileError.value = 'Файл превышает 100 МБ';
+    return;
+  }
+  uploading.value = true;
+  const form = new FormData();
+  form.append('type_id', selectedType.value.id);
+  form.append('value', repetitions.value);
+  form.append('file', file);
+  try {
+    await apiUpload('/normative-tickets', form, {
+      onProgress: (p) => {
+        progress.value = Math.round(p * 100);
+      },
+    });
+    uploadModal.hide();
+  } catch (e) {
+    fileError.value = e.message;
+  } finally {
+    uploading.value = false;
+  }
 }
 
 function formatValue(result) {
@@ -210,6 +269,14 @@ function thresholdText(t, zone) {
                       class="bi bi-clock-history invisible"
                       aria-label="Нет других попыток"
                     ></i>
+                    <button
+                      v-if="t.online_available"
+                      class="btn btn-sm p-0 text-brand ms-2"
+                      @click="openUpload(t)"
+                      aria-label="Сдать онлайн"
+                    >
+                      <i class="bi bi-upload"></i>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -239,6 +306,14 @@ function thresholdText(t, zone) {
                     class="bi bi-clock-history invisible"
                     aria-label="Нет других попыток"
                   ></i>
+                  <button
+                    v-if="t.online_available"
+                    class="btn btn-link btn-sm p-0 text-brand ms-2"
+                    @click="openUpload(t)"
+                    aria-label="Сдать онлайн"
+                  >
+                    <i class="bi bi-upload"></i>
+                  </button>
                 </div>
                 <p v-if="t.thresholds" class="mb-1 small thresholds">
                   <span
@@ -309,6 +384,37 @@ function thresholdText(t, zone) {
                 @click="modal.hide()"
               >
                 Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div ref="uploadModalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Сдать онлайн</h5>
+              <button type="button" class="btn-close" @click="uploadModal.hide()"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <input type="file" class="form-control" accept="video/*" @change="onFileChange" />
+                <div class="form-text">Видео до 100&nbsp;МБ</div>
+                <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
+              </div>
+              <div class="form-floating mb-3">
+                <input id="repCnt" v-model="repetitions" type="number" min="0" class="form-control" placeholder="Повторения" />
+                <label for="repCnt">Количество повторений</label>
+              </div>
+              <div v-if="uploading" class="progress mb-3">
+                <div class="progress-bar" :style="{ width: progress + '%' }"></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="uploadModal.hide()">Отмена</button>
+              <button type="button" class="btn btn-brand" @click="submitOnline" :disabled="uploading">
+                <span v-if="uploading" class="spinner-border spinner-border-sm me-2"></span>
+                Отправить
               </button>
             </div>
           </div>

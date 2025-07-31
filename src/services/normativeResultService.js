@@ -157,7 +157,7 @@ async function create(data, actorId) {
     value_type_id: type.value_type_id,
     unit_id: type.unit_id,
     zone_id: zone?.zone_id || null,
-    online: false,
+    online: Boolean(data.online),
     retake: false,
     value,
     created_by: actorId,

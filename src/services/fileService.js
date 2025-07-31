@@ -155,6 +155,54 @@ async function uploadForTicket(ticketId, file, actorId) {
   return TicketFile.findByPk(attachment.id, { include: [File] });
 }
 
+async function uploadForNormativeTicket(ticketId, file, actorId) {
+  if (!S3_BUCKET) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+  if (file.size > MAX_FILE_SIZE) {
+    throw new ServiceError('file_too_large', 400);
+  }
+  if (!file.mimetype.startsWith('video/')) {
+    throw new ServiceError('invalid_file_type', 400);
+  }
+  const ticket = await Ticket.findByPk(ticketId);
+  if (!ticket) throw new ServiceError('ticket_not_found', 404);
+
+  const key = `${ticketId}/${uuidv4()}${path.extname(file.originalname)}`;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+  } catch (err) {
+    console.error('S3 upload failed', err);
+    throw new ServiceError('s3_upload_failed');
+  }
+
+  const dbFile = await File.create({
+    key,
+    original_name: file.originalname,
+    mime_type: file.mimetype,
+    size: file.size,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+
+  const attachment = await TicketFile.create({
+    ticket_id: ticketId,
+    file_id: dbFile.id,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+
+  return TicketFile.findByPk(attachment.id, { include: [File] });
+}
+
 async function listForTicket(ticketId) {
   return TicketFile.findAll({
     where: { ticket_id: ticketId },
@@ -181,6 +229,7 @@ export default {
   getDownloadUrl,
   remove,
   uploadForTicket,
+  uploadForNormativeTicket,
   listForTicket,
   removeTicketFile,
 };
