@@ -31,7 +31,13 @@ async function createForUser(userId, data, file, actorId) {
     actorId
   );
   if (file) {
-    await fileService.uploadForNormativeTicket(ticket.id, file, actorId);
+    await fileService.uploadForNormativeTicket(
+      ticket.id,
+      file,
+      actorId,
+      user,
+      type
+    );
   }
 
   return NormativeTicket.create({

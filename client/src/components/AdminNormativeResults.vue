@@ -403,9 +403,9 @@ defineExpose({ refresh });
                   {{ formatValue(r) }}
                 </td>
                 <td class="text-nowrap">
-                  {{ formatDateTime(r.training?.start_at) }}
+                  {{ r.online ? 'Онлайн' : formatDateTime(r.training?.start_at) }}
                 </td>
-                <td>{{ r.training?.stadium?.name || '-' }}</td>
+                <td>{{ r.online ? 'Онлайн' : r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
@@ -562,11 +562,7 @@ defineExpose({ refresh });
                     id="resValue"
                     type="number"
                     v-model="form.value"
-                    :step="
-                      currentUnit?.alias === 'SECONDS' && currentUnit.fractional
-                        ? '0.01'
-                        : '1'
-                    "
+                    :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
                     class="form-control"
                     placeholder="Значение"
                     required

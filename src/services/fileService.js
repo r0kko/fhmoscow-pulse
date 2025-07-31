@@ -155,7 +155,7 @@ async function uploadForTicket(ticketId, file, actorId) {
   return TicketFile.findByPk(attachment.id, { include: [File] });
 }
 
-async function uploadForNormativeTicket(ticketId, file, actorId) {
+async function uploadForNormativeTicket(ticketId, file, actorId, user, type) {
   if (!S3_BUCKET) {
     throw new ServiceError('s3_not_configured', 500);
   }
@@ -184,9 +184,16 @@ async function uploadForNormativeTicket(ticketId, file, actorId) {
     throw new ServiceError('s3_upload_failed');
   }
 
+  const dateStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+  const fio = `${user.last_name} ${user.first_name}${
+    user.patronymic ? ` ${user.patronymic}` : ''
+  }`.trim();
+  const displayName = `${fio} ${dateStr} ${type.name}${path.extname(
+    file.originalname
+  )}`;
   const dbFile = await File.create({
     key,
-    original_name: file.originalname,
+    original_name: displayName,
     mime_type: file.mimetype,
     size: file.size,
     created_by: actorId,

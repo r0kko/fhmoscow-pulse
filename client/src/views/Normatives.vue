@@ -250,10 +250,18 @@ function thresholdText(t, zone) {
                     {{ formatValue(t.result) }}
                   </td>
                   <td class="text-center text-nowrap">
-                    {{ formatDateTime(t.result?.training?.start_at) }}
+                    {{
+                      t.result?.online
+                        ? 'Онлайн'
+                        : formatDateTime(t.result?.training?.start_at)
+                    }}
                   </td>
                   <td class="text-center d-none d-md-table-cell">
-                    {{ t.result?.training?.stadium?.name || '-' }}
+                    {{
+                      t.result?.online
+                        ? 'Онлайн'
+                        : t.result?.training?.stadium?.name || '-'
+                    }}
                   </td>
                   <td class="text-end">
                     <button
@@ -334,7 +342,13 @@ function thresholdText(t, zone) {
                   </span>
                 </p>
                 <p class="mb-1 small text-start">
-                  {{ formatDateTime(t.result?.training?.start_at) }}, {{ t.result?.training?.stadium?.name || '-' }}
+                  {{
+                    t.result?.online
+                      ? 'Онлайн'
+                      : `${formatDateTime(t.result?.training?.start_at)}, ${
+                          t.result?.training?.stadium?.name || '-' 
+                        }`
+                  }}
                 </p>
               </div>
             </div>
@@ -368,11 +382,11 @@ function thresholdText(t, zone) {
                   >
                     <span>{{ formatValue(r) }}</span>
                     <span class="small text-nowrap">
-                      {{ formatDateTime(r.training?.start_at) }}
+                      {{ r.online ? 'Онлайн' : formatDateTime(r.training?.start_at) }}
                     </span>
                   </div>
                   <div class="small text-muted">
-                    {{ r.training?.stadium?.name || '-' }}
+                    {{ r.online ? 'Онлайн' : r.training?.stadium?.name || '-' }}
                   </div>
                 </li>
               </ul>
