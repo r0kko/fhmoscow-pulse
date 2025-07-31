@@ -12,6 +12,16 @@ import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
 
+async function generateNumber() {
+  const now = new Date();
+  const prefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const last = await Ticket.max('number', {
+    where: { number: { [Op.like]: `${prefix}-%` } },
+  });
+  const seq = last ? parseInt(last.split('-')[1], 10) + 1 : 1;
+  return `${prefix}-${String(seq).padStart(6, '0')}`;
+}
+
 async function listByUser(userId) {
   return Ticket.findAll({
     where: { user_id: userId },
@@ -30,6 +40,7 @@ async function createForUser(userId, data, actorId) {
   if (!type) throw new ServiceError('ticket_type_not_found', 404);
   if (!status) throw new ServiceError('ticket_status_not_found', 404);
   const ticket = await Ticket.create({
+    number: await generateNumber(),
     user_id: userId,
     type_id: type.id,
     status_id: status.id,

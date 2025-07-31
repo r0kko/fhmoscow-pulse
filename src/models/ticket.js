@@ -11,6 +11,7 @@ Ticket.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    number: { type: DataTypes.STRING, allowNull: false, unique: true },
     user_id: { type: DataTypes.UUID, allowNull: false },
     type_id: { type: DataTypes.UUID, allowNull: false },
     status_id: { type: DataTypes.UUID, allowNull: false },

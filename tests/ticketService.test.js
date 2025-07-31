@@ -4,6 +4,7 @@ const findAndCountAllMock = jest.fn();
 const findByPkMock = jest.fn();
 const findAllMock = jest.fn();
 const createMock = jest.fn();
+const maxMock = jest.fn();
 const updateMock = jest.fn();
 const destroyMock = jest.fn();
 const ticketFindOneMock = jest.fn();
@@ -18,6 +19,7 @@ beforeEach(() => {
   findByPkMock.mockReset();
   findAllMock.mockReset();
   createMock.mockReset();
+  maxMock.mockReset();
   updateMock.mockReset();
   destroyMock.mockReset();
   ticketFindOneMock.mockReset();
@@ -36,6 +38,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findOne: ticketFindOneMock,
     findAll: findAllMock,
     create: createMock,
+    max: maxMock,
   },
   TicketType: { findOne: findOneTypeMock },
   TicketStatus: { findOne: findOneStatusMock },
@@ -91,6 +94,7 @@ test('createForUser creates ticket', async () => {
   userFindByPkMock.mockResolvedValue({ id: 'u1' });
   findOneTypeMock.mockResolvedValue({ id: 'type1' });
   findOneStatusMock.mockResolvedValue({ id: 'status1' });
+  maxMock.mockResolvedValue(null);
   createMock.mockResolvedValue({ id: 't1' });
   findByPkMock.mockResolvedValue({ id: 't1' });
   const ticket = await service.createForUser('u1', { type_alias: 'A' }, 'admin');

@@ -122,6 +122,7 @@ async function changeStatus(ticket, alias) {
               <tr>
                 <th>Пользователь</th>
                 <th class="d-none d-md-table-cell">Дата</th>
+                <th>Номер</th>
                 <th>Тип</th>
                 <th>Описание</th>
                 <th>Файлы</th>
@@ -133,6 +134,7 @@ async function changeStatus(ticket, alias) {
               <tr v-for="t in tickets" :key="t.id" :class="{ flash: t._flash }">
                 <td>{{ t.user.last_name }} {{ t.user.first_name }}</td>
                 <td class="d-none d-md-table-cell">{{ formatDateTime(t.created_at) }}</td>
+                <td>{{ t.number }}</td>
                 <td>{{ t.type.name }}</td>
                 <td>{{ t.description }}</td>
                 <td>
@@ -179,7 +181,9 @@ async function changeStatus(ticket, alias) {
               <p class="mb-1 fw-semibold">
                 {{ t.user.last_name }} {{ t.user.first_name }}
               </p>
-              <p class="mb-1 text-muted small">{{ formatDateTime(t.created_at) }}</p>
+              <p class="mb-1 text-muted small">
+                № {{ t.number }} · {{ formatDateTime(t.created_at) }}
+              </p>
               <p class="mb-1">{{ t.type.name }}</p>
               <p class="mb-1">{{ t.description }}</p>
               <div v-if="t.files && t.files.length" class="mb-1">
