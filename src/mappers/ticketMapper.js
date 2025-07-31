@@ -1,7 +1,14 @@
 function sanitize(obj) {
-  const { id, description, created_at, createdAt, TicketType, TicketStatus } =
-    obj;
-  const res = { id, description };
+  const {
+    id,
+    number,
+    description,
+    created_at,
+    createdAt,
+    TicketType,
+    TicketStatus,
+  } = obj;
+  const res = { id, number, description };
   if (created_at || createdAt) {
     res.created_at = created_at ?? createdAt;
   }

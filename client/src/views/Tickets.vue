@@ -111,7 +111,9 @@ async function deleteTicket(ticket) {
                 <h6 class="mb-0">{{ t.type.name }}</h6>
                 <span class="badge bg-secondary">{{ t.status.name }}</span>
               </div>
-              <p class="text-muted small mb-1">{{ formatDateTime(t.created_at) }}</p>
+              <p class="text-muted small mb-1">
+                № {{ t.number }} · {{ formatDateTime(t.created_at) }}
+              </p>
               <p class="mb-2">{{ t.description || '—' }}</p>
               <div v-if="t.files && t.files.length" class="d-flex flex-wrap gap-2">
                 <a
