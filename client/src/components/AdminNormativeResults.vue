@@ -399,8 +399,10 @@ defineExpose({ refresh });
                 <td :class="['zone-cell', `zone-${r.zone?.alias}`]">
                   {{ formatValue(r) }}
                 </td>
-                <td class="text-nowrap">{{ formatDateTime(r.training?.start_at) }}</td>
-                <td>{{ r.training?.stadium?.name || '-' }}</td>
+                <td class="text-nowrap">
+                  {{ r.online ? 'Онлайн' : formatDateTime(r.training?.start_at) }}
+                </td>
+                <td>{{ r.online ? 'Онлайн' : r.training?.stadium?.name || '-' }}</td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
