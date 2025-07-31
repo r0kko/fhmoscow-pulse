@@ -4,6 +4,7 @@ import normativeResultService from '../services/normativeResultService.js';
 import normativeValueTypeService from '../services/normativeValueTypeService.js';
 import measurementUnitService from '../services/measurementUnitService.js';
 import normativeZoneService from '../services/normativeZoneService.js';
+import normativeTicketService from '../services/normativeTicketService.js';
 import groupMapper from '../mappers/normativeGroupMapper.js';
 import typeMapper from '../mappers/normativeTypeMapper.js';
 import resultMapper from '../mappers/normativeResultMapper.js';
@@ -16,20 +17,28 @@ export default {
   async list(req, res) {
     const { season_id } = req.query;
     try {
-      const [groupData, typeData, valueTypes, units, zones, resultData] =
-        await Promise.all([
-          normativeGroupService.listAll({ page: 1, limit: 1000, season_id }),
-          normativeTypeService.listAll({ page: 1, limit: 1000, season_id }),
-          normativeValueTypeService.list(),
-          measurementUnitService.list(),
-          normativeZoneService.list(),
-          normativeResultService.listAll({
-            page: 1,
-            limit: 1000,
-            season_id,
-            user_id: req.user.id,
-          }),
-        ]);
+      const [
+        groupData,
+        typeData,
+        valueTypes,
+        units,
+        zones,
+        resultData,
+        activeTickets,
+      ] = await Promise.all([
+        normativeGroupService.listAll({ page: 1, limit: 1000, season_id }),
+        normativeTypeService.listAll({ page: 1, limit: 1000, season_id }),
+        normativeValueTypeService.list(),
+        measurementUnitService.list(),
+        normativeZoneService.list(),
+        normativeResultService.listAll({
+          page: 1,
+          limit: 1000,
+          season_id,
+          user_id: req.user.id,
+        }),
+        normativeTicketService.listActiveForUser(req.user.id),
+      ]);
       const groups = groupData.rows.map(groupMapper.toPublic);
       const types = typeData.rows.map(typeMapper.toPublic);
       const valueTypeMap = Object.fromEntries(
@@ -42,6 +51,15 @@ export default {
       const results = resultData.rows.map(resultMapper.toPublic);
       for (const r of results) {
         r.unit = unitMap[r.unit_id];
+      }
+      const activeMap = {};
+      for (const nt of activeTickets) {
+        const alias = nt.Ticket?.TicketStatus?.alias;
+        if (!alias) continue;
+        activeMap[nt.type_id] = {
+          ticket_id: nt.ticket_id,
+          status: alias,
+        };
       }
       const bestResult = {};
       const historyByType = {};
@@ -83,6 +101,7 @@ export default {
           }
         }
         t.thresholds = thresholds;
+        t.active_ticket = activeMap[t.id] || null;
         (t.groups || []).forEach((g) => {
           const grp = groupMap[g.group_id];
           if (grp) {
