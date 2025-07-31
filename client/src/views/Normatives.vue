@@ -303,20 +303,20 @@ function thresholdText(t, zone) {
                     <RouterLink
                       v-if="t.active_ticket"
                       to="/tickets"
-                      class="btn btn-sm p-0 text-brand ms-2 d-flex align-items-center text-nowrap"
+                      class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center text-nowrap"
                       aria-label="Перейти к обращению"
                     >
                       <i class="bi bi-hourglass" aria-hidden="true"></i>
-                      <span class="ms-1 d-none d-lg-inline">На рассмотрении</span>
+                      <span class="ms-1 d-none d-md-inline">На рассмотрении</span>
                     </RouterLink>
                     <button
                       v-else-if="t.online_available"
-                      class="btn btn-sm p-0 text-brand ms-2 d-flex align-items-center text-nowrap"
+                      class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center text-nowrap"
                       @click="openUpload(t)"
                       aria-label="Загрузить видео"
                     >
                       <i class="bi bi-upload" aria-hidden="true"></i>
-                      <span class="ms-1 d-none d-lg-inline">Загрузить видео</span>
+                      <span class="ms-1 d-none d-md-inline">Загрузить видео</span>
                     </button>
                   </td>
                 </tr>
@@ -350,7 +350,7 @@ function thresholdText(t, zone) {
                   <RouterLink
                     v-if="t.active_ticket"
                     to="/tickets"
-                    class="btn btn-link btn-sm p-0 text-brand ms-2 d-flex align-items-center"
+                    class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center"
                     aria-label="Перейти к обращению"
                   >
                     <i class="bi bi-hourglass" aria-hidden="true"></i>
@@ -358,7 +358,7 @@ function thresholdText(t, zone) {
                   </RouterLink>
                   <button
                     v-else-if="t.online_available"
-                    class="btn btn-link btn-sm p-0 text-brand ms-2 d-flex align-items-center"
+                    class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center"
                     @click="openUpload(t)"
                     aria-label="Загрузить видео"
                   >
@@ -581,11 +581,9 @@ function thresholdText(t, zone) {
 .normatives-table td:nth-child(4) {
   width: 20%;
 }
-.normatives-table th:last-child {
-  width: 1%;
-}
+.normatives-table th:last-child,
 .normatives-table td:last-child {
-  width: 1%;
+  width: 5%;
   white-space: nowrap;
 }
 
