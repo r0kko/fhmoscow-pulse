@@ -4,20 +4,47 @@ import { User, Sex } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import { applyFonts, applyFirstPageHeader } from '../utils/pdf.js';
 
+import passportService from './passportService.js';
+import addressService from './addressService.js';
+
+function formatDate(str) {
+  if (!str) return '';
+  const [year, month, day] = str.split('-');
+  return `${day}.${month}.${year}`;
+}
+
 async function generatePersonalDataConsent(userId) {
-  const user = await User.findByPk(userId, { include: [Sex] });
+  const [user, passport, address] = await Promise.all([
+    User.findByPk(userId, { include: [Sex] }),
+    passportService.getByUser(userId),
+    addressService.getForUser(userId, 'REGISTRATION'),
+  ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
-  const { regular } = applyFonts(doc);
+  const { regular, bold } = applyFonts(doc);
   applyFirstPageHeader(doc);
-  doc.font(regular);
   doc
+    .font(bold)
     .fontSize(14)
     .text('Согласие на обработку персональных данных', { align: 'center' });
   doc.moveDown();
+  doc.font(regular);
+
+  const fullName = [user.last_name, user.first_name, user.patronymic]
+    .filter(Boolean)
+    .join(' ');
+  const birth = formatDate(user.birth_date);
+  const place = passport?.place_of_birth || '____________________';
+  const series = passport?.series || '____';
+  const number = passport?.number || '______';
+  const issueOrg =
+    passport?.issuing_authority || '____________________________';
+  const issueDate = formatDate(passport?.issue_date);
+  const regAddr =
+    address?.result || '______________________________________________';
 
   const paragraphs = [
-    'Я, ____________________________________________________ (фамилия, имя, отчество полностью), дата рождения «___» __________ ____ г., место рождения ____________________, паспорт: серия ____ № _______, выдан ____________________________ «___» __________ ____ г., зарегистрирован(а) по адресу: ________________________________________________, настоящим свободно, своей волей и в своём интересе даю своё согласие РОО «Федерация хоккея Москвы», ОГРН ____________, ИНН ____________, расположенной по адресу: 101000, г. Москва, Кривоколенный пер., д. 9, стр. 1 (далее – Оператор), на обработку моих персональных данных в соответствии с нижеизложенными условиями.',
+    `Я, ${fullName}, ${birth} года рождения, место рождения ${place}, паспорт: серия ${series} № ${number}, выдан ${issueOrg} ${issueDate} г., зарегистрирован(а) по адресу: ${regAddr}, настоящим свободно, своей волей и в своём интересе даю своё согласие РОО «Федерация хоккея Москвы», ОГРН ____________, ИНН ____________, расположенной по адресу: 101000, г. Москва, Кривоколенный пер., д. 9, стр. 1 (далее – Оператор), на обработку моих персональных данных в соответствии с нижеизложенными условиями.`,
     'Мои персональные данные предоставляются Оператору в целях обеспечения моего участия в деятельности Федерации хоккея Москвы в качестве хоккейного судьи, включая, но не ограничиваясь:',
     '• организацией и проведением хоккейных матчей и соревнований с моим участием в качестве судьи (включая формирование заявок, назначение на матчи, подготовку и публикацию протоколов игр);',
     '• организацией и проведением учебно-методических мероприятий (семинаров, учебно-методических объединений) и тренировочных сборов для судей, контроля посещаемости и результатов обучения;',
@@ -62,7 +89,9 @@ async function generatePersonalDataConsent(userId) {
 
   doc.fontSize(11);
   paragraphs.forEach((p) => {
-    doc.text(p, { align: 'justify' });
+    const opts = { align: 'justify', paragraphGap: 6 };
+    if (p.startsWith('•')) opts.indent = 20;
+    doc.text(p, opts);
     doc.moveDown();
   });
 
