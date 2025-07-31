@@ -1,11 +1,26 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
 const tickets = ref([]);
 const loading = ref(true);
 const error = ref('');
+const view = ref('active');
+
+const activeTickets = computed(() =>
+  tickets.value.filter((t) =>
+    ['CREATED', 'IN_PROGRESS'].includes(t.status.alias)
+  )
+);
+const archivedTickets = computed(() =>
+  tickets.value.filter((t) =>
+    !['CREATED', 'IN_PROGRESS'].includes(t.status.alias)
+  )
+);
+const currentTickets = computed(() =>
+  view.value === 'active' ? activeTickets.value : archivedTickets.value
+);
 
 function formatDateTime(value) {
   if (!value) return '';
@@ -56,15 +71,39 @@ async function deleteTicket(ticket) {
       </nav>
       <h1 class="mb-3">Мои обращения</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
+        <div class="card-body p-2">
+          <ul class="nav nav-pills nav-fill mb-0 tab-selector">
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: view === 'active' }"
+                @click="view = 'active'"
+              >
+                Активные
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: view === 'archive' }"
+                @click="view = 'archive'"
+              >
+                Архив
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <h5 class="mb-3">История</h5>
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
           <div v-if="loading" class="text-center py-3">
             <div class="spinner-border" role="status"></div>
           </div>
-          <div v-if="tickets.length" class="vstack gap-3">
+          <div v-if="currentTickets.length" class="vstack gap-3">
             <div
-              v-for="t in tickets"
+              v-for="t in currentTickets"
               :key="t.id"
               class="border rounded p-3 tile"
             >
@@ -97,7 +136,9 @@ async function deleteTicket(ticket) {
               </button>
             </div>
           </div>
-          <p v-else-if="!loading" class="text-muted mb-0">Нет обращений.</p>
+          <p v-else-if="!loading" class="text-muted mb-0">
+            {{ view === 'active' ? 'Нет активных обращений.' : 'Архив пуст.' }}
+          </p>
         </div>
       </div>
     </div>
@@ -117,6 +158,14 @@ async function deleteTicket(ticket) {
 
 .tickets-page nav[aria-label='breadcrumb'] {
   margin-bottom: 1rem;
+}
+
+.tab-selector {
+  gap: 0.5rem;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.5rem;
 }
 
 @media (max-width: 575.98px) {
