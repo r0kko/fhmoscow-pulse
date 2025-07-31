@@ -217,3 +217,33 @@ export async function apiFetchBlob(path, options = {}) {
   }
   return res.blob();
 }
+
+export function apiUpload(path, form, { onProgress } = {}) {
+  const xsrf = getXsrfToken();
+  const token = accessToken;
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}${path}`);
+    xhr.withCredentials = true;
+    if (xsrf) xhr.setRequestHeader('X-XSRF-TOKEN', xsrf);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch (e) { /* noop */ }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+      } else {
+        const message =
+          translateError(data.error) || `Ошибка запроса, код ${xhr.status}`;
+        reject(new Error(message));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Сетевая ошибка'));
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.send(form);
+  });
+}
