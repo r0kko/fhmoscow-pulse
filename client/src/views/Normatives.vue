@@ -303,19 +303,20 @@ function thresholdText(t, zone) {
                     <RouterLink
                       v-if="t.active_ticket"
                       to="/tickets"
-                      class="btn btn-sm p-0 text-brand ms-2"
+                      class="btn btn-sm p-0 text-brand ms-2 d-flex align-items-center text-nowrap"
                       aria-label="Перейти к обращению"
                     >
-                      <i class="bi bi-envelope"></i>
+                      <i class="bi bi-hourglass" aria-hidden="true"></i>
+                      <span class="ms-1 d-none d-lg-inline">На рассмотрении</span>
                     </RouterLink>
                     <button
                       v-else-if="t.online_available"
-                      class="btn btn-sm p-0 text-brand ms-2"
+                      class="btn btn-sm p-0 text-brand ms-2 d-flex align-items-center text-nowrap"
                       @click="openUpload(t)"
                       aria-label="Загрузить видео"
                     >
-                      <i class="bi bi-upload"></i>
-                      <span class="ms-1">Загрузить видео</span>
+                      <i class="bi bi-upload" aria-hidden="true"></i>
+                      <span class="ms-1 d-none d-lg-inline">Загрузить видео</span>
                     </button>
                   </td>
                 </tr>
@@ -352,7 +353,8 @@ function thresholdText(t, zone) {
                     class="btn btn-link btn-sm p-0 text-brand ms-2 d-flex align-items-center"
                     aria-label="Перейти к обращению"
                   >
-                    <i class="bi bi-envelope"></i>
+                    <i class="bi bi-hourglass" aria-hidden="true"></i>
+                    <span class="ms-1">На рассмотрении</span>
                   </RouterLink>
                   <button
                     v-else-if="t.online_available"
@@ -360,7 +362,7 @@ function thresholdText(t, zone) {
                     @click="openUpload(t)"
                     aria-label="Загрузить видео"
                   >
-                    <i class="bi bi-upload"></i>
+                    <i class="bi bi-upload" aria-hidden="true"></i>
                     <span class="ms-1">Загрузить видео</span>
                   </button>
                 </div>
@@ -579,9 +581,12 @@ function thresholdText(t, zone) {
 .normatives-table td:nth-child(4) {
   width: 20%;
 }
-.normatives-table th:last-child,
+.normatives-table th:last-child {
+  width: 1%;
+}
 .normatives-table td:last-child {
-  width: 5%;
+  width: 1%;
+  white-space: nowrap;
 }
 
 .normatives-page nav[aria-label='breadcrumb'] {
