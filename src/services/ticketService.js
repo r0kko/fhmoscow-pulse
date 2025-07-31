@@ -96,6 +96,14 @@ async function updateForUser(userId, ticketId, data, actorId) {
     } catch (err) {
       console.error('Email send failed', err);
     }
+    if (result.TicketType?.alias === 'NORMATIVE_ONLINE') {
+      const nts = (await import('./normativeTicketService.js')).default;
+      if (data.status_alias === 'CONFIRMED') {
+        await nts.approveByTicket(result.id, actorId, false);
+      } else if (data.status_alias === 'REJECTED') {
+        await nts.rejectByTicket(result.id, actorId, false);
+      }
+    }
   }
   return result;
 }

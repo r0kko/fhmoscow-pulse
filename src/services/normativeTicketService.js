@@ -45,38 +45,64 @@ async function createForUser(userId, data, file, actorId) {
   });
 }
 
-async function approve(id, actorId) {
+async function approve(id, actorId, updateStatus = true) {
   const nt = await NormativeTicket.findByPk(id);
   if (!nt) throw new ServiceError('normative_ticket_not_found', 404);
-  if (nt.normative_result_id) return nt;
-  const result = await normativeResultService.create(
-    {
-      user_id: nt.user_id,
-      season_id: nt.season_id,
-      type_id: nt.type_id,
-      value: nt.value,
-      online: true,
-    },
-    actorId
-  );
-  await nt.update({ normative_result_id: result.id, updated_by: actorId });
-  await ticketService.update(
-    nt.ticket_id,
-    { status_alias: 'CONFIRMED' },
-    actorId
-  );
+  let result;
+  if (nt.normative_result_id) {
+    result = await normativeResultService.getById(nt.normative_result_id);
+  } else {
+    result = await normativeResultService.create(
+      {
+        user_id: nt.user_id,
+        season_id: nt.season_id,
+        type_id: nt.type_id,
+        value: nt.value,
+        online: true,
+      },
+      actorId
+    );
+    await nt.update({ normative_result_id: result.id, updated_by: actorId });
+  }
+  if (updateStatus) {
+    await ticketService.update(
+      nt.ticket_id,
+      { status_alias: 'CONFIRMED' },
+      actorId
+    );
+  }
   return result;
 }
 
-async function reject(id, actorId) {
+async function approveByTicket(ticketId, actorId, updateStatus = true) {
+  const nt = await NormativeTicket.findOne({ where: { ticket_id: ticketId } });
+  if (!nt) throw new ServiceError('normative_ticket_not_found', 404);
+  return approve(nt.id, actorId, updateStatus);
+}
+
+async function reject(id, actorId, updateStatus = true) {
   const nt = await NormativeTicket.findByPk(id);
   if (!nt) throw new ServiceError('normative_ticket_not_found', 404);
-  await ticketService.update(
-    nt.ticket_id,
-    { status_alias: 'REJECTED' },
-    actorId
-  );
+  if (updateStatus) {
+    await ticketService.update(
+      nt.ticket_id,
+      { status_alias: 'REJECTED' },
+      actorId
+    );
+  }
   await nt.destroy();
 }
 
-export default { createForUser, approve, reject };
+async function rejectByTicket(ticketId, actorId, updateStatus = true) {
+  const nt = await NormativeTicket.findOne({ where: { ticket_id: ticketId } });
+  if (!nt) throw new ServiceError('normative_ticket_not_found', 404);
+  await reject(nt.id, actorId, updateStatus);
+}
+
+export default {
+  createForUser,
+  approve,
+  approveByTicket,
+  reject,
+  rejectByTicket,
+};
