@@ -28,6 +28,7 @@ const selectedFile = ref(null);
 const fileError = ref('');
 const uploading = ref(false);
 const progress = ref(0);
+const accepted = ref(false);
 
 function applyTooltips() {
   nextTick(() => {
@@ -96,6 +97,15 @@ function formatDateTime(dt) {
   });
 }
 
+function formatDate(dt) {
+  if (!dt) return '-';
+  return new Date(dt).toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
 function openHistory(t) {
   modalTitle.value = t.name;
   modalResults.value = t.history || [];
@@ -113,6 +123,7 @@ function openUpload(type) {
   fileError.value = '';
   progress.value = 0;
   uploading.value = false;
+  accepted.value = false;
   uploadModal.show();
 }
 
@@ -139,6 +150,7 @@ async function submitOnline() {
   const form = new FormData();
   form.append('type_id', selectedType.value.id);
   form.append('value', repetitions.value);
+  form.append('accepted', accepted.value ? 'true' : 'false');
   form.append('file', file);
   try {
     await apiUpload('/normative-tickets', form, {
@@ -233,7 +245,7 @@ function thresholdText(t, zone) {
                 <tr>
                   <th>Норматив</th>
                   <th class="text-center">Лучший результат</th>
-                  <th class="text-center text-nowrap">Дата и время</th>
+                  <th class="text-center text-nowrap">Дата</th>
                   <th class="text-center d-none d-md-table-cell">Стадион</th>
                   <th></th>
                 </tr>
@@ -264,7 +276,7 @@ function thresholdText(t, zone) {
                     {{
                       t.result?.online
                         ? 'Онлайн'
-                        : formatDateTime(t.result?.training?.start_at)
+                        : formatDate(t.result?.training?.start_at)
                     }}
                   </td>
                   <td class="text-center d-none d-md-table-cell">
@@ -288,15 +300,22 @@ function thresholdText(t, zone) {
                       class="bi bi-clock-history invisible"
                       aria-label="Нет других попыток"
                     ></i>
+                    <RouterLink
+                      v-if="t.active_ticket"
+                      to="/tickets"
+                      class="btn btn-sm p-0 text-brand ms-2"
+                      aria-label="Перейти к обращению"
+                    >
+                      <i class="bi bi-envelope"></i>
+                    </RouterLink>
                     <button
-                      v-if="t.online_available"
+                      v-else-if="t.online_available"
                       class="btn btn-sm p-0 text-brand ms-2"
                       @click="openUpload(t)"
                       aria-label="Загрузить видео"
-                      data-bs-toggle="tooltip"
-                      title="Загрузить видео"
                     >
                       <i class="bi bi-upload"></i>
+                      <span class="ms-1">Загрузить видео</span>
                     </button>
                   </td>
                 </tr>
@@ -327,27 +346,33 @@ function thresholdText(t, zone) {
                     class="bi bi-clock-history invisible"
                     aria-label="Нет других попыток"
                   ></i>
+                  <RouterLink
+                    v-if="t.active_ticket"
+                    to="/tickets"
+                    class="btn btn-link btn-sm p-0 text-brand ms-2 d-flex align-items-center"
+                    aria-label="Перейти к обращению"
+                  >
+                    <i class="bi bi-envelope"></i>
+                  </RouterLink>
                   <button
-                    v-if="t.online_available"
+                    v-else-if="t.online_available"
                     class="btn btn-link btn-sm p-0 text-brand ms-2 d-flex align-items-center"
                     @click="openUpload(t)"
                     aria-label="Загрузить видео"
-                    data-bs-toggle="tooltip"
-                    title="Загрузить видео"
                   >
                     <i class="bi bi-upload"></i>
-                    <span class="ms-1">Видео</span>
+                    <span class="ms-1">Загрузить видео</span>
                   </button>
                 </div>
                 <p class="mb-1">
-                  Лучший:
+                  Лучший результат:
                   <span class="fw-semibold">{{ formatValue(t.result) }}</span>
                 </p>
                 <p class="mb-1 small text-start">
                   {{
                     t.result?.online
                       ? 'Онлайн'
-                      : `${formatDateTime(t.result?.training?.start_at)}, ${
+                      : `${formatDate(t.result?.training?.start_at)}, ${
                           t.result?.training?.stadium?.name || '-'
                         }`
                   }}
@@ -425,22 +450,65 @@ function thresholdText(t, zone) {
               <button type="button" class="btn-close" @click="uploadModal.hide()"></button>
             </div>
             <div class="modal-body">
+              <ul class="small mb-3">
+                <li>
+                  Сдача норматива должна быть записана на видео в горизонтальном
+                  формате, разрешение не менее 1920х1080, частота кадров не менее
+                  30 fps.
+                </li>
+                <li>Любой монтаж видеозаписи не допускается</li>
+                <li>
+                  В начале видео обязательно должно быть видно Ваше лицо крупным
+                  планом, оно должно оставаться в кадре до окончания записи.
+                </li>
+                <li>
+                  Если норматив предполагает нагрузку в зависимости от
+                  собственного веса - необходимо обязательно провести съемку (в
+                  рамках этой же записи) собственного взвешивания, а также
+                  снаряженного инвентаря для проверки рабочего веса.
+                </li>
+              </ul>
+              <div class="form-check mb-3">
+                <input
+                  id="acceptRules"
+                  v-model="accepted"
+                  class="form-check-input"
+                  type="checkbox"
+                />
+                <label class="form-check-label" for="acceptRules"
+                  >С правилами ознакомлен</label
+                >
+              </div>
               <div class="mb-3">
-                <input type="file" class="form-control" accept="video/*" @change="onFileChange" />
+                <input
+                  type="file"
+                  class="form-control"
+                  accept="video/*"
+                  @change="onFileChange"
+                  :disabled="!accepted"
+                />
                 <div class="form-text">Видео до 100&nbsp;МБ</div>
                 <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
               </div>
               <div class="form-floating mb-3">
-                <input id="repCnt" v-model="repetitions" type="number" min="0" class="form-control" placeholder="Повторения" />
+                <input
+                  id="repCnt"
+                  v-model="repetitions"
+                  type="number"
+                  min="0"
+                  class="form-control"
+                  placeholder="Повторения"
+                  :disabled="!accepted"
+                />
                 <label for="repCnt">Количество повторений</label>
               </div>
               <div v-if="uploading" class="progress mb-3">
-                <div class="progress-bar" :style="{ width: progress + '%' }"></div>
+                <div class="progress-bar bg-brand" :style="{ width: progress + '%' }"></div>
               </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="uploadModal.hide()">Отмена</button>
-              <button type="button" class="btn btn-brand" @click="submitOnline" :disabled="uploading">
+              <button type="button" class="btn btn-brand" @click="submitOnline" :disabled="uploading || !accepted">
                 <span v-if="uploading" class="spinner-border spinner-border-sm me-2"></span>
                 Отправить
               </button>
