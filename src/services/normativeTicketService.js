@@ -34,7 +34,7 @@ async function createForUser(userId, data, file, actorId) {
         include: [TicketStatus],
         required: true,
         where: {
-          '$Ticket.TicketStatus.alias$': {
+          '$Ticket->TicketStatus.alias$': {
             [Op.in]: ['CREATED', 'IN_PROGRESS'],
           },
         },
@@ -135,7 +135,7 @@ async function listActiveForUser(userId) {
         include: [TicketStatus],
         required: true,
         where: {
-          '$Ticket.TicketStatus.alias$': {
+          '$Ticket->TicketStatus.alias$': {
             [Op.in]: ['CREATED', 'IN_PROGRESS'],
           },
         },
