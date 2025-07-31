@@ -176,12 +176,12 @@ function thresholdText(t, zone) {
                       <span
                         v-if="t.thresholds.YELLOW"
                         class="badge bg-warning-subtle text-warning-emphasis me-1"
-                        >Желт. {{ thresholdText(t, 'YELLOW') }}</span
+                        >{{ thresholdText(t, 'YELLOW') }}</span
                       >
                       <span
                         v-if="t.thresholds.GREEN"
                         class="badge bg-success-subtle text-success-emphasis"
-                        >Зел. {{ thresholdText(t, 'GREEN') }}</span
+                        >{{ thresholdText(t, 'GREEN') }}</span
                       >
                     </div>
                   </td>
@@ -244,12 +244,12 @@ function thresholdText(t, zone) {
                   <span
                     v-if="t.thresholds.YELLOW"
                     class="badge bg-warning-subtle text-warning-emphasis me-1"
-                    >Желт. {{ thresholdText(t, 'YELLOW') }}</span
+                    >{{ thresholdText(t, 'YELLOW') }}</span
                   >
                   <span
                     v-if="t.thresholds.GREEN"
                     class="badge bg-success-subtle text-success-emphasis"
-                    >Зел. {{ thresholdText(t, 'GREEN') }}</span
+                    >{{ thresholdText(t, 'GREEN') }}</span
                   >
                 </p>
                 <p class="mb-1">
