@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { apiFetch } from '../api.js';
+import Pagination from './Pagination.vue';
 import { formatMinutesSeconds } from '../utils/time.js';
 
 const ledger = ref({ judges: [], groups: [] });
@@ -86,12 +87,16 @@ watch(search, () => {
       <div v-else-if="isLoading" class="text-center py-3">Загрузка...</div>
       <div v-else>
         <div class="table-responsive d-none d-sm-block">
-          <table class="table table-bordered align-middle mb-0 admin-table auto-cols ledger-table">
+          <table
+            class="table table-bordered align-middle mb-0 admin-table auto-cols ledger-table"
+          >
             <thead>
               <tr>
                 <th rowspan="2">Судья</th>
                 <template v-for="g in ledger.groups" :key="g.id">
-                  <th :colspan="g.types.length" class="text-center">{{ g.name }}</th>
+                  <th :colspan="g.types.length" class="text-center">
+                    {{ g.name }}
+                  </th>
                 </template>
               </tr>
               <tr>
@@ -105,59 +110,65 @@ watch(search, () => {
             <tbody>
               <tr v-for="j in ledger.judges" :key="j.user.id">
                 <td>
-                  {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic || '' }}
+                  {{ j.user.last_name }} {{ j.user.first_name }}
+                  {{ j.user.patronymic || '' }}
                 </td>
                 <template v-for="g in ledger.groups" :key="g.id">
-                <template v-for="t in g.types" :key="t.id">
-                  <td
-                    :class="[
-                      'text-center',
-                      'zone-cell',
-                      j.results[t.id]?.zone?.alias
-                        ? `zone-${j.results[t.id].zone.alias}`
-                        : ''
-                    ]"
-                    class="ledger-col"
-                  >
-                    {{ formatValue(t, j.results[t.id]) }}
-                  </td>
+                  <template v-for="t in g.types" :key="t.id">
+                    <td
+                      :class="[
+                        'text-center',
+                        'zone-cell',
+                        j.results[t.id]?.zone?.alias
+                          ? `zone-${j.results[t.id].zone.alias}`
+                          : '',
+                      ]"
+                      class="ledger-col"
+                    >
+                      {{ formatValue(t, j.results[t.id]) }}
+                    </td>
+                  </template>
                 </template>
-              </template>
-            </tr>
+              </tr>
             </tbody>
           </table>
         </div>
         <div v-if="ledger.judges.length" class="d-block d-sm-none">
-          <div v-for="j in ledger.judges" :key="j.user.id" class="card training-card mb-2">
+          <div
+            v-for="j in ledger.judges"
+            :key="j.user.id"
+            class="card training-card mb-2"
+          >
             <div class="card-body p-2">
               <h6 class="mb-2">
-                {{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic || '' }}
+                {{ j.user.last_name }} {{ j.user.first_name }}
+                {{ j.user.patronymic || '' }}
               </h6>
-            <div v-for="g in ledger.groups" :key="g.id" class="mb-2">
-              <strong class="d-block mb-1">{{ g.name }}</strong>
-              <div
-                v-for="t in g.types"
-                :key="t.id"
-                class="d-flex justify-content-between small"
-              >
-                <span class="me-2">{{ t.name }}</span>
-                <span
-                  :class="[
-                    'zone-cell',
-                    j.results[t.id]?.zone?.alias
-                      ? `zone-${j.results[t.id].zone.alias}`
-                      : ''
-                  ]"
+              <div v-for="g in ledger.groups" :key="g.id" class="mb-2">
+                <strong class="d-block mb-1">{{ g.name }}</strong>
+                <div
+                  v-for="t in g.types"
+                  :key="t.id"
+                  class="d-flex justify-content-between small"
+                >
+                  <span class="me-2">{{ t.name }}</span>
+                  <span
+                    :class="[
+                      'zone-cell',
+                      j.results[t.id]?.zone?.alias
+                        ? `zone-${j.results[t.id].zone.alias}`
+                        : '',
+                    ]"
                   >
-                  {{ formatValue(t, j.results[t.id]) }}
-                </span>
+                    {{ formatValue(t, j.results[t.id]) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
   </div>
   <nav
     class="mt-3 d-flex align-items-center justify-content-between"
@@ -168,34 +179,7 @@ watch(search, () => {
       <option :value="30">30</option>
       <option :value="50">50</option>
     </select>
-    <ul class="pagination mb-0">
-      <li class="page-item" :class="{ disabled: currentPage === 1 }">
-        <button
-          class="page-link"
-          @click="currentPage--"
-          :disabled="currentPage === 1"
-        >
-          Пред
-        </button>
-      </li>
-      <li
-        class="page-item"
-        v-for="p in totalPages"
-        :key="p"
-        :class="{ active: currentPage === p }"
-      >
-        <button class="page-link" @click="currentPage = p">{{ p }}</button>
-      </li>
-      <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-        <button
-          class="page-link"
-          @click="currentPage++"
-          :disabled="currentPage === totalPages"
-        >
-          След
-        </button>
-      </li>
-    </ul>
+    <Pagination v-model="currentPage" :total-pages="totalPages" />
   </nav>
 </template>
 
