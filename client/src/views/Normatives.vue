@@ -307,16 +307,16 @@ function thresholdText(t, zone) {
                       aria-label="Перейти к обращению"
                     >
                       <i class="bi bi-hourglass" aria-hidden="true"></i>
-                      <span class="ms-1 d-none d-md-inline">На рассмотрении</span>
+                      <span class="ms-1 d-none d-md-inline">Проверка</span>
                     </RouterLink>
                     <button
-                      v-else-if="t.online_available"
+                      v-else-if="t.can_upload"
                       class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center text-nowrap"
                       @click="openUpload(t)"
                       aria-label="Загрузить видео"
                     >
                       <i class="bi bi-upload" aria-hidden="true"></i>
-                      <span class="ms-1 d-none d-md-inline">Загрузить видео</span>
+                      <span class="ms-1 d-none d-md-inline">Загрузить</span>
                     </button>
                   </td>
                 </tr>
@@ -354,16 +354,16 @@ function thresholdText(t, zone) {
                     aria-label="Перейти к обращению"
                   >
                     <i class="bi bi-hourglass" aria-hidden="true"></i>
-                    <span class="ms-1">На рассмотрении</span>
+                    <span class="ms-1">Проверка</span>
                   </RouterLink>
                   <button
-                    v-else-if="t.online_available"
+                    v-else-if="t.can_upload"
                     class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center"
                     @click="openUpload(t)"
                     aria-label="Загрузить видео"
                   >
                     <i class="bi bi-upload" aria-hidden="true"></i>
-                    <span class="ms-1">Загрузить видео</span>
+                    <span class="ms-1">Загрузить</span>
                   </button>
                 </div>
                 <p class="mb-1">
@@ -567,23 +567,23 @@ function thresholdText(t, zone) {
 }
 .normatives-table th:first-child,
 .normatives-table td:first-child {
-  width: 31%;
+  width: 30%;
 }
 .normatives-table th:nth-child(2),
 .normatives-table td:nth-child(2) {
-  width: 14%;
+  width: 12%;
 }
 .normatives-table th:nth-child(3),
 .normatives-table td:nth-child(3) {
-  width: 23%;
+  width: 21%;
 }
 .normatives-table th:nth-child(4),
 .normatives-table td:nth-child(4) {
-  width: 20%;
+  width: 22%;
 }
 .normatives-table th:last-child,
 .normatives-table td:last-child {
-  width: 12%;
+  width: 15%;
   white-space: nowrap;
 }
 

@@ -102,10 +102,19 @@ export default {
         }
         t.thresholds = thresholds;
         t.active_ticket = activeMap[t.id] || null;
+        const canUpload =
+          t.online_available &&
+          (!res || res.zone?.alias === 'RED') &&
+          !t.active_ticket;
         (t.groups || []).forEach((g) => {
           const grp = groupMap[g.group_id];
           if (grp) {
-            grp.types.push({ ...t, result: res, history });
+            grp.types.push({
+              ...t,
+              result: res,
+              history,
+              can_upload: canUpload,
+            });
           }
         });
       }
