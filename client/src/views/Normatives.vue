@@ -567,15 +567,15 @@ function thresholdText(t, zone) {
 }
 .normatives-table th:first-child,
 .normatives-table td:first-child {
-  width: 32%;
+  width: 31%;
 }
 .normatives-table th:nth-child(2),
 .normatives-table td:nth-child(2) {
-  width: 18%;
+  width: 14%;
 }
 .normatives-table th:nth-child(3),
 .normatives-table td:nth-child(3) {
-  width: 25%;
+  width: 23%;
 }
 .normatives-table th:nth-child(4),
 .normatives-table td:nth-child(4) {
@@ -583,7 +583,7 @@ function thresholdText(t, zone) {
 }
 .normatives-table th:last-child,
 .normatives-table td:last-child {
-  width: 5%;
+  width: 12%;
   white-space: nowrap;
 }
 
