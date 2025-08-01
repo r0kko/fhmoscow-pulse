@@ -303,7 +303,7 @@ function thresholdText(t, zone) {
                     <RouterLink
                       v-if="t.active_ticket"
                       to="/tickets"
-                      class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center text-nowrap"
+                    class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
                       aria-label="Перейти к обращению"
                     >
                       <i class="bi bi-hourglass" aria-hidden="true"></i>
@@ -311,7 +311,7 @@ function thresholdText(t, zone) {
                     </RouterLink>
                     <button
                       v-else-if="t.can_upload"
-                      class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center text-nowrap"
+                    class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
                       @click="openUpload(t)"
                       aria-label="Загрузить видео"
                     >
@@ -350,7 +350,7 @@ function thresholdText(t, zone) {
                   <RouterLink
                     v-if="t.active_ticket"
                     to="/tickets"
-                    class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center"
+                    class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center"
                     aria-label="Перейти к обращению"
                   >
                     <i class="bi bi-hourglass" aria-hidden="true"></i>
@@ -358,7 +358,7 @@ function thresholdText(t, zone) {
                   </RouterLink>
                   <button
                     v-else-if="t.can_upload"
-                    class="btn btn-outline-brand btn-sm ms-2 d-flex align-items-center"
+                    class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center"
                     @click="openUpload(t)"
                     aria-label="Загрузить видео"
                   >
@@ -583,7 +583,7 @@ function thresholdText(t, zone) {
 }
 .normatives-table th:last-child,
 .normatives-table td:last-child {
-  width: 15%;
+  width: 10%;
   white-space: nowrap;
 }
 
