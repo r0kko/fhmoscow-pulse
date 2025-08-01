@@ -7,6 +7,8 @@ import {
   Season,
   Ticket,
   TicketStatus,
+  NormativeResult,
+  NormativeZone,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -43,6 +45,18 @@ async function createForUser(userId, data, file, actorId) {
     ],
   });
   if (existing) throw new ServiceError('active_ticket_exists', 400);
+
+  const goodResult = await NormativeResult.findOne({
+    where: { user_id: userId, type_id: data.type_id },
+    include: [
+      {
+        model: NormativeZone,
+        required: true,
+        where: { alias: { [Op.ne]: 'RED' } },
+      },
+    ],
+  });
+  if (goodResult) throw new ServiceError('result_exists', 400);
 
   const ticket = await ticketService.createForUser(
     userId,
