@@ -24,6 +24,7 @@ const uploadModalRef = ref(null);
 let uploadModal;
 const selectedType = ref(null);
 const repetitions = ref('');
+const repetitionsError = ref('');
 const selectedFile = ref(null);
 const fileError = ref('');
 const uploading = ref(false);
@@ -46,6 +47,9 @@ onMounted(() => {
 });
 
 watch(filterSeason, load);
+watch(repetitions, () => {
+  repetitionsError.value = '';
+});
 
 async function loadSeasons() {
   try {
@@ -119,6 +123,7 @@ function openSeason() {
 function openUpload(type) {
   selectedType.value = type;
   repetitions.value = '';
+  repetitionsError.value = '';
   selectedFile.value = null;
   fileError.value = '';
   progress.value = 0;
@@ -133,6 +138,17 @@ function onFileChange(e) {
 }
 
 async function submitOnline() {
+  fileError.value = '';
+  repetitionsError.value = '';
+  if (repetitions.value === '') {
+    repetitionsError.value = 'Укажите количество повторений';
+    return;
+  }
+  const value = Number(repetitions.value);
+  if (Number.isNaN(value) || value < 0) {
+    repetitionsError.value = 'Некорректное значение';
+    return;
+  }
   const file = selectedFile.value;
   if (!file) {
     fileError.value = 'Файл не выбран';
@@ -489,25 +505,29 @@ function thresholdText(t, zone) {
                   @change="onFileChange"
                   :disabled="!accepted"
                 />
-                <div class="form-text">Видео до 100&nbsp;МБ</div>
-                <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
-              </div>
-              <div class="form-floating mb-3">
-                <input
-                  id="repCnt"
-                  v-model="repetitions"
-                  type="number"
-                  min="0"
-                  class="form-control"
-                  placeholder="Повторения"
-                  :disabled="!accepted"
-                />
-                <label for="repCnt">Количество повторений</label>
-              </div>
-              <div v-if="uploading" class="progress mb-3">
-                <div class="progress-bar bg-brand" :style="{ width: progress + '%' }"></div>
+              <div class="form-text">Видео до 100&nbsp;МБ</div>
+              <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
+            </div>
+            <div class="form-floating mb-3">
+              <input
+                id="repCnt"
+                v-model="repetitions"
+                type="number"
+                min="0"
+                class="form-control"
+                placeholder="Повторения"
+                :disabled="!accepted"
+                :class="{ 'is-invalid': repetitionsError }"
+              />
+              <label for="repCnt">Количество повторений</label>
+              <div v-if="repetitionsError" class="text-danger small mt-1">
+                {{ repetitionsError }}
               </div>
             </div>
+            <div v-if="uploading" class="progress mb-3">
+              <div class="progress-bar bg-brand" :style="{ width: progress + '%' }"></div>
+            </div>
+          </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="uploadModal.hide()">Отмена</button>
               <button type="button" class="btn btn-brand" @click="submitOnline" :disabled="uploading || !accepted">
