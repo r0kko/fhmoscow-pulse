@@ -7,7 +7,11 @@ export default {
   async create(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      const first = errors.array()[0];
+      return res.status(400).json({
+        error: first.msg || 'validation_error',
+        errors: errors.array(),
+      });
     }
     if (!req.file) {
       return res.status(400).json({ error: 'file_required' });

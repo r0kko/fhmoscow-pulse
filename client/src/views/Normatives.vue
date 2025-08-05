@@ -164,6 +164,10 @@ async function submitOnline() {
     fileError.value = 'Файл превышает 100 МБ';
     return;
   }
+  if (!accepted.value) {
+    fileError.value = 'Необходимо согласие с правилами';
+    return;
+  }
   uploading.value = true;
   const form = new FormData();
   form.append('type_id', selectedType.value.id);
