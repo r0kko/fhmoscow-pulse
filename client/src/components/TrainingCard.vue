@@ -26,6 +26,7 @@ function formatStart(date) {
     month: 'long',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Moscow',
   });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -76,7 +77,11 @@ const showRegistrationDeadline = computed(() => {
 
 function formatDeadline(start) {
   const d = registrationCloseTime(start);
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  });
 }
 </script>
 

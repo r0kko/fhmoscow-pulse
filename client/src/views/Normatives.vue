@@ -98,6 +98,7 @@ function formatDateTime(dt) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Moscow',
   });
 }
 
@@ -107,6 +108,7 @@ function formatDate(dt) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: 'Europe/Moscow',
   });
 }
 

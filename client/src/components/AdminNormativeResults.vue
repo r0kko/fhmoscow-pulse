@@ -246,6 +246,7 @@ function formatDateTime(dt) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Moscow',
   });
 }
 
@@ -491,7 +492,11 @@ defineExpose({ refresh });
                       :key="t.id"
                       :value="t.id"
                     >
-                      {{ new Date(t.start_at).toLocaleString('ru-RU') }}
+                      {{
+                        new Date(t.start_at).toLocaleString('ru-RU', {
+                          timeZone: 'Europe/Moscow'
+                        })
+                      }}
                     </option>
                   </select>
                   <label for="resTraining">Тренировка</label>

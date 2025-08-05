@@ -23,11 +23,13 @@ function formatStart(date) {
   const d = new Date(date)
   const dateStr = d.toLocaleDateString('ru-RU', {
     day: 'numeric',
-    month: 'long'
+    month: 'long',
+    timeZone: 'Europe/Moscow'
   })
   const timeStr = d.toLocaleTimeString('ru-RU', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow'
   })
   return `${dateStr} в ${timeStr}`
 }

@@ -28,6 +28,7 @@ function formatStart(date) {
     month: 'long',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Moscow',
   });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }

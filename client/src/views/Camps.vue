@@ -271,6 +271,7 @@ function formatDay(date) {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: 'Europe/Moscow',
   });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -280,6 +281,7 @@ function formatShortDate(date) {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'Europe/Moscow',
   });
   const formatted = text.charAt(0).toUpperCase() + text.slice(1);
   return formatted.replace(/\.$/, '');
@@ -289,6 +291,7 @@ function formatTime(date) {
   return new Date(date).toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Moscow',
   });
 }
 

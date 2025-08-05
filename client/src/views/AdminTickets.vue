@@ -27,6 +27,7 @@ function formatDateTime(value) {
   return d.toLocaleString('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
   });
 }
 

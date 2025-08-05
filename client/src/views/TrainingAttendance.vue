@@ -55,6 +55,7 @@ function formatDateTime(value) {
   return d.toLocaleString('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
   });
 }
 
@@ -120,7 +121,13 @@ function showToast(message) {
         <p v-if="training" class="mb-3">
           <strong>{{ training.type?.name }}</strong>,
           {{ formatDateTime(training.start_at) }} –
-          {{ new Date(training.end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
+          {{
+            new Date(training.end_at).toLocaleTimeString('ru-RU', {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'Europe/Moscow'
+            })
+          }}
         </p>
         <div v-if="visibleRegistrations.length" class="card section-card tile fade-in shadow-sm">
           <div class="card-body table-responsive p-3">
