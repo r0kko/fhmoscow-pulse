@@ -28,6 +28,8 @@ const form = ref({
   training_id: '',
   type_id: '',
   value: '',
+  online: false,
+  retake: false,
 });
 const value_type_id = ref('');
 const unit_id = ref('');
@@ -42,6 +44,7 @@ let userTimeout;
 let skipWatch = false;
 const minutes = ref('');
 const seconds = ref('');
+const mode = ref('training');
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
@@ -80,6 +83,14 @@ watch([typeFilter, groupFilter, pageSize], () => {
 
 watch(pageSize, (val) => {
   localStorage.setItem('normativeResultsPageSize', val);
+});
+
+watch(mode, (val) => {
+  form.value.online = val === 'online';
+  form.value.retake = val === 'retake';
+  if (val !== 'training') {
+    form.value.training_id = '';
+  }
 });
 
 watch(userQuery, () => {
@@ -179,6 +190,8 @@ function openCreate() {
     training_id: '',
     type_id: '',
     value: '',
+    online: false,
+    retake: false,
   };
   minutes.value = '';
   seconds.value = '';
@@ -188,6 +201,7 @@ function openCreate() {
   userSuggestions.value = [];
   formError.value = '';
   step.value = 1;
+  mode.value = 'training';
   modal.show();
 }
 
@@ -208,6 +222,8 @@ function openEdit(r) {
     training_id: r.training_id || '',
     type_id: r.type_id,
     value: val,
+    online: r.online,
+    retake: r.retake,
   };
   value_type_id.value = r.value_type_id;
   unit_id.value = r.unit_id;
@@ -217,6 +233,7 @@ function openEdit(r) {
   userSuggestions.value = [];
   formError.value = '';
   step.value = 2;
+  mode.value = r.retake ? 'retake' : r.online ? 'online' : 'training';
   modal.show();
 }
 
@@ -251,7 +268,11 @@ function formatDateTime(dt) {
 }
 
 function goNext() {
-  if (!form.value.user_id || !form.value.training_id || !form.value.type_id) {
+  if (!form.value.user_id || !form.value.type_id) {
+    formError.value = 'Заполните все поля';
+    return;
+  }
+  if (mode.value === 'training' && !form.value.training_id) {
     formError.value = 'Заполните все поля';
     return;
   }
@@ -288,6 +309,7 @@ async function save() {
   }
   const payload = {
     ...form.value,
+    training_id: form.value.training_id || undefined,
     value: val,
     value_type_id: value_type_id.value,
     unit_id: unit_id.value,
@@ -404,9 +426,23 @@ defineExpose({ refresh });
                   {{ formatValue(r) }}
                 </td>
                 <td class="text-nowrap">
-                  {{ r.online ? 'Онлайн' : formatDateTime(r.training?.start_at) }}
+                  {{
+                    r.retake
+                      ? 'Перезачет'
+                      : r.online
+                      ? 'Онлайн'
+                      : formatDateTime(r.training?.start_at)
+                  }}
                 </td>
-                <td>{{ r.online ? 'Онлайн' : r.training?.stadium?.name || '-' }}</td>
+                <td>
+                  {{
+                    r.retake
+                      ? 'Перезачет'
+                      : r.online
+                      ? 'Онлайн'
+                      : r.training?.stadium?.name || '-'
+                  }}
+                </td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
@@ -481,6 +517,14 @@ defineExpose({ refresh });
                   <label for="resType">Тип</label>
                 </div>
                 <div class="form-floating mb-3">
+                  <select id="resMode" v-model="mode" class="form-select">
+                    <option value="training">Тренировка</option>
+                    <option value="online">Онлайн</option>
+                    <option value="retake">Перезачет</option>
+                  </select>
+                  <label for="resMode">Способ</label>
+                </div>
+                <div v-if="mode === 'training'" class="form-floating mb-3">
                   <select
                     id="resTraining"
                     v-model="form.training_id"

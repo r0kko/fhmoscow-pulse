@@ -117,6 +117,9 @@ async function create(data, actorId) {
   if (type.season_id !== data.season_id) {
     throw new ServiceError('normative_type_invalid_season');
   }
+  if (!data.training_id && !data.online && !data.retake) {
+    throw new ServiceError('training_required');
+  }
   if (data.training_id) {
     const registration = await TrainingRegistration.findOne({
       where: { training_id: data.training_id, user_id: data.user_id },
@@ -158,7 +161,7 @@ async function create(data, actorId) {
     unit_id: type.unit_id,
     zone_id: zone?.zone_id || null,
     online: Boolean(data.online),
-    retake: false,
+    retake: Boolean(data.retake),
     value,
     created_by: actorId,
     updated_by: actorId,
@@ -185,13 +188,19 @@ async function update(id, data, actorId) {
     if (newValue == null) throw new ServiceError('invalid_value');
   }
   const zone = determineZone(res.NormativeType, newValue, res.User?.sex_id);
+  const newTrainingId = data.training_id ?? res.training_id;
+  const online = data.online ?? res.online;
+  const retake = data.retake ?? res.retake;
+  if (!newTrainingId && !online && !retake) {
+    throw new ServiceError('training_required');
+  }
   await res.update(
     {
-      training_id: data.training_id ?? res.training_id,
+      training_id: newTrainingId,
       value: newValue,
       zone_id: zone?.zone_id || null,
-      online: false,
-      retake: false,
+      online,
+      retake,
       updated_by: actorId,
     },
     { returning: false }

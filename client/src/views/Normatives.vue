@@ -298,14 +298,18 @@ function thresholdText(t, zone) {
                   </td>
                   <td class="text-center text-nowrap">
                     {{
-                      t.result?.online
+                      t.result?.retake
+                        ? 'Перезачет'
+                        : t.result?.online
                         ? 'Онлайн'
                         : formatDate(t.result?.training?.start_at)
                     }}
                   </td>
                   <td class="text-center d-none d-md-table-cell">
                     {{
-                      t.result?.online
+                      t.result?.retake
+                        ? 'Перезачет'
+                        : t.result?.online
                         ? 'Онлайн'
                         : t.result?.training?.stadium?.name || '-'
                     }}
@@ -396,7 +400,9 @@ function thresholdText(t, zone) {
                 </p>
                 <p class="mb-1 small text-start">
                   {{
-                    t.result?.online
+                    t.result?.retake
+                      ? 'Перезачет'
+                      : t.result?.online
                       ? 'Онлайн'
                       : `${formatDate(t.result?.training?.start_at)}, ${
                           t.result?.training?.stadium?.name || '-'
@@ -447,11 +453,23 @@ function thresholdText(t, zone) {
                   >
                     <span>{{ formatValue(r) }}</span>
                     <span class="small text-nowrap">
-                      {{ r.online ? 'Онлайн' : formatDateTime(r.training?.start_at) }}
+                      {{
+                        r.retake
+                          ? 'Перезачет'
+                          : r.online
+                          ? 'Онлайн'
+                          : formatDateTime(r.training?.start_at)
+                      }}
                     </span>
                   </div>
                   <div class="small text-muted">
-                    {{ r.online ? 'Онлайн' : r.training?.stadium?.name || '-' }}
+                    {{
+                      r.retake
+                        ? 'Перезачет'
+                        : r.online
+                        ? 'Онлайн'
+                        : r.training?.stadium?.name || '-'
+                    }}
                   </div>
                 </li>
               </ul>

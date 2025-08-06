@@ -8,6 +8,8 @@ export const normativeResultCreateRules = [
   body('season_id').isUUID(),
   body('training_id').optional().isUUID(),
   body('type_id').isUUID(),
+  body('online').optional().isBoolean(),
+  body('retake').optional().isBoolean(),
   body('value')
     .notEmpty()
     .custom(async (val, { req }) => {
@@ -27,4 +29,6 @@ export const normativeResultCreateRules = [
 export const normativeResultUpdateRules = [
   body('training_id').optional().isUUID(),
   body('value').optional().notEmpty(),
+  body('online').optional().isBoolean(),
+  body('retake').optional().isBoolean(),
 ];
