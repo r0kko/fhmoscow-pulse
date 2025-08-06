@@ -30,6 +30,7 @@ const fileError = ref('');
 const uploading = ref(false);
 const progress = ref(0);
 const accepted = ref(false);
+const MAX_FILE_SIZE = 250 * 1024 * 1024;
 
 function applyTooltips() {
   nextTick(() => {
@@ -160,8 +161,8 @@ async function submitOnline() {
     fileError.value = 'Неверный формат файла';
     return;
   }
-  if (file.size > 100 * 1024 * 1024) {
-    fileError.value = 'Файл превышает 100 МБ';
+  if (file.size > MAX_FILE_SIZE) {
+    fileError.value = 'Файл превышает 250 МБ';
     return;
   }
   if (!accepted.value) {
@@ -181,6 +182,7 @@ async function submitOnline() {
       },
     });
     uploadModal.hide();
+    await load();
   } catch (e) {
     fileError.value = e.message;
   } finally {
