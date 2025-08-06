@@ -9,9 +9,9 @@ export function renderTrainingRegistrationEmail(training, role) {
       minute: '2-digit',
     })
     .replace(',', '');
-  const stadium = training.CampStadium || training.stadium || {};
-  const address = stadium.Address?.result || stadium.address?.result;
-  const yandexUrl = stadium.yandex_url;
+  const ground = training.Ground || training.ground || {};
+  const address = ground.Address?.result || ground.address?.result;
+  const yandexUrl = ground.yandex_url;
   const roleName = role?.name || role?.alias;
   const subject = 'Запись на тренировку подтверждена';
 

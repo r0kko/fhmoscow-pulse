@@ -11,12 +11,12 @@ const icon = computed(() => (isTraining.value ? 'bi-people-fill' : 'bi-heart-pul
 const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'))
 const location = computed(() => {
   const loc = isTraining.value
-    ? props.event.stadium?.address?.result
+    ? props.event.ground?.address?.result
     : props.event.center?.address?.result
   return loc || ''
 })
 const href = computed(() => {
-  return isTraining.value ? withHttp(props.event.stadium?.yandex_url) : null
+  return isTraining.value ? withHttp(props.event.ground?.yandex_url) : null
 })
 
 function formatStart(date) {

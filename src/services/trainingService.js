@@ -1,7 +1,7 @@
 import {
   Training,
   TrainingType,
-  CampStadium,
+  Ground,
   Season,
   RefereeGroup,
   TrainingRefereeGroup,
@@ -29,13 +29,13 @@ async function listAll(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   const where = {};
-  if (options.stadium_id) {
-    where.camp_stadium_id = options.stadium_id;
+  if (options.ground_id) {
+    where.ground_id = options.ground_id;
   }
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
         model: RefereeGroup,
@@ -69,13 +69,13 @@ async function listUpcoming(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   const where = { start_at: { [Op.gte]: new Date() } };
-  if (options.stadium_id) {
-    where.camp_stadium_id = options.stadium_id;
+  if (options.ground_id) {
+    where.ground_id = options.ground_id;
   }
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
         model: RefereeGroup,
@@ -109,13 +109,13 @@ async function listPast(options = {}) {
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
   const where = { start_at: { [Op.lt]: new Date() } };
-  if (options.stadium_id) {
-    where.camp_stadium_id = options.stadium_id;
+  if (options.ground_id) {
+    where.ground_id = options.ground_id;
   }
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
         model: RefereeGroup,
@@ -147,7 +147,7 @@ async function getById(id) {
   const training = await Training.findByPk(id, {
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       { model: RefereeGroup, through: { attributes: [] } },
       { model: TrainingRegistration, include: [User, TrainingRole] },
@@ -181,7 +181,7 @@ async function create(data, actorId) {
   }
   const training = await Training.create({
     type_id: data.type_id,
-    camp_stadium_id: data.camp_stadium_id,
+    ground_id: data.ground_id,
     season_id: seasonId,
     start_at: data.start_at,
     end_at: data.end_at,
@@ -217,7 +217,7 @@ async function update(id, data, actorId) {
   await training.update(
     {
       type_id: data.type_id ?? training.type_id,
-      camp_stadium_id: data.camp_stadium_id ?? training.camp_stadium_id,
+      ground_id: data.ground_id ?? training.ground_id,
       season_id: data.season_id ?? training.season_id,
       start_at: data.start_at ?? training.start_at,
       end_at: data.end_at ?? training.end_at,

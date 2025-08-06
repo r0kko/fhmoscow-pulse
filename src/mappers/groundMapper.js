@@ -1,15 +1,6 @@
 function sanitize(obj) {
-  const {
-    id,
-    name,
-    yandex_url,
-    capacity,
-    phone,
-    website,
-    Address,
-    ParkingTypes,
-    ...rest
-  } = obj;
+  const { id, name, yandex_url, capacity, phone, website, Address, ...rest } =
+    obj;
   void rest.createdAt;
   void rest.updatedAt;
   void rest.deletedAt;
@@ -26,20 +17,13 @@ function sanitize(obj) {
       metro: Address.metro,
     };
   }
-  if (ParkingTypes) {
-    res.parking = ParkingTypes.map((p) => ({
-      type: p.alias,
-      type_name: p.name,
-      price: p.CampStadiumParkingType.price,
-    }));
-  }
   return res;
 }
 
-function toPublic(stadium) {
-  if (!stadium) return null;
+function toPublic(ground) {
+  if (!ground) return null;
   const plain =
-    typeof stadium.get === 'function' ? stadium.get({ plain: true }) : stadium;
+    typeof ground.get === 'function' ? ground.get({ plain: true }) : ground;
   return sanitize(plain);
 }
 

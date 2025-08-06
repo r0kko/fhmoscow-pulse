@@ -2,21 +2,20 @@ import express from 'express';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
-import controller from '../controllers/campStadiumAdminController.js';
+import controller from '../controllers/groundAdminController.js';
 import {
-  campStadiumCreateRules,
-  campStadiumUpdateRules,
-} from '../validators/campStadiumValidators.js';
+  groundCreateRules,
+  groundUpdateRules,
+} from '../validators/groundValidators.js';
 
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
-router.get('/parking-types', auth, authorize('ADMIN'), controller.parkingTypes);
 router.post(
   '/',
   auth,
   authorize('ADMIN'),
-  campStadiumCreateRules,
+  groundCreateRules,
   controller.create
 );
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
@@ -24,7 +23,7 @@ router.put(
   '/:id',
   auth,
   authorize('ADMIN'),
-  campStadiumUpdateRules,
+  groundUpdateRules,
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);

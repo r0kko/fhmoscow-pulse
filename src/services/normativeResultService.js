@@ -10,7 +10,7 @@ import {
   NormativeGroup,
   NormativeZone,
   Training,
-  CampStadium,
+  Ground,
   Season,
   User,
   MeasurementUnit,
@@ -34,7 +34,7 @@ async function listAll(options = {}) {
       model: User,
       attributes: ['id', 'last_name', 'first_name', 'patronymic'],
     },
-    { model: Training, include: [CampStadium] },
+    { model: Training, include: [Ground] },
     {
       model: NormativeType,
       include: [{ model: NormativeGroupType, include: [NormativeGroup] }],
@@ -84,7 +84,7 @@ async function getById(id) {
         model: User,
         attributes: ['id', 'last_name', 'first_name', 'patronymic'],
       },
-      { model: Training, include: [CampStadium] },
+      { model: Training, include: [Ground] },
       {
         model: NormativeType,
         include: [

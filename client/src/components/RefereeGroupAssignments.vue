@@ -164,7 +164,7 @@ defineExpose({ refresh });
     <div v-if="loading" class="text-center my-3">
       <div class="spinner-border" role="status"></div>
     </div>
-    <div class="card section-card stadium-card tile fade-in shadow-sm">
+    <div class="card section-card ground-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Назначение судей</h2>
       </div>
@@ -282,7 +282,7 @@ defineExpose({ refresh });
                     <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
                     <td>{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</td>
                     <td>{{ t.type?.name }}</td>
-                    <td>{{ t.stadium?.name }}</td>
+                    <td>{{ t.ground?.name }}</td>
                     <td class="text-center">
                       <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
                     </td>
@@ -296,7 +296,7 @@ defineExpose({ refresh });
                   <p class="mb-1 fw-semibold">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
                   <p class="mb-1">{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</p>
                   <p class="mb-1">{{ t.type?.name }}</p>
-                  <p class="mb-1">{{ t.stadium?.name }}</p>
+                  <p class="mb-1">{{ t.ground?.name }}</p>
                   <p class="mb-0 text-end">
                     <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
                   </p>
@@ -322,7 +322,7 @@ defineExpose({ refresh });
   animation: fadeIn 0.4s ease-out;
 }
 
-.stadium-card {
+.ground-card {
   border-radius: 0.75rem;
   overflow: hidden;
   border: 0;
@@ -340,7 +340,7 @@ defineExpose({ refresh });
     margin-right: -1rem;
   }
 
-  .stadium-card {
+  .ground-card {
     margin-left: -1rem;
     margin-right: -1rem;
   }

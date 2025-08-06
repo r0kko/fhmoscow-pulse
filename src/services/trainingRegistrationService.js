@@ -1,7 +1,7 @@
 import {
   Training,
   TrainingType,
-  CampStadium,
+  Ground,
   Season,
   RefereeGroup,
   RefereeGroupUser,
@@ -52,7 +52,7 @@ async function listAvailable(userId, options = {}) {
   const { rows, count } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
         model: RefereeGroup,
@@ -104,7 +104,7 @@ async function register(userId, trainingId, actorId) {
       include: [
         { model: RefereeGroup, through: { attributes: [] } },
         { model: TrainingRegistration, include: [TrainingRole] },
-        { model: CampStadium, include: [Address] },
+        { model: Ground, include: [Address] },
         { model: Season, where: { active: true }, required: true },
       ],
     }),
@@ -179,7 +179,7 @@ async function add(trainingId, userId, roleId, actorId) {
     Training.findByPk(trainingId, {
       include: [
         { model: TrainingRegistration },
-        { model: CampStadium, include: [Address] },
+        { model: Ground, include: [Address] },
         { model: Season, where: { active: true }, required: true },
       ],
     }),
@@ -204,7 +204,7 @@ async function updateRole(trainingId, userId, roleId, actorId) {
     }),
     TrainingRole.findByPk(roleId),
     Training.findByPk(trainingId, {
-      include: [{ model: CampStadium, include: [Address] }, { model: Season }],
+      include: [{ model: Ground, include: [Address] }, { model: Season }],
     }),
     User.findByPk(userId),
   ]);
@@ -276,7 +276,7 @@ async function listForAttendance(trainingId, actorId) {
   const training = await Training.findByPk(trainingId, {
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
     ],
   });
@@ -297,7 +297,7 @@ async function listUpcomingByUser(userId, options = {}) {
   const { rows } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
         model: TrainingRegistration,
@@ -366,7 +366,7 @@ async function listPastByUser(userId, options = {}) {
   const { rows } = await Training.findAndCountAll({
     include: [
       TrainingType,
-      { model: CampStadium, include: [Address] },
+      { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
         model: TrainingRegistration,

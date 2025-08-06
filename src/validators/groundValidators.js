@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 
-export const campStadiumCreateRules = [
+export const groundCreateRules = [
   body('name').isString().notEmpty().withMessage('invalid_name'),
   body('address.result').notEmpty().withMessage('invalid_address'),
   body('yandex_url')
@@ -29,27 +29,9 @@ export const campStadiumCreateRules = [
       }
       return v;
     }),
-  body('parking')
-    .optional()
-    .isArray({ max: 1 })
-    .withMessage('invalid_parking')
-    .custom((arr) => {
-      if (arr.length === 0) return true;
-      const p = arr[0];
-      if (!p || typeof p.type !== 'string') {
-        throw new Error('invalid_parking');
-      }
-      if (p.type === 'PAID' && (p.price === undefined || p.price === null)) {
-        throw new Error('parking_price_required');
-      }
-      if (p.type !== 'PAID' && p.price) {
-        throw new Error('parking_price_forbidden');
-      }
-      return true;
-    }),
 ];
 
-export const campStadiumUpdateRules = [
+export const groundUpdateRules = [
   body('name').optional().isString().notEmpty().withMessage('invalid_name'),
   body('address.result').optional().notEmpty().withMessage('invalid_address'),
   body('yandex_url')
@@ -77,23 +59,5 @@ export const campStadiumUpdateRules = [
         return `http://${v}`;
       }
       return v;
-    }),
-  body('parking')
-    .optional()
-    .isArray({ max: 1 })
-    .withMessage('invalid_parking')
-    .custom((arr) => {
-      if (arr.length === 0) return true;
-      const p = arr[0];
-      if (!p || typeof p.type !== 'string') {
-        throw new Error('invalid_parking');
-      }
-      if (p.type === 'PAID' && (p.price === undefined || p.price === null)) {
-        throw new Error('parking_price_required');
-      }
-      if (p.type !== 'PAID' && p.price) {
-        throw new Error('parking_price_forbidden');
-      }
-      return true;
     }),
 ];

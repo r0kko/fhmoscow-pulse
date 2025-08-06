@@ -38,7 +38,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: createMock,
   },
   TrainingType: {},
-  CampStadium: {},
+  Ground: {},
   Address: {},
   Season: { findOne: findOneSeasonMock },
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
@@ -105,7 +105,7 @@ test('create uses provided season', async () => {
   await service.create(
     {
       type_id: 'tp',
-      camp_stadium_id: 'c1',
+      ground_id: 'g1',
       season_id: 's1',
       start_at: '2024-01-01T10:00:00Z',
       end_at: '2024-01-01T11:00:00Z',
@@ -114,7 +114,7 @@ test('create uses provided season', async () => {
   );
   expect(createMock).toHaveBeenCalledWith({
     type_id: 'tp',
-    camp_stadium_id: 'c1',
+    ground_id: 'g1',
     season_id: 's1',
     start_at: '2024-01-01T10:00:00Z',
     end_at: '2024-01-01T11:00:00Z',
@@ -131,7 +131,7 @@ test('create derives season from groups', async () => {
   await service.create(
     {
       type_id: 'tp',
-      camp_stadium_id: 'c1',
+      ground_id: 'g1',
       groups: ['g1'],
       start_at: '2024-01-02T10:00:00Z',
       end_at: '2024-01-02T11:00:00Z',
@@ -148,7 +148,7 @@ test('create derives season from date', async () => {
   await service.create(
     {
       type_id: 'tp',
-      camp_stadium_id: 'c1',
+      ground_id: 'g1',
       start_at: '2025-02-01T10:00:00Z',
       end_at: '2025-02-01T12:00:00Z',
     },
@@ -167,7 +167,7 @@ test('create rejects mismatched group season', async () => {
     service.create(
       {
         type_id: 'tp',
-        camp_stadium_id: 'c1',
+        ground_id: 'g1',
         groups: ['g1', 'g2'],
         start_at: '2024-01-01T10:00:00Z',
         end_at: '2024-01-01T11:00:00Z',

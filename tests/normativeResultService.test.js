@@ -25,7 +25,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   NormativeGroupType: {},
   NormativeGroup: {},
   NormativeZone: {},
-  CampStadium: {},
+  Ground: {},
   Training: {},
   Season: { findByPk: findSeasonMock },
   User: { findByPk: findUserMock },
