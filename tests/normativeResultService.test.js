@@ -81,7 +81,7 @@ findTypeMock.mockResolvedValue({
   NormativeTypeZone: [],
 });
 findSeasonMock.mockResolvedValue({ id: 's1' });
-findUserMock.mockResolvedValue({ id: 'u1', sex_id: 'sx1' });
+findUserMock.mockResolvedValue({ id: 'u1', sex_id: 'sx1', email: 'user@ex.com' });
 findRegMock.mockResolvedValue(null);
 createRegMock.mockResolvedValue({});
 findRoleMock.mockResolvedValue({ id: 'role1' });
@@ -153,4 +153,29 @@ test('remove fetches user when email missing', async () => {
   expect(destroyMock).toHaveBeenCalled();
   expect(findUserMock).toHaveBeenCalledWith('u1');
   expect(sendRemoveEmailMock).toHaveBeenCalled();
+});
+
+test('create does not send email without user email', async () => {
+  findUserMock.mockResolvedValueOnce({ id: 'u1', sex_id: 'sx1' });
+  await service.create({
+    user_id: 'u1',
+    season_id: 's1',
+    training_id: 'tr1',
+    type_id: 't1',
+    value: 5,
+  });
+  expect(sendAddEmailMock).not.toHaveBeenCalled();
+});
+
+test('create fails when both online and retake', async () => {
+  await expect(
+    service.create({
+      user_id: 'u1',
+      season_id: 's1',
+      type_id: 't1',
+      value: 5,
+      online: true,
+      retake: true,
+    })
+  ).rejects.toThrow('online_retake_conflict');
 });

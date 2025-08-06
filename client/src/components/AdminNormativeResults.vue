@@ -21,6 +21,7 @@ const groupFilter = ref('');
 const isLoading = ref(false);
 const error = ref('');
 const deletingId = ref(null);
+const saving = ref(false);
 
 const form = ref({
   user_id: '',
@@ -286,6 +287,7 @@ function goBack() {
 }
 
 async function save() {
+  if (saving.value) return;
   const unit = currentUnit.value;
   let val;
   if (unit?.alias === 'MIN_SEC') {
@@ -315,6 +317,7 @@ async function save() {
     unit_id: unit_id.value,
   };
   try {
+    saving.value = true;
     if (editing.value) {
       await apiFetch(`/normative-results/${editing.value.id}`, {
         method: 'PUT',
@@ -330,6 +333,8 @@ async function save() {
     await load();
   } catch (e) {
     formError.value = e.message;
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -628,7 +633,15 @@ defineExpose({ refresh });
               >
                 {{ step === 1 ? 'Отмена' : 'Назад' }}
               </button>
-              <button type="submit" class="btn btn-primary">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="saving"
+              >
+                <span
+                  v-if="step === 2 && saving"
+                  class="spinner-border spinner-border-sm me-1"
+                ></span>
                 {{ step === 1 ? 'Далее' : 'Сохранить' }}
               </button>
             </div>

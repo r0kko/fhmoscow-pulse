@@ -37,6 +37,11 @@ export function renderNormativeResultAddedEmail(result) {
     if (yandexUrl) text += ` (${yandexUrl})`;
     text += '.';
   }
+  if (result.retake) {
+    text += '\nПерезачет.';
+  } else if (result.online) {
+    text += '\nСдан онлайн.';
+  }
   text += `\nЗначение: ${value}.`;
   if (zoneName) text += `\nЗона: ${zoneName}.`;
   text += '\n\nЕсли вы считаете это ошибкой, обратитесь в службу поддержки.';
@@ -50,6 +55,11 @@ export function renderNormativeResultAddedEmail(result) {
   const htmlDate = date
     ? `<p style="font-size:16px;margin:0 0 16px;">Тренировка: ${date} (МСК).</p>`
     : '';
+  const htmlMode = result.retake
+    ? '<p style="font-size:16px;margin:0 0 16px;">Перезачет.</p>'
+    : result.online
+      ? '<p style="font-size:16px;margin:0 0 16px;">Результат сдан онлайн.</p>'
+      : '';
   const htmlZone = zoneName
     ? `<p style="font-size:16px;margin:0 0 16px;">Зона: ${zoneName}.</p>`
     : '';
@@ -61,6 +71,7 @@ export function renderNormativeResultAddedEmail(result) {
       </p>
       ${htmlDate}
       ${htmlAddress}
+      ${htmlMode}
       <p style="font-size:16px;margin:0 0 16px;">Значение: <strong>${value}</strong>.</p>
       ${htmlZone}
       <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь в службу поддержки.</p>

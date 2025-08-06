@@ -10,6 +10,12 @@ export const normativeResultCreateRules = [
   body('type_id').isUUID(),
   body('online').optional().isBoolean(),
   body('retake').optional().isBoolean(),
+  body().custom((_, { req }) => {
+    if (req.body.online && req.body.retake) {
+      throw new Error('online_retake_conflict');
+    }
+    return true;
+  }),
   body('value')
     .notEmpty()
     .custom(async (val, { req }) => {
@@ -31,4 +37,10 @@ export const normativeResultUpdateRules = [
   body('value').optional().notEmpty(),
   body('online').optional().isBoolean(),
   body('retake').optional().isBoolean(),
+  body().custom((_, { req }) => {
+    if (req.body.online && req.body.retake) {
+      throw new Error('online_retake_conflict');
+    }
+    return true;
+  }),
 ];

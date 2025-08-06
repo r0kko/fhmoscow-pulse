@@ -120,6 +120,9 @@ async function create(data, actorId) {
   if (!data.training_id && !data.online && !data.retake) {
     throw new ServiceError('training_required');
   }
+  if (data.online && data.retake) {
+    throw new ServiceError('online_retake_conflict');
+  }
   if (data.training_id) {
     const registration = await TrainingRegistration.findOne({
       where: { training_id: data.training_id, user_id: data.user_id },
@@ -167,7 +170,9 @@ async function create(data, actorId) {
     updated_by: actorId,
   });
   const created = await getById(res.id);
-  await emailService.sendNormativeResultAddedEmail(user, created);
+  if (user.email) {
+    await emailService.sendNormativeResultAddedEmail(user, created);
+  }
   return created;
 }
 
@@ -191,6 +196,9 @@ async function update(id, data, actorId) {
   const newTrainingId = data.training_id ?? res.training_id;
   const online = data.online ?? res.online;
   const retake = data.retake ?? res.retake;
+  if (online && retake) {
+    throw new ServiceError('online_retake_conflict');
+  }
   if (!newTrainingId && !online && !retake) {
     throw new ServiceError('training_required');
   }
@@ -207,7 +215,7 @@ async function update(id, data, actorId) {
   );
   const updated = await getById(res.id);
   const user = res.User || (await User.findByPk(res.user_id));
-  if (user) {
+  if (user?.email) {
     await emailService.sendNormativeResultUpdatedEmail(user, updated);
   }
   return updated;
