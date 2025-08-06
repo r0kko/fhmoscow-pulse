@@ -160,8 +160,8 @@ async function removeForUser(userId, ticketId, actorId = null) {
   if (statusAlias && statusAlias !== 'CREATED') {
     throw new ServiceError('ticket_locked');
   }
-  await ticket.update({ updated_by: actorId });
-  await ticket.destroy();
+  await ticket.update({ updated_by: actorId, number: null });
+  await ticket.destroy({ hooks: false });
 }
 
 async function listAll(options = {}) {

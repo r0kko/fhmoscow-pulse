@@ -127,8 +127,8 @@ test('removeForUser deletes ticket', async () => {
     TicketStatus: { alias: 'CREATED' },
   });
   await service.removeForUser('u1', 't1', 'adm');
-  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'adm' });
-  expect(destroyMock).toHaveBeenCalled();
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'adm', number: null });
+  expect(destroyMock).toHaveBeenCalledWith({ hooks: false });
 });
 
 test('removeForUser rejects when not created', async () => {

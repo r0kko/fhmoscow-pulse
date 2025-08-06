@@ -11,7 +11,7 @@ Ticket.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    number: { type: DataTypes.STRING, allowNull: false, unique: true },
+    number: { type: DataTypes.STRING, allowNull: true, unique: true },
     user_id: { type: DataTypes.UUID, allowNull: false },
     type_id: { type: DataTypes.UUID, allowNull: false },
     status_id: { type: DataTypes.UUID, allowNull: false },
@@ -25,5 +25,12 @@ Ticket.init(
     underscored: true,
   }
 );
+
+Ticket.addHook('beforeDestroy', async (ticket, options) => {
+  await Ticket.update(
+    { number: null },
+    { where: { id: ticket.id }, transaction: options.transaction, hooks: false }
+  );
+});
 
 export default Ticket;
