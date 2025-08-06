@@ -5,6 +5,7 @@ import Toast from 'bootstrap/js/dist/toast';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
+import InfoField from '../components/InfoField.vue';
 
 // Placeholder sections hidden until inventory feature is ready
 const placeholderSections = [];
@@ -45,6 +46,12 @@ const loading = reactive({
   bankAccount: false,
 });
 let toast;
+
+function initTooltips() {
+  document
+    .querySelectorAll('[data-bs-toggle="tooltip"]')
+    .forEach((el) => new Tooltip(el));
+}
 
 function formatPhone(digits) {
   if (!digits) return '';
@@ -118,9 +125,7 @@ async function fetchProfile() {
     const data = await apiFetch('/users/me');
     user.value = data.user;
     await nextTick();
-    document
-      .querySelectorAll('[data-bs-toggle="tooltip"]')
-      .forEach((el) => new Tooltip(el));
+    initTooltips();
   } catch (_err) {
     user.value = null;
   } finally {
@@ -148,6 +153,8 @@ async function fetchInn() {
     const data = await apiFetch('/inns/me');
     inn.value = data.inn;
     innError.value = '';
+    await nextTick();
+    initTooltips();
   } catch (e) {
     innError.value = e.message;
     inn.value = null;
@@ -162,6 +169,8 @@ async function fetchSnils() {
     const data = await apiFetch('/snils/me');
     snils.value = data.snils;
     snilsError.value = '';
+    await nextTick();
+    initTooltips();
   } catch (e) {
     snilsError.value = e.message;
     snils.value = null;
@@ -176,6 +185,8 @@ async function fetchBankAccount() {
     const data = await apiFetch('/bank-accounts/me');
     bankAccount.value = data.account;
     bankAccountError.value = '';
+    await nextTick();
+    initTooltips();
   } catch (e) {
     bankAccountError.value = e.message;
     bankAccount.value = null;
@@ -228,130 +239,57 @@ onMounted(() => {
       </div>
 
       <div v-show="activeTab === 'info'" class="mb-4">
-        <div class="card section-card tile fade-in shadow-sm">
+        <div class="card section-card tile fade-in shadow-sm mb-4">
           <div class="card-body">
-            <h5 class="card-title mb-3">Основные данные и контакты</h5>
+            <h5 class="card-title mb-3">Основные данные</h5>
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
               <div class="col">
-                <div class="form-floating">
-                  <input
-                    id="lastName"
-                    type="text"
-                    class="form-control"
-                    :value="user.last_name || noDataPlaceholder"
-                    readonly
-                    placeholder="Фамилия"
-                  />
-                  <label for="lastName">Фамилия</label>
-                </div>
+                <InfoField id="lastName" label="Фамилия" :value="user.last_name" />
               </div>
               <div class="col">
-                <div class="form-floating">
-                  <input
-                    id="firstName"
-                    type="text"
-                    class="form-control"
-                    :value="user.first_name || noDataPlaceholder"
-                    readonly
-                    placeholder="Имя"
-                  />
-                  <label for="firstName">Имя</label>
-                </div>
+                <InfoField id="firstName" label="Имя" :value="user.first_name" />
               </div>
               <div class="col">
-                <div class="form-floating">
-                  <input
-                    id="patronymic"
-                    type="text"
-                    class="form-control"
-                    :value="user.patronymic || noDataPlaceholder"
-                    readonly
-                    placeholder="Отчество"
-                  />
-                  <label for="patronymic">Отчество</label>
-                </div>
+                <InfoField
+                  id="patronymic"
+                  label="Отчество"
+                  :value="user.patronymic"
+                />
               </div>
               <div class="col">
-                <div class="input-group">
-                  <span class="input-group-text"
-                    ><i class="bi bi-calendar-event"></i
-                  ></span>
-                  <div class="form-floating flex-grow-1">
-                    <input
-                      id="birthDate"
-                      type="text"
-                      class="form-control"
-                      :value="
-                        user.birth_date
-                          ? formatDate(user.birth_date)
-                          : noDataPlaceholder
-                      "
-                      readonly
-                      placeholder="Дата рождения"
-                    />
-                    <label for="birthDate">Дата рождения</label>
-                  </div>
-                </div>
+                <InfoField
+                  id="birthDate"
+                  label="Дата рождения"
+                  icon="bi bi-calendar-event"
+                  :value="user.birth_date ? formatDate(user.birth_date) : ''"
+                />
               </div>
             </div>
-            <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">
+          </div>
+        </div>
+        <div class="card section-card tile fade-in shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Контакты</h5>
+            <div class="row row-cols-1 row-cols-sm-2 g-3">
               <div class="col">
-                <div class="input-group">
-                  <span class="input-group-text"
-                    ><i class="bi bi-telephone"></i
-                  ></span>
-                  <div class="form-floating flex-grow-1">
-                    <input
-                      id="userPhone"
-                      type="text"
-                      class="form-control"
-                      :value="
-                        user.phone ? formatPhone(user.phone) : noDataPlaceholder
-                      "
-                      readonly
-                      placeholder="Телефон"
-                    />
-                    <label for="userPhone">Телефон</label>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    @click="user.phone && copyToClipboard(user.phone)"
-                    title="Скопировать"
-                    aria-label="Скопировать телефон"
-                    data-bs-toggle="tooltip"
-                  >
-                    <i class="bi bi-clipboard"></i>
-                  </button>
-                </div>
+                <InfoField
+                  id="userPhone"
+                  label="Телефон"
+                  icon="bi bi-telephone"
+                  :value="user.phone ? formatPhone(user.phone) : ''"
+                  :copyable="!!user.phone"
+                  @copy="copyToClipboard(user.phone)"
+                />
               </div>
               <div class="col">
-                <div class="input-group">
-                  <span class="input-group-text"
-                    ><i class="bi bi-envelope"></i
-                  ></span>
-                  <div class="form-floating flex-grow-1">
-                    <input
-                      id="userEmail"
-                      type="text"
-                      class="form-control"
-                      :value="user.email || noDataPlaceholder"
-                      readonly
-                      placeholder="Email"
-                    />
-                    <label for="userEmail">Email</label>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    @click="user.email && copyToClipboard(user.email)"
-                    title="Скопировать"
-                    aria-label="Скопировать email"
-                    data-bs-toggle="tooltip"
-                  >
-                    <i class="bi bi-clipboard"></i>
-                  </button>
-                </div>
+                <InfoField
+                  id="userEmail"
+                  label="Email"
+                  icon="bi bi-envelope"
+                  :value="user.email"
+                  :copyable="!!user.email"
+                  @copy="copyToClipboard(user.email)"
+                />
               </div>
             </div>
             <div v-if="!user.email_confirmed" class="mt-3">
@@ -397,132 +335,67 @@ onMounted(() => {
             <div v-else-if="passport">
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-card-text"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="docType"
-                        type="text"
-                        class="form-control"
-                        :value="
-                          passport.document_type_name || noDataPlaceholder
-                        "
-                        readonly
-                        placeholder="Тип документа"
-                      />
-                      <label for="docType">Тип документа</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="docType"
+                    label="Тип документа"
+                    icon="bi bi-card-text"
+                    :value="passport.document_type_name || ''"
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-globe"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportCountry"
-                        type="text"
-                        class="form-control"
-                        :value="passport.country_name || noDataPlaceholder"
-                        readonly
-                        placeholder="Страна"
-                      />
-                      <label for="passportCountry">Страна</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="passportCountry"
+                    label="Страна"
+                    icon="bi bi-globe"
+                    :value="passport.country_name || ''"
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-file-earmark-text"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportSerial"
-                        type="text"
-                        class="form-control"
-                        :value="
-                          passport.series +
-                          ' ' +
-                          maskPassportNumber(passport.number)
-                        "
-                        readonly
-                        placeholder="Серия и номер"
-                      />
-                      <label for="passportSerial">Серия и номер</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="passportSerial"
+                    label="Серия и номер"
+                    icon="bi bi-file-earmark-text"
+                    :value="
+                      passport.series + ' ' + maskPassportNumber(passport.number)
+                    "
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-calendar"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportValidity"
-                        type="text"
-                        class="form-control"
-                        :value="
-                          passport.issue_date && passport.valid_until
-                            ? formatDate(passport.issue_date) +
-                              ' - ' +
-                              formatDate(passport.valid_until)
-                            : noDataPlaceholder
-                        "
-                        readonly
-                        placeholder="Срок действия"
-                      />
-                      <label for="passportValidity">Срок действия</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="passportValidity"
+                    label="Срок действия"
+                    icon="bi bi-calendar"
+                    :value="
+                      passport.issue_date && passport.valid_until
+                        ?
+                            formatDate(passport.issue_date) +
+                            ' - ' +
+                            formatDate(passport.valid_until)
+                        : ''
+                    "
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-building"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportAuthority"
-                        type="text"
-                        class="form-control"
-                        :value="
-                          passport.issuing_authority &&
-                          passport.issuing_authority_code
-                            ? passport.issuing_authority +
-                              ' (' +
-                              passport.issuing_authority_code +
-                              ')'
-                            : noDataPlaceholder
-                        "
-                        readonly
-                        placeholder="Кем выдан"
-                      />
-                      <label for="passportAuthority">Кем выдан</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="passportAuthority"
+                    label="Кем выдан"
+                    icon="bi bi-building"
+                    :value="
+                      passport.issuing_authority && passport.issuing_authority_code
+                        ?
+                            passport.issuing_authority + ' (' +
+                            passport.issuing_authority_code + ')'
+                        : ''
+                    "
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-geo-alt"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="passportBirthplace"
-                        type="text"
-                        class="form-control"
-                        :value="passport.place_of_birth || noDataPlaceholder"
-                        readonly
-                        placeholder="Место рождения"
-                      />
-                      <label for="passportBirthplace">Место рождения</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="passportBirthplace"
+                    label="Место рождения"
+                    icon="bi bi-geo-alt"
+                    :value="passport.place_of_birth || ''"
+                  />
                 </div>
               </div>
             </div>
@@ -556,40 +429,24 @@ onMounted(() => {
             <div v-else-if="inn || snils">
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col" v-if="inn">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-briefcase"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="innNumber"
-                        type="text"
-                        class="form-control"
-                        :value="inn.number || noDataPlaceholder"
-                        readonly
-                        placeholder="ИНН"
-                      />
-                      <label for="innNumber">ИНН</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="innNumber"
+                    label="ИНН"
+                    icon="bi bi-briefcase"
+                    :value="inn.number"
+                    :copyable="!!inn.number"
+                    @copy="copyToClipboard(inn.number)"
+                  />
                 </div>
                 <div class="col" v-if="snils">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-card-checklist"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="snilsNumber"
-                        type="text"
-                        class="form-control"
-                        :value="snils.number || noDataPlaceholder"
-                        readonly
-                        placeholder="СНИЛС"
-                      />
-                      <label for="snilsNumber">СНИЛС</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="snilsNumber"
+                    label="СНИЛС"
+                    icon="bi bi-card-checklist"
+                    :value="snils.number"
+                    :copyable="!!snils.number"
+                    @copy="copyToClipboard(snils.number)"
+                  />
                 </div>
               </div>
             </div>
@@ -619,78 +476,42 @@ onMounted(() => {
             <div v-else-if="bankAccount">
               <div class="row row-cols-1 row-cols-sm-2 g-3">
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-credit-card"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="accNumber"
-                        type="text"
-                        class="form-control"
-                        :value="maskedAccountNumber"
-                        readonly
-                        placeholder="Счёт"
-                      />
-                      <label for="accNumber">Счёт</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="accNumber"
+                    label="Счёт"
+                    icon="bi bi-credit-card"
+                    :value="maskedAccountNumber"
+                    :copyable="!!bankAccount.number"
+                    @copy="copyToClipboard(bankAccount.number)"
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-123"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="accBic"
-                        type="text"
-                        class="form-control"
-                        :value="bankAccount.bic || noDataPlaceholder"
-                        readonly
-                        placeholder="БИК"
-                      />
-                      <label for="accBic">БИК</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="accBic"
+                    label="БИК"
+                    icon="bi bi-123"
+                    :value="bankAccount.bic"
+                    :copyable="!!bankAccount.bic"
+                    @copy="copyToClipboard(bankAccount.bic)"
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-bank"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="accBank"
-                        type="text"
-                        class="form-control"
-                        :value="bankAccount.bank_name || noDataPlaceholder"
-                        readonly
-                        placeholder="Банк"
-                      />
-                      <label for="accBank">Банк</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="accBank"
+                    label="Банк"
+                    icon="bi bi-bank"
+                    :value="bankAccount.bank_name"
+                  />
                 </div>
                 <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text"
-                      ><i class="bi bi-building"></i
-                    ></span>
-                    <div class="form-floating flex-grow-1">
-                      <input
-                        id="accCorr"
-                        type="text"
-                        class="form-control"
-                        :value="
-                          bankAccount.correspondent_account || noDataPlaceholder
-                        "
-                        readonly
-                        placeholder="Корсчёт"
-                      />
-                      <label for="accCorr">Корсчёт</label>
-                    </div>
-                  </div>
+                  <InfoField
+                    id="accCorr"
+                    label="Корсчёт"
+                    icon="bi bi-building"
+                    :value="bankAccount.correspondent_account"
+                    :copyable="!!bankAccount.correspondent_account"
+                    @copy="copyToClipboard(bankAccount.correspondent_account)"
+                  />
                 </div>
               </div>
             </div>
