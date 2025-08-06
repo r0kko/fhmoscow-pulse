@@ -3,6 +3,7 @@ import { ref, onMounted, reactive, nextTick, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Toast from 'bootstrap/js/dist/toast';
 import Tooltip from 'bootstrap/js/dist/tooltip';
+import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
 import InfoField from '../components/InfoField.vue';
@@ -22,6 +23,7 @@ const passport = ref();
 const passportError = ref('');
 const inn = ref();
 const snils = ref();
+const driverLicense = ref();
 const innError = ref('');
 const snilsError = ref('');
 const bankAccount = ref();
@@ -33,7 +35,6 @@ const maskedAccountNumber = computed(() => {
 });
 const sectionNav = computed(() =>
   [
-    { id: 'basic', label: 'Основные данные', show: true },
     { id: 'contacts', label: 'Контакты', show: true },
     {
       id: 'passport',
@@ -64,6 +65,11 @@ const sectionNav = computed(() =>
     },
   ].filter((s) => s.show)
 );
+const modalRef = ref(null);
+const modalMode = ref('');
+const modalTitle = ref('');
+const modalMessage = ref('');
+let modalInstance;
 const loading = reactive({
   user: false,
   passport: false,
@@ -118,6 +124,28 @@ async function copyToClipboard(text) {
   } catch (_err) {
     showToast('Не удалось скопировать');
   }
+}
+
+function openModal(mode, title, message = '') {
+  modalMode.value = mode;
+  modalTitle.value = title;
+  modalMessage.value = message;
+  if (!modalInstance) {
+    modalInstance = new Modal(modalRef.value);
+  }
+  modalInstance.show();
+}
+
+function showPassportModal() {
+  openModal('passport', 'Паспорт РФ');
+}
+
+function showDocWarning(title) {
+  openModal(
+    'warning',
+    title,
+    'Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом',
+  );
 }
 
 async function sendCode() {
@@ -240,7 +268,7 @@ onMounted(() => {
         </li>
       </ol>
     </nav>
-    <h1 class="mb-3">Личная информация</h1>
+    <h1 class="mb-3">Документы и данные</h1>
     <div v-if="loading.user" class="text-center my-5">
       <div class="spinner-border" role="status" aria-label="Загрузка">
         <span class="visually-hidden">Загрузка…</span>
@@ -249,44 +277,72 @@ onMounted(() => {
     <div v-else-if="user">
       <div class="row">
         <div class="col-lg-9">
-          <section id="basic" class="mb-4">
-            <div class="card section-card tile fade-in shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Основные данные</h5>
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
-                  <div class="col">
-                    <InfoField
-                      id="lastName"
-                      label="Фамилия"
-                      :value="user.last_name"
-                    />
-                  </div>
-                  <div class="col">
-                    <InfoField
-                      id="firstName"
-                      label="Имя"
-                      :value="user.first_name"
-                    />
-                  </div>
-                  <div class="col">
-                    <InfoField
-                      id="patronymic"
-                      label="Отчество"
-                      :value="user.patronymic"
-                    />
-                  </div>
-                  <div class="col">
-                    <InfoField
-                      id="birthDate"
-                      label="Дата рождения"
-                      icon="bi bi-calendar-event"
-                      :value="user.birth_date ? formatDate(user.birth_date) : ''"
-                    />
-                  </div>
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-4">
+            <div class="col">
+              <div
+                class="card tile h-100 text-center shadow-sm"
+                role="button"
+                @click="showPassportModal"
+              >
+                <div class="card-body">
+                  <i class="bi bi-passport display-6 mb-2"></i>
+                  <h5 class="card-title">Паспорт РФ</h5>
+                  <p class="card-text mb-0">
+                    {{
+                      passport
+                        ? passport.series + ' ' + maskPassportNumber(passport.number)
+                        : noDataPlaceholder
+                    }}
+                  </p>
                 </div>
               </div>
             </div>
-          </section>
+            <div class="col">
+              <div
+                class="card tile h-100 text-center shadow-sm"
+                role="button"
+                @click="showDocWarning('ИНН')"
+              >
+                <div class="card-body">
+                  <i class="bi bi-person-badge display-6 mb-2"></i>
+                  <h5 class="card-title">ИНН</h5>
+                  <p class="card-text mb-0">
+                    {{ inn?.number || noDataPlaceholder }}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div
+                class="card tile h-100 text-center shadow-sm"
+                role="button"
+                @click="showDocWarning('СНИЛС')"
+              >
+                <div class="card-body">
+                  <i class="bi bi-card-checklist display-6 mb-2"></i>
+                  <h5 class="card-title">СНИЛС</h5>
+                  <p class="card-text mb-0">
+                    {{ snils?.number || noDataPlaceholder }}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div
+                class="card tile h-100 text-center shadow-sm"
+                role="button"
+                @click="showDocWarning('Водительское удостоверение')"
+              >
+                <div class="card-body">
+                  <i class="bi bi-car-front display-6 mb-2"></i>
+                  <h5 class="card-title">Водительское удостоверение</h5>
+                  <p class="card-text mb-0">
+                    {{ driverLicense?.number || noDataPlaceholder }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
           <section id="contacts" class="mb-4">
             <div class="card section-card tile fade-in shadow-sm">
               <div class="card-body">
@@ -575,6 +631,74 @@ onMounted(() => {
         data-bs-autohide="true"
       >
         <div class="toast-body">{{ toastMessage }}</div>
+      </div>
+    </div>
+    <div class="modal fade" tabindex="-1" ref="modalRef">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ modalTitle }}</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Закрыть"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <template v-if="modalMode === 'passport'">
+              <div class="row row-cols-1 row-cols-sm-2 g-3">
+                <div class="col">
+                  <InfoField id="modalLastName" label="Фамилия" :value="user.last_name" />
+                </div>
+                <div class="col">
+                  <InfoField id="modalFirstName" label="Имя" :value="user.first_name" />
+                </div>
+                <div class="col">
+                  <InfoField id="modalPatronymic" label="Отчество" :value="user.patronymic" />
+                </div>
+                <div class="col">
+                  <InfoField
+                    id="modalBirthDate"
+                    label="Дата рождения"
+                    icon="bi bi-calendar-event"
+                    :value="user.birth_date ? formatDate(user.birth_date) : ''"
+                  />
+                </div>
+                <div class="col">
+                  <InfoField
+                    id="modalSeries"
+                    label="Серия и номер"
+                    icon="bi bi-file-earmark-text"
+                    :value="
+                      passport
+                        ? passport.series + ' ' + passport.number
+                        : ''
+                    "
+                  />
+                </div>
+                <div class="col">
+                  <InfoField
+                    id="modalValidity"
+                    label="Срок действия"
+                    icon="bi bi-calendar"
+                    :value="
+                      passport?.issue_date && passport?.valid_until
+                        ?
+                            formatDate(passport.issue_date) +
+                            ' - ' +
+                            formatDate(passport.valid_until)
+                        : ''
+                    "
+                  />
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <p class="mb-0">{{ modalMessage }}</p>
+            </template>
+          </div>
+        </div>
       </div>
     </div>
     </div>
