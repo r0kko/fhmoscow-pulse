@@ -12,13 +12,23 @@ import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
 
-async function generateNumber() {
+async function generateNumber(transaction) {
   const now = new Date();
-  const prefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const last = await Ticket.max('number', {
+  const prefix = `${String(now.getFullYear()).slice(2)}${String(
+    now.getMonth() + 1
+  ).padStart(2, '0')}`;
+  const options = {
     where: { number: { [Op.like]: `${prefix}-%` } },
-  });
-  const seq = last ? parseInt(last.split('-')[1], 10) + 1 : 1;
+    order: [['number', 'DESC']],
+  };
+  if (transaction) {
+    options.transaction = transaction;
+    options.lock = transaction.LOCK.UPDATE;
+  }
+  const lastTicket = await Ticket.findOne(options);
+  const seq = lastTicket
+    ? parseInt(lastTicket.number.split('-')[1], 10) + 1
+    : 1;
   return `${prefix}-${String(seq).padStart(6, '0')}`;
 }
 
@@ -39,15 +49,36 @@ async function createForUser(userId, data, actorId) {
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!type) throw new ServiceError('ticket_type_not_found', 404);
   if (!status) throw new ServiceError('ticket_status_not_found', 404);
-  const ticket = await Ticket.create({
-    number: await generateNumber(),
-    user_id: userId,
-    type_id: type.id,
-    status_id: status.id,
-    description: data.description,
-    created_by: actorId,
-    updated_by: actorId,
-  });
+  let ticket;
+  if (Ticket.sequelize?.transaction) {
+    ticket = await Ticket.sequelize.transaction(async (t) => {
+      const number = await generateNumber(t);
+      return Ticket.create(
+        {
+          number,
+          user_id: userId,
+          type_id: type.id,
+          status_id: status.id,
+          description: data.description,
+          created_by: actorId,
+          updated_by: actorId,
+        },
+        { transaction: t }
+      );
+    });
+  } else {
+    const number = await generateNumber();
+    ticket = await Ticket.create({
+      number,
+      user_id: userId,
+      type_id: type.id,
+      status_id: status.id,
+      description: data.description,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  }
+
   const result = await Ticket.findByPk(ticket.id, {
     include: [TicketType, TicketStatus],
   });
