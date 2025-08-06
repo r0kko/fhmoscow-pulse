@@ -71,8 +71,8 @@ export function applyFonts(doc) {
 
 export function applyFirstPageHeader(doc) {
   const margin = 30;
-  const logoHeight = 40;
-  const systemWidth = 200;
+  const logoHeight = 25;
+  const systemWidth = 100;
   const top = margin;
   const { federation, system } = PDF_LOGOS;
 
@@ -96,8 +96,5 @@ export function applyFirstPageHeader(doc) {
 
   doc
     .fillColor('black')
-    .fontSize(10)
-    .text('Федерация хоккея Москвы', margin, top + logoHeight + 5, {
-      align: 'left',
-    });
+    .fontSize(10);
 }
