@@ -25,9 +25,11 @@ const docsSections = [
   { title: 'Персональные данные', icon: 'bi-person-circle', to: '/profile' }
 ]
 
+const adminRoles = ['ADMIN', 'FIELD_REFEREE_SPECIALIST', 'BRIGADE_REFEREE_SPECIALIST']
+const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE']
 
-const isAdmin = computed(() => auth.roles.includes('ADMIN'))
-const isReferee = computed(() => auth.roles.includes('REFEREE'))
+const isAdmin = computed(() => auth.roles.some((r) => adminRoles.includes(r)))
+const isReferee = computed(() => auth.roles.some((r) => refereeRoles.includes(r)))
 const preparationSections = computed(() =>
   basePreparationSections.filter((s) => !s.referee || isReferee.value)
 )

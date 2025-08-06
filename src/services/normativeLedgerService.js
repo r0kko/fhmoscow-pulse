@@ -12,6 +12,7 @@ import {
   MeasurementUnit,
   Season,
 } from '../models/index.js';
+import { REFEREE_ROLES } from '../utils/roles.js';
 import userMapper from '../mappers/userMapper.js';
 import normativeGroupMapper from '../mappers/normativeGroupMapper.js';
 import normativeZoneMapper from '../mappers/normativeZoneMapper.js';
@@ -44,7 +45,7 @@ async function list(options = {}) {
       include: [
         {
           model: Role,
-          where: { alias: 'REFEREE' },
+          where: { alias: REFEREE_ROLES },
           through: { attributes: [] },
           required: true,
         },

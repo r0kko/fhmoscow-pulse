@@ -10,12 +10,13 @@ import {
   TaxationType,
 } from '../models/index.js';
 
-async function listByRole(alias) {
+async function listByRole(aliases) {
+  const where = { alias: Array.isArray(aliases) ? aliases : [aliases] };
   return User.findAll({
     include: [
       {
         model: Role,
-        where: { alias },
+        where,
         through: { attributes: [] },
         required: true,
       },

@@ -8,6 +8,7 @@ import {
   TrainingRegistration,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import { REFEREE_ROLES } from '../utils/roles.js';
 
 import seasonService from './seasonService.js';
 
@@ -99,7 +100,7 @@ async function listReferees(options = {}) {
     include: [
       {
         model: Role,
-        where: { alias: 'REFEREE' },
+        where: { alias: REFEREE_ROLES },
         through: { attributes: [] },
         required: true,
       },
@@ -153,7 +154,7 @@ async function getReferee(id) {
     include: [
       {
         model: Role,
-        where: { alias: 'REFEREE' },
+        where: { alias: REFEREE_ROLES },
         through: { attributes: [] },
         required: true,
       },

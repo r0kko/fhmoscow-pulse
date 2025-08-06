@@ -2,10 +2,11 @@ import fileService from '../services/fileService.js';
 import fileMapper from '../mappers/fileMapper.js';
 import medicalCertificateService from '../services/medicalCertificateService.js';
 import { sendError } from '../utils/api.js';
+import { hasAdminRole } from '../utils/roles.js';
 
 async function isAdmin(user) {
-  const roles = await user.getRoles({ where: { alias: 'ADMIN' } });
-  return roles && roles.length > 0;
+  const roles = await user.getRoles();
+  return hasAdminRole(roles);
 }
 
 async function list(req, res) {
