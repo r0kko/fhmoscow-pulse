@@ -17,10 +17,18 @@ module.exports = {
         { transaction }
       );
 
-      // remove old foreign key column
+      // remove old foreign key columns
       await queryInterface.removeColumn('trainings', 'camp_stadium_id', {
         transaction,
       });
+      const refereeGroups = await queryInterface
+        .describeTable('referee_groups')
+        .catch(() => null);
+      if (refereeGroups && refereeGroups.camp_stadium_id) {
+        await queryInterface.removeColumn('referee_groups', 'camp_stadium_id', {
+          transaction,
+        });
+      }
 
       // drop obsolete tables
       await queryInterface.dropTable('camp_stadium_parking_types', {
@@ -191,6 +199,22 @@ module.exports = {
         },
         { transaction }
       );
+      const refTable = await queryInterface
+        .describeTable('referee_groups')
+        .catch(() => null);
+      if (refTable && !refTable.camp_stadium_id) {
+        await queryInterface.addColumn(
+          'referee_groups',
+          'camp_stadium_id',
+          {
+            type: Sequelize.UUID,
+            references: { model: 'camp_stadiums', key: 'id' },
+            onUpdate: 'CASCADE',
+            onDelete: 'SET NULL',
+          },
+          { transaction }
+        );
+      }
 
       // copy data back to camp_stadiums and trainings
       await queryInterface.sequelize.query(
