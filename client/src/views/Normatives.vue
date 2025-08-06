@@ -311,7 +311,7 @@ function thresholdText(t, zone) {
                         ? 'Перезачет'
                         : t.result?.online
                         ? 'Онлайн'
-                        : t.result?.training?.stadium?.name || '-'
+                        : t.result?.training?.ground?.name || '-'
                     }}
                   </td>
                   <td class="text-end">
@@ -405,7 +405,7 @@ function thresholdText(t, zone) {
                       : t.result?.online
                       ? 'Онлайн'
                       : `${formatDate(t.result?.training?.start_at)}, ${
-                          t.result?.training?.stadium?.name || '-'
+                          t.result?.training?.ground?.name || '-'
                         }`
                   }}
                 </p>
@@ -463,6 +463,7 @@ function thresholdText(t, zone) {
                     </span>
                   </div>
                   <div class="small text-muted">
+                    {{ r.online ? 'Онлайн' : r.training?.ground?.name || '-' }}
                     {{
                       r.retake
                         ? 'Перезачет'

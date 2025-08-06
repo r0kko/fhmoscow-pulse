@@ -2,14 +2,24 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('parking_types', {
+    await queryInterface.createTable('grounds', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
       },
-      name: { type: Sequelize.STRING(100), allowNull: false, unique: true },
-      alias: { type: Sequelize.STRING(100), allowNull: false, unique: true },
+      name: { type: Sequelize.STRING(255), allowNull: false },
+      address_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: 'addresses', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      },
+      yandex_url: { type: Sequelize.STRING(500) },
+      capacity: { type: Sequelize.INTEGER },
+      phone: { type: Sequelize.STRING(15) },
+      website: { type: Sequelize.STRING(255) },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },
@@ -35,6 +45,6 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.dropTable('parking_types');
+    await queryInterface.dropTable('grounds');
   },
 };

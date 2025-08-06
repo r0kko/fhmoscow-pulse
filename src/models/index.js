@@ -25,9 +25,7 @@ import UserExternalId from './userExternalId.js';
 import AddressType from './addressType.js';
 import Address from './address.js';
 import UserAddress from './userAddress.js';
-import ParkingType from './parkingType.js';
-import CampStadium from './campStadium.js';
-import CampStadiumParkingType from './campStadiumParkingType.js';
+import Ground from './ground.js';
 import TrainingType from './trainingType.js';
 import Training from './training.js';
 import Season from './season.js';
@@ -112,31 +110,15 @@ UserAddress.belongsTo(Address, { foreignKey: 'address_id' });
 AddressType.hasMany(UserAddress, { foreignKey: 'address_type_id' });
 UserAddress.belongsTo(AddressType, { foreignKey: 'address_type_id' });
 
-/* camp stadiums */
-CampStadium.belongsTo(Address, { foreignKey: 'address_id' });
-Address.hasMany(CampStadium, { foreignKey: 'address_id' });
-CampStadium.belongsToMany(ParkingType, {
-  through: CampStadiumParkingType,
-  foreignKey: 'camp_stadium_id',
-});
-ParkingType.belongsToMany(CampStadium, {
-  through: CampStadiumParkingType,
-  foreignKey: 'parking_type_id',
-});
-CampStadium.hasMany(CampStadiumParkingType, { foreignKey: 'camp_stadium_id' });
-CampStadiumParkingType.belongsTo(CampStadium, {
-  foreignKey: 'camp_stadium_id',
-});
-ParkingType.hasMany(CampStadiumParkingType, { foreignKey: 'parking_type_id' });
-CampStadiumParkingType.belongsTo(ParkingType, {
-  foreignKey: 'parking_type_id',
-});
+/* grounds */
+Ground.belongsTo(Address, { foreignKey: 'address_id' });
+Address.hasMany(Ground, { foreignKey: 'address_id' });
 
 /* trainings */
 TrainingType.hasMany(Training, { foreignKey: 'type_id' });
 Training.belongsTo(TrainingType, { foreignKey: 'type_id' });
-CampStadium.hasMany(Training, { foreignKey: 'camp_stadium_id' });
-Training.belongsTo(CampStadium, { foreignKey: 'camp_stadium_id' });
+Ground.hasMany(Training, { foreignKey: 'ground_id' });
+Training.belongsTo(Ground, { foreignKey: 'ground_id' });
 Season.hasMany(Training, { foreignKey: 'season_id' });
 Training.belongsTo(Season, { foreignKey: 'season_id' });
 Training.belongsToMany(RefereeGroup, {
@@ -318,9 +300,7 @@ export {
   Address,
   UserAddress,
   MedicalCertificate,
-  ParkingType,
-  CampStadium,
-  CampStadiumParkingType,
+  Ground,
   TrainingType,
   Training,
   Season,

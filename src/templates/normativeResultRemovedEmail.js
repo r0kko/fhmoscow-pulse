@@ -17,9 +17,9 @@ export function renderNormativeResultRemovedEmail(result) {
         })
         .replace(',', '')
     : null;
-  const stadium = training.CampStadium || training.stadium || {};
-  const address = stadium.Address?.result || stadium.address?.result;
-  const yandexUrl = stadium.yandex_url;
+  const ground = training.Ground || training.ground || {};
+  const address = ground.Address?.result || ground.address?.result;
+  const yandexUrl = ground.yandex_url;
   const subject = 'Результат норматива удален';
   let text = `Результат по нормативу ${typeName}`;
   if (groupName) text += ` (${groupName})`;

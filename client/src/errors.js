@@ -29,7 +29,7 @@ export const ERROR_MESSAGES = {
   status_required: 'Не указан статус',
   taxation_not_found: 'Налоговый статус не найден',
   certificate_not_found: 'Медицинское заключение не найдено',
-  stadium_not_found: 'Спортсооружение не найдено',
+  ground_not_found: 'Площадка не найдена',
   training_not_found: 'Тренировка не найдена',
   registration_not_found: 'Запись не найдена',
   registration_closed: 'Запись закрыта',

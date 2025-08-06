@@ -14,7 +14,7 @@ import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
-import AdminCampStadiums from './views/AdminCampStadiums.vue';
+import AdminGrounds from './views/AdminGrounds.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
@@ -112,13 +112,13 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
-    path: '/admin/camp-stadiums',
-    component: AdminCampStadiums,
+    path: '/admin/grounds',
+    component: AdminGrounds,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/admin/referee-groups',
-    redirect: { path: '/admin/camp-stadiums', query: { tab: 'groups' } },
+    redirect: { path: '/admin/grounds', query: { tab: 'groups' } },
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {

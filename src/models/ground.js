@@ -2,9 +2,9 @@ import { DataTypes, Model } from 'sequelize';
 
 import sequelize from '../config/database.js';
 
-class CampStadium extends Model {}
+class Ground extends Model {}
 
-CampStadium.init(
+Ground.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -20,11 +20,11 @@ CampStadium.init(
   },
   {
     sequelize,
-    modelName: 'CampStadium',
-    tableName: 'camp_stadiums',
+    modelName: 'Ground',
+    tableName: 'grounds',
     paranoid: true,
     underscored: true,
   }
 );
 
-export default CampStadium;
+export default Ground;

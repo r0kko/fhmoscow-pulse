@@ -1,4 +1,4 @@
-import campStadiumMapper from './campStadiumMapper.js';
+import groundMapper from './groundMapper.js';
 import userMapper from './userMapper.js';
 
 function sanitize(obj) {
@@ -7,11 +7,11 @@ function sanitize(obj) {
     start_at,
     end_at,
     capacity,
-    camp_stadium_id,
+    ground_id,
     season_id,
     attendance_marked,
     TrainingType,
-    CampStadium,
+    Ground,
     Season,
     RefereeGroups,
     registered_count,
@@ -21,7 +21,7 @@ function sanitize(obj) {
     start_at,
     end_at,
     capacity,
-    camp_stadium_id,
+    ground_id,
     season_id,
     available: obj.available,
     registration_open: obj.registration_open,
@@ -36,8 +36,8 @@ function sanitize(obj) {
       alias: TrainingType.alias,
     };
   }
-  if (CampStadium) {
-    res.stadium = campStadiumMapper.toPublic(CampStadium);
+  if (Ground) {
+    res.ground = groundMapper.toPublic(Ground);
   }
   if (Season) {
     res.season = {

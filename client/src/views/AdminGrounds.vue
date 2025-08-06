@@ -41,14 +41,13 @@ function onPhoneKeydown(e) {
   }
 }
 
-const stadiums = ref([]);
+const grounds = ref([]);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = 8;
 const isLoading = ref(false);
 const error = ref('');
 
-const parkingTypes = ref([]);
 
 /* training types */
 const trainingTypes = ref([]);
@@ -70,13 +69,13 @@ const trainingsPageSize = ref(20);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
 const trainingsView = ref('upcoming');
-const trainingsFilterStadium = ref('');
+const trainingsFilterGround = ref('');
 const trainingsFilterGroup = ref('');
-const stadiumOptions = ref([]);
+const groundOptions = ref([]);
 const refereeGroups = ref([]);
 const trainingForm = ref({
   type_id: '',
-  camp_stadium_id: '',
+  ground_id: '',
   start_at: '',
   end_at: '',
   capacity: '',
@@ -100,7 +99,6 @@ const form = ref({
   capacity: '',
   phone: '',
   website: '',
-  parking: [],
 });
 const editing = ref(null);
 const modalRef = ref(null);
@@ -119,16 +117,15 @@ const trainingsTotalPages = computed(() =>
 onMounted(() => {
   modal = new Modal(modalRef.value);
   load();
-  loadParkingTypes();
   loadTypes();
   loadTrainings();
-  loadStadiumOptions();
+  loadGroundOptions();
   loadRefereeGroups();
   if (activeTab.value === 'groups') groupsRef.value?.refresh();
 });
 
 watch(currentPage, () => {
-  if (activeTab.value === 'stadiums') load();
+  if (activeTab.value === 'grounds') load();
 });
 watch(typesPage, () => {
   if (activeTab.value === 'types') loadTypes();
@@ -136,7 +133,7 @@ watch(typesPage, () => {
 watch(trainingsPage, () => {
   if (activeTab.value === 'trainings') loadTrainings();
 });
-watch([trainingsPageSize, trainingsFilterStadium, trainingsFilterGroup], () => {
+watch([trainingsPageSize, trainingsFilterGround, trainingsFilterGroup], () => {
   trainingsPage.value = 1;
   if (activeTab.value === 'trainings') loadTrainings();
 });
@@ -160,7 +157,7 @@ watch(activeTab, (val) => {
     loadTypes();
   } else if (val === 'trainings' && !trainings.value.length) {
     loadTrainings();
-    if (!stadiumOptions.value.length) loadStadiumOptions();
+    if (!groundOptions.value.length) loadGroundOptions();
   } else if (val === 'judges') {
     assignmentsRef.value?.refresh();
   } else if (val === 'groups') {
@@ -216,15 +213,6 @@ watch(
     }
 );
 
-async function loadParkingTypes() {
-  try {
-    const data = await apiFetch('/camp-stadiums/parking-types');
-    parkingTypes.value = data.parkingTypes;
-  } catch (_) {
-    parkingTypes.value = [];
-  }
-}
-
 async function load() {
   try {
     isLoading.value = true;
@@ -232,18 +220,14 @@ async function load() {
       page: currentPage.value,
       limit: pageSize,
     });
-    const data = await apiFetch(`/camp-stadiums?${params}`);
-    stadiums.value = data.stadiums;
+    const data = await apiFetch(`/grounds?${params}`);
+    grounds.value = data.grounds;
     total.value = data.total;
   } catch (e) {
     error.value = e.message;
   } finally {
     isLoading.value = false;
   }
-}
-
-function makeParkingForm() {
-  return parkingTypes.value.map((t) => ({type: t.alias, price: '', enabled: false}));
 }
 
 function openCreate() {
@@ -255,7 +239,6 @@ function openCreate() {
     capacity: '',
     phone: '',
     website: '',
-    parking: makeParkingForm(),
   };
   phoneInput.value = '';
   formError.value = '';
@@ -272,10 +255,6 @@ function openEdit(s) {
     capacity: s.capacity || '',
     phone: s.phone || '',
     website: s.website || '',
-    parking: parkingTypes.value.map((t) => {
-      const found = (s.parking || []).find((p) => p.type === t.alias);
-      return {type: t.alias, price: found?.price || '', enabled: !!found};
-    }),
   };
   phoneInput.value = formatPhone(form.value.phone);
   formError.value = '';
@@ -291,19 +270,16 @@ async function save() {
     capacity: form.value.capacity || undefined,
     phone: form.value.phone || undefined,
     website: form.value.website || undefined,
-    parking: form.value.parking
-        .filter((p) => p.enabled)
-        .map((p) => ({type: p.type, price: p.price || null})),
   };
   try {
     saveLoading.value = true;
     if (editing.value) {
-      await apiFetch(`/camp-stadiums/${editing.value.id}`, {
+      await apiFetch(`/grounds/${editing.value.id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
       });
     } else {
-      await apiFetch('/camp-stadiums', {
+      await apiFetch('/grounds', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -317,9 +293,9 @@ async function save() {
   }
 }
 
-async function removeStadium(s) {
-  if (!confirm('Удалить стадион?')) return;
-  await apiFetch(`/camp-stadiums/${s.id}`, {method: 'DELETE'});
+async function removeGround(s) {
+  if (!confirm('Удалить площадку?')) return;
+  await apiFetch(`/grounds/${s.id}`, {method: 'DELETE'});
   await load();
 }
 
@@ -411,8 +387,8 @@ async function loadTrainings() {
       page: trainingsPage.value,
       limit: trainingsPageSize.value,
     });
-    if (trainingsFilterStadium.value) {
-      params.set('stadium_id', trainingsFilterStadium.value);
+    if (trainingsFilterGround.value) {
+      params.set('ground_id', trainingsFilterGround.value);
     }
     if (trainingsFilterGroup.value) {
       params.set('group_id', trainingsFilterGroup.value);
@@ -434,13 +410,13 @@ async function loadTrainings() {
 }
 
 
-async function loadStadiumOptions() {
+async function loadGroundOptions() {
   try {
     const params = new URLSearchParams({page: 1, limit: 100});
-    const data = await apiFetch(`/camp-stadiums?${params}`);
-    stadiumOptions.value = data.stadiums;
+    const data = await apiFetch(`/grounds?${params}`);
+    groundOptions.value = data.grounds;
   } catch (_) {
-    stadiumOptions.value = [];
+    groundOptions.value = [];
   }
 }
 
@@ -460,10 +436,10 @@ function openCreateTraining() {
     trainingModal = new Modal(trainingModalRef.value)
   }
   trainingEditing.value = null;
-  if (!stadiumOptions.value.length) loadStadiumOptions();
+  if (!groundOptions.value.length) loadGroundOptions();
   trainingForm.value = {
     type_id: '',
-    camp_stadium_id: '',
+    ground_id: '',
     start_at: '',
     end_at: '',
     capacity: '',
@@ -476,7 +452,7 @@ function openTrainingFilters() {
   if (!trainingFilterModal) {
     trainingFilterModal = new Modal(trainingFilterModalRef.value);
   }
-  if (!stadiumOptions.value.length) loadStadiumOptions();
+  if (!groundOptions.value.length) loadGroundOptions();
   if (!refereeGroups.value.length) loadRefereeGroups();
   trainingFilterModal.show();
 }
@@ -526,7 +502,7 @@ function openEditTraining(t) {
   trainingEditing.value = t;
   trainingForm.value = {
     type_id: t.type?.id || '',
-    camp_stadium_id: t.stadium?.id || '',
+    ground_id: t.ground?.id || '',
     start_at: toInputValue(t.start_at),
     end_at: toInputValue(t.end_at),
     capacity: t.capacity || '',
@@ -544,7 +520,7 @@ async function saveTraining() {
   }
   const payload = {
     type_id: trainingForm.value.type_id,
-    camp_stadium_id: trainingForm.value.camp_stadium_id,
+    ground_id: trainingForm.value.ground_id,
     start_at: new Date(trainingForm.value.start_at).toISOString(),
     end_at: new Date(trainingForm.value.end_at).toISOString(),
     capacity: trainingForm.value.capacity || undefined,
@@ -607,7 +583,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
         </ol>
       </nav>
       <h1 class="mb-3">Сборы</h1>
-      <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
+      <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
             <li class="nav-item">
@@ -631,27 +607,27 @@ async function toggleTrainingGroup(training, groupId, checked) {
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'stadiums' }" @click="activeTab = 'stadiums'">
-                Стадионы
+              <button class="nav-link" :class="{ active: activeTab === 'grounds' }" @click="activeTab = 'grounds'">
+                Площадки
               </button>
             </li>
           </ul>
         </div>
       </div>
-      <div v-if="activeTab === 'stadiums'">
+      <div v-if="activeTab === 'grounds'">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0">Стадионы</h2>
+            <h2 class="h5 mb-0">Площадки</h2>
             <button class="btn btn-brand" @click="openCreate">
               <i class="bi bi-plus-lg me-1"></i>Добавить
             </button>
           </div>
           <div class="card-body p-3">
-            <div v-if="stadiums.length" class="table-responsive d-none d-sm-block">
+            <div v-if="grounds.length" class="table-responsive d-none d-sm-block">
               <table class="table admin-table table-striped align-middle mb-0">
                 <thead>
                 <tr>
@@ -660,12 +636,11 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <th class="text-center">Вместимость</th>
                   <th>Телефон</th>
                   <th class="d-none d-md-table-cell">Сайт</th>
-                  <th class="d-none d-lg-table-cell">Парковка</th>
                   <th></th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr v-for="st in stadiums" :key="st.id">
+                <tr v-for="st in grounds" :key="st.id">
                   <td>{{ st.name }}</td>
                   <td>{{ st.address?.result }}</td>
                   <td class="text-center">{{ st.capacity }}</td>
@@ -673,19 +648,11 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <td class="d-none d-md-table-cell">
                     <a v-if="st.website" :href="st.website" target="_blank">{{ st.website }}</a>
                   </td>
-                  <td class="d-none d-lg-table-cell">
-                    <div v-if="st.parking?.length">
-                <span v-for="p in st.parking" :key="p.type" class="d-block">
-                  {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
-                </span>
-                    </div>
-                    <span v-else class="text-muted">Нет</span>
-                  </td>
                   <td class="text-end">
                     <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
+                    <button class="btn btn-sm btn-danger" @click="removeGround(st)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
@@ -693,8 +660,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 </tbody>
               </table>
             </div>
-            <div v-if="stadiums.length" class="d-block d-sm-none">
-              <div v-for="st in stadiums" :key="st.id" class="card training-card mb-2">
+            <div v-if="grounds.length" class="d-block d-sm-none">
+              <div v-for="st in grounds" :key="st.id" class="card training-card mb-2">
                 <div class="card-body p-2">
                   <h6 class="mb-1">{{ st.name }}</h6>
                   <p class="mb-1">{{ st.address?.result }}</p>
@@ -703,24 +670,19 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <p class="mb-1" v-if="st.website">
                     <a :href="st.website" target="_blank">{{ st.website }}</a>
                   </p>
-                  <div class="mb-1" v-if="st.parking?.length">
-                  <span v-for="p in st.parking" :key="p.type" class="d-block">
-                    {{ p.type_name }}<span v-if="p.price"> — {{ p.price }} ₽</span>
-                  </span>
-                  </div>
-                  <p v-else class="mb-1 text-muted">Парковка: нет</p>
+                  
                   <div class="text-end">
                     <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" @click="removeStadium(st)">
+                    <button class="btn btn-sm btn-danger" @click="removeGround(st)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-            <div v-else-if="!isLoading" class="alert alert-warning mb-0">Стадионов нет.</div>
+            <div v-else-if="!isLoading" class="alert alert-warning mb-0">Площадкаов нет.</div>
           </div>
         </div>
         <nav class="mt-3" v-if="totalPages > 1">
@@ -881,7 +843,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
             <thead>
             <tr>
               <th>Тип</th>
-              <th class="d-none d-sm-table-cell">Стадион</th>
+              <th class="d-none d-sm-table-cell">Площадка</th>
               <th>Дата и время</th>
               <th class="text-center">Участников</th>
               <th class="d-none d-md-table-cell">Тренеры</th>
@@ -900,7 +862,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
             <tbody>
             <tr v-for="t in trainings" :key="t.id">
               <td>{{ t.type?.name }}</td>
-              <td class="d-none d-sm-table-cell">{{ t.stadium?.name }}</td>
+              <td class="d-none d-sm-table-cell">{{ t.ground?.name }}</td>
               <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
               <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
               <td class="d-none d-md-table-cell">
@@ -952,7 +914,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <div class="d-flex justify-content-between">
                 <div>
                   <h6 class="mb-1">{{ t.type?.name }}</h6>
-                  <p class="mb-1">{{ t.stadium?.name }}</p>
+                  <p class="mb-1">{{ t.ground?.name }}</p>
                   <p class="mb-1">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
                   <p class="mb-1">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</p>
                   <p class="mb-1" v-if="t.coaches?.length">
@@ -1032,10 +994,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label">Стадион</label>
-              <select v-model="trainingsFilterStadium" class="form-select">
+              <label class="form-label">Площадка</label>
+              <select v-model="trainingsFilterGround" class="form-select">
                 <option value="">Все стадионы</option>
-                <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+                <option v-for="s in groundOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
               </select>
             </div>
             <div class="mb-3">
@@ -1079,10 +1041,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 </select>
               </div>
               <div class="mb-3">
-                <label class="form-label">Стадион</label>
-                <select v-model="trainingForm.camp_stadium_id" class="form-select" required>
+                <label class="form-label">Площадка</label>
+                <select v-model="trainingForm.ground_id" class="form-select" required>
                   <option value="" disabled>Выберите стадион</option>
-                  <option v-for="s in stadiumOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  <option v-for="s in groundOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
                 </select>
               </div>
               <div class="form-floating mb-3">
@@ -1171,20 +1133,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <input id="stadWebsite" v-model="form.website" class="form-control" placeholder="Сайт"/>
               <label for="stadWebsite">Сайт</label>
             </div>
-            <div class="mb-3" v-if="parkingTypes.length">
-              <h6 class="mb-2">Парковка</h6>
-              <div v-for="(p, idx) in form.parking" :key="p.type" class="row g-2 align-items-center mb-2">
-                <div class="col-auto">
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" v-model="p.enabled" :id="`p-${idx}`"/>
-                    <label class="form-check-label" :for="`p-${idx}`">{{ parkingTypes[idx].name }}</label>
-                  </div>
-                </div>
-                <div class="col" v-if="p.enabled">
-                  <input v-model="p.price" type="number" min="0" step="0.01" class="form-control" placeholder="Цена"/>
-                </div>
-              </div>
-            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
@@ -1211,7 +1159,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
   white-space: nowrap;
 }
 
-.stadium-card {
+.ground-card {
   border-radius: 0.75rem;
   overflow: hidden;
   border: 0;
@@ -1255,7 +1203,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
     margin-right: -1rem;
   }
 
-  .stadium-card {
+  .ground-card {
     margin-left: -1rem;
     margin-right: -1rem;
   }

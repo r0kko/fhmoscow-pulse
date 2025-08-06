@@ -15,7 +15,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Training: { findByPk: findTrainingMock, findAndCountAll: findAndCountAllMock },
   TrainingType: {},
-  CampStadium: {},
+  Ground: {},
   Season: {},
   RefereeGroup: {},
   Address: {},

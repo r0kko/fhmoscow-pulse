@@ -150,9 +150,9 @@ const myTrainings = computed(() =>
 function groupDetailed(list) {
   const map = {};
   list.forEach((t) => {
-    const s = t.stadium;
+    const s = t.ground;
     if (!s) return;
-    if (!map[s.id]) map[s.id] = {stadium: s, trainings: []};
+    if (!map[s.id]) map[s.id] = {ground: s, trainings: []};
     map[s.id].trainings.push(t);
   });
   return Object.values(map).map((g) => {
@@ -190,7 +190,7 @@ const groupedAll = computed(() => groupDetailed(availableTrainings.value));
 
 const groupedAllByDay = computed(() =>
     groupedAll.value.map((g) => ({
-      stadium: g.stadium,
+      ground: g.ground,
       days: groupByDay(g.trainings),
     }))
 );
@@ -321,7 +321,7 @@ function selectDate(id, iso) {
 }
 
 function dayTrainings(id) {
-  const group = groupedAllByDay.value.find((g) => g.stadium.id === id);
+  const group = groupedAllByDay.value.find((g) => g.ground.id === id);
   if (!group || !group.days.length) return [];
   const iso = selectedDates.value[id];
   if (!iso) return [];
@@ -372,7 +372,7 @@ function attendanceStatus(t) {
         </ol>
       </nav>
       <h1 class="mb-3">Сборы</h1>
-      <div class="card section-card tile fade-in shadow-sm mb-3 stadium-card">
+      <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item">
@@ -480,7 +480,7 @@ function attendanceStatus(t) {
                                   formatTime(t.end_at)
                                 }}</strong
                               >
-                              <span class="ms-2">{{ t.stadium?.name }}</span>
+                              <span class="ms-2">{{ t.ground?.name }}</span>
                             </div>
                             <div class="text-muted small">{{ t.type?.name }}</div>
                           </div>
@@ -554,7 +554,7 @@ function attendanceStatus(t) {
                               {{ t.equipment_managers.map(shortName).join(', ') }}
                             </span>
                             <span v-else>не назначен</span><br/>
-                            Адрес: {{ t.stadium?.address?.result || '—' }}
+                            Адрес: {{ t.ground?.address?.result || '—' }}
                           </span>
                         </p>
                       </li>
@@ -585,7 +585,7 @@ function attendanceStatus(t) {
                                 formatTime(t.end_at)
                               }}</strong
                             >
-                            <span class="ms-2">{{ t.stadium?.name }}</span>
+                            <span class="ms-2">{{ t.ground?.name }}</span>
                           </div>
                           <div class="text-muted small">{{ t.type?.name }}</div>
                         </div>
@@ -672,7 +672,7 @@ function attendanceStatus(t) {
                           {{ t.equipment_managers.map(shortName).join(', ') }}
                         </span>
                         <span v-else>не назначен</span><br/>
-                        Адрес: {{ t.stadium?.address?.result || '—' }}
+                        Адрес: {{ t.ground?.address?.result || '—' }}
                       </span>
                       </p>
                     </li>
@@ -687,20 +687,20 @@ function attendanceStatus(t) {
           <p v-if="!groupedAllByDay.length" class="text-muted">
             Нет доступных тренировок
           </p>
-          <div v-else class="stadium-list">
+          <div v-else class="ground-list">
             <div
                 v-for="g in groupedAllByDay"
-                :key="g.stadium.id"
-                class="stadium-card card section-card tile fade-in shadow-sm"
+                :key="g.ground.id"
+                class="ground-card card section-card tile fade-in shadow-sm"
             >
-              <div class="card-body stadium-body">
+              <div class="card-body ground-body">
                 <div
                     class="d-flex justify-content-between align-items-start mb-1"
                 >
-                  <h2 class="h6 mb-1">{{ g.stadium.name }}</h2>
+                  <h2 class="h6 mb-1">{{ g.ground.name }}</h2>
                   <a
-                      v-if="g.stadium.yandex_url"
-                      :href="withHttp(g.stadium.yandex_url)"
+                      v-if="g.ground.yandex_url"
+                      :href="withHttp(g.ground.yandex_url)"
                       target="_blank"
                       rel="noopener"
                       aria-label="Открыть в Яндекс.Картах"
@@ -710,14 +710,14 @@ function attendanceStatus(t) {
                   </a>
                 </div>
                 <p class="text-muted mb-1 small d-flex align-items-center">
-                  <span>{{ g.stadium.address?.result }}</span>
+                  <span>{{ g.ground.address?.result }}</span>
                 </p>
                 <p
-                    v-if="metroNames(g.stadium.address)"
+                    v-if="metroNames(g.ground.address)"
                     class="text-muted mb-3 small d-flex align-items-center"
                 >
                   <img :src="metroIcon" alt="Метро" height="14" class="me-1"/>
-                  <span>{{ metroNames(g.stadium.address) }}</span>
+                  <span>{{ metroNames(g.ground.address) }}</span>
                 </p>
                 <div class="date-scroll mb-3">
                   <button
@@ -725,7 +725,7 @@ function attendanceStatus(t) {
                       :key="d.date"
                       class="btn btn-sm"
                       :class="[
-                      selectedDates[g.stadium.id] === d.date.toISOString()
+                      selectedDates[g.ground.id] === d.date.toISOString()
                         ? dayOpen(d)
                           ? 'btn-brand text-white'
                           : 'btn-secondary text-white'
@@ -733,17 +733,17 @@ function attendanceStatus(t) {
                           ? 'btn-outline-brand'
                           : 'btn-outline-secondary',
                     ]"
-                      @click="selectDate(g.stadium.id, d.date.toISOString())"
+                      @click="selectDate(g.ground.id, d.date.toISOString())"
                   >
                     <span class="d-block">{{ formatShortDate(d.date) }}</span>
                   </button>
                 </div>
                 <div
-                    v-if="selectedDates[g.stadium.id]"
+                    v-if="selectedDates[g.ground.id]"
                     class="training-scroll d-flex flex-nowrap gap-3"
                 >
                   <TrainingCard
-                      v-for="t in dayTrainings(g.stadium.id)"
+                      v-for="t in dayTrainings(g.ground.id)"
                       :key="t.id"
                       :training="t"
                       :loading="registering === t.id"
@@ -787,7 +787,7 @@ function attendanceStatus(t) {
   margin: 0;
 }
 
-.stadium-body {
+.ground-body {
   min-width: 0;
 }
 
@@ -809,13 +809,13 @@ function attendanceStatus(t) {
   line-height: 1.2;
 }
 
-.stadium-list {
+.ground-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.stadium-card {
+.ground-card {
   border-radius: 0.75rem;
   overflow: hidden;
   border: 0;
@@ -868,7 +868,7 @@ function attendanceStatus(t) {
     margin-bottom: 1rem !important;
   }
 
-  .stadium-card {
+  .ground-card {
     margin-left: -1rem;
     margin-right: -1rem;
   }
