@@ -6,9 +6,10 @@ import authorize from '../middlewares/authorize.js';
 import selfController from '../controllers/normativeTicketSelfController.js';
 import adminController from '../controllers/normativeTicketAdminController.js';
 import { normativeTicketCreateRules } from '../validators/normativeTicketValidators.js';
+import { MAX_NORMATIVE_FILE_SIZE } from '../config/fileLimits.js';
 
 const router = express.Router();
-const upload = multer();
+const upload = multer({ limits: { fileSize: MAX_NORMATIVE_FILE_SIZE } });
 
 router.post(
   '/',

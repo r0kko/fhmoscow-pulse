@@ -1,6 +1,7 @@
 /* global process */
 import { expect, jest, test, beforeEach } from '@jest/globals';
 import { Buffer } from 'buffer';
+import { MAX_NORMATIVE_FILE_SIZE } from '../src/config/fileLimits.js';
 
 const sendMock = jest.fn();
 const findByPkMock = jest.fn();
@@ -137,6 +138,51 @@ test('uploadForTicket uploads file', async () => {
   ticketFileFindByPkMock.mockResolvedValue({ id: 'tf1' });
   const file = { originalname: 'doc.pdf', mimetype: 'application/pdf', size: 100, buffer: Buffer.from('1') };
   const res = await service.uploadForTicket('t1', file, 'u1');
+  expect(sendMock).toHaveBeenCalled();
+  expect(ticketFileCreateMock).toHaveBeenCalled();
+  expect(res).toEqual({ id: 'tf1' });
+});
+
+test('uploadForNormativeTicket validates file size', async () => {
+  process.env.S3_BUCKET = 'test';
+  const { default: service } = await import('../src/services/fileService.js');
+  ticketFindByPkMock.mockResolvedValue({ id: 't1' });
+  const bigFile = {
+    originalname: 'v.mp4',
+    mimetype: 'video/mp4',
+    size: MAX_NORMATIVE_FILE_SIZE + 1024 * 1024,
+  };
+  await expect(
+    service.uploadForNormativeTicket(
+      't1',
+      bigFile,
+      'u1',
+      { last_name: 'L', first_name: 'F' },
+      { name: 'Type' }
+    ),
+  ).rejects.toThrow('file_too_large');
+});
+
+test('uploadForNormativeTicket uploads file', async () => {
+  process.env.S3_BUCKET = 'test';
+  const { default: service } = await import('../src/services/fileService.js');
+  ticketFindByPkMock.mockResolvedValue({ id: 't1' });
+  fileCreateMock.mockResolvedValue({ id: 'f1' });
+  ticketFileCreateMock.mockResolvedValue({ id: 'tf1' });
+  ticketFileFindByPkMock.mockResolvedValue({ id: 'tf1' });
+  const file = {
+    originalname: 'v.mp4',
+    mimetype: 'video/mp4',
+    size: 100,
+    buffer: Buffer.from('1'),
+  };
+  const res = await service.uploadForNormativeTicket(
+    't1',
+    file,
+    'u1',
+    { last_name: 'L', first_name: 'F' },
+    { name: 'Type' }
+  );
   expect(sendMock).toHaveBeenCalled();
   expect(ticketFileCreateMock).toHaveBeenCalled();
   expect(res).toEqual({ id: 'tf1' });

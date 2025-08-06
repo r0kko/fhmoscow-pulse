@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import s3 from '../utils/s3Client.js';
 import { S3_BUCKET } from '../config/s3.js';
+import { MAX_NORMATIVE_FILE_SIZE } from '../config/fileLimits.js';
 import {
   File,
   MedicalCertificate,
@@ -159,8 +160,7 @@ async function uploadForNormativeTicket(ticketId, file, actorId, user, type) {
   if (!S3_BUCKET) {
     throw new ServiceError('s3_not_configured', 500);
   }
-  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_NORMATIVE_FILE_SIZE) {
     throw new ServiceError('file_too_large', 400);
   }
   if (!file.mimetype.startsWith('video/')) {
