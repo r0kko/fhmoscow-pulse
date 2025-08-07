@@ -49,6 +49,7 @@ const greeting = computed(() => {
 
 const upcoming = ref([])
 const loadingUpcoming = ref(true)
+const showUpcoming = computed(() => loadingUpcoming.value || upcoming.value.length > 0);
 
 onMounted(loadUpcoming)
 
@@ -93,7 +94,7 @@ async function loadUpcoming() {
       <h3 class="mb-3 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>
-      <div class="card section-card mb-2 text-start">
+      <div v-if="showUpcoming" class="card section-card mb-2 text-start">
         <div class="card-body">
           <h5 class="card-title mb-3">Ближайшие события</h5>
           <div v-if="loadingUpcoming" class="text-center py-3">
@@ -101,7 +102,6 @@ async function loadUpcoming() {
               <span class="visually-hidden">Загрузка…</span>
             </div>
           </div>
-          <p v-else-if="!upcoming.length" class="text-muted mb-0">У вас нет записей</p>
           <div v-else class="upcoming-scroll d-flex flex-nowrap gap-3">
             <UpcomingEventCard
               v-for="item in upcoming"
@@ -109,8 +109,8 @@ async function loadUpcoming() {
               :event="item"
             />
           </div>
+        </div>
       </div>
-    </div>
     <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
