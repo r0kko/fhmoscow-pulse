@@ -220,10 +220,11 @@ onMounted(() => {
       <div class="row">
         <div class="col-lg-9">
           <section id="documents" class="mb-4">
-            <div class="row g-3 tiles-row">
-              <div class="col">
-                <RouterLink
-                  to="/profile/doc/passport"
+            <div class="tiles-row">
+              <div class="tile-col">
+                <component
+                  :is="passport ? RouterLink : 'div'"
+                  v-bind="passport ? { to: '/profile/doc/passport' } : {}"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
                   <div class="card-body d-flex flex-column h-100">
@@ -234,16 +235,17 @@ onMounted(() => {
                         {{
                           passport
                             ? passport.series + ' ' + maskPassportNumber(passport.number)
-                            : noDataPlaceholder
+                            : 'Отсутствует'
                         }}
                       </p>
                     </div>
                   </div>
-                </RouterLink>
+                </component>
               </div>
-              <div class="col">
-                <RouterLink
-                  to="/profile/doc/inn"
+              <div class="tile-col">
+                <component
+                  :is="inn ? RouterLink : 'div'"
+                  v-bind="inn ? { to: '/profile/doc/inn' } : {}"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
                   <div class="card-body d-flex flex-column h-100">
@@ -251,15 +253,16 @@ onMounted(() => {
                     <div class="mt-auto">
                       <h5 class="card-title mb-1">ИНН</h5>
                       <p class="card-text text-muted mb-0">
-                        {{ inn?.number || noDataPlaceholder }}
+                        {{ inn?.number || 'Отсутствует' }}
                       </p>
                     </div>
                   </div>
-                </RouterLink>
+                </component>
               </div>
-              <div class="col">
-                <RouterLink
-                  to="/profile/doc/snils"
+              <div class="tile-col">
+                <component
+                  :is="snils ? RouterLink : 'div'"
+                  v-bind="snils ? { to: '/profile/doc/snils' } : {}"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
                   <div class="card-body d-flex flex-column h-100">
@@ -267,15 +270,18 @@ onMounted(() => {
                     <div class="mt-auto">
                       <h5 class="card-title mb-1">СНИЛС</h5>
                       <p class="card-text text-muted mb-0">
-                        {{ snils?.number || noDataPlaceholder }}
+                        {{ snils?.number || 'Отсутствует' }}
                       </p>
                     </div>
                   </div>
-                </RouterLink>
+                </component>
               </div>
-              <div class="col">
-                <RouterLink
-                  to="/profile/doc/driver-license"
+              <div class="tile-col">
+                <component
+                  :is="driverLicense ? RouterLink : 'div'"
+                  v-bind="
+                    driverLicense ? { to: '/profile/doc/driver-license' } : {}
+                  "
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
                   <div class="card-body d-flex flex-column h-100">
@@ -283,11 +289,11 @@ onMounted(() => {
                     <div class="mt-auto">
                       <h5 class="card-title mb-1">Водительское удостоверение</h5>
                       <p class="card-text text-muted mb-0">
-                        {{ driverLicense?.number || noDataPlaceholder }}
+                        {{ driverLicense?.number || 'Отсутствует' }}
                       </p>
                     </div>
                   </div>
-                </RouterLink>
+                </component>
               </div>
             </div>
           </section>
@@ -449,14 +455,17 @@ onMounted(() => {
 }
 
 .tiles-row {
+  display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  gap: 1rem;
   padding-bottom: 0.25rem;
+  scroll-snap-type: x mandatory;
 }
 
-.tiles-row > .col {
-  flex: 0 0 75%;
-  max-width: 75%;
+.tiles-row > .tile-col {
+  flex: 0 0 80%;
+  scroll-snap-align: start;
 }
 
 @media (min-width: 576px) {
@@ -464,16 +473,14 @@ onMounted(() => {
     flex-wrap: wrap;
     overflow-x: visible;
   }
-  .tiles-row > .col {
+  .tiles-row > .tile-col {
     flex: 0 0 50%;
-    max-width: 50%;
   }
 }
 
 @media (min-width: 992px) {
-  .tiles-row > .col {
+  .tiles-row > .tile-col {
     flex: 0 0 25%;
-    max-width: 25%;
   }
 }
 
