@@ -224,60 +224,68 @@ onMounted(() => {
               <div class="col">
                 <RouterLink
                   to="/profile/doc/passport"
-                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
-                    <i class="bi bi-passport fs-3 mb-3"></i>
-                    <h5 class="card-title mb-1">Паспорт РФ</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{
-                        passport
-                          ? passport.series + ' ' + maskPassportNumber(passport.number)
-                          : noDataPlaceholder
-                      }}
-                    </p>
+                  <div class="card-body d-flex flex-column">
+                    <i class="bi bi-passport fs-3"></i>
+                    <div class="mt-auto text-end">
+                      <h5 class="card-title mb-1">Паспорт РФ</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{
+                          passport
+                            ? passport.series + ' ' + maskPassportNumber(passport.number)
+                            : noDataPlaceholder
+                        }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
               <div class="col">
                 <RouterLink
                   to="/profile/doc/inn"
-                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
-                    <i class="bi bi-person-badge fs-3 mb-3"></i>
-                    <h5 class="card-title mb-1">ИНН</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{ inn?.number || noDataPlaceholder }}
-                    </p>
+                  <div class="card-body d-flex flex-column">
+                    <i class="bi bi-person-badge fs-3"></i>
+                    <div class="mt-auto text-end">
+                      <h5 class="card-title mb-1">ИНН</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{ inn?.number || noDataPlaceholder }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
               <div class="col">
                 <RouterLink
                   to="/profile/doc/snils"
-                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
-                    <i class="bi bi-card-checklist fs-3 mb-3"></i>
-                    <h5 class="card-title mb-1">СНИЛС</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{ snils?.number || noDataPlaceholder }}
-                    </p>
+                  <div class="card-body d-flex flex-column">
+                    <i class="bi bi-card-checklist fs-3"></i>
+                    <div class="mt-auto text-end">
+                      <h5 class="card-title mb-1">СНИЛС</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{ snils?.number || noDataPlaceholder }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
               <div class="col">
                 <RouterLink
                   to="/profile/doc/driver-license"
-                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
-                    <i class="bi bi-car-front fs-3 mb-3"></i>
-                    <h5 class="card-title mb-1">Водительское удостоверение</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{ driverLicense?.number || noDataPlaceholder }}
-                    </p>
+                  <div class="card-body d-flex flex-column">
+                    <i class="bi bi-car-front fs-3"></i>
+                    <div class="mt-auto text-end">
+                      <h5 class="card-title mb-1">Водительское удостоверение</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{ driverLicense?.number || noDataPlaceholder }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>

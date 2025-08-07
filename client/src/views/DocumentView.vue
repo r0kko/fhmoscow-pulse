@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
-import InfoField from '../components/InfoField.vue';
+import InfoItem from '../components/InfoItem.vue';
 
 const route = useRoute();
 const type = route.params.type;
@@ -19,6 +19,23 @@ function formatDate(str) {
   const [year, month, day] = str.split('-');
   return `${day}.${month}.${year}`;
 }
+
+const fullName = computed(() =>
+  [user.value?.last_name, user.value?.first_name, user.value?.patronymic]
+    .filter(Boolean)
+    .join(' ')
+);
+
+const validity = computed(() => {
+  const issue = passport.value?.issue_date
+    ? formatDate(passport.value.issue_date)
+    : '';
+  const exp = passport.value?.valid_until
+    ? formatDate(passport.value.valid_until)
+    : '';
+  if (!issue && !exp) return '';
+  return `${issue} — ${exp}`;
+});
 
 const config = {
   passport: { title: 'Паспорт РФ', icon: 'bi bi-passport' },
@@ -67,56 +84,58 @@ onMounted(async () => {
           <div class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
               <i :class="config.icon + ' fs-3 mb-3'"></i>
-              <div v-if="type === 'passport' && passport && user" class="row row-cols-1 row-cols-sm-2 g-3">
+              <div
+                v-if="type === 'passport' && passport && user"
+                class="row row-cols-1 row-cols-sm-2 g-3"
+              >
                 <div class="col">
-                  <InfoField id="lastName" label="Фамилия" :value="user.last_name" />
+                  <InfoItem label="ФИО" :value="fullName" />
                 </div>
                 <div class="col">
-                  <InfoField id="firstName" label="Имя" :value="user.first_name" />
-                </div>
-                <div class="col">
-                  <InfoField id="patronymic" label="Отчество" :value="user.patronymic" />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="birthDate"
+                  <InfoItem
                     label="Дата рождения"
-                    icon="bi bi-calendar-event"
                     :value="user.birth_date ? formatDate(user.birth_date) : ''"
                   />
                 </div>
                 <div class="col">
-                  <InfoField
-                    id="series"
+                  <InfoItem label="Место рождения" :value="passport.place_of_birth" />
+                </div>
+                <div class="col">
+                  <InfoItem
+                    label="Тип документа"
+                    :value="passport.document_type_name || 'Паспорт РФ'"
+                  />
+                </div>
+                <div class="col">
+                  <InfoItem
                     label="Серия и номер"
-                    icon="bi bi-file-earmark-text"
                     :value="passport.series + ' ' + passport.number"
                   />
                 </div>
                 <div class="col">
-                  <InfoField
-                    id="validity"
-                    label="Срок действия"
-                    icon="bi bi-calendar"
-                    :value="
-                      passport.issue_date && passport.valid_until
-                        ?
-                            formatDate(passport.issue_date) +
-                            ' - ' +
-                            formatDate(passport.valid_until)
-                        : ''
-                    "
+                  <InfoItem label="Срок действия" :value="validity" />
+                </div>
+                <div class="col">
+                  <InfoItem
+                    label="Орган выдачи"
+                    :value="passport.issuing_authority"
+                  />
+                </div>
+                <div class="col">
+                  <InfoItem
+                    label="Код подразделения"
+                    :value="passport.issuing_authority_code"
                   />
                 </div>
               </div>
               <div v-else-if="type === 'inn' && inn">
-                <InfoField id="inn" label="ИНН" :value="inn.number" />
+                <InfoItem label="ИНН" :value="inn.number" />
                 <p class="mt-3 mb-0 text-muted">
                   Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом
                 </p>
               </div>
               <div v-else-if="type === 'snils' && snils">
-                <InfoField id="snils" label="СНИЛС" :value="snils.number" />
+                <InfoItem label="СНИЛС" :value="snils.number" />
                 <p class="mt-3 mb-0 text-muted">
                   Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом
                 </p>
