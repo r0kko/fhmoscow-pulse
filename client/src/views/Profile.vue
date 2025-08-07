@@ -542,7 +542,6 @@ onMounted(() => {
   .tiles-row {
     margin-left: -1rem;
     margin-right: -1rem;
-    padding-left: 1rem;
     padding-right: 1rem;
   }
 
