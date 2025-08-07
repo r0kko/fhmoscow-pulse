@@ -9,7 +9,7 @@ const userSections = [
 ]
 
 const refereeSections = [
-  { title: 'Управление площадками', icon: 'bi-building', to: '/admin/grounds' },
+  { title: 'Сборы', icon: 'bi-building', to: '/admin/grounds' },
   { title: 'Нормативы', icon: 'bi-speedometer2', to: '/admin/normatives' },
 ]
 </script>
