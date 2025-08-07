@@ -37,12 +37,13 @@ const validity = computed(() => {
   return `${issue} — ${exp}`;
 });
 
-const config = {
-  passport: { title: 'Паспорт РФ', icon: 'bi bi-passport' },
-  inn: { title: 'ИНН', icon: 'bi bi-person-badge' },
-  snils: { title: 'СНИЛС', icon: 'bi bi-card-checklist' },
-  'driver-license': { title: 'Водительское удостоверение', icon: 'bi bi-car-front' },
-}[type] || { title: 'Документ', icon: '' };
+const config =
+  {
+    passport: { title: 'Документ, удостоверяющий личность' },
+    inn: { title: 'Индивидуальный номер налогоплательщика' },
+    snils: { title: 'Страховой номер индивидуального лицевого счёта' },
+    'driver-license': { title: 'Водительское удостоверение' },
+  }[type] || { title: 'Документ' };
 
 onMounted(async () => {
   try {
@@ -83,7 +84,6 @@ onMounted(async () => {
         <div v-else>
           <div class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
-              <i :class="config.icon + ' fs-3 mb-3'"></i>
               <div
                 v-if="type === 'passport' && passport && user"
                 class="row row-cols-1 row-cols-sm-2 g-3"
@@ -97,9 +97,7 @@ onMounted(async () => {
                     :value="user.birth_date ? formatDate(user.birth_date) : ''"
                   />
                 </div>
-                <div class="col">
-                  <InfoItem label="Место рождения" :value="passport.place_of_birth" />
-                </div>
+                <div class="col-12"><hr class="my-2" /></div>
                 <div class="col">
                   <InfoItem
                     label="Тип документа"
@@ -127,23 +125,41 @@ onMounted(async () => {
                     :value="passport.issuing_authority_code"
                   />
                 </div>
+                <div class="col">
+                  <InfoItem
+                    label="Место рождения"
+                    :value="passport.place_of_birth"
+                  />
+                </div>
               </div>
               <div v-else-if="type === 'inn' && inn">
-                <InfoItem label="ИНН" :value="inn.number" />
-                <p class="mt-3 mb-0 text-muted">
-                  Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом
-                </p>
+                <InfoItem label="Номер" :value="inn.number" />
+                <div class="alert alert-warning d-flex align-items-center mt-3 mb-0">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  <div>
+                    Для изменения или удаления нужно обратиться в офис ФХМ с
+                    оригиналом документа и паспортом
+                  </div>
+                </div>
               </div>
               <div v-else-if="type === 'snils' && snils">
-                <InfoItem label="СНИЛС" :value="snils.number" />
-                <p class="mt-3 mb-0 text-muted">
-                  Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом
-                </p>
+                <InfoItem label="Номер" :value="snils.number" />
+                <div class="alert alert-warning d-flex align-items-center mt-3 mb-0">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  <div>
+                    Для изменения или удаления нужно обратиться в офис ФХМ с
+                    оригиналом документа и паспортом
+                  </div>
+                </div>
               </div>
               <div v-else-if="type === 'driver-license'">
-                <p class="mb-0 text-muted">
-                  Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом
-                </p>
+                <div class="alert alert-warning d-flex align-items-center mb-0">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  <div>
+                    Для изменения или удаления нужно обратиться в офис ФХМ с
+                    оригиналом документа и паспортом
+                  </div>
+                </div>
               </div>
               <div v-else>
                 <p class="mb-0 text-muted">Данные отсутствуют.</p>
