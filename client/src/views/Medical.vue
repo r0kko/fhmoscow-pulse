@@ -316,7 +316,7 @@ function onFileChange(e) {
               class="btn btn-outline-brand d-flex align-items-center gap-1"
             >
               <i class="bi bi-hourglass"></i>
-              <span>На проверке</span>
+              <span>Проверка</span>
             </RouterLink>
             <button
               v-else
