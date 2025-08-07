@@ -39,11 +39,23 @@ const validity = computed(() => {
 
 const config =
   {
-    passport: { title: 'Документ, удостоверяющий личность' },
-    inn: { title: 'Индивидуальный номер налогоплательщика' },
-    snils: { title: 'Страховой номер индивидуального лицевого счёта' },
-    'driver-license': { title: 'Водительское удостоверение' },
-  }[type] || { title: 'Документ' };
+    passport: {
+      title: 'Документ, удостоверяющий личность',
+      crumb: 'Паспорт РФ',
+    },
+    inn: {
+      title: 'Индивидуальный номер налогоплательщика',
+      crumb: 'ИНН',
+    },
+    snils: {
+      title: 'Страховой номер индивидуального лицевого счёта',
+      crumb: 'СНИЛС',
+    },
+    'driver-license': {
+      title: 'Водительское удостоверение',
+      crumb: 'ВУ',
+    },
+  }[type] || { title: 'Документ', crumb: 'Документ' };
 
 onMounted(async () => {
   try {
@@ -70,7 +82,7 @@ onMounted(async () => {
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
           <li class="breadcrumb-item"><RouterLink to="/profile">Документы и данные</RouterLink></li>
-          <li class="breadcrumb-item active" aria-current="page">{{ config.title }}</li>
+          <li class="breadcrumb-item active" aria-current="page">{{ config.crumb }}</li>
         </ol>
       </nav>
       <h1 class="mb-3">{{ config.title }}</h1>
@@ -84,48 +96,45 @@ onMounted(async () => {
         <div v-else>
           <div class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
-              <div
-                v-if="type === 'passport' && passport && user"
-                class="row row-cols-1 row-cols-sm-2 g-3"
-              >
-                <div class="col">
+              <div v-if="type === 'passport' && passport && user" class="row g-3">
+                <div class="col-12 col-sm-6">
                   <InfoItem label="ФИО" :value="fullName" />
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem
                     label="Дата рождения"
                     :value="user.birth_date ? formatDate(user.birth_date) : ''"
                   />
                 </div>
                 <div class="col-12"><hr class="my-2" /></div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem
                     label="Тип документа"
                     :value="passport.document_type_name || 'Паспорт РФ'"
                   />
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem
                     label="Серия и номер"
                     :value="passport.series + ' ' + passport.number"
                   />
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem label="Срок действия" :value="validity" />
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem
                     label="Орган выдачи"
                     :value="passport.issuing_authority"
                   />
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem
                     label="Код подразделения"
                     :value="passport.issuing_authority_code"
                   />
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                   <InfoItem
                     label="Место рождения"
                     :value="passport.place_of_birth"
