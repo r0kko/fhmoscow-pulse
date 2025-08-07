@@ -83,7 +83,7 @@ onMounted(async () => {
             <RouterLink to="/">Главная</RouterLink>
           </li>
           <li class="breadcrumb-item">
-            <RouterLink to="/profile">Документы и данные</RouterLink>
+            <RouterLink to="/profile">Мои данные</RouterLink>
           </li>
           <li class="breadcrumb-item active" aria-current="page">
             {{ config.crumb }}
@@ -208,6 +208,29 @@ onMounted(async () => {
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+
+  .section-card .card-body {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .py-3 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.25rem !important;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .row.g-3 {
+    --bs-gutter-y: 0.5rem;
   }
 }
 

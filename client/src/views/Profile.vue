@@ -487,7 +487,7 @@ onMounted(() => {
 }
 
 .tiles-row > .tile-col {
-  flex: 0 0 calc(80% - 0.5rem);
+  flex: 0 0 calc(70% - 0.5rem);
   scroll-snap-align: start;
 }
 
@@ -537,6 +537,33 @@ onMounted(() => {
   .tiles-row .section-card {
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .tiles-row {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .tiles-row .card-body {
+    padding: 0.75rem;
+  }
+
+  .tiles-row .card-title {
+    font-size: 1rem;
+  }
+
+  .tiles-row .card-text {
+    font-size: 0.875rem;
+  }
+
+  .tiles-row .icon-brand {
+    font-size: 1.5rem;
+  }
+
+  .profile-page section {
+    margin-bottom: 1rem !important;
   }
 }
 
