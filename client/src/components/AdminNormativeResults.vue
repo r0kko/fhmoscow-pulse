@@ -441,8 +441,8 @@ defineExpose({ refresh });
                 </td>
                 <td>
                   {{
-                    r.training?.CampStadium?.name ||
-                      r.training?.stadium?.name ||
+                    r.training?.Ground?.name ||
+                      r.training?.ground?.name ||
                       '-'
                   }}
                 </td>
