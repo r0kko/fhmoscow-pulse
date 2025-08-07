@@ -10,6 +10,7 @@ const type = route.params.type;
 const user = ref(null);
 const passport = ref(null);
 const inn = ref(null);
+const taxation = ref(null);
 const snils = ref(null);
 const loading = ref(true);
 const error = ref('');
@@ -35,6 +36,13 @@ const validity = computed(() => {
     : '';
   if (!issue && !exp) return '';
   return `${issue} — ${exp}`;
+});
+
+const innWithTaxation = computed(() => {
+  if (!inn.value?.number) return '';
+  const parts = [inn.value.number];
+  if (taxation.value?.type?.name) parts.push(taxation.value.type.name);
+  return parts.join(' · ');
 });
 
 const config = {
@@ -63,6 +71,11 @@ onMounted(async () => {
       passport.value = (await apiFetch('/passports/me')).passport;
     } else if (type === 'inn') {
       inn.value = (await apiFetch('/inns/me')).inn;
+      try {
+        taxation.value = (await apiFetch('/taxations/me')).taxation;
+      } catch (_e) {
+        taxation.value = null;
+      }
     } else if (type === 'snils') {
       snils.value = (await apiFetch('/snils/me')).snils;
     }
@@ -150,7 +163,7 @@ onMounted(async () => {
                 </div>
               </div>
               <div v-else-if="type === 'inn' && inn">
-                <InfoItem label="Номер" :value="inn.number" />
+                <InfoItem label="Номер" :value="innWithTaxation" />
                 <div
                   class="alert alert-warning d-flex align-items-center mt-3 mb-0"
                 >

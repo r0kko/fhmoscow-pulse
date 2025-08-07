@@ -16,6 +16,7 @@ const codeSent = ref(false);
 const verifyError = ref('');
 const passport = ref();
 const inn = ref();
+const taxation = ref();
 const snils = ref();
 const driverLicense = ref();
 const bankAccount = ref();
@@ -24,6 +25,12 @@ const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
   const num = bankAccount.value.number;
   return '···· ' + (num.length > 4 ? num.slice(-4) : num);
+});
+const innDisplay = computed(() => {
+  if (!inn.value?.number) return 'Отсутствует';
+  const parts = [inn.value.number];
+  if (taxation.value?.type?.name) parts.push(taxation.value.type.name);
+  return parts.join(' · ');
 });
 const sectionNav = computed(() =>
   [
@@ -43,6 +50,7 @@ const loading = reactive({
   user: false,
   passport: false,
   inn: false,
+  taxation: false,
   snils: false,
   bankAccount: false,
 });
@@ -160,6 +168,18 @@ async function fetchInn() {
   }
 }
 
+async function fetchTaxation() {
+  loading.taxation = true;
+  try {
+    const data = await apiFetch('/taxations/me');
+    taxation.value = data.taxation;
+  } catch (_e) {
+    taxation.value = null;
+  } finally {
+    loading.taxation = false;
+  }
+}
+
 async function fetchSnils() {
   loading.snils = true;
   try {
@@ -193,6 +213,7 @@ onMounted(() => {
   fetchProfile();
   fetchPassport();
   fetchInn();
+  fetchTaxation();
   fetchSnils();
   fetchBankAccount();
 });
@@ -256,7 +277,7 @@ onMounted(() => {
                       <div class="mt-auto">
                         <h5 class="card-title mb-1">ИНН</h5>
                         <p class="card-text text-muted mb-0">
-                          {{ inn?.number || 'Отсутствует' }}
+                          {{ innDisplay }}
                         </p>
                       </div>
                     </div>
