@@ -439,14 +439,11 @@ defineExpose({ refresh });
                       : formatDateTime(r.training?.start_at)
                   }}
                 </td>
-                <td>{{ r.online ? 'Онлайн' : r.training?.ground?.name || '-' }}</td>
                 <td>
                   {{
-                    r.retake
-                      ? 'Перезачет'
-                      : r.online
-                      ? 'Онлайн'
-                      : r.training?.ground?.name || '-'
+                    r.training?.CampStadium?.name ||
+                      r.training?.stadium?.name ||
+                      '-'
                   }}
                 </td>
                 <td class="text-end">
