@@ -39,11 +39,23 @@ const validity = computed(() => {
 
 const config =
   {
-    passport: { title: 'Документ, удостоверяющий личность' },
-    inn: { title: 'Индивидуальный номер налогоплательщика' },
-    snils: { title: 'Страховой номер индивидуального лицевого счёта' },
-    'driver-license': { title: 'Водительское удостоверение' },
-  }[type] || { title: 'Документ' };
+    passport: {
+      title: 'Документ, удостоверяющий личность',
+      crumb: 'Паспорт РФ',
+    },
+    inn: {
+      title: 'Индивидуальный номер налогоплательщика',
+      crumb: 'ИНН',
+    },
+    snils: {
+      title: 'Страховой номер индивидуального лицевого счёта',
+      crumb: 'СНИЛС',
+    },
+    'driver-license': {
+      title: 'Водительское удостоверение',
+      crumb: 'ВУ',
+    },
+  }[type] || { title: 'Документ', crumb: 'Документ' };
 
 onMounted(async () => {
   try {
@@ -70,7 +82,7 @@ onMounted(async () => {
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
           <li class="breadcrumb-item"><RouterLink to="/profile">Документы и данные</RouterLink></li>
-          <li class="breadcrumb-item active" aria-current="page">{{ config.title }}</li>
+          <li class="breadcrumb-item active" aria-current="page">{{ config.crumb }}</li>
         </ol>
       </nav>
       <h1 class="mb-3">{{ config.title }}</h1>
