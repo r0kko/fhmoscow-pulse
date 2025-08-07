@@ -1,12 +1,16 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
+import Pagination from '../components/Pagination.vue';
 
 const tickets = ref([]);
 const loading = ref(true);
 const error = ref('');
 const view = ref('active');
+const search = ref('');
+const archivePage = ref(1);
+const pageSize = 10;
 
 const activeTickets = computed(() =>
   tickets.value.filter((t) =>
@@ -14,13 +18,44 @@ const activeTickets = computed(() =>
   )
 );
 const archivedTickets = computed(() =>
-  tickets.value.filter((t) =>
-    !['CREATED', 'IN_PROGRESS'].includes(t.status.alias)
-  )
+  tickets.value
+    .filter((t) => !['CREATED', 'IN_PROGRESS'].includes(t.status.alias))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 );
+const filteredArchivedTickets = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  if (!q) return archivedTickets.value;
+  return archivedTickets.value.filter(
+    (t) =>
+      String(t.number).includes(q) ||
+      (t.description || '').toLowerCase().includes(q)
+  );
+});
+const totalArchivePages = computed(() =>
+  Math.max(1, Math.ceil(filteredArchivedTickets.value.length / pageSize))
+);
+const paginatedArchivedTickets = computed(() => {
+  const start = (archivePage.value - 1) * pageSize;
+  return filteredArchivedTickets.value.slice(start, start + pageSize);
+});
 const currentTickets = computed(() =>
-  view.value === 'active' ? activeTickets.value : archivedTickets.value
+  view.value === 'active'
+    ? activeTickets.value
+    : paginatedArchivedTickets.value
 );
+const noTicketsMessage = computed(() => {
+  if (view.value === 'active') return 'Нет активных обращений.';
+  return search.value ? 'Ничего не найдено.' : 'Архив пуст.';
+});
+
+watch(search, () => {
+  archivePage.value = 1;
+});
+watch(view, (v) => {
+  if (v === 'archive') {
+    archivePage.value = 1;
+  }
+});
 
 function formatDateTime(value) {
   if (!value) return '';
@@ -98,6 +133,19 @@ async function deleteTicket(ticket) {
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <h5 class="mb-3">История</h5>
+          <div
+            v-if="view === 'archive'"
+            class="row g-2 align-items-end mb-3"
+          >
+            <div class="col-12 col-sm">
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Поиск по номеру или содержимому"
+                v-model="search"
+              />
+            </div>
+          </div>
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
           <div v-if="loading" class="text-center py-3">
             <div class="spinner-border" role="status"></div>
@@ -140,9 +188,18 @@ async function deleteTicket(ticket) {
             </div>
           </div>
           <p v-else-if="!loading" class="text-muted mb-0">
-            {{ view === 'active' ? 'Нет активных обращений.' : 'Архив пуст.' }}
+            {{ noTicketsMessage }}
           </p>
         </div>
+        <nav
+          v-if="view === 'archive' && totalArchivePages > 1"
+          class="mt-3 d-flex justify-content-center"
+        >
+          <Pagination
+            v-model="archivePage"
+            :total-pages="totalArchivePages"
+          />
+        </nav>
       </div>
     </div>
   </div>
