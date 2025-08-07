@@ -307,8 +307,8 @@ function thresholdText(t, zone) {
                   </td>
                   <td class="text-center d-none d-md-table-cell">
                     {{
-                      t.result?.training?.CampStadium?.name ||
-                        t.result?.training?.stadium?.name ||
+                      t.result?.training?.Ground?.name ||
+                        t.result?.training?.ground?.name ||
                         '-'
                     }}
                   </td>
@@ -403,8 +403,8 @@ function thresholdText(t, zone) {
                       : t.result?.online
                       ? 'Онлайн'
                       : `${formatDate(t.result?.training?.start_at)}, ${
-                          t.result?.training?.CampStadium?.name ||
-                          t.result?.training?.stadium?.name ||
+                          t.result?.training?.Ground?.name ||
+                          t.result?.training?.ground?.name ||
                           '-'
                         }`
                   }}
@@ -464,8 +464,8 @@ function thresholdText(t, zone) {
                   </div>
                   <div class="small text-muted">
                     {{
-                      r.training?.CampStadium?.name ||
-                        r.training?.stadium?.name ||
+                      r.training?.Grpund?.name ||
+                        r.training?.ground?.name ||
                         '-'
                     }}
                   </div>
