@@ -269,16 +269,6 @@ async function loadUpcoming() {
   color: var(--brand-color);
 }
 
-.ruble-icon::before {
-  content: '₽';
-  display: inline-block;
-  font-style: normal;
-  font-weight: normal;
-  line-height: 1;
-  vertical-align: -.125em;
-}
-
-
 @keyframes fadeIn {
   from {
     opacity: 0;
