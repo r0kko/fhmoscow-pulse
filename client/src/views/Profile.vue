@@ -3,13 +3,8 @@ import { ref, onMounted, reactive, nextTick, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Toast from 'bootstrap/js/dist/toast';
 import Tooltip from 'bootstrap/js/dist/tooltip';
-import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
-import TaxationInfo from '../components/TaxationInfo.vue';
 import InfoField from '../components/InfoField.vue';
-
-// Placeholder sections hidden until inventory feature is ready
-const placeholderSections = [];
 
 const noDataPlaceholder = '—';
 
@@ -20,12 +15,9 @@ const code = ref('');
 const codeSent = ref(false);
 const verifyError = ref('');
 const passport = ref();
-const passportError = ref('');
 const inn = ref();
 const snils = ref();
 const driverLicense = ref();
-const innError = ref('');
-const snilsError = ref('');
 const bankAccount = ref();
 const bankAccountError = ref('');
 const maskedAccountNumber = computed(() => {
@@ -35,26 +27,8 @@ const maskedAccountNumber = computed(() => {
 });
 const sectionNav = computed(() =>
   [
+    { id: 'documents', label: 'Документы', show: true },
     { id: 'contacts', label: 'Контакты', show: true },
-    {
-      id: 'passport',
-      label: 'Паспорт',
-      show:
-        passport.value !== undefined ||
-        passportError.value ||
-        loading.passport,
-    },
-    {
-      id: 'tax',
-      label: 'ИНН и СНИЛС',
-      show:
-        inn.value !== undefined ||
-        snils.value !== undefined ||
-        innError.value ||
-        snilsError.value ||
-        loading.inn ||
-        loading.snils,
-    },
     {
       id: 'bank',
       label: 'Банк',
@@ -65,11 +39,6 @@ const sectionNav = computed(() =>
     },
   ].filter((s) => s.show)
 );
-const modalRef = ref(null);
-const modalMode = ref('');
-const modalTitle = ref('');
-const modalMessage = ref('');
-let modalInstance;
 const loading = reactive({
   user: false,
   passport: false,
@@ -126,27 +95,6 @@ async function copyToClipboard(text) {
   }
 }
 
-function openModal(mode, title, message = '') {
-  modalMode.value = mode;
-  modalTitle.value = title;
-  modalMessage.value = message;
-  if (!modalInstance) {
-    modalInstance = new Modal(modalRef.value);
-  }
-  modalInstance.show();
-}
-
-function showPassportModal() {
-  openModal('passport', 'Паспорт РФ');
-}
-
-function showDocWarning(title) {
-  openModal(
-    'warning',
-    title,
-    'Для изменения или удаления нужно обратиться в офис ФХМ с оригиналом документа и паспортом',
-  );
-}
 
 async function sendCode() {
   try {
@@ -192,9 +140,7 @@ async function fetchPassport() {
   try {
     const data = await apiFetch('/passports/me');
     passport.value = data.passport;
-    passportError.value = '';
-  } catch (e) {
-    passportError.value = e.message;
+  } catch (_e) {
     passport.value = null;
   } finally {
     loading.passport = false;
@@ -206,11 +152,9 @@ async function fetchInn() {
   try {
     const data = await apiFetch('/inns/me');
     inn.value = data.inn;
-    innError.value = '';
     await nextTick();
     initTooltips();
-  } catch (e) {
-    innError.value = e.message;
+  } catch (_e) {
     inn.value = null;
   } finally {
     loading.inn = false;
@@ -222,11 +166,9 @@ async function fetchSnils() {
   try {
     const data = await apiFetch('/snils/me');
     snils.value = data.snils;
-    snilsError.value = '';
     await nextTick();
     initTooltips();
-  } catch (e) {
-    snilsError.value = e.message;
+  } catch (_e) {
     snils.value = null;
   } finally {
     loading.snils = false;
@@ -277,72 +219,70 @@ onMounted(() => {
     <div v-else-if="user">
       <div class="row">
         <div class="col-lg-9">
-          <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-4">
-            <div class="col">
-              <div
-                class="card tile h-100 text-center shadow-sm"
-                role="button"
-                @click="showPassportModal"
-              >
-                <div class="card-body">
-                  <i class="bi bi-passport display-6 mb-2"></i>
-                  <h5 class="card-title">Паспорт РФ</h5>
-                  <p class="card-text mb-0">
-                    {{
-                      passport
-                        ? passport.series + ' ' + maskPassportNumber(passport.number)
-                        : noDataPlaceholder
-                    }}
-                  </p>
-                </div>
+          <section id="documents" class="mb-4">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+              <div class="col">
+                <RouterLink
+                  to="/profile/doc/passport"
+                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                >
+                  <div class="card-body">
+                    <i class="bi bi-passport fs-3 mb-3"></i>
+                    <h5 class="card-title mb-1">Паспорт РФ</h5>
+                    <p class="card-text text-muted mb-0">
+                      {{
+                        passport
+                          ? passport.series + ' ' + maskPassportNumber(passport.number)
+                          : noDataPlaceholder
+                      }}
+                    </p>
+                  </div>
+                </RouterLink>
+              </div>
+              <div class="col">
+                <RouterLink
+                  to="/profile/doc/inn"
+                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                >
+                  <div class="card-body">
+                    <i class="bi bi-person-badge fs-3 mb-3"></i>
+                    <h5 class="card-title mb-1">ИНН</h5>
+                    <p class="card-text text-muted mb-0">
+                      {{ inn?.number || noDataPlaceholder }}
+                    </p>
+                  </div>
+                </RouterLink>
+              </div>
+              <div class="col">
+                <RouterLink
+                  to="/profile/doc/snils"
+                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                >
+                  <div class="card-body">
+                    <i class="bi bi-card-checklist fs-3 mb-3"></i>
+                    <h5 class="card-title mb-1">СНИЛС</h5>
+                    <p class="card-text text-muted mb-0">
+                      {{ snils?.number || noDataPlaceholder }}
+                    </p>
+                  </div>
+                </RouterLink>
+              </div>
+              <div class="col">
+                <RouterLink
+                  to="/profile/doc/driver-license"
+                  class="card tile h-100 shadow-sm text-decoration-none text-body"
+                >
+                  <div class="card-body">
+                    <i class="bi bi-car-front fs-3 mb-3"></i>
+                    <h5 class="card-title mb-1">Водительское удостоверение</h5>
+                    <p class="card-text text-muted mb-0">
+                      {{ driverLicense?.number || noDataPlaceholder }}
+                    </p>
+                  </div>
+                </RouterLink>
               </div>
             </div>
-            <div class="col">
-              <div
-                class="card tile h-100 text-center shadow-sm"
-                role="button"
-                @click="showDocWarning('ИНН')"
-              >
-                <div class="card-body">
-                  <i class="bi bi-person-badge display-6 mb-2"></i>
-                  <h5 class="card-title">ИНН</h5>
-                  <p class="card-text mb-0">
-                    {{ inn?.number || noDataPlaceholder }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div
-                class="card tile h-100 text-center shadow-sm"
-                role="button"
-                @click="showDocWarning('СНИЛС')"
-              >
-                <div class="card-body">
-                  <i class="bi bi-card-checklist display-6 mb-2"></i>
-                  <h5 class="card-title">СНИЛС</h5>
-                  <p class="card-text mb-0">
-                    {{ snils?.number || noDataPlaceholder }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div
-                class="card tile h-100 text-center shadow-sm"
-                role="button"
-                @click="showDocWarning('Водительское удостоверение')"
-              >
-                <div class="card-body">
-                  <i class="bi bi-car-front display-6 mb-2"></i>
-                  <h5 class="card-title">Водительское удостоверение</h5>
-                  <p class="card-text mb-0">
-                    {{ driverLicense?.number || noDataPlaceholder }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          </section>
           <section id="contacts" class="mb-4">
             <div class="card section-card tile fade-in shadow-sm">
               <div class="card-body">
@@ -397,143 +337,6 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-          </section>
-          <section
-            id="passport"
-            class="mb-4"
-            v-if="passport !== undefined || passportError || loading.passport"
-          >
-            <div class="card section-card tile fade-in shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Документ, удостоверяющий личность</h5>
-                <div v-if="loading.passport" class="text-center py-4">
-                  <div class="spinner-border" role="status" aria-label="Загрузка">
-                    <span class="visually-hidden">Загрузка…</span>
-                  </div>
-                </div>
-                <div v-else-if="passport">
-                  <div class="row row-cols-1 row-cols-sm-2 g-3">
-                <div class="col">
-                  <InfoField
-                    id="docType"
-                    label="Тип документа"
-                    icon="bi bi-card-text"
-                    :value="passport.document_type_name || ''"
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="passportCountry"
-                    label="Страна"
-                    icon="bi bi-globe"
-                    :value="passport.country_name || ''"
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="passportSerial"
-                    label="Серия и номер"
-                    icon="bi bi-file-earmark-text"
-                    :value="
-                      passport.series + ' ' + maskPassportNumber(passport.number)
-                    "
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="passportValidity"
-                    label="Срок действия"
-                    icon="bi bi-calendar"
-                    :value="
-                      passport.issue_date && passport.valid_until
-                        ?
-                            formatDate(passport.issue_date) +
-                            ' - ' +
-                            formatDate(passport.valid_until)
-                        : ''
-                    "
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="passportAuthority"
-                    label="Кем выдан"
-                    icon="bi bi-building"
-                    :value="
-                      passport.issuing_authority && passport.issuing_authority_code
-                        ?
-                            passport.issuing_authority + ' (' +
-                            passport.issuing_authority_code + ')'
-                        : ''
-                    "
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="passportBirthplace"
-                    label="Место рождения"
-                    icon="bi bi-geo-alt"
-                    :value="passport.place_of_birth || ''"
-                  />
-                </div>
-              </div>
-            </div>
-                <p v-else class="mb-0 text-muted">
-                  {{ passportError || 'Паспортные данные не найдены.' }}
-                </p>
-              </div>
-            </div>
-          </section>
-          <section
-            id="tax"
-            class="mb-4"
-            v-if="
-              inn !== undefined ||
-              snils !== undefined ||
-              innError ||
-              snilsError ||
-              loading.inn ||
-              loading.snils
-            "
-          >
-            <div class="card section-card tile fade-in shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
-                <div v-if="loading.inn || loading.snils" class="text-center py-4">
-                  <div class="spinner-border" role="status" aria-label="Загрузка">
-                    <span class="visually-hidden">Загрузка…</span>
-                  </div>
-                </div>
-                <div v-else-if="inn || snils">
-                  <div class="row row-cols-1 row-cols-sm-2 g-3">
-                    <div class="col" v-if="inn">
-                      <InfoField
-                        id="innNumber"
-                        label="ИНН"
-                        icon="bi bi-briefcase"
-                        :value="inn.number"
-                        :copyable="!!inn.number"
-                        @copy="copyToClipboard(inn.number)"
-                      />
-                    </div>
-                    <div class="col" v-if="snils">
-                      <InfoField
-                        id="snilsNumber"
-                        label="СНИЛС"
-                        icon="bi bi-card-checklist"
-                        :value="snils.number"
-                        :copyable="!!snils.number"
-                        @copy="copyToClipboard(snils.number)"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <p v-else class="mb-0 text-muted">
-                  {{ innError || snilsError || 'Данные отсутствуют.' }}
-                </p>
-              </div>
-            </div>
-            <TaxationInfo class="mt-4" :editable="false" :showOkved="false" />
           </section>
           <section
             id="bank"
@@ -598,17 +401,6 @@ onMounted(() => {
               </div>
             </div>
           </section>
-          <div v-for="section in placeholderSections" :key="section" class="mb-4">
-            <div class="card placeholder-card text-center">
-              <div
-                class="card-body d-flex flex-column align-items-center justify-content-center"
-              >
-                <i class="bi bi-clock mb-2 fs-2"></i>
-                <h5 class="card-title mb-1">{{ section }}</h5>
-                <p class="mb-0">Информация будет доступна позже</p>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="col-lg-3 d-none d-lg-block">
           <nav aria-hidden="true" class="profile-nav sticky-top" style="top: 20px">
@@ -633,74 +425,6 @@ onMounted(() => {
         <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
-    <div class="modal fade" tabindex="-1" ref="modalRef">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ modalTitle }}</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Закрыть"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <template v-if="modalMode === 'passport'">
-              <div class="row row-cols-1 row-cols-sm-2 g-3">
-                <div class="col">
-                  <InfoField id="modalLastName" label="Фамилия" :value="user.last_name" />
-                </div>
-                <div class="col">
-                  <InfoField id="modalFirstName" label="Имя" :value="user.first_name" />
-                </div>
-                <div class="col">
-                  <InfoField id="modalPatronymic" label="Отчество" :value="user.patronymic" />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="modalBirthDate"
-                    label="Дата рождения"
-                    icon="bi bi-calendar-event"
-                    :value="user.birth_date ? formatDate(user.birth_date) : ''"
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="modalSeries"
-                    label="Серия и номер"
-                    icon="bi bi-file-earmark-text"
-                    :value="
-                      passport
-                        ? passport.series + ' ' + passport.number
-                        : ''
-                    "
-                  />
-                </div>
-                <div class="col">
-                  <InfoField
-                    id="modalValidity"
-                    label="Срок действия"
-                    icon="bi bi-calendar"
-                    :value="
-                      passport?.issue_date && passport?.valid_until
-                        ?
-                            formatDate(passport.issue_date) +
-                            ' - ' +
-                            formatDate(passport.valid_until)
-                        : ''
-                    "
-                  />
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <p class="mb-0">{{ modalMessage }}</p>
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
     </div>
   </div>
 </template>
@@ -708,15 +432,6 @@ onMounted(() => {
 <style scoped>
 .fade-in {
   animation: fadeIn 0.4s ease-out;
-}
-
-.placeholder-card {
-  opacity: 0.6;
-  cursor: default;
-}
-.placeholder-card:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 .section-card {

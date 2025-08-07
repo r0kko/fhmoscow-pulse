@@ -6,6 +6,7 @@ import AwaitingConfirmation from './views/AwaitingConfirmation.vue';
 import { auth, fetchCurrentUser, clearAuth } from './auth.js';
 import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
+import DocumentView from './views/DocumentView.vue';
 import Medical from './views/Medical.vue';
 import Camps from './views/Camps.vue';
 import Tasks from './views/Tasks.vue';
@@ -31,6 +32,11 @@ import ServerError from './views/ServerError.vue';
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true, fluid: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
+  {
+    path: '/profile/doc/:type',
+    component: DocumentView,
+    meta: { requiresAuth: true },
+  },
   {
     path: '/medical',
     component: Medical,
