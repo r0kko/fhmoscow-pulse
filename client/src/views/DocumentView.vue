@@ -38,13 +38,6 @@ const validity = computed(() => {
   return `${issue} — ${exp}`;
 });
 
-const innWithTaxation = computed(() => {
-  if (!inn.value?.number) return '';
-  const parts = [inn.value.number];
-  if (taxation.value?.type?.name) parts.push(taxation.value.type.name);
-  return parts.join(' · ');
-});
-
 const config = {
   passport: {
     title: 'Удостоверение личности',
@@ -163,7 +156,38 @@ onMounted(async () => {
                 </div>
               </div>
               <div v-else-if="type === 'inn' && inn">
-                <InfoItem label="Номер" :value="innWithTaxation" />
+                <div class="row g-3">
+                  <div class="col-12 col-sm-6">
+                    <InfoItem label="Номер" :value="inn.number" />
+                  </div>
+                  <div class="col-12 col-sm-6" v-if="taxation?.type?.name">
+                    <InfoItem
+                      label="Тип налогообложения"
+                      :value="taxation.type.name"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6" v-if="taxation?.check_date">
+                    <InfoItem
+                      label="Дата проверки"
+                      :value="formatDate(taxation.check_date)"
+                    />
+                  </div>
+                  <div
+                    class="col-12 col-sm-6"
+                    v-if="taxation?.registration_date"
+                  >
+                    <InfoItem
+                      label="Дата регистрации"
+                      :value="formatDate(taxation.registration_date)"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6" v-if="taxation?.ogrn">
+                    <InfoItem label="ОГРНИП" :value="taxation.ogrn" />
+                  </div>
+                  <div class="col-12 col-sm-6" v-if="taxation?.okved">
+                    <InfoItem label="ОКВЭД" :value="taxation.okved" />
+                  </div>
+                </div>
                 <div
                   class="alert alert-warning d-flex align-items-center mt-3 mb-0"
                 >
