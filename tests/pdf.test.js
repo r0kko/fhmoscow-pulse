@@ -81,9 +81,10 @@ test('applyFirstPageHeader draws logos and text', async () => {
   };
   docStub = doc;
   applyFirstPageHeader(doc);
-  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 40 });
-  expect(imageMock).toHaveBeenCalledWith('/sys.png', 270, 30, { width: 200 });
-  expect(textMock).toHaveBeenCalled();
+  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 25 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 370, 30, { width: 100 });
+  expect(fillColorMock).toHaveBeenCalled();
+  expect(fontSizeMock).toHaveBeenCalled();
 });
 
 test('applyFirstPageHeader works without logos', async () => {
@@ -98,5 +99,6 @@ test('applyFirstPageHeader works without logos', async () => {
   docStub = doc;
   applyFirstPageHeader(doc);
   expect(imageMock).not.toHaveBeenCalled();
-  expect(textMock).toHaveBeenCalled();
+  expect(fillColorMock).toHaveBeenCalled();
+  expect(fontSizeMock).toHaveBeenCalled();
 });
