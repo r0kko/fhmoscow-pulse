@@ -206,7 +206,7 @@ async function save() {
       <div v-if="passport" class="card">
         <div class="card-body position-relative">
           <div class="d-flex justify-content-between mb-3">
-            <h5 class="card-title mb-0">Документ, удостоверяющий личность</h5>
+            <h5 class="card-title mb-0">Основной документ</h5>
             <button
               type="button"
               class="btn btn-link text-danger p-0"
