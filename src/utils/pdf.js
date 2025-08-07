@@ -94,7 +94,5 @@ export function applyFirstPageHeader(doc) {
     }
   }
 
-  doc
-    .fillColor('black')
-    .fontSize(10);
+  doc.fillColor('black').fontSize(10);
 }
