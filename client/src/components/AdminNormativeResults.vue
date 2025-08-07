@@ -441,11 +441,9 @@ defineExpose({ refresh });
                 </td>
                 <td>
                   {{
-                    r.retake
-                      ? 'Перезачет'
-                      : r.online
-                      ? 'Онлайн'
-                      : r.training?.stadium?.name || '-'
+                    r.training?.CampStadium?.name ||
+                      r.training?.stadium?.name ||
+                      '-'
                   }}
                 </td>
                 <td class="text-end">
