@@ -651,10 +651,6 @@ defineExpose({ refresh });
 </template>
 
 <style scoped>
-.training-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
-}
 
 .fade-in {
   animation: fadeIn 0.4s ease-out;
