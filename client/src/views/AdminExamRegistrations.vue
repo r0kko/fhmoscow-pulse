@@ -158,7 +158,7 @@ async function exportPdf() {
           <li class="breadcrumb-item active" aria-current="page">Заявки</li>
         </ol>
       </nav>
-      <h1>Заявки на медосмотр</h1>
+      <h1 class="mb-3">Заявки на медосмотр</h1>
       <p v-if="exam" class="mb-3">
         <strong>{{ exam.center?.name }}</strong>,
         {{ formatDateTime(exam.start_at) }} - {{ formatDateTime(exam.end_at) }}

@@ -65,7 +65,7 @@ async function finish() {
 <template>
   <div class="d-flex align-items-center justify-content-center min-vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
-      <h1 class="text-center">Восстановление пароля</h1>
+      <h1 class="mb-3 text-center">Восстановление пароля</h1>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
       </transition>

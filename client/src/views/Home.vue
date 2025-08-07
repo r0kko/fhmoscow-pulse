@@ -91,7 +91,7 @@ async function loadUpcoming() {
 <template>
   <div class="py-4">
     <div class="container">
-      <h3 class="text-start">
+      <h3 class="mb-3 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>
       <div v-if="showUpcoming" class="card section-card mb-2 text-start">

@@ -63,7 +63,7 @@ async function downloadConsent() {
         <li class="breadcrumb-item active" aria-current="page">Документы</li>
       </ol>
     </nav>
-    <h1>Документы</h1>
+    <h1 class="mb-3">Документы</h1>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-body">
         <div class="mb-3 position-relative">

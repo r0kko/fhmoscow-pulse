@@ -269,7 +269,7 @@ function openNormatives(reg) {
           <li class="breadcrumb-item active" aria-current="page">Участники</li>
         </ol>
       </nav>
-      <h1>Участники тренировки</h1>
+      <h1 class="mb-3">Участники тренировки</h1>
       <p v-if="training" class="mb-3">
         <strong>{{ training.type?.name }}</strong
         >,

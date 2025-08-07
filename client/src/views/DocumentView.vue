@@ -96,7 +96,7 @@ onMounted(async () => {
           </li>
         </ol>
       </nav>
-      <h1>{{ config.title }}</h1>
+      <h1 class="mb-3">{{ config.title }}</h1>
       <div v-if="loading" class="text-center my-5">
         <div class="spinner-border" role="status" aria-label="Загрузка">
           <span class="visually-hidden">Загрузка…</span>

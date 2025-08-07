@@ -299,7 +299,7 @@ defineExpose({ refresh });
       <div
         class="card-header d-flex justify-content-between align-items-center"
       >
-        <h2 class="h5">Типы нормативов</h2>
+        <h2 class="h5 mb-0">Типы нормативов</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>

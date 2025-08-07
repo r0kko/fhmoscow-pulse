@@ -105,7 +105,7 @@ async function deleteTicket(ticket) {
           <li class="breadcrumb-item active" aria-current="page">Обращения</li>
         </ol>
       </nav>
-      <h1>Мои обращения</h1>
+      <h1 class="mb-3">Мои обращения</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">

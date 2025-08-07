@@ -110,7 +110,7 @@ function showToast(message) {
           <li class="breadcrumb-item active" aria-current="page">Посещаемость</li>
         </ol>
       </nav>
-      <h1>Посещаемость</h1>
+      <h1 class="mb-3">Посещаемость</h1>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-if="loading" class="text-center my-5">
         <div class="spinner-border" role="status" aria-label="Загрузка">

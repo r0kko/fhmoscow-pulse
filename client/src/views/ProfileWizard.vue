@@ -371,7 +371,7 @@ async function saveStep() {
 
 <template>
   <div class="container py-5" style="max-width: 600px">
-    <h1 class="text-center">Заполнение профиля</h1>
+    <h1 class="mb-3 text-center">Заполнение профиля</h1>
     <div class="progress mb-4">
       <div class="progress-bar" role="progressbar" :style="{ width: (step / total) * 100 + '%' }"></div>
     </div>
