@@ -67,7 +67,7 @@ test('applyFonts falls back when fonts missing', async () => {
   expect(res).toEqual({ regular: 'Default-Regular', bold: 'Default-Bold' });
 });
 
-test('applyFirstPageHeader draws logos and text', async () => {
+test('applyFirstPageHeader draws logos and sets styles', async () => {
   const { applyFirstPageHeader } = await setup({
     federation: '/fhm.png',
     system: '/sys.png',
@@ -81,9 +81,11 @@ test('applyFirstPageHeader draws logos and text', async () => {
   };
   docStub = doc;
   applyFirstPageHeader(doc);
-  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 40 });
-  expect(imageMock).toHaveBeenCalledWith('/sys.png', 270, 30, { width: 200 });
-  expect(textMock).toHaveBeenCalled();
+  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 25 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 370, 30, { width: 100 });
+  expect(textMock).not.toHaveBeenCalled();
+  expect(fillColorMock).toHaveBeenCalledWith('black');
+  expect(fontSizeMock).toHaveBeenCalledWith(10);
 });
 
 test('applyFirstPageHeader works without logos', async () => {
@@ -98,5 +100,30 @@ test('applyFirstPageHeader works without logos', async () => {
   docStub = doc;
   applyFirstPageHeader(doc);
   expect(imageMock).not.toHaveBeenCalled();
-  expect(textMock).toHaveBeenCalled();
+  expect(textMock).not.toHaveBeenCalled();
+  expect(fillColorMock).toHaveBeenCalledWith('black');
+  expect(fontSizeMock).toHaveBeenCalledWith(10);
+});
+
+test('applyFirstPageHeader ignores image errors', async () => {
+  const { applyFirstPageHeader } = await setup({
+    federation: '/fhm.png',
+    system: '/sys.png',
+  });
+  imageMock.mockImplementationOnce(() => {
+    throw new Error('missing');
+  });
+  const doc = {
+    page: { width: 500, height: 300 },
+    image: imageMock,
+    text: textMock,
+    fillColor: fillColorMock,
+    fontSize: fontSizeMock,
+  };
+  docStub = doc;
+  expect(() => applyFirstPageHeader(doc)).not.toThrow();
+  expect(imageMock).toHaveBeenCalledTimes(2);
+  expect(fillColorMock).toHaveBeenCalledWith('black');
+  expect(fontSizeMock).toHaveBeenCalledWith(10);
+  expect(textMock).not.toHaveBeenCalled();
 });
