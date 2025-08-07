@@ -37,25 +37,24 @@ const validity = computed(() => {
   return `${issue} — ${exp}`;
 });
 
-const config =
-  {
-    passport: {
-      title: 'Документ, удостоверяющий личность',
-      crumb: 'Паспорт РФ',
-    },
-    inn: {
-      title: 'Индивидуальный номер налогоплательщика',
-      crumb: 'ИНН',
-    },
-    snils: {
-      title: 'Страховой номер индивидуального лицевого счёта',
-      crumb: 'СНИЛС',
-    },
-    'driver-license': {
-      title: 'Водительское удостоверение',
-      crumb: 'ВУ',
-    },
-  }[type] || { title: 'Документ', crumb: 'Документ' };
+const config = {
+  passport: {
+    title: 'Документ, удостоверяющий личность',
+    crumb: 'Паспорт РФ',
+  },
+  inn: {
+    title: 'Индивидуальный номер налогоплательщика',
+    crumb: 'ИНН',
+  },
+  snils: {
+    title: 'Страховой номер индивидуального лицевого счёта',
+    crumb: 'СНИЛС',
+  },
+  'driver-license': {
+    title: 'Водительское удостоверение',
+    crumb: 'ВУ',
+  },
+}[type] || { title: 'Документ', crumb: 'Документ' };
 
 onMounted(async () => {
   try {
@@ -80,9 +79,15 @@ onMounted(async () => {
     <div class="container">
       <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
-          <li class="breadcrumb-item"><RouterLink to="/profile">Документы и данные</RouterLink></li>
-          <li class="breadcrumb-item active" aria-current="page">{{ config.crumb }}</li>
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
+          <li class="breadcrumb-item">
+            <RouterLink to="/profile">Документы и данные</RouterLink>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            {{ config.crumb }}
+          </li>
         </ol>
       </nav>
       <h1 class="mb-3">{{ config.title }}</h1>
@@ -96,7 +101,10 @@ onMounted(async () => {
         <div v-else>
           <div class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
-              <div v-if="type === 'passport' && passport && user" class="row g-3">
+              <div
+                v-if="type === 'passport' && passport && user"
+                class="row g-3"
+              >
                 <div class="col-12 col-sm-6">
                   <InfoItem label="ФИО" :value="fullName" />
                 </div>
@@ -143,7 +151,9 @@ onMounted(async () => {
               </div>
               <div v-else-if="type === 'inn' && inn">
                 <InfoItem label="Номер" :value="inn.number" />
-                <div class="alert alert-warning d-flex align-items-center mt-3 mb-0">
+                <div
+                  class="alert alert-warning d-flex align-items-center mt-3 mb-0"
+                >
                   <i class="bi bi-exclamation-triangle-fill me-2"></i>
                   <div>
                     Для изменения или удаления нужно обратиться в офис ФХМ с
@@ -153,7 +163,9 @@ onMounted(async () => {
               </div>
               <div v-else-if="type === 'snils' && snils">
                 <InfoItem label="Номер" :value="snils.number" />
-                <div class="alert alert-warning d-flex align-items-center mt-3 mb-0">
+                <div
+                  class="alert alert-warning d-flex align-items-center mt-3 mb-0"
+                >
                   <i class="bi bi-exclamation-triangle-fill me-2"></i>
                   <div>
                     Для изменения или удаления нужно обратиться в офис ФХМ с
@@ -190,6 +202,13 @@ onMounted(async () => {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
 }
 
 @keyframes fadeIn {
