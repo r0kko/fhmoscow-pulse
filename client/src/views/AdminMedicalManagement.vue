@@ -11,7 +11,7 @@ const activeTab = ref('certificates');
 <template>
   <div class="py-3 admin-medical-management-page">
     <div class="container">
-    <nav aria-label="breadcrumb" class="mb-3">
+    <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
           <RouterLink to="/admin">Администрирование</RouterLink>
@@ -90,9 +90,6 @@ const activeTab = ref('certificates');
     padding-bottom: 0.5rem !important;
   }
 
-  .admin-medical-management-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .section-card {
     margin-left: -1rem;

@@ -201,7 +201,7 @@ onMounted(() => {
 <template>
   <div class="py-3 profile-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
@@ -521,9 +521,6 @@ onMounted(() => {
     padding-bottom: 0.5rem !important;
   }
 
-  .profile-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .profile-page h1 {
     margin-bottom: 1rem !important;

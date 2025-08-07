@@ -103,6 +103,40 @@
   text-decoration: underline;
 }
 
+/* standardized heading sizes */
+h1,
+.h1 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+h2,
+.h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+h3,
+.h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* standardized breadcrumb spacing */
+nav[aria-label='breadcrumb'] {
+  margin-bottom: 1rem;
+}
+
+.breadcrumb {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 575.98px) {
+  nav[aria-label='breadcrumb'] {
+    margin-bottom: 0.25rem;
+  }
+}
+
 .skip-link {
   position: absolute;
   top: -40px;

@@ -77,7 +77,7 @@ onMounted(async () => {
 <template>
   <div class="py-3">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
@@ -220,9 +220,6 @@ onMounted(async () => {
     padding-bottom: 0.5rem !important;
   }
 
-  nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   h1 {
     font-size: 1.25rem;

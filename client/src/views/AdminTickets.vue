@@ -78,7 +78,7 @@ async function changeStatus(ticket, alias) {
 
 <template>
   <div class="container mt-4 admin-tickets-page">
-    <nav aria-label="breadcrumb" class="mb-3">
+    <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item">
           <RouterLink to="/admin">Администрирование</RouterLink>
@@ -239,9 +239,6 @@ async function changeStatus(ticket, alias) {
   animation: fadeIn 0.4s ease-out;
 }
 
-.admin-tickets-page nav[aria-label='breadcrumb'] {
-  margin-bottom: 1rem;
-}
 
 .flash {
   animation: flash-bg 1s ease-out;
@@ -258,9 +255,6 @@ async function changeStatus(ticket, alias) {
     padding-bottom: 0.5rem !important;
   }
 
-  .admin-tickets-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .section-card {
     margin-left: -1rem;

@@ -213,7 +213,7 @@ function thresholdText(t, zone) {
 <template>
   <div class="py-3 normatives-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
@@ -631,9 +631,6 @@ function thresholdText(t, zone) {
   white-space: nowrap;
 }
 
-.normatives-page nav[aria-label='breadcrumb'] {
-  margin-bottom: 1rem;
-}
 
 .header-controls .season-select {
   width: auto;
@@ -661,9 +658,6 @@ function thresholdText(t, zone) {
     padding-bottom: 0.5rem !important;
   }
 
-  .normatives-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .section-card {
     margin-left: -1rem;

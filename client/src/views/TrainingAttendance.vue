@@ -102,7 +102,7 @@ function showToast(message) {
 <template>
   <div class="py-3 training-attendance-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item">
             <RouterLink to="/camps">Мои тренировки</RouterLink>

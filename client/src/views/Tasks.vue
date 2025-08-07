@@ -6,7 +6,7 @@ import { RouterLink } from 'vue-router';
 <template>
   <div class="py-3 tasks-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
@@ -35,9 +35,6 @@ import { RouterLink } from 'vue-router';
   animation: fadeIn 0.4s ease-out;
 }
 
-.tasks-page nav[aria-label='breadcrumb'] {
-  margin-bottom: 1rem;
-}
 
 @media (max-width: 575.98px) {
   .tasks-page {
@@ -45,9 +42,6 @@ import { RouterLink } from 'vue-router';
     padding-bottom: 0.5rem !important;
   }
 
-  .tasks-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .section-card {
     margin-left: -1rem;

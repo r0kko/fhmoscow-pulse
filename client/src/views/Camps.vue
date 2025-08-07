@@ -363,7 +363,7 @@ function attendanceStatus(t) {
 <template>
   <div class="py-3 camps-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
@@ -860,9 +860,6 @@ function attendanceStatus(t) {
     padding-bottom: 0.5rem !important;
   }
 
-  .camps-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .camps-page h1 {
     margin-bottom: 1rem !important;
