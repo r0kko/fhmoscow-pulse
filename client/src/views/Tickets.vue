@@ -99,7 +99,7 @@ async function deleteTicket(ticket) {
 <template>
   <div class="py-3 tickets-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
           <li class="breadcrumb-item active" aria-current="page">Обращения</li>
@@ -216,9 +216,6 @@ async function deleteTicket(ticket) {
   animation: fadeIn 0.4s ease-out;
 }
 
-.tickets-page nav[aria-label='breadcrumb'] {
-  margin-bottom: 1rem;
-}
 
 .tab-selector {
   gap: 0.5rem;
@@ -234,9 +231,6 @@ async function deleteTicket(ticket) {
     padding-bottom: 0.5rem !important;
   }
 
-  .tickets-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .section-card {
     margin-left: -1rem;

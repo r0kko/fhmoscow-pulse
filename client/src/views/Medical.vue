@@ -228,7 +228,7 @@ function onFileChange(e) {
 <template>
   <div class="py-3 medical-page">
     <div class="container">
-    <nav aria-label="breadcrumb" class="mb-2">
+    <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
         <li class="breadcrumb-item active" aria-current="page">Медосмотр</li>
@@ -469,9 +469,6 @@ function onFileChange(e) {
     padding-bottom: 0.5rem !important;
   }
 
-  .medical-page nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem !important;
-  }
 
   .medical-page h1 {
     margin-bottom: 1rem !important;
