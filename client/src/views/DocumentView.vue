@@ -39,8 +39,8 @@ const validity = computed(() => {
 
 const config = {
   passport: {
-    title: 'Основной документ',
-    crumb: 'Основной документ',
+    title: 'Удостоверение личности',
+    crumb: 'Паспорт',
   },
   inn: {
     title: 'Индивидуальный номер налогоплательщика',
