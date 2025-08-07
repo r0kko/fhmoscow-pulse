@@ -26,12 +26,7 @@ const maskedAccountNumber = computed(() => {
   const num = bankAccount.value.number;
   return '···· ' + (num.length > 4 ? num.slice(-4) : num);
 });
-const innDisplay = computed(() => {
-  if (!inn.value?.number) return 'Отсутствует';
-  const parts = [inn.value.number];
-  if (taxation.value?.type?.name) parts.push(taxation.value.type.name);
-  return parts.join(' · ');
-});
+const innDisplay = computed(() => inn.value?.number || 'Отсутствует');
 const sectionNav = computed(() =>
   [
     { id: 'documents', label: 'Документы', show: true },
