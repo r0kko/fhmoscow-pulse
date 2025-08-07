@@ -95,7 +95,6 @@ async function copyToClipboard(text) {
   }
 }
 
-
 async function sendCode() {
   try {
     await apiFetch('/email/send-code', { method: 'POST' });
@@ -202,243 +201,261 @@ onMounted(() => {
 <template>
   <div class="py-3 profile-page">
     <div class="container">
-    <nav aria-label="breadcrumb" class="mb-2">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
-        <li class="breadcrumb-item active" aria-current="page">
-          Персональные данные
-        </li>
-      </ol>
-    </nav>
-    <h1 class="mb-3">Документы и данные</h1>
-    <div v-if="loading.user" class="text-center my-5">
-      <div class="spinner-border" role="status" aria-label="Загрузка">
-        <span class="visually-hidden">Загрузка…</span>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Персональные данные
+          </li>
+        </ol>
+      </nav>
+      <h1 class="mb-3">Документы и данные</h1>
+      <div v-if="loading.user" class="text-center my-5">
+        <div class="spinner-border" role="status" aria-label="Загрузка">
+          <span class="visually-hidden">Загрузка…</span>
+        </div>
       </div>
-    </div>
-    <div v-else-if="user">
-      <div class="row">
-        <div class="col-lg-9">
-          <section id="documents" class="mb-4">
-            <div class="tiles-row">
-              <div class="tile-col">
-                <component
-                  :is="passport ? RouterLink : 'div'"
-                  v-bind="passport ? { to: '/profile/doc/passport' } : {}"
-                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
-                >
-                  <div class="card-body d-flex flex-column h-100">
-                    <i class="bi bi-passport fs-3 icon-brand mb-2"></i>
-                    <div class="mt-auto">
-                      <h5 class="card-title mb-1">Паспорт РФ</h5>
-                      <p class="card-text text-muted mb-0">
-                        {{
-                          passport
-                            ? passport.series + ' ' + maskPassportNumber(passport.number)
-                            : 'Отсутствует'
-                        }}
-                      </p>
+      <div v-else-if="user">
+        <div class="row">
+          <div class="col-lg-9">
+            <section id="documents" class="mb-4">
+              <div class="tiles-row" role="list">
+                <div class="tile-col" role="listitem">
+                  <component
+                    :is="passport ? RouterLink : 'div'"
+                    v-bind="passport ? { to: '/profile/doc/passport' } : {}"
+                    class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
+                  >
+                    <div class="card-body d-flex flex-column h-100">
+                      <i class="bi bi-passport fs-3 icon-brand mb-2"></i>
+                      <div class="mt-auto">
+                        <h5 class="card-title mb-1">Паспорт РФ</h5>
+                        <p class="card-text text-muted mb-0">
+                          {{
+                            passport
+                              ? passport.series +
+                                ' ' +
+                                maskPassportNumber(passport.number)
+                              : 'Отсутствует'
+                          }}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </component>
-              </div>
-              <div class="tile-col">
-                <component
-                  :is="inn ? RouterLink : 'div'"
-                  v-bind="inn ? { to: '/profile/doc/inn' } : {}"
-                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
-                >
-                  <div class="card-body d-flex flex-column h-100">
-                    <i class="bi bi-person-badge fs-3 icon-brand mb-2"></i>
-                    <div class="mt-auto">
-                      <h5 class="card-title mb-1">ИНН</h5>
-                      <p class="card-text text-muted mb-0">
-                        {{ inn?.number || 'Отсутствует' }}
-                      </p>
-                    </div>
-                  </div>
-                </component>
-              </div>
-              <div class="tile-col">
-                <component
-                  :is="snils ? RouterLink : 'div'"
-                  v-bind="snils ? { to: '/profile/doc/snils' } : {}"
-                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
-                >
-                  <div class="card-body d-flex flex-column h-100">
-                    <i class="bi bi-card-checklist fs-3 icon-brand mb-2"></i>
-                    <div class="mt-auto">
-                      <h5 class="card-title mb-1">СНИЛС</h5>
-                      <p class="card-text text-muted mb-0">
-                        {{ snils?.number || 'Отсутствует' }}
-                      </p>
-                    </div>
-                  </div>
-                </component>
-              </div>
-              <div class="tile-col">
-                <component
-                  :is="driverLicense ? RouterLink : 'div'"
-                  v-bind="
-                    driverLicense ? { to: '/profile/doc/driver-license' } : {}
-                  "
-                  class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
-                >
-                  <div class="card-body d-flex flex-column h-100">
-                    <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
-                    <div class="mt-auto">
-                      <h5 class="card-title mb-1">Водительское удостоверение</h5>
-                      <p class="card-text text-muted mb-0">
-                        {{ driverLicense?.number || 'Отсутствует' }}
-                      </p>
-                    </div>
-                  </div>
-                </component>
-              </div>
-            </div>
-          </section>
-          <section id="contacts" class="mb-4">
-            <div class="card section-card tile fade-in shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Контакты</h5>
-                <div class="row row-cols-1 row-cols-sm-2 g-3">
-                  <div class="col">
-                    <InfoField
-                      id="userPhone"
-                      label="Телефон"
-                      icon="bi bi-telephone"
-                      :value="user.phone ? formatPhone(user.phone) : ''"
-                      :copyable="!!user.phone"
-                      @copy="copyToClipboard(user.phone)"
-                    />
-                  </div>
-                  <div class="col">
-                    <InfoField
-                      id="userEmail"
-                      label="Email"
-                      icon="bi bi-envelope"
-                      :value="user.email"
-                      :copyable="!!user.email"
-                      @copy="copyToClipboard(user.email)"
-                    />
-                  </div>
+                  </component>
                 </div>
-                <div v-if="!user.email_confirmed" class="mt-3">
-                  <div class="alert alert-warning p-2">
-                    Email не подтверждён.
-                    <button
-                      class="btn btn-sm btn-brand ms-2"
-                      @click="sendCode"
-                    >
-                      Отправить код
-                    </button>
-                  </div>
-                  <div v-if="codeSent" class="input-group mt-2">
-                    <input
-                      type="text"
-                      class="form-control"
-                      v-model="code"
-                      maxlength="6"
-                      placeholder="Код из письма"
-                    />
-                    <button class="btn btn-brand" @click="confirmCode">
-                      Подтвердить
-                    </button>
-                  </div>
-                  <div v-if="verifyError" class="text-danger mt-1">
-                    {{ verifyError }}
-                  </div>
+                <div class="tile-col" role="listitem">
+                  <component
+                    :is="inn ? RouterLink : 'div'"
+                    v-bind="inn ? { to: '/profile/doc/inn' } : {}"
+                    class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
+                  >
+                    <div class="card-body d-flex flex-column h-100">
+                      <i class="bi bi-person-badge fs-3 icon-brand mb-2"></i>
+                      <div class="mt-auto">
+                        <h5 class="card-title mb-1">ИНН</h5>
+                        <p class="card-text text-muted mb-0">
+                          {{ inn?.number || 'Отсутствует' }}
+                        </p>
+                      </div>
+                    </div>
+                  </component>
+                </div>
+                <div class="tile-col" role="listitem">
+                  <component
+                    :is="snils ? RouterLink : 'div'"
+                    v-bind="snils ? { to: '/profile/doc/snils' } : {}"
+                    class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
+                  >
+                    <div class="card-body d-flex flex-column h-100">
+                      <i class="bi bi-card-checklist fs-3 icon-brand mb-2"></i>
+                      <div class="mt-auto">
+                        <h5 class="card-title mb-1">СНИЛС</h5>
+                        <p class="card-text text-muted mb-0">
+                          {{ snils?.number || 'Отсутствует' }}
+                        </p>
+                      </div>
+                    </div>
+                  </component>
+                </div>
+                <div class="tile-col" role="listitem">
+                  <component
+                    :is="driverLicense ? RouterLink : 'div'"
+                    v-bind="
+                      driverLicense ? { to: '/profile/doc/driver-license' } : {}
+                    "
+                    class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
+                  >
+                    <div class="card-body d-flex flex-column h-100">
+                      <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
+                      <div class="mt-auto">
+                        <h5 class="card-title mb-1">
+                          Водительское удостоверение
+                        </h5>
+                        <p class="card-text text-muted mb-0">
+                          {{ driverLicense?.number || 'Отсутствует' }}
+                        </p>
+                      </div>
+                    </div>
+                  </component>
                 </div>
               </div>
-            </div>
-          </section>
-          <section
-            id="bank"
-            class="mb-4"
-            v-if="
-              bankAccount !== undefined || bankAccountError || loading.bankAccount
-            "
-          >
-            <div class="card section-card tile fade-in shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Банковские реквизиты</h5>
-                <div v-if="loading.bankAccount" class="text-center py-4">
-                  <div class="spinner-border" role="status" aria-label="Загрузка">
-                    <span class="visually-hidden">Загрузка…</span>
-                  </div>
-                </div>
-                <div v-else-if="bankAccount">
+            </section>
+            <section id="contacts" class="mb-4">
+              <div class="card section-card tile fade-in shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title mb-3">Контакты</h5>
                   <div class="row row-cols-1 row-cols-sm-2 g-3">
                     <div class="col">
                       <InfoField
-                        id="accNumber"
-                        label="Счёт"
-                        icon="bi bi-credit-card"
-                        :value="maskedAccountNumber"
-                        :copyable="!!bankAccount.number"
-                        @copy="copyToClipboard(bankAccount.number)"
+                        id="userPhone"
+                        label="Телефон"
+                        icon="bi bi-telephone"
+                        :value="user.phone ? formatPhone(user.phone) : ''"
+                        :copyable="!!user.phone"
+                        @copy="copyToClipboard(user.phone)"
                       />
                     </div>
                     <div class="col">
                       <InfoField
-                        id="accBic"
-                        label="БИК"
-                        icon="bi bi-123"
-                        :value="bankAccount.bic"
-                        :copyable="!!bankAccount.bic"
-                        @copy="copyToClipboard(bankAccount.bic)"
-                      />
-                    </div>
-                    <div class="col">
-                      <InfoField
-                        id="accBank"
-                        label="Банк"
-                        icon="bi bi-bank"
-                        :value="bankAccount.bank_name"
-                      />
-                    </div>
-                    <div class="col">
-                      <InfoField
-                        id="accCorr"
-                        label="Корсчёт"
-                        icon="bi bi-building"
-                        :value="bankAccount.correspondent_account"
-                        :copyable="!!bankAccount.correspondent_account"
-                        @copy="copyToClipboard(bankAccount.correspondent_account)"
+                        id="userEmail"
+                        label="Email"
+                        icon="bi bi-envelope"
+                        :value="user.email"
+                        :copyable="!!user.email"
+                        @copy="copyToClipboard(user.email)"
                       />
                     </div>
                   </div>
+                  <div v-if="!user.email_confirmed" class="mt-3">
+                    <div class="alert alert-warning p-2">
+                      Email не подтверждён.
+                      <button
+                        class="btn btn-sm btn-brand ms-2"
+                        @click="sendCode"
+                      >
+                        Отправить код
+                      </button>
+                    </div>
+                    <div v-if="codeSent" class="input-group mt-2">
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="code"
+                        maxlength="6"
+                        placeholder="Код из письма"
+                      />
+                      <button class="btn btn-brand" @click="confirmCode">
+                        Подтвердить
+                      </button>
+                    </div>
+                    <div v-if="verifyError" class="text-danger mt-1">
+                      {{ verifyError }}
+                    </div>
+                  </div>
                 </div>
-                <p v-else class="mb-0 text-muted">
-                  {{ bankAccountError || 'Банковский счёт не найден.' }}
-                </p>
               </div>
-            </div>
-          </section>
-        </div>
-        <div class="col-lg-3 d-none d-lg-block">
-          <nav aria-hidden="true" class="profile-nav sticky-top" style="top: 20px">
-            <ul class="nav flex-column">
-              <li class="nav-item" v-for="s in sectionNav" :key="s.id">
-                <a class="nav-link py-1" :href="'#' + s.id">{{ s.label }}</a>
-              </li>
-            </ul>
-          </nav>
+            </section>
+            <section
+              id="bank"
+              class="mb-4"
+              v-if="
+                bankAccount !== undefined ||
+                bankAccountError ||
+                loading.bankAccount
+              "
+            >
+              <div class="card section-card tile fade-in shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title mb-3">Банковские реквизиты</h5>
+                  <div v-if="loading.bankAccount" class="text-center py-4">
+                    <div
+                      class="spinner-border"
+                      role="status"
+                      aria-label="Загрузка"
+                    >
+                      <span class="visually-hidden">Загрузка…</span>
+                    </div>
+                  </div>
+                  <div v-else-if="bankAccount">
+                    <div class="row row-cols-1 row-cols-sm-2 g-3">
+                      <div class="col">
+                        <InfoField
+                          id="accNumber"
+                          label="Счёт"
+                          icon="bi bi-credit-card"
+                          :value="maskedAccountNumber"
+                          :copyable="!!bankAccount.number"
+                          @copy="copyToClipboard(bankAccount.number)"
+                        />
+                      </div>
+                      <div class="col">
+                        <InfoField
+                          id="accBic"
+                          label="БИК"
+                          icon="bi bi-123"
+                          :value="bankAccount.bic"
+                          :copyable="!!bankAccount.bic"
+                          @copy="copyToClipboard(bankAccount.bic)"
+                        />
+                      </div>
+                      <div class="col">
+                        <InfoField
+                          id="accBank"
+                          label="Банк"
+                          icon="bi bi-bank"
+                          :value="bankAccount.bank_name"
+                        />
+                      </div>
+                      <div class="col">
+                        <InfoField
+                          id="accCorr"
+                          label="Корсчёт"
+                          icon="bi bi-building"
+                          :value="bankAccount.correspondent_account"
+                          :copyable="!!bankAccount.correspondent_account"
+                          @copy="
+                            copyToClipboard(bankAccount.correspondent_account)
+                          "
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <p v-else class="mb-0 text-muted">
+                    {{ bankAccountError || 'Банковский счёт не найден.' }}
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="col-lg-3 d-none d-lg-block">
+            <nav
+              aria-hidden="true"
+              class="profile-nav sticky-top"
+              style="top: 20px"
+            >
+              <ul class="nav flex-column">
+                <li class="nav-item" v-for="s in sectionNav" :key="s.id">
+                  <a class="nav-link py-1" :href="'#' + s.id">{{ s.label }}</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
       </div>
-    </div>
-    <p v-else>Данные пользователя не найдены.</p>
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        data-bs-delay="1500"
-        data-bs-autohide="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
+      <p v-else>Данные пользователя не найдены.</p>
+      <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div
+          ref="toastRef"
+          class="toast text-bg-secondary"
+          role="status"
+          data-bs-delay="1500"
+          data-bs-autohide="true"
+        >
+          <div class="toast-body">{{ toastMessage }}</div>
+        </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -461,10 +478,16 @@ onMounted(() => {
   gap: 1rem;
   padding-bottom: 0.25rem;
   scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tiles-row::-webkit-scrollbar {
+  display: none;
 }
 
 .tiles-row > .tile-col {
-  flex: 0 0 80%;
+  flex: 0 0 calc(80% - 0.5rem);
   scroll-snap-align: start;
 }
 
@@ -474,16 +497,15 @@ onMounted(() => {
     overflow-x: visible;
   }
   .tiles-row > .tile-col {
-    flex: 0 0 50%;
+    flex: 0 0 calc(50% - 0.5rem);
   }
 }
 
 @media (min-width: 992px) {
   .tiles-row > .tile-col {
-    flex: 0 0 25%;
+    flex: 0 0 calc(25% - 0.75rem);
   }
 }
-
 
 .profile-nav .nav-link {
   color: var(--bs-body-color);
