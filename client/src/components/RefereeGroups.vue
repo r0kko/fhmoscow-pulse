@@ -111,7 +111,7 @@ defineExpose({ refresh });
   <div>
     <div class="card section-card ground-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Группы судей</h2>
+        <h2 class="h5">Группы судей</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>

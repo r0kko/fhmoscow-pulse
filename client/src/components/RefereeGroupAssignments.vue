@@ -166,7 +166,7 @@ defineExpose({ refresh });
     </div>
     <div class="card section-card ground-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Назначение судей</h2>
+        <h2 class="h5">Назначение судей</h2>
       </div>
       <div class="card-body p-3">
         <div class="row g-2 mb-3">

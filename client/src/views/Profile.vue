@@ -211,7 +211,7 @@ onMounted(() => {
           </li>
         </ol>
       </nav>
-      <h1 class="mb-3">Документы и данные</h1>
+      <h1>Документы и данные</h1>
       <div v-if="loading.user" class="text-center my-5">
         <div class="spinner-border" role="status" aria-label="Загрузка">
           <span class="visually-hidden">Загрузка…</span>

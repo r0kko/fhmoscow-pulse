@@ -45,7 +45,7 @@ onUnmounted(() => {
   <div class="d-flex align-items-center justify-content-center min-vh-100">
     <div class="card p-4 shadow login-card w-100 text-center" style="max-width: 420px;">
       <img :src="logo" alt="FHM" class="mx-auto d-block mb-3" style="max-height: 80px" />
-      <h2 class="mb-3">Заявка отправлена</h2>
+      <h2>Заявка отправлена</h2>
       <p class="mb-3">Ваша регистрация завершена и ожидает проверки администратором.</p>
       <p class="mb-4">После подтверждения вам станет доступен портал.</p>
       <div class="d-flex justify-content-center gap-2">

@@ -83,7 +83,7 @@ async function login() {
   <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
     <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
       <img :src="logo" alt="FHM" class="mx-auto d-block mb-3" style="max-height: 80px" />
-      <h2 class="mb-3 text-center">Авторизация</h2>
+      <h2 class="text-center">Авторизация</h2>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
       </transition>

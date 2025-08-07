@@ -582,7 +582,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
           <li class="breadcrumb-item active" aria-current="page">Сборы</li>
         </ol>
       </nav>
-      <h1 class="mb-3">Сборы</h1>
+      <h1>Сборы</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
@@ -621,7 +621,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0">Площадки</h2>
+            <h2 class="h5">Площадки</h2>
             <button class="btn btn-brand" @click="openCreate">
               <i class="bi bi-plus-lg me-1"></i>Добавить
             </button>
@@ -708,7 +708,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
       </div>
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">Типы тренировок</h2>
+            <h2 class="h5">Типы тренировок</h2>
           <button class="btn btn-brand" @click="openCreateType">
             <i class="bi bi-plus-lg me-1"></i>Добавить
           </button>
@@ -815,7 +815,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
     </div>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Тренировки</h2>
+        <h2 class="h5">Тренировки</h2>
         <div>
           <button class="btn btn-light me-2" @click="openTrainingFilters" title="Фильтры">
             <i class="bi bi-funnel"></i>
