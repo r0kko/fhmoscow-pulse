@@ -220,22 +220,24 @@ onMounted(() => {
       <div class="row">
         <div class="col-lg-9">
           <section id="documents" class="mb-4">
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+            <div class="row g-3 tiles-row">
               <div class="col">
                 <RouterLink
                   to="/profile/doc/passport"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
+                  <div class="card-body d-flex flex-column h-100">
                     <i class="bi bi-passport fs-3 icon-brand mb-2"></i>
-                    <h5 class="card-title mb-1">Паспорт РФ</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{
-                        passport
-                          ? passport.series + ' ' + maskPassportNumber(passport.number)
-                          : noDataPlaceholder
-                      }}
-                    </p>
+                    <div class="mt-auto">
+                      <h5 class="card-title mb-1">Паспорт РФ</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{
+                          passport
+                            ? passport.series + ' ' + maskPassportNumber(passport.number)
+                            : noDataPlaceholder
+                        }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
@@ -244,12 +246,14 @@ onMounted(() => {
                   to="/profile/doc/inn"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
+                  <div class="card-body d-flex flex-column h-100">
                     <i class="bi bi-person-badge fs-3 icon-brand mb-2"></i>
-                    <h5 class="card-title mb-1">ИНН</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{ inn?.number || noDataPlaceholder }}
-                    </p>
+                    <div class="mt-auto">
+                      <h5 class="card-title mb-1">ИНН</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{ inn?.number || noDataPlaceholder }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
@@ -258,12 +262,14 @@ onMounted(() => {
                   to="/profile/doc/snils"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
+                  <div class="card-body d-flex flex-column h-100">
                     <i class="bi bi-card-checklist fs-3 icon-brand mb-2"></i>
-                    <h5 class="card-title mb-1">СНИЛС</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{ snils?.number || noDataPlaceholder }}
-                    </p>
+                    <div class="mt-auto">
+                      <h5 class="card-title mb-1">СНИЛС</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{ snils?.number || noDataPlaceholder }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
@@ -272,12 +278,14 @@ onMounted(() => {
                   to="/profile/doc/driver-license"
                   class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
                 >
-                  <div class="card-body">
+                  <div class="card-body d-flex flex-column h-100">
                     <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
-                    <h5 class="card-title mb-1">Водительское удостоверение</h5>
-                    <p class="card-text text-muted mb-0">
-                      {{ driverLicense?.number || noDataPlaceholder }}
-                    </p>
+                    <div class="mt-auto">
+                      <h5 class="card-title mb-1">Водительское удостоверение</h5>
+                      <p class="card-text text-muted mb-0">
+                        {{ driverLicense?.number || noDataPlaceholder }}
+                      </p>
+                    </div>
                   </div>
                 </RouterLink>
               </div>
@@ -438,6 +446,35 @@ onMounted(() => {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
+}
+
+.tiles-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.tiles-row > .col {
+  flex: 0 0 75%;
+  max-width: 75%;
+}
+
+@media (min-width: 576px) {
+  .tiles-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  .tiles-row > .col {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
+
+@media (min-width: 992px) {
+  .tiles-row > .col {
+    flex: 0 0 25%;
+    max-width: 25%;
+  }
 }
 
 
