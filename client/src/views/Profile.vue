@@ -533,6 +533,11 @@ onMounted(() => {
     margin-left: -1rem;
     margin-right: -1rem;
   }
+
+  .tiles-row .section-card {
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 @keyframes fadeIn {
