@@ -14,7 +14,7 @@ import { RouterLink } from 'vue-router';
           <li class="breadcrumb-item active" aria-current="page">Задачи</li>
         </ol>
       </nav>
-      <h1 class="mb-3">Задачи</h1>
+      <h1>Задачи</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <TaskList />

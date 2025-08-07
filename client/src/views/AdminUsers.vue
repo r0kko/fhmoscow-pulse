@@ -238,7 +238,7 @@ async function copy(text) {
         <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
       </ol>
     </nav>
-    <h1 class="mb-3">Пользователи</h1>
+    <h1>Пользователи</h1>
     <div class="card tile mb-3">
       <div class="card-body p-2">
         <ul class="nav nav-pills nav-fill mb-0 tab-selector">
@@ -253,7 +253,7 @@ async function copy(text) {
     </div>
     <div v-show="activeTab === 'users'" class="card section-card tile fade-in shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Пользователи</h2>
+        <h2 class="h5">Пользователи</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
@@ -451,7 +451,7 @@ async function copy(text) {
     </div>
     <div v-show="activeTab === 'profiles'" class="card section-card tile fade-in shadow-sm mt-3">
       <div class="card-header">
-        <h2 class="h5 mb-0">Заполнение профиля</h2>
+        <h2 class="h5">Заполнение профиля</h2>
       </div>
       <div class="card-body p-3">
         <div v-if="completionError" class="alert alert-danger mb-3">{{ completionError }}</div>

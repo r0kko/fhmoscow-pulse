@@ -86,7 +86,7 @@ async function changeStatus(ticket, alias) {
         <li class="breadcrumb-item active" aria-current="page">Обращения</li>
       </ol>
     </nav>
-    <h1 class="mb-3">Обращения</h1>
+    <h1>Обращения</h1>
     <div class="card section-card tile fade-in shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end mb-3">

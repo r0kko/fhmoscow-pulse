@@ -224,7 +224,7 @@ function thresholdText(t, zone) {
       <div
         class="d-flex flex-wrap align-items-center justify-content-between mb-3 header-controls"
       >
-        <h1 class="mb-0 text-start">Нормативы</h1>
+        <h1 class="text-start">Нормативы</h1>
         <button
           class="btn btn-outline-secondary d-sm-none"
           @click="openSeason"
@@ -257,7 +257,7 @@ function thresholdText(t, zone) {
         class="card section-card tile fade-in shadow-sm mb-3"
       >
         <div class="card-header">
-          <h2 class="h6 mb-0">{{ g.name }}</h2>
+          <h2 class="h6">{{ g.name }}</h2>
         </div>
         <div class="card-body p-3">
           <div

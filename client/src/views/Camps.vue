@@ -371,7 +371,7 @@ function attendanceStatus(t) {
           <li class="breadcrumb-item active" aria-current="page">Сборы</li>
         </ol>
       </nav>
-      <h1 class="mb-3">Сборы</h1>
+      <h1>Сборы</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
@@ -463,7 +463,7 @@ function attendanceStatus(t) {
                       :key="g.date"
                       class="mb-3 schedule-day"
                   >
-                    <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+                    <h2 class="h6">{{ formatDay(g.date) }}</h2>
                     <ul class="list-unstyled mb-0">
                       <li
                           v-for="t in g.trainings"
@@ -568,7 +568,7 @@ function attendanceStatus(t) {
                     :key="g.date"
                     class="mb-3 schedule-day"
                 >
-                  <h2 class="h6 mb-3">{{ formatDay(g.date) }}</h2>
+                  <h2 class="h6">{{ formatDay(g.date) }}</h2>
                   <ul class="list-unstyled mb-0">
                     <li
                         v-for="t in g.trainings"
@@ -697,7 +697,7 @@ function attendanceStatus(t) {
                 <div
                     class="d-flex justify-content-between align-items-start mb-1"
                 >
-                  <h2 class="h6 mb-1">{{ g.ground.name }}</h2>
+                  <h2 class="h6">{{ g.ground.name }}</h2>
                   <a
                       v-if="g.ground.yandex_url"
                       :href="withHttp(g.ground.yandex_url)"

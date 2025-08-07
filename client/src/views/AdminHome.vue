@@ -17,7 +17,7 @@ const refereeSections = [
 <template>
   <div class="py-4">
     <div class="container">
-      <h1 class="mb-3 text-center">Администрирование</h1>
+      <h1 class="text-center">Администрирование</h1>
 
       <div class="card section-card mb-2">
         <div class="card-body">

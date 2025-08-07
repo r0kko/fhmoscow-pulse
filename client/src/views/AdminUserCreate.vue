@@ -107,7 +107,7 @@ async function copyToClipboard(text) {
         <li class="breadcrumb-item active" aria-current="page">Создание</li>
       </ol>
     </nav>
-    <h1 class="mb-3">Новый пользователь</h1>
+    <h1>Новый пользователь</h1>
     <form @submit.prevent="save">
       <UserForm ref="formRef" v-model="user" :isNew="true" :sexes="sexes" />
       <div class="mt-3">
