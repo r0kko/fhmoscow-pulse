@@ -48,6 +48,7 @@ export const ERROR_MESSAGES = {
   awaiting_confirmation: 'Ожидается подтверждение',
   email_unconfirmed: 'Электронная почта не подтверждена',
   file_required: 'Не выбран файл',
+  active_ticket_exists: 'Есть активное обращение данного типа',
   registration_incomplete: 'Регистрация не завершена',
   status_unknown: 'Неизвестный статус',
   not_found: 'Не найдено'
