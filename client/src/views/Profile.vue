@@ -207,7 +207,7 @@ onMounted(() => {
             <RouterLink to="/">Главная</RouterLink>
           </li>
           <li class="breadcrumb-item active" aria-current="page">
-            Персональные данные
+            Мои данные
           </li>
         </ol>
       </nav>

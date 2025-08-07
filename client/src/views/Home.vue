@@ -22,7 +22,7 @@ const workSections = [
 const docsSections = [
   { title: 'Документы', icon: 'bi-folder2-open' },
   { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
-  { title: 'Персональные данные', icon: 'bi-person-circle', to: '/profile' }
+  { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' }
 ]
 
 const adminRoles = ['ADMIN', 'FIELD_REFEREE_SPECIALIST', 'BRIGADE_REFEREE_SPECIALIST']
