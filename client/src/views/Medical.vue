@@ -22,6 +22,7 @@ const fileError = ref('');
 const selectedFile = ref(null);
 const uploadSuccess = ref(false);
 const uploading = ref(false);
+const hasActiveTicket = ref(false);
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['application/pdf'];
 const DEFAULT_DESCRIPTION =
@@ -101,15 +102,21 @@ function applyTooltips() {
 
 onMounted(async () => {
   try {
-    const [current, hist] = await Promise.all([
+    const [current, hist, tdata] = await Promise.all([
       apiFetch('/medical-certificates/me').catch((e) => {
         if (e.message.includes('не найден')) return null;
         throw e;
       }),
       apiFetch('/medical-certificates/me/history'),
+      apiFetch('/tickets/me').catch(() => ({ tickets: [] })),
     ]);
     certificate.value = current ? current.certificate : null;
     history.value = hist.certificates || [];
+    hasActiveTicket.value = (tdata.tickets || []).some(
+      (t) =>
+        t.type?.alias === 'MED_CERT_UPLOAD' &&
+        ['CREATED', 'IN_PROGRESS'].includes(t.status?.alias)
+    );
     if (certificate.value) {
       const data = await apiFetch('/medical-certificates/me/files').catch(() => ({ files: [] }));
       files.value = data.files;
@@ -203,6 +210,7 @@ async function createTicket() {
     ticketModal.hide();
     uploadSuccess.value = true;
     selectedFile.value = null;
+    hasActiveTicket.value = true;
   } catch (e) {
     ticketError.value = e.message;
   } finally {
@@ -296,9 +304,25 @@ function onFileChange(e) {
             <p v-else class="text-muted mb-0">Нет файлов</p>
           </div>
           </template>
-          <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
+          <div
+            v-else
+            class="alert alert-warning mb-0 d-flex justify-content-between align-items-center"
+            role="alert"
+          >
             <span>Действующее медицинское заключение отсутствует</span>
-            <button class="btn btn-brand d-flex align-items-center gap-1" @click="openTicketModal">
+            <RouterLink
+              v-if="hasActiveTicket"
+              to="/tickets"
+              class="btn btn-outline-brand d-flex align-items-center gap-1"
+            >
+              <i class="bi bi-hourglass"></i>
+              <span>На проверке</span>
+            </RouterLink>
+            <button
+              v-else
+              class="btn btn-brand d-flex align-items-center gap-1"
+              @click="openTicketModal"
+            >
               <i class="bi bi-upload"></i>
               <span>Загрузить справку</span>
             </button>

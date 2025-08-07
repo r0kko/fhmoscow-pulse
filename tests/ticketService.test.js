@@ -103,6 +103,17 @@ test('createForUser creates ticket', async () => {
   expect(sendCreatedEmailMock).toHaveBeenCalled();
 });
 
+test('createForUser rejects when active medical certificate ticket exists', async () => {
+  userFindByPkMock.mockResolvedValue({ id: 'u1' });
+  findOneTypeMock.mockResolvedValue({ id: 'type1', alias: 'MED_CERT_UPLOAD' });
+  findOneStatusMock.mockResolvedValue({ id: 'status1' });
+  ticketFindOneMock.mockResolvedValue({ id: 'tExisting' });
+  await expect(
+    service.createForUser('u1', { type_alias: 'MED_CERT_UPLOAD' }, 'admin')
+  ).rejects.toThrow('active_ticket_exists');
+  expect(createMock).not.toHaveBeenCalled();
+});
+
 test('updateForUser updates ticket', async () => {
   ticketFindOneMock.mockResolvedValue({
     id: 't1',

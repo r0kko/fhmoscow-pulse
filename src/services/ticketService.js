@@ -49,6 +49,19 @@ async function createForUser(userId, data, actorId) {
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!type) throw new ServiceError('ticket_type_not_found', 404);
   if (!status) throw new ServiceError('ticket_status_not_found', 404);
+  if (type.alias === 'MED_CERT_UPLOAD') {
+    const existing = await Ticket.findOne({
+      where: { user_id: userId, type_id: type.id },
+      include: [
+        {
+          model: TicketStatus,
+          where: { alias: ['CREATED', 'IN_PROGRESS'] },
+          required: true,
+        },
+      ],
+    });
+    if (existing) throw new ServiceError('active_ticket_exists', 400);
+  }
   let ticket;
   if (Ticket.sequelize?.transaction) {
     ticket = await Ticket.sequelize.transaction(async (t) => {
