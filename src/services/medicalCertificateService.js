@@ -68,12 +68,16 @@ async function listAll(options = {}) {
     },
   ];
 
-  if (options.role) {
+  if (
+    options.role &&
+    (Array.isArray(options.role) ? options.role.length : true)
+  ) {
     const { Role } = await import('../models/index.js');
+    const aliases = Array.isArray(options.role) ? options.role : [options.role];
     include[0].include = [
       {
         model: Role,
-        where: { alias: options.role },
+        where: { alias: aliases },
         through: { attributes: [] },
         required: true,
       },

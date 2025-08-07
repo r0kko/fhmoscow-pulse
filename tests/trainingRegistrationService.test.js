@@ -127,7 +127,7 @@ test('remove sends cancellation email', async () => {
 test('add creates registration for referee', async () => {
   const tr = { ...training, TrainingRegistrations: [] };
   findTrainingMock.mockResolvedValue(tr);
-  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] });
+  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   await service.add('t1', 'u2', 'role2', 'admin');
   expect(createRegMock).toHaveBeenCalledWith({
     training_id: 't1',
@@ -137,7 +137,7 @@ test('add creates registration for referee', async () => {
     updated_by: 'admin',
   });
   expect(sendRegEmailMock).toHaveBeenCalledWith(
-    { id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] },
+    { id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] },
     tr,
     { id: 'role1' }
   );
@@ -148,7 +148,7 @@ test('add restores deleted registration', async () => {
   const restoreMock = jest.fn();
   const updateMock = jest.fn();
   findTrainingMock.mockResolvedValue(tr);
-  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] });
+  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValue({
     deletedAt: new Date(),
     restore: restoreMock,
@@ -159,7 +159,7 @@ test('add restores deleted registration', async () => {
   expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role2', updated_by: 'admin' });
   expect(createRegMock).not.toHaveBeenCalled();
   expect(sendRegEmailMock).toHaveBeenCalledWith(
-    { id: 'u2', email: 'e2', Roles: [{ alias: 'REFEREE' }] },
+    { id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] },
     tr,
     { id: 'role1' }
   );
@@ -300,7 +300,7 @@ test('updatePresence updates value for admin', async () => {
 
 test('updatePresence rejects when not coach', async () => {
   findRegMock.mockResolvedValueOnce({});
-  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'REFEREE' }] });
+  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValueOnce(null);
   await expect(
     service.updatePresence('t1', 'u1', false, 'u2')
@@ -309,7 +309,7 @@ test('updatePresence rejects when not coach', async () => {
 
 test('updatePresence rejects when updating coach presence', async () => {
   findRegMock.mockResolvedValueOnce({ TrainingRole: { alias: 'COACH' } });
-  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'REFEREE' }] });
+  findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValueOnce({ TrainingRole: { alias: 'COACH' } });
   await expect(
     service.updatePresence('t1', 'u1', true, 'u1')

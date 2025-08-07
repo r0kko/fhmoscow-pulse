@@ -206,7 +206,7 @@ test('setAttendanceMarked updates for admin', async () => {
 test('setAttendanceMarked marks coach present', async () => {
   const updateRegMock = jest.fn();
   findByPkMock.mockResolvedValue({ update: updateMock });
-  findUserMock.mockResolvedValue({ Roles: [{ alias: 'REFEREE' }] });
+  findUserMock.mockResolvedValue({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValue({ TrainingRole: { alias: 'COACH' }, update: updateRegMock });
   await service.setAttendanceMarked('t1', true, 'u1');
   expect(updateMock).toHaveBeenCalledWith({ attendance_marked: true, updated_by: 'u1' });
@@ -215,7 +215,7 @@ test('setAttendanceMarked marks coach present', async () => {
 
 test('setAttendanceMarked rejects when not coach', async () => {
   findByPkMock.mockResolvedValue({ update: updateMock });
-  findUserMock.mockResolvedValue({ Roles: [{ alias: 'REFEREE' }] });
+  findUserMock.mockResolvedValue({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValue(null);
   await expect(service.setAttendanceMarked('t1', true, 'u1')).rejects.toThrow('access_denied');
 });

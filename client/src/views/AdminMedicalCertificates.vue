@@ -32,6 +32,7 @@ const fileInput = ref(null)
 const saving = ref(false)
 const deleting = ref(false)
 const fileUploading = ref(false)
+const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE']
 
 onMounted(() => {
   modal = new Modal(modalRef.value)
@@ -49,20 +50,20 @@ watch(userQuery, () => {
     userSuggestions.value = []
     return
   }
-  userTimeout = setTimeout(async () => {
-    try {
-      const params = new URLSearchParams({
-        search: userQuery.value,
-        limit: 5,
-        role: 'REFEREE',
-      })
-      const data = await apiFetch(`/users?${params}`)
-      userSuggestions.value = data.users
-    } catch (_err) {
-      userSuggestions.value = []
-    }
-  }, 300)
-})
+    userTimeout = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          search: userQuery.value,
+          limit: 5,
+        })
+        refereeRoles.forEach((r) => params.append('role', r))
+        const data = await apiFetch(`/users?${params}`)
+        userSuggestions.value = data.users
+      } catch (_err) {
+        userSuggestions.value = []
+      }
+    }, 300)
+  })
 
 watch(
   () => form.value.inn,
@@ -241,8 +242,10 @@ function hasActive(judge) {
 async function loadJudges() {
   judgesLoading.value = true
   try {
-    const data = await apiFetch('/medical-certificates/role/REFEREE')
-    judges.value = data.judges
+    const data = await Promise.all(
+      refereeRoles.map((r) => apiFetch(`/medical-certificates/role/${r}`))
+    )
+    judges.value = data.flatMap((d) => d.judges)
     judgesError.value = ''
   } catch (e) {
     judgesError.value = e.message

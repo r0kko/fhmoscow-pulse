@@ -103,13 +103,13 @@ test('listUsers applies status filter', async () => {
 
 test('listUsers applies role filter', async () => {
   findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
-  await service.listUsers({ role: 'ADMIN' });
+  await service.listUsers({ role: ['ADMIN', 'REFEREE'] });
   expect(findAndCountAllMock).toHaveBeenCalledWith(
     expect.objectContaining({
       include: expect.arrayContaining([
         expect.objectContaining({
           model: expect.anything(),
-          where: { alias: 'ADMIN' },
+          where: { alias: ['ADMIN', 'REFEREE'] },
           required: true,
         }),
       ]),

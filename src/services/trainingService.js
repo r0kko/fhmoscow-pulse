@@ -12,6 +12,7 @@ import {
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import TrainingRegistration from '../models/trainingRegistration.js';
+import { hasAdminRole, hasRefereeRole } from '../utils/roles.js';
 
 function isRegistrationOpen(training, registeredCount = 0) {
   const start = new Date(training.start_at);
@@ -260,10 +261,10 @@ async function setAttendanceMarked(id, marked, actorId) {
   if (!training) throw new ServiceError('training_not_found', 404);
   const actor = await User.findByPk(actorId, { include: [Role] });
   if (!actor) throw new ServiceError('user_not_found', 404);
-  const isAdmin = actor.Roles.some((r) => r.alias === 'ADMIN');
+  const isAdmin = hasAdminRole(actor.Roles);
   let coachReg = null;
   if (!isAdmin) {
-    if (!actor.Roles.some((r) => r.alias === 'REFEREE')) {
+    if (!hasRefereeRole(actor.Roles)) {
       throw new ServiceError('access_denied');
     }
     coachReg = await TrainingRegistration.findOne({

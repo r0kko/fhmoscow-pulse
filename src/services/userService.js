@@ -74,10 +74,14 @@ async function listUsers(options = {}) {
     ];
   }
   const include = [];
-  if (options.role) {
+  if (
+    options.role &&
+    (Array.isArray(options.role) ? options.role.length : true)
+  ) {
+    const aliases = Array.isArray(options.role) ? options.role : [options.role];
     include.push({
       model: Role,
-      where: { alias: options.role },
+      where: { alias: aliases },
       required: true,
     });
   } else {
