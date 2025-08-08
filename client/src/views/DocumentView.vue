@@ -32,7 +32,7 @@ const validity = computed(() => {
     ? formatDate(passport.value.issue_date)
     : '';
   const exp = passport.value?.valid_until
-    ? formatDate(passport.value.valid_until)ui
+    ? formatDate(passport.value.valid_until)
     : '';
   if (!issue && !exp) return '';
   return `${issue} — ${exp}`;
