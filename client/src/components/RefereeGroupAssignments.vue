@@ -29,7 +29,9 @@ async function loadJudges() {
     if (filterGroup.value) params.append('group_id', filterGroup.value);
     if (filterSeason.value) params.append('season_id', filterSeason.value);
     const query = params.toString();
-    const url = query ? `/referee-group-users?${query}` : '/referee-group-users';
+    const url = query
+      ? `/referee-group-users?${query}`
+      : '/referee-group-users';
     const data = await apiFetch(url);
     judges.value = data.judges.map((j) => ({
       ...j,
@@ -67,12 +69,12 @@ async function setGroup(judge) {
   try {
     if (!judge.group_id) {
       await apiFetch(`/referee-group-users/${judge.user.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
     } else {
       await apiFetch(`/referee-group-users/${judge.user.id}`, {
         method: 'POST',
-        body: JSON.stringify({ group_id: judge.group_id })
+        body: JSON.stringify({ group_id: judge.group_id }),
       });
     }
   } catch (e) {
@@ -121,7 +123,9 @@ async function openHistory(judge) {
   historyModal.show();
   try {
     const params = new URLSearchParams({ page: 1, limit: 50 });
-    const data = await apiFetch(`/camp-trainings/users/${judge.user.id}/history?${params}`);
+    const data = await apiFetch(
+      `/camp-trainings/users/${judge.user.id}/history?${params}`
+    );
     history.value = data.trainings || [];
   } catch (e) {
     historyError.value = e.message;
@@ -165,7 +169,9 @@ defineExpose({ refresh });
       <div class="spinner-border" role="status"></div>
     </div>
     <div class="card section-card ground-card tile fade-in shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
         <h2 class="h5 mb-0">Назначение судей</h2>
       </div>
       <div class="card-body p-3">
@@ -180,13 +186,17 @@ defineExpose({ refresh });
           <div class="col-sm">
             <select v-model="filterSeason" class="form-select">
               <option value="">Все сезоны</option>
-              <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+              <option v-for="s in seasons" :key="s.id" :value="s.id">
+                {{ s.name }}
+              </option>
             </select>
           </div>
           <div class="col-sm">
             <select v-model="filterGroup" class="form-select">
               <option value="">Все группы</option>
-              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">
+                {{ g.name }}
+              </option>
             </select>
           </div>
         </div>
@@ -206,19 +216,33 @@ defineExpose({ refresh });
                 <td>{{ formatName(j.user) }}</td>
                 <td class="text-center">{{ formatDate(j.user.birth_date) }}</td>
                 <td class="text-center">
-                  <select v-model="j.group_id" class="form-select" @change="setGroup(j)">
+                  <select
+                    v-model="j.group_id"
+                    class="form-select"
+                    @change="setGroup(j)"
+                  >
                     <option value="">Без группы</option>
-                    <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                    <option v-for="g in groups" :key="g.id" :value="g.id">
+                      {{ g.name }}
+                    </option>
                   </select>
                 </td>
                 <td class="text-center">
                   {{ j.training_stats.visited }} / {{ j.training_stats.total }}
                   <span v-if="j.training_stats.total">
-                    ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
+                    ({{
+                      Math.round(
+                        (j.training_stats.visited / j.training_stats.total) *
+                          100
+                      )
+                    }}%)
                   </span>
                 </td>
                 <td class="text-center">
-                  <button class="btn btn-sm btn-outline-secondary" @click="openHistory(j)">
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="openHistory(j)"
+                  >
                     <i class="bi bi-clock-history"></i>
                   </button>
                 </td>
@@ -227,89 +251,132 @@ defineExpose({ refresh });
           </table>
         </div>
         <div v-if="judges.length" class="d-block d-sm-none">
-          <div v-for="j in judges" :key="j.user.id" class="card training-card mb-2">
+          <div
+            v-for="j in judges"
+            :key="j.user.id"
+            class="card training-card mb-2"
+          >
             <div class="card-body p-2">
               <p class="mb-1 fw-semibold">{{ formatName(j.user) }}</p>
               <p class="mb-1 text-muted">{{ formatDate(j.user.birth_date) }}</p>
-              <select v-model="j.group_id" class="form-select mt-1" @change="setGroup(j)">
+              <select
+                v-model="j.group_id"
+                class="form-select mt-1"
+                @change="setGroup(j)"
+              >
                 <option value="">Без группы</option>
-                <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                <option v-for="g in groups" :key="g.id" :value="g.id">
+                  {{ g.name }}
+                </option>
               </select>
               <p class="mb-0 mt-1">
                 {{ j.training_stats.visited }} / {{ j.training_stats.total }}
                 <span v-if="j.training_stats.total">
-                  ({{ Math.round((j.training_stats.visited / j.training_stats.total) * 100) }}%)
+                  ({{
+                    Math.round(
+                      (j.training_stats.visited / j.training_stats.total) * 100
+                    )
+                  }}%)
                 </span>
               </p>
               <div class="text-end mt-1">
-                <button class="btn btn-sm btn-outline-secondary" @click="openHistory(j)">
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  @click="openHistory(j)"
+                >
                   <i class="bi bi-clock-history"></i>
                 </button>
               </div>
             </div>
           </div>
-      </div>
-      <p v-else class="text-muted mb-0">Судьи не найдены.</p>
-    </div>
-  </div>
-
-  <div ref="historyModalRef" class="modal fade" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">История посещений — {{ historyJudgeName }}</h5>
-          <button type="button" class="btn-close" @click="historyModal.hide()"></button>
         </div>
-        <div class="modal-body">
-          <div v-if="historyError" class="alert alert-danger">{{ historyError }}</div>
-          <div v-if="historyLoading" class="text-center my-3">
-            <div class="spinner-border" role="status"></div>
+        <p v-else class="text-muted mb-0">Судьи не найдены.</p>
+      </div>
+    </div>
+
+    <div ref="historyModalRef" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              История посещений — {{ historyJudgeName }}
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="historyModal.hide()"
+            ></button>
           </div>
-          <div v-if="history.length">
-            <div class="table-responsive d-none d-sm-block">
-              <table class="table table-striped align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Время</th>
-                    <th>Тренер</th>
-                    <th>Тип</th>
-                    <th>Стадион</th>
-                    <th class="text-center">Факт</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="t in history" :key="t.id">
-                    <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-                    <td>{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</td>
-                    <td>{{ t.type?.name }}</td>
-                    <td>{{ t.ground?.name }}</td>
-                    <td class="text-center">
-                      <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="modal-body">
+            <div v-if="historyError" class="alert alert-danger">
+              {{ historyError }}
             </div>
-            <div class="d-block d-sm-none">
-              <div v-for="t in history" :key="t.id" class="card training-card mb-2">
-                <div class="card-body p-2">
-                  <p class="mb-1 fw-semibold">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
-                  <p class="mb-1">{{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}</p>
-                  <p class="mb-1">{{ t.type?.name }}</p>
-                  <p class="mb-1">{{ t.ground?.name }}</p>
-                  <p class="mb-0 text-end">
-                    <i :class="presenceIcon(t.my_presence)" :title="presenceTitle(t.my_presence)"></i>
-                  </p>
+            <div v-if="historyLoading" class="text-center my-3">
+              <div class="spinner-border" role="status"></div>
+            </div>
+            <div v-if="history.length">
+              <div class="table-responsive d-none d-sm-block">
+                <table class="table table-striped align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Время</th>
+                      <th>Тренер</th>
+                      <th>Тип</th>
+                      <th>Стадион</th>
+                      <th class="text-center">Факт</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="t in history" :key="t.id">
+                      <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+                      <td>
+                        {{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}
+                      </td>
+                      <td>{{ t.type?.name }}</td>
+                      <td>{{ t.ground?.name }}</td>
+                      <td class="text-center">
+                        <i
+                          :class="presenceIcon(t.my_presence)"
+                          :title="presenceTitle(t.my_presence)"
+                        ></i>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="d-block d-sm-none">
+                <div
+                  v-for="t in history"
+                  :key="t.id"
+                  class="card training-card mb-2"
+                >
+                  <div class="card-body p-2">
+                    <p class="mb-1 fw-semibold">
+                      {{ formatDateTimeRange(t.start_at, t.end_at) }}
+                    </p>
+                    <p class="mb-1">
+                      {{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}
+                    </p>
+                    <p class="mb-1">{{ t.type?.name }}</p>
+                    <p class="mb-1">{{ t.ground?.name }}</p>
+                    <p class="mb-0 text-end">
+                      <i
+                        :class="presenceIcon(t.my_presence)"
+                        :title="presenceTitle(t.my_presence)"
+                      ></i>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+            <p v-else-if="!historyLoading" class="mb-0 text-muted">
+              Записей нет.
+            </p>
           </div>
-          <p v-else-if="!historyLoading" class="mb-0 text-muted">Записей нет.</p>
         </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <style scoped>

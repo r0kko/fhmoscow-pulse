@@ -29,81 +29,81 @@ export async function cleanFio(fio) {
 }
 
 export async function suggestFmsUnit(query, filters) {
-  if (!query) return []
+  if (!query) return [];
   try {
-    const body = { query }
-    if (Array.isArray(filters) && filters.length) body.filters = filters
+    const body = { query };
+    if (Array.isArray(filters) && filters.length) body.filters = filters;
     const { suggestions } = await apiFetch('/dadata/suggest-fms-unit', {
       method: 'POST',
-      body: JSON.stringify(body)
-    })
-    return suggestions
+      body: JSON.stringify(body),
+    });
+    return suggestions;
   } catch (_err) {
-    return []
+    return [];
   }
 }
 
 export async function cleanPassport(passport) {
-  if (!passport) return null
+  if (!passport) return null;
   try {
     const { result } = await apiFetch('/dadata/clean-passport', {
       method: 'POST',
-      body: JSON.stringify({ passport })
-    })
-    return result
+      body: JSON.stringify({ passport }),
+    });
+    return result;
   } catch (_err) {
-    return null
+    return null;
   }
 }
 
 export async function suggestAddress(query) {
-  if (!query) return []
+  if (!query) return [];
   try {
     const { suggestions } = await apiFetch('/dadata/suggest-address', {
       method: 'POST',
-      body: JSON.stringify({ query })
-    })
-    return suggestions
+      body: JSON.stringify({ query }),
+    });
+    return suggestions;
   } catch (_err) {
-    return []
+    return [];
   }
 }
 
 export async function cleanAddress(address) {
-  if (!address) return null
+  if (!address) return null;
   try {
     const { result } = await apiFetch('/dadata/clean-address', {
       method: 'POST',
-      body: JSON.stringify({ address })
-    })
-    return result
+      body: JSON.stringify({ address }),
+    });
+    return result;
   } catch (_err) {
-    return null
+    return null;
   }
 }
 
 export async function findBankByBic(bic) {
-  if (!bic) return null
+  if (!bic) return null;
   try {
     const { bank } = await apiFetch('/dadata/find-bank', {
       method: 'POST',
-      body: JSON.stringify({ bic })
-    })
-    return bank
+      body: JSON.stringify({ bic }),
+    });
+    return bank;
   } catch (_err) {
-    return null
+    return null;
   }
 }
 
 export async function findOrganizationByInn(inn) {
-  if (!inn) return null
+  if (!inn) return null;
   try {
     const { organization } = await apiFetch('/dadata/find-organization', {
       method: 'POST',
-      body: JSON.stringify({ inn })
-    })
-    return organization
+      body: JSON.stringify({ inn }),
+    });
+    return organization;
   } catch (_err) {
-    return null
+    return null;
   }
 }

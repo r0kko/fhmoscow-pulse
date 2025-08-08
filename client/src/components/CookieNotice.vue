@@ -5,27 +5,34 @@
     role="alert"
   >
     <span class="me-sm-3 mb-2 mb-sm-0 text-center text-sm-start flex-fill">
-      Продолжая работу с сайтом, вы соглашаетесь с использованием файлов cookie и обработкой персональных данных в соответствии с законодательством.
+      Продолжая работу с сайтом, вы соглашаетесь с использованием файлов cookie
+      и обработкой персональных данных в соответствии с законодательством.
     </span>
-    <button type="button" class="btn btn-brand btn-sm cookie-btn" @click="accept">Принять</button>
+    <button
+      type="button"
+      class="btn btn-brand btn-sm cookie-btn"
+      @click="accept"
+    >
+      Принять
+    </button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue';
 
-const visible = ref(false)
+const visible = ref(false);
 
 function accept() {
-  localStorage.setItem('cookieConsent', 'true')
-  visible.value = false
+  localStorage.setItem('cookieConsent', 'true');
+  visible.value = false;
 }
 
 onMounted(() => {
   if (!localStorage.getItem('cookieConsent')) {
-    visible.value = true
+    visible.value = true;
   }
-})
+});
 </script>
 
 <style scoped>

@@ -44,10 +44,21 @@ function metroNames(address) {
 }
 
 function seatStatus(e) {
-  if (typeof e.registration_count === 'number' && typeof e.capacity === 'number') {
-    const appWord = pluralize(e.registration_count, ['заявка', 'заявки', 'заявок']);
+  if (
+    typeof e.registration_count === 'number' &&
+    typeof e.capacity === 'number'
+  ) {
+    const appWord = pluralize(e.registration_count, [
+      'заявка',
+      'заявки',
+      'заявок',
+    ]);
     const seatWord = pluralize(e.capacity, ['место', 'места', 'мест']);
-    const receivedWord = pluralize(e.registration_count, ['Получена', 'Получено', 'Получено']);
+    const receivedWord = pluralize(e.registration_count, [
+      'Получена',
+      'Получено',
+      'Получено',
+    ]);
     return `${receivedWord} ${e.registration_count} ${appWord} на ${e.capacity} ${seatWord}`;
   }
   if (typeof e.capacity === 'number') {
@@ -137,7 +148,10 @@ const disabled = computed(
           <small>{{ btnText }}</small>
         </template>
       </button>
-      <p v-if="seatStatus(exam)" class="seat-status text-muted text-center mt-1 mb-0">
+      <p
+        v-if="seatStatus(exam)"
+        class="seat-status text-muted text-center mt-1 mb-0"
+      >
         {{ seatStatus(exam) }}
       </p>
     </div>

@@ -1,18 +1,20 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import NavBar from './components/NavBar.vue'
-import FooterBar from './components/FooterBar.vue'
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import NavBar from './components/NavBar.vue';
+import FooterBar from './components/FooterBar.vue';
 
-const route = useRoute()
-const showLayout = computed(() => !route.matched.some((r) => r.meta.hideLayout))
+const route = useRoute();
+const showLayout = computed(
+  () => !route.matched.some((r) => r.meta.hideLayout)
+);
 const mainClass = computed(() => {
-  if (!showLayout.value) return 'flex-grow-1'
-  const base = 'flex-grow-1'
+  if (!showLayout.value) return 'flex-grow-1';
+  const base = 'flex-grow-1';
   return route.meta.fluid
     ? `${base} container-fluid px-0`
-    : `${base} container py-3`
-})
+    : `${base} container py-3`;
+});
 </script>
 
 <template>

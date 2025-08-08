@@ -199,3 +199,70 @@ body {
     font-size: 0.875rem;
   }
 }
+
+/* Shared tile and scroll styles */
+.scroll-container {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+  justify-content: flex-start;
+}
+
+.menu-card {
+  width: 8rem;
+  flex: 0 0 auto;
+  height: 6.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+}
+.menu-card .card-body {
+  padding: 0.75rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  height: 100%;
+}
+.menu-card .card-title {
+  line-height: 1.2;
+  font-weight: 600;
+}
+.menu-card .icon {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  color: var(--brand-color);
+}
+
+.section-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 0;
+}
+@media (max-width: 575.98px) {
+  .section-card {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

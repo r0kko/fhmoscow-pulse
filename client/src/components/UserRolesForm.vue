@@ -53,10 +53,14 @@ async function save() {
   const toRemove = [...current.value].filter((r) => !selected.value.has(r));
   try {
     for (const alias of toAdd) {
-      await apiFetch(`/users/${props.userId}/roles/${alias}`, { method: 'POST' });
+      await apiFetch(`/users/${props.userId}/roles/${alias}`, {
+        method: 'POST',
+      });
     }
     for (const alias of toRemove) {
-      await apiFetch(`/users/${props.userId}/roles/${alias}`, { method: 'DELETE' });
+      await apiFetch(`/users/${props.userId}/roles/${alias}`, {
+        method: 'DELETE',
+      });
     }
     current.value = new Set(selected.value);
     emit('updated', [...current.value]);
@@ -66,7 +70,6 @@ async function save() {
     saving.value = false;
   }
 }
-
 </script>
 
 <template>

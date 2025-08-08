@@ -39,7 +39,9 @@ const activeExamId = computed(() => {
 });
 const isValid = (cert) => {
   const today = new Date();
-  return new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today;
+  return (
+    new Date(cert.issue_date) <= today && new Date(cert.valid_until) >= today
+  );
 };
 
 function formatDate(str) {
@@ -99,7 +101,6 @@ function applyTooltips() {
   });
 }
 
-
 onMounted(async () => {
   try {
     const [current, hist, tdata] = await Promise.all([
@@ -118,7 +119,9 @@ onMounted(async () => {
         ['CREATED', 'IN_PROGRESS'].includes(t.status?.alias)
     );
     if (certificate.value) {
-      const data = await apiFetch('/medical-certificates/me/files').catch(() => ({ files: [] }));
+      const data = await apiFetch('/medical-certificates/me/files').catch(
+        () => ({ files: [] })
+      );
       files.value = data.files;
     } else {
       files.value = [];
@@ -168,7 +171,9 @@ async function toggleExam(exam) {
   try {
     if (exam.registered) {
       if (exam.registration_status !== 'PENDING') return;
-      await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'DELETE' });
+      await apiFetch(`/medical-exams/${exam.id}/register`, {
+        method: 'DELETE',
+      });
     } else {
       await apiFetch(`/medical-exams/${exam.id}/register`, { method: 'POST' });
     }
@@ -222,180 +227,216 @@ function onFileChange(e) {
   fileError.value = '';
   selectedFile.value = e.target.files[0] || null;
 }
-
 </script>
 
 <template>
   <div class="py-3 medical-page">
     <div class="container">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
-        <li class="breadcrumb-item active" aria-current="page">Медосмотр</li>
-      </ol>
-    </nav>
-    <h1 class="mb-3">Данные медицинских обследований</h1>
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border" role="status" aria-label="Загрузка">
-        <span class="visually-hidden">Загрузка…</span>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">Медосмотр</li>
+        </ol>
+      </nav>
+      <h1 class="mb-3">Данные медицинских обследований</h1>
+      <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border" role="status" aria-label="Загрузка">
+          <span class="visually-hidden">Загрузка…</span>
+        </div>
       </div>
-    </div>
-    <div v-else>
-      <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <div
-            class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3"
-          >
-            <h5 class="card-title mb-0 text-brand">Действующее заключение</h5>
-            <span
-              class="badge d-flex align-items-center gap-1"
-              :class="statusInfo.class"
-            >
-              <i :class="'bi ' + statusInfo.icon"></i>
-              {{ statusInfo.label }}
-            </span>
-          </div>
-          <template v-if="certificate && isValid(certificate)">
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
-              <div class="col">
-                <div class="form-floating">
-                  <input id="certOrg" type="text" class="form-control" :value="certificate.organization" readonly placeholder="Учреждение" />
-                  <label for="certOrg">Мед. учреждение</label>
-                </div>
-              </div>
-              <div class="col">
-                <div class="form-floating">
-                  <input id="certNumber" type="text" class="form-control" :value="certificate.certificate_number" readonly placeholder="Номер" />
-                  <label for="certNumber">Номер справки</label>
-                </div>
-              </div>
-              <div class="col">
-                <div class="form-floating">
-                  <input
-                    id="certDates"
-                    type="text"
-                    class="form-control"
-                    :value="validityText(certificate)"
-                    readonly
-                    placeholder="Период"
-                  />
-                  <label for="certDates">Период действия</label>
-                </div>
-              </div>
-            </div>
-          <div class="border-top pt-3 mt-3">
-            <p class="mb-2 fw-semibold">Файлы</p>
+      <div v-else>
+        <div class="card section-card tile fade-in shadow-sm mb-3">
+          <div class="card-body">
             <div
-              v-if="files.length"
-              class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2"
+              class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3"
             >
-              <div v-for="f in files" :key="f.id" class="col">
-                <a
-                  :href="f.url"
-                  target="_blank"
-                  rel="noopener"
-                  class="file-tile d-flex align-items-center gap-2 text-decoration-none text-body p-2 border rounded w-100"
-                >
-                  <i class="bi bi-file-earmark"></i>
-                  <span class="text-break">{{ f.name }}</span>
-                </a>
-              </div>
+              <h5 class="card-title mb-0 text-brand">Действующее заключение</h5>
+              <span
+                class="badge d-flex align-items-center gap-1"
+                :class="statusInfo.class"
+              >
+                <i :class="'bi ' + statusInfo.icon"></i>
+                {{ statusInfo.label }}
+              </span>
             </div>
-            <p v-else class="text-muted mb-0">Нет файлов</p>
-          </div>
-          </template>
-          <div
-            v-else
-            class="alert alert-warning mb-0 d-flex justify-content-between align-items-center"
-            role="alert"
-          >
-            <span>Действующее медицинское заключение отсутствует</span>
-            <RouterLink
-              v-if="hasActiveTicket"
-              to="/tickets"
-              class="btn btn-outline-brand d-flex align-items-center gap-1"
-            >
-              <i class="bi bi-hourglass"></i>
-              <span>Проверка</span>
-            </RouterLink>
-            <button
-              v-else
-              class="btn btn-brand d-flex align-items-center gap-1"
-              @click="openTicketModal"
-            >
-              <i class="bi bi-upload"></i>
-              <span>Загрузить справку</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div v-if="error" class="alert alert-danger mt-3" role="alert">{{ error }}</div>
-      <div v-if="uploadSuccess" class="alert alert-success mt-3" role="alert">
-        Файл отправлен. После проверки он будет добавлен в список.
-      </div>
-      <div
-        v-if="showExams && (examsLoading || exams.length)"
-        class="card section-card tile fade-in shadow-sm mb-3 mt-3"
-      >
-        <div class="card-body">
-          <h5 class="card-title mb-3 text-brand">Ближайшие запланированные обследования</h5>
-          <div v-if="examsError" class="alert alert-danger">{{ examsError }}</div>
-          <div v-if="examsLoading" class="text-center my-3">
-            <div class="spinner-border" role="status"></div>
-          </div>
-          <div v-if="exams.length" class="exam-scroll d-flex flex-nowrap gap-3">
-            <MedicalExamCard
-              v-for="ex in exams"
-              :key="ex.id"
-              :exam="ex"
-              :loading="registering === ex.id"
-              :active-exam-id="activeExamId"
-              class="flex-shrink-0"
-              @toggle="toggleExam"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="card section-card tile fade-in shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title mb-3 text-brand">Архив медицинских заключений</h5>
-        <div v-if="history.length">
-          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-            <div v-for="item in history" :key="item.id" class="col">
-              <div class="card tile h-100">
-                <div class="card-body d-flex flex-column">
-                  <div class="d-flex justify-content-between align-items-start mb-1">
-                    <span class="fw-semibold">{{ item.certificate_number }}</span>
-                    <span class="text-muted small text-nowrap">{{ formatDate(item.issue_date) }} - {{ formatDate(item.valid_until) }}</span>
+            <template v-if="certificate && isValid(certificate)">
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+                <div class="col">
+                  <div class="form-floating">
+                    <input
+                      id="certOrg"
+                      type="text"
+                      class="form-control"
+                      :value="certificate.organization"
+                      readonly
+                      placeholder="Учреждение"
+                    />
+                    <label for="certOrg">Мед. учреждение</label>
                   </div>
-                  <p class="mb-2">{{ item.organization }}</p>
-                  <div class="mt-auto">
-                    <div v-if="item.files && item.files.length" class="d-flex flex-wrap gap-2">
-                      <a
-                        v-for="f in item.files"
-                        :key="f.id"
-                        :href="f.url"
-                        target="_blank"
-                        rel="noopener"
-                        class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                </div>
+                <div class="col">
+                  <div class="form-floating">
+                    <input
+                      id="certNumber"
+                      type="text"
+                      class="form-control"
+                      :value="certificate.certificate_number"
+                      readonly
+                      placeholder="Номер"
+                    />
+                    <label for="certNumber">Номер справки</label>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="form-floating">
+                    <input
+                      id="certDates"
+                      type="text"
+                      class="form-control"
+                      :value="validityText(certificate)"
+                      readonly
+                      placeholder="Период"
+                    />
+                    <label for="certDates">Период действия</label>
+                  </div>
+                </div>
+              </div>
+              <div class="border-top pt-3 mt-3">
+                <p class="mb-2 fw-semibold">Файлы</p>
+                <div
+                  v-if="files.length"
+                  class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2"
+                >
+                  <div v-for="f in files" :key="f.id" class="col">
+                    <a
+                      :href="f.url"
+                      target="_blank"
+                      rel="noopener"
+                      class="file-tile d-flex align-items-center gap-2 text-decoration-none text-body p-2 border rounded w-100"
+                    >
+                      <i class="bi bi-file-earmark"></i>
+                      <span class="text-break">{{ f.name }}</span>
+                    </a>
+                  </div>
+                </div>
+                <p v-else class="text-muted mb-0">Нет файлов</p>
+              </div>
+            </template>
+            <div
+              v-else
+              class="alert alert-warning mb-0 d-flex justify-content-between align-items-center"
+              role="alert"
+            >
+              <span>Действующее медицинское заключение отсутствует</span>
+              <RouterLink
+                v-if="hasActiveTicket"
+                to="/tickets"
+                class="btn btn-outline-brand d-flex align-items-center gap-1"
+              >
+                <i class="bi bi-hourglass"></i>
+                <span>Проверка</span>
+              </RouterLink>
+              <button
+                v-else
+                class="btn btn-brand d-flex align-items-center gap-1"
+                @click="openTicketModal"
+              >
+                <i class="bi bi-upload"></i>
+                <span>Загрузить справку</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div v-if="error" class="alert alert-danger mt-3" role="alert">
+          {{ error }}
+        </div>
+        <div v-if="uploadSuccess" class="alert alert-success mt-3" role="alert">
+          Файл отправлен. После проверки он будет добавлен в список.
+        </div>
+        <div
+          v-if="showExams && (examsLoading || exams.length)"
+          class="card section-card tile fade-in shadow-sm mb-3 mt-3"
+        >
+          <div class="card-body">
+            <h5 class="card-title mb-3 text-brand">
+              Ближайшие запланированные обследования
+            </h5>
+            <div v-if="examsError" class="alert alert-danger">
+              {{ examsError }}
+            </div>
+            <div v-if="examsLoading" class="text-center my-3">
+              <div class="spinner-border" role="status"></div>
+            </div>
+            <div
+              v-if="exams.length"
+              class="exam-scroll d-flex flex-nowrap gap-3"
+            >
+              <MedicalExamCard
+                v-for="ex in exams"
+                :key="ex.id"
+                :exam="ex"
+                :loading="registering === ex.id"
+                :active-exam-id="activeExamId"
+                class="flex-shrink-0"
+                @toggle="toggleExam"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card section-card tile fade-in shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3 text-brand">
+            Архив медицинских заключений
+          </h5>
+          <div v-if="history.length">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+              <div v-for="item in history" :key="item.id" class="col">
+                <div class="card tile h-100">
+                  <div class="card-body d-flex flex-column">
+                    <div
+                      class="d-flex justify-content-between align-items-start mb-1"
+                    >
+                      <span class="fw-semibold">{{
+                        item.certificate_number
+                      }}</span>
+                      <span class="text-muted small text-nowrap"
+                        >{{ formatDate(item.issue_date) }} -
+                        {{ formatDate(item.valid_until) }}</span
                       >
-                        <i class="bi bi-file-earmark"></i>
-                        <span class="text-break">{{ f.name }}</span>
-                      </a>
                     </div>
-                    <span v-else class="text-muted small">—</span>
+                    <p class="mb-2">{{ item.organization }}</p>
+                    <div class="mt-auto">
+                      <div
+                        v-if="item.files && item.files.length"
+                        class="d-flex flex-wrap gap-2"
+                      >
+                        <a
+                          v-for="f in item.files"
+                          :key="f.id"
+                          :href="f.url"
+                          target="_blank"
+                          rel="noopener"
+                          class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                        >
+                          <i class="bi bi-file-earmark"></i>
+                          <span class="text-break">{{ f.name }}</span>
+                        </a>
+                      </div>
+                      <span v-else class="text-muted small">—</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div v-else class="alert alert-primary mb-0" role="alert">
-          Нет медицинских заключений с истекшим сроком действия
+          <div v-else class="alert alert-primary mb-0" role="alert">
+            Нет медицинских заключений с истекшим сроком действия
+          </div>
         </div>
       </div>
-    </div>
     </div>
   </div>
   <div ref="ticketModalRef" class="modal fade" tabindex="-1">
@@ -403,10 +444,16 @@ function onFileChange(e) {
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Загрузка справки</h5>
-          <button type="button" class="btn-close" @click="ticketModal.hide()"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="ticketModal.hide()"
+          ></button>
         </div>
         <div class="modal-body">
-          <div v-if="ticketError" class="alert alert-danger">{{ ticketError }}</div>
+          <div v-if="ticketError" class="alert alert-danger">
+            {{ ticketError }}
+          </div>
           <div class="mb-3">
             <input
               type="file"
@@ -415,20 +462,35 @@ function onFileChange(e) {
               ref="fileInput"
               @change="onFileChange"
             />
-            <div class="form-text">Допустимый формат: PDF, размер до 5&nbsp;МБ</div>
-            <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
-            <div v-if="selectedFile" class="small mt-2">{{ selectedFile.name }}</div>
+            <div class="form-text">
+              Допустимый формат: PDF, размер до 5&nbsp;МБ
+            </div>
+            <div v-if="fileError" class="text-danger small mt-1">
+              {{ fileError }}
+            </div>
+            <div v-if="selectedFile" class="small mt-2">
+              {{ selectedFile.name }}
+            </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="ticketModal.hide()">Отмена</button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="ticketModal.hide()"
+          >
+            Отмена
+          </button>
           <button
             type="button"
             class="btn btn-brand"
             @click="createTicket"
             :disabled="uploading"
           >
-            <span v-if="uploading" class="spinner-border spinner-border-sm me-2"></span>
+            <span
+              v-if="uploading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
             Отправить
           </button>
         </div>
@@ -468,7 +530,6 @@ function onFileChange(e) {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .medical-page h1 {
     margin-bottom: 1rem !important;

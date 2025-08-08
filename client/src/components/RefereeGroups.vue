@@ -1,101 +1,111 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
-import Modal from 'bootstrap/js/dist/modal'
-import { apiFetch } from '../api.js'
+import { ref, onMounted, watch, computed } from 'vue';
+import Modal from 'bootstrap/js/dist/modal';
+import { apiFetch } from '../api.js';
 
-const groups = ref([])
-const total = ref(0)
-const seasons = ref([])
-const filterSeason = ref('')
-const currentPage = ref(1)
-const pageSize = 8
-const isLoading = ref(false)
-const error = ref('')
-const form = ref({ season_id: '', name: '' })
-const editing = ref(null)
-const modalRef = ref(null)
-let modal
-const formError = ref('')
+const groups = ref([]);
+const total = ref(0);
+const seasons = ref([]);
+const filterSeason = ref('');
+const currentPage = ref(1);
+const pageSize = 8;
+const isLoading = ref(false);
+const error = ref('');
+const form = ref({ season_id: '', name: '' });
+const editing = ref(null);
+const modalRef = ref(null);
+let modal;
+const formError = ref('');
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(total.value / pageSize))
+);
 
 onMounted(() => {
-  modal = new Modal(modalRef.value)
-  load()
-  loadSeasons()
-})
+  modal = new Modal(modalRef.value);
+  load();
+  loadSeasons();
+});
 
-watch(currentPage, load)
+watch(currentPage, load);
 watch(filterSeason, () => {
-  currentPage.value = 1
-  load()
-})
+  currentPage.value = 1;
+  load();
+});
 
 async function load() {
-  isLoading.value = true
-  error.value = ''
+  isLoading.value = true;
+  error.value = '';
   try {
-    const params = new URLSearchParams({ page: currentPage.value, limit: pageSize })
-    if (filterSeason.value) params.set('season_id', filterSeason.value)
-    const data = await apiFetch(`/referee-groups?${params}`)
-    groups.value = data.groups
-    total.value = data.total
+    const params = new URLSearchParams({
+      page: currentPage.value,
+      limit: pageSize,
+    });
+    if (filterSeason.value) params.set('season_id', filterSeason.value);
+    const data = await apiFetch(`/referee-groups?${params}`);
+    groups.value = data.groups;
+    total.value = data.total;
   } catch (e) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 async function loadSeasons() {
   try {
-    const params = new URLSearchParams({ page: 1, limit: 100 })
-    const data = await apiFetch(`/camp-seasons?${params}`)
-    seasons.value = data.seasons
+    const params = new URLSearchParams({ page: 1, limit: 100 });
+    const data = await apiFetch(`/camp-seasons?${params}`);
+    seasons.value = data.seasons;
   } catch (_) {
-    seasons.value = []
+    seasons.value = [];
   }
 }
 
-
 function openCreate() {
-  editing.value = null
-  form.value = { season_id: '', name: '' }
-  formError.value = ''
-  if (!seasons.value.length) loadSeasons()
-  modal.show()
+  editing.value = null;
+  form.value = { season_id: '', name: '' };
+  formError.value = '';
+  if (!seasons.value.length) loadSeasons();
+  modal.show();
 }
 
 function openEdit(group) {
-  editing.value = group
-  form.value = { season_id: group.season_id, name: group.name }
-  formError.value = ''
-  if (!seasons.value.length) loadSeasons()
-  modal.show()
+  editing.value = group;
+  form.value = { season_id: group.season_id, name: group.name };
+  formError.value = '';
+  if (!seasons.value.length) loadSeasons();
+  modal.show();
 }
 
 async function save() {
-  const payload = { season_id: form.value.season_id, name: form.value.name }
+  const payload = { season_id: form.value.season_id, name: form.value.name };
   try {
     if (editing.value) {
-      await apiFetch(`/referee-groups/${editing.value.id}`, { method: 'PUT', body: JSON.stringify(payload) })
+      await apiFetch(`/referee-groups/${editing.value.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
     } else {
-      await apiFetch('/referee-groups', { method: 'POST', body: JSON.stringify(payload) })
+      await apiFetch('/referee-groups', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
     }
-    modal.hide()
-    await load()
+    modal.hide();
+    await load();
   } catch (e) {
-    formError.value = e.message
+    formError.value = e.message;
   }
 }
 
 async function removeGroup(group) {
-  if (!confirm('Удалить запись?')) return
+  if (!confirm('Удалить запись?')) return;
   try {
-    await apiFetch(`/referee-groups/${group.id}`, { method: 'DELETE' })
-    await load()
+    await apiFetch(`/referee-groups/${group.id}`, { method: 'DELETE' });
+    await load();
   } catch (e) {
-    alert(e.message)
+    alert(e.message);
   }
 }
 const refresh = () => {
@@ -104,13 +114,14 @@ const refresh = () => {
 };
 
 defineExpose({ refresh });
-
 </script>
 
 <template>
   <div>
     <div class="card section-card ground-card tile fade-in shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
         <h2 class="h5 mb-0">Группы судей</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
@@ -121,7 +132,9 @@ defineExpose({ refresh });
           <div class="col-sm">
             <select v-model="filterSeason" class="form-select">
               <option value="">Все сезоны</option>
-              <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+              <option v-for="s in seasons" :key="s.id" :value="s.id">
+                {{ s.name }}
+              </option>
             </select>
           </div>
         </div>
@@ -143,7 +156,10 @@ defineExpose({ refresh });
                 <td>{{ g.season ? g.season.name : '' }}</td>
                 <td>{{ g.name }}</td>
                 <td class="text-end">
-                  <button class="btn btn-sm btn-secondary me-2" @click="openEdit(g)">
+                  <button
+                    class="btn btn-sm btn-secondary me-2"
+                    @click="openEdit(g)"
+                  >
                     <i class="bi bi-pencil"></i>
                   </button>
                   <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
@@ -162,7 +178,10 @@ defineExpose({ refresh });
                 <p class="mb-1">{{ g.season ? g.season.name : '' }}</p>
               </div>
               <div>
-                <button class="btn btn-sm btn-secondary me-2" @click="openEdit(g)">
+                <button
+                  class="btn btn-sm btn-secondary me-2"
+                  @click="openEdit(g)"
+                >
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" @click="removeGroup(g)">
@@ -178,13 +197,30 @@ defineExpose({ refresh });
     <nav class="mt-3" v-if="totalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
+          <button
+            class="page-link"
+            @click="currentPage--"
+            :disabled="currentPage === 1"
+          >
+            Пред
+          </button>
         </li>
-        <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
+        <li
+          class="page-item"
+          v-for="p in totalPages"
+          :key="p"
+          :class="{ active: currentPage === p }"
+        >
           <button class="page-link" @click="currentPage = p">{{ p }}</button>
         </li>
         <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
+          <button
+            class="page-link"
+            @click="currentPage++"
+            :disabled="currentPage === totalPages"
+          >
+            След
+          </button>
         </li>
       </ul>
     </nav>
@@ -193,25 +229,52 @@ defineExpose({ refresh });
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">{{ editing ? 'Изменить группу' : 'Добавить группу' }}</h5>
-              <button type="button" class="btn-close" @click="modal.hide()"></button>
+              <h5 class="modal-title">
+                {{ editing ? 'Изменить группу' : 'Добавить группу' }}
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                @click="modal.hide()"
+              ></button>
             </div>
             <div class="modal-body">
-              <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
+              <div v-if="formError" class="alert alert-danger">
+                {{ formError }}
+              </div>
               <div class="form-floating mb-3">
-                <select id="groupSeason" v-model="form.season_id" class="form-select" required>
+                <select
+                  id="groupSeason"
+                  v-model="form.season_id"
+                  class="form-select"
+                  required
+                >
                   <option value="" disabled>Выберите сезон</option>
-                  <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  <option v-for="s in seasons" :key="s.id" :value="s.id">
+                    {{ s.name }}
+                  </option>
                 </select>
                 <label for="groupSeason">Сезон</label>
               </div>
               <div class="form-floating mb-3">
-                <input id="groupName" v-model="form.name" class="form-control" placeholder="Название" required />
+                <input
+                  id="groupName"
+                  v-model="form.name"
+                  class="form-control"
+                  placeholder="Название"
+                  required
+                />
                 <label for="groupName">Наименование</label>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="modal.hide()"
+              >
+                Отмена
+              </button>
               <button type="submit" class="btn btn-primary">Сохранить</button>
             </div>
           </form>

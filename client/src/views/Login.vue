@@ -1,88 +1,101 @@
 <script setup>
-import { ref, watch } from 'vue'
-import CookieNotice from '../components/CookieNotice.vue'
-import { useRouter, RouterLink } from 'vue-router'
-import { apiFetch, initCsrf } from '../api.js'
-import { auth, setAuthToken } from '../auth.js'
-import logo from '../assets/fhm-logo.svg'
+import { ref, watch } from 'vue';
+import CookieNotice from '../components/CookieNotice.vue';
+import { useRouter, RouterLink } from 'vue-router';
+import { apiFetch, initCsrf } from '../api.js';
+import { auth, setAuthToken } from '../auth.js';
+import logo from '../assets/fhm-logo.svg';
 
-const router = useRouter()
-const phone = ref('')
-const phoneInput = ref('')
-const password = ref('')
-const error = ref('')
-const loading = ref(false)
+const router = useRouter();
+const phone = ref('');
+const phoneInput = ref('');
+const password = ref('');
+const error = ref('');
+const loading = ref(false);
 
 watch(error, (val) => {
   if (val) {
     setTimeout(() => {
-      error.value = ''
-    }, 4000)
+      error.value = '';
+    }, 4000);
   }
-})
+});
 
 function formatPhone(digits) {
-  let out = '+7'
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4)
-  if (digits.length >= 4) out += ') '
-  if (digits.length >= 4) out += digits.slice(4, 7)
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9)
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11)
-  return out
+  let out = '+7';
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
+  if (digits.length >= 4) out += ') ';
+  if (digits.length >= 4) out += digits.slice(4, 7);
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
+  return out;
 }
 
 function onPhoneInput(e) {
-  let digits = e.target.value.replace(/\D/g, '')
-  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '')
-  digits = digits.slice(0, 11)
-  phone.value = digits
-  phoneInput.value = formatPhone(digits)
+  let digits = e.target.value.replace(/\D/g, '');
+  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '');
+  digits = digits.slice(0, 11);
+  phone.value = digits;
+  phoneInput.value = formatPhone(digits);
 }
 
 function onPhoneKeydown(e) {
   if (e.key === 'Backspace' || e.key === 'Delete') {
-    e.preventDefault()
-    phone.value = phone.value.slice(0, -1)
-    phoneInput.value = formatPhone(phone.value)
+    e.preventDefault();
+    phone.value = phone.value.slice(0, -1);
+    phoneInput.value = formatPhone(phone.value);
   }
 }
 
 async function login() {
-  error.value = ''
+  error.value = '';
   if (phone.value.length !== 11 || !phone.value.startsWith('7')) {
-    error.value = 'Неверный номер телефона'
-    return
+    error.value = 'Неверный номер телефона';
+    return;
   }
-  loading.value = true
+  loading.value = true;
   try {
-    await initCsrf()
+    await initCsrf();
     const data = await apiFetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ phone: phone.value, password: password.value }),
-      redirectOn401: false
-    })
-    setAuthToken(data.access_token)
-    auth.user = data.user
-    auth.roles = data.roles || []
-    if (data.awaiting_confirmation || auth.user.status === 'AWAITING_CONFIRMATION') {
-      router.push('/awaiting-confirmation')
-    } else if (auth.user.status && auth.user.status.startsWith('REGISTRATION_STEP')) {
-      router.push('/complete-profile')
+      redirectOn401: false,
+    });
+    setAuthToken(data.access_token);
+    auth.user = data.user;
+    auth.roles = data.roles || [];
+    if (
+      data.awaiting_confirmation ||
+      auth.user.status === 'AWAITING_CONFIRMATION'
+    ) {
+      router.push('/awaiting-confirmation');
+    } else if (
+      auth.user.status &&
+      auth.user.status.startsWith('REGISTRATION_STEP')
+    ) {
+      router.push('/complete-profile');
     } else {
-      router.push('/')
+      router.push('/');
     }
   } catch (err) {
-    error.value = err.message || 'Ошибка авторизации'
+    error.value = err.message || 'Ошибка авторизации';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
 
 <template>
-  <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
-    <div class="card p-4 shadow login-card w-100" style="max-width: 400px;">
-      <img :src="logo" alt="FHM" class="mx-auto d-block mb-3" style="max-height: 80px" />
+  <div
+    class="d-flex flex-column align-items-center justify-content-center min-vh-100"
+  >
+    <div class="card p-4 shadow login-card w-100" style="max-width: 400px">
+      <img
+        :src="logo"
+        alt="FHM"
+        class="mx-auto d-block mb-3"
+        style="max-height: 80px"
+      />
       <h2 class="mb-3 text-center">Авторизация</h2>
       <transition name="fade">
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -116,12 +129,19 @@ async function login() {
           <label for="password">Пароль</label>
         </div>
         <button type="submit" class="btn btn-brand w-100" :disabled="loading">
-          <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+          <span
+            v-if="loading"
+            class="spinner-border spinner-border-sm me-2"
+          ></span>
           Войти
         </button>
         <div class="text-center mt-3">
-          <RouterLink to="/register" class="link-secondary me-3">Регистрация</RouterLink>
-          <RouterLink to="/password-reset" class="link-secondary">Забыли пароль?</RouterLink>
+          <RouterLink to="/register" class="link-secondary me-3"
+            >Регистрация</RouterLink
+          >
+          <RouterLink to="/password-reset" class="link-secondary"
+            >Забыли пароль?</RouterLink
+          >
         </div>
       </form>
     </div>

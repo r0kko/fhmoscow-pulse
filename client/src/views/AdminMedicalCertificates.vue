@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import Modal from 'bootstrap/js/dist/modal'
-import { apiFetch, apiFetchForm } from '../api.js'
-import { findOrganizationByInn } from '../dadata.js'
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import Modal from 'bootstrap/js/dist/modal';
+import { apiFetch, apiFetchForm } from '../api.js';
+import { findOrganizationByInn } from '../dadata.js';
 
-const judges = ref([])
-const judgesLoading = ref(false)
-const judgesError = ref('')
+const judges = ref([]);
+const judgesLoading = ref(false);
+const judgesError = ref('');
 
 const form = ref({
   user_id: '',
@@ -14,244 +14,251 @@ const form = ref({
   organization: '',
   certificate_number: '',
   issue_date: '',
-  valid_until: ''
-})
-const editing = ref(null)
-const modalRef = ref(null)
-let modal
-const formError = ref('')
-const userQuery = ref('')
-const userSuggestions = ref([])
-let userTimeout
-let skipUserWatch = false
-const files = ref([])
-const filesLoading = ref(false)
-const fileError = ref('')
-const fileType = ref('CONCLUSION')
-const fileInput = ref(null)
-const saving = ref(false)
-const deleting = ref(false)
-const fileUploading = ref(false)
-const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE']
+  valid_until: '',
+});
+const editing = ref(null);
+const modalRef = ref(null);
+let modal;
+const formError = ref('');
+const userQuery = ref('');
+const userSuggestions = ref([]);
+let userTimeout;
+let skipUserWatch = false;
+const files = ref([]);
+const filesLoading = ref(false);
+const fileError = ref('');
+const fileType = ref('CONCLUSION');
+const fileInput = ref(null);
+const saving = ref(false);
+const deleting = ref(false);
+const fileUploading = ref(false);
+const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
 
 onMounted(() => {
-  modal = new Modal(modalRef.value)
-  loadJudges()
-})
+  modal = new Modal(modalRef.value);
+  loadJudges();
+});
 
 watch(userQuery, () => {
-  clearTimeout(userTimeout)
+  clearTimeout(userTimeout);
   if (skipUserWatch) {
-    skipUserWatch = false
-    return
+    skipUserWatch = false;
+    return;
   }
-  form.value.user_id = ''
+  form.value.user_id = '';
   if (!userQuery.value || userQuery.value.length < 2) {
-    userSuggestions.value = []
-    return
+    userSuggestions.value = [];
+    return;
   }
-    userTimeout = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams({
-          search: userQuery.value,
-          limit: 5,
-        })
-        refereeRoles.forEach((r) => params.append('role', r))
-        const data = await apiFetch(`/users?${params}`)
-        userSuggestions.value = data.users
-      } catch (_err) {
-        userSuggestions.value = []
-      }
-    }, 300)
-  })
+  userTimeout = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams({
+        search: userQuery.value,
+        limit: 5,
+      });
+      refereeRoles.forEach((r) => params.append('role', r));
+      const data = await apiFetch(`/users?${params}`);
+      userSuggestions.value = data.users;
+    } catch (_err) {
+      userSuggestions.value = [];
+    }
+  }, 300);
+});
 
 watch(
   () => form.value.inn,
   async (val) => {
     if (!val || val.length < 3) {
-      form.value.organization = ''
-      return
+      form.value.organization = '';
+      return;
     }
-    const res = await findOrganizationByInn(val)
-    form.value.organization = res?.value || ''
+    const res = await findOrganizationByInn(val);
+    form.value.organization = res?.value || '';
   }
-)
+);
 
 watch(
   () => form.value.issue_date,
   (val) => {
-    if (!val || editing.value) return
-    const d = new Date(val)
-    d.setDate(d.getDate() + 180)
-    form.value.valid_until = d.toISOString().slice(0, 10)
+    if (!val || editing.value) return;
+    const d = new Date(val);
+    d.setDate(d.getDate() + 180);
+    form.value.valid_until = d.toISOString().slice(0, 10);
   }
-)
+);
 
 onUnmounted(() => {
-  clearTimeout(userTimeout)
-})
-
+  clearTimeout(userTimeout);
+});
 
 function openCreate() {
-  editing.value = null
-  Object.keys(form.value).forEach(k => (form.value[k] = ''))
-  skipUserWatch = true
-  userQuery.value = ''
-  userSuggestions.value = []
-  formError.value = ''
-  files.value = []
-  fileType.value = 'CONCLUSION'
-  fileError.value = ''
-  fileUploading.value = false
-  saving.value = false
-  deleting.value = false
-  modal.show()
+  editing.value = null;
+  Object.keys(form.value).forEach((k) => (form.value[k] = ''));
+  skipUserWatch = true;
+  userQuery.value = '';
+  userSuggestions.value = [];
+  formError.value = '';
+  files.value = [];
+  fileType.value = 'CONCLUSION';
+  fileError.value = '';
+  fileUploading.value = false;
+  saving.value = false;
+  deleting.value = false;
+  modal.show();
 }
 
 function openEdit(cert) {
-  editing.value = cert
-  Object.assign(form.value, cert)
-  skipUserWatch = true
-  userQuery.value = ''
-  userSuggestions.value = []
-  formError.value = ''
-  fileUploading.value = false
-  saving.value = false
-  deleting.value = false
-  loadFiles()
-  modal.show()
+  editing.value = cert;
+  Object.assign(form.value, cert);
+  skipUserWatch = true;
+  userQuery.value = '';
+  userSuggestions.value = [];
+  formError.value = '';
+  fileUploading.value = false;
+  saving.value = false;
+  deleting.value = false;
+  loadFiles();
+  modal.show();
 }
 
 function selectUser(u) {
-  form.value.user_id = u.id
-  skipUserWatch = true
-  userQuery.value = `${u.last_name} ${u.first_name} ${u.patronymic}`
-  userSuggestions.value = []
+  form.value.user_id = u.id;
+  skipUserWatch = true;
+  userQuery.value = `${u.last_name} ${u.first_name} ${u.patronymic}`;
+  userSuggestions.value = [];
 }
 
 async function save() {
-  if (saving.value || fileUploading.value) return
-  saving.value = true
+  if (saving.value || fileUploading.value) return;
+  saving.value = true;
   try {
-    formError.value = ''
+    formError.value = '';
     if (!form.value.user_id) {
-      formError.value = 'Выберите пользователя'
-      return
+      formError.value = 'Выберите пользователя';
+      return;
     }
-  const path = `/users/${form.value.user_id}/medical-certificate`
-  if (editing.value) {
-    await apiFetch(path, { method: 'PUT', body: JSON.stringify(form.value) })
-    modal.hide()
-    await loadJudges()
-  } else {
-    const data = await apiFetch(path, {
-      method: 'POST',
-      body: JSON.stringify(form.value),
-    })
-    editing.value = data.certificate
-    Object.assign(form.value, data.certificate)
-    await loadJudges()
-    await loadFiles()
-  }
+    const path = `/users/${form.value.user_id}/medical-certificate`;
+    if (editing.value) {
+      await apiFetch(path, { method: 'PUT', body: JSON.stringify(form.value) });
+      modal.hide();
+      await loadJudges();
+    } else {
+      const data = await apiFetch(path, {
+        method: 'POST',
+        body: JSON.stringify(form.value),
+      });
+      editing.value = data.certificate;
+      Object.assign(form.value, data.certificate);
+      await loadJudges();
+      await loadFiles();
+    }
   } catch (e) {
-    formError.value = e.message
+    formError.value = e.message;
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function loadFiles() {
-  if (!editing.value) return
-  filesLoading.value = true
-  fileError.value = ''
+  if (!editing.value) return;
+  filesLoading.value = true;
+  fileError.value = '';
   try {
-    const data = await apiFetch(`/medical-certificates/${editing.value.id}/files`)
-    files.value = data.files
+    const data = await apiFetch(
+      `/medical-certificates/${editing.value.id}/files`
+    );
+    files.value = data.files;
   } catch (e) {
-    fileError.value = e.message
-    files.value = []
+    fileError.value = e.message;
+    files.value = [];
   } finally {
-    filesLoading.value = false
+    filesLoading.value = false;
   }
 }
 
 async function uploadFile() {
-  const f = fileInput.value?.files[0]
-  if (!f || !editing.value || fileUploading.value) return
-  const formData = new FormData()
-  formData.append('file', f)
-  formData.append('type', fileType.value)
-  fileUploading.value = true
+  const f = fileInput.value?.files[0];
+  if (!f || !editing.value || fileUploading.value) return;
+  const formData = new FormData();
+  formData.append('file', f);
+  formData.append('type', fileType.value);
+  fileUploading.value = true;
   try {
-    await apiFetchForm(`/medical-certificates/${editing.value.id}/files`, formData, {
-      method: 'POST',
-    })
-    fileInput.value.value = ''
-    fileError.value = ''
-    await loadFiles()
+    await apiFetchForm(
+      `/medical-certificates/${editing.value.id}/files`,
+      formData,
+      {
+        method: 'POST',
+      }
+    );
+    fileInput.value.value = '';
+    fileError.value = '';
+    await loadFiles();
   } catch (e) {
-    fileError.value = e.message
+    fileError.value = e.message;
   } finally {
-    fileUploading.value = false
+    fileUploading.value = false;
   }
 }
 
 async function removeFile(file) {
-  if (!editing.value) return
-  if (!confirm('Удалить файл?')) return
+  if (!editing.value) return;
+  if (!confirm('Удалить файл?')) return;
   try {
     await apiFetch(
       `/medical-certificates/${editing.value.id}/files/${file.id}`,
       { method: 'DELETE' }
-    )
-    await loadFiles()
+    );
+    await loadFiles();
   } catch (e) {
-    fileError.value = e.message
+    fileError.value = e.message;
   }
 }
 
 async function removeCert() {
-  if (!editing.value) return
-  if (!confirm('Удалить справку?')) return
-  if (deleting.value) return
-  deleting.value = true
+  if (!editing.value) return;
+  if (!confirm('Удалить справку?')) return;
+  if (deleting.value) return;
+  deleting.value = true;
   try {
-    await apiFetch(`/medical-certificates/${editing.value.id}`, { method: 'DELETE' })
-    modal.hide()
-    await loadJudges()
+    await apiFetch(`/medical-certificates/${editing.value.id}`, {
+      method: 'DELETE',
+    });
+    modal.hide();
+    await loadJudges();
   } catch (e) {
-    formError.value = e.message
+    formError.value = e.message;
   } finally {
-    deleting.value = false
+    deleting.value = false;
   }
 }
 
 function formatDate(str) {
-  if (!str) return ''
-  const [y, m, d] = str.split('-')
-  return `${d}.${m}.${y}`
+  if (!str) return '';
+  const [y, m, d] = str.split('-');
+  return `${d}.${m}.${y}`;
 }
 
 function hasActive(judge) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10);
   return judge.certificates.some(
     (c) => c.issue_date <= today && c.valid_until >= today
-  )
+  );
 }
 
 async function loadJudges() {
-  judgesLoading.value = true
+  judgesLoading.value = true;
   try {
     const data = await Promise.all(
       refereeRoles.map((r) => apiFetch(`/medical-certificates/role/${r}`))
-    )
-    judges.value = data.flatMap((d) => d.judges)
-    judgesError.value = ''
+    );
+    judges.value = data.flatMap((d) => d.judges);
+    judgesError.value = '';
   } catch (e) {
-    judgesError.value = e.message
-    judges.value = []
+    judgesError.value = e.message;
+    judges.value = [];
   } finally {
-    judgesLoading.value = false
+    judgesLoading.value = false;
   }
 }
 </script>
@@ -259,14 +266,18 @@ async function loadJudges() {
 <template>
   <div>
     <div class="card section-card tile fade-in shadow-sm mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
         <h5 class="mb-0">Медицинские заключения</h5>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
       <div class="card-body p-3">
-        <div v-if="judgesError" class="alert alert-danger mb-3">{{ judgesError }}</div>
+        <div v-if="judgesError" class="alert alert-danger mb-3">
+          {{ judgesError }}
+        </div>
         <div v-if="judgesLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
@@ -282,9 +293,18 @@ async function loadJudges() {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="j in judges" :key="j.user.id" :class="{ 'table-danger': !hasActive(j) }">
-                <td>{{ j.user.last_name }} {{ j.user.first_name }} {{ j.user.patronymic }}</td>
-                <td class="d-none d-md-table-cell">{{ formatDate(j.user.birth_date) }}</td>
+              <tr
+                v-for="j in judges"
+                :key="j.user.id"
+                :class="{ 'table-danger': !hasActive(j) }"
+              >
+                <td>
+                  {{ j.user.last_name }} {{ j.user.first_name }}
+                  {{ j.user.patronymic }}
+                </td>
+                <td class="d-none d-md-table-cell">
+                  {{ formatDate(j.user.birth_date) }}
+                </td>
                 <td>
                   <div v-for="c in j.certificates" :key="c.id">
                     <button
@@ -308,13 +328,18 @@ async function loadJudges() {
                   </div>
                 </td>
                 <td class="d-none d-xl-table-cell">
-                  <div v-for="c in j.certificates" :key="c.id" class="text-nowrap">
+                  <div
+                    v-for="c in j.certificates"
+                    :key="c.id"
+                    class="text-nowrap"
+                  >
                     <button
                       type="button"
                       class="btn btn-link p-0"
                       @click="openEdit(c)"
                     >
-                      {{ formatDate(c.issue_date) }} - {{ formatDate(c.valid_until) }}
+                      {{ formatDate(c.issue_date) }} -
+                      {{ formatDate(c.valid_until) }}
                     </button>
                   </div>
                 </td>
@@ -331,11 +356,19 @@ async function loadJudges() {
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">{{ editing ? 'Изменить' : 'Добавить' }} справку</h5>
-              <button type="button" class="btn-close" @click="modal.hide()"></button>
+              <h5 class="modal-title">
+                {{ editing ? 'Изменить' : 'Добавить' }} справку
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                @click="modal.hide()"
+              ></button>
             </div>
             <div class="modal-body">
-              <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
+              <div v-if="formError" class="alert alert-danger">
+                {{ formError }}
+              </div>
               <div class="mb-3 position-relative" v-if="!editing">
                 <div class="form-floating">
                   <input
@@ -413,9 +446,13 @@ async function loadJudges() {
               </div>
               <div class="border-top pt-3 mt-3">
                 <h6 class="mb-2">Файлы</h6>
-                <div v-if="fileError" class="alert alert-danger">{{ fileError }}</div>
+                <div v-if="fileError" class="alert alert-danger">
+                  {{ fileError }}
+                </div>
                 <div v-if="editing">
-                  <div v-if="filesLoading" class="text-center py-2">Загрузка...</div>
+                  <div v-if="filesLoading" class="text-center py-2">
+                    Загрузка...
+                  </div>
                   <ul v-if="files.length" class="list-group mb-3">
                     <li
                       v-for="f in files"
@@ -423,7 +460,12 @@ async function loadJudges() {
                       class="list-group-item d-flex justify-content-between align-items-center"
                     >
                       <a :href="f.url" target="_blank">{{ f.name }}</a>
-                      <button type="button" class="btn-close" aria-label="Удалить" @click="removeFile(f)"></button>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        aria-label="Удалить"
+                        @click="removeFile(f)"
+                      ></button>
                     </li>
                   </ul>
                   <p v-else-if="!filesLoading" class="text-muted">Нет файлов</p>
@@ -460,14 +502,28 @@ async function loadJudges() {
                 @click="removeCert"
                 :disabled="deleting"
               >
-                <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
+                <span
+                  v-if="deleting"
+                  class="spinner-border spinner-border-sm me-2"
+                ></span>
                 <i class="bi bi-trash"></i>
               </button>
-              <button type="button" class="btn btn-secondary" @click="modal.hide()">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="modal.hide()"
+              >
                 Отмена
               </button>
-              <button type="submit" class="btn btn-brand" :disabled="editing || saving || fileUploading">
-                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+              <button
+                type="submit"
+                class="btn btn-brand"
+                :disabled="editing || saving || fileUploading"
+              >
+                <span
+                  v-if="saving"
+                  class="spinner-border spinner-border-sm me-2"
+                ></span>
                 Сохранить
               </button>
             </div>
@@ -475,7 +531,7 @@ async function loadJudges() {
         </div>
       </div>
     </div>
-</div>
+  </div>
 </template>
 
 <style scoped>

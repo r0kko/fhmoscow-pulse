@@ -2,8 +2,8 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
-import {apiFetch} from '../api.js';
-import {suggestAddress, cleanAddress} from '../dadata.js';
+import { apiFetch } from '../api.js';
+import { suggestAddress, cleanAddress } from '../dadata.js';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 
 import RefereeGroups from '../components/RefereeGroups.vue';
@@ -48,14 +48,13 @@ const pageSize = 8;
 const isLoading = ref(false);
 const error = ref('');
 
-
 /* training types */
 const trainingTypes = ref([]);
 const typesTotal = ref(0);
 const typesPage = ref(1);
 const typesLoading = ref(false);
 const typesError = ref('');
-const typeForm = ref({name: '', default_capacity: ''});
+const typeForm = ref({ name: '', default_capacity: '' });
 const typeEditing = ref(null);
 const typeModalRef = ref(null);
 let typeModal;
@@ -94,7 +93,7 @@ const groupsRef = ref(null);
 
 const form = ref({
   name: '',
-  address: {result: ''},
+  address: { result: '' },
   yandex_url: '',
   capacity: '',
   phone: '',
@@ -107,12 +106,15 @@ const formError = ref('');
 const addressSuggestions = ref([]);
 let addrTimeout;
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
-const typesTotalPages = computed(() => Math.max(1, Math.ceil(typesTotal.value / pageSize)));
-const trainingsTotalPages = computed(() =>
-    Math.max(1, Math.ceil(trainingsTotal.value / trainingsPageSize.value))
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(total.value / pageSize))
 );
-
+const typesTotalPages = computed(() =>
+  Math.max(1, Math.ceil(typesTotal.value / pageSize))
+);
+const trainingsTotalPages = computed(() =>
+  Math.max(1, Math.ceil(trainingsTotal.value / trainingsPageSize.value))
+);
 
 onMounted(() => {
   modal = new Modal(modalRef.value);
@@ -166,51 +168,55 @@ watch(activeTab, (val) => {
 });
 
 watch(
-    () => form.value.address.result,
-    (val) => {
-      clearTimeout(addrTimeout);
-      if (!val || val.length < 3) {
-        addressSuggestions.value = [];
-        return;
-      }
-      const query = val.trim();
-      addrTimeout = setTimeout(async () => {
-        addressSuggestions.value = await suggestAddress(query);
-      }, 300);
+  () => form.value.address.result,
+  (val) => {
+    clearTimeout(addrTimeout);
+    if (!val || val.length < 3) {
+      addressSuggestions.value = [];
+      return;
     }
+    const query = val.trim();
+    addrTimeout = setTimeout(async () => {
+      addressSuggestions.value = await suggestAddress(query);
+    }, 300);
+  }
 );
 
 watch(
-    () => trainingForm.value.type_id,
-    (val) => {
-      const tt = trainingTypes.value.find((t) => t.id === val);
-      if (tt && tt.default_capacity && (!trainingEditing.value || !trainingForm.value.capacity)) {
-        trainingForm.value.capacity = tt.default_capacity;
-      }
+  () => trainingForm.value.type_id,
+  (val) => {
+    const tt = trainingTypes.value.find((t) => t.id === val);
+    if (
+      tt &&
+      tt.default_capacity &&
+      (!trainingEditing.value || !trainingForm.value.capacity)
+    ) {
+      trainingForm.value.capacity = tt.default_capacity;
     }
+  }
 );
 
 watch(
-    () => trainingForm.value.start_at,
-    (val) => {
-      if (!val) return;
-      const start = new Date(val);
-      const end = new Date(start.getTime() + 90 * 60000);
-      if (!trainingEditing.value) {
-        trainingForm.value.end_at = toInputValue(end);
-      }
+  () => trainingForm.value.start_at,
+  (val) => {
+    if (!val) return;
+    const start = new Date(val);
+    const end = new Date(start.getTime() + 90 * 60000);
+    if (!trainingEditing.value) {
+      trainingForm.value.end_at = toInputValue(end);
     }
+  }
 );
 
 watch(
-    [() => trainingForm.value.start_at, () => trainingForm.value.end_at],
-    ([start, end]) => {
-      if (start && end && new Date(end) <= new Date(start)) {
-        trainingFormError.value = 'Время окончания должно быть позже начала';
-      } else {
-        trainingFormError.value = '';
-      }
+  [() => trainingForm.value.start_at, () => trainingForm.value.end_at],
+  ([start, end]) => {
+    if (start && end && new Date(end) <= new Date(start)) {
+      trainingFormError.value = 'Время окончания должно быть позже начала';
+    } else {
+      trainingFormError.value = '';
     }
+  }
 );
 
 async function load() {
@@ -234,7 +240,7 @@ function openCreate() {
   editing.value = null;
   form.value = {
     name: '',
-    address: {result: ''},
+    address: { result: '' },
     yandex_url: '',
     capacity: '',
     phone: '',
@@ -250,7 +256,7 @@ function openEdit(s) {
   editing.value = s;
   form.value = {
     name: s.name,
-    address: {result: s.address?.result || ''},
+    address: { result: s.address?.result || '' },
     yandex_url: s.yandex_url || '',
     capacity: s.capacity || '',
     phone: s.phone || '',
@@ -265,7 +271,7 @@ function openEdit(s) {
 async function save() {
   const payload = {
     name: form.value.name,
-    address: {result: form.value.address.result},
+    address: { result: form.value.address.result },
     yandex_url: form.value.yandex_url || undefined,
     capacity: form.value.capacity || undefined,
     phone: form.value.phone || undefined,
@@ -295,7 +301,7 @@ async function save() {
 
 async function removeGround(s) {
   if (!confirm('Удалить площадку?')) return;
-  await apiFetch(`/grounds/${s.id}`, {method: 'DELETE'});
+  await apiFetch(`/grounds/${s.id}`, { method: 'DELETE' });
   await load();
 }
 
@@ -331,17 +337,17 @@ async function loadTypes() {
 
 function openCreateType() {
   if (!typeModal) {
-    typeModal = new Modal(typeModalRef.value)
+    typeModal = new Modal(typeModalRef.value);
   }
   typeEditing.value = null;
-  typeForm.value = {name: '', default_capacity: ''};
+  typeForm.value = { name: '', default_capacity: '' };
   typeFormError.value = '';
   typeModal.show();
 }
 
 function openEditType(t) {
   if (!typeModal) {
-    typeModal = new Modal(typeModalRef.value)
+    typeModal = new Modal(typeModalRef.value);
   }
   typeEditing.value = t;
   typeForm.value = {
@@ -379,7 +385,6 @@ async function saveType() {
   }
 }
 
-
 async function loadTrainings() {
   try {
     trainingsLoading.value = true;
@@ -409,10 +414,9 @@ async function loadTrainings() {
   }
 }
 
-
 async function loadGroundOptions() {
   try {
-    const params = new URLSearchParams({page: 1, limit: 100});
+    const params = new URLSearchParams({ page: 1, limit: 100 });
     const data = await apiFetch(`/grounds?${params}`);
     groundOptions.value = data.grounds;
   } catch (_) {
@@ -422,7 +426,7 @@ async function loadGroundOptions() {
 
 async function loadRefereeGroups(seasonId) {
   try {
-    const params = new URLSearchParams({page: 1, limit: 100});
+    const params = new URLSearchParams({ page: 1, limit: 100 });
     if (seasonId) params.set('season_id', seasonId);
     const data = await apiFetch(`/referee-groups?${params}`);
     refereeGroups.value = data.groups;
@@ -433,7 +437,7 @@ async function loadRefereeGroups(seasonId) {
 
 function openCreateTraining() {
   if (!trainingModal) {
-    trainingModal = new Modal(trainingModalRef.value)
+    trainingModal = new Modal(trainingModalRef.value);
   }
   trainingEditing.value = null;
   if (!groundOptions.value.length) loadGroundOptions();
@@ -464,14 +468,12 @@ function toInputValue(str) {
   return d.toISOString().slice(0, 16);
 }
 
-
 function formatDateTimeRange(start, end) {
   if (!start) return '';
   const pad = (n) => (n < 10 ? '0' + n : '' + n);
   const startDate = new Date(start);
   const endDate = new Date(end);
-  const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${
-      startDate.getFullYear()}`;
+  const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${startDate.getFullYear()}`;
   const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
   const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
   return `${date} ${startTime} - ${endTime}`;
@@ -480,24 +482,24 @@ function formatDateTimeRange(start, end) {
 function shortGroupName(name) {
   if (!name) return '';
   return name
-      .split(/\s+/)
-      .map((w) => w.charAt(0))
-      .join('')
-      .toUpperCase();
+    .split(/\s+/)
+    .map((w) => w.charAt(0))
+    .join('')
+    .toUpperCase();
 }
 
 function shortName(u) {
   if (!u) return '';
   const initials = [u.first_name, u.patronymic]
-      .filter(Boolean)
-      .map((n) => n.charAt(0) + '.')
-      .join(' ');
+    .filter(Boolean)
+    .map((n) => n.charAt(0) + '.')
+    .join(' ');
   return `${u.last_name} ${initials}`.trim();
 }
 
 function openEditTraining(t) {
   if (!trainingModal) {
-    trainingModal = new Modal(trainingModalRef.value)
+    trainingModal = new Modal(trainingModalRef.value);
   }
   trainingEditing.value = t;
   trainingForm.value = {
@@ -513,7 +515,7 @@ function openEditTraining(t) {
 
 async function saveTraining() {
   if (
-      new Date(trainingForm.value.end_at) <= new Date(trainingForm.value.start_at)
+    new Date(trainingForm.value.end_at) <= new Date(trainingForm.value.start_at)
   ) {
     trainingFormError.value = 'Время окончания должно быть позже начала';
     return;
@@ -549,26 +551,25 @@ async function saveTraining() {
 
 async function removeTraining(t) {
   if (!confirm('Удалить запись?')) return;
-  await apiFetch(`/camp-trainings/${t.id}`, {method: 'DELETE'});
+  await apiFetch(`/camp-trainings/${t.id}`, { method: 'DELETE' });
   await loadTrainings();
 }
 
 async function toggleTrainingGroup(training, groupId, checked) {
   const currentIds = (training.groups || []).map((g) => g.id);
   const newIds = checked
-      ? Array.from(new Set([...currentIds, groupId]))
-      : currentIds.filter((id) => id !== groupId);
+    ? Array.from(new Set([...currentIds, groupId]))
+    : currentIds.filter((id) => id !== groupId);
   try {
     await apiFetch(`/camp-trainings/${training.id}`, {
       method: 'PUT',
-      body: JSON.stringify({groups: newIds}),
+      body: JSON.stringify({ groups: newIds }),
     });
     training.groups = refereeGroups.value.filter((g) => newIds.includes(g.id));
   } catch (e) {
     alert(e.message);
   }
 }
-
 </script>
 
 <template>
@@ -585,29 +586,51 @@ async function toggleTrainingGroup(training, groupId, checked) {
       <h1 class="mb-3">Сборы</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
-          <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
+          <ul
+            class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
+          >
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'trainings' }" @click="activeTab = 'trainings'">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'trainings' }"
+                @click="activeTab = 'trainings'"
+              >
                 Тренировки
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'judges' }" @click="activeTab = 'judges'">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'judges' }"
+                @click="activeTab = 'judges'"
+              >
                 Судьи
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'groups' }" @click="activeTab = 'groups'">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'groups' }"
+                @click="activeTab = 'groups'"
+              >
                 Группы
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'types' }" @click="activeTab = 'types'">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'types' }"
+                @click="activeTab = 'types'"
+              >
                 Типы тренировок
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'grounds' }" @click="activeTab = 'grounds'">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'grounds' }"
+                @click="activeTab = 'grounds'"
+              >
                 Площадки
               </button>
             </li>
@@ -620,48 +643,65 @@ async function toggleTrainingGroup(training, groupId, checked) {
           <div class="spinner-border" role="status"></div>
         </div>
         <div class="card section-card tile fade-in shadow-sm">
-          <div class="card-header d-flex justify-content-between align-items-center">
+          <div
+            class="card-header d-flex justify-content-between align-items-center"
+          >
             <h2 class="h5 mb-0">Площадки</h2>
             <button class="btn btn-brand" @click="openCreate">
               <i class="bi bi-plus-lg me-1"></i>Добавить
             </button>
           </div>
           <div class="card-body p-3">
-            <div v-if="grounds.length" class="table-responsive d-none d-sm-block">
+            <div
+              v-if="grounds.length"
+              class="table-responsive d-none d-sm-block"
+            >
               <table class="table admin-table table-striped align-middle mb-0">
                 <thead>
-                <tr>
-                  <th>Название</th>
-                  <th>Адрес</th>
-                  <th class="text-center">Вместимость</th>
-                  <th>Телефон</th>
-                  <th class="d-none d-md-table-cell">Сайт</th>
-                  <th></th>
-                </tr>
+                  <tr>
+                    <th>Название</th>
+                    <th>Адрес</th>
+                    <th class="text-center">Вместимость</th>
+                    <th>Телефон</th>
+                    <th class="d-none d-md-table-cell">Сайт</th>
+                    <th></th>
+                  </tr>
                 </thead>
                 <tbody>
-                <tr v-for="st in grounds" :key="st.id">
-                  <td>{{ st.name }}</td>
-                  <td>{{ st.address?.result }}</td>
-                  <td class="text-center">{{ st.capacity }}</td>
-                  <td>{{ formatPhone(st.phone) }}</td>
-                  <td class="d-none d-md-table-cell">
-                    <a v-if="st.website" :href="st.website" target="_blank">{{ st.website }}</a>
-                  </td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" @click="removeGround(st)">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </td>
-                </tr>
+                  <tr v-for="st in grounds" :key="st.id">
+                    <td>{{ st.name }}</td>
+                    <td>{{ st.address?.result }}</td>
+                    <td class="text-center">{{ st.capacity }}</td>
+                    <td>{{ formatPhone(st.phone) }}</td>
+                    <td class="d-none d-md-table-cell">
+                      <a v-if="st.website" :href="st.website" target="_blank">{{
+                        st.website
+                      }}</a>
+                    </td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-secondary me-2"
+                        @click="openEdit(st)"
+                      >
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-danger"
+                        @click="removeGround(st)"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
             <div v-if="grounds.length" class="d-block d-sm-none">
-              <div v-for="st in grounds" :key="st.id" class="card training-card mb-2">
+              <div
+                v-for="st in grounds"
+                :key="st.id"
+                class="card training-card mb-2"
+              >
                 <div class="card-body p-2">
                   <h6 class="mb-1">{{ st.name }}</h6>
                   <p class="mb-1">{{ st.address?.result }}</p>
@@ -670,455 +710,733 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <p class="mb-1" v-if="st.website">
                     <a :href="st.website" target="_blank">{{ st.website }}</a>
                   </p>
-                  
+
                   <div class="text-end">
-                    <button class="btn btn-sm btn-secondary me-2" @click="openEdit(st)">
+                    <button
+                      class="btn btn-sm btn-secondary me-2"
+                      @click="openEdit(st)"
+                    >
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" @click="removeGround(st)">
+                    <button
+                      class="btn btn-sm btn-danger"
+                      @click="removeGround(st)"
+                    >
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-            <div v-else-if="!isLoading" class="alert alert-warning mb-0">Площадкаов нет.</div>
+            <div v-else-if="!isLoading" class="alert alert-warning mb-0">
+              Площадкаов нет.
+            </div>
           </div>
         </div>
         <nav class="mt-3" v-if="totalPages > 1">
           <ul class="pagination justify-content-center">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Пред</button>
+              <button
+                class="page-link"
+                @click="currentPage--"
+                :disabled="currentPage === 1"
+              >
+                Пред
+              </button>
             </li>
-            <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: currentPage === p }">
-              <button class="page-link" @click="currentPage = p">{{ p }}</button>
+            <li
+              class="page-item"
+              v-for="p in totalPages"
+              :key="p"
+              :class="{ active: currentPage === p }"
+            >
+              <button class="page-link" @click="currentPage = p">
+                {{ p }}
+              </button>
             </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">След</button>
+            <li
+              class="page-item"
+              :class="{ disabled: currentPage === totalPages }"
+            >
+              <button
+                class="page-link"
+                @click="currentPage++"
+                :disabled="currentPage === totalPages"
+              >
+                След
+              </button>
             </li>
           </ul>
         </nav>
       </div>
 
-
-    <div v-if="activeTab === 'types'">
-      <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
-      <div v-if="typesLoading" class="text-center my-3">
-        <div class="spinner-border" role="status"></div>
-      </div>
-      <div class="card section-card tile fade-in shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">Типы тренировок</h2>
-          <button class="btn btn-brand" @click="openCreateType">
-            <i class="bi bi-plus-lg me-1"></i>Добавить
-          </button>
+      <div v-if="activeTab === 'types'">
+        <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
+        <div v-if="typesLoading" class="text-center my-3">
+          <div class="spinner-border" role="status"></div>
         </div>
-        <div class="card-body p-3">
-          <div v-if="trainingTypes.length" class="table-responsive d-none d-sm-block">
-            <table class="table admin-table table-striped align-middle mb-0">
-              <thead>
-              <tr>
-                <th>Название</th>
-                <th class="text-center">Емкость</th>
-                <th></th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr v-for="t in trainingTypes" :key="t.id">
-                <td>{{ t.name }}</td>
-                <td class="text-center">{{ t.default_capacity }}</td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
+        <div class="card section-card tile fade-in shadow-sm">
+          <div
+            class="card-header d-flex justify-content-between align-items-center"
+          >
+            <h2 class="h5 mb-0">Типы тренировок</h2>
+            <button class="btn btn-brand" @click="openCreateType">
+              <i class="bi bi-plus-lg me-1"></i>Добавить
+            </button>
+          </div>
+          <div class="card-body p-3">
+            <div
+              v-if="trainingTypes.length"
+              class="table-responsive d-none d-sm-block"
+            >
+              <table class="table admin-table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Название</th>
+                    <th class="text-center">Емкость</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="t in trainingTypes" :key="t.id">
+                    <td>{{ t.name }}</td>
+                    <td class="text-center">{{ t.default_capacity }}</td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-secondary"
+                        @click="openEditType(t)"
+                      >
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="trainingTypes.length" class="d-block d-sm-none">
+              <div
+                v-for="t in trainingTypes"
+                :key="t.id"
+                class="card training-card mb-2"
+              >
+                <div class="card-body p-2 d-flex justify-content-between">
+                  <div>
+                    <h6 class="mb-1">{{ t.name }}</h6>
+                    <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
+                  </div>
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    @click="openEditType(t)"
+                  >
                     <i class="bi bi-pencil"></i>
                   </button>
-                </td>
-              </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-if="trainingTypes.length" class="d-block d-sm-none">
-            <div v-for="t in trainingTypes" :key="t.id" class="card training-card mb-2">
-              <div class="card-body p-2 d-flex justify-content-between">
-                <div>
-                  <h6 class="mb-1">{{ t.name }}</h6>
-                  <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
                 </div>
-                <button class="btn btn-sm btn-secondary" @click="openEditType(t)">
-                  <i class="bi bi-pencil"></i>
-                </button>
               </div>
             </div>
+            <div v-else-if="!typesLoading" class="alert alert-info mb-0">
+              Типов тренировок нет.
+            </div>
           </div>
-          <div v-else-if="!typesLoading" class="alert alert-info mb-0">Типов тренировок нет.</div>
         </div>
       </div>
+      <nav class="mt-3" v-if="typesTotalPages > 1">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: typesPage === 1 }">
+            <button
+              class="page-link"
+              @click="typesPage--"
+              :disabled="typesPage === 1"
+            >
+              Пред
+            </button>
+          </li>
+          <li
+            class="page-item"
+            v-for="p in typesTotalPages"
+            :key="p"
+            :class="{ active: typesPage === p }"
+          >
+            <button class="page-link" @click="typesPage = p">{{ p }}</button>
+          </li>
+          <li
+            class="page-item"
+            :class="{ disabled: typesPage === typesTotalPages }"
+          >
+            <button
+              class="page-link"
+              @click="typesPage++"
+              :disabled="typesPage === typesTotalPages"
+            >
+              След
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-    </div>
-    <nav class="mt-3" v-if="typesTotalPages > 1">
-      <ul class="pagination justify-content-center">
-        <li class="page-item" :class="{ disabled: typesPage === 1 }">
-          <button class="page-link" @click="typesPage--" :disabled="typesPage === 1">Пред</button>
-        </li>
-        <li class="page-item" v-for="p in typesTotalPages" :key="p" :class="{ active: typesPage === p }">
-          <button class="page-link" @click="typesPage = p">{{ p }}</button>
-        </li>
-        <li class="page-item" :class="{ disabled: typesPage === typesTotalPages }">
-          <button class="page-link" @click="typesPage++" :disabled="typesPage === typesTotalPages">След</button>
-        </li>
-      </ul>
-    </nav>
-
-    <div ref="typeModalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form @submit.prevent="saveType">
-            <div class="modal-header">
-              <h5 class="modal-title">{{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}</h5>
-              <button type="button" class="btn-close" @click="typeModal.hide()"></button>
-            </div>
-            <div class="modal-body">
-              <div v-if="typeFormError" class="alert alert-danger">{{ typeFormError }}</div>
-              <div class="form-floating mb-3">
-                <input
+      <div ref="typeModalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form @submit.prevent="saveType">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  @click="typeModal.hide()"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div v-if="typeFormError" class="alert alert-danger">
+                  {{ typeFormError }}
+                </div>
+                <div class="form-floating mb-3">
+                  <input
                     id="ttName"
                     v-model="typeForm.name"
                     class="form-control"
                     placeholder="Название"
                     required
                     :disabled="!!typeEditing"
-                />
-                <label for="ttName">Наименование</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input id="ttCap" v-model="typeForm.default_capacity" type="number" min="0" class="form-control"
-                       placeholder="Емкость"/>
-                <label for="ttCap">Стандартная емкость группы</label>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="typeModal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-brand" :disabled="typeSaveLoading">
-                <span v-if="typeSaveLoading" class="spinner-border spinner-border-sm me-2"></span>
-                Сохранить
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div v-if="activeTab === 'trainings'">
-    <div v-if="trainingsError" class="alert alert-danger">{{ trainingsError }}</div>
-    <div v-if="trainingsLoading" class="text-center my-3">
-      <div class="spinner-border" role="status"></div>
-    </div>
-    <div class="card section-card tile fade-in shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Тренировки</h2>
-        <div>
-          <button class="btn btn-light me-2" @click="openTrainingFilters" title="Фильтры">
-            <i class="bi bi-funnel"></i>
-          </button>
-          <button class="btn btn-brand" @click="openCreateTraining">
-            <i class="bi bi-plus-lg me-1"></i>Добавить
-          </button>
-        </div>
-      </div>
-      <div class="card-body p-3">
-        <ul class="nav nav-pills nav-fill mb-3 tab-selector">
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: trainingsView === 'upcoming' }" @click="trainingsView = 'upcoming'">
-              Ближайшие
-            </button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: trainingsView === 'past' }" @click="trainingsView = 'past'">
-              Прошедшие
-            </button>
-          </li>
-        </ul>
-        <div v-if="trainings.length" class="table-responsive d-none d-sm-block">
-          <table class="table admin-table table-striped align-middle mb-0">
-            <thead>
-            <tr>
-              <th>Тип</th>
-              <th class="d-none d-sm-table-cell">Площадка</th>
-              <th>Дата и время</th>
-              <th class="text-center">Участников</th>
-              <th class="d-none d-md-table-cell">Тренеры</th>
-              <th class="d-none d-md-table-cell">Инвентарь</th>
-              <th
-                  v-for="g in refereeGroups"
-                  :key="g.id"
-                  class="text-center group-col"
-                  :title="g.name"
-              >
-                {{ shortGroupName(g.name) }}
-              </th>
-              <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="t in trainings" :key="t.id">
-              <td>{{ t.type?.name }}</td>
-              <td class="d-none d-sm-table-cell">{{ t.ground?.name }}</td>
-              <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-              <td class="text-center">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</td>
-              <td class="d-none d-md-table-cell">
-            <span v-if="t.coaches?.length">
-              {{ t.coaches.map(shortName).join(', ') }}
-            </span>
-                <span v-else class="text-muted">—</span>
-              </td>
-              <td class="d-none d-md-table-cell">
-            <span v-if="t.equipment_managers?.length">
-              {{ t.equipment_managers.map(shortName).join(', ') }}
-            </span>
-                <span v-else class="text-muted">—</span>
-              </td>
-              <td
-                  v-for="g in refereeGroups"
-                  :key="g.id"
-                  class="text-center group-col"
-                  :title="g.name"
-              >
-                <input
-                    type="checkbox"
-                    class="form-check-input m-0"
-                    :checked="t.groups?.some((gr) => gr.id === g.id)"
-                    @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
-                />
-              </td>
-              <td class="text-end">
-                <RouterLink
-                    :to="`/admin/camp-trainings/${t.id}/registrations`"
-                    class="btn btn-sm btn-primary me-2"
-                >
-                  <i class="bi bi-people"></i>
-                </RouterLink>
-                <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" @click="removeTraining(t)">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </td>
-            </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-if="trainings.length" class="d-block d-sm-none">
-          <div v-for="t in trainings" :key="t.id" class="card training-card mb-2">
-            <div class="card-body p-2">
-              <div class="d-flex justify-content-between">
-                <div>
-                  <h6 class="mb-1">{{ t.type?.name }}</h6>
-                  <p class="mb-1">{{ t.ground?.name }}</p>
-                  <p class="mb-1">{{ formatDateTimeRange(t.start_at, t.end_at) }}</p>
-                  <p class="mb-1">{{ t.registered_count }} / {{ t.capacity ?? '—' }}</p>
-                  <p class="mb-1" v-if="t.coaches?.length">
-                    Тренеры: {{ t.coaches.map(shortName).join(', ') }}
-                  </p>
-                  <p class="mb-1" v-else>Тренеры: —</p>
-                  <p class="mb-1" v-if="t.equipment_managers?.length">
-                    Инвентарь: {{ t.equipment_managers.map(shortName).join(', ') }}
-                  </p>
-                  <p class="mb-1" v-else>Инвентарь: —</p>
+                  />
+                  <label for="ttName">Наименование</label>
                 </div>
-                <div class="text-end">
-                  <RouterLink
+                <div class="form-floating mb-3">
+                  <input
+                    id="ttCap"
+                    v-model="typeForm.default_capacity"
+                    type="number"
+                    min="0"
+                    class="form-control"
+                    placeholder="Емкость"
+                  />
+                  <label for="ttCap">Стандартная емкость группы</label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="typeModal.hide()"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-brand"
+                  :disabled="typeSaveLoading"
+                >
+                  <span
+                    v-if="typeSaveLoading"
+                    class="spinner-border spinner-border-sm me-2"
+                  ></span>
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="activeTab === 'trainings'">
+      <div v-if="trainingsError" class="alert alert-danger">
+        {{ trainingsError }}
+      </div>
+      <div v-if="trainingsLoading" class="text-center my-3">
+        <div class="spinner-border" role="status"></div>
+      </div>
+      <div class="card section-card tile fade-in shadow-sm">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <h2 class="h5 mb-0">Тренировки</h2>
+          <div>
+            <button
+              class="btn btn-light me-2"
+              @click="openTrainingFilters"
+              title="Фильтры"
+            >
+              <i class="bi bi-funnel"></i>
+            </button>
+            <button class="btn btn-brand" @click="openCreateTraining">
+              <i class="bi bi-plus-lg me-1"></i>Добавить
+            </button>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <ul class="nav nav-pills nav-fill mb-3 tab-selector">
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: trainingsView === 'upcoming' }"
+                @click="trainingsView = 'upcoming'"
+              >
+                Ближайшие
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: trainingsView === 'past' }"
+                @click="trainingsView = 'past'"
+              >
+                Прошедшие
+              </button>
+            </li>
+          </ul>
+          <div
+            v-if="trainings.length"
+            class="table-responsive d-none d-sm-block"
+          >
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Тип</th>
+                  <th class="d-none d-sm-table-cell">Площадка</th>
+                  <th>Дата и время</th>
+                  <th class="text-center">Участников</th>
+                  <th class="d-none d-md-table-cell">Тренеры</th>
+                  <th class="d-none d-md-table-cell">Инвентарь</th>
+                  <th
+                    v-for="g in refereeGroups"
+                    :key="g.id"
+                    class="text-center group-col"
+                    :title="g.name"
+                  >
+                    {{ shortGroupName(g.name) }}
+                  </th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="t in trainings" :key="t.id">
+                  <td>{{ t.type?.name }}</td>
+                  <td class="d-none d-sm-table-cell">{{ t.ground?.name }}</td>
+                  <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+                  <td class="text-center">
+                    {{ t.registered_count }} / {{ t.capacity ?? '—' }}
+                  </td>
+                  <td class="d-none d-md-table-cell">
+                    <span v-if="t.coaches?.length">
+                      {{ t.coaches.map(shortName).join(', ') }}
+                    </span>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                  <td class="d-none d-md-table-cell">
+                    <span v-if="t.equipment_managers?.length">
+                      {{ t.equipment_managers.map(shortName).join(', ') }}
+                    </span>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                  <td
+                    v-for="g in refereeGroups"
+                    :key="g.id"
+                    class="text-center group-col"
+                    :title="g.name"
+                  >
+                    <input
+                      type="checkbox"
+                      class="form-check-input m-0"
+                      :checked="t.groups?.some((gr) => gr.id === g.id)"
+                      @change="
+                        toggleTrainingGroup(t, g.id, $event.target.checked)
+                      "
+                    />
+                  </td>
+                  <td class="text-end">
+                    <RouterLink
                       :to="`/admin/camp-trainings/${t.id}/registrations`"
                       class="btn btn-sm btn-primary me-2"
-                  >
-                    <i class="bi bi-people"></i>
-                  </RouterLink>
-                  <button class="btn btn-sm btn-secondary me-2" @click="openEditTraining(t)">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-danger" @click="removeTraining(t)">
-                    <i class="bi bi-trash"></i>
-                  </button>
+                    >
+                      <i class="bi bi-people"></i>
+                    </RouterLink>
+                    <button
+                      class="btn btn-sm btn-secondary me-2"
+                      @click="openEditTraining(t)"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      @click="removeTraining(t)"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="trainings.length" class="d-block d-sm-none">
+            <div
+              v-for="t in trainings"
+              :key="t.id"
+              class="card training-card mb-2"
+            >
+              <div class="card-body p-2">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <h6 class="mb-1">{{ t.type?.name }}</h6>
+                    <p class="mb-1">{{ t.ground?.name }}</p>
+                    <p class="mb-1">
+                      {{ formatDateTimeRange(t.start_at, t.end_at) }}
+                    </p>
+                    <p class="mb-1">
+                      {{ t.registered_count }} / {{ t.capacity ?? '—' }}
+                    </p>
+                    <p class="mb-1" v-if="t.coaches?.length">
+                      Тренеры: {{ t.coaches.map(shortName).join(', ') }}
+                    </p>
+                    <p class="mb-1" v-else>Тренеры: —</p>
+                    <p class="mb-1" v-if="t.equipment_managers?.length">
+                      Инвентарь:
+                      {{ t.equipment_managers.map(shortName).join(', ') }}
+                    </p>
+                    <p class="mb-1" v-else>Инвентарь: —</p>
+                  </div>
+                  <div class="text-end">
+                    <RouterLink
+                      :to="`/admin/camp-trainings/${t.id}/registrations`"
+                      class="btn btn-sm btn-primary me-2"
+                    >
+                      <i class="bi bi-people"></i>
+                    </RouterLink>
+                    <button
+                      class="btn btn-sm btn-secondary me-2"
+                      @click="openEditTraining(t)"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      @click="removeTraining(t)"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div class="mt-2">
-                <div
+                <div class="mt-2">
+                  <div
                     v-for="g in refereeGroups"
                     :key="g.id"
                     class="form-check form-check-inline"
-                >
-                  <input
+                  >
+                    <input
                       class="form-check-input"
                       type="checkbox"
                       :id="`tm-${t.id}-${g.id}`"
                       :checked="t.groups?.some((gr) => gr.id === g.id)"
-                      @change="toggleTrainingGroup(t, g.id, $event.target.checked)"
-                  />
-                  <label class="form-check-label" :for="`tm-${t.id}-${g.id}`">
-                    {{ shortGroupName(g.name) }}
-                  </label>
+                      @change="
+                        toggleTrainingGroup(t, g.id, $event.target.checked)
+                      "
+                    />
+                    <label class="form-check-label" :for="`tm-${t.id}-${g.id}`">
+                      {{ shortGroupName(g.name) }}
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
-      </div>
-    </div>
-    <nav class="mt-3 d-flex align-items-center justify-content-between" v-if="trainings.length">
-      <select v-model.number="trainingsPageSize" class="form-select form-select-sm w-auto">
-        <option :value="20">20</option>
-        <option :value="40">40</option>
-        <option :value="100">100</option>
-      </select>
-      <ul class="pagination mb-0">
-        <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
-          <button class="page-link" @click="trainingsPage--" :disabled="trainingsPage === 1">Пред</button>
-        </li>
-        <li class="page-item" v-for="p in trainingsTotalPages" :key="p" :class="{ active: trainingsPage === p }">
-          <button class="page-link" @click="trainingsPage = p">{{ p }}</button>
-        </li>
-        <li class="page-item" :class="{ disabled: trainingsPage === trainingsTotalPages }">
-          <button class="page-link" @click="trainingsPage++" :disabled="trainingsPage === trainingsTotalPages">След
-          </button>
-        </li>
-      </ul>
-    </nav>
-
-    <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Фильтры</h5>
-            <button type="button" class="btn-close" @click="trainingFilterModal.hide()"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Площадка</label>
-              <select v-model="trainingsFilterGround" class="form-select">
-                <option value="">Все стадионы</option>
-                <option v-for="s in groundOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Группа</label>
-              <select v-model="trainingsFilterGroup" class="form-select">
-                <option value="">Все группы</option>
-                <option v-for="g in refereeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">На странице</label>
-              <select v-model.number="trainingsPageSize" class="form-select">
-                <option :value="20">20</option>
-                <option :value="40">40</option>
-                <option :value="100">100</option>
-              </select>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="trainingFilterModal.hide()">Закрыть</button>
-          </div>
+          <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
         </div>
       </div>
-    </div>
+      <nav
+        class="mt-3 d-flex align-items-center justify-content-between"
+        v-if="trainings.length"
+      >
+        <select
+          v-model.number="trainingsPageSize"
+          class="form-select form-select-sm w-auto"
+        >
+          <option :value="20">20</option>
+          <option :value="40">40</option>
+          <option :value="100">100</option>
+        </select>
+        <ul class="pagination mb-0">
+          <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
+            <button
+              class="page-link"
+              @click="trainingsPage--"
+              :disabled="trainingsPage === 1"
+            >
+              Пред
+            </button>
+          </li>
+          <li
+            class="page-item"
+            v-for="p in trainingsTotalPages"
+            :key="p"
+            :class="{ active: trainingsPage === p }"
+          >
+            <button class="page-link" @click="trainingsPage = p">
+              {{ p }}
+            </button>
+          </li>
+          <li
+            class="page-item"
+            :class="{ disabled: trainingsPage === trainingsTotalPages }"
+          >
+            <button
+              class="page-link"
+              @click="trainingsPage++"
+              :disabled="trainingsPage === trainingsTotalPages"
+            >
+              След
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-    <div ref="trainingModalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form @submit.prevent="saveTraining">
+      <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">{{ trainingEditing ? 'Изменить тренировку' : 'Добавить тренировку' }}</h5>
-              <button type="button" class="btn-close" @click="trainingModal.hide()"></button>
+              <h5 class="modal-title">Фильтры</h5>
+              <button
+                type="button"
+                class="btn-close"
+                @click="trainingFilterModal.hide()"
+              ></button>
             </div>
             <div class="modal-body">
-              <div v-if="trainingFormError" class="alert alert-danger">{{ trainingFormError }}</div>
-              <div class="mb-3">
-                <label class="form-label">Тип</label>
-                <select v-model="trainingForm.type_id" class="form-select" required>
-                  <option value="" disabled>Выберите тип</option>
-                  <option v-for="tt in trainingTypes" :key="tt.id" :value="tt.id">{{ tt.name }}</option>
-                </select>
-              </div>
               <div class="mb-3">
                 <label class="form-label">Площадка</label>
-                <select v-model="trainingForm.ground_id" class="form-select" required>
-                  <option value="" disabled>Выберите стадион</option>
-                  <option v-for="s in groundOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+                <select v-model="trainingsFilterGround" class="form-select">
+                  <option value="">Все стадионы</option>
+                  <option v-for="s in groundOptions" :key="s.id" :value="s.id">
+                    {{ s.name }}
+                  </option>
                 </select>
               </div>
-              <div class="form-floating mb-3">
-                <input id="trStart" v-model="trainingForm.start_at" type="datetime-local" class="form-control"
-                       required/>
-                <label for="trStart">Начало</label>
+              <div class="mb-3">
+                <label class="form-label">Группа</label>
+                <select v-model="trainingsFilterGroup" class="form-select">
+                  <option value="">Все группы</option>
+                  <option v-for="g in refereeGroups" :key="g.id" :value="g.id">
+                    {{ g.name }}
+                  </option>
+                </select>
               </div>
-              <div class="form-floating mb-3">
-                <input id="trEnd" v-model="trainingForm.end_at" type="datetime-local" class="form-control" required/>
-                <label for="trEnd">Окончание</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input id="trCap" v-model="trainingForm.capacity" type="number" min="0" class="form-control"/>
-                <label for="trCap">Вместимость</label>
+              <div class="mb-3">
+                <label class="form-label">На странице</label>
+                <select v-model.number="trainingsPageSize" class="form-select">
+                  <option :value="20">20</option>
+                  <option :value="40">40</option>
+                  <option :value="100">100</option>
+                </select>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="trainingModal.hide()">Отмена</button>
-              <button type="submit" class="btn btn-brand" :disabled="trainingSaveLoading">
-                <span v-if="trainingSaveLoading" class="spinner-border spinner-border-sm me-2"></span>
-                Сохранить
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="trainingFilterModal.hide()"
+              >
+                Закрыть
               </button>
             </div>
-          </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref="trainingModalRef" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form @submit.prevent="saveTraining">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{
+                    trainingEditing
+                      ? 'Изменить тренировку'
+                      : 'Добавить тренировку'
+                  }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  @click="trainingModal.hide()"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div v-if="trainingFormError" class="alert alert-danger">
+                  {{ trainingFormError }}
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Тип</label>
+                  <select
+                    v-model="trainingForm.type_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Выберите тип</option>
+                    <option
+                      v-for="tt in trainingTypes"
+                      :key="tt.id"
+                      :value="tt.id"
+                    >
+                      {{ tt.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Площадка</label>
+                  <select
+                    v-model="trainingForm.ground_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Выберите стадион</option>
+                    <option
+                      v-for="s in groundOptions"
+                      :key="s.id"
+                      :value="s.id"
+                    >
+                      {{ s.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="form-floating mb-3">
+                  <input
+                    id="trStart"
+                    v-model="trainingForm.start_at"
+                    type="datetime-local"
+                    class="form-control"
+                    required
+                  />
+                  <label for="trStart">Начало</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <input
+                    id="trEnd"
+                    v-model="trainingForm.end_at"
+                    type="datetime-local"
+                    class="form-control"
+                    required
+                  />
+                  <label for="trEnd">Окончание</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <input
+                    id="trCap"
+                    v-model="trainingForm.capacity"
+                    type="number"
+                    min="0"
+                    class="form-control"
+                  />
+                  <label for="trCap">Вместимость</label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="trainingModal.hide()"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-brand"
+                  :disabled="trainingSaveLoading"
+                >
+                  <span
+                    v-if="trainingSaveLoading"
+                    class="spinner-border spinner-border-sm me-2"
+                  ></span>
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
+    <div v-if="activeTab === 'judges'" class="mb-4">
+      <RefereeGroupAssignments ref="assignmentsRef" />
+    </div>
 
-  <div v-if="activeTab === 'judges'" class="mb-4">
-    <RefereeGroupAssignments ref="assignmentsRef"/>
-  </div>
+    <div v-if="activeTab === 'groups'" class="mb-4">
+      <RefereeGroups ref="groupsRef" />
+    </div>
 
-  <div v-if="activeTab === 'groups'" class="mb-4">
-    <RefereeGroups ref="groupsRef"/>
-  </div>
-
-  <div ref="modalRef" class="modal fade" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form @submit.prevent="save">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ editing ? 'Изменить стадион' : 'Добавить стадион' }}</h5>
-            <button type="button" class="btn-close" @click="modal.hide()"></button>
-          </div>
-          <div class="modal-body">
-            <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
-            <div class="form-floating mb-3">
-              <input id="stadName" v-model="form.name" class="form-control" placeholder="Название" required/>
-              <label for="stadName">Наименование</label>
+    <div ref="modalRef" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form @submit.prevent="save">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                {{ editing ? 'Изменить стадион' : 'Добавить стадион' }}
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                @click="modal.hide()"
+              ></button>
             </div>
-            <div class="form-floating mb-3 position-relative">
-              <textarea id="stadAddr" v-model="form.address.result" @blur="onAddressBlur" class="form-control" rows="2"
-                        placeholder="Адрес"></textarea>
-              <label for="stadAddr">Адрес</label>
-              <ul v-if="addressSuggestions.length" class="list-group position-absolute w-100" style="z-index: 1050">
-                <li v-for="s in addressSuggestions" :key="s.value" class="list-group-item list-group-item-action"
-                    @mousedown.prevent="applyAddressSuggestion(s)">
-                  {{ s.value }}
-                </li>
-              </ul>
-            </div>
-            <div class="form-floating mb-3">
-              <input id="stadYandex" v-model="form.yandex_url" class="form-control" placeholder="URL в Яндекс.Картах"/>
-              <label for="stadYandex">URL в Яндекс.Картах</label>
-            </div>
-            <div class="form-floating mb-3">
-              <input id="stadCapacity" v-model="form.capacity" type="number" class="form-control"
-                     placeholder="Вместимость"/>
-              <label for="stadCapacity">Вместимость</label>
-            </div>
-            <div class="form-floating mb-3">
-              <input
+            <div class="modal-body">
+              <div v-if="formError" class="alert alert-danger">
+                {{ formError }}
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  id="stadName"
+                  v-model="form.name"
+                  class="form-control"
+                  placeholder="Название"
+                  required
+                />
+                <label for="stadName">Наименование</label>
+              </div>
+              <div class="form-floating mb-3 position-relative">
+                <textarea
+                  id="stadAddr"
+                  v-model="form.address.result"
+                  @blur="onAddressBlur"
+                  class="form-control"
+                  rows="2"
+                  placeholder="Адрес"
+                ></textarea>
+                <label for="stadAddr">Адрес</label>
+                <ul
+                  v-if="addressSuggestions.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
+                >
+                  <li
+                    v-for="s in addressSuggestions"
+                    :key="s.value"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="applyAddressSuggestion(s)"
+                  >
+                    {{ s.value }}
+                  </li>
+                </ul>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  id="stadYandex"
+                  v-model="form.yandex_url"
+                  class="form-control"
+                  placeholder="URL в Яндекс.Картах"
+                />
+                <label for="stadYandex">URL в Яндекс.Картах</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  id="stadCapacity"
+                  v-model="form.capacity"
+                  type="number"
+                  class="form-control"
+                  placeholder="Вместимость"
+                />
+                <label for="stadCapacity">Вместимость</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
                   id="stadPhone"
                   type="tel"
                   v-model="phoneInput"
@@ -1126,26 +1444,44 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   @keydown="onPhoneKeydown"
                   class="form-control"
                   placeholder="+7 (___) ___-__-__"
-              />
-              <label for="stadPhone">Телефон</label>
+                />
+                <label for="stadPhone">Телефон</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  id="stadWebsite"
+                  v-model="form.website"
+                  class="form-control"
+                  placeholder="Сайт"
+                />
+                <label for="stadWebsite">Сайт</label>
+              </div>
             </div>
-            <div class="form-floating mb-3">
-              <input id="stadWebsite" v-model="form.website" class="form-control" placeholder="Сайт"/>
-              <label for="stadWebsite">Сайт</label>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="modal.hide()"
+              >
+                Отмена
+              </button>
+              <button
+                type="submit"
+                class="btn btn-brand"
+                :disabled="saveLoading"
+              >
+                <span
+                  v-if="saveLoading"
+                  class="spinner-border spinner-border-sm me-2"
+                ></span>
+                Сохранить
+              </button>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-            <button type="submit" class="btn btn-brand" :disabled="saveLoading">
-              <span v-if="saveLoading" class="spinner-border spinner-border-sm me-2"></span>
-              Сохранить
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <style scoped>
@@ -1193,7 +1529,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

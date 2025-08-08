@@ -47,7 +47,10 @@ async function loadTickets() {
         typesMap[t.type.alias] = t.type.name;
       }
     });
-    ticketTypes.value = Object.entries(typesMap).map(([alias, name]) => ({ alias, name }));
+    ticketTypes.value = Object.entries(typesMap).map(([alias, name]) => ({
+      alias,
+      name,
+    }));
     error.value = '';
   } catch (e) {
     tickets.value = [];
@@ -73,7 +76,6 @@ async function changeStatus(ticket, alias) {
     alert(e.message);
   }
 }
-
 </script>
 
 <template>
@@ -134,7 +136,9 @@ async function changeStatus(ticket, alias) {
             <tbody>
               <tr v-for="t in tickets" :key="t.id" :class="{ flash: t._flash }">
                 <td>{{ t.user.last_name }} {{ t.user.first_name }}</td>
-                <td class="d-none d-md-table-cell">{{ formatDateTime(t.created_at) }}</td>
+                <td class="d-none d-md-table-cell">
+                  {{ formatDateTime(t.created_at) }}
+                </td>
                 <td>{{ t.number }}</td>
                 <td>{{ t.type.name }}</td>
                 <td>{{ t.description }}</td>
@@ -189,10 +193,14 @@ async function changeStatus(ticket, alias) {
               <p class="mb-1">{{ t.description }}</p>
               <div v-if="t.files && t.files.length" class="mb-1">
                 <div v-for="f in t.files" :key="f.id">
-                  <a :href="f.url" target="_blank" rel="noopener">{{ f.name }}</a>
+                  <a :href="f.url" target="_blank" rel="noopener">{{
+                    f.name
+                  }}</a>
                 </div>
               </div>
-              <p class="mb-1"><span class="badge bg-secondary">{{ t.status.name }}</span></p>
+              <p class="mb-1">
+                <span class="badge bg-secondary">{{ t.status.name }}</span>
+              </p>
               <div class="mt-1 text-end">
                 <template v-if="t.status.alias === 'CREATED'">
                   <button
@@ -239,7 +247,6 @@ async function changeStatus(ticket, alias) {
   animation: fadeIn 0.4s ease-out;
 }
 
-
 .flash {
   animation: flash-bg 1s ease-out;
 }
@@ -254,7 +261,6 @@ async function changeStatus(ticket, alias) {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

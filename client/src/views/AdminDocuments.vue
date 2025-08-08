@@ -40,7 +40,9 @@ function selectUser(u) {
 async function downloadConsent() {
   if (!selectedUser.value) return;
   try {
-    const blob = await apiFetchBlob(`/documents/consent/${selectedUser.value.id}`);
+    const blob = await apiFetchBlob(
+      `/documents/consent/${selectedUser.value.id}`
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

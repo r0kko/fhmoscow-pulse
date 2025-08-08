@@ -343,84 +343,84 @@ function openNormatives(reg) {
                     :key="r.user.id"
                     :class="{ highlight: r.highlight }"
                   >
-                  <td>
-                    {{ r.user.last_name }} {{ r.user.first_name }}
-                    {{ r.user.patronymic }}
-                  </td>
-                  <td>
-                    <select
-                      v-model="r.role_id"
-                      class="form-select form-select-sm"
-                      @change="updateRegistration(r)"
-                    >
-                      <option value="" disabled>Выберите роль</option>
-                      <option
-                        v-for="role in trainingRoles"
-                        :key="role.id"
-                        :value="role.id"
+                    <td>
+                      {{ r.user.last_name }} {{ r.user.first_name }}
+                      {{ r.user.patronymic }}
+                    </td>
+                    <td>
+                      <select
+                        v-model="r.role_id"
+                        class="form-select form-select-sm"
+                        @change="updateRegistration(r)"
                       >
-                        {{ role.name }}
-                      </option>
-                    </select>
-                  </td>
-                  <td class="text-center">
-                    <template v-if="showAttendance(r)">
-                      <div
-                        class="btn-group btn-group-sm presence-group"
-                        role="group"
-                      >
-                        <input
-                          type="radio"
-                          class="btn-check"
-                          :id="`present-yes-${r.user.id}`"
-                          :name="`present-${r.user.id}`"
-                          autocomplete="off"
-                          :checked="r.present === true"
-                          @change="setPresence(r.user.id, true)"
-                          :disabled="attendanceMarked"
-                        />
-                        <label
-                          class="btn btn-outline-success presence-btn"
-                          :for="`present-yes-${r.user.id}`"
+                        <option value="" disabled>Выберите роль</option>
+                        <option
+                          v-for="role in trainingRoles"
+                          :key="role.id"
+                          :value="role.id"
                         >
-                          <i class="bi bi-check-lg" aria-hidden="true"></i>
-                          <span class="visually-hidden">Да</span>
-                        </label>
-                        <input
-                          type="radio"
-                          class="btn-check"
-                          :id="`present-no-${r.user.id}`"
-                          :name="`present-${r.user.id}`"
-                          autocomplete="off"
-                          :checked="r.present === false"
-                          @change="setPresence(r.user.id, false)"
-                          :disabled="attendanceMarked"
-                        />
-                        <label
-                          class="btn btn-outline-danger presence-btn"
-                          :for="`present-no-${r.user.id}`"
+                          {{ role.name }}
+                        </option>
+                      </select>
+                    </td>
+                    <td class="text-center">
+                      <template v-if="showAttendance(r)">
+                        <div
+                          class="btn-group btn-group-sm presence-group"
+                          role="group"
                         >
-                          <i class="bi bi-x-lg" aria-hidden="true"></i>
-                          <span class="visually-hidden">Нет</span>
-                        </label>
-                      </div>
-                    </template>
-                  </td>
-                  <td class="text-center">{{ r.normative_count || 0 }}</td>
+                          <input
+                            type="radio"
+                            class="btn-check"
+                            :id="`present-yes-${r.user.id}`"
+                            :name="`present-${r.user.id}`"
+                            autocomplete="off"
+                            :checked="r.present === true"
+                            @change="setPresence(r.user.id, true)"
+                            :disabled="attendanceMarked"
+                          />
+                          <label
+                            class="btn btn-outline-success presence-btn"
+                            :for="`present-yes-${r.user.id}`"
+                          >
+                            <i class="bi bi-check-lg" aria-hidden="true"></i>
+                            <span class="visually-hidden">Да</span>
+                          </label>
+                          <input
+                            type="radio"
+                            class="btn-check"
+                            :id="`present-no-${r.user.id}`"
+                            :name="`present-${r.user.id}`"
+                            autocomplete="off"
+                            :checked="r.present === false"
+                            @change="setPresence(r.user.id, false)"
+                            :disabled="attendanceMarked"
+                          />
+                          <label
+                            class="btn btn-outline-danger presence-btn"
+                            :for="`present-no-${r.user.id}`"
+                          >
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                            <span class="visually-hidden">Нет</span>
+                          </label>
+                        </div>
+                      </template>
+                    </td>
+                    <td class="text-center">{{ r.normative_count || 0 }}</td>
                     <td class="text-end">
                       <button
                         class="btn btn-sm btn-secondary me-2 action-btn"
                         @click="openNormatives(r)"
                       >
-                      <i class="bi bi-journal-text" aria-hidden="true"></i>
-                      <span class="visually-hidden">Нормативы</span>
-                    </button>
-                    <button
-                      class="btn btn-sm btn-danger action-btn"
-                      @click="removeRegistration(r.user.id)"
-                    >
-                      <i class="bi bi-x-lg" aria-hidden="true"></i>
-                      <span class="visually-hidden">Удалить</span>
+                        <i class="bi bi-journal-text" aria-hidden="true"></i>
+                        <span class="visually-hidden">Нормативы</span>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-danger action-btn"
+                        @click="removeRegistration(r.user.id)"
+                      >
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                        <span class="visually-hidden">Удалить</span>
                       </button>
                     </td>
                   </tr>
@@ -431,7 +431,12 @@ function openNormatives(reg) {
               <div
                 v-for="r in group.registrations"
                 :key="r.user.id"
-                :class="['card', 'registration-card', 'mb-2', { highlight: r.highlight }]"
+                :class="[
+                  'card',
+                  'registration-card',
+                  'mb-2',
+                  { highlight: r.highlight },
+                ]"
               >
                 <div class="card-body p-2">
                   <div class="fw-medium mb-1">
@@ -454,9 +459,14 @@ function openNormatives(reg) {
                       </option>
                     </select>
                   </div>
-                  <div class="d-flex align-items-center justify-content-between">
+                  <div
+                    class="d-flex align-items-center justify-content-between"
+                  >
                     <template v-if="showAttendance(r)">
-                      <div class="btn-group btn-group-sm presence-group me-2" role="group">
+                      <div
+                        class="btn-group btn-group-sm presence-group me-2"
+                        role="group"
+                      >
                         <input
                           type="radio"
                           class="btn-check"
@@ -522,7 +532,9 @@ function openNormatives(reg) {
         <button
           class="btn btn-brand mt-3"
           @click="finish"
-          :disabled="!visibleRegistrations.length || !allMarked || finishLoading"
+          :disabled="
+            !visibleRegistrations.length || !allMarked || finishLoading
+          "
         >
           <span
             v-if="finishLoading"
@@ -599,7 +611,6 @@ function openNormatives(reg) {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

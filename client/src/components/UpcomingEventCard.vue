@@ -1,37 +1,39 @@
 <script setup>
-import { computed } from 'vue'
-import { withHttp } from '../utils/url.js'
+import { computed } from 'vue';
+import { withHttp } from '../utils/url.js';
 
 const props = defineProps({
-  event: { type: Object, required: true }
-})
+  event: { type: Object, required: true },
+});
 
-const isTraining = computed(() => props.event.kind === 'training')
-const icon = computed(() => (isTraining.value ? 'bi-people-fill' : 'bi-heart-pulse'))
-const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'))
+const isTraining = computed(() => props.event.kind === 'training');
+const icon = computed(() =>
+  isTraining.value ? 'bi-people-fill' : 'bi-heart-pulse'
+);
+const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'));
 const location = computed(() => {
   const loc = isTraining.value
     ? props.event.ground?.address?.result
-    : props.event.center?.address?.result
-  return loc || ''
-})
+    : props.event.center?.address?.result;
+  return loc || '';
+});
 const href = computed(() => {
-  return isTraining.value ? withHttp(props.event.ground?.yandex_url) : null
-})
+  return isTraining.value ? withHttp(props.event.ground?.yandex_url) : null;
+});
 
 function formatStart(date) {
-  const d = new Date(date)
+  const d = new Date(date);
   const dateStr = d.toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
-    timeZone: 'Europe/Moscow'
-  })
+    timeZone: 'Europe/Moscow',
+  });
   const timeStr = d.toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Moscow'
-  })
-  return `${dateStr} в ${timeStr}`
+    timeZone: 'Europe/Moscow',
+  });
+  return `${dateStr} в ${timeStr}`;
 }
 </script>
 

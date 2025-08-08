@@ -1,89 +1,104 @@
 <script setup>
-import { auth } from '../auth.js'
-import { computed, ref, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
-import { apiFetch } from '../api.js'
-import UpcomingEventCard from '../components/UpcomingEventCard.vue'
+import { auth } from '../auth.js';
+import { computed, ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
+import { apiFetch } from '../api.js';
+import UpcomingEventCard from '../components/UpcomingEventCard.vue';
 
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
-  { title: 'Нормативы', icon: 'bi-stopwatch', to: '/normatives', referee: true },
+  {
+    title: 'Нормативы',
+    icon: 'bi-stopwatch',
+    to: '/normatives',
+    referee: true,
+  },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
   { title: 'Задачи', icon: 'bi-list-check', to: '/tasks' },
-]
+];
 
 const workSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
-  { title: 'Доходы', icon: 'ruble-icon' }
-]
+  { title: 'Доходы', icon: 'ruble-icon' },
+];
 
 const docsSections = [
   { title: 'Документы', icon: 'bi-folder2-open' },
   { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
-  { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' }
-]
+  { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' },
+];
 
-const adminRoles = ['ADMIN', 'FIELD_REFEREE_SPECIALIST', 'BRIGADE_REFEREE_SPECIALIST']
-const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE']
+const adminRoles = [
+  'ADMIN',
+  'FIELD_REFEREE_SPECIALIST',
+  'BRIGADE_REFEREE_SPECIALIST',
+];
+const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
 
-const isAdmin = computed(() => auth.roles.some((r) => adminRoles.includes(r)))
-const isReferee = computed(() => auth.roles.some((r) => refereeRoles.includes(r)))
+const isAdmin = computed(() => auth.roles.some((r) => adminRoles.includes(r)));
+const isReferee = computed(() =>
+  auth.roles.some((r) => refereeRoles.includes(r))
+);
 const preparationSections = computed(() =>
   basePreparationSections.filter((s) => !s.referee || isReferee.value)
-)
+);
 
 const shortName = computed(() => {
-  if (!auth.user) return ''
-  return [auth.user.first_name].filter(Boolean).join(' ')
-})
+  if (!auth.user) return '';
+  return [auth.user.first_name].filter(Boolean).join(' ');
+});
 
 const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour >= 5 && hour < 12) return 'Доброе утро'
-  if (hour >= 12 && hour < 18) return 'Добрый день'
-  if (hour >= 18 && hour < 23) return 'Добрый вечер'
-  return 'Доброй ночи'
-})
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Доброе утро';
+  if (hour >= 12 && hour < 18) return 'Добрый день';
+  if (hour >= 18 && hour < 23) return 'Добрый вечер';
+  return 'Доброй ночи';
+});
 
-const upcoming = ref([])
-const loadingUpcoming = ref(true)
-const showUpcoming = computed(() => loadingUpcoming.value || upcoming.value.length > 0);
+const upcoming = ref([]);
+const loadingUpcoming = ref(true);
+const showUpcoming = computed(
+  () => loadingUpcoming.value || upcoming.value.length > 0
+);
 
-onMounted(loadUpcoming)
+onMounted(loadUpcoming);
 
 async function loadUpcoming() {
-  loadingUpcoming.value = true
+  loadingUpcoming.value = true;
   try {
     const [trainingData, examData] = await Promise.all([
       apiFetch('/camp-trainings/me/upcoming?limit=100'),
-      apiFetch('/medical-exams/me/upcoming?limit=100')
-    ])
+      apiFetch('/medical-exams/me/upcoming?limit=100'),
+    ]);
     const trainings = (trainingData.trainings || []).map((t) => ({
       ...t,
-      kind: 'training'
-    }))
+      kind: 'training',
+    }));
     const exams = (examData.exams || [])
       .filter(
-        (e) => e.registration_status === 'APPROVED' || e.registration_status === 'COMPLETED'
+        (e) =>
+          e.registration_status === 'APPROVED' ||
+          e.registration_status === 'COMPLETED'
       )
       .map((e) => ({
         ...e,
-        kind: 'exam'
-      }))
-    const now = new Date()
-    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+        kind: 'exam',
+      }));
+    const now = new Date();
+    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     upcoming.value = [...trainings, ...exams]
       .filter((e) => {
-        const start = new Date(e.start_at)
-        return start >= now && start < end
+        const start = new Date(e.start_at);
+        return start >= now && start < end;
       })
-      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at))
+      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
   } catch (_err) {
-    upcoming.value = []
+    upcoming.value = [];
   } finally {
-    loadingUpcoming.value = false
+    loadingUpcoming.value = false;
   }
 }
 </script>
@@ -111,7 +126,7 @@ async function loadUpcoming() {
           </div>
         </div>
       </div>
-    <div class="card section-card mb-2">
+      <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Подготовка к сезону</h5>
           <div class="scroll-container">
@@ -122,6 +137,7 @@ async function loadUpcoming() {
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
               :class="{ 'placeholder-card': !item.to }"
+              :aria-label="item.to ? item.title : null"
             >
               <div class="card-body">
                 <p class="card-title small mb-2">{{ item.title }}</p>
@@ -129,10 +145,10 @@ async function loadUpcoming() {
               </div>
             </component>
           </div>
+        </div>
       </div>
-    </div>
 
-    <div class="card section-card mb-2">
+      <div class="card section-card mb-2">
         <div class="card-body">
           <h5 class="card-title mb-3">Рабочие сервисы</h5>
           <div class="scroll-container">
@@ -143,6 +159,7 @@ async function loadUpcoming() {
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
               :class="{ 'placeholder-card': !item.to }"
+              :aria-label="item.to ? item.title : null"
             >
               <div class="card-body">
                 <p class="card-title small mb-2">{{ item.title }}</p>
@@ -164,6 +181,7 @@ async function loadUpcoming() {
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
               :class="{ 'placeholder-card': !item.to }"
+              :aria-label="item.to ? item.title : null"
             >
               <div class="card-body">
                 <p class="card-title small mb-2">{{ item.title }}</p>
@@ -175,7 +193,11 @@ async function loadUpcoming() {
       </div>
 
       <div v-if="isAdmin" class="mt-2">
-        <RouterLink to="/admin" class="menu-card card text-decoration-none text-body tile fade-in d-inline-block">
+        <RouterLink
+          to="/admin"
+          class="menu-card card text-decoration-none text-body tile fade-in d-inline-block"
+          aria-label="Администрирование"
+        >
           <div class="card-body">
             <span class="card-title small">Администрирование</span>
             <i class="bi bi-shield-lock icon fs-3" aria-hidden="true"></i>
@@ -187,7 +209,6 @@ async function loadUpcoming() {
 </template>
 
 <style scoped>
-
 .placeholder-card {
   background-color: #f8f9fa;
   opacity: 0.6;
@@ -197,10 +218,6 @@ async function loadUpcoming() {
   transform: none;
   box-shadow: none;
 }
-.fade-in {
-  animation: fadeIn 0.4s ease-out;
-}
-
 .upcoming-scroll {
   display: flex;
   flex-wrap: nowrap;
@@ -210,73 +227,5 @@ async function loadUpcoming() {
   gap: 0.5rem;
   padding-bottom: 0.25rem;
   justify-content: flex-start;
-}
-
-
-.scroll-container {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  gap: 0.75rem;
-  padding-bottom: 0.25rem;
-  justify-content: flex-start;
-}
-
-.menu-card {
-  width: 8rem;
-  flex: 0 0 auto;
-  height: 6.5rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  position: relative;
-}
-
-.menu-card .card-body {
-  padding: 0.75rem;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  height: 100%;
-}
-
-.menu-card .card-title {
-  line-height: 1.2;
-  font-weight: 600;
-}
-
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
-@media (max-width: 575.98px) {
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
-
-.menu-card .icon {
-  position: absolute;
-  bottom: 0.75rem;
-  right: 0.75rem;
-  color: var(--brand-color);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 </style>

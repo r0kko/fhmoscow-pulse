@@ -39,9 +39,7 @@ const paginatedArchivedTickets = computed(() => {
   return filteredArchivedTickets.value.slice(start, start + pageSize);
 });
 const currentTickets = computed(() =>
-  view.value === 'active'
-    ? activeTickets.value
-    : paginatedArchivedTickets.value
+  view.value === 'active' ? activeTickets.value : paginatedArchivedTickets.value
 );
 const noTicketsMessage = computed(() => {
   if (view.value === 'active') return 'Нет активных обращений.';
@@ -66,8 +64,6 @@ function formatDateTime(value) {
     timeZone: 'Europe/Moscow',
   });
 }
-
-
 
 onMounted(loadTickets);
 
@@ -101,7 +97,9 @@ async function deleteTicket(ticket) {
     <div class="container">
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item"><RouterLink to="/">Главная</RouterLink></li>
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
           <li class="breadcrumb-item active" aria-current="page">Обращения</li>
         </ol>
       </nav>
@@ -133,10 +131,7 @@ async function deleteTicket(ticket) {
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <h5 class="mb-3">История</h5>
-          <div
-            v-if="view === 'archive'"
-            class="row g-2 align-items-end mb-3"
-          >
+          <div v-if="view === 'archive'" class="row g-2 align-items-end mb-3">
             <div class="col-12 col-sm">
               <input
                 type="text"
@@ -156,7 +151,9 @@ async function deleteTicket(ticket) {
               :key="t.id"
               class="border rounded p-3 tile"
             >
-              <div class="d-flex justify-content-between align-items-start mb-2">
+              <div
+                class="d-flex justify-content-between align-items-start mb-2"
+              >
                 <h6 class="mb-0">{{ t.type.name }}</h6>
                 <span class="badge bg-secondary">{{ t.status.name }}</span>
               </div>
@@ -164,7 +161,10 @@ async function deleteTicket(ticket) {
                 № {{ t.number }} · {{ formatDateTime(t.created_at) }}
               </p>
               <p class="mb-2">{{ t.description || '—' }}</p>
-              <div v-if="t.files && t.files.length" class="d-flex flex-wrap gap-2">
+              <div
+                v-if="t.files && t.files.length"
+                class="d-flex flex-wrap gap-2"
+              >
                 <a
                   v-for="f in t.files"
                   :key="f.id"
@@ -195,10 +195,7 @@ async function deleteTicket(ticket) {
           v-if="view === 'archive' && totalArchivePages > 1"
           class="mt-3 d-flex justify-content-center"
         >
-          <Pagination
-            v-model="archivePage"
-            :total-pages="totalArchivePages"
-          />
+          <Pagination v-model="archivePage" :total-pages="totalArchivePages" />
         </nav>
       </div>
     </div>
@@ -216,7 +213,6 @@ async function deleteTicket(ticket) {
   animation: fadeIn 0.4s ease-out;
 }
 
-
 .tab-selector {
   gap: 0.5rem;
 }
@@ -230,7 +226,6 @@ async function deleteTicket(ticket) {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

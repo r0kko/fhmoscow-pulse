@@ -33,7 +33,8 @@ export const ERROR_MESSAGES = {
   training_not_found: 'Тренировка не найдена',
   registration_not_found: 'Запись не найдена',
   registration_closed: 'Запись закрыта',
-  cancellation_deadline_passed: 'Нельзя отменить запись менее чем за 48 часов до начала',
+  cancellation_deadline_passed:
+    'Нельзя отменить запись менее чем за 48 часов до начала',
   cancellation_forbidden: 'Отменять запись могут только участники',
   already_registered: 'Уже зарегистрированы',
   referee_group_not_found: 'Группа судей не найдена',
@@ -51,7 +52,7 @@ export const ERROR_MESSAGES = {
   active_ticket_exists: 'Есть активное обращение данного типа',
   registration_incomplete: 'Регистрация не завершена',
   status_unknown: 'Неизвестный статус',
-  not_found: 'Не найдено'
+  not_found: 'Не найдено',
 };
 
 export function translateError(code) {

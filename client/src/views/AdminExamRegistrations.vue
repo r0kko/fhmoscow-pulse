@@ -112,10 +112,13 @@ async function setStatus(userId, status) {
   if (statusLoading[userId]) return;
   statusLoading[userId] = true;
   try {
-    await apiFetch(`/medical-exams/${route.params.id}/registrations/${userId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
+    await apiFetch(
+      `/medical-exams/${route.params.id}/registrations/${userId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      }
+    );
     await loadRegistrations();
   } catch (e) {
     alert(e.message);
@@ -160,8 +163,9 @@ async function exportPdf() {
       </nav>
       <h1 class="mb-3">Заявки на медосмотр</h1>
       <p v-if="exam" class="mb-3">
-        <strong>{{ exam.center?.name }}</strong>,
-        {{ formatDateTime(exam.start_at) }} - {{ formatDateTime(exam.end_at) }}
+        <strong>{{ exam.center?.name }}</strong
+        >, {{ formatDateTime(exam.start_at) }} -
+        {{ formatDateTime(exam.end_at) }}
       </p>
       <div class="row g-2 align-items-end mb-3">
         <div class="col-12 col-sm">
@@ -180,7 +184,11 @@ async function exportPdf() {
           </select>
         </div>
         <div class="col-auto">
-          <button class="btn btn-secondary" @click="exportPdf" :disabled="downloading">
+          <button
+            class="btn btn-secondary"
+            @click="exportPdf"
+            :disabled="downloading"
+          >
             <span
               v-if="downloading"
               class="spinner-border spinner-border-sm me-2"
@@ -189,7 +197,9 @@ async function exportPdf() {
           </button>
         </div>
       </div>
-      <div v-if="examError" class="alert alert-danger mb-3">{{ examError }}</div>
+      <div v-if="examError" class="alert alert-danger mb-3">
+        {{ examError }}
+      </div>
       <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
       <div v-if="loading || loadingExam" class="text-center my-3">
         <div class="spinner-border" role="status"></div>
@@ -210,8 +220,15 @@ async function exportPdf() {
             </thead>
             <tbody>
               <tr v-for="(r, idx) in list" :key="r.user.id">
-                <td>{{ approvedIndices[idx] !== null ? approvedIndices[idx] : '' }}</td>
-                <td>{{ r.user.last_name }} {{ r.user.first_name }} {{ r.user.patronymic }}</td>
+                <td>
+                  {{
+                    approvedIndices[idx] !== null ? approvedIndices[idx] : ''
+                  }}
+                </td>
+                <td>
+                  {{ r.user.last_name }} {{ r.user.first_name }}
+                  {{ r.user.patronymic }}
+                </td>
                 <td>{{ formatDateTime(r.created_at) }}</td>
                 <td>{{ r.user.email }}</td>
                 <td>{{ formatPhone(r.user.phone) }}</td>
@@ -220,10 +237,10 @@ async function exportPdf() {
                     r.status === 'PENDING'
                       ? 'На рассмотрении'
                       : r.status === 'APPROVED'
-                      ? 'Подтверждена'
-                      : r.status === 'COMPLETED'
-                      ? 'Завершена'
-                      : 'Отменена'
+                        ? 'Подтверждена'
+                        : r.status === 'COMPLETED'
+                          ? 'Завершена'
+                          : 'Отменена'
                   }}
                 </td>
                 <td class="text-end">
@@ -269,17 +286,32 @@ async function exportPdf() {
           </table>
         </div>
       </div>
-      <p v-else-if="!loading && !loadingExam" class="text-muted mb-0">Нет заявок.</p>
+      <p v-else-if="!loading && !loadingExam" class="text-muted mb-0">
+        Нет заявок.
+      </p>
       <nav class="mt-3" v-if="totalPages > 1">
         <ul class="pagination justify-content-center">
           <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" @click="page--" :disabled="page === 1">Пред</button>
+            <button class="page-link" @click="page--" :disabled="page === 1">
+              Пред
+            </button>
           </li>
-          <li class="page-item" v-for="p in totalPages" :key="p" :class="{ active: page === p }">
+          <li
+            class="page-item"
+            v-for="p in totalPages"
+            :key="p"
+            :class="{ active: page === p }"
+          >
             <button class="page-link" @click="page = p">{{ p }}</button>
           </li>
           <li class="page-item" :class="{ disabled: page === totalPages }">
-            <button class="page-link" @click="page++" :disabled="page === totalPages">След</button>
+            <button
+              class="page-link"
+              @click="page++"
+              :disabled="page === totalPages"
+            >
+              След
+            </button>
           </li>
         </ul>
       </nav>
@@ -299,7 +331,6 @@ async function exportPdf() {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

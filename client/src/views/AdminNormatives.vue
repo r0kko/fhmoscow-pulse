@@ -106,7 +106,6 @@ const activeTab = ref('results');
     padding-bottom: 0.5rem !important;
   }
 
-
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;

@@ -222,9 +222,7 @@ onMounted(() => {
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
           </li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Мои данные
-          </li>
+          <li class="breadcrumb-item active" aria-current="page">Мои данные</li>
         </ol>
       </nav>
       <h1 class="mb-3">Документы и данные</h1>
@@ -536,7 +534,6 @@ onMounted(() => {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .profile-page h1 {
     margin-bottom: 1rem !important;

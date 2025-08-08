@@ -23,32 +23,32 @@ onMounted(loadTasks);
 <template>
   <div>
     <h5 class="card-title mb-3">Задачи</h5>
-      <div v-if="loading" class="text-center py-3">
-        <div class="spinner-border" role="status" aria-label="Загрузка">
-          <span class="visually-hidden">Загрузка…</span>
-        </div>
+    <div v-if="loading" class="text-center py-3">
+      <div class="spinner-border" role="status" aria-label="Загрузка">
+        <span class="visually-hidden">Загрузка…</span>
       </div>
-      <p v-else-if="!tasks.length" class="text-muted mb-0">У вас нет задач</p>
-      <ul v-else class="list-group list-group-flush">
-        <li v-for="task in tasks" :key="task.id" class="list-group-item">
-          <div class="d-flex justify-content-between">
-            <div>
-              <h6 class="mb-1">{{ task.title }}</h6>
-              <p v-if="task.description" class="mb-1 small text-muted">
-                {{ task.description }}
-              </p>
-            </div>
-            <span
-              class="badge"
-              :class="{
-                'bg-secondary': task.status?.alias === 'PENDING',
-                'bg-primary': task.status?.alias === 'IN_PROGRESS',
-                'bg-success': task.status?.alias === 'COMPLETED',
-              }"
-              >{{ task.status?.name }}</span
-            >
+    </div>
+    <p v-else-if="!tasks.length" class="text-muted mb-0">У вас нет задач</p>
+    <ul v-else class="list-group list-group-flush">
+      <li v-for="task in tasks" :key="task.id" class="list-group-item">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h6 class="mb-1">{{ task.title }}</h6>
+            <p v-if="task.description" class="mb-1 small text-muted">
+              {{ task.description }}
+            </p>
           </div>
-        </li>
-      </ul>
+          <span
+            class="badge"
+            :class="{
+              'bg-secondary': task.status?.alias === 'PENDING',
+              'bg-primary': task.status?.alias === 'IN_PROGRESS',
+              'bg-success': task.status?.alias === 'COMPLETED',
+            }"
+            >{{ task.status?.name }}</span
+          >
+        </div>
+      </li>
+    </ul>
   </div>
 </template>

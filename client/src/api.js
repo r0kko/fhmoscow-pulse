@@ -10,7 +10,8 @@ const API_BASE = (
 let accessToken = null;
 let refreshPromise = null;
 let refreshFailed =
-  (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('refreshFailed') === '1') ||
+  (typeof sessionStorage !== 'undefined' &&
+    sessionStorage.getItem('refreshFailed') === '1') ||
   false;
 
 function setRefreshFailed(val) {
@@ -123,11 +124,13 @@ export async function apiFetch(path, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    const message =
+      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
     throw new Error(message);
   }
   if (!res.ok) {
-    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    const message =
+      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
     throw new Error(message);
   }
   return data;
@@ -167,11 +170,13 @@ export async function apiFetchForm(path, form, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    const message =
+      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
     throw new Error(message);
   }
   if (!res.ok) {
-    const message = translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    const message =
+      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
     throw new Error(message);
   }
   return data;
@@ -229,7 +234,11 @@ export function apiUpload(path, form, { onProgress } = {}) {
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.onload = () => {
       let data = {};
-      try { data = JSON.parse(xhr.responseText); } catch (e) { /* noop */ }
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch (e) {
+        /* noop */
+      }
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(data);
       } else {

@@ -32,7 +32,11 @@ const tabs = computed(() => [
   { id: 'bank', label: 'Банк' },
   { id: 'address', label: 'Адреса' },
   { id: 'tax', label: 'Налоговый статус' },
-  ...placeholderSections.map((name, idx) => ({ id: `ph-${idx}`, label: name, disabled: true })),
+  ...placeholderSections.map((name, idx) => ({
+    id: `ph-${idx}`,
+    label: name,
+    disabled: true,
+  })),
 ]);
 
 const editing = ref(false);
@@ -202,7 +206,11 @@ async function save() {
       />
     </div>
 
-    <div v-show="activeTab === 'passport'" v-if="passport !== undefined" class="mt-4">
+    <div
+      v-show="activeTab === 'passport'"
+      v-if="passport !== undefined"
+      class="mt-4"
+    >
       <div v-if="passport" class="card">
         <div class="card-body position-relative">
           <div class="d-flex justify-content-between mb-3">
@@ -349,7 +357,9 @@ async function save() {
         :user="user"
         @saved="savePassport"
       />
-      <div v-if="passportError" class="alert alert-danger mt-2">{{ passportError }}</div>
+      <div v-if="passportError" class="alert alert-danger mt-2">
+        {{ passportError }}
+      </div>
     </div>
 
     <div v-show="activeTab === 'inn'">

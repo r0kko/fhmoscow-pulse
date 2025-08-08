@@ -1,5 +1,4 @@
 <script setup>
-
 import { computed } from 'vue';
 import { typeBadgeClass as badgeClass } from '../utils/training.js';
 
@@ -86,10 +85,12 @@ function formatDeadline(start) {
 </script>
 
 <template>
-<div class="card h-100 training-card tile">
+  <div class="card h-100 training-card tile">
     <div class="card-body d-flex flex-column p-3">
       <h6 class="card-title mb-1">{{ formatStart(training.start_at) }}</h6>
-      <p class="text-muted mb-1 small">{{ durationText(training.start_at, training.end_at) }}</p>
+      <p class="text-muted mb-1 small">
+        {{ durationText(training.start_at, training.end_at) }}
+      </p>
       <span
         class="badge badge-training-type align-self-start mb-2"
         :class="badgeClass(training.type?.alias)"
@@ -113,7 +114,9 @@ function formatDeadline(start) {
       <p class="small mb-2">
         Инвентарь:
         <template
-          v-if="training.equipment_managers && training.equipment_managers.length"
+          v-if="
+            training.equipment_managers && training.equipment_managers.length
+          "
         >
           <span v-for="(m, i) in training.equipment_managers" :key="m.id">
             <a
@@ -129,25 +132,33 @@ function formatDeadline(start) {
         v-if="training.registered && showCancel"
         class="btn btn-sm btn-secondary mt-auto"
         @click="emit('unregister', training.id)"
-      >Отменить</button>
+      >
+        Отменить
+      </button>
       <button
         v-else
         class="btn btn-sm btn-brand mt-auto"
         :disabled="!training.registration_open || loading"
         @click="emit('register', training.id)"
       >
-        <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+        <span
+          v-if="loading"
+          class="spinner-border spinner-border-sm me-2"
+        ></span>
         <small>
           {{
             registrationNotStarted
               ? 'Регистрация не началась'
               : training.available === 0
-              ? 'Мест нет'
-              : 'Зарегистрироваться'
+                ? 'Мест нет'
+                : 'Зарегистрироваться'
           }}
         </small>
       </button>
-      <p v-if="seatStatus(training)" class="seat-status text-muted mt-1 mb-0 text-center">
+      <p
+        v-if="seatStatus(training)"
+        class="seat-status text-muted mt-1 mb-0 text-center"
+      >
         {{ seatStatus(training) }}
       </p>
     </div>

@@ -1,118 +1,127 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import Modal from 'bootstrap/js/dist/modal'
-import { apiFetch } from '../api.js'
-import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js'
+import { ref, onMounted } from 'vue';
+import Modal from 'bootstrap/js/dist/modal';
+import { apiFetch } from '../api.js';
+import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js';
 
-const props = defineProps({ userId: { type: String, required: true } })
+const props = defineProps({ userId: { type: String, required: true } });
 
-const inn = ref(null)
-const snils = ref(null)
-const error = ref('')
+const inn = ref(null);
+const snils = ref(null);
+const error = ref('');
 
-const modalRef = ref(null)
-let modal
-const mode = ref('') // 'inn' or 'snils'
-const innInput = ref('')
-const snilsDigits = ref('')
-const snilsInput = ref('')
+const modalRef = ref(null);
+let modal;
+const mode = ref(''); // 'inn' or 'snils'
+const innInput = ref('');
+const snilsDigits = ref('');
+const snilsInput = ref('');
 
 onMounted(() => {
-  modal = new Modal(modalRef.value)
-  loadData()
-})
+  modal = new Modal(modalRef.value);
+  loadData();
+});
 
 async function loadData() {
-  error.value = ''
+  error.value = '';
   try {
-    const { inn: data } = await apiFetch(`/users/${props.userId}/inn`)
-    inn.value = data
+    const { inn: data } = await apiFetch(`/users/${props.userId}/inn`);
+    inn.value = data;
   } catch (_) {
-    inn.value = null
+    inn.value = null;
   }
   try {
-    const { snils: data } = await apiFetch(`/users/${props.userId}/snils`)
-    snils.value = data
+    const { snils: data } = await apiFetch(`/users/${props.userId}/snils`);
+    snils.value = data;
   } catch (_) {
-    snils.value = null
+    snils.value = null;
   }
 }
 
 function openEdit(type) {
-  error.value = ''
-  mode.value = type
+  error.value = '';
+  mode.value = type;
   if (type === 'inn') {
-    innInput.value = inn.value ? inn.value.number : ''
+    innInput.value = inn.value ? inn.value.number : '';
   } else {
-    snilsDigits.value = snils.value ? snils.value.number.replace(/\D/g, '') : ''
-    snilsInput.value = formatSnils(snilsDigits.value)
+    snilsDigits.value = snils.value
+      ? snils.value.number.replace(/\D/g, '')
+      : '';
+    snilsInput.value = formatSnils(snilsDigits.value);
   }
-  modal.show()
+  modal.show();
 }
 
 function onInnInput(e) {
-  let digits = e.target.value.replace(/\D/g, '')
-  digits = digits.slice(0, 12)
-  innInput.value = digits
+  let digits = e.target.value.replace(/\D/g, '');
+  digits = digits.slice(0, 12);
+  innInput.value = digits;
 }
 
 function onSnilsInput(e) {
-  let digits = e.target.value.replace(/\D/g, '')
-  digits = digits.slice(0, 11)
-  snilsDigits.value = digits
-  snilsInput.value = formatSnils(digits)
+  let digits = e.target.value.replace(/\D/g, '');
+  digits = digits.slice(0, 11);
+  snilsDigits.value = digits;
+  snilsInput.value = formatSnils(digits);
 }
 
 async function save() {
   if (mode.value === 'inn') {
     if (!isValidInn(innInput.value)) {
-      error.value = 'Неверный ИНН'
-      return
+      error.value = 'Неверный ИНН';
+      return;
     }
-    const body = JSON.stringify({ number: innInput.value })
+    const body = JSON.stringify({ number: innInput.value });
     try {
-      if (inn.value) await apiFetch(`/users/${props.userId}/inn`, { method: 'PUT', body })
-      else await apiFetch(`/users/${props.userId}/inn`, { method: 'POST', body })
-      inn.value = { number: innInput.value }
-      modal.hide()
+      if (inn.value)
+        await apiFetch(`/users/${props.userId}/inn`, { method: 'PUT', body });
+      else
+        await apiFetch(`/users/${props.userId}/inn`, { method: 'POST', body });
+      inn.value = { number: innInput.value };
+      modal.hide();
     } catch (e) {
-      error.value = e.message
+      error.value = e.message;
     }
   } else {
-    const formatted = formatSnils(snilsDigits.value)
+    const formatted = formatSnils(snilsDigits.value);
     if (!isValidSnils(formatted)) {
-      error.value = 'Неверный СНИЛС'
-      return
+      error.value = 'Неверный СНИЛС';
+      return;
     }
-    const body = JSON.stringify({ number: formatted })
+    const body = JSON.stringify({ number: formatted });
     try {
-      if (snils.value) await apiFetch(`/users/${props.userId}/snils`, { method: 'PUT', body })
-      else await apiFetch(`/users/${props.userId}/snils`, { method: 'POST', body })
-      snils.value = { number: formatted }
-      modal.hide()
+      if (snils.value)
+        await apiFetch(`/users/${props.userId}/snils`, { method: 'PUT', body });
+      else
+        await apiFetch(`/users/${props.userId}/snils`, {
+          method: 'POST',
+          body,
+        });
+      snils.value = { number: formatted };
+      modal.hide();
     } catch (e) {
-      error.value = e.message
+      error.value = e.message;
     }
   }
 }
 
 async function removeItem() {
-  if (!confirm('Удалить данные?')) return
+  if (!confirm('Удалить данные?')) return;
   if (mode.value === 'inn') {
     try {
-      await apiFetch(`/users/${props.userId}/inn`, { method: 'DELETE' })
-      inn.value = null
-      modal.hide()
+      await apiFetch(`/users/${props.userId}/inn`, { method: 'DELETE' });
+      inn.value = null;
+      modal.hide();
     } catch (e) {
-      error.value = e.message
+      error.value = e.message;
     }
   } else {
     try {
-      await apiFetch(`/users/${props.userId}/snils`, { method: 'DELETE' })
-      snils.value = null
-      modal.hide()
+      await apiFetch(`/users/${props.userId}/snils`, { method: 'DELETE' });
+      snils.value = null;
+      modal.hide();
     } catch (e) {
-      error.value = e.message
+      error.value = e.message;
     }
   }
 }
@@ -121,16 +130,12 @@ async function removeItem() {
 <template>
   <div class="card mt-4">
     <div class="card-body">
-        <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
-        <div
-          v-if="!inn || !snils"
-          class="alert alert-warning mb-3"
-          role="alert"
-        >
-          Некоторые данные отсутствуют. Используйте кнопки
-          <i class="bi bi-plus"></i> для добавления.
-        </div>
-        <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
+      <div v-if="!inn || !snils" class="alert alert-warning mb-3" role="alert">
+        Некоторые данные отсутствуют. Используйте кнопки
+        <i class="bi bi-plus"></i> для добавления.
+      </div>
+      <div class="row row-cols-1 row-cols-sm-2 g-3">
         <div class="col">
           <div class="input-group">
             <div class="form-floating flex-grow-1">
@@ -145,7 +150,10 @@ async function removeItem() {
               <label for="innField">ИНН</label>
             </div>
             <button class="btn btn-outline-secondary" @click="openEdit('inn')">
-              <i class="bi text-muted" :class="inn ? 'bi-pencil' : 'bi-plus'"></i>
+              <i
+                class="bi text-muted"
+                :class="inn ? 'bi-pencil' : 'bi-plus'"
+              ></i>
             </button>
           </div>
         </div>
@@ -162,8 +170,14 @@ async function removeItem() {
               />
               <label for="snilsField">СНИЛС</label>
             </div>
-            <button class="btn btn-outline-secondary" @click="openEdit('snils')">
-              <i class="bi text-muted" :class="snils ? 'bi-pencil' : 'bi-plus'"></i>
+            <button
+              class="btn btn-outline-secondary"
+              @click="openEdit('snils')"
+            >
+              <i
+                class="bi text-muted"
+                :class="snils ? 'bi-pencil' : 'bi-plus'"
+              ></i>
             </button>
           </div>
         </div>
@@ -177,9 +191,21 @@ async function removeItem() {
         <form @submit.prevent="save">
           <div class="modal-header">
             <h5 class="modal-title">
-              {{ mode === 'inn' ? (inn ? 'Изменить ИНН' : 'Добавить ИНН') : (snils ? 'Изменить СНИЛС' : 'Добавить СНИЛС') }}
+              {{
+                mode === 'inn'
+                  ? inn
+                    ? 'Изменить ИНН'
+                    : 'Добавить ИНН'
+                  : snils
+                    ? 'Изменить СНИЛС'
+                    : 'Добавить СНИЛС'
+              }}
             </h5>
-            <button type="button" class="btn-close" @click="modal.hide()"></button>
+            <button
+              type="button"
+              class="btn-close"
+              @click="modal.hide()"
+            ></button>
           </div>
           <div class="modal-body">
             <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -213,7 +239,13 @@ async function removeItem() {
             >
               <i class="bi bi-trash"></i>
             </button>
-            <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="modal.hide()"
+            >
+              Отмена
+            </button>
             <button type="submit" class="btn btn-brand">Сохранить</button>
           </div>
         </form>

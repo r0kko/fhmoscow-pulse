@@ -1,14 +1,14 @@
 <script setup>
-import { reactive, watch, ref, computed } from 'vue'
-import { suggestFmsUnit } from '../dadata.js'
+import { reactive, watch, ref, computed } from 'vue';
+import { suggestFmsUnit } from '../dadata.js';
 
 const props = defineProps({
   modelValue: Object,
   locked: { type: Boolean, default: false },
   lockedFields: Object,
-  birthDate: String
-})
-const emit = defineEmits(['update:modelValue'])
+  birthDate: String,
+});
+const emit = defineEmits(['update:modelValue']);
 
 const form = reactive({
   document_type: 'CIVIL',
@@ -19,8 +19,8 @@ const form = reactive({
   valid_until: '',
   issuing_authority: '',
   issuing_authority_code: '',
-  place_of_birth: ''
-})
+  place_of_birth: '',
+});
 
 const errors = reactive({
   series: '',
@@ -29,35 +29,35 @@ const errors = reactive({
   issuing_authority: '',
   issuing_authority_code: '',
   place_of_birth: '',
-})
-const suggestions = ref([])
-const timeout = ref(null)
+});
+const suggestions = ref([]);
+const timeout = ref(null);
 
 function calculateValidUntil(birthDate, issueDate) {
-  if (!birthDate || !issueDate) return ''
-  const birth = new Date(birthDate)
-  const issue = new Date(issueDate)
-  if (Number.isNaN(birth.getTime()) || Number.isNaN(issue.getTime())) return ''
-  const age = (issue - birth) / (365.25 * 24 * 3600 * 1000)
-  let until
+  if (!birthDate || !issueDate) return '';
+  const birth = new Date(birthDate);
+  const issue = new Date(issueDate);
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(issue.getTime())) return '';
+  const age = (issue - birth) / (365.25 * 24 * 3600 * 1000);
+  let until;
   if (age < 20) {
-    until = new Date(birth)
-    until.setFullYear(until.getFullYear() + 20)
+    until = new Date(birth);
+    until.setFullYear(until.getFullYear() + 20);
   } else if (age < 45) {
-    until = new Date(birth)
-    until.setFullYear(until.getFullYear() + 45)
+    until = new Date(birth);
+    until.setFullYear(until.getFullYear() + 45);
   } else {
-    until = new Date(birth)
-    until.setFullYear(until.getFullYear() + 100)
-    return until.toISOString().slice(0, 10)
+    until = new Date(birth);
+    until.setFullYear(until.getFullYear() + 100);
+    return until.toISOString().slice(0, 10);
   }
-  until.setDate(until.getDate() + 90)
-  return until.toISOString().slice(0, 10)
+  until.setDate(until.getDate() + 90);
+  return until.toISOString().slice(0, 10);
 }
 
 const autoValidUntil = computed(() =>
   calculateValidUntil(props.birthDate, form.issue_date)
-)
+);
 
 const validUntilLocked = computed(
   () =>
@@ -66,96 +66,102 @@ const validUntilLocked = computed(
       form.document_type === 'CIVIL' &&
       autoValidUntil.value &&
       autoValidUntil.value === form.valid_until)
-)
+);
 
 function isLocked(field) {
-  return props.locked || (props.lockedFields && props.lockedFields[field])
+  return props.locked || (props.lockedFields && props.lockedFields[field]);
 }
 
 watch(
   () => props.modelValue,
   (val) => {
-    Object.assign(form, val || {})
+    Object.assign(form, val || {});
   },
   { immediate: true }
-)
+);
 
 watch(form, (val) => {
-  emit('update:modelValue', { ...val })
-})
+  emit('update:modelValue', { ...val });
+});
 
 function updateSuggestions() {
-  if (isLocked('issuing_authority') && isLocked('issuing_authority_code')) return
-  clearTimeout(timeout.value)
-  const q = form.issuing_authority_code || form.issuing_authority
+  if (isLocked('issuing_authority') && isLocked('issuing_authority_code'))
+    return;
+  clearTimeout(timeout.value);
+  const q = form.issuing_authority_code || form.issuing_authority;
   if (!q || q.length < 3) {
-    suggestions.value = []
-    return
+    suggestions.value = [];
+    return;
   }
   timeout.value = setTimeout(async () => {
-    suggestions.value = await suggestFmsUnit(q)
-  }, 300)
+    suggestions.value = await suggestFmsUnit(q);
+  }, 300);
 }
 
 watch(
   () => [form.issuing_authority, form.issuing_authority_code],
   updateSuggestions
-)
+);
 
 function onSeriesInput(e) {
-  form.series = e.target.value.replace(/\D/g, '').slice(0, 4)
+  form.series = e.target.value.replace(/\D/g, '').slice(0, 4);
 }
 
 function onNumberInput(e) {
-  form.number = e.target.value.replace(/\D/g, '').slice(0, 6)
+  form.number = e.target.value.replace(/\D/g, '').slice(0, 6);
 }
 
 function onIssuingCodeInput(e) {
-  let digits = e.target.value.replace(/\D/g, '').slice(0, 6)
+  let digits = e.target.value.replace(/\D/g, '').slice(0, 6);
   if (digits.length > 3) {
-    digits = digits.slice(0, 3) + '-' + digits.slice(3)
+    digits = digits.slice(0, 3) + '-' + digits.slice(3);
   }
-  form.issuing_authority_code = digits
+  form.issuing_authority_code = digits;
 }
 
 function applySuggestion(s) {
-  form.issuing_authority = s.data.name
-  form.issuing_authority_code = s.data.code
-  suggestions.value = []
+  form.issuing_authority = s.data.name;
+  form.issuing_authority_code = s.data.code;
+  suggestions.value = [];
 }
 
 function calcValid() {
-  if (form.country !== 'RU' || form.document_type !== 'CIVIL') return
-  form.valid_until = calculateValidUntil(props.birthDate, form.issue_date)
+  if (form.country !== 'RU' || form.document_type !== 'CIVIL') return;
+  form.valid_until = calculateValidUntil(props.birthDate, form.issue_date);
 }
 
 watch(
   () => [form.issue_date, form.country, form.document_type, props.birthDate],
   calcValid
-)
+);
 
 function validate() {
-  errors.series = form.series ? '' : 'Введите серию'
-  errors.number = form.number ? '' : 'Введите номер'
-  errors.issue_date = form.issue_date ? '' : 'Введите дату'
+  errors.series = form.series ? '' : 'Введите серию';
+  errors.number = form.number ? '' : 'Введите номер';
+  errors.issue_date = form.issue_date ? '' : 'Введите дату';
   errors.issuing_authority_code = form.issuing_authority_code
     ? ''
-    : 'Укажите код'
+    : 'Укажите код';
   errors.issuing_authority = form.issuing_authority
     ? ''
-    : 'Выберите подразделение'
-  errors.place_of_birth = form.place_of_birth ? '' : 'Введите место рождения'
-  return !Object.values(errors).some(Boolean)
+    : 'Выберите подразделение';
+  errors.place_of_birth = form.place_of_birth ? '' : 'Введите место рождения';
+  return !Object.values(errors).some(Boolean);
 }
 
-defineExpose({ validate })
+defineExpose({ validate });
 </script>
 
 <template>
   <div class="card">
     <div class="card-body">
       <h5 class="card-title mb-3">Паспорт</h5>
-      <div v-if="props.locked || Object.keys(props.lockedFields || {}).length" class="alert alert-success">Паспорт подтвержден</div>
+      <div
+        v-if="props.locked || Object.keys(props.lockedFields || {}).length"
+        class="alert alert-success"
+      >
+        Паспорт подтвержден
+      </div>
       <div class="row row-cols-1 row-cols-md-2 g-3">
         <div class="col">
           <div class="form-floating">
@@ -252,7 +258,9 @@ defineExpose({ validate })
               placeholder="Код подразделения"
             />
             <label for="issuingCode">Код подразделения</label>
-            <div class="invalid-feedback">{{ errors.issuing_authority_code }}</div>
+            <div class="invalid-feedback">
+              {{ errors.issuing_authority_code }}
+            </div>
           </div>
           <ul
             v-if="suggestions.length"
@@ -280,7 +288,9 @@ defineExpose({ validate })
               placeholder="Кем выдан"
             />
             <label for="issuedBy">Кем выдан</label>
-            <div class="invalid-feedback d-block">{{ errors.issuing_authority }}</div>
+            <div class="invalid-feedback d-block">
+              {{ errors.issuing_authority }}
+            </div>
           </div>
         </div>
         <div class="col">

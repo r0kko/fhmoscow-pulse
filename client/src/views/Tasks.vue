@@ -35,13 +35,11 @@ import { RouterLink } from 'vue-router';
   animation: fadeIn 0.4s ease-out;
 }
 
-
 @media (max-width: 575.98px) {
   .tasks-page {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;
@@ -60,4 +58,3 @@ import { RouterLink } from 'vue-router';
   }
 }
 </style>
-

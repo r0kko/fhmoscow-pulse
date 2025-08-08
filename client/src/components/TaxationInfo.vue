@@ -90,7 +90,9 @@ async function runCheck(source = 'all') {
 
 async function save() {
   if (!props.editable) return;
-  const path = props.userId ? `/users/${props.userId}/taxation` : '/taxations/me';
+  const path = props.userId
+    ? `/users/${props.userId}/taxation`
+    : '/taxations/me';
   try {
     const data = await apiFetch(path, { method: 'POST' });
     taxation.value = data.taxation;
@@ -119,7 +121,10 @@ defineExpose({ openModal });
 </script>
 
 <template>
-  <div v-if="!props.modalOnly" class="card section-card tile fade-in shadow-sm mt-4">
+  <div
+    v-if="!props.modalOnly"
+    class="card section-card tile fade-in shadow-sm mt-4"
+  >
     <div class="card-body">
       <div class="d-flex justify-content-between mb-3">
         <h5 class="card-title mb-0">Налоговый статус</h5>
@@ -141,27 +146,54 @@ defineExpose({ openModal });
         <div class="row row-cols-1 row-cols-sm-2 g-3">
           <div class="col">
             <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
+              <span class="input-group-text"
+                ><i class="bi bi-file-earmark-text"></i
+              ></span>
               <div class="form-floating flex-grow-1">
-                <input id="taxType" type="text" class="form-control" :value="taxation.type?.name" readonly placeholder="Тип" />
+                <input
+                  id="taxType"
+                  type="text"
+                  class="form-control"
+                  :value="taxation.type?.name"
+                  readonly
+                  placeholder="Тип"
+                />
                 <label for="taxType">Тип</label>
               </div>
             </div>
           </div>
           <div class="col">
             <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+              <span class="input-group-text"
+                ><i class="bi bi-calendar-check"></i
+              ></span>
               <div class="form-floating flex-grow-1">
-                <input id="taxCheck" type="text" class="form-control" :value="formatDate(taxation.check_date)" readonly placeholder="Проверено" />
+                <input
+                  id="taxCheck"
+                  type="text"
+                  class="form-control"
+                  :value="formatDate(taxation.check_date)"
+                  readonly
+                  placeholder="Проверено"
+                />
                 <label for="taxCheck">Проверено</label>
               </div>
             </div>
           </div>
           <div class="col" v-if="taxation.registration_date">
             <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+              <span class="input-group-text"
+                ><i class="bi bi-calendar"></i
+              ></span>
               <div class="form-floating flex-grow-1">
-                <input id="taxReg" type="text" class="form-control" :value="formatDate(taxation.registration_date)" readonly placeholder="Регистрация" />
+                <input
+                  id="taxReg"
+                  type="text"
+                  class="form-control"
+                  :value="formatDate(taxation.registration_date)"
+                  readonly
+                  placeholder="Регистрация"
+                />
                 <label for="taxReg">Регистрация</label>
               </div>
             </div>
@@ -170,16 +202,32 @@ defineExpose({ openModal });
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-hash"></i></span>
               <div class="form-floating flex-grow-1">
-                <input id="taxOgrn" type="text" class="form-control" :value="taxation.ogrn" readonly placeholder="ОГРН" />
+                <input
+                  id="taxOgrn"
+                  type="text"
+                  class="form-control"
+                  :value="taxation.ogrn"
+                  readonly
+                  placeholder="ОГРН"
+                />
                 <label for="taxOgrn">ОГРН</label>
               </div>
             </div>
           </div>
           <div class="col" v-if="props.showOkved && taxation.okved">
             <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+              <span class="input-group-text"
+                ><i class="bi bi-briefcase"></i
+              ></span>
               <div class="form-floating flex-grow-1">
-                <input id="taxOkved" type="text" class="form-control" :value="taxation.okved" readonly placeholder="ОКВЭД" />
+                <input
+                  id="taxOkved"
+                  type="text"
+                  class="form-control"
+                  :value="taxation.okved"
+                  readonly
+                  placeholder="ОКВЭД"
+                />
                 <label for="taxOkved">ОКВЭД</label>
               </div>
             </div>
@@ -197,7 +245,11 @@ defineExpose({ openModal });
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Проверка налогового статуса</h5>
-          <button type="button" class="btn-close" @click="modal.hide()"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="modal.hide()"
+          ></button>
         </div>
         <div class="modal-body">
           <div class="d-flex align-items-center mb-3 gap-3">
@@ -221,31 +273,66 @@ defineExpose({ openModal });
             <div class="row row-cols-1 g-3">
               <div class="col">
                 <div class="form-floating">
-                  <input id="prevType" type="text" class="form-control" :value="preview.type?.name" readonly placeholder="Тип" />
+                  <input
+                    id="prevType"
+                    type="text"
+                    class="form-control"
+                    :value="preview.type?.name"
+                    readonly
+                    placeholder="Тип"
+                  />
                   <label for="prevType">Тип</label>
                 </div>
               </div>
               <div class="col">
                 <div class="form-floating">
-                  <input id="prevCheck" type="text" class="form-control" :value="formatDate(preview.check_date)" readonly placeholder="Проверено" />
+                  <input
+                    id="prevCheck"
+                    type="text"
+                    class="form-control"
+                    :value="formatDate(preview.check_date)"
+                    readonly
+                    placeholder="Проверено"
+                  />
                   <label for="prevCheck">Проверено</label>
                 </div>
               </div>
               <div class="col" v-if="preview.registration_date">
                 <div class="form-floating">
-                  <input id="prevReg" type="text" class="form-control" :value="formatDate(preview.registration_date)" readonly placeholder="Регистрация" />
+                  <input
+                    id="prevReg"
+                    type="text"
+                    class="form-control"
+                    :value="formatDate(preview.registration_date)"
+                    readonly
+                    placeholder="Регистрация"
+                  />
                   <label for="prevReg">Регистрация</label>
                 </div>
               </div>
               <div class="col" v-if="preview.ogrn">
                 <div class="form-floating">
-                  <input id="prevOgrn" type="text" class="form-control" :value="preview.ogrn" readonly placeholder="ОГРН" />
+                  <input
+                    id="prevOgrn"
+                    type="text"
+                    class="form-control"
+                    :value="preview.ogrn"
+                    readonly
+                    placeholder="ОГРН"
+                  />
                   <label for="prevOgrn">ОГРН</label>
                 </div>
               </div>
               <div class="col" v-if="props.showOkved && preview.okved">
                 <div class="form-floating">
-                  <input id="prevOkved" type="text" class="form-control" :value="preview.okved" readonly placeholder="ОКВЭД" />
+                  <input
+                    id="prevOkved"
+                    type="text"
+                    class="form-control"
+                    :value="preview.okved"
+                    readonly
+                    placeholder="ОКВЭД"
+                  />
                   <label for="prevOkved">ОКВЭД</label>
                 </div>
               </div>
@@ -253,8 +340,17 @@ defineExpose({ openModal });
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="modal.hide()">Отмена</button>
-          <button type="button" class="btn btn-brand" @click="save" :disabled="!canSave">Сохранить</button>
+          <button type="button" class="btn btn-secondary" @click="modal.hide()">
+            Отмена
+          </button>
+          <button
+            type="button"
+            class="btn btn-brand"
+            @click="save"
+            :disabled="!canSave"
+          >
+            Сохранить
+          </button>
         </div>
       </div>
     </div>
@@ -290,4 +386,3 @@ defineExpose({ openModal });
   }
 }
 </style>
-

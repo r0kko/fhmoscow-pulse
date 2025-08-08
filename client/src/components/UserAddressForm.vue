@@ -24,8 +24,6 @@ const sameAsResidence = ref(false);
 const suggestions = ref([]);
 let timeout;
 
-
-
 onMounted(() => {
   modal = new Modal(modalRef.value);
   load();
@@ -157,10 +155,7 @@ function applySuggestion(sug) {
               ></i>
             </button>
           </div>
-          <div
-            v-if="addresses[type.alias]"
-            class="row g-3 align-items-end"
-          >
+          <div v-if="addresses[type.alias]" class="row g-3 align-items-end">
             <div class="col-auto" style="width: 10ch">
               <div class="form-floating">
                 <input
@@ -201,7 +196,9 @@ function applySuggestion(sug) {
               </div>
             </div>
           </div>
-          <div v-else class="alert alert-warning p-2 mb-0">Адрес не указан.</div>
+          <div v-else class="alert alert-warning p-2 mb-0">
+            Адрес не указан.
+          </div>
           <div v-if="error && current === type.alias" class="text-danger mt-2">
             {{ error }}
           </div>

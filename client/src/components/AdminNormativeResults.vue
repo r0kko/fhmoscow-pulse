@@ -435,15 +435,13 @@ defineExpose({ refresh });
                     r.retake
                       ? 'Перезачет'
                       : r.online
-                      ? 'Онлайн'
-                      : formatDateTime(r.training?.start_at)
+                        ? 'Онлайн'
+                        : formatDateTime(r.training?.start_at)
                   }}
                 </td>
                 <td>
                   {{
-                    r.training?.Ground?.name ||
-                      r.training?.ground?.name ||
-                      '-'
+                    r.training?.Ground?.name || r.training?.ground?.name || '-'
                   }}
                 </td>
                 <td class="text-end">
@@ -541,7 +539,7 @@ defineExpose({ refresh });
                     >
                       {{
                         new Date(t.start_at).toLocaleString('ru-RU', {
-                          timeZone: 'Europe/Moscow'
+                          timeZone: 'Europe/Moscow',
                         })
                       }}
                     </option>
@@ -614,7 +612,11 @@ defineExpose({ refresh });
                     id="resValue"
                     type="number"
                     v-model="form.value"
-                    :step="currentUnit?.alias === 'SECONDS' && currentUnit.fractional ? '0.01' : '1'"
+                    :step="
+                      currentUnit?.alias === 'SECONDS' && currentUnit.fractional
+                        ? '0.01'
+                        : '1'
+                    "
                     class="form-control"
                     placeholder="Значение"
                     required
@@ -631,11 +633,7 @@ defineExpose({ refresh });
               >
                 {{ step === 1 ? 'Отмена' : 'Назад' }}
               </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="saving"
-              >
+              <button type="submit" class="btn btn-primary" :disabled="saving">
                 <span
                   v-if="step === 2 && saving"
                   class="spinner-border spinner-border-sm me-1"
@@ -651,7 +649,6 @@ defineExpose({ refresh });
 </template>
 
 <style scoped>
-
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }

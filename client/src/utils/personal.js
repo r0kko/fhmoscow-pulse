@@ -4,7 +4,7 @@ export function isValidInn(inn) {
   const coeff11 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
   const coeff12 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
   const calc = (coefs) =>
-    coefs.reduce((sum, coef, idx) => sum + coef * digits[idx], 0) % 11 % 10;
+    (coefs.reduce((sum, coef, idx) => sum + coef * digits[idx], 0) % 11) % 10;
   return calc(coeff11) === digits[10] && calc(coeff12) === digits[11];
 }
 

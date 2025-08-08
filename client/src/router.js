@@ -29,7 +29,11 @@ import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
 import ServerError from './views/ServerError.vue';
 
-const adminRoles = ['ADMIN', 'FIELD_REFEREE_SPECIALIST', 'BRIGADE_REFEREE_SPECIALIST'];
+const adminRoles = [
+  'ADMIN',
+  'FIELD_REFEREE_SPECIALIST',
+  'BRIGADE_REFEREE_SPECIALIST',
+];
 const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
 
 const routes = [
@@ -182,9 +186,15 @@ router.beforeEach(async (to, _from, next) => {
   }
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');
-  } else if (to.meta.requiresAdmin && !roles.some((r) => adminRoles.includes(r))) {
+  } else if (
+    to.meta.requiresAdmin &&
+    !roles.some((r) => adminRoles.includes(r))
+  ) {
     next('/forbidden');
-  } else if (to.meta.requiresReferee && !roles.some((r) => refereeRoles.includes(r))) {
+  } else if (
+    to.meta.requiresReferee &&
+    !roles.some((r) => refereeRoles.includes(r))
+  ) {
     next('/forbidden');
   } else if (
     isAuthenticated &&

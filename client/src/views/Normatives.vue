@@ -301,15 +301,15 @@ function thresholdText(t, zone) {
                       t.result?.retake
                         ? 'Перезачет'
                         : t.result?.online
-                        ? 'Онлайн'
-                        : formatDate(t.result?.training?.start_at)
+                          ? 'Онлайн'
+                          : formatDate(t.result?.training?.start_at)
                     }}
                   </td>
                   <td class="text-center d-none d-md-table-cell">
                     {{
                       t.result?.training?.Ground?.name ||
-                        t.result?.training?.ground?.name ||
-                        '-'
+                      t.result?.training?.ground?.name ||
+                      '-'
                     }}
                   </td>
                   <td class="text-end">
@@ -329,7 +329,7 @@ function thresholdText(t, zone) {
                     <RouterLink
                       v-if="t.active_ticket"
                       to="/tickets"
-                    class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
+                      class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
                       aria-label="Перейти к обращению"
                     >
                       <i class="bi bi-hourglass" aria-hidden="true"></i>
@@ -337,7 +337,7 @@ function thresholdText(t, zone) {
                     </RouterLink>
                     <button
                       v-else-if="t.can_upload"
-                    class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
+                      class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
                       @click="openUpload(t)"
                       aria-label="Загрузить видео"
                     >
@@ -401,12 +401,12 @@ function thresholdText(t, zone) {
                     t.result?.retake
                       ? 'Перезачет'
                       : t.result?.online
-                      ? 'Онлайн'
-                      : `${formatDate(t.result?.training?.start_at)}, ${
-                          t.result?.training?.Ground?.name ||
-                          t.result?.training?.ground?.name ||
-                          '-'
-                        }`
+                        ? 'Онлайн'
+                        : `${formatDate(t.result?.training?.start_at)}, ${
+                            t.result?.training?.Ground?.name ||
+                            t.result?.training?.ground?.name ||
+                            '-'
+                          }`
                   }}
                 </p>
                 <p v-if="t.thresholds" class="mb-0 small thresholds">
@@ -457,16 +457,16 @@ function thresholdText(t, zone) {
                         r.retake
                           ? 'Перезачет'
                           : r.online
-                          ? 'Онлайн'
-                          : formatDateTime(r.training?.start_at)
+                            ? 'Онлайн'
+                            : formatDateTime(r.training?.start_at)
                       }}
                     </span>
                   </div>
                   <div class="small text-muted">
                     {{
                       r.training?.Grpund?.name ||
-                        r.training?.ground?.name ||
-                        '-'
+                      r.training?.ground?.name ||
+                      '-'
                     }}
                   </div>
                 </li>
@@ -489,14 +489,18 @@ function thresholdText(t, zone) {
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">Сдать онлайн</h5>
-              <button type="button" class="btn-close" @click="uploadModal.hide()"></button>
+              <button
+                type="button"
+                class="btn-close"
+                @click="uploadModal.hide()"
+              ></button>
             </div>
             <div class="modal-body">
               <ul class="small mb-3">
                 <li>
                   Сдача норматива должна быть записана на видео в горизонтальном
-                  формате, разрешение не менее 1920х1080, частота кадров не менее
-                  30 fps.
+                  формате, разрешение не менее 1920х1080, частота кадров не
+                  менее 30 fps.
                 </li>
                 <li>Любой монтаж видеозаписи не допускается</li>
                 <li>
@@ -529,33 +533,52 @@ function thresholdText(t, zone) {
                   @change="onFileChange"
                   :disabled="!accepted"
                 />
-              <div class="form-text">Видео до 100&nbsp;МБ</div>
-              <div v-if="fileError" class="text-danger small mt-1">{{ fileError }}</div>
-            </div>
-            <div class="form-floating mb-3">
-              <input
-                id="repCnt"
-                v-model="repetitions"
-                type="number"
-                min="0"
-                class="form-control"
-                placeholder="Повторения"
-                :disabled="!accepted"
-                :class="{ 'is-invalid': repetitionsError }"
-              />
-              <label for="repCnt">Количество повторений</label>
-              <div v-if="repetitionsError" class="text-danger small mt-1">
-                {{ repetitionsError }}
+                <div class="form-text">Видео до 100&nbsp;МБ</div>
+                <div v-if="fileError" class="text-danger small mt-1">
+                  {{ fileError }}
+                </div>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  id="repCnt"
+                  v-model="repetitions"
+                  type="number"
+                  min="0"
+                  class="form-control"
+                  placeholder="Повторения"
+                  :disabled="!accepted"
+                  :class="{ 'is-invalid': repetitionsError }"
+                />
+                <label for="repCnt">Количество повторений</label>
+                <div v-if="repetitionsError" class="text-danger small mt-1">
+                  {{ repetitionsError }}
+                </div>
+              </div>
+              <div v-if="uploading" class="progress mb-3">
+                <div
+                  class="progress-bar bg-brand"
+                  :style="{ width: progress + '%' }"
+                ></div>
               </div>
             </div>
-            <div v-if="uploading" class="progress mb-3">
-              <div class="progress-bar bg-brand" :style="{ width: progress + '%' }"></div>
-            </div>
-          </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="uploadModal.hide()">Отмена</button>
-              <button type="button" class="btn btn-brand" @click="submitOnline" :disabled="uploading || !accepted">
-                <span v-if="uploading" class="spinner-border spinner-border-sm me-2"></span>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="uploadModal.hide()"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                class="btn btn-brand"
+                @click="submitOnline"
+                :disabled="uploading || !accepted"
+              >
+                <span
+                  v-if="uploading"
+                  class="spinner-border spinner-border-sm me-2"
+                ></span>
                 Отправить
               </button>
             </div>
@@ -631,7 +654,6 @@ function thresholdText(t, zone) {
   white-space: nowrap;
 }
 
-
 .header-controls .season-select {
   width: auto;
   min-width: 12rem;
@@ -657,7 +679,6 @@ function thresholdText(t, zone) {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

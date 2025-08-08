@@ -11,56 +11,58 @@ const activeTab = ref('certificates');
 <template>
   <div class="py-3 admin-medical-management-page">
     <div class="container">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <RouterLink to="/admin">Администрирование</RouterLink>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Медицина</li>
-      </ol>
-    </nav>
-    <div class="card section-card tile fade-in shadow-sm mb-3">
-      <div class="card-body p-2">
-        <ul class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector">
-          <li class="nav-item">
-            <button
-              class="nav-link"
-              :class="{ active: activeTab === 'certificates' }"
-              @click="activeTab = 'certificates'"
-            >
-              Медицинские справки
-            </button>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
-          <li class="nav-item">
-            <button
-              class="nav-link"
-              :class="{ active: activeTab === 'centers' }"
-              @click="activeTab = 'centers'"
-            >
-              Медицинские центры
-            </button>
-          </li>
-          <li class="nav-item">
-            <button
-              class="nav-link"
-              :class="{ active: activeTab === 'exams' }"
-              @click="activeTab = 'exams'"
-            >
-              Расписание медосмотров
-            </button>
-          </li>
-        </ul>
+          <li class="breadcrumb-item active" aria-current="page">Медицина</li>
+        </ol>
+      </nav>
+      <div class="card section-card tile fade-in shadow-sm mb-3">
+        <div class="card-body p-2">
+          <ul
+            class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
+          >
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'certificates' }"
+                @click="activeTab = 'certificates'"
+              >
+                Медицинские справки
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'centers' }"
+                @click="activeTab = 'centers'"
+              >
+                Медицинские центры
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'exams' }"
+                @click="activeTab = 'exams'"
+              >
+                Расписание медосмотров
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
-    </div>
-    <div v-if="activeTab === 'certificates'">
-      <AdminMedicalCertificates />
-    </div>
-    <div v-else-if="activeTab === 'centers'">
-      <AdminMedicalCenters />
-    </div>
-    <div v-else>
-      <AdminMedicalExams />
-    </div>
+      <div v-if="activeTab === 'certificates'">
+        <AdminMedicalCertificates />
+      </div>
+      <div v-else-if="activeTab === 'centers'">
+        <AdminMedicalCenters />
+      </div>
+      <div v-else>
+        <AdminMedicalExams />
+      </div>
     </div>
   </div>
 </template>
@@ -89,7 +91,6 @@ const activeTab = ref('certificates');
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-
 
   .section-card {
     margin-left: -1rem;

@@ -38,7 +38,9 @@ onMounted(loadData);
 async function loadData() {
   loading.value = true;
   try {
-    const data = await apiFetch(`/camp-trainings/${route.params.id}/attendance`);
+    const data = await apiFetch(
+      `/camp-trainings/${route.params.id}/attendance`
+    );
     training.value = data.training;
     registrations.value = data.registrations || [];
     error.value = '';
@@ -61,10 +63,13 @@ function formatDateTime(value) {
 
 async function setPresence(userId, value) {
   try {
-    await apiFetch(`/camp-trainings/${route.params.id}/registrations/${userId}/presence`, {
-      method: 'PUT',
-      body: JSON.stringify({ present: value }),
-    });
+    await apiFetch(
+      `/camp-trainings/${route.params.id}/registrations/${userId}/presence`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ present: value }),
+      }
+    );
     showToast('Сохранено');
     await loadData();
   } catch (e) {
@@ -107,7 +112,9 @@ function showToast(message) {
           <li class="breadcrumb-item">
             <RouterLink to="/camps">Мои тренировки</RouterLink>
           </li>
-          <li class="breadcrumb-item active" aria-current="page">Посещаемость</li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Посещаемость
+          </li>
         </ol>
       </nav>
       <h1 class="mb-3">Посещаемость</h1>
@@ -119,17 +126,20 @@ function showToast(message) {
       </div>
       <div v-else>
         <p v-if="training" class="mb-3">
-          <strong>{{ training.type?.name }}</strong>,
-          {{ formatDateTime(training.start_at) }} –
+          <strong>{{ training.type?.name }}</strong
+          >, {{ formatDateTime(training.start_at) }} –
           {{
             new Date(training.end_at).toLocaleTimeString('ru-RU', {
               hour: '2-digit',
               minute: '2-digit',
-              timeZone: 'Europe/Moscow'
+              timeZone: 'Europe/Moscow',
             })
           }}
         </p>
-        <div v-if="visibleRegistrations.length" class="card section-card tile fade-in shadow-sm">
+        <div
+          v-if="visibleRegistrations.length"
+          class="card section-card tile fade-in shadow-sm"
+        >
           <div class="card-body table-responsive p-3">
             <table class="table table-striped align-middle mb-0">
               <thead>
@@ -144,7 +154,10 @@ function showToast(message) {
                   <td>{{ formatName(r.user) }}</td>
                   <td>{{ new Date(r.user.birth_date).getFullYear() }}</td>
                   <td class="text-end">
-                    <div class="btn-group btn-group-sm presence-group" role="group">
+                    <div
+                      class="btn-group btn-group-sm presence-group"
+                      role="group"
+                    >
                       <input
                         type="radio"
                         class="btn-check"
@@ -198,7 +211,13 @@ function showToast(message) {
         <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
       </div>
       <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div ref="toastRef" class="toast text-bg-secondary" role="status" data-bs-delay="1500" data-bs-autohide="true">
+        <div
+          ref="toastRef"
+          class="toast text-bg-secondary"
+          role="status"
+          data-bs-delay="1500"
+          data-bs-autohide="true"
+        >
           <div class="toast-body">{{ toastMessage }}</div>
         </div>
       </div>
