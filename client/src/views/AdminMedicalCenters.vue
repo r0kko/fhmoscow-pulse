@@ -214,7 +214,15 @@ async function removeCenter(center) {
                 <td>{{ c.address?.result || '' }}</td>
                 <td>{{ formatPhone(c.phone) }}</td>
                 <td>{{ c.email }}</td>
-                <td>{{ c.website }}</td>
+                <td>
+                  <a
+                    v-if="c.website"
+                    :href="c.website"
+                    target="_blank"
+                    rel="noopener"
+                    >{{ c.website }}</a
+                  >
+                </td>
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
@@ -236,21 +244,21 @@ async function removeCenter(center) {
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     </div>
-    <nav class="mt-3" v-if="totalPages > 1">
+    <nav v-if="totalPages > 1" class="mt-3">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <button
             class="page-link"
-            @click="currentPage--"
             :disabled="currentPage === 1"
+            @click="currentPage--"
           >
             Пред
           </button>
         </li>
         <li
-          class="page-item"
           v-for="p in totalPages"
           :key="p"
+          class="page-item"
           :class="{ active: currentPage === p }"
         >
           <button class="page-link" @click="currentPage = p">{{ p }}</button>
@@ -258,8 +266,8 @@ async function removeCenter(center) {
         <li class="page-item" :class="{ disabled: currentPage === totalPages }">
           <button
             class="page-link"
-            @click="currentPage++"
             :disabled="currentPage === totalPages"
+            @click="currentPage++"
           >
             След
           </button>
@@ -309,10 +317,10 @@ async function removeCenter(center) {
                 <textarea
                   id="mcAddr"
                   v-model="form.address.result"
-                  @blur="onAddrBlur"
                   class="form-control"
                   rows="2"
                   placeholder="Адрес"
+                  @blur="onAddrBlur"
                 ></textarea>
                 <label for="mcAddr">Адрес</label>
                 <ul
@@ -333,12 +341,12 @@ async function removeCenter(center) {
               <div class="form-floating mb-3">
                 <input
                   id="mcPhone"
-                  type="tel"
                   v-model="phoneInput"
-                  @input="onPhoneInput"
-                  @keydown="onPhoneKeydown"
+                  type="tel"
                   class="form-control"
                   placeholder="Телефон"
+                  @input="onPhoneInput"
+                  @keydown="onPhoneKeydown"
                 />
                 <label for="mcPhone">Телефон</label>
               </div>

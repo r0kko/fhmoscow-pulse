@@ -310,6 +310,7 @@ async function loadJudges() {
                     <button
                       type="button"
                       class="btn btn-link p-0"
+                      aria-label="Открыть справку"
                       @click="openEdit(c)"
                     >
                       {{ c.certificate_number }}
@@ -321,6 +322,7 @@ async function loadJudges() {
                     <button
                       type="button"
                       class="btn btn-link p-0"
+                      aria-label="Открыть учреждение"
                       @click="openEdit(c)"
                     >
                       {{ c.organization }}
@@ -369,7 +371,7 @@ async function loadJudges() {
               <div v-if="formError" class="alert alert-danger">
                 {{ formError }}
               </div>
-              <div class="mb-3 position-relative" v-if="!editing">
+              <div v-if="!editing" class="mb-3 position-relative">
                 <div class="form-floating">
                   <input
                     id="userId"
@@ -427,8 +429,8 @@ async function loadJudges() {
               <div class="form-floating mb-3">
                 <input
                   id="issue"
-                  type="date"
                   v-model="form.issue_date"
+                  type="date"
                   class="form-control"
                   :disabled="editing"
                 />
@@ -437,8 +439,8 @@ async function loadJudges() {
               <div class="form-floating mb-3">
                 <input
                   id="valid"
-                  type="date"
                   v-model="form.valid_until"
+                  type="date"
                   class="form-control"
                   :disabled="editing"
                 />
@@ -472,19 +474,19 @@ async function loadJudges() {
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="fileType">Тип документа</label>
-                  <select id="fileType" class="form-select" v-model="fileType">
+                  <select id="fileType" v-model="fileType" class="form-select">
                     <option value="CONCLUSION">Заключение</option>
                     <option value="RESULTS">Результаты исследований</option>
                   </select>
                 </div>
                 <div class="mb-3">
-                  <input type="file" class="form-control" ref="fileInput" />
+                  <input ref="fileInput" type="file" class="form-control" />
                 </div>
                 <button
                   type="button"
                   class="btn btn-brand"
-                  @click="uploadFile"
                   :disabled="!editing || fileUploading || saving"
+                  @click="uploadFile"
                 >
                   <span
                     v-if="fileUploading"
@@ -499,8 +501,8 @@ async function loadJudges() {
                 v-if="editing"
                 type="button"
                 class="btn btn-danger me-auto"
-                @click="removeCert"
                 :disabled="deleting"
+                @click="removeCert"
               >
                 <span
                   v-if="deleting"

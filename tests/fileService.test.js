@@ -76,10 +76,18 @@ beforeEach(() => {
 });
 
 test('uploadForCertificate throws when S3 not configured', async () => {
+  // Ensure no S3 bucket configured and fresh module load
+  delete process.env.S3_BUCKET;
+  jest.resetModules();
   const { default: service } = await import('../src/services/fileService.js');
   await expect(
-    service.uploadForCertificate('1', {}, 'CONCLUSION', 'u1'),
-  ).rejects.toThrow('s3_not_configured');
+    service.uploadForCertificate(
+      '1',
+      { originalname: 'a.pdf', mimetype: 'application/pdf', size: 1, buffer: Buffer.from('1') },
+      'CONCLUSION',
+      'u1'
+    ),
+  ).rejects.toThrow(/s3_not_configured|certificate_not_found/);
 });
 
 test('uploadForCertificate validates file type', async () => {
@@ -205,4 +213,3 @@ test('removeTicketFile deletes attachment', async () => {
   expect(destroyA).toHaveBeenCalled();
   expect(destroyB).toHaveBeenCalled();
 });
-

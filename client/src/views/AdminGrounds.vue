@@ -674,9 +674,13 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     <td class="text-center">{{ st.capacity }}</td>
                     <td>{{ formatPhone(st.phone) }}</td>
                     <td class="d-none d-md-table-cell">
-                      <a v-if="st.website" :href="st.website" target="_blank">{{
-                        st.website
-                      }}</a>
+                      <a
+                        v-if="st.website"
+                        :href="st.website"
+                        target="_blank"
+                        rel="noopener"
+                        >{{ st.website }}</a
+                      >
                     </td>
                     <td class="text-end">
                       <button
@@ -708,7 +712,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <p class="mb-1">Вместимость: {{ st.capacity }}</p>
                   <p class="mb-1">Телефон: {{ formatPhone(st.phone) }}</p>
                   <p v-if="st.website" class="mb-1">
-                    <a :href="st.website" target="_blank">{{ st.website }}</a>
+                    <a :href="st.website" target="_blank" rel="noopener">{{
+                      st.website
+                    }}</a>
                   </p>
 
                   <div class="text-end">

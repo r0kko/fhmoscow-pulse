@@ -317,6 +317,7 @@ function onFileChange(e) {
                       target="_blank"
                       rel="noopener"
                       class="file-tile d-flex align-items-center gap-2 text-decoration-none text-body p-2 border rounded w-100"
+                      :aria-label="`Открыть файл ${f.name} в новой вкладке`"
                     >
                       <i class="bi bi-file-earmark"></i>
                       <span class="text-break">{{ f.name }}</span>
@@ -422,6 +423,7 @@ function onFileChange(e) {
                           target="_blank"
                           rel="noopener"
                           class="file-tile small d-flex align-items-center gap-1 text-decoration-none text-body p-1 border rounded"
+                          :aria-label="`Открыть файл ${f.name} в новой вкладке`"
                         >
                           <i class="bi bi-file-earmark"></i>
                           <span class="text-break">{{ f.name }}</span>

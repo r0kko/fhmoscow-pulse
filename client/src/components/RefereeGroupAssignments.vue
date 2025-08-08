@@ -282,6 +282,7 @@ defineExpose({ refresh });
               <div class="text-end mt-1">
                 <button
                   class="btn btn-sm btn-outline-secondary"
+                  aria-label="История посещений"
                   @click="openHistory(j)"
                 >
                   <i class="bi bi-clock-history"></i>

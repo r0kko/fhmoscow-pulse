@@ -95,10 +95,10 @@ async function changeStatus(ticket, alias) {
         <div class="row g-2 align-items-end mb-3">
           <div class="col-12 col-sm">
             <input
+              v-model="userFilter"
               type="text"
               class="form-control"
               placeholder="Пользователь"
-              v-model="userFilter"
             />
           </div>
           <div class="col-6 col-sm-auto">
@@ -155,6 +155,7 @@ async function changeStatus(ticket, alias) {
                   <template v-if="t.status.alias === 'CREATED'">
                     <button
                       class="btn btn-sm btn-outline-secondary me-2"
+                      aria-label="В работу"
                       @click="changeStatus(t, 'IN_PROGRESS')"
                     >
                       В работу
@@ -163,15 +164,17 @@ async function changeStatus(ticket, alias) {
                   <template v-else-if="t.status.alias === 'IN_PROGRESS'">
                     <button
                       class="btn btn-sm btn-success me-2"
-                      @click="changeStatus(t, 'CONFIRMED')"
                       title="Подтвердить"
+                      aria-label="Подтвердить"
+                      @click="changeStatus(t, 'CONFIRMED')"
                     >
                       <i class="bi bi-check-lg"></i>
                     </button>
                     <button
                       class="btn btn-sm btn-danger me-2"
-                      @click="changeStatus(t, 'REJECTED')"
                       title="Отклонить"
+                      aria-label="Отклонить"
+                      @click="changeStatus(t, 'REJECTED')"
                     >
                       <i class="bi bi-x-lg"></i>
                     </button>
@@ -214,15 +217,15 @@ async function changeStatus(ticket, alias) {
                 <template v-else-if="t.status.alias === 'IN_PROGRESS'">
                   <button
                     class="btn btn-sm btn-success me-2"
-                    @click="changeStatus(t, 'CONFIRMED')"
                     title="Подтвердить"
+                    @click="changeStatus(t, 'CONFIRMED')"
                   >
                     <i class="bi bi-check-lg"></i>
                   </button>
                   <button
                     class="btn btn-sm btn-danger me-2"
-                    @click="changeStatus(t, 'REJECTED')"
                     title="Отклонить"
+                    @click="changeStatus(t, 'REJECTED')"
                   >
                     <i class="bi bi-x-lg"></i>
                   </button>

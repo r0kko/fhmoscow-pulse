@@ -254,6 +254,15 @@ test('refresh missing token returns 401', async () => {
   expect(res.status).toHaveBeenCalledWith(401);
 });
 
+test('refresh ignores body token and requires cookie', async () => {
+  const req = { cookies: {}, body: { refresh_token: 'fromBody' } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+  await authController.refresh(req, res);
+
+  expect(res.status).toHaveBeenCalledWith(401);
+});
+
 test('refresh invalid token returns 401', async () => {
   rotateTokensMock.mockRejectedValue(new Error('bad'));
   const req = { cookies: { refresh_token: 'x' }, body: {} };
