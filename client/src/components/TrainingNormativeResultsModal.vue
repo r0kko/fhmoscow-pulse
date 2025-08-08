@@ -198,9 +198,9 @@ async function removeResult(r) {
     >
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
+          <h2 class="modal-title h5">
             Нормативы {{ props.user.last_name }} {{ props.user.first_name }}
-          </h5>
+          </h2>
           <button type="button" class="btn-close" @click="modal.hide()" />
         </div>
         <div class="modal-body">

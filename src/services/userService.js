@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 
 import { Role, Sex, User, UserRole, UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import { assertPassword } from '../utils/passwordPolicy.js';
 
 async function createUser(data, actorId = null) {
   const birth = new Date(data.birth_date);
@@ -10,6 +11,9 @@ async function createUser(data, actorId = null) {
   }
   if (!data.sex_id) {
     throw new ServiceError('sex_required');
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'password')) {
+    assertPassword(data.password);
   }
   const sex = await Sex.findByPk(data.sex_id);
   if (!sex) throw new ServiceError('sex_not_found', 404);
@@ -141,10 +145,18 @@ async function setStatus(id, alias, actorId = null) {
 async function resetPassword(id, password, actorId = null) {
   const user = await User.scope('withPassword').findByPk(id);
   if (!user) throw new ServiceError('user_not_found', 404);
+  assertPassword(password);
   user.password = password;
   user.updated_by = actorId;
   await user.save();
   return user;
+}
+
+async function bumpTokenVersion(id) {
+  const user = await User.findByPk(id);
+  if (!user) throw new ServiceError('user_not_found', 404);
+  await user.increment('token_version');
+  return user.reload();
 }
 
 async function assignRole(userId, alias, actorId = null) {
@@ -200,4 +212,5 @@ export default {
   resetPassword,
   assignRole,
   removeRole,
+  bumpTokenVersion,
 };

@@ -1,5 +1,5 @@
 import { reactive } from 'vue';
-import { apiFetch, setAccessToken, clearAccessToken, initCsrf } from './api.js';
+import { apiFetch, setAccessToken, clearAccessToken } from './api.js';
 
 export const auth = reactive({
   user: null,

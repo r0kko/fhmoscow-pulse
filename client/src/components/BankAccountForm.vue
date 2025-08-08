@@ -237,9 +237,9 @@ async function removeAccount() {
       <div class="modal-content">
         <form @submit.prevent="save">
           <div class="modal-header">
-            <h5 class="modal-title">
+            <h2 class="modal-title h5">
               {{ account ? 'Изменить счёт' : 'Добавить счёт' }}
-            </h5>
+            </h2>
             <button
               type="button"
               class="btn-close"

@@ -122,7 +122,7 @@ const disabled = computed(
 <template>
   <div class="card h-100 exam-card tile">
     <div class="card-body d-flex flex-column p-3">
-      <h6 class="card-title mb-1">{{ formatStart(exam.start_at) }}</h6>
+      <h3 class="card-title h6 mb-1">{{ formatStart(exam.start_at) }}</h3>
       <p class="text-muted mb-1 small">{{ exam.center?.name }}</p>
       <p v-if="exam.center?.address" class="text-muted mb-1 small">
         {{ exam.center.address.result }}

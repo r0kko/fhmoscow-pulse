@@ -41,6 +41,11 @@ User.init(
       type: DataTypes.STRING(255), // хранит bcrypt-hash!
       allowNull: false,
     },
+    token_version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     sequelize,

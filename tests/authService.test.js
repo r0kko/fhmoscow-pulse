@@ -55,12 +55,28 @@ import jwt from 'jsonwebtoken';
 const updateMock = jest.fn(async function (data) {
   Object.assign(user, data);
 });
-const user = { id: '1', password: 'hash', update: updateMock };
+const incrementMock = jest.fn(async function () {
+  user.token_version = (user.token_version ?? 0) + 1;
+});
+const reloadMock = jest.fn(async function () {
+  return user;
+});
+const user = {
+  id: '1',
+  password: 'hash',
+  token_version: 0,
+  update: updateMock,
+  increment: incrementMock,
+  reload: reloadMock,
+};
 
 beforeEach(async () => {
   updateMock.mockClear();
+  incrementMock.mockClear();
+  reloadMock.mockClear();
   await attemptStore._reset();
   user.status_id = undefined;
+  user.token_version = 0;
 });
 
 test('verifyCredentials returns user when valid', async () => {
@@ -115,18 +131,27 @@ test('verifyCredentials resets attempts on success', async () => {
   expect(p2.type).toBe('refresh');
 });
 
- test('rotateTokens returns new tokens and user', async () => {
+ test('rotateTokens returns new tokens and user, and bumps version', async () => {
   findByPkMock.mockResolvedValue(user);
   const { refreshToken } = authService.issueTokens(user);
   const result = await authService.rotateTokens(refreshToken);
   expect(result.user).toBe(user);
   expect(result.accessToken).toBeDefined();
   expect(result.refreshToken).toBeDefined();
+  expect(incrementMock).toHaveBeenCalledWith('token_version');
+  expect(user.token_version).toBe(1);
 });
 
  test('rotateTokens rejects token with wrong type', async () => {
   const { accessToken } = authService.issueTokens(user);
-  await expect(authService.rotateTokens(accessToken)).rejects.toThrow('invalid_token');
+  await expect(authService.rotateTokens(accessToken)).rejects.toThrow('invalid_token_type');
+});
+
+test('rotateTokens rejects mismatched token version', async () => {
+  // User version is 0, but craft token with ver 1
+  findByPkMock.mockResolvedValue(user);
+  const token = jwt.sign({ sub: user.id, type: 'refresh', ver: 1 }, 'secret');
+  await expect(authService.rotateTokens(token)).rejects.toThrow('invalid_token');
 });
 
 test('rotateTokens rejects missing user', async () => {

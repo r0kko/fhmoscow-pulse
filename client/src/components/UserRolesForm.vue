@@ -75,13 +75,13 @@ async function save() {
 <template>
   <div class="card mt-4">
     <div class="card-body">
-      <h5 class="card-title mb-3">Роли</h5>
+      <h2 class="card-title h5 mb-3">Роли</h2>
       <div v-if="roles.length">
         <div v-for="role in roles" :key="role.id" class="form-check">
           <input
+            :id="`role-${role.alias}`"
             class="form-check-input"
             type="checkbox"
-            :id="`role-${role.alias}`"
             :checked="selected.has(role.alias)"
             @change="toggle(role.alias, $event.target.checked)"
           />
@@ -91,8 +91,8 @@ async function save() {
         </div>
         <button
           class="btn btn-brand mt-3"
-          @click="save"
           :disabled="saving || !changed"
+          @click="save"
         >
           Сохранить
         </button>

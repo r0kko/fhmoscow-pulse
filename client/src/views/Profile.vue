@@ -245,7 +245,7 @@ onMounted(() => {
                     <div class="card-body d-flex flex-column h-100">
                       <i class="bi bi-passport fs-3 icon-brand mb-2"></i>
                       <div class="mt-auto">
-                        <h5 class="card-title mb-1">Паспорт РФ</h5>
+                        <h2 class="card-title h5 mb-1">Паспорт РФ</h2>
                         <p class="card-text text-muted mb-0">
                           {{
                             passport
@@ -268,7 +268,7 @@ onMounted(() => {
                     <div class="card-body d-flex flex-column h-100">
                       <i class="bi bi-person-badge fs-3 icon-brand mb-2"></i>
                       <div class="mt-auto">
-                        <h5 class="card-title mb-1">ИНН</h5>
+                        <h2 class="card-title h5 mb-1">ИНН</h2>
                         <p class="card-text text-muted mb-0">
                           {{ innDisplay }}
                         </p>
@@ -285,7 +285,7 @@ onMounted(() => {
                     <div class="card-body d-flex flex-column h-100">
                       <i class="bi bi-card-checklist fs-3 icon-brand mb-2"></i>
                       <div class="mt-auto">
-                        <h5 class="card-title mb-1">СНИЛС</h5>
+                        <h2 class="card-title h5 mb-1">СНИЛС</h2>
                         <p class="card-text text-muted mb-0">
                           {{ snils?.number || 'Отсутствует' }}
                         </p>
@@ -304,9 +304,9 @@ onMounted(() => {
                     <div class="card-body d-flex flex-column h-100">
                       <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
                       <div class="mt-auto">
-                        <h5 class="card-title mb-1">
+                        <h2 class="card-title h5 mb-1">
                           Водительское удостоверение
-                        </h5>
+                        </h2>
                         <p class="card-text text-muted mb-0">
                           {{ driverLicense?.number || 'Отсутствует' }}
                         </p>
@@ -319,7 +319,7 @@ onMounted(() => {
             <section id="contacts" class="mb-4">
               <div class="card section-card tile fade-in shadow-sm">
                 <div class="card-body">
-                  <h5 class="card-title mb-3">Контакты</h5>
+                  <h2 class="card-title h5 mb-3">Контакты</h2>
                   <div class="row row-cols-1 row-cols-sm-2 g-3">
                     <div class="col">
                       <InfoField
@@ -382,7 +382,7 @@ onMounted(() => {
             >
               <div class="card section-card tile fade-in shadow-sm">
                 <div class="card-body">
-                  <h5 class="card-title mb-3">Банковские реквизиты</h5>
+                  <h2 class="card-title h5 mb-3">Банковские реквизиты</h2>
                   <div v-if="loading.bankAccount" class="text-center py-4">
                     <div
                       class="spinner-border"

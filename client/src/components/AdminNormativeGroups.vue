@@ -231,9 +231,9 @@ defineExpose({ refresh });
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h2 class="modal-title h5">
                 {{ editing ? 'Изменить группу' : 'Добавить группу' }}
-              </h5>
+              </h2>
               <button
                 type="button"
                 class="btn-close"

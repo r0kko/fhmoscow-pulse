@@ -127,7 +127,7 @@ defineExpose({ openModal });
   >
     <div class="card-body">
       <div class="d-flex justify-content-between mb-3">
-        <h5 class="card-title mb-0">Налоговый статус</h5>
+        <h2 class="card-title h5 mb-0">Налоговый статус</h2>
         <button
           v-if="props.editable"
           type="button"
@@ -244,7 +244,7 @@ defineExpose({ openModal });
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Проверка налогового статуса</h5>
+          <h2 class="modal-title h5">Проверка налогового статуса</h2>
           <button
             type="button"
             class="btn-close"

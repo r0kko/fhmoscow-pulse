@@ -3,7 +3,7 @@ import Login from './views/Login.vue';
 import Register from './views/Register.vue';
 import ProfileWizard from './views/ProfileWizard.vue';
 import AwaitingConfirmation from './views/AwaitingConfirmation.vue';
-import { auth, fetchCurrentUser, clearAuth } from './auth.js';
+import { auth, clearAuth, fetchCurrentUser } from './auth.js';
 import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
 import DocumentView from './views/DocumentView.vue';
@@ -37,97 +37,125 @@ const adminRoles = [
 const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
 
 const routes = [
-  { path: '/', component: Home, meta: { requiresAuth: true, fluid: true } },
-  { path: '/profile', component: Profile, meta: { requiresAuth: true } },
+  {
+    path: '/',
+    component: Home,
+    meta: { requiresAuth: true, fluid: true, title: 'Главная' },
+  },
+  {
+    path: '/profile',
+    component: Profile,
+    meta: { requiresAuth: true, title: 'Мои данные' },
+  },
   {
     path: '/profile/doc/:type',
     component: DocumentView,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: 'Документ' },
   },
   {
     path: '/medical',
     component: Medical,
-    meta: { requiresAuth: true, requiresReferee: true },
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Медосмотр' },
   },
   {
     path: '/camps',
     component: Camps,
-    meta: { requiresAuth: true, requiresReferee: true },
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Сборы' },
   },
   {
     path: '/tickets',
     component: Tickets,
-    meta: { requiresAuth: true, requiresReferee: true },
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Обращения' },
   },
   {
     path: '/tasks',
     component: Tasks,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: 'Задачи' },
   },
   {
     path: '/normatives',
     component: Normatives,
-    meta: { requiresAuth: true, requiresReferee: true },
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Нормативы' },
   },
   {
     path: '/trainings/:id/attendance',
     component: TrainingAttendance,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: 'Посещение тренировки' },
   },
   {
     path: '/admin',
     component: AdminHome,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Администрирование',
+    },
   },
   {
     path: '/admin/users',
     component: AdminUsers,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Пользователи' },
   },
   {
     path: '/admin/users/new',
     component: AdminUserCreate,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Новый пользователь',
+    },
   },
   {
     path: '/admin/users/:id',
     component: AdminUserEdit,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Редактирование пользователя',
+    },
   },
   {
     path: '/admin/medical',
     component: AdminMedicalManagement,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Медицина' },
   },
   {
     path: '/admin/documents',
     component: AdminDocuments,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Документы' },
   },
   {
     path: '/admin/normatives',
     component: AdminNormatives,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Нормативы' },
   },
   {
     path: '/admin/tickets',
     component: AdminTickets,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Обращения' },
   },
   {
     path: '/admin/medical-exams/:id/registrations',
     component: AdminExamRegistrations,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Заявки на медосмотр',
+    },
   },
   {
     path: '/admin/camp-trainings/:id/registrations',
     component: AdminTrainingRegistrations,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Участники тренировки',
+    },
   },
   {
     path: '/admin/grounds',
     component: AdminGrounds,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Сборы' },
   },
   {
     path: '/admin/referee-groups',
@@ -139,32 +167,40 @@ const routes = [
     component: PasswordReset,
     meta: { hideLayout: true },
   },
-  { path: '/login', component: Login, meta: { hideLayout: true } },
-  { path: '/register', component: Register, meta: { hideLayout: true } },
+  {
+    path: '/login',
+    component: Login,
+    meta: { hideLayout: true, title: 'Вход' },
+  },
+  {
+    path: '/register',
+    component: Register,
+    meta: { hideLayout: true, title: 'Регистрация' },
+  },
   {
     path: '/complete-profile',
     component: ProfileWizard,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: 'Заполнение профиля' },
   },
   {
     path: '/awaiting-confirmation',
     component: AwaitingConfirmation,
-    meta: { requiresAuth: true, hideLayout: true },
+    meta: { requiresAuth: true, hideLayout: true, title: 'Подтверждение' },
   },
   {
     path: '/forbidden',
     component: Forbidden,
-    meta: { hideLayout: true },
+    meta: { hideLayout: true, title: 'Доступ запрещён' },
   },
   {
     path: '/error',
     component: ServerError,
-    meta: { hideLayout: true },
+    meta: { hideLayout: true, title: 'Ошибка' },
   },
   {
     path: '/:pathMatch(.*)*',
     component: NotFound,
-    meta: { hideLayout: true },
+    meta: { hideLayout: true, title: 'Страница не найдена' },
   },
 ];
 
@@ -211,6 +247,14 @@ router.beforeEach(async (to, _from, next) => {
     next('/awaiting-confirmation');
   } else {
     next();
+  }
+});
+
+router.afterEach((to) => {
+  if (typeof document !== 'undefined') {
+    const base = 'Пульс';
+    document.title =
+      to.meta && to.meta.title ? `${to.meta.title} — ${base}` : base;
   }
 });
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed, nextTick } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TrainingNormativeResultsModal from '../components/TrainingNormativeResultsModal.vue';
@@ -28,18 +28,6 @@ const finishError = ref('');
 function showAttendance(reg) {
   const alias = reg.role?.alias;
   return alias === 'PARTICIPANT' || alias === 'EQUIPMENT_MANAGER';
-}
-
-function attendanceIcon(reg) {
-  if (reg.present === true) return 'bi-check-lg text-success';
-  if (reg.present === false) return 'bi-x-lg text-danger';
-  return 'bi-question-lg text-muted';
-}
-
-function attendanceTitle(reg) {
-  if (reg.present === true) return 'Присутствовал';
-  if (reg.present === false) return 'Отсутствовал';
-  return 'Не отмечено';
 }
 
 const attendanceMarked = computed(() => training.value?.attendance_marked);
@@ -323,9 +311,9 @@ function openNormatives(reg) {
             :key="group.role ? group.role.id : 'none'"
             class="mb-4"
           >
-            <h5 class="group-heading mb-2 px-2 py-1">
+            <h3 class="group-heading h6 mb-2 px-2 py-1">
               {{ group.role ? group.role.name : 'Без роли' }}
-            </h5>
+            </h3>
             <div class="table-responsive d-none d-sm-block">
               <table class="table admin-table table-striped align-middle mb-0">
                 <thead>
@@ -560,16 +548,6 @@ function openNormatives(reg) {
 </template>
 
 <style scoped>
-.fade-list-enter-active,
-.fade-list-leave-active,
-.fade-list-move {
-  transition: all 0.2s ease;
-}
-.fade-list-enter-from,
-.fade-list-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
 .highlight {
   animation: highlightBg 2s ease-out;
 }

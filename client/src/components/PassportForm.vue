@@ -155,7 +155,7 @@ defineExpose({ validate });
 <template>
   <div class="card">
     <div class="card-body">
-      <h5 class="card-title mb-3">Паспорт</h5>
+      <h2 class="card-title h5 mb-3">Паспорт</h2>
       <div
         v-if="props.locked || Object.keys(props.lockedFields || {}).length"
         class="alert alert-success"

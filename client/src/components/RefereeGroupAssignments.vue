@@ -298,9 +298,9 @@ defineExpose({ refresh });
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">
+            <h2 class="modal-title h5">
               История посещений — {{ historyJudgeName }}
-            </h5>
+            </h2>
             <button
               type="button"
               class="btn-close"

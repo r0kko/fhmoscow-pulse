@@ -1,5 +1,7 @@
 import { body } from 'express-validator';
 
+import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN } from '../config/auth.js';
+
 export const createUserRules = [
   body('first_name').isString().notEmpty(),
   body('last_name').isString().notEmpty(),
@@ -13,7 +15,10 @@ export const createUserRules = [
     .withMessage('invalid_birth_date'),
   body('phone').isMobilePhone(),
   body('email').isEmail(),
-  body('password').isString().notEmpty(),
+  body('password')
+    .isString()
+    .isLength({ min: PASSWORD_MIN_LENGTH })
+    .matches(PASSWORD_PATTERN),
 ];
 
 export const updateUserRules = [
@@ -33,4 +38,9 @@ export const updateUserRules = [
   body('email').optional().isEmail(),
 ];
 
-export const resetPasswordRules = [body('password').isString().notEmpty()];
+export const resetPasswordRules = [
+  body('password')
+    .isString()
+    .isLength({ min: PASSWORD_MIN_LENGTH })
+    .matches(PASSWORD_PATTERN),
+];

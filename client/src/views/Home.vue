@@ -111,7 +111,7 @@ async function loadUpcoming() {
       </h3>
       <div v-if="showUpcoming" class="card section-card mb-2 text-start">
         <div class="card-body">
-          <h5 class="card-title mb-3">Ближайшие события</h5>
+          <h2 class="card-title h5 mb-3">Ближайшие события</h2>
           <div v-if="loadingUpcoming" class="text-center py-3">
             <div class="spinner-border" role="status" aria-label="Загрузка">
               <span class="visually-hidden">Загрузка…</span>
@@ -128,7 +128,7 @@ async function loadUpcoming() {
       </div>
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h5 class="card-title mb-3">Подготовка к сезону</h5>
+          <h2 class="card-title h5 mb-3">Подготовка к сезону</h2>
           <div class="scroll-container">
             <component
               v-for="item in preparationSections"
@@ -150,7 +150,7 @@ async function loadUpcoming() {
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h5 class="card-title mb-3">Рабочие сервисы</h5>
+          <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
           <div class="scroll-container">
             <component
               v-for="item in workSections"
@@ -172,7 +172,7 @@ async function loadUpcoming() {
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h5 class="card-title mb-3">Документы и формальности</h5>
+          <h2 class="card-title h5 mb-3">Документы и формальности</h2>
           <div class="scroll-container">
             <component
               v-for="item in docsSections"

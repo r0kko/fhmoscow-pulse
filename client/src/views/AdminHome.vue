@@ -21,7 +21,7 @@ const refereeSections = [
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h5 class="card-title mb-3">Пользователи системы</h5>
+          <h2 class="card-title h5 mb-3">Пользователи системы</h2>
           <div class="scroll-container">
             <RouterLink
               v-for="item in userSections"
@@ -41,7 +41,7 @@ const refereeSections = [
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h5 class="card-title mb-3">Управление судейским корпусом</h5>
+          <h2 class="card-title h5 mb-3">Управление судейским корпусом</h2>
           <div class="scroll-container">
             <RouterLink
               v-for="item in refereeSections"

@@ -374,10 +374,10 @@ defineExpose({ refresh });
         <div class="row g-2 align-items-end mb-3">
           <div class="col-12 col-sm">
             <input
+              v-model="search"
               type="text"
               class="form-control"
               placeholder="ФИО судьи"
-              v-model="search"
             />
           </div>
           <div class="col-6 col-sm-auto">
@@ -453,8 +453,8 @@ defineExpose({ refresh });
                   </button>
                   <button
                     class="btn btn-sm btn-danger"
-                    @click="removeResult(r)"
                     :disabled="deletingId === r.id"
+                    @click="removeResult(r)"
                   >
                     <span
                       v-if="deletingId === r.id"
@@ -471,8 +471,8 @@ defineExpose({ refresh });
       </div>
     </div>
     <nav
-      class="mt-3 d-flex align-items-center justify-content-between"
       v-if="results.length"
+      class="mt-3 d-flex align-items-center justify-content-between"
     >
       <select
         v-model.number="pageSize"
@@ -489,9 +489,9 @@ defineExpose({ refresh });
         <div class="modal-content">
           <form @submit.prevent="step === 1 ? goNext() : save()">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h2 class="modal-title h5">
                 {{ editing ? 'Изменить результат' : 'Добавить результат' }}
-              </h5>
+              </h2>
               <button
                 type="button"
                 class="btn-close"
@@ -581,9 +581,9 @@ defineExpose({ refresh });
                     <div class="form-floating">
                       <input
                         id="resMin"
+                        v-model.number="minutes"
                         type="number"
                         min="0"
-                        v-model.number="minutes"
                         class="form-control"
                         placeholder="Минуты"
                         required
@@ -595,10 +595,10 @@ defineExpose({ refresh });
                     <div class="form-floating">
                       <input
                         id="resSec"
+                        v-model.number="seconds"
                         type="number"
                         min="0"
                         max="59"
-                        v-model.number="seconds"
                         class="form-control"
                         placeholder="Секунды"
                         required
@@ -610,8 +610,8 @@ defineExpose({ refresh });
                 <div v-else class="form-floating mb-3">
                   <input
                     id="resValue"
-                    type="number"
                     v-model="form.value"
+                    type="number"
                     :step="
                       currentUnit?.alias === 'SECONDS' && currentUnit.fractional
                         ? '0.01'

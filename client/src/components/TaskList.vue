@@ -22,7 +22,7 @@ onMounted(loadTasks);
 
 <template>
   <div>
-    <h5 class="card-title mb-3">Задачи</h5>
+    <h2 class="card-title h5 mb-3">Задачи</h2>
     <div v-if="loading" class="text-center py-3">
       <div class="spinner-border" role="status" aria-label="Загрузка">
         <span class="visually-hidden">Загрузка…</span>
@@ -33,7 +33,7 @@ onMounted(loadTasks);
       <li v-for="task in tasks" :key="task.id" class="list-group-item">
         <div class="d-flex justify-content-between">
           <div>
-            <h6 class="mb-1">{{ task.title }}</h6>
+            <h3 class="h6 mb-1">{{ task.title }}</h3>
             <p v-if="task.description" class="mb-1 small text-muted">
               {{ task.description }}
             </p>

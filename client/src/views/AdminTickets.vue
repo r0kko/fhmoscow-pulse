@@ -91,6 +91,7 @@ async function changeStatus(ticket, alias) {
     <h1 class="mb-3">Обращения</h1>
     <div class="card section-card tile fade-in shadow-sm mb-3">
       <div class="card-body">
+        <h2 class="h5 mb-3">Фильтры</h2>
         <div class="row g-2 align-items-end mb-3">
           <div class="col-12 col-sm">
             <input

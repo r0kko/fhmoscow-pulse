@@ -33,6 +33,8 @@ export default {
     try {
       await passwordResetService.verifyCode(user, code);
       await userService.resetPassword(user.id, password, user.id);
+      // Bump token version to invalidate any existing refresh tokens
+      await userService.bumpTokenVersion(user.id);
       return res.json({ message: 'password_updated' });
     } catch (err) {
       return sendError(res, err);

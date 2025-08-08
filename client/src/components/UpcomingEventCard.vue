@@ -48,7 +48,7 @@ function formatStart(date) {
       <div class="card-body d-flex align-items-start p-3">
         <i :class="`bi ${icon} fs-3 me-3 text-brand`" aria-hidden="true"></i>
         <div>
-          <h6 class="card-title mb-1">{{ title }}</h6>
+          <h3 class="card-title h6 mb-1">{{ title }}</h3>
           <p class="mb-1 small">
             <i class="bi bi-clock me-1" aria-hidden="true"></i>
             {{ formatStart(event.start_at) }}

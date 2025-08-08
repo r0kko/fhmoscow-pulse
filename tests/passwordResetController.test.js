@@ -18,10 +18,11 @@ jest.unstable_mockModule('../src/services/passwordResetService.js', () => ({
 }));
 
 const resetPasswordMock = jest.fn();
+const bumpTokenVersionMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
-  default: { resetPassword: resetPasswordMock },
+  default: { resetPassword: resetPasswordMock, bumpTokenVersion: bumpTokenVersionMock },
 }));
 
 const findUserMock = jest.fn();

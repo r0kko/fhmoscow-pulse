@@ -269,7 +269,7 @@ async function loadJudges() {
       <div
         class="card-header d-flex justify-content-between align-items-center"
       >
-        <h5 class="mb-0">Медицинские заключения</h5>
+        <h2 class="h5 mb-0">Медицинские заключения</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
@@ -356,9 +356,9 @@ async function loadJudges() {
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h2 class="modal-title h5">
                 {{ editing ? 'Изменить' : 'Добавить' }} справку
-              </h5>
+              </h2>
               <button
                 type="button"
                 class="btn-close"
@@ -445,7 +445,7 @@ async function loadJudges() {
                 <label for="valid">Действительно до</label>
               </div>
               <div class="border-top pt-3 mt-3">
-                <h6 class="mb-2">Файлы</h6>
+                <h3 class="h6 mb-2">Файлы</h3>
                 <div v-if="fileError" class="alert alert-danger">
                   {{ fileError }}
                 </div>

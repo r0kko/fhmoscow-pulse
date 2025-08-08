@@ -14,6 +14,5 @@ export const loginRules = [
 /* --------------------------------------------------------------------------
  * /auth/refresh – refresh_token
  * -------------------------------------------------------------------------*/
-export const refreshRules = [
-  body('refresh_token').optional().isString().notEmpty(),
-];
+// Refresh now only accepts secure HTTP-only cookie; no body param
+export const refreshRules = [];

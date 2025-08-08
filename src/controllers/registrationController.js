@@ -86,6 +86,7 @@ export default {
       await addressService.fetchFromLegacy(user.id);
       await bankAccountService.fetchFromLegacy(user.id);
       await passportService.fetchFromLegacy(user.id);
+      await user.increment('token_version');
       const updated = await user.reload();
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias

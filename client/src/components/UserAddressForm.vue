@@ -140,10 +140,10 @@ function applySuggestion(sug) {
   <div>
     <div class="card mt-4">
       <div class="card-body">
-        <h5 class="card-title mb-3">Адреса</h5>
+        <h2 class="card-title h5 mb-3">Адреса</h2>
         <div v-for="type in addressTypes" :key="type.alias" class="mb-4">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="mb-0">{{ type.name }}</h6>
+            <h3 class="h6 mb-0">{{ type.name }}</h3>
             <button
               type="button"
               class="btn btn-link p-0"
@@ -211,13 +211,13 @@ function applySuggestion(sug) {
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h2 class="modal-title h5">
                 {{
                   addresses[current]?.result
                     ? 'Изменить адрес'
                     : 'Добавить адрес'
                 }}
-              </h5>
+              </h2>
               <button
                 type="button"
                 class="btn-close"

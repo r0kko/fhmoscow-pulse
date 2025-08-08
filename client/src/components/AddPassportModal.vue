@@ -174,7 +174,7 @@ async function save() {
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Добавить паспорт</h5>
+          <h2 class="modal-title h5">Добавить паспорт</h2>
           <button
             type="button"
             class="btn-close"
@@ -209,14 +209,14 @@ async function save() {
               <div class="invalid-feedback">{{ errors.series }}</div>
             </div>
             <button
+              v-if="form.document_type === 'CIVIL' && form.country === 'RU'"
               type="button"
               class="btn btn-outline-secondary"
               @click="checkPassport"
-              v-if="form.document_type === 'CIVIL' && form.country === 'RU'"
             >
               Проверить паспорт
             </button>
-            <div class="mt-2" v-if="checkStatus.message">
+            <div v-if="checkStatus.message" class="mt-2">
               <i
                 :class="{
                   'bi bi-check-circle text-success':
@@ -236,10 +236,10 @@ async function save() {
               <label class="form-label">Код подразделения</label>
               <input
                 v-model="form.issuing_authority_code"
-                @input="onIssuingCodeInput"
                 maxlength="7"
                 class="form-control"
                 :class="{ 'is-invalid': errors.issuing_authority_code }"
+                @input="onIssuingCodeInput"
               />
               <div class="invalid-feedback">
                 {{ errors.issuing_authority_code }}
@@ -278,29 +278,29 @@ async function save() {
             <div class="mb-3">
               <label class="form-label">Дата выдачи</label>
               <input
-                type="date"
                 v-model="form.issue_date"
+                type="date"
                 class="form-control"
                 :class="{ 'is-invalid': errors.issue_date }"
               />
               <div class="invalid-feedback">{{ errors.issue_date }}</div>
             </div>
             <div
-              class="mb-3"
               v-if="form.country !== 'RU' || form.document_type !== 'CIVIL'"
+              class="mb-3"
             >
               <label class="form-label">Действителен до</label>
               <input
-                type="date"
                 v-model="form.valid_until"
+                type="date"
                 class="form-control"
               />
             </div>
-            <div class="mb-3" v-else>
+            <div v-else class="mb-3">
               <label class="form-label">Действителен до</label>
               <input
-                type="date"
                 v-model="form.valid_until"
+                type="date"
                 class="form-control"
                 disabled
               />
@@ -313,25 +313,25 @@ async function save() {
         </div>
         <div class="modal-footer">
           <button
+            v-if="step > 1"
             type="button"
             class="btn btn-secondary"
             @click="prev"
-            v-if="step > 1"
           >
             Назад
           </button>
           <button
+            v-if="step < 3"
             type="button"
             class="btn btn-brand"
-            v-if="step < 3"
             @click="next"
           >
             Далее
           </button>
           <button
+            v-if="step === 3"
             type="button"
             class="btn btn-brand"
-            v-if="step === 3"
             @click="save"
           >
             Сохранить

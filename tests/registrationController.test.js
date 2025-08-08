@@ -163,7 +163,7 @@ test('start returns 400 on validation errors', async () => {
 });
 
 test('finish issues tokens after valid code', async () => {
-  const user = { id: 'u1', reload: jest.fn() };
+  const user = { id: 'u1', reload: jest.fn(), increment: jest.fn() };
   const updated = {
     id: 'u1',
     getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),

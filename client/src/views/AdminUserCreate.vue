@@ -135,7 +135,7 @@ async function copyToClipboard(text) {
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Пароль пользователя</h5>
+            <h2 class="modal-title h5">Пароль пользователя</h2>
             <button
               type="button"
               class="btn-close"

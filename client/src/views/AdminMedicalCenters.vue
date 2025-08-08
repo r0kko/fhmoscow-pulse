@@ -184,7 +184,7 @@ async function removeCenter(center) {
       <div
         class="card-header d-flex justify-content-between align-items-center"
       >
-        <h5 class="mb-0">Медицинские центры</h5>
+        <h2 class="h5 mb-0">Медицинские центры</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
@@ -272,9 +272,9 @@ async function removeCenter(center) {
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h2 class="modal-title h5">
                 {{ editing ? 'Изменить центр' : 'Добавить центр' }}
-              </h5>
+              </h2>
               <button
                 type="button"
                 class="btn-close"

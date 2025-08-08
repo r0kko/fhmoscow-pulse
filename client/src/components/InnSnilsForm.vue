@@ -190,7 +190,7 @@ async function removeItem() {
       <div class="modal-content">
         <form @submit.prevent="save">
           <div class="modal-header">
-            <h5 class="modal-title">
+            <h2 class="modal-title h5">
               {{
                 mode === 'inn'
                   ? inn
@@ -200,7 +200,7 @@ async function removeItem() {
                     ? 'Изменить СНИЛС'
                     : 'Добавить СНИЛС'
               }}
-            </h5>
+            </h2>
             <button
               type="button"
               class="btn-close"
@@ -213,9 +213,9 @@ async function removeItem() {
               <input
                 id="innModal"
                 v-model="innInput"
-                @input="onInnInput"
                 class="form-control"
                 placeholder="ИНН"
+                @input="onInnInput"
               />
               <label for="innModal">ИНН (12 цифр)</label>
             </div>
@@ -223,9 +223,9 @@ async function removeItem() {
               <input
                 id="snilsModal"
                 v-model="snilsInput"
-                @input="onSnilsInput"
                 class="form-control"
                 placeholder="СНИЛС"
+                @input="onSnilsInput"
               />
               <label for="snilsModal">СНИЛС</label>
             </div>

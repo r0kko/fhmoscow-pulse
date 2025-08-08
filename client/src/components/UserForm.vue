@@ -160,7 +160,7 @@ defineExpose({ validate, unlock, lock, editing });
     <div class="card mb-4">
       <div class="card-body">
         <div class="d-flex justify-content-between mb-3">
-          <h5 class="card-title mb-0">Основные данные и контакты</h5>
+          <h2 class="card-title h5 mb-0">Основные данные и контакты</h2>
           <button
             v-if="!editing && !props.locked"
             type="button"
@@ -177,11 +177,11 @@ defineExpose({ validate, unlock, lock, editing });
                 <input
                   id="lastName"
                   v-model="form.last_name"
-                  @blur="onFioBlur"
                   class="form-control"
                   :class="{ 'is-invalid': errors.last_name }"
                   placeholder="Фамилия"
                   required
+                  @blur="onFioBlur"
                 />
                 <label for="lastName">Фамилия</label>
                 <div class="invalid-feedback">{{ errors.last_name }}</div>
@@ -206,11 +206,11 @@ defineExpose({ validate, unlock, lock, editing });
                 <input
                   id="firstName"
                   v-model="form.first_name"
-                  @blur="onFioBlur"
                   class="form-control"
                   :class="{ 'is-invalid': errors.first_name }"
                   placeholder="Имя"
                   required
+                  @blur="onFioBlur"
                 />
                 <label for="firstName">Имя</label>
                 <div class="invalid-feedback">{{ errors.first_name }}</div>
@@ -235,9 +235,9 @@ defineExpose({ validate, unlock, lock, editing });
                 <input
                   id="patronymic"
                   v-model="form.patronymic"
-                  @blur="onFioBlur"
                   class="form-control"
                   placeholder="Отчество"
+                  @blur="onFioBlur"
                 />
                 <label for="patronymic">Отчество</label>
               </div>
@@ -260,8 +260,8 @@ defineExpose({ validate, unlock, lock, editing });
               <div class="form-floating">
                 <input
                   id="birthDate"
-                  type="date"
                   v-model="form.birth_date"
+                  type="date"
                   class="form-control"
                   :class="{ 'is-invalid': errors.birth_date }"
                   placeholder="Дата рождения"
@@ -295,12 +295,12 @@ defineExpose({ validate, unlock, lock, editing });
                 <input
                   id="phone"
                   v-model="phoneInput"
-                  @input="onPhoneInput"
-                  @keydown="onPhoneKeydown"
                   class="form-control"
                   :class="{ 'is-invalid': errors.phone }"
                   placeholder="Телефон"
                   required
+                  @input="onPhoneInput"
+                  @keydown="onPhoneKeydown"
                 />
                 <label for="phone">Телефон</label>
                 <div class="invalid-feedback">{{ errors.phone }}</div>
@@ -310,8 +310,8 @@ defineExpose({ validate, unlock, lock, editing });
               <div class="form-floating">
                 <input
                   id="email"
-                  type="email"
                   v-model="form.email"
+                  type="email"
                   class="form-control"
                   :class="{ 'is-invalid': errors.email }"
                   placeholder="Email"

@@ -703,11 +703,11 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 class="card training-card mb-2"
               >
                 <div class="card-body p-2">
-                  <h6 class="mb-1">{{ st.name }}</h6>
+                  <h3 class="h6 mb-1">{{ st.name }}</h3>
                   <p class="mb-1">{{ st.address?.result }}</p>
                   <p class="mb-1">Вместимость: {{ st.capacity }}</p>
                   <p class="mb-1">Телефон: {{ formatPhone(st.phone) }}</p>
-                  <p class="mb-1" v-if="st.website">
+                  <p v-if="st.website" class="mb-1">
                     <a :href="st.website" target="_blank">{{ st.website }}</a>
                   </p>
 
@@ -733,21 +733,21 @@ async function toggleTrainingGroup(training, groupId, checked) {
             </div>
           </div>
         </div>
-        <nav class="mt-3" v-if="totalPages > 1">
+        <nav v-if="totalPages > 1" class="mt-3">
           <ul class="pagination justify-content-center">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <button
                 class="page-link"
-                @click="currentPage--"
                 :disabled="currentPage === 1"
+                @click="currentPage--"
               >
                 Пред
               </button>
             </li>
             <li
-              class="page-item"
               v-for="p in totalPages"
               :key="p"
+              class="page-item"
               :class="{ active: currentPage === p }"
             >
               <button class="page-link" @click="currentPage = p">
@@ -760,8 +760,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
             >
               <button
                 class="page-link"
-                @click="currentPage++"
                 :disabled="currentPage === totalPages"
+                @click="currentPage++"
               >
                 След
               </button>
@@ -821,7 +821,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               >
                 <div class="card-body p-2 d-flex justify-content-between">
                   <div>
-                    <h6 class="mb-1">{{ t.name }}</h6>
+                    <h3 class="h6 mb-1">{{ t.name }}</h3>
                     <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
                   </div>
                   <button
@@ -839,21 +839,21 @@ async function toggleTrainingGroup(training, groupId, checked) {
           </div>
         </div>
       </div>
-      <nav class="mt-3" v-if="typesTotalPages > 1">
+      <nav v-if="typesTotalPages > 1" class="mt-3">
         <ul class="pagination justify-content-center">
           <li class="page-item" :class="{ disabled: typesPage === 1 }">
             <button
               class="page-link"
-              @click="typesPage--"
               :disabled="typesPage === 1"
+              @click="typesPage--"
             >
               Пред
             </button>
           </li>
           <li
-            class="page-item"
             v-for="p in typesTotalPages"
             :key="p"
+            class="page-item"
             :class="{ active: typesPage === p }"
           >
             <button class="page-link" @click="typesPage = p">{{ p }}</button>
@@ -864,8 +864,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
           >
             <button
               class="page-link"
-              @click="typesPage++"
               :disabled="typesPage === typesTotalPages"
+              @click="typesPage++"
             >
               След
             </button>
@@ -878,9 +878,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
           <div class="modal-content">
             <form @submit.prevent="saveType">
               <div class="modal-header">
-                <h5 class="modal-title">
+                <h2 class="modal-title h5">
                   {{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}
-                </h5>
+                </h2>
                 <button
                   type="button"
                   class="btn-close"
@@ -955,8 +955,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
           <div>
             <button
               class="btn btn-light me-2"
-              @click="openTrainingFilters"
               title="Фильтры"
+              @click="openTrainingFilters"
             >
               <i class="bi bi-funnel"></i>
             </button>
@@ -1086,15 +1086,15 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     <p class="mb-1">
                       {{ t.registered_count }} / {{ t.capacity ?? '—' }}
                     </p>
-                    <p class="mb-1" v-if="t.coaches?.length">
+                    <p v-if="t.coaches?.length" class="mb-1">
                       Тренеры: {{ t.coaches.map(shortName).join(', ') }}
                     </p>
-                    <p class="mb-1" v-else>Тренеры: —</p>
-                    <p class="mb-1" v-if="t.equipment_managers?.length">
+                    <p v-else class="mb-1">Тренеры: —</p>
+                    <p v-if="t.equipment_managers?.length" class="mb-1">
                       Инвентарь:
                       {{ t.equipment_managers.map(shortName).join(', ') }}
                     </p>
-                    <p class="mb-1" v-else>Инвентарь: —</p>
+                    <p v-else class="mb-1">Инвентарь: —</p>
                   </div>
                   <div class="text-end">
                     <RouterLink
@@ -1124,9 +1124,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     class="form-check form-check-inline"
                   >
                     <input
+                      :id="`tm-${t.id}-${g.id}`"
                       class="form-check-input"
                       type="checkbox"
-                      :id="`tm-${t.id}-${g.id}`"
                       :checked="t.groups?.some((gr) => gr.id === g.id)"
                       @change="
                         toggleTrainingGroup(t, g.id, $event.target.checked)
@@ -1144,8 +1144,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
         </div>
       </div>
       <nav
-        class="mt-3 d-flex align-items-center justify-content-between"
         v-if="trainings.length"
+        class="mt-3 d-flex align-items-center justify-content-between"
       >
         <select
           v-model.number="trainingsPageSize"
@@ -1159,16 +1159,16 @@ async function toggleTrainingGroup(training, groupId, checked) {
           <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
             <button
               class="page-link"
-              @click="trainingsPage--"
               :disabled="trainingsPage === 1"
+              @click="trainingsPage--"
             >
               Пред
             </button>
           </li>
           <li
-            class="page-item"
             v-for="p in trainingsTotalPages"
             :key="p"
+            class="page-item"
             :class="{ active: trainingsPage === p }"
           >
             <button class="page-link" @click="trainingsPage = p">
@@ -1181,8 +1181,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
           >
             <button
               class="page-link"
-              @click="trainingsPage++"
               :disabled="trainingsPage === trainingsTotalPages"
+              @click="trainingsPage++"
             >
               След
             </button>
@@ -1395,10 +1395,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 <textarea
                   id="stadAddr"
                   v-model="form.address.result"
-                  @blur="onAddressBlur"
                   class="form-control"
                   rows="2"
                   placeholder="Адрес"
+                  @blur="onAddressBlur"
                 ></textarea>
                 <label for="stadAddr">Адрес</label>
                 <ul
@@ -1438,12 +1438,12 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <div class="form-floating mb-3">
                 <input
                   id="stadPhone"
-                  type="tel"
                   v-model="phoneInput"
-                  @input="onPhoneInput"
-                  @keydown="onPhoneKeydown"
+                  type="tel"
                   class="form-control"
                   placeholder="+7 (___) ___-__-__"
+                  @input="onPhoneInput"
+                  @keydown="onPhoneKeydown"
                 />
                 <label for="stadPhone">Телефон</label>
               </div>

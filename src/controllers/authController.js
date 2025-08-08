@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 
 import authService from '../services/authService.js';
+import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 import { COOKIE_NAME } from '../config/auth.js';
@@ -20,6 +21,8 @@ export default {
 
     try {
       const user = await authService.verifyCredentials(phone, password);
+      // Rotate session version on successful login to invalidate prior refresh tokens
+      await user.increment('token_version');
       const updated = await user.reload({ include: [UserStatus] });
       const { accessToken, refreshToken } = authService.issueTokens(updated);
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
@@ -52,6 +55,14 @@ export default {
     if (req.session) {
       req.session.destroy(() => {});
     }
+    // Invalidate existing refresh tokens across devices
+    if (req.user?.id) {
+      try {
+        await userService.bumpTokenVersion(req.user.id);
+      } catch {
+        // best-effort; still clear cookie
+      }
+    }
     clearRefreshCookie(res);
     return res.status(200).json({ message: 'Logged out' });
   },
@@ -72,10 +83,8 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const token =
-      req.cookies?.[COOKIE_NAME] ??
-      req.body?.[COOKIE_NAME] ??
-      req.body?.['refresh_token'];
+    // Only accept refresh token from secure HTTP-only cookie
+    const token = req.cookies?.[COOKIE_NAME];
     if (!token) {
       return res.status(401).json({ error: 'Отсутствует токен обновления' });
     }

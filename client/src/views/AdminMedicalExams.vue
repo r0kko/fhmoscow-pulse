@@ -161,7 +161,7 @@ function openRegistrations(exam) {
       <div
         class="card-header d-flex justify-content-between align-items-center"
       >
-        <h5 class="mb-0">Расписание медосмотров</h5>
+        <h2 class="h5 mb-0">Расписание медосмотров</h2>
         <button class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
@@ -249,9 +249,9 @@ function openRegistrations(exam) {
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h2 class="modal-title h5">
                 {{ editing ? 'Изменить запись' : 'Добавить запись' }}
-              </h5>
+              </h2>
               <button
                 type="button"
                 class="btn-close"

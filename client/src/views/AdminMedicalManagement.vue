@@ -19,6 +19,7 @@ const activeTab = ref('certificates');
           <li class="breadcrumb-item active" aria-current="page">Медицина</li>
         </ol>
       </nav>
+      <h1 class="mb-3">Медицина</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body p-2">
           <ul

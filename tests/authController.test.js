@@ -16,6 +16,12 @@ jest.unstable_mockModule('../src/services/authService.js', () => ({
   },
 }));
 
+const bumpTokenVersionMock = jest.fn();
+jest.unstable_mockModule('../src/services/userService.js', () => ({
+  __esModule: true,
+  default: { bumpTokenVersion: bumpTokenVersionMock },
+}));
+
 const setRefreshCookieMock = jest.fn();
 const clearRefreshCookieMock = jest.fn();
 jest.unstable_mockModule('../src/utils/cookie.js', () => ({
@@ -77,6 +83,7 @@ test('login does not include sensitive fields in response', async () => {
     id: '1',
     phone: '123',
     password: 'hash',
+    increment: jest.fn().mockResolvedValue(undefined),
     createdAt: 't',
     updatedAt: 't',
     deletedAt: null,
@@ -101,6 +108,7 @@ test('login does not include sensitive fields in response', async () => {
   expect(response.user.deletedAt).toBeUndefined();
   expect(Array.isArray(response.roles)).toBe(true);
   expect(verifyCredentialsMock).toHaveBeenCalledWith('123', 'pass');
+  expect(user.increment).toHaveBeenCalledWith('token_version');
   expect(user.reload).toHaveBeenCalled();
   expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
 });
@@ -120,6 +128,7 @@ test('login validation failure returns 400', async () => {
 test('login returns next_step when registration not complete', async () => {
   const user = {
     id: '1',
+    increment: jest.fn().mockResolvedValue(undefined),
     getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
     reload: jest.fn().mockResolvedValue({
       id: '1',
@@ -145,6 +154,7 @@ test('login returns next_step when registration not complete', async () => {
 test('login returns awaiting_confirmation flag', async () => {
   const user = {
     id: '2',
+    increment: jest.fn().mockResolvedValue(undefined),
     getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
     reload: jest.fn().mockResolvedValue({
       id: '2',
@@ -178,6 +188,16 @@ test('logout clears refresh cookie and destroys session', async () => {
   expect(clearRefreshCookieMock).toHaveBeenCalledWith(res);
   expect(res.status).toHaveBeenCalledWith(200);
   expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' });
+});
+
+test('logout bumps token version when user present', async () => {
+  const destroy = jest.fn();
+  const req = { session: { destroy }, user: { id: 'u1' } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+  await authController.logout(req, res);
+
+  expect(bumpTokenVersionMock).toHaveBeenCalledWith('u1');
 });
 
 test('me returns sanitized user with status', async () => {

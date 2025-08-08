@@ -3,6 +3,7 @@ import express from 'express';
 import authController from '../controllers/authController.js';
 import auth from '../middlewares/auth.js';
 import { loginRules, refreshRules } from '../validators/authValidators.js';
+import loginRateLimiter from '../middlewares/loginRateLimiter.js';
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ const router = express.Router();
  *       200:
  *         description: Successful login
  */
-router.post('/login', loginRules, authController.login);
+router.post('/login', loginRateLimiter, loginRules, authController.login);
 
 /**
  * @swagger

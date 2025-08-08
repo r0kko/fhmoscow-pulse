@@ -17,10 +17,14 @@ export function signAccessToken(user) {
 }
 
 export function signRefreshToken(user) {
-  return jwt.sign({ sub: user.id, type: 'refresh' }, JWT_SECRET, {
-    algorithm: JWT_ALG,
-    expiresIn: REFRESH_TTL,
-  });
+  return jwt.sign(
+    { sub: user.id, type: 'refresh', ver: user.token_version },
+    JWT_SECRET,
+    {
+      algorithm: JWT_ALG,
+      expiresIn: REFRESH_TTL,
+    }
+  );
 }
 
 /* ---------- verify helpers ------------------------------------------------ */

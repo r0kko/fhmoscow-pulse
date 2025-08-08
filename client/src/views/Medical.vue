@@ -252,7 +252,9 @@ function onFileChange(e) {
             <div
               class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3"
             >
-              <h5 class="card-title mb-0 text-brand">Действующее заключение</h5>
+              <h2 class="card-title h5 mb-0 text-brand">
+                Действующее заключение
+              </h2>
               <span
                 class="badge d-flex align-items-center gap-1"
                 :class="statusInfo.class"
@@ -360,9 +362,9 @@ function onFileChange(e) {
           class="card section-card tile fade-in shadow-sm mb-3 mt-3"
         >
           <div class="card-body">
-            <h5 class="card-title mb-3 text-brand">
+            <h2 class="card-title h5 mb-3 text-brand">
               Ближайшие запланированные обследования
-            </h5>
+            </h2>
             <div v-if="examsError" class="alert alert-danger">
               {{ examsError }}
             </div>
@@ -388,9 +390,9 @@ function onFileChange(e) {
       </div>
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
-          <h5 class="card-title mb-3 text-brand">
+          <h2 class="card-title h5 mb-3 text-brand">
             Архив медицинских заключений
-          </h5>
+          </h2>
           <div v-if="history.length">
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
               <div v-for="item in history" :key="item.id" class="col">
@@ -443,7 +445,7 @@ function onFileChange(e) {
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Загрузка справки</h5>
+          <h2 class="modal-title h5">Загрузка справки</h2>
           <button
             type="button"
             class="btn-close"
