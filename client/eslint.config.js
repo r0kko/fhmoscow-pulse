@@ -4,6 +4,9 @@ import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 
 export default [
+  {
+    ignores: ['dist/**', 'node_modules/**'],
+  },
   // Vue SFC rules
   ...vue.configs['flat/recommended'],
   // Disable stylistic rules that conflict with Prettier
