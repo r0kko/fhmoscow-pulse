@@ -4,7 +4,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import { cleanPassport, suggestFmsUnit } from '../dadata.js';
 
 const props = defineProps({
-  user: Object,
+  user: { type: Object, default: null },
 });
 const emit = defineEmits(['saved']);
 

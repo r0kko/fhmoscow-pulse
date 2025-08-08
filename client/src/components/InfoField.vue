@@ -29,12 +29,14 @@
 </template>
 
 <script setup>
+defineEmits(['copy']);
+
 defineProps({
-  id: String,
-  label: String,
-  icon: String,
-  value: [String, Number],
+  id: { type: String, required: true },
+  label: { type: String, required: true },
+  icon: { type: String, default: null },
+  value: { type: [String, Number], default: '' },
   placeholder: { type: String, default: '—' },
-  copyable: Boolean,
+  copyable: { type: Boolean, default: false },
 });
 </script>

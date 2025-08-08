@@ -4,7 +4,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 
 const props = defineProps({
-  userId: String,
+  userId: { type: String, default: null },
   editable: { type: Boolean, default: true },
   showOkved: { type: Boolean, default: true },
   modalOnly: { type: Boolean, default: false },

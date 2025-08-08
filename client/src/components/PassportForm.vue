@@ -3,10 +3,10 @@ import { reactive, watch, ref, computed } from 'vue';
 import { suggestFmsUnit } from '../dadata.js';
 
 const props = defineProps({
-  modelValue: Object,
+  modelValue: { type: Object, default: () => ({}) },
   locked: { type: Boolean, default: false },
-  lockedFields: Object,
-  birthDate: String,
+  lockedFields: { type: Object, default: () => ({}) },
+  birthDate: { type: String, default: '' },
 });
 const emit = defineEmits(['update:modelValue']);
 

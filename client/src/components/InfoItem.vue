@@ -7,8 +7,8 @@
 
 <script setup>
 defineProps({
-  label: String,
-  value: [String, Number],
+  label: { type: String, required: true },
+  value: { type: [String, Number], default: '' },
   placeholder: { type: String, default: '—' },
 });
 </script>

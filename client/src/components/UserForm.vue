@@ -3,9 +3,9 @@ import { reactive, watch, ref } from 'vue';
 import { suggestFio, cleanFio } from '../dadata.js';
 
 const props = defineProps({
-  modelValue: Object,
-  isNew: Boolean,
-  locked: Boolean,
+  modelValue: { type: Object, default: () => ({}) },
+  isNew: { type: Boolean, default: false },
+  locked: { type: Boolean, default: false },
   sexes: { type: Array, default: () => [] },
 });
 const emit = defineEmits(['update:modelValue', 'editing-changed']);
