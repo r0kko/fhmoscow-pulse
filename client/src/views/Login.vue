@@ -105,14 +105,14 @@ async function login() {
           <input
             id="phone"
             v-model="phoneInput"
-            @input="onPhoneInput"
-            @keydown="onPhoneKeydown"
             type="tel"
             class="form-control"
             placeholder="+7 (___) ___-__-__"
             autocomplete="tel"
             autofocus
             required
+            @input="onPhoneInput"
+            @keydown="onPhoneKeydown"
           />
           <label for="phone">Телефон</label>
         </div>

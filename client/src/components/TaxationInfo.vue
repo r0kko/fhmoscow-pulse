@@ -180,7 +180,7 @@ defineExpose({ openModal });
               </div>
             </div>
           </div>
-          <div class="col" v-if="taxation.registration_date">
+          <div v-if="taxation.registration_date" class="col">
             <div class="input-group">
               <span class="input-group-text"
                 ><i class="bi bi-calendar"></i
@@ -198,7 +198,7 @@ defineExpose({ openModal });
               </div>
             </div>
           </div>
-          <div class="col" v-if="taxation.ogrn">
+          <div v-if="taxation.ogrn" class="col">
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-hash"></i></span>
               <div class="form-floating flex-grow-1">
@@ -214,7 +214,7 @@ defineExpose({ openModal });
               </div>
             </div>
           </div>
-          <div class="col" v-if="props.showOkved && taxation.okved">
+          <div v-if="props.showOkved && taxation.okved" class="col">
             <div class="input-group">
               <span class="input-group-text"
                 ><i class="bi bi-briefcase"></i
@@ -297,7 +297,7 @@ defineExpose({ openModal });
                   <label for="prevCheck">Проверено</label>
                 </div>
               </div>
-              <div class="col" v-if="preview.registration_date">
+              <div v-if="preview.registration_date" class="col">
                 <div class="form-floating">
                   <input
                     id="prevReg"
@@ -310,7 +310,7 @@ defineExpose({ openModal });
                   <label for="prevReg">Регистрация</label>
                 </div>
               </div>
-              <div class="col" v-if="preview.ogrn">
+              <div v-if="preview.ogrn" class="col">
                 <div class="form-floating">
                   <input
                     id="prevOgrn"
@@ -323,7 +323,7 @@ defineExpose({ openModal });
                   <label for="prevOgrn">ОГРН</label>
                 </div>
               </div>
-              <div class="col" v-if="props.showOkved && preview.okved">
+              <div v-if="props.showOkved && preview.okved" class="col">
                 <div class="form-floating">
                   <input
                     id="prevOkved"
@@ -346,8 +346,8 @@ defineExpose({ openModal });
           <button
             type="button"
             class="btn btn-brand"
-            @click="save"
             :disabled="!canSave"
+            @click="save"
           >
             Сохранить
           </button>

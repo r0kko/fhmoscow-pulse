@@ -244,10 +244,10 @@ function applySuggestion(sug) {
                 <textarea
                   id="addrInput"
                   v-model="form.result"
-                  @blur="onBlur"
                   class="form-control"
                   rows="3"
                   placeholder="Адрес"
+                  @blur="onBlur"
                 ></textarea>
                 <label for="addrInput">Стандартизованный адрес</label>
                 <ul

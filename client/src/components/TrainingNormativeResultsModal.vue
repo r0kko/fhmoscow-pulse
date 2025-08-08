@@ -256,18 +256,18 @@ async function removeResult(r) {
             <div v-if="unit?.alias === 'MIN_SEC'" class="row g-2 mb-3">
               <div class="col">
                 <input
+                  v-model.number="minutes"
                   type="number"
                   class="form-control"
-                  v-model.number="minutes"
                   min="0"
                   placeholder="Минуты"
                 />
               </div>
               <div class="col">
                 <input
+                  v-model.number="seconds"
                   type="number"
                   class="form-control"
-                  v-model.number="seconds"
                   min="0"
                   max="59"
                   placeholder="Секунды"
@@ -276,9 +276,9 @@ async function removeResult(r) {
             </div>
             <div v-else class="mb-3">
               <input
+                v-model="form.value"
                 type="number"
                 class="form-control"
-                v-model="form.value"
                 :step="
                   unit?.alias === 'SECONDS' && unit.fractional ? '0.01' : '1'
                 "
@@ -301,8 +301,8 @@ async function removeResult(r) {
           <button
             type="button"
             class="btn btn-primary"
-            @click="save"
             :disabled="saving"
+            @click="save"
           >
             <span
               v-if="saving"

@@ -401,10 +401,10 @@ async function saveStep() {
           <input
             id="snils"
             v-model="snilsInput"
-            @input="onSnilsInput"
             class="form-control"
             placeholder="СНИЛС"
             :disabled="snilsLocked"
+            @input="onSnilsInput"
           />
           <label for="snils">СНИЛС</label>
         </div>
@@ -412,10 +412,10 @@ async function saveStep() {
           <input
             id="inn"
             v-model="inn"
-            @input="onInnInput"
             class="form-control"
             placeholder="ИНН"
             :disabled="innLocked"
+            @input="onInnInput"
           />
           <label for="inn">ИНН</label>
         </div>

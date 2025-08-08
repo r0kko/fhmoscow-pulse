@@ -170,10 +170,10 @@ async function exportPdf() {
       <div class="row g-2 align-items-end mb-3">
         <div class="col-12 col-sm">
           <input
+            v-model="search"
             type="text"
             class="form-control"
             placeholder="Поиск"
-            v-model="search"
           />
         </div>
         <div class="col-auto">
@@ -186,8 +186,8 @@ async function exportPdf() {
         <div class="col-auto">
           <button
             class="btn btn-secondary"
-            @click="exportPdf"
             :disabled="downloading"
+            @click="exportPdf"
           >
             <span
               v-if="downloading"
@@ -247,8 +247,8 @@ async function exportPdf() {
                   <button
                     v-if="r.status === 'PENDING'"
                     class="btn btn-sm btn-success me-2"
-                    @click="setStatus(r.user.id, 'APPROVED')"
                     :disabled="statusLoading[r.user.id]"
+                    @click="setStatus(r.user.id, 'APPROVED')"
                   >
                     <span
                       v-if="statusLoading[r.user.id]"
@@ -259,8 +259,8 @@ async function exportPdf() {
                   <button
                     v-if="r.status === 'APPROVED'"
                     class="btn btn-sm btn-primary me-2"
-                    @click="setStatus(r.user.id, 'COMPLETED')"
                     :disabled="statusLoading[r.user.id]"
+                    @click="setStatus(r.user.id, 'COMPLETED')"
                   >
                     <span
                       v-if="statusLoading[r.user.id]"
@@ -271,8 +271,8 @@ async function exportPdf() {
                   <button
                     v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
                     class="btn btn-sm btn-danger"
-                    @click="setStatus(r.user.id, 'CANCELED')"
                     :disabled="statusLoading[r.user.id]"
+                    @click="setStatus(r.user.id, 'CANCELED')"
                   >
                     <span
                       v-if="statusLoading[r.user.id]"
@@ -289,17 +289,17 @@ async function exportPdf() {
       <p v-else-if="!loading && !loadingExam" class="text-muted mb-0">
         Нет заявок.
       </p>
-      <nav class="mt-3" v-if="totalPages > 1">
+      <nav v-if="totalPages > 1" class="mt-3">
         <ul class="pagination justify-content-center">
           <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" @click="page--" :disabled="page === 1">
+            <button class="page-link" :disabled="page === 1" @click="page--">
               Пред
             </button>
           </li>
           <li
-            class="page-item"
             v-for="p in totalPages"
             :key="p"
+            class="page-item"
             :class="{ active: page === p }"
           >
             <button class="page-link" @click="page = p">{{ p }}</button>
@@ -307,8 +307,8 @@ async function exportPdf() {
           <li class="page-item" :class="{ disabled: page === totalPages }">
             <button
               class="page-link"
-              @click="page++"
               :disabled="page === totalPages"
+              @click="page++"
             >
               След
             </button>

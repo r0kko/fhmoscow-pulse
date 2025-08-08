@@ -227,8 +227,8 @@ function thresholdText(t, zone) {
         <h1 class="mb-0 text-start">Нормативы</h1>
         <button
           class="btn btn-outline-secondary d-sm-none"
-          @click="openSeason"
           aria-label="Выбрать сезон"
+          @click="openSeason"
         >
           <i class="bi bi-funnel"></i>
         </button>
@@ -316,8 +316,8 @@ function thresholdText(t, zone) {
                     <button
                       v-if="t.history && t.history.length"
                       class="btn btn-sm p-0 text-brand"
-                      @click="openHistory(t)"
                       aria-label="Другие попытки"
+                      @click="openHistory(t)"
                     >
                       <i class="bi bi-clock-history"></i>
                     </button>
@@ -338,8 +338,8 @@ function thresholdText(t, zone) {
                     <button
                       v-else-if="t.can_upload"
                       class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
-                      @click="openUpload(t)"
                       aria-label="Загрузить видео"
+                      @click="openUpload(t)"
                     >
                       <i class="bi bi-upload" aria-hidden="true"></i>
                       <span class="ms-1 d-none d-md-inline">Загрузить</span>
@@ -363,8 +363,8 @@ function thresholdText(t, zone) {
                   <button
                     v-if="t.history && t.history.length"
                     class="btn btn-link btn-sm p-0 text-brand"
-                    @click="openHistory(t)"
                     aria-label="Другие попытки"
+                    @click="openHistory(t)"
                   >
                     <i class="bi bi-clock-history"></i>
                   </button>
@@ -385,8 +385,8 @@ function thresholdText(t, zone) {
                   <button
                     v-else-if="t.can_upload"
                     class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center"
-                    @click="openUpload(t)"
                     aria-label="Загрузить видео"
+                    @click="openUpload(t)"
                   >
                     <i class="bi bi-upload" aria-hidden="true"></i>
                     <span class="ms-1">Загрузить</span>
@@ -530,8 +530,8 @@ function thresholdText(t, zone) {
                   type="file"
                   class="form-control"
                   accept="video/*"
-                  @change="onFileChange"
                   :disabled="!accepted"
+                  @change="onFileChange"
                 />
                 <div class="form-text">Видео до 100&nbsp;МБ</div>
                 <div v-if="fileError" class="text-danger small mt-1">
@@ -572,8 +572,8 @@ function thresholdText(t, zone) {
               <button
                 type="button"
                 class="btn btn-brand"
-                @click="submitOnline"
                 :disabled="uploading || !accepted"
+                @click="submitOnline"
               >
                 <span
                   v-if="uploading"

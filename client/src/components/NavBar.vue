@@ -11,7 +11,7 @@
         />
       </RouterLink>
       <div class="d-flex align-items-center ms-auto">
-        <span class="navbar-text me-3 d-none d-md-inline" v-if="user">
+        <span v-if="user" class="navbar-text me-3 d-none d-md-inline">
           {{ user.last_name }} {{ user.first_name }} {{ user.patronymic }}
         </span>
         <button

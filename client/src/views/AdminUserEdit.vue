@@ -168,7 +168,7 @@ async function save() {
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
     <ul v-if="user" class="nav nav-pills nav-fill justify-content-between mb-4">
-      <li class="nav-item" v-for="tab in tabs" :key="tab.id">
+      <li v-for="tab in tabs" :key="tab.id" class="nav-item">
         <button
           type="button"
           class="nav-link"
@@ -363,25 +363,25 @@ async function save() {
     </div>
 
     <div v-show="activeTab === 'inn'">
-      <InnSnilsForm v-if="user" :userId="route.params.id" />
+      <InnSnilsForm v-if="user" :user-id="route.params.id" />
     </div>
 
     <div v-show="activeTab === 'bank'">
-      <BankAccountForm v-if="user" :userId="route.params.id" />
+      <BankAccountForm v-if="user" :user-id="route.params.id" />
     </div>
 
     <div v-show="activeTab === 'address'">
-      <UserAddressForm v-if="user" :userId="route.params.id" isAdmin />
+      <UserAddressForm v-if="user" :user-id="route.params.id" is-admin />
     </div>
 
     <div v-show="activeTab === 'tax'">
-      <TaxationInfo v-if="user" :userId="route.params.id" />
+      <TaxationInfo v-if="user" :user-id="route.params.id" />
     </div>
 
     <div
       v-for="(section, idx) in placeholderSections"
-      :key="`ph-${idx}`"
       v-show="activeTab === `ph-${idx}`"
+      :key="`ph-${idx}`"
       class="mt-4"
     >
       <div class="card placeholder-card text-center">

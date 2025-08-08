@@ -192,11 +192,11 @@ defineExpose({ validate });
             <input
               id="series"
               v-model="form.series"
-              @input="onSeriesInput"
               class="form-control"
               :class="{ 'is-invalid': errors.series }"
               :disabled="isLocked('series')"
               placeholder="Серия"
+              @input="onSeriesInput"
             />
             <label for="series">Серия</label>
             <div class="invalid-feedback">{{ errors.series }}</div>
@@ -207,11 +207,11 @@ defineExpose({ validate });
             <input
               id="number"
               v-model="form.number"
-              @input="onNumberInput"
               class="form-control"
               :class="{ 'is-invalid': errors.number }"
               :disabled="isLocked('number')"
               placeholder="Номер"
+              @input="onNumberInput"
             />
             <label for="number">Номер</label>
             <div class="invalid-feedback">{{ errors.number }}</div>
@@ -221,8 +221,8 @@ defineExpose({ validate });
           <div class="form-floating">
             <input
               id="issueDate"
-              type="date"
               v-model="form.issue_date"
+              type="date"
               class="form-control"
               :class="{ 'is-invalid': errors.issue_date }"
               :disabled="isLocked('issue_date')"
@@ -236,8 +236,8 @@ defineExpose({ validate });
           <div class="form-floating">
             <input
               id="validUntil"
-              type="date"
               v-model="form.valid_until"
+              type="date"
               class="form-control"
               :disabled="validUntilLocked"
               placeholder="Действителен до"
@@ -250,12 +250,12 @@ defineExpose({ validate });
             <input
               id="issuingCode"
               v-model="form.issuing_authority_code"
-              @input="onIssuingCodeInput"
               maxlength="7"
               class="form-control"
               :class="{ 'is-invalid': errors.issuing_authority_code }"
               :disabled="isLocked('issuing_authority_code')"
               placeholder="Код подразделения"
+              @input="onIssuingCodeInput"
             />
             <label for="issuingCode">Код подразделения</label>
             <div class="invalid-feedback">

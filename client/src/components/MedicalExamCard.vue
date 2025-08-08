@@ -138,9 +138,9 @@ const disabled = computed(
         class="btn btn-sm mt-auto d-flex align-items-center justify-content-center gap-1"
         :class="btnClass"
         :disabled="disabled || loading"
-        @click="emit('toggle', exam)"
         :data-bs-toggle="pendingTooltip ? 'tooltip' : null"
         :title="pendingTooltip"
+        @click="emit('toggle', exam)"
       >
         <span v-if="loading" class="spinner-border spinner-border-sm"></span>
         <template v-else>

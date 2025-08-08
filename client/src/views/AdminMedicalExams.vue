@@ -213,21 +213,21 @@ function openRegistrations(exam) {
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     </div>
-    <nav class="mt-3" v-if="totalPages > 1">
+    <nav v-if="totalPages > 1" class="mt-3">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <button
             class="page-link"
-            @click="currentPage--"
             :disabled="currentPage === 1"
+            @click="currentPage--"
           >
             Пред
           </button>
         </li>
         <li
-          class="page-item"
           v-for="p in totalPages"
           :key="p"
+          class="page-item"
           :class="{ active: currentPage === p }"
         >
           <button class="page-link" @click="currentPage = p">{{ p }}</button>
@@ -235,8 +235,8 @@ function openRegistrations(exam) {
         <li class="page-item" :class="{ disabled: currentPage === totalPages }">
           <button
             class="page-link"
-            @click="currentPage++"
             :disabled="currentPage === totalPages"
+            @click="currentPage++"
           >
             След
           </button>
@@ -278,8 +278,8 @@ function openRegistrations(exam) {
               <div class="form-floating mb-3">
                 <input
                   id="exStart"
-                  type="datetime-local"
                   v-model="form.start_at"
+                  type="datetime-local"
                   class="form-control"
                   required
                 />
@@ -288,8 +288,8 @@ function openRegistrations(exam) {
               <div class="form-floating mb-3">
                 <input
                   id="exEnd"
-                  type="datetime-local"
                   v-model="form.end_at"
+                  type="datetime-local"
                   class="form-control"
                   required
                 />
@@ -298,9 +298,9 @@ function openRegistrations(exam) {
               <div class="form-floating mb-3">
                 <input
                   id="exCap"
+                  v-model="form.capacity"
                   type="number"
                   min="0"
-                  v-model="form.capacity"
                   class="form-control"
                 />
                 <label for="exCap">Количество мест</label>

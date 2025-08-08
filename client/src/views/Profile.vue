@@ -354,9 +354,9 @@ onMounted(() => {
                     </div>
                     <div v-if="codeSent" class="input-group mt-2">
                       <input
+                        v-model="code"
                         type="text"
                         class="form-control"
-                        v-model="code"
                         maxlength="6"
                         placeholder="Код из письма"
                       />
@@ -372,13 +372,13 @@ onMounted(() => {
               </div>
             </section>
             <section
-              id="bank"
-              class="mb-4"
               v-if="
                 bankAccount !== undefined ||
                 bankAccountError ||
                 loading.bankAccount
               "
+              id="bank"
+              class="mb-4"
             >
               <div class="card section-card tile fade-in shadow-sm">
                 <div class="card-body">
@@ -450,7 +450,7 @@ onMounted(() => {
               style="top: 20px"
             >
               <ul class="nav flex-column">
-                <li class="nav-item" v-for="s in sectionNav" :key="s.id">
+                <li v-for="s in sectionNav" :key="s.id" class="nav-item">
                   <a class="nav-link py-1" :href="'#' + s.id">{{ s.label }}</a>
                 </li>
               </ul>

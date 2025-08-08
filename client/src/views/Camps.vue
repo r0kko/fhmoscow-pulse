@@ -647,11 +647,11 @@ function attendanceStatus(t) {
                             :class="
                               canCancel(t) ? 'text-danger' : 'text-secondary'
                             "
+                            :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
+                            :title="cancelTooltip(t)"
                             @click="
                               canCancel(t) ? confirmUnregister(t.id) : null
                             "
-                            :data-bs-toggle="canCancel(t) ? null : 'tooltip'"
-                            :title="cancelTooltip(t)"
                           >
                             <i class="bi bi-x-lg" aria-hidden="true"></i>
                             <span class="visually-hidden">Отменить</span>

@@ -284,10 +284,10 @@ async function copy(text) {
           <div class="row g-2 align-items-end mb-3">
             <div class="col-12 col-sm">
               <input
+                v-model="search"
                 type="text"
                 class="form-control"
                 placeholder="Поиск"
-                v-model="search"
               />
             </div>
             <div class="col-6 col-sm-auto">
@@ -326,7 +326,7 @@ async function copy(text) {
             >
               <thead>
                 <tr>
-                  <th @click="toggleSort('last_name')" class="sortable">
+                  <th class="sortable" @click="toggleSort('last_name')">
                     ФИО
                     <i
                       v-if="sortField === 'last_name'"
@@ -384,7 +384,7 @@ async function copy(text) {
                     ></i>
                   </th>
                   <th class="d-none d-lg-table-cell">Роли</th>
-                  <th @click="toggleSort('status')" class="sortable">
+                  <th class="sortable" @click="toggleSort('status')">
                     Статус
                     <i
                       v-if="sortField === 'status'"
@@ -415,9 +415,9 @@ async function copy(text) {
                   </td>
                   <td class="d-none d-lg-table-cell">
                     <span
-                      class="badge bg-info me-1"
                       v-for="(name, idx) in u.role_names"
                       :key="u.roles[idx]"
+                      class="badge bg-info me-1"
                       >{{ name }}</span
                     >
                   </td>
@@ -435,22 +435,22 @@ async function copy(text) {
                     </button>
                     <button
                       v-if="u.status === 'ACTIVE'"
-                      @click="blockUser(u.id)"
                       class="btn btn-sm btn-danger me-2"
+                      @click="blockUser(u.id)"
                     >
                       <i class="bi bi-lock-fill"></i>
                     </button>
                     <button
                       v-if="u.status === 'INACTIVE'"
-                      @click="unblockUser(u.id)"
                       class="btn btn-sm btn-success me-2"
+                      @click="unblockUser(u.id)"
                     >
                       <i class="bi bi-unlock-fill"></i>
                     </button>
                     <button
                       v-if="u.status === 'AWAITING_CONFIRMATION'"
-                      @click="approveUser(u.id)"
                       class="btn btn-sm btn-success"
+                      @click="approveUser(u.id)"
                     >
                       <i class="bi bi-check-lg"></i>
                     </button>
@@ -464,21 +464,21 @@ async function copy(text) {
           </p>
         </div>
       </div>
-      <nav class="mt-3" v-if="activeTab === 'users' && totalPages > 1">
+      <nav v-if="activeTab === 'users' && totalPages > 1" class="mt-3">
         <ul class="pagination justify-content-center">
           <li class="page-item" :class="{ disabled: currentPage === 1 }">
             <button
               class="page-link"
-              @click="currentPage--"
               :disabled="currentPage === 1"
+              @click="currentPage--"
             >
               Пред
             </button>
           </li>
           <li
-            class="page-item"
             v-for="page in visiblePages"
             :key="page + '-page'"
+            class="page-item"
             :class="{ active: page === currentPage, disabled: page === '...' }"
           >
             <span v-if="page === '...'" class="page-link">&hellip;</span>
@@ -492,8 +492,8 @@ async function copy(text) {
           >
             <button
               class="page-link"
-              @click="currentPage++"
               :disabled="currentPage === totalPages"
+              @click="currentPage++"
             >
               След
             </button>
@@ -698,8 +698,8 @@ async function copy(text) {
   </div>
   <TaxationInfo
     ref="taxModal"
-    :userId="taxUserId"
-    modalOnly
+    :user-id="taxUserId"
+    modal-only
     @saved="onTaxSaved"
   />
 </template>

@@ -159,14 +159,14 @@ function showToast(message) {
                       role="group"
                     >
                       <input
+                        :id="`present-yes-${r.user.id}`"
                         type="radio"
                         class="btn-check"
-                        :id="`present-yes-${r.user.id}`"
                         :name="`present-${r.user.id}`"
                         autocomplete="off"
                         :checked="r.present === true"
-                        @change="setPresence(r.user.id, true)"
                         :disabled="attendanceMarked"
+                        @change="setPresence(r.user.id, true)"
                       />
                       <label
                         class="btn btn-outline-success presence-btn"
@@ -176,14 +176,14 @@ function showToast(message) {
                         <span class="visually-hidden">Да</span>
                       </label>
                       <input
+                        :id="`present-no-${r.user.id}`"
                         type="radio"
                         class="btn-check"
-                        :id="`present-no-${r.user.id}`"
                         :name="`present-${r.user.id}`"
                         autocomplete="off"
                         :checked="r.present === false"
-                        @change="setPresence(r.user.id, false)"
                         :disabled="attendanceMarked"
+                        @change="setPresence(r.user.id, false)"
                       />
                       <label
                         class="btn btn-outline-danger presence-btn"
@@ -203,8 +203,8 @@ function showToast(message) {
         <button
           v-if="!attendanceMarked"
           class="btn btn-brand mt-3"
-          @click="finish"
           :disabled="!visibleRegistrations.length || !allMarked"
+          @click="finish"
         >
           Завершить
         </button>

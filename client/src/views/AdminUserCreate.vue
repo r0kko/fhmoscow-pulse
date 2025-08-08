@@ -116,7 +116,7 @@ async function copyToClipboard(text) {
     </nav>
     <h1 class="mb-3">Новый пользователь</h1>
     <form @submit.prevent="save">
-      <UserForm ref="formRef" v-model="user" :isNew="true" :sexes="sexes" />
+      <UserForm ref="formRef" v-model="user" :is-new="true" :sexes="sexes" />
       <div class="mt-3">
         <button type="submit" class="btn btn-brand me-2" :disabled="loading">
           <span

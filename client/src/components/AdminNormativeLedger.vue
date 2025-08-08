@@ -76,10 +76,10 @@ watch(search, () => {
       <div class="row g-2 align-items-end mb-3">
         <div class="col">
           <input
+            v-model="search"
             type="text"
             class="form-control"
             placeholder="ФИО судьи"
-            v-model="search"
           />
         </div>
       </div>
@@ -171,8 +171,8 @@ watch(search, () => {
     </div>
   </div>
   <nav
-    class="mt-3 d-flex align-items-center justify-content-between"
     v-if="ledger.judges.length"
+    class="mt-3 d-flex align-items-center justify-content-between"
   >
     <select v-model.number="pageSize" class="form-select form-select-sm w-auto">
       <option :value="15">15</option>

@@ -1,7 +1,7 @@
 <template>
   <ul class="pagination mb-0">
     <li class="page-item" :class="{ disabled: modelValue === 1 }">
-      <button class="page-link" @click="prev" :disabled="modelValue === 1">
+      <button class="page-link" :disabled="modelValue === 1" @click="prev">
         Пред
       </button>
     </li>
@@ -17,8 +17,8 @@
     <li class="page-item" :class="{ disabled: modelValue === totalPages }">
       <button
         class="page-link"
-        @click="next"
         :disabled="modelValue === totalPages"
+        @click="next"
       >
         След
       </button>

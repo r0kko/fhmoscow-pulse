@@ -293,8 +293,8 @@ function openNormatives(reg) {
         <div class="col-12 col-sm-auto d-grid d-sm-block">
           <button
             class="btn btn-brand"
-            @click="addRegistration"
             :disabled="addLoading"
+            @click="addRegistration"
           >
             <span
               v-if="addLoading"
@@ -358,14 +358,14 @@ function openNormatives(reg) {
                           role="group"
                         >
                           <input
+                            :id="`present-yes-${r.user.id}`"
                             type="radio"
                             class="btn-check"
-                            :id="`present-yes-${r.user.id}`"
                             :name="`present-${r.user.id}`"
                             autocomplete="off"
                             :checked="r.present === true"
-                            @change="setPresence(r.user.id, true)"
                             :disabled="attendanceMarked"
+                            @change="setPresence(r.user.id, true)"
                           />
                           <label
                             class="btn btn-outline-success presence-btn"
@@ -375,14 +375,14 @@ function openNormatives(reg) {
                             <span class="visually-hidden">Да</span>
                           </label>
                           <input
+                            :id="`present-no-${r.user.id}`"
                             type="radio"
                             class="btn-check"
-                            :id="`present-no-${r.user.id}`"
                             :name="`present-${r.user.id}`"
                             autocomplete="off"
                             :checked="r.present === false"
-                            @change="setPresence(r.user.id, false)"
                             :disabled="attendanceMarked"
+                            @change="setPresence(r.user.id, false)"
                           />
                           <label
                             class="btn btn-outline-danger presence-btn"
@@ -456,14 +456,14 @@ function openNormatives(reg) {
                         role="group"
                       >
                         <input
+                          :id="`present-yes-m-${r.user.id}`"
                           type="radio"
                           class="btn-check"
-                          :id="`present-yes-m-${r.user.id}`"
                           :name="`present-m-${r.user.id}`"
                           autocomplete="off"
                           :checked="r.present === true"
-                          @change="setPresence(r.user.id, true)"
                           :disabled="attendanceMarked"
+                          @change="setPresence(r.user.id, true)"
                         />
                         <label
                           class="btn btn-outline-success presence-btn"
@@ -473,14 +473,14 @@ function openNormatives(reg) {
                           <span class="visually-hidden">Да</span>
                         </label>
                         <input
+                          :id="`present-no-m-${r.user.id}`"
                           type="radio"
                           class="btn-check"
-                          :id="`present-no-m-${r.user.id}`"
                           :name="`present-m-${r.user.id}`"
                           autocomplete="off"
                           :checked="r.present === false"
-                          @change="setPresence(r.user.id, false)"
                           :disabled="attendanceMarked"
+                          @change="setPresence(r.user.id, false)"
                         />
                         <label
                           class="btn btn-outline-danger presence-btn"
@@ -519,10 +519,10 @@ function openNormatives(reg) {
       <template v-if="!attendanceMarked">
         <button
           class="btn btn-brand mt-3"
-          @click="finish"
           :disabled="
             !visibleRegistrations.length || !allMarked || finishLoading
           "
+          @click="finish"
         >
           <span
             v-if="finishLoading"
@@ -536,8 +536,8 @@ function openNormatives(reg) {
       </template>
       <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
       <TrainingNormativeResultsModal
-        ref="normativeModalRef"
         v-if="selectedReg"
+        ref="normativeModalRef"
         :training-id="route.params.id"
         :season-id="training?.season_id"
         :user="selectedReg.user"

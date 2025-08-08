@@ -160,31 +160,31 @@ onMounted(async () => {
                   <div class="col-12 col-sm-6">
                     <InfoItem label="Номер" :value="inn.number" />
                   </div>
-                  <div class="col-12 col-sm-6" v-if="taxation?.type?.name">
+                  <div v-if="taxation?.type?.name" class="col-12 col-sm-6">
                     <InfoItem
                       label="Тип налогообложения"
                       :value="taxation.type.name"
                     />
                   </div>
-                  <div class="col-12 col-sm-6" v-if="taxation?.check_date">
+                  <div v-if="taxation?.check_date" class="col-12 col-sm-6">
                     <InfoItem
                       label="Дата проверки"
                       :value="formatDate(taxation.check_date)"
                     />
                   </div>
                   <div
-                    class="col-12 col-sm-6"
                     v-if="taxation?.registration_date"
+                    class="col-12 col-sm-6"
                   >
                     <InfoItem
                       label="Дата регистрации"
                       :value="formatDate(taxation.registration_date)"
                     />
                   </div>
-                  <div class="col-12 col-sm-6" v-if="taxation?.ogrn">
+                  <div v-if="taxation?.ogrn" class="col-12 col-sm-6">
                     <InfoItem label="ОГРНИП" :value="taxation.ogrn" />
                   </div>
-                  <div class="col-12 col-sm-6" v-if="taxation?.okved">
+                  <div v-if="taxation?.okved" class="col-12 col-sm-6">
                     <InfoItem label="ОКВЭД" :value="taxation.okved" />
                   </div>
                 </div>

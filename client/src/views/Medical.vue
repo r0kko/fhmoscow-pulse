@@ -460,10 +460,10 @@ function onFileChange(e) {
           </div>
           <div class="mb-3">
             <input
+              ref="fileInput"
               type="file"
               accept="application/pdf"
               class="form-control"
-              ref="fileInput"
               @change="onFileChange"
             />
             <div class="form-text">
@@ -488,8 +488,8 @@ function onFileChange(e) {
           <button
             type="button"
             class="btn btn-brand"
-            @click="createTicket"
             :disabled="uploading"
+            @click="createTicket"
           >
             <span
               v-if="uploading"

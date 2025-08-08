@@ -61,8 +61,8 @@ onUnmounted(() => {
       <div class="d-flex justify-content-center gap-2">
         <button
           class="btn btn-outline-brand"
-          @click="checkStatus"
           :disabled="checking"
+          @click="checkStatus"
         >
           <span
             v-if="checking"

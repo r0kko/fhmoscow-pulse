@@ -213,8 +213,8 @@ defineExpose({ refresh });
       </div>
     </div>
     <nav
-      class="mt-3 d-flex align-items-center justify-content-between"
       v-if="groups.length"
+      class="mt-3 d-flex align-items-center justify-content-between"
     >
       <select
         v-model.number="pageSize"
@@ -271,9 +271,9 @@ defineExpose({ refresh });
               <div class="form-check mb-3">
                 <input
                   id="groupRequired"
+                  v-model="form.required"
                   type="checkbox"
                   class="form-check-input"
-                  v-model="form.required"
                 />
                 <label class="form-check-label" for="groupRequired"
                   >Обязательная</label

@@ -18,10 +18,10 @@
       v-if="copyable && value"
       type="button"
       class="btn btn-outline-secondary"
-      @click="$emit('copy')"
       title="Скопировать"
       aria-label="Скопировать"
       data-bs-toggle="tooltip"
+      @click="$emit('copy')"
     >
       <i class="bi bi-clipboard"></i>
     </button>

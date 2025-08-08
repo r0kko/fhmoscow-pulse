@@ -134,10 +134,10 @@ async function deleteTicket(ticket) {
           <div v-if="view === 'archive'" class="row g-2 align-items-end mb-3">
             <div class="col-12 col-sm">
               <input
+                v-model="search"
                 type="text"
                 class="form-control"
                 placeholder="Поиск по номеру или содержимому"
-                v-model="search"
               />
             </div>
           </div>

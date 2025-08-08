@@ -131,9 +131,9 @@ async function loadUpcoming() {
           <h2 class="card-title h5 mb-3">Подготовка к сезону</h2>
           <div class="scroll-container">
             <component
+              :is="item.to ? RouterLink : 'div'"
               v-for="item in preparationSections"
               :key="item.title"
-              :is="item.to ? RouterLink : 'div'"
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
               :class="{ 'placeholder-card': !item.to }"
@@ -153,9 +153,9 @@ async function loadUpcoming() {
           <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
           <div class="scroll-container">
             <component
+              :is="item.to ? RouterLink : 'div'"
               v-for="item in workSections"
               :key="item.title"
-              :is="item.to ? RouterLink : 'div'"
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
               :class="{ 'placeholder-card': !item.to }"
@@ -175,9 +175,9 @@ async function loadUpcoming() {
           <h2 class="card-title h5 mb-3">Документы и формальности</h2>
           <div class="scroll-container">
             <component
+              :is="item.to ? RouterLink : 'div'"
               v-for="item in docsSections"
               :key="item.title"
-              :is="item.to ? RouterLink : 'div'"
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
               :class="{ 'placeholder-card': !item.to }"
