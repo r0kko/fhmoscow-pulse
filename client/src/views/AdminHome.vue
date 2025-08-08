@@ -110,7 +110,7 @@ const refereeSections = [
   }
 }
 
-.menu-card {
+.menu-card .icon {
   position: absolute;
   bottom: 0.75rem;
   right: 0.75rem;
