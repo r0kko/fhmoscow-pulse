@@ -1,7 +1,5 @@
 import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import './env.js';
 
 const legacyPool = mysql.createPool({
   host: process.env.LEGACY_DB_HOST,

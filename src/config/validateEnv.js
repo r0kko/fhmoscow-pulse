@@ -1,7 +1,5 @@
 import Joi from 'joi';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import './env.js';
 
 const schema = Joi.object({
   DB_HOST: Joi.string().required(),

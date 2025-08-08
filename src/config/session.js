@@ -1,9 +1,8 @@
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
-import dotenv from 'dotenv';
+import './env.js';
 
 import redisClient, { isRedisWritable } from './redis.js';
-dotenv.config();
 
 let store;
 if (isRedisWritable()) {

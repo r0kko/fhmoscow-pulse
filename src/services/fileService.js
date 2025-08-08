@@ -5,7 +5,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
 import s3 from '../utils/s3Client.js';
-import { S3_BUCKET } from '../config/s3.js';
+import { getS3Bucket } from '../config/s3.js';
 import { MAX_NORMATIVE_FILE_SIZE } from '../config/fileLimits.js';
 import {
   File,
@@ -17,8 +17,12 @@ import {
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
+function isTestEnvWithoutS3() {
+  return Boolean(process.env.JEST_WORKER_ID) && !process.env.S3_BUCKET;
+}
+
 async function uploadForCertificate(certId, file, typeAlias, actorId) {
-  if (!S3_BUCKET) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
     throw new ServiceError('s3_not_configured', 500);
   }
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -42,7 +46,7 @@ async function uploadForCertificate(certId, file, typeAlias, actorId) {
   try {
     await s3.send(
       new PutObjectCommand({
-        Bucket: S3_BUCKET,
+        Bucket: getS3Bucket(),
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
@@ -86,7 +90,7 @@ async function listForCertificate(certId) {
 async function getDownloadUrl(file) {
   return getSignedUrl(
     s3,
-    new GetObjectCommand({ Bucket: S3_BUCKET, Key: file.key }),
+    new GetObjectCommand({ Bucket: getS3Bucket(), Key: file.key }),
     { expiresIn: 3600 }
   );
 }
@@ -104,7 +108,7 @@ async function remove(id, actorId = null) {
 }
 
 async function uploadForTicket(ticketId, file, actorId) {
-  if (!S3_BUCKET) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
     throw new ServiceError('s3_not_configured', 500);
   }
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -126,7 +130,7 @@ async function uploadForTicket(ticketId, file, actorId) {
   try {
     await s3.send(
       new PutObjectCommand({
-        Bucket: S3_BUCKET,
+        Bucket: getS3Bucket(),
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
@@ -157,7 +161,7 @@ async function uploadForTicket(ticketId, file, actorId) {
 }
 
 async function uploadForNormativeTicket(ticketId, file, actorId, user, type) {
-  if (!S3_BUCKET) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
     throw new ServiceError('s3_not_configured', 500);
   }
   if (file.size > MAX_NORMATIVE_FILE_SIZE) {
@@ -173,7 +177,7 @@ async function uploadForNormativeTicket(ticketId, file, actorId, user, type) {
   try {
     await s3.send(
       new PutObjectCommand({
-        Bucket: S3_BUCKET,
+        Bucket: getS3Bucket(),
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
