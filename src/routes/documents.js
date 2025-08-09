@@ -15,6 +15,8 @@ router.get(
   controller.downloadConsent
 );
 
+router.get('/admin', auth, authorize('ADMIN'), controller.list);
+
 router.get('/', auth, documentController.list);
 router.post(
   '/',
