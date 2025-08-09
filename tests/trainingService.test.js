@@ -11,6 +11,7 @@ const findOneSeasonMock = jest.fn();
 const findAllCoursesMock = jest.fn();
 const findUserMock = jest.fn();
 const findRegMock = jest.fn();
+const findTrainingTypeMock = jest.fn();
 
 const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
@@ -30,6 +31,8 @@ beforeEach(() => {
   findAllCoursesMock.mockReset();
   findUserMock.mockReset();
   findRegMock.mockReset();
+  findTrainingTypeMock.mockReset();
+  findTrainingTypeMock.mockResolvedValue({ id: 'tp', for_camp: true });
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -39,7 +42,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findByPk: findByPkMock,
     create: createMock,
   },
-  TrainingType: {},
+  TrainingType: { findByPk: findTrainingTypeMock },
   Ground: {},
   Address: {},
   Season: { findOne: findOneSeasonMock },

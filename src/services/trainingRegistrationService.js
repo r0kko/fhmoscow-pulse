@@ -54,7 +54,7 @@ async function listAvailable(userId, options = {}) {
   const horizon = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const { rows, count } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      { model: TrainingType, where: { for_camp: true } },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
@@ -112,7 +112,7 @@ async function listAvailableForCourse(userId, options = {}) {
   const horizon = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const { rows, count } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      { model: TrainingType, where: { for_camp: false } },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
@@ -156,10 +156,11 @@ async function listAvailableForCourse(userId, options = {}) {
   };
 }
 
-async function register(userId, trainingId, actorId) {
+async function register(userId, trainingId, actorId, forCamp) {
   const [training, groupLink, courseLink] = await Promise.all([
     Training.findByPk(trainingId, {
       include: [
+        { model: TrainingType },
         { model: RefereeGroup, through: { attributes: [] } },
         { model: Course, through: { attributes: [] } },
         { model: TrainingRegistration, include: [TrainingRole] },
@@ -171,6 +172,9 @@ async function register(userId, trainingId, actorId) {
     UserCourse.findOne({ where: { user_id: userId } }),
   ]);
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
+    throw new ServiceError('access_denied');
+  }
   let allowed = false;
   if (training.RefereeGroups.length && groupLink) {
     allowed = training.RefereeGroups.some((g) => g.id === groupLink.group_id);
@@ -200,7 +204,7 @@ async function register(userId, trainingId, actorId) {
   }
 }
 
-async function unregister(userId, trainingId, actorId = null) {
+async function unregister(userId, trainingId, actorId = null, forCamp) {
   const registration = await TrainingRegistration.findOne({
     where: { training_id: trainingId, user_id: userId },
     include: [TrainingRole],
@@ -210,9 +214,15 @@ async function unregister(userId, trainingId, actorId = null) {
     throw new ServiceError('cancellation_forbidden');
   }
   const training = await Training.findByPk(trainingId, {
-    include: [{ model: Season, where: { active: true }, required: true }],
+    include: [
+      { model: TrainingType },
+      { model: Season, where: { active: true }, required: true },
+    ],
   });
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
+    throw new ServiceError('access_denied');
+  }
 
   const start = new Date(training.start_at);
   const tooLate = Date.now() > start.getTime() - 48 * 60 * 60 * 1000;
@@ -351,7 +361,7 @@ async function listForAttendance(trainingId, actorId) {
   };
 }
 
-async function listUpcomingByUser(userId, options = {}) {
+async function listUpcomingByUser(userId, options = {}, forCamp) {
   const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
@@ -360,7 +370,10 @@ async function listUpcomingByUser(userId, options = {}) {
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const { rows } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      {
+        model: TrainingType,
+        ...(forCamp !== undefined ? { where: { for_camp: forCamp } } : {}),
+      },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
@@ -421,7 +434,7 @@ async function listUpcomingByUser(userId, options = {}) {
   };
 }
 
-async function listPastByUser(userId, options = {}) {
+async function listPastByUser(userId, options = {}, forCamp) {
   const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
@@ -429,7 +442,10 @@ async function listPastByUser(userId, options = {}) {
   const now = new Date();
   const { rows } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      {
+        model: TrainingType,
+        ...(forCamp !== undefined ? { where: { for_camp: forCamp } } : {}),
+      },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {

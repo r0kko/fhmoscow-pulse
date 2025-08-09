@@ -2,8 +2,8 @@ import express from 'express';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
-import controller from '../controllers/trainingAdminController.js';
-import selfController from '../controllers/trainingSelfController.js';
+import createAdminController from '../controllers/trainingAdminController.js';
+import createSelfController from '../controllers/trainingSelfController.js';
 import registrationsController from '../controllers/trainingRegistrationAdminController.js';
 import {
   trainingCreateRules,
@@ -16,6 +16,8 @@ import {
 } from '../validators/trainingRegistrationValidators.js';
 import { updateAttendanceRules } from '../validators/trainingValidators.js';
 
+const controller = createAdminController(true);
+const selfController = createSelfController(true);
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
