@@ -4,13 +4,30 @@ import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
 const documents = ref([]);
+const isLoading = ref(false);
+const error = ref('');
+
+function formatDateTime(dt) {
+  if (!dt) return '-';
+  return new Date(dt).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  });
+}
 
 onMounted(async () => {
+  isLoading.value = true;
   try {
     const data = await apiFetch('/documents/admin');
     documents.value = data.documents;
   } catch (_err) {
-    documents.value = [];
+    error.value = 'Не удалось загрузить документы';
+  } finally {
+    isLoading.value = false;
   }
 });
 </script>
@@ -28,12 +45,23 @@ onMounted(async () => {
     <h1 class="mb-3">Документы</h1>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-body table-responsive">
-        <table class="table mb-0">
+        <div v-if="error" class="alert alert-danger mb-0" role="alert">
+          {{ error }}
+        </div>
+        <div v-else-if="isLoading" class="text-center p-3">
+          <div
+            class="spinner-border text-primary"
+            role="status"
+            aria-label="loading"
+          ></div>
+        </div>
+        <table v-else class="table mb-0">
           <thead>
             <tr>
               <th>Документ</th>
               <th>Получатель</th>
               <th>Статус</th>
+              <th>Дата</th>
             </tr>
           </thead>
           <tbody>
@@ -44,9 +72,10 @@ onMounted(async () => {
                 {{ d.recipient.patronymic }}
               </td>
               <td>{{ d.status?.name }}</td>
+              <td>{{ formatDateTime(d.createdAt) }}</td>
             </tr>
             <tr v-if="!documents.length">
-              <td colspan="3" class="text-center">Документы отсутствуют</td>
+              <td colspan="4" class="text-center">Документы отсутствуют</td>
             </tr>
           </tbody>
         </table>
