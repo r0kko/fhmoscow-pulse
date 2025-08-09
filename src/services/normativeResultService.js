@@ -104,6 +104,7 @@ async function getById(id) {
 }
 
 async function create(data, actorId) {
+  const trainingId = data.training_id === '' ? undefined : data.training_id;
   const [user, season, type] = await Promise.all([
     User.findByPk(data.user_id),
     Season.findByPk(data.season_id),
@@ -117,15 +118,15 @@ async function create(data, actorId) {
   if (type.season_id !== data.season_id) {
     throw new ServiceError('normative_type_invalid_season');
   }
-  if (!data.training_id && !data.online && !data.retake) {
+  if (!trainingId && !data.online && !data.retake) {
     throw new ServiceError('training_required');
   }
   if (data.online && data.retake) {
     throw new ServiceError('online_retake_conflict');
   }
-  if (data.training_id) {
+  if (trainingId) {
     const registration = await TrainingRegistration.findOne({
-      where: { training_id: data.training_id, user_id: data.user_id },
+      where: { training_id: trainingId, user_id: data.user_id },
       paranoid: false,
     });
     const role = await TrainingRole.findOne({
@@ -143,7 +144,7 @@ async function create(data, actorId) {
       });
     } else {
       await TrainingRegistration.create({
-        training_id: data.training_id,
+        training_id: trainingId,
         user_id: data.user_id,
         training_role_id: role.id,
         present: true,
@@ -158,7 +159,7 @@ async function create(data, actorId) {
   const res = await NormativeResult.create({
     user_id: data.user_id,
     season_id: data.season_id,
-    training_id: data.training_id,
+    training_id: trainingId,
     type_id: data.type_id,
     value_type_id: type.value_type_id,
     unit_id: type.unit_id,
@@ -193,7 +194,8 @@ async function update(id, data, actorId) {
     if (newValue == null) throw new ServiceError('invalid_value');
   }
   const zone = determineZone(res.NormativeType, newValue, res.User?.sex_id);
-  const newTrainingId = data.training_id ?? res.training_id;
+  const trainingId = data.training_id === '' ? undefined : data.training_id;
+  const newTrainingId = trainingId ?? res.training_id;
   const online = data.online ?? res.online;
   const retake = data.retake ?? res.retake;
   if (online && retake) {

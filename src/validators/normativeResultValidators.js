@@ -6,7 +6,10 @@ import { parseResultValue } from '../services/normativeTypeService.js';
 export const normativeResultCreateRules = [
   body('user_id').isUUID(),
   body('season_id').isUUID(),
-  body('training_id').optional().isUUID(),
+  body('training_id')
+    .customSanitizer((v) => (v === '' ? undefined : v))
+    .optional({ nullable: true })
+    .isUUID(),
   body('type_id').isUUID(),
   body('online').optional().isBoolean(),
   body('retake').optional().isBoolean(),
@@ -33,7 +36,10 @@ export const normativeResultCreateRules = [
 ];
 
 export const normativeResultUpdateRules = [
-  body('training_id').optional().isUUID(),
+  body('training_id')
+    .customSanitizer((v) => (v === '' ? undefined : v))
+    .optional({ nullable: true })
+    .isUUID(),
   body('value').optional().notEmpty(),
   body('online').optional().isBoolean(),
   body('retake').optional().isBoolean(),
