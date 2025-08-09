@@ -7,6 +7,8 @@ import { assignCourseRules } from '../validators/courseUserValidators.js';
 
 const router = express.Router();
 
+router.get('/:id', auth, authorize('ADMIN'), controller.list);
+
 router.post(
   '/:id',
   auth,
