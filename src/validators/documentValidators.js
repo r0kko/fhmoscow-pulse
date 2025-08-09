@@ -7,6 +7,7 @@ export const createDocumentValidator = [
   body('signTypeId').isUUID(),
   body('name').isString().trim().notEmpty(),
   body('description').optional().isString(),
+  body('documentDate').optional().isISO8601(),
 ];
 
 export default { createDocumentValidator };
