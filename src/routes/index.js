@@ -44,6 +44,7 @@ import normativeTicketsRouter from './normativeTickets.js';
 import seasonsRouter from './seasons.js';
 import coursesRouter from './courses.js';
 import courseUsersRouter from './courseUsers.js';
+import courseTrainingTypesRouter from './courseTrainingTypes.js';
 
 const router = express.Router();
 
@@ -66,6 +67,7 @@ router.use('/profile', profileRouter);
 router.use('/password-reset', passwordResetRouter);
 router.use('/grounds', groundsRouter);
 router.use('/camp-training-types', campTrainingTypesRouter);
+router.use('/course-training-types', courseTrainingTypesRouter);
 router.use('/camp-trainings', campTrainingsRouter);
 router.use('/seasons', seasonsRouter);
 router.use('/camp-seasons', campSeasonsRouter);
