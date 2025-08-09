@@ -122,7 +122,7 @@ async function submit() {
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
                       <p class="text-muted mb-0">
-                        Заявка отправлена {{ formatDate(current.createdAt) }}
+                        Заявка отправлена {{ formatDate(current.created_at) }}
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'KONTUR_SIGN'">
@@ -130,7 +130,7 @@ async function submit() {
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
                       <p class="text-muted mb-0">
-                        Заявка отправлена {{ formatDate(current.createdAt) }}
+                        Заявка отправлена {{ formatDate(current.created_at) }}
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
@@ -141,7 +141,7 @@ async function submit() {
                       </p>
                       <p class="mb-1">ID: {{ current.id }}</p>
                       <p class="text-muted mb-0">
-                        Дата выпуска: {{ formatDate(current.createdAt) }}
+                        Дата выпуска: {{ formatDate(current.created_at) }}
                       </p>
                     </template>
                   </div>
