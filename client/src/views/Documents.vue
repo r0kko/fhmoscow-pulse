@@ -8,9 +8,21 @@ const current = ref(null);
 const signTypes = ref([]);
 const selected = ref('');
 const code = ref('');
-const codeSent = ref(false);
 const verifyError = ref('');
 const success = ref(false);
+
+const signInfo = {
+  HANDWRITTEN: [
+    'Нужно приехать в офис в рабочее время',
+    'Потребуется оригинал паспорта для идентификации личности',
+    'Подтверждение займет некоторое время',
+  ],
+  KONTOUR_SIGN: [
+    'Можно сделать не выходя из дома, в любое время',
+    'Потребуется регистрация в сервисе с дистанционной проверкой документов в МВД',
+    'Юридическая значимость гарантируется СКБ Контур',
+  ],
+};
 
 onMounted(async () => {
   try {
@@ -29,11 +41,13 @@ onMounted(async () => {
   }
 });
 
-async function sendCode() {
+async function choose(alias) {
+  selected.value = alias;
+  code.value = '';
+  verifyError.value = '';
+  success.value = false;
   try {
     await apiFetch('/email/send-code', { method: 'POST' });
-    codeSent.value = true;
-    verifyError.value = '';
   } catch (e) {
     verifyError.value = e.message;
   }
@@ -69,59 +83,70 @@ async function submit() {
           <div v-if="current" class="alert alert-info mb-0">
             Раздел скоро будет доступен.
           </div>
-          <div v-else class="card section-card tile fade-in shadow-sm">
-            <div class="card-body">
-              <p class="mb-3">
-                Выберите способ подписания первичных документов
-              </p>
-              <div class="mb-3">
-                <div v-for="t in signTypes" :key="t.alias" class="form-check">
-                  <input
-                    :id="`sign-${t.alias}`"
-                    v-model="selected"
-                    class="form-check-input"
-                    type="radio"
-                    :value="t.alias"
-                  />
-                  <label class="form-check-label" :for="`sign-${t.alias}`">
-                    {{ t.name }}
-                  </label>
+          <div v-else>
+            <p class="mb-3">Выберите способ подписания первичных документов</p>
+            <div class="row g-3">
+              <div v-for="t in signTypes" :key="t.alias" class="col-md-6">
+                <div class="card section-card tile fade-in h-100 shadow-sm">
+                  <div class="card-body d-flex flex-column">
+                    <h2 class="h5 mb-3">{{ t.name }}</h2>
+                    <ul class="list-unstyled flex-grow-1 mb-3">
+                      <li
+                        v-for="(item, i) in signInfo[t.alias]"
+                        :key="i"
+                        class="d-flex mb-2"
+                      >
+                        <i
+                          class="bi bi-check-circle text-brand me-2"
+                          aria-hidden="true"
+                        ></i>
+                        <span>{{ item }}</span>
+                      </li>
+                    </ul>
+                    <div class="text-end mt-auto">
+                      <button
+                        type="button"
+                        class="btn btn-primary"
+                        @click="choose(t.alias)"
+                      >
+                        Выбрать
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div v-if="codeSent" class="mb-3">
-                <label for="code" class="form-label">Код из письма</label>
-                <input
-                  id="code"
-                  v-model="code"
-                  class="form-control"
-                  type="text"
-                  maxlength="6"
-                />
+            </div>
+            <div
+              v-if="selected"
+              class="card section-card tile fade-in mt-3 shadow-sm"
+            >
+              <div class="card-body">
+                <p class="mb-3">Мы отправили код на вашу почту</p>
+                <div class="mb-3">
+                  <label for="code" class="form-label">Код из письма</label>
+                  <input
+                    id="code"
+                    v-model="code"
+                    class="form-control"
+                    type="text"
+                    maxlength="6"
+                  />
+                </div>
+                <div v-if="verifyError" class="text-danger mb-2">
+                  {{ verifyError }}
+                </div>
+                <div v-if="success" class="text-success mb-2">
+                  Подпись сохранена
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  :disabled="code.length !== 6"
+                  @click="submit"
+                >
+                  Подтвердить
+                </button>
               </div>
-              <div v-if="verifyError" class="text-danger mb-2">
-                {{ verifyError }}
-              </div>
-              <div v-if="success" class="text-success mb-2">
-                Подпись сохранена
-              </div>
-              <button
-                v-if="!codeSent"
-                type="button"
-                class="btn btn-primary"
-                :disabled="!selected"
-                @click="sendCode"
-              >
-                Отправить код
-              </button>
-              <button
-                v-else
-                type="button"
-                class="btn btn-primary"
-                :disabled="code.length !== 6"
-                @click="submit"
-              >
-                Подтвердить
-              </button>
             </div>
           </div>
         </div>
