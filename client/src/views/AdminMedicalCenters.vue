@@ -194,7 +194,7 @@ async function removeCenter(center) {
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="centers.length" class="table-responsive">
+        <div v-if="centers.length" class="table-responsive d-none d-sm-block">
           <table class="table table-striped align-middle mb-0">
             <thead>
               <tr>
@@ -240,6 +240,33 @@ async function removeCenter(center) {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="centers.length" class="d-block d-sm-none">
+          <div v-for="c in centers" :key="c.id" class="card mb-2">
+            <div class="card-body p-2">
+              <h3 class="h6 mb-1">{{ c.name }}</h3>
+              <p class="mb-1 small">ИНН: {{ c.inn || '—' }}</p>
+              <p class="mb-1 small">Адрес: {{ c.address?.result || '—' }}</p>
+              <p class="mb-1 small">Телефон: {{ formatPhone(c.phone) }}</p>
+              <p class="mb-1 small">Email: {{ c.email || '—' }}</p>
+              <p v-if="c.website" class="mb-2 small">
+                <a :href="c.website" target="_blank" rel="noopener">
+                  {{ c.website }}
+                </a>
+              </p>
+              <div class="text-end">
+                <button
+                  class="btn btn-sm btn-secondary me-2"
+                  @click="openEdit(c)"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" @click="removeCenter(c)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>

@@ -209,26 +209,58 @@ async function removeResult(r) {
             <div class="spinner-border" role="status"></div>
           </div>
           <div v-else>
-            <table
+            <div
               v-if="results.length"
-              class="table table-sm align-middle mb-3"
+              class="table-responsive d-none d-sm-block mb-3"
             >
-              <thead>
-                <tr>
-                  <th>Тип</th>
-                  <th>Значение</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in results" :key="r.id">
-                  <td>
-                    {{
-                      types.find((t) => t.id === r.type_id)?.name || r.type_id
-                    }}
-                  </td>
-                  <td>{{ formatValue(r) }}</td>
-                  <td class="text-end">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Тип</th>
+                    <th>Значение</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in results" :key="r.id">
+                    <td>
+                      {{
+                        types.find((t) => t.id === r.type_id)?.name || r.type_id
+                      }}
+                    </td>
+                    <td>{{ formatValue(r) }}</td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-secondary me-2"
+                        @click="startEdit(r)"
+                      >
+                        <i class="bi bi-pencil" />
+                      </button>
+                      <button
+                        class="btn btn-sm btn-danger"
+                        @click="removeResult(r)"
+                      >
+                        <i class="bi bi-trash" />
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="results.length" class="d-block d-sm-none mb-3">
+              <div v-for="r in results" :key="r.id" class="card mb-2">
+                <div
+                  class="card-body p-2 d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <div class="small">
+                      {{
+                        types.find((t) => t.id === r.type_id)?.name || r.type_id
+                      }}
+                    </div>
+                    <div class="fw-semibold">{{ formatValue(r) }}</div>
+                  </div>
+                  <div class="text-end">
                     <button
                       class="btn btn-sm btn-secondary me-2"
                       @click="startEdit(r)"
@@ -241,10 +273,10 @@ async function removeResult(r) {
                     >
                       <i class="bi bi-trash" />
                     </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="mb-3">
               <select v-model="form.type_id" class="form-select">
                 <option value="" disabled>Тип норматива</option>

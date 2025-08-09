@@ -140,63 +140,119 @@ function showToast(message) {
           v-if="visibleRegistrations.length"
           class="card section-card tile fade-in shadow-sm"
         >
-          <div class="card-body table-responsive p-3">
-            <table class="table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Участник</th>
-                  <th>Год рождения</th>
-                  <th class="text-end">Присутствие</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in visibleRegistrations" :key="r.user.id">
-                  <td>{{ formatName(r.user) }}</td>
-                  <td>{{ new Date(r.user.birth_date).getFullYear() }}</td>
-                  <td class="text-end">
-                    <div
-                      class="btn-group btn-group-sm presence-group"
-                      role="group"
-                    >
-                      <input
-                        :id="`present-yes-${r.user.id}`"
-                        type="radio"
-                        class="btn-check"
-                        :name="`present-${r.user.id}`"
-                        autocomplete="off"
-                        :checked="r.present === true"
-                        :disabled="attendanceMarked"
-                        @change="setPresence(r.user.id, true)"
-                      />
-                      <label
-                        class="btn btn-outline-success presence-btn"
-                        :for="`present-yes-${r.user.id}`"
+          <div class="card-body p-3">
+            <div class="table-responsive d-none d-sm-block">
+              <table class="table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Участник</th>
+                    <th>Год рождения</th>
+                    <th class="text-end">Присутствие</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in visibleRegistrations" :key="r.user.id">
+                    <td>{{ formatName(r.user) }}</td>
+                    <td>{{ new Date(r.user.birth_date).getFullYear() }}</td>
+                    <td class="text-end">
+                      <div
+                        class="btn-group btn-group-sm presence-group"
+                        role="group"
                       >
-                        <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        <span class="visually-hidden">Да</span>
-                      </label>
-                      <input
-                        :id="`present-no-${r.user.id}`"
-                        type="radio"
-                        class="btn-check"
-                        :name="`present-${r.user.id}`"
-                        autocomplete="off"
-                        :checked="r.present === false"
-                        :disabled="attendanceMarked"
-                        @change="setPresence(r.user.id, false)"
-                      />
-                      <label
-                        class="btn btn-outline-danger presence-btn"
-                        :for="`present-no-${r.user.id}`"
-                      >
-                        <i class="bi bi-x-lg" aria-hidden="true"></i>
-                        <span class="visually-hidden">Нет</span>
-                      </label>
+                        <input
+                          :id="`present-yes-${r.user.id}`"
+                          type="radio"
+                          class="btn-check"
+                          :name="`present-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === true"
+                          :disabled="attendanceMarked"
+                          @change="setPresence(r.user.id, true)"
+                        />
+                        <label
+                          class="btn btn-outline-success presence-btn"
+                          :for="`present-yes-${r.user.id}`"
+                        >
+                          <i class="bi bi-check-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Да</span>
+                        </label>
+                        <input
+                          :id="`present-no-${r.user.id}`"
+                          type="radio"
+                          class="btn-check"
+                          :name="`present-${r.user.id}`"
+                          autocomplete="off"
+                          :checked="r.present === false"
+                          :disabled="attendanceMarked"
+                          @change="setPresence(r.user.id, false)"
+                        />
+                        <label
+                          class="btn btn-outline-danger presence-btn"
+                          :for="`present-no-${r.user.id}`"
+                        >
+                          <i class="bi bi-x-lg" aria-hidden="true"></i>
+                          <span class="visually-hidden">Нет</span>
+                        </label>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="d-block d-sm-none">
+              <div
+                v-for="r in visibleRegistrations"
+                :key="r.user.id"
+                class="card mb-2"
+              >
+                <div
+                  class="card-body p-2 d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <div class="fw-semibold">{{ formatName(r.user) }}</div>
+                    <div class="small text-muted">
+                      Г.р.: {{ new Date(r.user.birth_date).getFullYear() }}
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                  <div class="btn-group presence-group" role="group">
+                    <input
+                      :id="`present-yes-m-${r.user.id}`"
+                      type="radio"
+                      class="btn-check"
+                      :name="`present-m-${r.user.id}`"
+                      autocomplete="off"
+                      :checked="r.present === true"
+                      :disabled="attendanceMarked"
+                      @change="setPresence(r.user.id, true)"
+                    />
+                    <label
+                      class="btn btn-outline-success presence-btn"
+                      :for="`present-yes-m-${r.user.id}`"
+                    >
+                      <i class="bi bi-check-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Да</span>
+                    </label>
+                    <input
+                      :id="`present-no-m-${r.user.id}`"
+                      type="radio"
+                      class="btn-check"
+                      :name="`present-m-${r.user.id}`"
+                      autocomplete="off"
+                      :checked="r.present === false"
+                      :disabled="attendanceMarked"
+                      @change="setPresence(r.user.id, false)"
+                    />
+                    <label
+                      class="btn btn-outline-danger presence-btn"
+                      :for="`present-no-m-${r.user.id}`"
+                    >
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Нет</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <p v-else class="text-muted">Нет записей</p>

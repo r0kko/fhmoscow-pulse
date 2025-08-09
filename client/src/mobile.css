@@ -1,0 +1,47 @@
+/* Global mobile and accessibility baseline */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Make media scale within containers */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  /* Do not override author-provided dimensions */
+}
+
+/* Visible, consistent keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--brand-color);
+  outline-offset: 2px;
+}
+
+/* Improve tap targets for non-Bootstrap buttons only on touch devices */
+@media (pointer: coarse) {
+  button:not(.btn),
+  [role='button']:not(.btn) {
+    min-height: 40px;
+  }
+}
+
+/* Respect notches and rounded corners for edge-to-edge UIs */
+@supports (padding: env(safe-area-inset-left)) {
+  .navbar .container-fluid {
+    padding-left: calc(env(safe-area-inset-left) + (var(--bs-gutter-x) * 0.5));
+    padding-right: calc(env(safe-area-inset-right) + (var(--bs-gutter-x) * 0.5));
+  }
+
+  footer .container {
+    padding-left: calc(env(safe-area-inset-left) + (var(--bs-gutter-x) * 0.5));
+    padding-right: calc(env(safe-area-inset-right) + (var(--bs-gutter-x) * 0.5));
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+}
+
+/* Prevent iOS zoom on small text inputs */
+input, select, textarea {
+  font-size: 16px;
+}

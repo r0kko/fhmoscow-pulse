@@ -20,7 +20,11 @@
         >
           Выйти
         </button>
-        <button class="btn btn-outline-light d-md-none" @click="logout">
+        <button
+          class="btn btn-outline-light d-md-none"
+          aria-label="Выйти"
+          @click="logout"
+        >
           <i class="bi bi-box-arrow-right"></i>
         </button>
       </div>

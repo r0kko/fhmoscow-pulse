@@ -44,7 +44,7 @@ onMounted(async () => {
     </nav>
     <h1 class="mb-3">Документы</h1>
     <div class="card section-card tile fade-in shadow-sm">
-      <div class="card-body table-responsive">
+      <div class="card-body">
         <div v-if="error" class="alert alert-danger mb-0" role="alert">
           {{ error }}
         </div>
@@ -55,30 +55,49 @@ onMounted(async () => {
             aria-label="loading"
           ></div>
         </div>
-        <table v-else class="table mb-0">
-          <thead>
-            <tr>
-              <th>Документ</th>
-              <th>Получатель</th>
-              <th>Статус</th>
-              <th>Дата</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="d in documents" :key="d.id">
-              <td>{{ d.name }}</td>
-              <td>
-                {{ d.recipient.lastName }} {{ d.recipient.firstName }}
-                {{ d.recipient.patronymic }}
-              </td>
-              <td>{{ d.status?.name }}</td>
-              <td>{{ formatDateTime(d.createdAt) }}</td>
-            </tr>
-            <tr v-if="!documents.length">
-              <td colspan="4" class="text-center">Документы отсутствуют</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else>
+          <div class="table-responsive d-none d-sm-block">
+            <table class="table mb-0">
+              <thead>
+                <tr>
+                  <th>Документ</th>
+                  <th>Получатель</th>
+                  <th>Статус</th>
+                  <th>Дата</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="d in documents" :key="d.id">
+                  <td>{{ d.name }}</td>
+                  <td>
+                    {{ d.recipient.lastName }} {{ d.recipient.firstName }}
+                    {{ d.recipient.patronymic }}
+                  </td>
+                  <td>{{ d.status?.name }}</td>
+                  <td>{{ formatDateTime(d.createdAt) }}</td>
+                </tr>
+                <tr v-if="!documents.length">
+                  <td colspan="4" class="text-center">Документы отсутствуют</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="documents.length" class="d-block d-sm-none">
+            <div v-for="d in documents" :key="d.id" class="card mb-2">
+              <div class="card-body p-2">
+                <h3 class="h6 mb-1">{{ d.name }}</h3>
+                <p class="mb-1 small">
+                  {{ d.recipient.lastName }} {{ d.recipient.firstName }}
+                  {{ d.recipient.patronymic }}
+                </p>
+                <p class="mb-1 small">Статус: {{ d.status?.name || '—' }}</p>
+                <p class="mb-0 small">
+                  Дата: {{ formatDateTime(d.createdAt) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

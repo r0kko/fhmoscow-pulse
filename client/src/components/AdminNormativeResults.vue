@@ -401,7 +401,7 @@ defineExpose({ refresh });
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="results.length" class="table-responsive">
+        <div v-if="results.length" class="table-responsive d-none d-sm-block">
           <table
             class="table table-sm admin-table auto-cols table-striped align-middle mb-0"
           >
@@ -466,6 +466,57 @@ defineExpose({ refresh });
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="results.length" class="d-block d-sm-none">
+          <div v-for="r in results" :key="r.id" class="card mb-2">
+            <div class="card-body p-2">
+              <div class="fw-semibold mb-1">
+                {{ r.user?.last_name }}
+                {{ r.user?.first_name }}
+                {{ r.user?.patronymic }}
+              </div>
+              <div class="small mb-1">Группа: {{ r.group?.name || '-' }}</div>
+              <div class="small mb-1">
+                Тип:
+                {{ types.find((t) => t.id === r.type_id)?.name || r.type_id }}
+              </div>
+              <div class="small mb-1">Значение: {{ formatValue(r) }}</div>
+              <div class="small mb-2">
+                {{
+                  r.retake
+                    ? 'Перезачет'
+                    : r.online
+                      ? 'Онлайн'
+                      : formatDateTime(r.training?.start_at)
+                }}
+              </div>
+              <div class="small mb-2">
+                Стадион:
+                {{
+                  r.training?.Ground?.name || r.training?.ground?.name || '-'
+                }}
+              </div>
+              <div class="text-end">
+                <button
+                  class="btn btn-sm btn-secondary me-2"
+                  @click="openEdit(r)"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button
+                  class="btn btn-sm btn-danger"
+                  :disabled="deletingId === r.id"
+                  @click="removeResult(r)"
+                >
+                  <span
+                    v-if="deletingId === r.id"
+                    class="spinner-border spinner-border-sm"
+                  ></span>
+                  <i v-else class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>

@@ -281,7 +281,7 @@ async function loadJudges() {
         <div v-if="judgesLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
         </div>
-        <div v-if="judges.length" class="table-responsive">
+        <div v-if="judges.length" class="table-responsive d-none d-sm-block">
           <table class="table table-hover align-middle mb-0">
             <thead>
               <tr>
@@ -348,6 +348,38 @@ async function loadJudges() {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="judges.length" class="d-block d-sm-none">
+          <div
+            v-for="j in judges"
+            :key="j.user.id"
+            class="card mb-2"
+            :class="{ 'border-danger': !hasActive(j) }"
+          >
+            <div class="card-body p-2">
+              <h3 class="h6 mb-1">
+                {{ j.user.last_name }} {{ j.user.first_name }}
+                {{ j.user.patronymic }}
+              </h3>
+              <p class="mb-2 small">{{ formatDate(j.user.birth_date) }}</p>
+              <div v-for="c in j.certificates" :key="c.id" class="mb-1">
+                <button
+                  type="button"
+                  class="btn btn-link p-0"
+                  @click="openEdit(c)"
+                >
+                  № {{ c.certificate_number }}
+                </button>
+                <span class="small">
+                  • {{ c.organization }} • {{ formatDate(c.issue_date) }} —
+                  {{ formatDate(c.valid_until) }}</span
+                >
+              </div>
+              <p v-if="!hasActive(j)" class="text-danger small mb-0">
+                Нет актуального заключения
+              </p>
+            </div>
+          </div>
         </div>
         <p v-else-if="!judgesLoading" class="text-muted mb-0">Нет данных</p>
       </div>

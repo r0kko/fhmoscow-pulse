@@ -41,7 +41,7 @@ onMounted(async () => {
       <div v-if="error" class="text-danger">{{ error }}</div>
       <div v-else class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
-          <div class="table-responsive">
+          <div class="table-responsive d-none d-sm-block">
             <table class="table align-middle mb-0">
               <thead>
                 <tr>
@@ -58,6 +58,17 @@ onMounted(async () => {
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div v-if="users.length" class="d-block d-sm-none">
+            <div v-for="u in users" :key="u.id" class="card mb-2">
+              <div class="card-body p-2">
+                <h3 class="h6 mb-1">
+                  {{ u.lastName }} {{ u.firstName }} {{ u.patronymic }}
+                </h3>
+                <p class="mb-1 small">{{ u.email || '—' }}</p>
+                <p class="mb-0 small">Подпись: {{ u.signType?.name || '—' }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

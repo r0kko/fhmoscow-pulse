@@ -205,85 +205,163 @@ async function exportPdf() {
         <div class="spinner-border" role="status"></div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3 table-responsive">
-          <table class="table table-striped align-middle mb-0">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Пользователь</th>
-                <th>Дата заявки</th>
-                <th>Email</th>
-                <th>Телефон</th>
-                <th>Статус</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(r, idx) in list" :key="r.user.id">
-                <td>
-                  {{
-                    approvedIndices[idx] !== null ? approvedIndices[idx] : ''
-                  }}
-                </td>
-                <td>
-                  {{ r.user.last_name }} {{ r.user.first_name }}
-                  {{ r.user.patronymic }}
-                </td>
-                <td>{{ formatDateTime(r.created_at) }}</td>
-                <td>{{ r.user.email }}</td>
-                <td>{{ formatPhone(r.user.phone) }}</td>
-                <td>
-                  {{
-                    r.status === 'PENDING'
-                      ? 'На рассмотрении'
-                      : r.status === 'APPROVED'
-                        ? 'Подтверждена'
-                        : r.status === 'COMPLETED'
-                          ? 'Завершена'
-                          : 'Отменена'
-                  }}
-                </td>
-                <td class="text-end">
-                  <button
-                    v-if="r.status === 'PENDING'"
-                    class="btn btn-sm btn-success me-2"
-                    :disabled="statusLoading[r.user.id]"
-                    @click="setStatus(r.user.id, 'APPROVED')"
-                  >
-                    <span
-                      v-if="statusLoading[r.user.id]"
-                      class="spinner-border spinner-border-sm me-2"
-                    ></span>
-                    ✓
-                  </button>
-                  <button
-                    v-if="r.status === 'APPROVED'"
-                    class="btn btn-sm btn-primary me-2"
-                    :disabled="statusLoading[r.user.id]"
-                    @click="setStatus(r.user.id, 'COMPLETED')"
-                  >
-                    <span
-                      v-if="statusLoading[r.user.id]"
-                      class="spinner-border spinner-border-sm me-2"
-                    ></span>
-                    <i class="bi bi-check2-all"></i>
-                  </button>
-                  <button
-                    v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
-                    class="btn btn-sm btn-danger"
-                    :disabled="statusLoading[r.user.id]"
-                    @click="setStatus(r.user.id, 'CANCELED')"
-                  >
-                    <span
-                      v-if="statusLoading[r.user.id]"
-                      class="spinner-border spinner-border-sm me-2"
-                    ></span>
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="card-body p-3">
+          <div class="table-responsive d-none d-sm-block">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Пользователь</th>
+                  <th>Дата заявки</th>
+                  <th>Email</th>
+                  <th>Телефон</th>
+                  <th>Статус</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, idx) in list" :key="r.user.id">
+                  <td>
+                    {{
+                      approvedIndices[idx] !== null ? approvedIndices[idx] : ''
+                    }}
+                  </td>
+                  <td>
+                    {{ r.user.last_name }} {{ r.user.first_name }}
+                    {{ r.user.patronymic }}
+                  </td>
+                  <td>{{ formatDateTime(r.created_at) }}</td>
+                  <td>{{ r.user.email }}</td>
+                  <td>{{ formatPhone(r.user.phone) }}</td>
+                  <td>
+                    {{
+                      r.status === 'PENDING'
+                        ? 'На рассмотрении'
+                        : r.status === 'APPROVED'
+                          ? 'Подтверждена'
+                          : r.status === 'COMPLETED'
+                            ? 'Завершена'
+                            : 'Отменена'
+                    }}
+                  </td>
+                  <td class="text-end">
+                    <button
+                      v-if="r.status === 'PENDING'"
+                      class="btn btn-sm btn-success me-2"
+                      :disabled="statusLoading[r.user.id]"
+                      @click="setStatus(r.user.id, 'APPROVED')"
+                    >
+                      <span
+                        v-if="statusLoading[r.user.id]"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      ✓
+                    </button>
+                    <button
+                      v-if="r.status === 'APPROVED'"
+                      class="btn btn-sm btn-primary me-2"
+                      :disabled="statusLoading[r.user.id]"
+                      @click="setStatus(r.user.id, 'COMPLETED')"
+                    >
+                      <span
+                        v-if="statusLoading[r.user.id]"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      <i class="bi bi-check2-all"></i>
+                    </button>
+                    <button
+                      v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
+                      class="btn btn-sm btn-danger"
+                      :disabled="statusLoading[r.user.id]"
+                      @click="setStatus(r.user.id, 'CANCELED')"
+                    >
+                      <span
+                        v-if="statusLoading[r.user.id]"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="d-block d-sm-none">
+            <div v-for="(r, idx) in list" :key="r.user.id" class="card mb-2">
+              <div class="card-body p-2">
+                <div
+                  class="d-flex justify-content-between align-items-start mb-1"
+                >
+                  <div class="me-2">
+                    <h3 class="h6 mb-1">
+                      {{ r.user.last_name }} {{ r.user.first_name }}
+                      {{ r.user.patronymic }}
+                    </h3>
+                    <p class="mb-1 small">
+                      № {{ approvedIndices[idx] || '—' }}
+                    </p>
+                    <p class="mb-1 small">
+                      Заявка: {{ formatDateTime(r.created_at) }}
+                    </p>
+                    <p class="mb-1 small">Email: {{ r.user.email || '—' }}</p>
+                    <p class="mb-1 small">
+                      Телефон: {{ formatPhone(r.user.phone) }}
+                    </p>
+                    <p class="mb-1 small">
+                      Статус:
+                      {{
+                        r.status === 'PENDING'
+                          ? 'На рассмотрении'
+                          : r.status === 'APPROVED'
+                            ? 'Подтверждена'
+                            : r.status === 'COMPLETED'
+                              ? 'Завершена'
+                              : 'Отменена'
+                      }}
+                    </p>
+                  </div>
+                  <div class="text-end">
+                    <button
+                      v-if="r.status === 'PENDING'"
+                      class="btn btn-sm btn-success mb-1 w-100"
+                      :disabled="statusLoading[r.user.id]"
+                      @click="setStatus(r.user.id, 'APPROVED')"
+                    >
+                      <span
+                        v-if="statusLoading[r.user.id]"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      Подтвердить
+                    </button>
+                    <button
+                      v-if="r.status === 'APPROVED'"
+                      class="btn btn-sm btn-primary mb-1 w-100"
+                      :disabled="statusLoading[r.user.id]"
+                      @click="setStatus(r.user.id, 'COMPLETED')"
+                    >
+                      <span
+                        v-if="statusLoading[r.user.id]"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      Завершить
+                    </button>
+                    <button
+                      v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
+                      class="btn btn-sm btn-danger w-100"
+                      :disabled="statusLoading[r.user.id]"
+                      @click="setStatus(r.user.id, 'CANCELED')"
+                    >
+                      <span
+                        v-if="statusLoading[r.user.id]"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      Отменить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <p v-else-if="!loading && !loadingExam" class="text-muted mb-0">

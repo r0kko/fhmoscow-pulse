@@ -359,6 +359,9 @@ onMounted(() => {
                         class="form-control"
                         maxlength="6"
                         placeholder="Код из письма"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        autocomplete="one-time-code"
                       />
                       <button class="btn btn-brand" @click="confirmCode">
                         Подтвердить
