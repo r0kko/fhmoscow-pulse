@@ -4,6 +4,7 @@ export const JWT_ALG = process.env.JWT_ALG || 'HS256';
 export const JWT_SECRET = process.env.JWT_SECRET;
 
 import safeRegex from 'safe-regex';
+import _ from 'lodash';
 
 export const PASSWORD_MIN_LENGTH =
   parseInt(process.env.PASSWORD_MIN_LENGTH, 10) || 8;
@@ -15,7 +16,9 @@ if (!safeRegex(rawPasswordPattern)) {
   throw new Error('Unsafe PASSWORD_PATTERN');
 }
 
-export const PASSWORD_PATTERN = new RegExp(rawPasswordPattern);
+import _ from 'lodash';
+const sanitizedPasswordPattern = _.escapeRegExp(rawPasswordPattern);
+export const PASSWORD_PATTERN = new RegExp(sanitizedPasswordPattern);
 
 export const COOKIE_NAME = 'refresh_token';
 export const COOKIE_HTTP_ONLY = true;
