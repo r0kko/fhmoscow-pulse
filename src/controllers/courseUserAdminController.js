@@ -6,6 +6,18 @@ import courseMapper from '../mappers/courseMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
+  async list(req, res) {
+    try {
+      const user = await courseService.getUserWithCourses(req.params.id);
+      return res.json({
+        user: userMapper.toPublic(user),
+        courses: user.Courses.map(courseMapper.toPublic),
+      });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+
   async addCourse(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

@@ -25,6 +25,7 @@ import AdminNormatives from './views/AdminNormatives.vue';
 import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
+import AdminCourses from './views/AdminCourses.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
@@ -129,6 +130,11 @@ const routes = [
     path: '/admin/documents',
     component: AdminDocuments,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Документы' },
+  },
+  {
+    path: '/admin/courses',
+    component: AdminCourses,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Курсы' },
   },
   {
     path: '/admin/normatives',

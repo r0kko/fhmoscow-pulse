@@ -11,6 +11,7 @@ const userSections = [
 const refereeSections = [
   { title: 'Сборы', icon: 'bi-building', to: '/admin/grounds' },
   { title: 'Нормативы', icon: 'bi-speedometer2', to: '/admin/normatives' },
+  { title: 'Курсы', icon: 'bi-mortarboard', to: '/admin/courses' },
 ];
 </script>
 
