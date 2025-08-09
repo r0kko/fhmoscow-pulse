@@ -13,7 +13,7 @@ function generateCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
 
-export async function sendCode(user) {
+export async function sendCode(user, type = 'verify') {
   const code = generateCode();
   const expires = new Date(Date.now() + 15 * 60 * 1000);
   await EmailCode.destroy({ where: { user_id: user.id } });
@@ -24,7 +24,11 @@ export async function sendCode(user) {
     expires_at: expires,
   });
   attempts.clear(user.id);
-  await emailService.sendVerificationEmail(user, code);
+  if (type === 'sign-type') {
+    await emailService.sendSignTypeSelectionEmail(user, code);
+  } else {
+    await emailService.sendVerificationEmail(user, code);
+  }
 }
 
 export async function verifyCode(user, code, statusAlias = 'ACTIVE') {

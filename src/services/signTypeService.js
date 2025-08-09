@@ -17,7 +17,7 @@ async function getByUser(userId) {
 }
 
 async function sendCode(user) {
-  await emailVerificationService.sendCode(user);
+  await emailVerificationService.sendCode(user, 'sign-type');
 }
 
 async function select(user, alias, code) {
