@@ -34,6 +34,19 @@ router.get('/me', auth, controller.me);
 
 /**
  * @swagger
+ * /sign-types/send-code:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Send email code for sign type selection
+ *     responses:
+ *       200:
+ *         description: Code sent
+ */
+router.post('/send-code', auth, controller.sendCode);
+
+/**
+ * @swagger
  * /sign-types/select:
  *   post:
  *     security:
