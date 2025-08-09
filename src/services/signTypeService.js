@@ -14,7 +14,7 @@ async function list() {
 async function getByUser(userId) {
   const record = await UserSignType.findOne({
     where: { user_id: userId },
-    attributes: ['id', 'created_at'],
+    attributes: ['id', 'created_at', 'sign_created_date'],
     include: [{ model: SignType, attributes: ['name', 'alias'] }],
   });
   if (!record) {
@@ -26,7 +26,8 @@ async function getByUser(userId) {
   });
   return {
     id: record.id,
-    created_at: record.created_at,
+    selectedAt: record.created_at,
+    signCreatedDate: record.sign_created_date,
     name: record.SignType.name,
     alias: record.SignType.alias,
     inn: inn ? inn.number : null,
@@ -48,12 +49,17 @@ async function select(user, alias, code) {
     defaults: {
       user_id: user.id,
       sign_type_id: signType.id,
+      sign_created_date: new Date(),
       created_by: user.id,
       updated_by: user.id,
     },
   });
   if (record.sign_type_id !== signType.id) {
-    await record.update({ sign_type_id: signType.id, updated_by: user.id });
+    await record.update({
+      sign_type_id: signType.id,
+      sign_created_date: new Date(),
+      updated_by: user.id,
+    });
   }
   await documentService.generateInitial(user, signType.id);
   return signType;

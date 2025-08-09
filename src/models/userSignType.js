@@ -13,6 +13,7 @@ UserSignType.init(
     },
     user_id: { type: DataTypes.UUID, allowNull: false },
     sign_type_id: { type: DataTypes.UUID, allowNull: false },
+    sign_created_date: { type: DataTypes.DATE },
   },
   {
     sequelize,

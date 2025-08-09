@@ -7,6 +7,7 @@ const loading = ref(true);
 const error = ref('');
 const current = ref(null);
 const signTypes = ref([]);
+const documents = ref([]);
 const selected = ref('');
 const selectedType = ref(null);
 const code = ref('');
@@ -42,14 +43,16 @@ const signInfo = {
 
 onMounted(async () => {
   try {
-    const [me, types] = await Promise.all([
+    const [me, types, docs] = await Promise.all([
       apiFetch('/sign-types/me'),
       apiFetch('/sign-types'),
+      apiFetch('/documents'),
     ]);
     current.value = me.signType;
     signTypes.value = (types.signTypes || []).filter((t) =>
       ['HANDWRITTEN', 'KONTUR_SIGN'].includes(t.alias)
     );
+    documents.value = docs.documents || [];
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -122,7 +125,7 @@ async function submit() {
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
                       <p class="text-muted mb-0">
-                        Заявка отправлена {{ formatDate(current.created_at) }}
+                        Заявка отправлена {{ formatDate(current.selectedAt) }}
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'KONTUR_SIGN'">
@@ -130,7 +133,7 @@ async function submit() {
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
                       <p class="text-muted mb-0">
-                        Заявка отправлена {{ formatDate(current.created_at) }}
+                        Заявка отправлена {{ formatDate(current.selectedAt) }}
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
@@ -141,15 +144,56 @@ async function submit() {
                       </p>
                       <p class="mb-1">ID: {{ current.id }}</p>
                       <p class="text-muted mb-0">
-                        Дата выпуска: {{ formatDate(current.created_at) }}
+                        Дата выпуска: {{ formatDate(current.selectedAt) }}
                       </p>
                     </template>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="alert alert-info mb-0">
-              Раздел скоро будет доступен.
+            <div class="row mt-4">
+              <div class="col-12">
+                <div class="card section-card tile fade-in shadow-sm">
+                  <div class="card-body">
+                    <h2 class="h6 mb-3">Ваши документы</h2>
+                    <div class="table-responsive">
+                      <table class="table align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th scope="col">Название</th>
+                            <th scope="col">Дата</th>
+                            <th scope="col">Статус</th>
+                            <th scope="col" class="text-end">Файл</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="d in documents" :key="d.id">
+                            <td>{{ d.name }}</td>
+                            <td>{{ formatDate(d.documentDate) }}</td>
+                            <td>{{ d.status?.name || '-' }}</td>
+                            <td class="text-end">
+                              <a
+                                v-if="d.file"
+                                class="btn btn-sm btn-outline-primary"
+                                :href="d.file.path"
+                                target="_blank"
+                                rel="noopener"
+                              >
+                                Скачать
+                              </a>
+                            </td>
+                          </tr>
+                          <tr v-if="!documents.length">
+                            <td colspan="4" class="text-center text-muted">
+                              Документы отсутствуют
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else>
