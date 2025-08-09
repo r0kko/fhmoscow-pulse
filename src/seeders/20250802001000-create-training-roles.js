@@ -7,7 +7,7 @@ module.exports = {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
       // eslint-disable-next-line
-      "SELECT COUNT(*) AS cnt FROM training_roles WHERE alias IN ('PARTICIPANT','COACH','EQUIPMENT_MANAGER');"
+      "SELECT COUNT(*) AS cnt FROM training_roles WHERE alias IN ('PARTICIPANT','COACH','EQUIPMENT_MANAGER','TEACHER');"
     );
     if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(
@@ -17,7 +17,7 @@ module.exports = {
           id: uuidv4(),
           name: 'Участник',
           alias: 'PARTICIPANT',
-          teacher: false,
+          for_camp: true,
           created_at: now,
           updated_at: now,
         },
@@ -25,7 +25,7 @@ module.exports = {
           id: uuidv4(),
           name: 'Тренер',
           alias: 'COACH',
-          teacher: false,
+          for_camp: true,
           created_at: now,
           updated_at: now,
         },
@@ -33,7 +33,7 @@ module.exports = {
           id: uuidv4(),
           name: 'Ответственный за инвентарь',
           alias: 'EQUIPMENT_MANAGER',
-          teacher: false,
+          for_camp: true,
           created_at: now,
           updated_at: now,
         },
@@ -41,7 +41,7 @@ module.exports = {
           id: uuidv4(),
           name: 'Преподаватель',
           alias: 'TEACHER',
-          teacher: true,
+          for_camp: false,
           created_at: now,
           updated_at: now,
         },

@@ -58,7 +58,7 @@ function sanitize(obj) {
     ).map((r) => userMapper.toPublic(r.User));
     if (coaches.length) res.coaches = coaches;
     const teachers = obj.TrainingRegistrations.filter(
-      (r) => r.TrainingRole?.teacher && r.User
+      (r) => r.TrainingRole?.alias === 'TEACHER' && r.User
     ).map((r) => userMapper.toPublic(r.User));
     if (teachers.length) res.teachers = teachers;
     const inventory = obj.TrainingRegistrations.filter(
