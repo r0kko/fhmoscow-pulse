@@ -16,7 +16,9 @@ const loadingAlias = ref('');
 const confirming = ref(false);
 
 function formatDate(value) {
+  if (!value) return '-';
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
   const d = date.toLocaleDateString('ru-RU');
   const t = date.toLocaleTimeString('ru-RU', {
     hour: '2-digit',
@@ -112,33 +114,38 @@ async function submit() {
         <div v-if="error" class="text-danger">{{ error }}</div>
         <div v-else>
           <div v-if="current">
-            <div class="card section-card tile fade-in mb-3 shadow-sm">
-              <div class="card-body">
-                <template v-if="current.alias === 'HANDWRITTEN'">
-                  <p class="mb-1">Тип: собственноручная</p>
-                  <p class="mb-0">
-                    Дата заявки: {{ formatDate(current.createdAt) }}
-                  </p>
-                </template>
-                <template v-else-if="current.alias === 'KONTUR_SIGN'">
-                  <p class="mb-1">Тип: через сервис Контур.Сайн</p>
-                  <p class="mb-1">ИНН: {{ current.inn }}</p>
-                  <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
-                  <p class="mb-0">
-                    Дата заявки: {{ formatDate(current.createdAt) }}
-                  </p>
-                </template>
-                <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
-                  <p class="mb-1">Тип: простая электронная подпись</p>
-                  <p class="mb-1">ИНН: {{ current.inn }}</p>
-                  <p class="mb-1">
-                    Эмитент сертификата: Федерация хоккея Москвы
-                  </p>
-                  <p class="mb-1">ID: {{ current.id }}</p>
-                  <p class="mb-0">
-                    Дата выпуска: {{ formatDate(current.createdAt) }}
-                  </p>
-                </template>
+            <div class="row justify-content-center">
+              <div class="col-md-8 col-lg-6">
+                <div class="card section-card tile fade-in mb-3 shadow-sm">
+                  <div class="card-body">
+                    <h2 class="h5 mb-3">Ваш способ подписания</h2>
+                    <template v-if="current.alias === 'HANDWRITTEN'">
+                      <p class="mb-2">Собственноручная подпись</p>
+                      <p class="text-muted mb-0">
+                        Заявка отправлена {{ formatDate(current.createdAt) }}
+                      </p>
+                    </template>
+                    <template v-else-if="current.alias === 'KONTUR_SIGN'">
+                      <p class="mb-2">Подписание через Контур.Сайн</p>
+                      <p class="mb-1">ИНН: {{ current.inn }}</p>
+                      <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
+                      <p class="text-muted mb-0">
+                        Заявка отправлена {{ formatDate(current.createdAt) }}
+                      </p>
+                    </template>
+                    <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
+                      <p class="mb-2">Простая электронная подпись</p>
+                      <p class="mb-1">ИНН: {{ current.inn }}</p>
+                      <p class="mb-1">
+                        Эмитент сертификата: Федерация хоккея Москвы
+                      </p>
+                      <p class="mb-1">ID: {{ current.id }}</p>
+                      <p class="text-muted mb-0">
+                        Дата выпуска: {{ formatDate(current.createdAt) }}
+                      </p>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="alert alert-info mb-0">
