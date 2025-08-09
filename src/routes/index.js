@@ -43,6 +43,8 @@ import normativeZonesRouter from './normativeZones.js';
 import normativesRouter from './normatives.js';
 import normativeTicketsRouter from './normativeTickets.js';
 import seasonsRouter from './seasons.js';
+import coursesRouter from './courses.js';
+import courseUsersRouter from './courseUsers.js';
 
 const router = express.Router();
 
@@ -83,6 +85,8 @@ router.use('/normative-value-types', normativeValueTypesRouter);
 router.use('/normative-zones', normativeZonesRouter);
 router.use('/normatives', normativesRouter);
 router.use('/normative-tickets', normativeTicketsRouter);
+router.use('/courses', coursesRouter);
+router.use('/course-users', courseUsersRouter);
 router.use('/tasks', tasksRouter);
 router.use('/tickets', ticketsRouter);
 

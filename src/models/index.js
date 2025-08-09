@@ -34,6 +34,8 @@ import Season from './season.js';
 import RefereeGroup from './refereeGroup.js';
 import RefereeGroupUser from './refereeGroupUser.js';
 import TrainingRefereeGroup from './trainingRefereeGroup.js';
+import Course from './course.js';
+import UserCourse from './userCourse.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExam from './medicalExam.js';
 import MedicalExamRegistration from './medicalExamRegistration.js';
@@ -157,6 +159,19 @@ RefereeGroup.hasMany(RefereeGroupUser, { foreignKey: 'group_id' });
 RefereeGroupUser.belongsTo(RefereeGroup, { foreignKey: 'group_id' });
 User.hasOne(RefereeGroupUser, { foreignKey: 'user_id' });
 RefereeGroupUser.belongsTo(User, { foreignKey: 'user_id' });
+
+/* courses */
+Course.belongsTo(User, { foreignKey: 'responsible_id', as: 'Responsible' });
+User.hasMany(Course, {
+  foreignKey: 'responsible_id',
+  as: 'ResponsibleCourses',
+});
+Course.belongsToMany(User, { through: UserCourse, foreignKey: 'course_id' });
+User.belongsToMany(Course, { through: UserCourse, foreignKey: 'user_id' });
+Course.hasMany(UserCourse, { foreignKey: 'course_id' });
+UserCourse.belongsTo(Course, { foreignKey: 'course_id' });
+User.hasMany(UserCourse, { foreignKey: 'user_id' });
+UserCourse.belongsTo(User, { foreignKey: 'user_id' });
 
 /* medical centers */
 MedicalCenter.belongsTo(Address, { foreignKey: 'address_id' });
@@ -334,6 +349,8 @@ export {
   TicketType,
   TicketStatus,
   TicketFile,
+  Course,
+  UserCourse,
   NormativeValueType,
   MeasurementUnit,
   NormativeZone,
