@@ -114,6 +114,9 @@ async function removeCourse(courseId) {
 }
 
 function openCourseModal(course = null) {
+  if (!courseModal) {
+    courseModal = new Modal(courseModalRef.value);
+  }
   if (course) {
     editingCourse.value = course;
     courseForm.value = {
@@ -175,7 +178,6 @@ onMounted(() => {
   loadUsers();
   loadAllUsers();
   loadCourses();
-  courseModal = new Modal(courseModalRef.value);
 });
 </script>
 
