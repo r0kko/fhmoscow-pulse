@@ -82,7 +82,7 @@ async function listByUser(userId) {
 async function listAll() {
   const docs = await Document.findAll({
     include: [
-      { model: DocumentType, attributes: ['name'] },
+      { model: DocumentType, attributes: ['name', 'alias'] },
       {
         model: User,
         as: 'recipient',
@@ -95,6 +95,9 @@ async function listAll() {
   return docs.map((d) => ({
     id: d.id,
     name: d.name,
+    documentType: d.DocumentType
+      ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+      : null,
     recipient: {
       lastName: d.recipient.last_name,
       firstName: d.recipient.first_name,
@@ -103,6 +106,7 @@ async function listAll() {
     status: d.DocumentStatus
       ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
       : null,
+    createdAt: d.created_at,
   }));
 }
 
