@@ -14,6 +14,11 @@ TrainingType.init(
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     alias: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     default_capacity: { type: DataTypes.INTEGER },
+    for_camp: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

@@ -8,7 +8,7 @@ import {
   trainingTypeUpdateRules,
 } from '../validators/trainingTypeValidators.js';
 
-const controller = createController(true);
+const controller = createController(false);
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
