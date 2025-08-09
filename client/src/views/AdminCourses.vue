@@ -1,22 +1,19 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 
 const activeTab = ref('assign');
 
-const users = ref([]); // referees for assignment
+const users = ref([]); // referees with course assignments
 const allUsers = ref([]); // for responsible selector
 const courses = ref([]);
-const selectedUser = ref(null);
-const userCourse = ref(null);
 const loadingUsers = ref(false);
-const userLoading = ref(false);
 const error = ref('');
-const userError = ref('');
 const courseError = ref('');
-const newCourseId = ref('');
+const search = ref('');
+let searchTimeout;
 
 const courseForm = ref({
   name: '',
@@ -33,16 +30,26 @@ const courseSaveLoading = ref(false);
 async function loadUsers() {
   loadingUsers.value = true;
   try {
-    const data = await apiFetch(
-      '/users?role=REFEREE&role=BRIGADE_REFEREE&limit=1000'
-    );
-    users.value = data.users;
+    const params = new URLSearchParams({ limit: 1000 });
+    params.append('role', 'REFEREE');
+    params.append('role', 'BRIGADE_REFEREE');
+    if (search.value) params.append('search', search.value);
+    const data = await apiFetch(`/course-users?${params.toString()}`);
+    users.value = data.users.map((u) => ({
+      ...u,
+      course_id: u.course ? u.course.id : '',
+    }));
   } catch (e) {
     error.value = e.message;
   } finally {
     loadingUsers.value = false;
   }
 }
+
+watch(search, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(loadUsers, 300);
+});
 
 async function loadAllUsers() {
   try {
@@ -62,54 +69,23 @@ async function loadCourses() {
   }
 }
 
-async function selectUser(user) {
-  selectedUser.value = user;
-  userCourse.value = null;
-  userError.value = '';
-  userLoading.value = true;
+async function setCourse(u) {
   try {
-    const data = await apiFetch(`/course-users/${user.id}`);
-    userCourse.value = data.course;
+    if (!u.course_id) {
+      await apiFetch(`/course-users/${u.user.id}`, { method: 'DELETE' });
+    } else {
+      await apiFetch(`/course-users/${u.user.id}`, {
+        method: 'POST',
+        body: JSON.stringify({ course_id: u.course_id }),
+      });
+    }
   } catch (e) {
-    userError.value = e.message;
-  } finally {
-    userLoading.value = false;
+    alert(e.message);
   }
 }
 
-const availableCourses = computed(() =>
-  courses.value.filter((c) => c.id !== userCourse.value?.id)
-);
-
-async function assignCourse() {
-  if (!newCourseId.value) return;
-  userLoading.value = true;
-  try {
-    const data = await apiFetch(`/course-users/${selectedUser.value.id}`, {
-      method: 'POST',
-      body: JSON.stringify({ course_id: newCourseId.value }),
-    });
-    userCourse.value = data.course;
-    newCourseId.value = '';
-  } catch (e) {
-    userError.value = e.message;
-  } finally {
-    userLoading.value = false;
-  }
-}
-
-async function clearCourse() {
-  userLoading.value = true;
-  try {
-    const data = await apiFetch(`/course-users/${selectedUser.value.id}`, {
-      method: 'DELETE',
-    });
-    userCourse.value = data.course;
-  } catch (e) {
-    userError.value = e.message;
-  } finally {
-    userLoading.value = false;
-  }
+function formatName(u) {
+  return `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.trim();
 }
 
 function openCourseModal(course = null) {
@@ -219,81 +195,68 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-if="activeTab === 'assign'" class="row">
-        <div class="col-md-4 mb-3">
-          <div class="card section-card h-100">
-            <div class="card-body">
-              <h2 class="card-title h6 mb-3">Пользователи</h2>
-              <div v-if="loadingUsers" class="text-muted">Загрузка...</div>
-              <div v-else-if="error" class="alert alert-danger">
-                {{ error }}
+      <div v-if="activeTab === 'assign'">
+        <div class="card section-card mb-3">
+          <div class="card-body">
+            <div class="row g-2 mb-3">
+              <div class="col-sm-6">
+                <input
+                  v-model="search"
+                  type="search"
+                  class="form-control"
+                  placeholder="Поиск"
+                />
               </div>
-              <ul v-else class="list-group user-list">
-                <li
-                  v-for="u in users"
-                  :key="u.id"
-                  class="list-group-item list-group-item-action"
-                  :class="{ active: selectedUser && selectedUser.id === u.id }"
-                  @click="selectUser(u)"
-                >
-                  {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
-                </li>
-              </ul>
             </div>
-          </div>
-        </div>
-        <div class="col-md-8 mb-3" v-if="selectedUser">
-          <div class="card section-card h-100">
-            <div class="card-body">
-              <h2 class="card-title h6 mb-3">
-                Курсы пользователя {{ selectedUser.last_name }}
-                {{ selectedUser.first_name }}
-              </h2>
-              <div v-if="userLoading" class="text-muted">Загрузка...</div>
-              <div v-else>
-                <ul class="list-group mb-3">
-                  <li
-                    v-if="userCourse"
-                    class="list-group-item d-flex justify-content-between align-items-center"
-                  >
-                    <span>{{ userCourse.name }}</span>
-                    <button class="btn btn-sm btn-danger" @click="clearCourse">
-                      <i class="bi bi-x-lg" aria-hidden="true"></i>
-                    </button>
-                  </li>
-                  <li v-else class="list-group-item text-muted">
-                    Нет назначенного курса
-                  </li>
-                </ul>
-                <div class="d-flex gap-2">
+            <div v-if="loadingUsers" class="text-muted">Загрузка...</div>
+            <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
+            <div
+              v-else-if="users.length"
+              class="table-responsive d-none d-sm-block"
+            >
+              <table class="table admin-table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>ФИО</th>
+                    <th class="text-center">Курс</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="u in users" :key="u.user.id">
+                    <td>{{ formatName(u.user) }}</td>
+                    <td class="text-center">
+                      <select
+                        v-model="u.course_id"
+                        class="form-select"
+                        @change="setCourse(u)"
+                      >
+                        <option value="">Без курса</option>
+                        <option v-for="c in courses" :key="c.id" :value="c.id">
+                          {{ c.name }}
+                        </option>
+                      </select>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else-if="!users.length" class="text-muted mb-0">
+              Пользователи не найдены.
+            </p>
+            <div class="d-block d-sm-none" v-if="users.length">
+              <div v-for="u in users" :key="u.user.id" class="card mb-2">
+                <div class="card-body">
+                  <p class="mb-2 fw-semibold">{{ formatName(u.user) }}</p>
                   <select
-                    v-model="newCourseId"
+                    v-model="u.course_id"
                     class="form-select"
-                    :disabled="userLoading || availableCourses.length === 0"
+                    @change="setCourse(u)"
                   >
-                    <option value="">Выберите курс</option>
-                    <option
-                      v-for="c in availableCourses"
-                      :key="c.id"
-                      :value="c.id"
-                    >
+                    <option value="">Без курса</option>
+                    <option v-for="c in courses" :key="c.id" :value="c.id">
                       {{ c.name }}
                     </option>
                   </select>
-                  <button
-                    class="btn btn-brand"
-                    :disabled="userLoading || !newCourseId"
-                    @click="assignCourse"
-                  >
-                    <span
-                      v-if="userLoading"
-                      class="spinner-border spinner-border-sm me-2"
-                    ></span>
-                    Назначить
-                  </button>
-                </div>
-                <div v-if="userError" class="alert alert-danger mt-3">
-                  {{ userError }}
                 </div>
               </div>
             </div>
@@ -476,10 +439,6 @@ onMounted(() => {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
-}
-.user-list {
-  max-height: 60vh;
-  overflow-y: auto;
 }
 .tab-selector {
   gap: 0.5rem;

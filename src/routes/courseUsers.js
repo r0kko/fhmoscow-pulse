@@ -7,6 +7,7 @@ import { setCourseRules } from '../validators/courseUserValidators.js';
 
 const router = express.Router();
 
+router.get('/', auth, authorize('ADMIN'), controller.listAll);
 router.get('/:id', auth, authorize('ADMIN'), controller.list);
 
 router.post(
