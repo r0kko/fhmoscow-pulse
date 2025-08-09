@@ -1,4 +1,6 @@
-import { SignType, UserSignType } from '../models/index.js';
+import { Op } from 'sequelize';
+
+import { SignType, UserSignType, User, Role } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailVerificationService from './emailVerificationService.js';
@@ -41,4 +43,43 @@ async function select(user, alias, code) {
   return signType;
 }
 
-export default { list, getByUser, sendCode, select };
+async function listUsers() {
+  const users = await User.findAll({
+    attributes: ['id', 'last_name', 'first_name', 'patronymic', 'email'],
+    include: [
+      {
+        model: Role,
+        attributes: [],
+        through: { attributes: [] },
+        where: { alias: { [Op.in]: ['REFEREE', 'BRIGADE_REFEREE'] } },
+      },
+      {
+        model: UserSignType,
+        attributes: ['id'],
+        required: false,
+        include: [{ model: SignType, attributes: ['name', 'alias'] }],
+      },
+    ],
+    order: [
+      ['last_name', 'ASC'],
+      ['first_name', 'ASC'],
+    ],
+  });
+
+  return users.map((u) => ({
+    id: u.id,
+    lastName: u.last_name,
+    firstName: u.first_name,
+    patronymic: u.patronymic,
+    email: u.email,
+    signType:
+      u.UserSignTypes[0] && u.UserSignTypes[0].SignType
+        ? {
+            name: u.UserSignTypes[0].SignType.name,
+            alias: u.UserSignTypes[0].SignType.alias,
+          }
+        : null,
+  }));
+}
+
+export default { list, getByUser, sendCode, select, listUsers };
