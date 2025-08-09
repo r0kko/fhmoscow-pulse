@@ -540,6 +540,8 @@ defineExpose({ refresh });
                       {{
                         new Date(t.start_at).toLocaleString('ru-RU', {
                           timeZone: 'Europe/Moscow',
+                          dateStyle: 'short',
+                          timeStyle: 'short',
                         })
                       }}
                     </option>

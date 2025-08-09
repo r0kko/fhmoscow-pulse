@@ -29,3 +29,30 @@ export function parseMinutesSeconds(str) {
   }
   return minutes * 60 + seconds;
 }
+
+const MOSCOW_TZ = 'Europe/Moscow';
+const MOSCOW_OFFSET = '+03:00';
+
+export function toDateTimeLocal(iso, timeZone = MOSCOW_TZ) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .formatToParts(date)
+    .reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+export function fromDateTimeLocal(value, offset = MOSCOW_OFFSET) {
+  if (!value) return '';
+  return new Date(`${value}:00${offset}`).toISOString();
+}
+
+export { MOSCOW_TZ };

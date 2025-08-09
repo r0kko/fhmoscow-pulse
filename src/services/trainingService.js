@@ -19,9 +19,9 @@ import { hasAdminRole, hasRefereeRole } from '../utils/roles.js';
 function isRegistrationOpen(training, registeredCount = 0) {
   const start = new Date(training.start_at);
   const openAt = new Date(start);
-  openAt.setDate(openAt.getDate() - 7);
+  openAt.setUTCDate(openAt.getUTCDate() - 7);
   const closeAt = new Date(start);
-  closeAt.setMinutes(closeAt.getMinutes() - 45);
+  closeAt.setUTCMinutes(closeAt.getUTCMinutes() - 45);
   if (training.capacity && registeredCount >= training.capacity) return false;
   const now = new Date();
   return now >= openAt && now < closeAt;
@@ -219,7 +219,7 @@ async function create(data, actorId, forCamp) {
         throw new ServiceError('invalid_group_season');
       }
     } else {
-      const yearAlias = new Date(data.start_at).getFullYear().toString();
+      const yearAlias = new Date(data.start_at).getUTCFullYear().toString();
       const season = await Season.findOne({ where: { alias: yearAlias } });
       if (!season) throw new ServiceError('season_not_found', 404);
       seasonId = season.id;

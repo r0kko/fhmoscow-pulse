@@ -18,8 +18,8 @@ function sanitize(obj) {
   } = obj;
   const res = {
     id,
-    start_at,
-    end_at,
+    start_at: start_at?.toISOString?.() ?? start_at,
+    end_at: end_at?.toISOString?.() ?? end_at,
     capacity,
     ground_id,
     season_id,

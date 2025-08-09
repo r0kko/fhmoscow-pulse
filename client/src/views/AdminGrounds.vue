@@ -5,6 +5,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
+import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 
 import RefereeGroups from '../components/RefereeGroups.vue';
 
@@ -200,10 +201,10 @@ watch(
   () => trainingForm.value.start_at,
   (val) => {
     if (!val) return;
-    const start = new Date(val);
+    const start = parseInput(val);
     const end = new Date(start.getTime() + 90 * 60000);
     if (!trainingEditing.value) {
-      trainingForm.value.end_at = toInputValue(end);
+      trainingForm.value.end_at = toInputValue(end.toISOString());
     }
   }
 );
@@ -211,7 +212,7 @@ watch(
 watch(
   [() => trainingForm.value.start_at, () => trainingForm.value.end_at],
   ([start, end]) => {
-    if (start && end && new Date(end) <= new Date(start)) {
+    if (start && end && parseInput(end) <= parseInput(start)) {
       trainingFormError.value = 'Время окончания должно быть позже начала';
     } else {
       trainingFormError.value = '';
@@ -462,21 +463,34 @@ function openTrainingFilters() {
 }
 
 function toInputValue(str) {
-  if (!str) return '';
-  const d = new Date(str);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return toDateTimeLocal(str);
+}
+
+function parseInput(val) {
+  return new Date(fromDateTimeLocal(val));
 }
 
 function formatDateTimeRange(start, end) {
   if (!start) return '';
-  const pad = (n) => (n < 10 ? '0' + n : '' + n);
   const startDate = new Date(start);
   const endDate = new Date(end);
-  const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${startDate.getFullYear()}`;
-  const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
-  const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
-  return `${date} ${startTime} - ${endTime}`;
+  const dateStr = startDate.toLocaleDateString('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const startTime = startDate.toLocaleTimeString('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const endTime = endDate.toLocaleTimeString('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${dateStr} ${startTime} - ${endTime}`;
 }
 
 function shortGroupName(name) {
@@ -515,7 +529,8 @@ function openEditTraining(t) {
 
 async function saveTraining() {
   if (
-    new Date(trainingForm.value.end_at) <= new Date(trainingForm.value.start_at)
+    parseInput(trainingForm.value.end_at) <=
+    parseInput(trainingForm.value.start_at)
   ) {
     trainingFormError.value = 'Время окончания должно быть позже начала';
     return;
@@ -523,8 +538,8 @@ async function saveTraining() {
   const payload = {
     type_id: trainingForm.value.type_id,
     ground_id: trainingForm.value.ground_id,
-    start_at: new Date(trainingForm.value.start_at).toISOString(),
-    end_at: new Date(trainingForm.value.end_at).toISOString(),
+    start_at: fromDateTimeLocal(trainingForm.value.start_at),
+    end_at: fromDateTimeLocal(trainingForm.value.end_at),
     capacity: trainingForm.value.capacity || undefined,
   };
   try {

@@ -11,7 +11,12 @@ function sanitize(obj) {
     registration_count,
     approved_count,
   } = obj;
-  const out = { id, start_at, end_at, capacity };
+  const out = {
+    id,
+    start_at: start_at?.toISOString?.() ?? start_at,
+    end_at: end_at?.toISOString?.() ?? end_at,
+    capacity,
+  };
   if (typeof available !== 'undefined') out.available = available;
   if (typeof user_registered !== 'undefined') out.registered = user_registered;
   if (typeof registration_status !== 'undefined')
