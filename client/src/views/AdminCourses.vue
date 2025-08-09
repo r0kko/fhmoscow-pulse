@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 
 const activeTab = ref('assign');
 
@@ -149,8 +150,8 @@ function openTrainingModal(training = null) {
     trainingForm.value = {
       type_id: training.type_id || training.type?.id || '',
       ground_id: training.ground_id || '',
-      start_at: training.start_at.slice(0, 16),
-      end_at: training.end_at.slice(0, 16),
+      start_at: toDateTimeLocal(training.start_at),
+      end_at: toDateTimeLocal(training.end_at),
       capacity: training.capacity || '',
       courses: training.courses ? training.courses.map((c) => c.id) : [],
     };
@@ -176,9 +177,14 @@ async function saveTraining() {
     const url = editingTraining.value
       ? `/course-trainings/${editingTraining.value.id}`
       : '/course-trainings';
+    const body = {
+      ...trainingForm.value,
+      start_at: fromDateTimeLocal(trainingForm.value.start_at),
+      end_at: fromDateTimeLocal(trainingForm.value.end_at),
+    };
     await apiFetch(url, {
       method,
-      body: JSON.stringify({ ...trainingForm.value }),
+      body: JSON.stringify(body),
     });
     trainingModal.hide();
     await loadTrainingsAdmin();
@@ -651,6 +657,7 @@ onMounted(() => {
                         new Date(t.start_at).toLocaleString('ru-RU', {
                           dateStyle: 'short',
                           timeStyle: 'short',
+                          timeZone: 'Europe/Moscow',
                         })
                       }}
                     </td>
@@ -694,6 +701,7 @@ onMounted(() => {
                         new Date(t.start_at).toLocaleString('ru-RU', {
                           dateStyle: 'short',
                           timeStyle: 'short',
+                          timeZone: 'Europe/Moscow',
                         })
                       }}
                     </div>

@@ -3,6 +3,7 @@ import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 
 const exams = ref([]);
 const total = ref(0);
@@ -57,10 +58,7 @@ function formatPhone(digits) {
 }
 
 function toInputValue(str) {
-  if (!str) return '';
-  const d = new Date(str);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return toDateTimeLocal(str);
 }
 
 async function loadCenters() {
@@ -116,8 +114,8 @@ async function save() {
     formError.value = '';
     const body = {
       medical_center_id: form.value.medical_center_id,
-      start_at: new Date(form.value.start_at).toISOString(),
-      end_at: new Date(form.value.end_at).toISOString(),
+      start_at: fromDateTimeLocal(form.value.start_at),
+      end_at: fromDateTimeLocal(form.value.end_at),
       capacity: form.value.capacity,
     };
     if (editing.value) {
