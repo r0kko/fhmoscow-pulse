@@ -1,0 +1,116 @@
+import { Course, User, UserCourse } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
+
+async function listAll(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  return Course.findAndCountAll({
+    include: [{ model: User, as: 'Responsible' }],
+    order: [['name', 'ASC']],
+    limit,
+    offset,
+  });
+}
+
+async function getById(id) {
+  const course = await Course.findByPk(id, {
+    include: [{ model: User, as: 'Responsible' }, { model: User }],
+  });
+  if (!course) throw new ServiceError('course_not_found', 404);
+  return course;
+}
+
+async function create(data, actorId) {
+  const responsible = await User.findByPk(data.responsible_id);
+  if (!responsible) throw new ServiceError('user_not_found', 404);
+  return Course.create({
+    name: data.name,
+    description: data.description,
+    responsible_id: data.responsible_id,
+    telegram_url: data.telegram_url,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+}
+
+async function update(id, data, actorId) {
+  const course = await Course.findByPk(id);
+  if (!course) throw new ServiceError('course_not_found', 404);
+  if (data.responsible_id) {
+    const responsible = await User.findByPk(data.responsible_id);
+    if (!responsible) throw new ServiceError('user_not_found', 404);
+  }
+  await course.update(
+    {
+      name: data.name ?? course.name,
+      description: data.description ?? course.description,
+      responsible_id: data.responsible_id ?? course.responsible_id,
+      telegram_url: data.telegram_url ?? course.telegram_url,
+      updated_by: actorId,
+    },
+    { returning: false }
+  );
+  return getById(id);
+}
+
+async function remove(id, actorId = null) {
+  const course = await Course.findByPk(id);
+  if (!course) throw new ServiceError('course_not_found', 404);
+  await course.update({ updated_by: actorId });
+  await course.destroy();
+}
+
+async function assignUser(courseId, userId, actorId) {
+  const [course, user] = await Promise.all([
+    Course.findByPk(courseId),
+    User.findByPk(userId),
+  ]);
+  if (!course) throw new ServiceError('course_not_found', 404);
+  if (!user) throw new ServiceError('user_not_found', 404);
+  let link = await UserCourse.findOne({
+    where: { course_id: courseId, user_id: userId },
+    paranoid: false,
+  });
+  if (link) {
+    if (link.deletedAt) {
+      await link.restore();
+    }
+    await link.update({ updated_by: actorId });
+  } else {
+    link = await UserCourse.create({
+      course_id: courseId,
+      user_id: userId,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  }
+  return link;
+}
+
+async function removeUser(courseId, userId, actorId = null) {
+  const link = await UserCourse.findOne({
+    where: { course_id: courseId, user_id: userId },
+  });
+  if (link) {
+    await link.update({ updated_by: actorId });
+    await link.destroy();
+  }
+}
+
+async function getUserWithCourses(userId) {
+  const user = await User.findByPk(userId, { include: [Course] });
+  if (!user) throw new ServiceError('user_not_found', 404);
+  return user;
+}
+
+export default {
+  listAll,
+  getById,
+  create,
+  update,
+  remove,
+  assignUser,
+  removeUser,
+  getUserWithCourses,
+};
