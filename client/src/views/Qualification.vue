@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
-import TrainingCard from '../components/TrainingCard.vue';
+import TrainingCalendar from '../components/TrainingCalendar.vue';
 
 const course = ref(null);
 const error = ref('');
@@ -15,7 +15,9 @@ async function loadTrainings() {
   trainingsLoading.value = true;
   try {
     const data = await apiFetch('/course-trainings/available');
-    trainings.value = data.trainings;
+    trainings.value = (data.trainings || []).sort(
+      (a, b) => new Date(a.start_at) - new Date(b.start_at)
+    );
   } catch (err) {
     trainingsError.value = err.message;
   } finally {
@@ -107,15 +109,12 @@ onMounted(async () => {
           <div v-else-if="trainingsError" class="alert alert-danger mb-0">
             {{ trainingsError }}
           </div>
-          <div v-else-if="trainings.length" class="d-flex gap-3 overflow-auto">
-            <TrainingCard
-              v-for="t in trainings"
-              :key="t.id"
-              :training="t"
-              @register="register"
-              @unregister="unregister"
-            />
-          </div>
+          <TrainingCalendar
+            v-else-if="trainings.length"
+            :trainings="trainings"
+            @register="register"
+            @unregister="unregister"
+          />
           <div v-else class="alert alert-info mb-0">
             Нет доступных тренировок
           </div>
