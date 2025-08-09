@@ -25,7 +25,7 @@ const workSections = [
 ];
 
 const docsSections = [
-  { title: 'Документы', icon: 'bi-folder2-open' },
+  { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
   { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
   { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' },
 ];
