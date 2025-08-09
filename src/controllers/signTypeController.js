@@ -27,6 +27,11 @@ export default {
     }
   },
 
+  async listUsers(_req, res) {
+    const users = await signTypeService.listUsers();
+    res.json({ users });
+  },
+
   async select(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

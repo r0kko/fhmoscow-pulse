@@ -1,6 +1,7 @@
 import express from 'express';
 
 import auth from '../middlewares/auth.js';
+import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/signTypeController.js';
 import { selectSignTypeRules } from '../validators/signTypeValidators.js';
 
@@ -44,6 +45,19 @@ router.get('/me', auth, controller.me);
  *         description: Code sent
  */
 router.post('/send-code', auth, controller.sendCode);
+
+/**
+ * @swagger
+ * /sign-types/users:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List users with their sign types
+ *     responses:
+ *       200:
+ *         description: Array of users
+ */
+router.get('/users', auth, authorize('ADMIN'), controller.listUsers);
 
 /**
  * @swagger

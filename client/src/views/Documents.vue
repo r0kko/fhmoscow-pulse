@@ -8,9 +8,12 @@ const error = ref('');
 const current = ref(null);
 const signTypes = ref([]);
 const selected = ref('');
+const selectedType = ref(null);
 const code = ref('');
 const verifyError = ref('');
 const success = ref(false);
+const loadingAlias = ref('');
+const confirming = ref(false);
 
 const signInfo = {
   HANDWRITTEN: [
@@ -43,18 +46,25 @@ onMounted(async () => {
 });
 
 async function choose(alias) {
-  selected.value = alias;
+  if (loadingAlias.value) return;
+  loadingAlias.value = alias;
   code.value = '';
   verifyError.value = '';
   success.value = false;
   try {
     await apiFetch('/sign-types/send-code', { method: 'POST' });
+    selected.value = alias;
+    selectedType.value = signTypes.value.find((t) => t.alias === alias);
   } catch (e) {
     verifyError.value = e.message;
+  } finally {
+    loadingAlias.value = '';
   }
 }
 
 async function submit() {
+  if (confirming.value) return;
+  confirming.value = true;
   try {
     await apiFetch('/sign-types/select', {
       method: 'POST',
@@ -65,6 +75,8 @@ async function submit() {
     success.value = true;
   } catch (e) {
     verifyError.value = e.message;
+  } finally {
+    confirming.value = false;
   }
 }
 </script>
@@ -116,8 +128,14 @@ async function submit() {
                       <button
                         type="button"
                         class="btn btn-primary"
+                        :disabled="loadingAlias || confirming"
                         @click="choose(t.alias)"
                       >
+                        <span
+                          v-if="loadingAlias === t.alias"
+                          class="spinner-border spinner-border-sm me-2"
+                          aria-hidden="true"
+                        ></span>
                         Выбрать
                       </button>
                     </div>
@@ -130,6 +148,9 @@ async function submit() {
               class="card section-card tile fade-in mt-3 shadow-sm"
             >
               <div class="card-body">
+                <h2 class="h5 mb-3">
+                  Подтвердите выбор: {{ selectedType?.name }}
+                </h2>
                 <p class="mb-3">Мы отправили код на вашу почту</p>
                 <div class="mb-3">
                   <label for="code" class="form-label">Код из письма</label>
@@ -150,9 +171,14 @@ async function submit() {
                 <button
                   type="button"
                   class="btn btn-primary"
-                  :disabled="code.length !== 6"
+                  :disabled="code.length !== 6 || confirming"
                   @click="submit"
                 >
+                  <span
+                    v-if="confirming"
+                    class="spinner-border spinner-border-sm me-2"
+                    aria-hidden="true"
+                  ></span>
                   Подтвердить
                 </button>
               </div>
