@@ -1,6 +1,14 @@
 import { Op } from 'sequelize';
 
-import { Role, Sex, User, UserRole, UserStatus } from '../models/index.js';
+import {
+  Role,
+  Sex,
+  User,
+  UserRole,
+  UserStatus,
+  UserCourse,
+  Course,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import { assertPassword } from '../utils/passwordPolicy.js';
 
@@ -101,6 +109,9 @@ async function listUsers(options = {}) {
     include.push(UserStatus);
   }
   include.push(Sex);
+  if (options.includeCourse) {
+    include.push({ model: UserCourse, include: [Course], required: false });
+  }
 
   return User.findAndCountAll({
     include,
