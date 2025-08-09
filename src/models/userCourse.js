@@ -18,7 +18,7 @@ UserCourse.init(
     tableName: 'user_courses',
     paranoid: true,
     underscored: true,
-    indexes: [{ unique: true, fields: ['user_id', 'course_id'] }],
+    indexes: [{ unique: true, fields: ['user_id'] }],
   }
 );
 

@@ -10,7 +10,7 @@ const users = ref([]); // referees for assignment
 const allUsers = ref([]); // for responsible selector
 const courses = ref([]);
 const selectedUser = ref(null);
-const userCourses = ref([]);
+const userCourse = ref(null);
 const loadingUsers = ref(false);
 const userLoading = ref(false);
 const error = ref('');
@@ -64,12 +64,12 @@ async function loadCourses() {
 
 async function selectUser(user) {
   selectedUser.value = user;
-  userCourses.value = [];
+  userCourse.value = null;
   userError.value = '';
   userLoading.value = true;
   try {
     const data = await apiFetch(`/course-users/${user.id}`);
-    userCourses.value = data.courses;
+    userCourse.value = data.course;
   } catch (e) {
     userError.value = e.message;
   } finally {
@@ -78,7 +78,7 @@ async function selectUser(user) {
 }
 
 const availableCourses = computed(() =>
-  courses.value.filter((c) => !userCourses.value.find((uc) => uc.id === c.id))
+  courses.value.filter((c) => c.id !== userCourse.value?.id)
 );
 
 async function assignCourse() {
@@ -89,7 +89,7 @@ async function assignCourse() {
       method: 'POST',
       body: JSON.stringify({ course_id: newCourseId.value }),
     });
-    userCourses.value = data.courses;
+    userCourse.value = data.course;
     newCourseId.value = '';
   } catch (e) {
     userError.value = e.message;
@@ -98,14 +98,13 @@ async function assignCourse() {
   }
 }
 
-async function removeCourse(courseId) {
+async function clearCourse() {
   userLoading.value = true;
   try {
-    const data = await apiFetch(
-      `/course-users/${selectedUser.value.id}/${courseId}`,
-      { method: 'DELETE' }
-    );
-    userCourses.value = data.courses;
+    const data = await apiFetch(`/course-users/${selectedUser.value.id}`, {
+      method: 'DELETE',
+    });
+    userCourse.value = data.course;
   } catch (e) {
     userError.value = e.message;
   } finally {
@@ -254,23 +253,16 @@ onMounted(() => {
               <div v-else>
                 <ul class="list-group mb-3">
                   <li
-                    v-for="c in userCourses"
-                    :key="c.id"
+                    v-if="userCourse"
                     class="list-group-item d-flex justify-content-between align-items-center"
                   >
-                    <span>{{ c.name }}</span>
-                    <button
-                      class="btn btn-sm btn-danger"
-                      @click="removeCourse(c.id)"
-                    >
+                    <span>{{ userCourse.name }}</span>
+                    <button class="btn btn-sm btn-danger" @click="clearCourse">
                       <i class="bi bi-x-lg" aria-hidden="true"></i>
                     </button>
                   </li>
-                  <li
-                    v-if="userCourses.length === 0"
-                    class="list-group-item text-muted"
-                  >
-                    Нет назначенных курсов
+                  <li v-else class="list-group-item text-muted">
+                    Нет назначенного курса
                   </li>
                 </ul>
                 <div class="d-flex gap-2">

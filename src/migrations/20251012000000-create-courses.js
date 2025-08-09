@@ -84,9 +84,9 @@ module.exports = {
       deleted_at: { type: Sequelize.DATE },
     });
 
-    await queryInterface.addIndex('user_courses', ['user_id', 'course_id'], {
+    await queryInterface.addIndex('user_courses', ['user_id'], {
       unique: true,
-      name: 'user_courses_user_id_course_id',
+      name: 'user_courses_user_id',
     });
   },
 

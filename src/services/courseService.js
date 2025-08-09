@@ -61,26 +61,26 @@ async function remove(id, actorId = null) {
   await course.destroy();
 }
 
-async function assignUser(courseId, userId, actorId) {
-  const [course, user] = await Promise.all([
-    Course.findByPk(courseId),
+async function setUserCourse(userId, courseId, actorId) {
+  const [user, course] = await Promise.all([
     User.findByPk(userId),
+    Course.findByPk(courseId),
   ]);
-  if (!course) throw new ServiceError('course_not_found', 404);
   if (!user) throw new ServiceError('user_not_found', 404);
+  if (!course) throw new ServiceError('course_not_found', 404);
   let link = await UserCourse.findOne({
-    where: { course_id: courseId, user_id: userId },
+    where: { user_id: userId },
     paranoid: false,
   });
   if (link) {
     if (link.deletedAt) {
       await link.restore();
     }
-    await link.update({ updated_by: actorId });
+    await link.update({ course_id: courseId, updated_by: actorId });
   } else {
     link = await UserCourse.create({
-      course_id: courseId,
       user_id: userId,
+      course_id: courseId,
       created_by: actorId,
       updated_by: actorId,
     });
@@ -88,20 +88,21 @@ async function assignUser(courseId, userId, actorId) {
   return link;
 }
 
-async function removeUser(courseId, userId, actorId = null) {
-  const link = await UserCourse.findOne({
-    where: { course_id: courseId, user_id: userId },
-  });
+async function removeUser(userId, actorId = null) {
+  const link = await UserCourse.findOne({ where: { user_id: userId } });
   if (link) {
     await link.update({ updated_by: actorId });
     await link.destroy();
   }
 }
 
-async function getUserWithCourses(userId) {
-  const user = await User.findByPk(userId, { include: [Course] });
+async function getUserWithCourse(userId) {
+  const user = await User.findByPk(userId, {
+    include: [{ model: UserCourse, include: [Course] }],
+  });
   if (!user) throw new ServiceError('user_not_found', 404);
-  return user;
+  const course = user.UserCourse ? user.UserCourse.Course : null;
+  return { user, course };
 }
 
 export default {
@@ -110,7 +111,7 @@ export default {
   create,
   update,
   remove,
-  assignUser,
+  setUserCourse,
   removeUser,
-  getUserWithCourses,
+  getUserWithCourse,
 };

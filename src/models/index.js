@@ -170,7 +170,7 @@ Course.belongsToMany(User, { through: UserCourse, foreignKey: 'course_id' });
 User.belongsToMany(Course, { through: UserCourse, foreignKey: 'user_id' });
 Course.hasMany(UserCourse, { foreignKey: 'course_id' });
 UserCourse.belongsTo(Course, { foreignKey: 'course_id' });
-User.hasMany(UserCourse, { foreignKey: 'user_id' });
+User.hasOne(UserCourse, { foreignKey: 'user_id' });
 UserCourse.belongsTo(User, { foreignKey: 'user_id' });
 
 /* medical centers */

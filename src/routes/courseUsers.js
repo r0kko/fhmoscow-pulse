@@ -3,7 +3,7 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/courseUserAdminController.js';
-import { assignCourseRules } from '../validators/courseUserValidators.js';
+import { setCourseRules } from '../validators/courseUserValidators.js';
 
 const router = express.Router();
 
@@ -13,14 +13,9 @@ router.post(
   '/:id',
   auth,
   authorize('ADMIN'),
-  assignCourseRules,
-  controller.addCourse
+  setCourseRules,
+  controller.setCourse
 );
-router.delete(
-  '/:id/:courseId',
-  auth,
-  authorize('ADMIN'),
-  controller.removeCourse
-);
+router.delete('/:id', auth, authorize('ADMIN'), controller.clearCourse);
 
 export default router;
