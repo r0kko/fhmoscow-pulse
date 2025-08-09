@@ -13,7 +13,7 @@ module.exports = {
         onDelete: 'RESTRICT',
       });
       const [rows] = await queryInterface.sequelize.query(
-        'SELECT id FROM document_statuses WHERE alias = \'CREATED\' LIMIT 1;'
+        "SELECT id FROM document_statuses WHERE alias = 'CREATED' LIMIT 1;"
       );
       if (rows[0]) {
         await queryInterface.sequelize.query(
