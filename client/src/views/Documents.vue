@@ -47,7 +47,7 @@ async function choose(alias) {
   verifyError.value = '';
   success.value = false;
   try {
-    await apiFetch('/email/send-code', { method: 'POST' });
+    await apiFetch('/sign-types/send-code', { method: 'POST' });
   } catch (e) {
     verifyError.value = e.message;
   }

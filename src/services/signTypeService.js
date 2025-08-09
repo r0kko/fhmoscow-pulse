@@ -16,6 +16,10 @@ async function getByUser(userId) {
   return record ? record.SignType : null;
 }
 
+async function sendCode(user) {
+  await emailVerificationService.sendCode(user);
+}
+
 async function select(user, alias, code) {
   await emailVerificationService.verifyCode(user, code, 'ACTIVE');
   const signType = await SignType.findOne({ where: { alias } });
@@ -37,4 +41,4 @@ async function select(user, alias, code) {
   return signType;
 }
 
-export default { list, getByUser, select };
+export default { list, getByUser, sendCode, select };

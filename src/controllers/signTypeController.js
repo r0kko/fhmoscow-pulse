@@ -18,6 +18,15 @@ export default {
     });
   },
 
+  async sendCode(req, res) {
+    try {
+      await signTypeService.sendCode(req.user);
+      res.json({ message: 'sent' });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+
   async select(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
