@@ -13,6 +13,7 @@ Document.init(
     },
     recipient_id: { type: DataTypes.UUID, allowNull: false },
     document_type_id: { type: DataTypes.UUID, allowNull: false },
+    status_id: { type: DataTypes.UUID, allowNull: false },
     file_id: { type: DataTypes.UUID, allowNull: false },
     sign_type_id: { type: DataTypes.UUID, allowNull: false },
     name: { type: DataTypes.STRING(255), allowNull: false },

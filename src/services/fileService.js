@@ -234,6 +234,35 @@ async function removeTicketFile(id, actorId = null) {
   await attachment.File.destroy();
 }
 
+async function saveGeneratedPdf(buffer, name, actorId) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  const key = `documents/${uuidv4()}.pdf`;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: getS3Bucket(),
+        Key: key,
+        Body: buffer,
+        ContentType: 'application/pdf',
+      })
+    );
+  } catch (err) {
+    console.error('S3 upload failed', err);
+    throw new ServiceError('s3_upload_failed');
+  }
+  const file = await File.create({
+    key,
+    original_name: name,
+    mime_type: 'application/pdf',
+    size: buffer.length,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+  return file;
+}
+
 export default {
   uploadForCertificate,
   listForCertificate,
@@ -243,4 +272,5 @@ export default {
   uploadForNormativeTicket,
   listForTicket,
   removeTicketFile,
+  saveGeneratedPdf,
 };

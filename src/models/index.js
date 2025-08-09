@@ -12,6 +12,7 @@ import SignType from './signType.js';
 import UserSignType from './userSignType.js';
 import Document from './document.js';
 import DocumentUserSign from './documentUserSign.js';
+import DocumentStatus from './documentStatus.js';
 import DocumentType from './documentType.js';
 import Country from './country.js';
 import Passport from './passport.js';
@@ -234,6 +235,8 @@ Document.belongsTo(User, {
 });
 File.hasMany(Document, { foreignKey: 'file_id' });
 Document.belongsTo(File, { foreignKey: 'file_id' });
+DocumentStatus.hasMany(Document, { foreignKey: 'status_id' });
+Document.belongsTo(DocumentStatus, { foreignKey: 'status_id' });
 
 Document.hasMany(DocumentUserSign, { foreignKey: 'document_id' });
 DocumentUserSign.belongsTo(Document, { foreignKey: 'document_id' });
@@ -352,6 +355,7 @@ export {
   UserSignType,
   Document,
   DocumentUserSign,
+  DocumentStatus,
   DocumentType,
   Country,
   Passport,

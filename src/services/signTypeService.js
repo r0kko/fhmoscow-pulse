@@ -4,6 +4,7 @@ import { SignType, UserSignType, User, Role, Inn } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailVerificationService from './emailVerificationService.js';
+import documentService from './documentService.js';
 
 async function list() {
   const types = await SignType.findAll({ attributes: ['name', 'alias'] });
@@ -54,6 +55,7 @@ async function select(user, alias, code) {
   if (record.sign_type_id !== signType.id) {
     await record.update({ sign_type_id: signType.id, updated_by: user.id });
   }
+  await documentService.generateInitial(user, signType.id);
   return signType;
 }
 

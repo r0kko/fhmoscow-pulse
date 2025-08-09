@@ -23,6 +23,13 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT',
       },
+      status_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: 'document_statuses', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT',
+      },
       file_id: {
         type: Sequelize.UUID,
         allowNull: false,
