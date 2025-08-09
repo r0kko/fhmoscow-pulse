@@ -13,6 +13,7 @@ module.exports = {
         onDelete: 'RESTRICT',
       });
       const [rows] = await queryInterface.sequelize.query(
+        // eslint-disable-next-line
         "SELECT id FROM document_statuses WHERE alias = 'CREATED' LIMIT 1;"
       );
       if (rows[0]) {
