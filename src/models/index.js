@@ -10,6 +10,8 @@ import Log from './log.js';
 import EmailCode from './emailCode.js';
 import SignType from './signType.js';
 import UserSignType from './userSignType.js';
+import Document from './document.js';
+import DocumentUserSign from './documentUserSign.js';
 import DocumentType from './documentType.js';
 import Country from './country.js';
 import Passport from './passport.js';
@@ -203,6 +205,29 @@ UserSignType.belongsTo(SignType, { foreignKey: 'sign_type_id' });
 User.hasMany(UserSignType, { foreignKey: 'user_id' });
 UserSignType.belongsTo(User, { foreignKey: 'user_id' });
 
+/* documents */
+DocumentType.hasMany(Document, { foreignKey: 'document_type_id' });
+Document.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
+SignType.hasMany(Document, { foreignKey: 'sign_type_id' });
+Document.belongsTo(SignType, { foreignKey: 'sign_type_id' });
+User.hasMany(Document, {
+  foreignKey: 'recipient_id',
+  as: 'receivedDocuments',
+});
+Document.belongsTo(User, {
+  foreignKey: 'recipient_id',
+  as: 'recipient',
+});
+File.hasMany(Document, { foreignKey: 'file_id' });
+Document.belongsTo(File, { foreignKey: 'file_id' });
+
+Document.hasMany(DocumentUserSign, { foreignKey: 'document_id' });
+DocumentUserSign.belongsTo(Document, { foreignKey: 'document_id' });
+User.hasMany(DocumentUserSign, { foreignKey: 'user_id' });
+DocumentUserSign.belongsTo(User, { foreignKey: 'user_id' });
+SignType.hasMany(DocumentUserSign, { foreignKey: 'sign_type_id' });
+DocumentUserSign.belongsTo(SignType, { foreignKey: 'sign_type_id' });
+
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
 Passport.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
@@ -311,6 +336,8 @@ export {
   EmailCode,
   SignType,
   UserSignType,
+  Document,
+  DocumentUserSign,
   DocumentType,
   Country,
   Passport,
