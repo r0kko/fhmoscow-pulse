@@ -16,7 +16,6 @@ if (!safeRegex(rawPasswordPattern)) {
   throw new Error('Unsafe PASSWORD_PATTERN');
 }
 
-import _ from 'lodash';
 const sanitizedPasswordPattern = _.escapeRegExp(rawPasswordPattern);
 export const PASSWORD_PATTERN = new RegExp(sanitizedPasswordPattern);
 
