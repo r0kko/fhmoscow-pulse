@@ -114,11 +114,11 @@ async function submit() {
         <div v-if="error" class="text-danger">{{ error }}</div>
         <div v-else>
           <div v-if="current">
-            <div class="row justify-content-center">
+            <div class="row">
               <div class="col-md-8 col-lg-6">
                 <div class="card section-card tile fade-in mb-3 shadow-sm">
                   <div class="card-body">
-                    <h2 class="h5 mb-3">Ваш способ подписания</h2>
+                    <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
                       <p class="text-muted mb-0">
@@ -158,7 +158,7 @@ async function submit() {
               <div v-for="t in signTypes" :key="t.alias" class="col-md-6">
                 <div class="card section-card tile fade-in h-100 shadow-sm">
                   <div class="card-body d-flex flex-column">
-                    <h2 class="h5 mb-3">{{ t.name }}</h2>
+                    <h2 class="h6 mb-3">{{ t.name }}</h2>
                     <ul class="list-unstyled flex-grow-1 mb-3">
                       <li
                         v-for="(item, i) in signInfo[t.alias]"
@@ -196,7 +196,7 @@ async function submit() {
               class="card section-card tile fade-in mt-3 shadow-sm"
             >
               <div class="card-body">
-                <h2 class="h5 mb-3">
+                <h2 class="h6 mb-3">
                   Подтвердите выбор: {{ selectedType?.name }}
                 </h2>
                 <p class="mb-3">Мы отправили код на вашу почту</p>
