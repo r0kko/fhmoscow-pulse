@@ -13,9 +13,7 @@ export default {
 
   async me(req, res) {
     const type = await signTypeService.getByUser(req.user.id);
-    res.json({
-      signType: type ? { name: type.name, alias: type.alias } : null,
-    });
+    res.json({ signType: type });
   },
 
   async sendCode(req, res) {

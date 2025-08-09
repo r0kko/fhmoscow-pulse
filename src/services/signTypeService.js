@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 
-import { SignType, UserSignType, User, Role } from '../models/index.js';
+import { SignType, UserSignType, User, Role, Inn } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailVerificationService from './emailVerificationService.js';
@@ -13,9 +13,23 @@ async function list() {
 async function getByUser(userId) {
   const record = await UserSignType.findOne({
     where: { user_id: userId },
+    attributes: ['id', 'created_at'],
     include: [{ model: SignType, attributes: ['name', 'alias'] }],
   });
-  return record ? record.SignType : null;
+  if (!record) {
+    return null;
+  }
+  const inn = await Inn.findOne({
+    where: { user_id: userId },
+    attributes: ['number'],
+  });
+  return {
+    id: record.id,
+    createdAt: record.created_at,
+    name: record.SignType.name,
+    alias: record.SignType.alias,
+    inn: inn ? inn.number : null,
+  };
 }
 
 async function sendCode(user) {

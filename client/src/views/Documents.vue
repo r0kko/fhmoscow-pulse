@@ -15,6 +15,16 @@ const success = ref(false);
 const loadingAlias = ref('');
 const confirming = ref(false);
 
+function formatDate(value) {
+  const date = new Date(value);
+  const d = date.toLocaleDateString('ru-RU');
+  const t = date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${d} в ${t}`;
+}
+
 const signInfo = {
   HANDWRITTEN: [
     'Нужно приехать в офис в рабочее время',
@@ -101,8 +111,39 @@ async function submit() {
       <div v-else>
         <div v-if="error" class="text-danger">{{ error }}</div>
         <div v-else>
-          <div v-if="current" class="alert alert-info mb-0">
-            Раздел скоро будет доступен.
+          <div v-if="current">
+            <div class="card section-card tile fade-in mb-3 shadow-sm">
+              <div class="card-body">
+                <template v-if="current.alias === 'HANDWRITTEN'">
+                  <p class="mb-1">Тип: собственноручная</p>
+                  <p class="mb-0">
+                    Дата заявки: {{ formatDate(current.createdAt) }}
+                  </p>
+                </template>
+                <template v-else-if="current.alias === 'KONTUR_SIGN'">
+                  <p class="mb-1">Тип: через сервис Контур.Сайн</p>
+                  <p class="mb-1">ИНН: {{ current.inn }}</p>
+                  <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
+                  <p class="mb-0">
+                    Дата заявки: {{ formatDate(current.createdAt) }}
+                  </p>
+                </template>
+                <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
+                  <p class="mb-1">Тип: простая электронная подпись</p>
+                  <p class="mb-1">ИНН: {{ current.inn }}</p>
+                  <p class="mb-1">
+                    Эмитент сертификата: Федерация хоккея Москвы
+                  </p>
+                  <p class="mb-1">ID: {{ current.id }}</p>
+                  <p class="mb-0">
+                    Дата выпуска: {{ formatDate(current.createdAt) }}
+                  </p>
+                </template>
+              </div>
+            </div>
+            <div class="alert alert-info mb-0">
+              Раздел скоро будет доступен.
+            </div>
           </div>
           <div v-else>
             <p class="mb-3">Выберите способ подписания первичных документов</p>
