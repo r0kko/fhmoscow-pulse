@@ -11,6 +11,8 @@ export const trainingCreateRules = [
   body('capacity').optional().isInt({ min: 0 }),
   body('groups').optional().isArray(),
   body('groups.*').isUUID(),
+  body('courses').optional().isArray(),
+  body('courses.*').isUUID(),
 ];
 
 export const trainingUpdateRules = [
@@ -30,6 +32,8 @@ export const trainingUpdateRules = [
   body('capacity').optional().isInt({ min: 0 }),
   body('groups').optional().isArray(),
   body('groups.*').isUUID(),
+  body('courses').optional().isArray(),
+  body('courses.*').isUUID(),
 ];
 
 export const updateAttendanceRules = [body('attendance_marked').isBoolean()];

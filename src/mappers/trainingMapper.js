@@ -49,11 +49,18 @@ function sanitize(obj) {
   if (RefereeGroups) {
     res.groups = RefereeGroups.map((g) => ({ id: g.id, name: g.name }));
   }
+  if (obj.Courses) {
+    res.courses = obj.Courses.map((c) => ({ id: c.id, name: c.name }));
+  }
   if (obj.TrainingRegistrations) {
     const coaches = obj.TrainingRegistrations.filter(
       (r) => r.TrainingRole?.alias === 'COACH' && r.User
     ).map((r) => userMapper.toPublic(r.User));
     if (coaches.length) res.coaches = coaches;
+    const teachers = obj.TrainingRegistrations.filter(
+      (r) => r.TrainingRole?.teacher && r.User
+    ).map((r) => userMapper.toPublic(r.User));
+    if (teachers.length) res.teachers = teachers;
     const inventory = obj.TrainingRegistrations.filter(
       (r) => r.TrainingRole?.alias === 'EQUIPMENT_MANAGER' && r.User
     ).map((r) => userMapper.toPublic(r.User));

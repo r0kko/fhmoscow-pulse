@@ -17,6 +17,17 @@ const props = defineProps({
 });
 const emit = defineEmits(['register', 'unregister']);
 
+const coachList = computed(() =>
+  props.training.teachers && props.training.teachers.length
+    ? props.training.teachers
+    : props.training.coaches || []
+);
+const coachLabel = computed(() =>
+  props.training.teachers && props.training.teachers.length
+    ? 'Преподаватель'
+    : 'Тренер'
+);
+
 function formatStart(date) {
   const d = new Date(date);
   const text = d.toLocaleDateString('ru-RU', {
@@ -96,37 +107,29 @@ function formatDeadline(start) {
         :class="badgeClass(training.type?.alias)"
         >{{ training.type?.name }}</span
       >
-      <p class="small mb-1">
-        Тренер<span v-if="training.coaches && training.coaches.length > 1"
-          >ы</span
-        >:
-        <template v-if="training.coaches && training.coaches.length">
-          <span v-for="(c, i) in training.coaches" :key="c.id">
-            <a
-              :href="`tel:+${c.phone}`"
-              class="text-reset text-decoration-none"
-              >{{ shortName(c) }}</a
-            ><span v-if="i < training.coaches.length - 1">, </span>
-          </span>
-        </template>
-        <span v-else>не назначен</span>
+      <p class="small mb-1" v-if="coachList.length">
+        {{ coachLabel }}<span v-if="coachList.length > 1">ы</span>:
+        <span v-for="(c, i) in coachList" :key="c.id">
+          <a
+            :href="`tel:+${c.phone}`"
+            class="text-reset text-decoration-none"
+            >{{ shortName(c) }}</a
+          ><span v-if="i < coachList.length - 1">, </span>
+        </span>
       </p>
-      <p class="small mb-2">
+      <p class="small mb-1" v-else>{{ coachLabel }}: не назначен</p>
+      <p
+        v-if="training.equipment_managers && training.equipment_managers.length"
+        class="small mb-2"
+      >
         Инвентарь:
-        <template
-          v-if="
-            training.equipment_managers && training.equipment_managers.length
-          "
-        >
-          <span v-for="(m, i) in training.equipment_managers" :key="m.id">
-            <a
-              :href="`tel:+${m.phone}`"
-              class="text-reset text-decoration-none"
-              >{{ shortName(m) }}</a
-            ><span v-if="i < training.equipment_managers.length - 1">, </span>
-          </span>
-        </template>
-        <span v-else>не назначен</span>
+        <span v-for="(m, i) in training.equipment_managers" :key="m.id">
+          <a
+            :href="`tel:+${m.phone}`"
+            class="text-reset text-decoration-none"
+            >{{ shortName(m) }}</a
+          ><span v-if="i < training.equipment_managers.length - 1">, </span>
+        </span>
       </p>
       <button
         v-if="training.registered && showCancel"

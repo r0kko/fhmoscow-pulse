@@ -38,6 +38,7 @@ import RefereeGroupUser from './refereeGroupUser.js';
 import TrainingRefereeGroup from './trainingRefereeGroup.js';
 import Course from './course.js';
 import UserCourse from './userCourse.js';
+import TrainingCourse from './trainingCourse.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExam from './medicalExam.js';
 import MedicalExamRegistration from './medicalExamRegistration.js';
@@ -161,6 +162,19 @@ RefereeGroup.hasMany(RefereeGroupUser, { foreignKey: 'group_id' });
 RefereeGroupUser.belongsTo(RefereeGroup, { foreignKey: 'group_id' });
 User.hasOne(RefereeGroupUser, { foreignKey: 'user_id' });
 RefereeGroupUser.belongsTo(User, { foreignKey: 'user_id' });
+
+Training.belongsToMany(Course, {
+  through: TrainingCourse,
+  foreignKey: 'training_id',
+});
+Course.belongsToMany(Training, {
+  through: TrainingCourse,
+  foreignKey: 'course_id',
+});
+Training.hasMany(TrainingCourse, { foreignKey: 'training_id' });
+TrainingCourse.belongsTo(Training, { foreignKey: 'training_id' });
+Course.hasMany(TrainingCourse, { foreignKey: 'course_id' });
+TrainingCourse.belongsTo(Course, { foreignKey: 'course_id' });
 
 /* courses */
 Course.belongsTo(User, { foreignKey: 'responsible_id', as: 'Responsible' });
@@ -359,6 +373,7 @@ export {
   RefereeGroup,
   RefereeGroupUser,
   TrainingRefereeGroup,
+  TrainingCourse,
   File,
   MedicalCertificateType,
   MedicalCertificateFile,

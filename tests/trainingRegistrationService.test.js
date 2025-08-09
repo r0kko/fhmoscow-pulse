@@ -3,6 +3,7 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 const findTrainingMock = jest.fn();
 const findAndCountAllMock = jest.fn();
 const findGroupUserMock = jest.fn();
+const findCourseLinkMock = jest.fn();
 const createRegMock = jest.fn();
 const findUserMock = jest.fn();
 const findRegMock = jest.fn();
@@ -13,14 +14,22 @@ const countMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  Training: { findByPk: findTrainingMock, findAndCountAll: findAndCountAllMock },
+  Training: {
+    findByPk: findTrainingMock,
+    findAndCountAll: findAndCountAllMock,
+  },
   TrainingType: {},
   Ground: {},
   Season: {},
   RefereeGroup: {},
   Address: {},
-  TrainingRole: { findOne: findTrainingRoleMock, findByPk: findTrainingRoleMock },
+  TrainingRole: {
+    findOne: findTrainingRoleMock,
+    findByPk: findTrainingRoleMock,
+  },
   RefereeGroupUser: { findOne: findGroupUserMock },
+  Course: {},
+  UserCourse: { findOne: findCourseLinkMock },
   TrainingRegistration: {
     create: createRegMock,
     findOne: findRegMock,
@@ -52,12 +61,15 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const { default: service } = await import('../src/services/trainingRegistrationService.js');
+const { default: service } = await import(
+  '../src/services/trainingRegistrationService.js'
+);
 
 beforeEach(() => {
   findTrainingMock.mockReset();
   findAndCountAllMock.mockReset();
   findGroupUserMock.mockReset();
+  findCourseLinkMock.mockReset();
   createRegMock.mockReset();
   findUserMock.mockReset();
   findRegMock.mockReset();
@@ -78,6 +90,9 @@ const training = {
   start_at: '2099-01-01T10:00:00Z',
   RefereeGroups: [{ id: 'g1' }],
   TrainingRegistrations: [],
+  get() {
+    return this;
+  },
 };
 
 findRegMock.mockImplementation(() => ({ destroy: destroyMock }));
@@ -108,7 +123,10 @@ test('register restores deleted registration', async () => {
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.register('u1', 't1', 'u1');
   expect(restoreMock).toHaveBeenCalled();
-  expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role1', updated_by: 'u1' });
+  expect(updateMock).toHaveBeenCalledWith({
+    training_role_id: 'role1',
+    updated_by: 'u1',
+  });
   expect(createRegMock).not.toHaveBeenCalled();
   expect(sendRegEmailMock).toHaveBeenCalled();
 });
@@ -121,13 +139,20 @@ test('remove sends cancellation email', async () => {
   await service.remove('t1', 'u1', 'admin');
   expect(updateMock).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
-  expect(sendCancelEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
+  expect(sendCancelEmailMock).toHaveBeenCalledWith(
+    { id: 'u1', email: 'e' },
+    training
+  );
 });
 
 test('add creates registration for referee', async () => {
   const tr = { ...training, TrainingRegistrations: [] };
   findTrainingMock.mockResolvedValue(tr);
-  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] });
+  findUserMock.mockResolvedValue({
+    id: 'u2',
+    email: 'e2',
+    Roles: [{ alias: 'BRIGADE_REFEREE' }],
+  });
   await service.add('t1', 'u2', 'role2', 'admin');
   expect(createRegMock).toHaveBeenCalledWith({
     training_id: 't1',
@@ -148,7 +173,11 @@ test('add restores deleted registration', async () => {
   const restoreMock = jest.fn();
   const updateMock = jest.fn();
   findTrainingMock.mockResolvedValue(tr);
-  findUserMock.mockResolvedValue({ id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] });
+  findUserMock.mockResolvedValue({
+    id: 'u2',
+    email: 'e2',
+    Roles: [{ alias: 'BRIGADE_REFEREE' }],
+  });
   findRegMock.mockResolvedValue({
     deletedAt: new Date(),
     restore: restoreMock,
@@ -156,7 +185,10 @@ test('add restores deleted registration', async () => {
   });
   await service.add('t1', 'u2', 'role2', 'admin');
   expect(restoreMock).toHaveBeenCalled();
-  expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role2', updated_by: 'admin' });
+  expect(updateMock).toHaveBeenCalledWith({
+    training_role_id: 'role2',
+    updated_by: 'admin',
+  });
   expect(createRegMock).not.toHaveBeenCalled();
   expect(sendRegEmailMock).toHaveBeenCalledWith(
     { id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] },
@@ -186,8 +218,15 @@ test('updateRole sends notification', async () => {
   findTrainingMock.mockResolvedValue(training);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.updateRole('t1', 'u1', 'role3', 'admin');
-  expect(updateMock).toHaveBeenCalledWith({ training_role_id: 'role3', updated_by: 'admin' });
-  expect(sendRoleChangedEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training, { id: 'role1' });
+  expect(updateMock).toHaveBeenCalledWith({
+    training_role_id: 'role3',
+    updated_by: 'admin',
+  });
+  expect(sendRoleChangedEmailMock).toHaveBeenCalledWith(
+    { id: 'u1', email: 'e' },
+    training,
+    { id: 'role1' }
+  );
 });
 
 test('unregister sends notification', async () => {
@@ -202,19 +241,25 @@ test('unregister sends notification', async () => {
   await service.unregister('u1', 't1', 'u1');
   expect(updateMock).toHaveBeenCalledWith({ updated_by: 'u1' });
   expect(destroyMock).toHaveBeenCalled();
-  expect(sendSelfCancelEmailMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, training);
+  expect(sendSelfCancelEmailMock).toHaveBeenCalledWith(
+    { id: 'u1', email: 'e' },
+    training
+  );
 });
 
 test('unregister rejects when deadline passed', async () => {
-  const soon = { ...training, start_at: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString() };
+  const soon = {
+    ...training,
+    start_at: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(),
+  };
   findRegMock.mockResolvedValue({
     destroy: destroyMock,
     TrainingRole: { alias: 'PARTICIPANT' },
   });
   findTrainingMock.mockResolvedValue(soon);
-  await expect(
-    service.unregister('u1', 't1', 'u1')
-  ).rejects.toThrow('cancellation_deadline_passed');
+  await expect(service.unregister('u1', 't1', 'u1')).rejects.toThrow(
+    'cancellation_deadline_passed'
+  );
 });
 
 test('unregister rejects when role not participant', async () => {
@@ -223,9 +268,9 @@ test('unregister rejects when role not participant', async () => {
     TrainingRole: { alias: 'COACH' },
   });
   findTrainingMock.mockResolvedValue(training);
-  await expect(
-    service.unregister('u1', 't1', 'u1')
-  ).rejects.toThrow('cancellation_forbidden');
+  await expect(service.unregister('u1', 't1', 'u1')).rejects.toThrow(
+    'cancellation_forbidden'
+  );
 });
 
 test('listUpcomingByUser includes my role', async () => {
@@ -241,7 +286,11 @@ test('listUpcomingByUser includes my role', async () => {
   const tr = { ...trPlain, get: () => trPlain };
   findAndCountAllMock.mockResolvedValue({ rows: [tr], count: 1 });
   const res = await service.listUpcomingByUser('u1', {});
-  expect(res.rows[0].my_role).toEqual({ id: 'r1', name: 'Участник', alias: 'PARTICIPANT' });
+  expect(res.rows[0].my_role).toEqual({
+    id: 'r1',
+    name: 'Участник',
+    alias: 'PARTICIPANT',
+  });
   expect(findAndCountAllMock).toHaveBeenCalled();
 });
 
@@ -295,29 +344,46 @@ test('updatePresence updates value for admin', async () => {
   findRegMock.mockResolvedValueOnce({ update: updateMock });
   findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'ADMIN' }] });
   await service.updatePresence('t1', 'u1', true, 'admin');
-  expect(updateMock).toHaveBeenCalledWith({ present: true, updated_by: 'admin' });
+  expect(updateMock).toHaveBeenCalledWith({
+    present: true,
+    updated_by: 'admin',
+  });
 });
 
 test('updatePresence rejects when not coach', async () => {
   findRegMock.mockResolvedValueOnce({});
   findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValueOnce(null);
-  await expect(
-    service.updatePresence('t1', 'u1', false, 'u2')
-  ).rejects.toThrow('access_denied');
+  await expect(service.updatePresence('t1', 'u1', false, 'u2')).rejects.toThrow(
+    'access_denied'
+  );
 });
 
 test('updatePresence rejects when updating coach presence', async () => {
   findRegMock.mockResolvedValueOnce({ TrainingRole: { alias: 'COACH' } });
   findUserMock.mockResolvedValueOnce({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValueOnce({ TrainingRole: { alias: 'COACH' } });
-  await expect(
-    service.updatePresence('t1', 'u1', true, 'u1')
-  ).rejects.toThrow('access_denied');
+  await expect(service.updatePresence('t1', 'u1', true, 'u1')).rejects.toThrow(
+    'access_denied'
+  );
 });
 
 test('listAvailable returns empty when no referee group', async () => {
   findGroupUserMock.mockResolvedValue(null);
   const res = await service.listAvailable('u1');
   expect(res).toEqual({ rows: [], count: 0 });
+});
+
+test('listAvailableForCourse returns empty when no course', async () => {
+  findCourseLinkMock.mockResolvedValue(null);
+  const res = await service.listAvailableForCourse('u1');
+  expect(res).toEqual({ rows: [], count: 0 });
+});
+
+test('listAvailableForCourse returns trainings', async () => {
+  findCourseLinkMock.mockResolvedValue({ course_id: 'c1' });
+  findAndCountAllMock.mockResolvedValue({ rows: [training], count: 1 });
+  const res = await service.listAvailableForCourse('u1');
+  expect(res.count).toBe(1);
+  expect(res.rows[0].id).toBe('t1');
 });

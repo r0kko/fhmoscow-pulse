@@ -2,10 +2,36 @@
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
+import TrainingCard from '../components/TrainingCard.vue';
 
 const course = ref(null);
 const error = ref('');
 const loading = ref(true);
+const trainings = ref([]);
+const trainingsError = ref('');
+const trainingsLoading = ref(false);
+
+async function loadTrainings() {
+  trainingsLoading.value = true;
+  try {
+    const data = await apiFetch('/course-trainings/available');
+    trainings.value = data.trainings;
+  } catch (err) {
+    trainingsError.value = err.message;
+  } finally {
+    trainingsLoading.value = false;
+  }
+}
+
+async function register(id) {
+  await apiFetch(`/course-trainings/${id}/register`, { method: 'POST' });
+  await loadTrainings();
+}
+
+async function unregister(id) {
+  await apiFetch(`/course-trainings/${id}/register`, { method: 'DELETE' });
+  await loadTrainings();
+}
 
 onMounted(async () => {
   try {
@@ -14,6 +40,7 @@ onMounted(async () => {
       throw e;
     });
     course.value = data ? data.course : null;
+    if (course.value) await loadTrainings();
   } catch (err) {
     error.value = err.message;
   } finally {
@@ -67,6 +94,31 @@ onMounted(async () => {
             </p>
           </div>
           <div v-else class="alert alert-info mb-0">Курс не назначен</div>
+        </div>
+      </div>
+      <div v-if="course" class="card section-card tile fade-in shadow-sm mb-3">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Ближайшие тренировки</h2>
+          <div v-if="trainingsLoading" class="text-center py-3">
+            <div class="spinner-border text-brand" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+          <div v-else-if="trainingsError" class="alert alert-danger mb-0">
+            {{ trainingsError }}
+          </div>
+          <div v-else-if="trainings.length" class="d-flex gap-3 overflow-auto">
+            <TrainingCard
+              v-for="t in trainings"
+              :key="t.id"
+              :training="t"
+              @register="register"
+              @unregister="unregister"
+            />
+          </div>
+          <div v-else class="alert alert-info mb-0">
+            Нет доступных тренировок
+          </div>
         </div>
       </div>
     </div>
