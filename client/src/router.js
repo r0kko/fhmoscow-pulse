@@ -7,6 +7,7 @@ import { auth, clearAuth, fetchCurrentUser } from './auth.js';
 import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
 import DocumentView from './views/DocumentView.vue';
+import Documents from './views/Documents.vue';
 import Medical from './views/Medical.vue';
 import Camps from './views/Camps.vue';
 import Tasks from './views/Tasks.vue';
@@ -51,6 +52,11 @@ const routes = [
     path: '/profile/doc/:type',
     component: DocumentView,
     meta: { requiresAuth: true, title: 'Документ' },
+  },
+  {
+    path: '/documents',
+    component: Documents,
+    meta: { requiresAuth: true, title: 'Документы' },
   },
   {
     path: '/medical',

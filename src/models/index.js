@@ -8,6 +8,8 @@ import UserRole from './userRole.js';
 import UserStatus from './userStatus.js';
 import Log from './log.js';
 import EmailCode from './emailCode.js';
+import SignType from './signType.js';
+import UserSignType from './userSignType.js';
 import DocumentType from './documentType.js';
 import Country from './country.js';
 import Passport from './passport.js';
@@ -180,6 +182,12 @@ UserExternalId.belongsTo(User, { foreignKey: 'user_id' });
 ExternalSystem.hasMany(UserExternalId, { foreignKey: 'external_system_id' });
 UserExternalId.belongsTo(ExternalSystem, { foreignKey: 'external_system_id' });
 
+/* sign types */
+SignType.hasMany(UserSignType, { foreignKey: 'sign_type_id' });
+UserSignType.belongsTo(SignType, { foreignKey: 'sign_type_id' });
+User.hasMany(UserSignType, { foreignKey: 'user_id' });
+UserSignType.belongsTo(User, { foreignKey: 'user_id' });
+
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
 Passport.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
@@ -286,6 +294,8 @@ export {
   UserStatus,
   Log,
   EmailCode,
+  SignType,
+  UserSignType,
   DocumentType,
   Country,
   Passport,
