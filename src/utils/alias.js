@@ -36,10 +36,8 @@ export default function generateAlias(name) {
     .split('')
     .map((c) => map[c.toLowerCase()] || c)
     .join('');
-  return translit
-    .replace(/[^0-9a-zA-Z]+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+/, '')
-    .replace(/_+$/, '')
-    .toUpperCase();
+
+  const sanitized = translit.replace(/[^0-9a-zA-Z]+/g, '_');
+
+  return sanitized.split('_').filter(Boolean).join('_').toUpperCase();
 }
