@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
 const loading = ref(true);
@@ -17,7 +18,7 @@ const signInfo = {
     'Потребуется оригинал паспорта для идентификации личности',
     'Подтверждение займет некоторое время',
   ],
-  KONTOUR_SIGN: [
+  KONTUR_SIGN: [
     'Можно сделать не выходя из дома, в любое время',
     'Потребуется регистрация в сервисе с дистанционной проверкой документов в МВД',
     'Юридическая значимость гарантируется СКБ Контур',
@@ -32,7 +33,7 @@ onMounted(async () => {
     ]);
     current.value = me.signType;
     signTypes.value = (types.signTypes || []).filter((t) =>
-      ['HANDWRITTEN', 'KONTOUR_SIGN'].includes(t.alias)
+      ['HANDWRITTEN', 'KONTUR_SIGN'].includes(t.alias)
     );
   } catch (e) {
     error.value = e.message;
@@ -71,6 +72,14 @@ async function submit() {
 <template>
   <div class="py-3">
     <div class="container">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">Документы</li>
+        </ol>
+      </nav>
       <h1 class="mb-3">Документы</h1>
       <div v-if="loading" class="text-center my-5">
         <div class="spinner-border" role="status" aria-label="Загрузка">

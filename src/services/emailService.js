@@ -26,6 +26,7 @@ import { renderTicketStatusChangedEmail } from '../templates/ticketStatusChanged
 import { renderNormativeResultAddedEmail } from '../templates/normativeResultAddedEmail.js';
 import { renderNormativeResultUpdatedEmail } from '../templates/normativeResultUpdatedEmail.js';
 import { renderNormativeResultRemovedEmail } from '../templates/normativeResultRemovedEmail.js';
+import { renderSignTypeSelectionEmail } from '../templates/signTypeSelectionEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -51,6 +52,11 @@ export async function sendMail(to, subject, text, html) {
 
 export async function sendVerificationEmail(user, code) {
   const { subject, text, html } = renderVerificationEmail(code);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendSignTypeSelectionEmail(user, code) {
+  const { subject, text, html } = renderSignTypeSelectionEmail(code);
   await sendMail(user.email, subject, text, html);
 }
 
@@ -160,6 +166,7 @@ export async function sendNormativeResultRemovedEmail(user, result) {
 export default {
   sendMail,
   sendVerificationEmail,
+  sendSignTypeSelectionEmail,
   sendPasswordResetEmail,
   sendMedicalCertificateAddedEmail,
   sendAccountActivatedEmail,
