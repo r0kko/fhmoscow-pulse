@@ -75,6 +75,7 @@ DADATA_SECRET=your_dadata_secret
 # JWT_REFRESH_TTL=30d
 # JWT_ALG=HS256
 # PASSWORD_MIN_LENGTH=8
+# PASSWORD_MAX_LENGTH=128
 # PASSWORD_PATTERN="(?=.*[A-Za-z])(?=.*\\d)"
 # SMTP_HOST=smtp.example.com
 # SMTP_PORT=587
@@ -99,9 +100,10 @@ DADATA_SECRET=your_dadata_secret
 `src/templates/ticketCreatedEmail.js` и `src/templates/ticketStatusChangedEmail.js`.
 Письмо об изменении статуса дополнительно включает тип обращения для удобства пользователя.
 
-`PASSWORD_MIN_LENGTH` and `PASSWORD_PATTERN` allow customizing the
-password policy for user registration. By default passwords must be at
-least eight characters long and contain both letters and numbers.
+`PASSWORD_MIN_LENGTH`, `PASSWORD_MAX_LENGTH`, and `PASSWORD_PATTERN`
+allow customizing the password policy for user registration. By default
+passwords must be at least eight characters long, no more than 128
+characters, and contain both letters and numbers.
 
 ## Running with Docker
 

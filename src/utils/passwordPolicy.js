@@ -1,8 +1,16 @@
-import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN } from '../config/auth.js';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_PATTERN,
+} from '../config/auth.js';
 
 export function validatePassword(password) {
   if (typeof password !== 'string') return false;
-  if (password.length < PASSWORD_MIN_LENGTH) return false;
+  if (
+    password.length < PASSWORD_MIN_LENGTH ||
+    password.length > PASSWORD_MAX_LENGTH
+  )
+    return false;
   if (!PASSWORD_PATTERN.test(password)) return false;
   const common = ['password', '123456', 'qwerty'];
   if (common.includes(password.toLowerCase())) return false;
