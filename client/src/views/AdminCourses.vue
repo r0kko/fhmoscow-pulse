@@ -37,6 +37,24 @@ const typeFormError = ref('');
 const typeSaveLoading = ref(false);
 const typesError = ref('');
 
+const trainings = ref([]);
+const trainingsError = ref('');
+const loadingTrainings = ref(false);
+const grounds = ref([]);
+const trainingForm = ref({
+  type_id: '',
+  ground_id: '',
+  start_at: '',
+  end_at: '',
+  capacity: '',
+  courses: [],
+});
+const editingTraining = ref(null);
+const trainingModalRef = ref(null);
+let trainingModal;
+const trainingFormError = ref('');
+const trainingSaveLoading = ref(false);
+
 async function loadUsers() {
   loadingUsers.value = true;
   try {
@@ -65,6 +83,12 @@ watch(activeTab, (val) => {
   if (val === 'types' && !trainingTypesLoaded.value) {
     loadTrainingTypes();
   }
+  if (val === 'trainings') {
+    if (!trainingTypesLoaded.value) loadTrainingTypes();
+    loadCourses();
+    loadGrounds();
+    loadTrainingsAdmin();
+  }
 });
 
 async function loadAllUsers() {
@@ -92,6 +116,86 @@ async function loadTrainingTypes() {
     trainingTypesLoaded.value = true;
   } catch (e) {
     typesError.value = e.message;
+  }
+}
+
+async function loadGrounds() {
+  try {
+    const data = await apiFetch('/grounds?limit=1000');
+    grounds.value = data.grounds;
+  } catch (e) {
+    trainingsError.value = e.message;
+  }
+}
+
+async function loadTrainingsAdmin() {
+  loadingTrainings.value = true;
+  try {
+    const data = await apiFetch('/course-trainings?limit=1000');
+    trainings.value = data.trainings;
+  } catch (e) {
+    trainingsError.value = e.message;
+  } finally {
+    loadingTrainings.value = false;
+  }
+}
+
+function openTrainingModal(training = null) {
+  if (!trainingModal) {
+    trainingModal = new Modal(trainingModalRef.value);
+  }
+  if (training) {
+    editingTraining.value = training;
+    trainingForm.value = {
+      type_id: training.type_id || training.type?.id || '',
+      ground_id: training.ground_id || '',
+      start_at: training.start_at.slice(0, 16),
+      end_at: training.end_at.slice(0, 16),
+      capacity: training.capacity || '',
+      courses: training.courses ? training.courses.map((c) => c.id) : [],
+    };
+  } else {
+    editingTraining.value = null;
+    trainingForm.value = {
+      type_id: '',
+      ground_id: '',
+      start_at: '',
+      end_at: '',
+      capacity: '',
+      courses: [],
+    };
+  }
+  trainingFormError.value = '';
+  trainingModal.show();
+}
+
+async function saveTraining() {
+  trainingSaveLoading.value = true;
+  try {
+    const method = editingTraining.value ? 'PUT' : 'POST';
+    const url = editingTraining.value
+      ? `/course-trainings/${editingTraining.value.id}`
+      : '/course-trainings';
+    await apiFetch(url, {
+      method,
+      body: JSON.stringify({ ...trainingForm.value }),
+    });
+    trainingModal.hide();
+    await loadTrainingsAdmin();
+  } catch (e) {
+    trainingFormError.value = e.message;
+  } finally {
+    trainingSaveLoading.value = false;
+  }
+}
+
+async function deleteTraining(id) {
+  if (!confirm('Удалить тренировку?')) return;
+  try {
+    await apiFetch(`/course-trainings/${id}`, { method: 'DELETE' });
+    await loadTrainingsAdmin();
+  } catch (e) {
+    alert(e.message);
   }
 }
 
@@ -264,6 +368,15 @@ onMounted(() => {
                 @click="activeTab = 'courses'"
               >
                 Курсы
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: activeTab === 'trainings' }"
+                @click="activeTab = 'trainings'"
+              >
+                Тренировки
               </button>
             </li>
             <li class="nav-item">
@@ -515,7 +628,215 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-else>
+      <div v-else-if="activeTab === 'trainings'">
+        <div class="card section-card mb-3">
+          <div class="card-body">
+            <div v-if="trainingsError" class="alert alert-danger mb-3">
+              {{ trainingsError }}
+            </div>
+            <div class="table-responsive d-none d-sm-block">
+              <table class="table admin-table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Начало</th>
+                    <th class="d-none d-md-table-cell">Тип</th>
+                    <th class="d-none d-md-table-cell">Курсы</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="t in trainings" :key="t.id">
+                    <td>
+                      {{
+                        new Date(t.start_at).toLocaleString('ru-RU', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        })
+                      }}
+                    </td>
+                    <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
+                    <td class="d-none d-md-table-cell">
+                      {{ t.courses.map((c) => c.name).join(', ') }}
+                    </td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-primary me-2"
+                        @click="openTrainingModal(t)"
+                      >
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-danger"
+                        @click="deleteTraining(t.id)"
+                      >
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="trainings.length === 0">
+                    <td colspan="4" class="text-center text-muted">
+                      Нет тренировок
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="d-sm-none">
+              <ul class="list-group">
+                <li
+                  v-for="t in trainings"
+                  :key="t.id"
+                  class="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <div>
+                      {{
+                        new Date(t.start_at).toLocaleString('ru-RU', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        })
+                      }}
+                    </div>
+                    <small class="text-muted">{{ t.type?.name }}</small>
+                  </div>
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      class="btn btn-primary"
+                      @click="openTrainingModal(t)"
+                    >
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      class="btn btn-danger"
+                      @click="deleteTraining(t.id)"
+                    >
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </li>
+                <li
+                  v-if="trainings.length === 0"
+                  class="list-group-item text-muted"
+                >
+                  Нет тренировок
+                </li>
+              </ul>
+            </div>
+            <button class="btn btn-brand mt-3" @click="openTrainingModal()">
+              Добавить тренировку
+            </button>
+          </div>
+        </div>
+
+        <div ref="trainingModalRef" class="modal fade" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{
+                    editingTraining
+                      ? 'Редактировать тренировку'
+                      : 'Новая тренировка'
+                  }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Тип</label>
+                  <select v-model="trainingForm.type_id" class="form-select">
+                    <option value="">Выберите тип</option>
+                    <option
+                      v-for="tt in trainingTypes"
+                      :key="tt.id"
+                      :value="tt.id"
+                    >
+                      {{ tt.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Площадка</label>
+                  <select v-model="trainingForm.ground_id" class="form-select">
+                    <option value="">Выберите площадку</option>
+                    <option v-for="g in grounds" :key="g.id" :value="g.id">
+                      {{ g.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Начало</label>
+                  <input
+                    type="datetime-local"
+                    v-model="trainingForm.start_at"
+                    class="form-control"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Окончание</label>
+                  <input
+                    type="datetime-local"
+                    v-model="trainingForm.end_at"
+                    class="form-control"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Вместимость</label>
+                  <input
+                    type="number"
+                    min="0"
+                    v-model="trainingForm.capacity"
+                    class="form-control"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Курсы</label>
+                  <select
+                    v-model="trainingForm.courses"
+                    multiple
+                    class="form-select"
+                  >
+                    <option v-for="c in courses" :key="c.id" :value="c.id">
+                      {{ c.name }}
+                    </option>
+                  </select>
+                </div>
+                <div v-if="trainingFormError" class="alert alert-danger">
+                  {{ trainingFormError }}
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-brand"
+                  :disabled="trainingSaveLoading"
+                  @click="saveTraining"
+                >
+                  <span
+                    v-if="trainingSaveLoading"
+                    class="spinner-border spinner-border-sm me-2"
+                  ></span>
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="activeTab === 'types'">
         <div class="card section-card tile fade-in shadow-sm">
           <div
             class="card-header d-flex justify-content-between align-items-center"

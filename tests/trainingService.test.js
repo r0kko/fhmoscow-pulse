@@ -8,6 +8,7 @@ const destroyMock = jest.fn();
 const bulkCreateMock = jest.fn();
 const findAllGroupsMock = jest.fn();
 const findOneSeasonMock = jest.fn();
+const findAllCoursesMock = jest.fn();
 const findUserMock = jest.fn();
 const findRegMock = jest.fn();
 
@@ -26,6 +27,7 @@ beforeEach(() => {
   bulkCreateMock.mockReset();
   findAllGroupsMock.mockReset();
   findOneSeasonMock.mockReset();
+  findAllCoursesMock.mockReset();
   findUserMock.mockReset();
   findRegMock.mockReset();
 });
@@ -42,6 +44,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Address: {},
   Season: { findOne: findOneSeasonMock },
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
+  TrainingCourse: { destroy: destroyMock, bulkCreate: bulkCreateMock },
+  Course: { findAll: findAllCoursesMock },
   User: { findByPk: findUserMock },
   TrainingRole: {},
   Role: {},
@@ -59,11 +63,7 @@ const { default: service } = await import('../src/services/trainingService.js');
 test('update throws on invalid time range', async () => {
   findByPkMock.mockResolvedValue({ ...trainingInstance });
   await expect(
-    service.update(
-      't1',
-      { end_at: '2024-01-01T09:00:00Z' },
-      'admin'
-    )
+    service.update('t1', { end_at: '2024-01-01T09:00:00Z' }, 'admin')
   ).rejects.toThrow('invalid_time_range');
 });
 
@@ -200,23 +200,36 @@ test('setAttendanceMarked updates for admin', async () => {
   findByPkMock.mockResolvedValue({ update: updateMock });
   findUserMock.mockResolvedValue({ Roles: [{ alias: 'ADMIN' }] });
   await service.setAttendanceMarked('t1', true, 'admin');
-  expect(updateMock).toHaveBeenCalledWith({ attendance_marked: true, updated_by: 'admin' });
+  expect(updateMock).toHaveBeenCalledWith({
+    attendance_marked: true,
+    updated_by: 'admin',
+  });
 });
 
 test('setAttendanceMarked marks coach present', async () => {
   const updateRegMock = jest.fn();
   findByPkMock.mockResolvedValue({ update: updateMock });
   findUserMock.mockResolvedValue({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
-  findRegMock.mockResolvedValue({ TrainingRole: { alias: 'COACH' }, update: updateRegMock });
+  findRegMock.mockResolvedValue({
+    TrainingRole: { alias: 'COACH' },
+    update: updateRegMock,
+  });
   await service.setAttendanceMarked('t1', true, 'u1');
-  expect(updateMock).toHaveBeenCalledWith({ attendance_marked: true, updated_by: 'u1' });
-  expect(updateRegMock).toHaveBeenCalledWith({ present: true, updated_by: 'u1' });
+  expect(updateMock).toHaveBeenCalledWith({
+    attendance_marked: true,
+    updated_by: 'u1',
+  });
+  expect(updateRegMock).toHaveBeenCalledWith({
+    present: true,
+    updated_by: 'u1',
+  });
 });
 
 test('setAttendanceMarked rejects when not coach', async () => {
   findByPkMock.mockResolvedValue({ update: updateMock });
   findUserMock.mockResolvedValue({ Roles: [{ alias: 'BRIGADE_REFEREE' }] });
   findRegMock.mockResolvedValue(null);
-  await expect(service.setAttendanceMarked('t1', true, 'u1')).rejects.toThrow('access_denied');
+  await expect(service.setAttendanceMarked('t1', true, 'u1')).rejects.toThrow(
+    'access_denied'
+  );
 });
-

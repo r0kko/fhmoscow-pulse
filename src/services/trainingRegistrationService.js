@@ -5,6 +5,8 @@ import {
   Season,
   RefereeGroup,
   RefereeGroupUser,
+  Course,
+  UserCourse,
   TrainingRegistration,
   TrainingRole,
   Role,
@@ -99,23 +101,84 @@ async function listAvailable(userId, options = {}) {
   };
 }
 
+async function listAvailableForCourse(userId, options = {}) {
+  const link = await UserCourse.findOne({ where: { user_id: userId } });
+  if (!link) return { rows: [], count: 0 };
+  const { Op } = await import('sequelize');
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const now = new Date();
+  const horizon = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const { rows, count } = await Training.findAndCountAll({
+    include: [
+      TrainingType,
+      { model: Ground, include: [Address] },
+      { model: Season, where: { active: true }, required: true },
+      {
+        model: Course,
+        through: { attributes: [] },
+        where: { id: link.course_id },
+      },
+      { model: TrainingRegistration, include: [User, TrainingRole] },
+    ],
+    where: { start_at: { [Op.between]: [now, horizon] } },
+    order: [['start_at', 'DESC']],
+    distinct: true,
+    limit,
+    offset,
+  });
+  return {
+    rows: rows.map((t) => {
+      const participantRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      );
+      const registeredCount = participantRegs.length;
+      const userRegistered = t.TrainingRegistrations.some(
+        (r) => r.user_id === userId
+      );
+      const plain = t.get();
+      const available =
+        typeof plain.capacity === 'number'
+          ? Math.max(0, plain.capacity - registeredCount)
+          : null;
+      return {
+        ...plain,
+        available,
+        registration_open: trainingService.isRegistrationOpen(
+          t,
+          registeredCount
+        ),
+        user_registered: userRegistered,
+      };
+    }),
+    count,
+  };
+}
+
 async function register(userId, trainingId, actorId) {
-  const [training, link] = await Promise.all([
+  const [training, groupLink, courseLink] = await Promise.all([
     Training.findByPk(trainingId, {
       include: [
         { model: RefereeGroup, through: { attributes: [] } },
+        { model: Course, through: { attributes: [] } },
         { model: TrainingRegistration, include: [TrainingRole] },
         { model: Ground, include: [Address] },
         { model: Season, where: { active: true }, required: true },
       ],
     }),
     RefereeGroupUser.findOne({ where: { user_id: userId } }),
+    UserCourse.findOne({ where: { user_id: userId } }),
   ]);
   if (!training) throw new ServiceError('training_not_found', 404);
-  if (!link) throw new ServiceError('referee_group_not_found');
-  if (!training.RefereeGroups.some((g) => g.id === link.group_id)) {
-    throw new ServiceError('access_denied');
+  let allowed = false;
+  if (training.RefereeGroups.length && groupLink) {
+    allowed = training.RefereeGroups.some((g) => g.id === groupLink.group_id);
   }
+  if (!allowed && training.Courses.length && courseLink) {
+    allowed = training.Courses.some((c) => c.id === courseLink.course_id);
+  }
+  if (!allowed) throw new ServiceError('access_denied');
   const participantRegs = training.TrainingRegistrations.filter(
     (r) => r.TrainingRole?.alias === 'PARTICIPANT'
   );
@@ -457,6 +520,7 @@ async function remove(trainingId, userId, actorId = null) {
 
 export default {
   listAvailable,
+  listAvailableForCourse,
   register,
   add,
   unregister,

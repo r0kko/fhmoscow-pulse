@@ -17,6 +17,7 @@ module.exports = {
           id: uuidv4(),
           name: 'Участник',
           alias: 'PARTICIPANT',
+          teacher: false,
           created_at: now,
           updated_at: now,
         },
@@ -24,6 +25,7 @@ module.exports = {
           id: uuidv4(),
           name: 'Тренер',
           alias: 'COACH',
+          teacher: false,
           created_at: now,
           updated_at: now,
         },
@@ -31,6 +33,15 @@ module.exports = {
           id: uuidv4(),
           name: 'Ответственный за инвентарь',
           alias: 'EQUIPMENT_MANAGER',
+          teacher: false,
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: uuidv4(),
+          name: 'Преподаватель',
+          alias: 'TEACHER',
+          teacher: true,
           created_at: now,
           updated_at: now,
         },
@@ -41,7 +52,7 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.bulkDelete('training_roles', {
-      alias: ['PARTICIPANT', 'COACH', 'EQUIPMENT_MANAGER'],
+      alias: ['PARTICIPANT', 'COACH', 'EQUIPMENT_MANAGER', 'TEACHER'],
     });
   },
 };

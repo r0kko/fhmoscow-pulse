@@ -45,6 +45,7 @@ import seasonsRouter from './seasons.js';
 import coursesRouter from './courses.js';
 import courseUsersRouter from './courseUsers.js';
 import courseTrainingTypesRouter from './courseTrainingTypes.js';
+import courseTrainingsRouter from './courseTrainings.js';
 
 const router = express.Router();
 
@@ -69,6 +70,7 @@ router.use('/grounds', groundsRouter);
 router.use('/camp-training-types', campTrainingTypesRouter);
 router.use('/course-training-types', courseTrainingTypesRouter);
 router.use('/camp-trainings', campTrainingsRouter);
+router.use('/course-trainings', courseTrainingsRouter);
 router.use('/seasons', seasonsRouter);
 router.use('/camp-seasons', campSeasonsRouter);
 router.use('/referee-groups', refereeGroupsRouter);

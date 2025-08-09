@@ -5,6 +5,8 @@ import {
   Season,
   RefereeGroup,
   TrainingRefereeGroup,
+  Course,
+  TrainingCourse,
   Address,
   User,
   TrainingRole,
@@ -42,6 +44,11 @@ async function listAll(options = {}) {
         model: RefereeGroup,
         through: { attributes: [] },
         ...(options.group_id ? { where: { id: options.group_id } } : {}),
+      },
+      {
+        model: Course,
+        through: { attributes: [] },
+        ...(options.course_id ? { where: { id: options.course_id } } : {}),
       },
       { model: TrainingRegistration, include: [User, TrainingRole] },
     ],
@@ -83,6 +90,11 @@ async function listUpcoming(options = {}) {
         through: { attributes: [] },
         ...(options.group_id ? { where: { id: options.group_id } } : {}),
       },
+      {
+        model: Course,
+        through: { attributes: [] },
+        ...(options.course_id ? { where: { id: options.course_id } } : {}),
+      },
       { model: TrainingRegistration, include: [User, TrainingRole] },
     ],
     distinct: true,
@@ -123,6 +135,11 @@ async function listPast(options = {}) {
         through: { attributes: [] },
         ...(options.group_id ? { where: { id: options.group_id } } : {}),
       },
+      {
+        model: Course,
+        through: { attributes: [] },
+        ...(options.course_id ? { where: { id: options.course_id } } : {}),
+      },
       { model: TrainingRegistration, include: [User, TrainingRole] },
     ],
     distinct: true,
@@ -151,6 +168,7 @@ async function getById(id) {
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       { model: RefereeGroup, through: { attributes: [] } },
+      { model: Course, through: { attributes: [] } },
       { model: TrainingRegistration, include: [User, TrainingRole] },
     ],
   });
@@ -162,8 +180,12 @@ async function getById(id) {
 async function create(data, actorId) {
   let seasonId = data.season_id;
   let groups = [];
+  let courses = [];
   if (Array.isArray(data.groups) && data.groups.length) {
     groups = await RefereeGroup.findAll({ where: { id: data.groups } });
+  }
+  if (Array.isArray(data.courses) && data.courses.length) {
+    courses = await Course.findAll({ where: { id: data.courses } });
   }
   if (!seasonId) {
     if (groups.length) {
@@ -199,6 +221,16 @@ async function create(data, actorId) {
       seasonGroups.map((g) => ({
         training_id: training.id,
         group_id: g.id,
+        created_by: actorId,
+        updated_by: actorId,
+      }))
+    );
+  }
+  if (courses.length) {
+    await TrainingCourse.bulkCreate(
+      courses.map((c) => ({
+        training_id: training.id,
+        course_id: c.id,
         created_by: actorId,
         updated_by: actorId,
       }))
@@ -240,6 +272,20 @@ async function update(id, data, actorId) {
         seasonGroups.map((g) => ({
           training_id: id,
           group_id: g.id,
+          created_by: actorId,
+          updated_by: actorId,
+        }))
+      );
+    }
+  }
+  if (data.courses !== undefined) {
+    await TrainingCourse.destroy({ where: { training_id: id } });
+    if (Array.isArray(data.courses) && data.courses.length) {
+      const courses = await Course.findAll({ where: { id: data.courses } });
+      await TrainingCourse.bulkCreate(
+        courses.map((c) => ({
+          training_id: id,
+          course_id: c.id,
           created_by: actorId,
           updated_by: actorId,
         }))
