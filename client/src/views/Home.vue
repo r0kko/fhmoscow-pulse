@@ -22,6 +22,11 @@ const workSections = [
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
   { title: 'Доходы', icon: 'ruble-icon' },
+  {
+    title: 'Повышение квалификации',
+    icon: 'bi-mortarboard',
+    to: '/qualification',
+  },
 ];
 
 const docsSections = [

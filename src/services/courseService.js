@@ -98,7 +98,17 @@ async function removeUser(userId, actorId = null) {
 
 async function getUserWithCourse(userId) {
   const user = await User.findByPk(userId, {
-    include: [{ model: UserCourse, include: [Course] }],
+    include: [
+      {
+        model: UserCourse,
+        include: [
+          {
+            model: Course,
+            include: [{ model: User, as: 'Responsible' }],
+          },
+        ],
+      },
+    ],
   });
   if (!user) throw new ServiceError('user_not_found', 404);
   const course = user.UserCourse ? user.UserCourse.Course : null;

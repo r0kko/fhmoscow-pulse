@@ -53,6 +53,7 @@ export const ERROR_MESSAGES = {
   registration_incomplete: 'Регистрация не завершена',
   status_unknown: 'Неизвестный статус',
   not_found: 'Не найдено',
+  course_not_found: 'Курс не назначен',
 };
 
 export function translateError(code) {

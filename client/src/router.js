@@ -27,6 +27,7 @@ import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
+import Qualification from './views/Qualification.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
@@ -84,6 +85,11 @@ const routes = [
     path: '/normatives',
     component: Normatives,
     meta: { requiresAuth: true, requiresReferee: true, title: 'Нормативы' },
+  },
+  {
+    path: '/qualification',
+    component: Qualification,
+    meta: { requiresAuth: true, title: 'Повышение квалификации' },
   },
   {
     path: '/trainings/:id/attendance',
