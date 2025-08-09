@@ -61,7 +61,7 @@ onMounted(async () => {
               <th>Документ</th>
               <th>Получатель</th>
               <th>Статус</th>
-              <th>Дата</th>
+              <th>Дата документа</th>
             </tr>
           </thead>
           <tbody>
@@ -72,7 +72,7 @@ onMounted(async () => {
                 {{ d.recipient.patronymic }}
               </td>
               <td>{{ d.status?.name }}</td>
-              <td>{{ formatDateTime(d.createdAt) }}</td>
+              <td>{{ formatDateTime(d.documentDate) }}</td>
             </tr>
             <tr v-if="!documents.length">
               <td colspan="4" class="text-center">Документы отсутствуют</td>

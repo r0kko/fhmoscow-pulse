@@ -26,7 +26,7 @@ async function getByUser(userId) {
   });
   return {
     id: record.id,
-    created_at: record.created_at,
+    selectedAt: record.created_at,
     name: record.SignType.name,
     alias: record.SignType.alias,
     inn: inn ? inn.number : null,

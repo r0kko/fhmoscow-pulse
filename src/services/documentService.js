@@ -35,6 +35,7 @@ async function create(data, userId) {
     sign_type_id: data.signTypeId,
     name: data.name,
     description: data.description,
+    document_date: data.documentDate || new Date(),
     created_by: userId,
     updated_by: userId,
   });
@@ -61,6 +62,7 @@ async function listByUser(userId) {
     id: d.id,
     name: d.name,
     description: d.description,
+    documentDate: d.document_date,
     documentType: d.DocumentType
       ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
       : null,
@@ -95,6 +97,7 @@ async function listAll() {
   return docs.map((d) => ({
     id: d.id,
     name: d.name,
+    documentDate: d.document_date,
     documentType: d.DocumentType
       ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
       : null,
@@ -188,6 +191,7 @@ async function generateInitial(user, signTypeId) {
       file_id: file.id,
       sign_type_id: signTypeId,
       name: consentType.name,
+      document_date: new Date(),
       created_by: user.id,
       updated_by: user.id,
     });
@@ -209,6 +213,7 @@ async function generateInitial(user, signTypeId) {
       file_id: file.id,
       sign_type_id: signTypeId,
       name: agreementType.name,
+      document_date: new Date(),
       created_by: user.id,
       updated_by: user.id,
     });
