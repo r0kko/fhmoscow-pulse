@@ -37,7 +37,12 @@ async function listAll(options = {}) {
   }
   const { rows, count } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      {
+        model: TrainingType,
+        ...(options.forCamp !== undefined
+          ? { where: { for_camp: options.forCamp } }
+          : {}),
+      },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
@@ -82,7 +87,12 @@ async function listUpcoming(options = {}) {
   }
   const { rows, count } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      {
+        model: TrainingType,
+        ...(options.forCamp !== undefined
+          ? { where: { for_camp: options.forCamp } }
+          : {}),
+      },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
@@ -127,7 +137,12 @@ async function listPast(options = {}) {
   }
   const { rows, count } = await Training.findAndCountAll({
     include: [
-      TrainingType,
+      {
+        model: TrainingType,
+        ...(options.forCamp !== undefined
+          ? { where: { for_camp: options.forCamp } }
+          : {}),
+      },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       {
@@ -161,10 +176,10 @@ async function listPast(options = {}) {
   };
 }
 
-async function getById(id) {
+async function getById(id, forCamp) {
   const training = await Training.findByPk(id, {
     include: [
-      TrainingType,
+      { model: TrainingType },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
       { model: RefereeGroup, through: { attributes: [] } },
@@ -173,11 +188,19 @@ async function getById(id) {
     ],
   });
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
+    throw new ServiceError('access_denied', 403);
+  }
   const plain = typeof training.get === 'function' ? training.get() : training;
   return { ...plain, registration_open: isRegistrationOpen(training) };
 }
 
-async function create(data, actorId) {
+async function create(data, actorId, forCamp) {
+  const type = await TrainingType.findByPk(data.type_id);
+  if (!type) throw new ServiceError('training_type_not_found', 404);
+  if (forCamp !== undefined && type.for_camp !== forCamp) {
+    throw new ServiceError('access_denied', 403);
+  }
   let seasonId = data.season_id;
   let groups = [];
   let courses = [];
@@ -236,12 +259,22 @@ async function create(data, actorId) {
       }))
     );
   }
-  return getById(training.id);
+  return getById(training.id, forCamp);
 }
 
-async function update(id, data, actorId) {
-  const training = await Training.findByPk(id);
+async function update(id, data, actorId, forCamp) {
+  const training = await Training.findByPk(id, { include: [TrainingType] });
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
+    throw new ServiceError('access_denied', 403);
+  }
+  if (data.type_id && data.type_id !== training.type_id) {
+    const newType = await TrainingType.findByPk(data.type_id);
+    if (!newType) throw new ServiceError('training_type_not_found', 404);
+    if (forCamp !== undefined && newType.for_camp !== forCamp) {
+      throw new ServiceError('access_denied', 403);
+    }
+  }
   const newStart = data.start_at ? new Date(data.start_at) : training.start_at;
   const newEnd = data.end_at ? new Date(data.end_at) : training.end_at;
   if (newEnd <= newStart) {
@@ -292,19 +325,25 @@ async function update(id, data, actorId) {
       );
     }
   }
-  return getById(id);
+  return getById(id, forCamp);
 }
 
-async function remove(id, actorId = null) {
-  const training = await Training.findByPk(id);
+async function remove(id, actorId = null, forCamp) {
+  const training = await Training.findByPk(id, { include: [TrainingType] });
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
+    throw new ServiceError('access_denied', 403);
+  }
   await training.update({ updated_by: actorId });
   await training.destroy();
 }
 
-async function setAttendanceMarked(id, marked, actorId) {
-  const training = await Training.findByPk(id);
+async function setAttendanceMarked(id, marked, actorId, forCamp) {
+  const training = await Training.findByPk(id, { include: [TrainingType] });
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
+    throw new ServiceError('access_denied', 403);
+  }
   const actor = await User.findByPk(actorId, { include: [Role] });
   if (!actor) throw new ServiceError('user_not_found', 404);
   const isAdmin = hasAdminRole(actor.Roles);
@@ -331,7 +370,7 @@ async function setAttendanceMarked(id, marked, actorId) {
   if (marked && coachReg?.TrainingRole?.alias === 'COACH') {
     await coachReg.update({ present: true, updated_by: actorId });
   }
-  return getById(id);
+  return getById(id, forCamp);
 }
 
 export default {

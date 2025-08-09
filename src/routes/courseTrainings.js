@@ -2,8 +2,8 @@ import express from 'express';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
-import controller from '../controllers/trainingAdminController.js';
-import selfController from '../controllers/trainingSelfController.js';
+import createAdminController from '../controllers/trainingAdminController.js';
+import createSelfController from '../controllers/trainingSelfController.js';
 import registrationsController from '../controllers/trainingRegistrationAdminController.js';
 import {
   trainingCreateRules,
@@ -16,6 +16,8 @@ import {
   updatePresenceRules,
 } from '../validators/trainingRegistrationValidators.js';
 
+const controller = createAdminController(false);
+const selfController = createSelfController(false);
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
@@ -28,12 +30,7 @@ router.post(
   trainingCreateRules,
   controller.create
 );
-router.get(
-  '/available',
-  auth,
-  authorize('REFEREE'),
-  selfController.availableCourse
-);
+router.get('/available', auth, authorize('REFEREE'), selfController.available);
 router.get('/me/upcoming', auth, authorize('REFEREE'), selfController.upcoming);
 router.get('/me/past', auth, authorize('REFEREE'), selfController.past);
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
