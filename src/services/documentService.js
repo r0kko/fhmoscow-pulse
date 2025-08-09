@@ -22,7 +22,10 @@ async function create(data, userId) {
       where: { alias: 'CREATED' },
       attributes: ['id'],
     });
-    statusId = status ? status.id : null;
+    if (!status) {
+      throw new ServiceError('document_status_not_found', 500);
+    }
+    statusId = status.id;
   }
   const doc = await Document.create({
     recipient_id: data.recipientId,
