@@ -446,7 +446,7 @@ onMounted(() => {
             <p v-else-if="!users.length" class="text-muted mb-0">
               Пользователи не найдены.
             </p>
-            <div class="d-block d-sm-none" v-if="users.length">
+            <div v-if="users.length" class="d-block d-sm-none">
               <div v-for="u in users" :key="u.user.id" class="card mb-2">
                 <div class="card-body">
                   <p class="mb-2 fw-semibold">{{ formatName(u.user) }}</p>
@@ -524,7 +524,7 @@ onMounted(() => {
                 >
                   <div>
                     <div>{{ c.name }}</div>
-                    <small class="text-muted" v-if="c.responsible">
+                    <small v-if="c.responsible" class="text-muted">
                       {{
                         c.responsible.last_name + ' ' + c.responsible.first_name
                       }}
@@ -780,25 +780,25 @@ onMounted(() => {
                 <div class="mb-3">
                   <label class="form-label">Начало</label>
                   <input
-                    type="datetime-local"
                     v-model="trainingForm.start_at"
+                    type="datetime-local"
                     class="form-control"
                   />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Окончание</label>
                   <input
-                    type="datetime-local"
                     v-model="trainingForm.end_at"
+                    type="datetime-local"
                     class="form-control"
                   />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Вместимость</label>
                   <input
+                    v-model="trainingForm.capacity"
                     type="number"
                     min="0"
-                    v-model="trainingForm.capacity"
                     class="form-control"
                   />
                 </div>

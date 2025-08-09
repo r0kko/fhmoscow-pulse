@@ -107,7 +107,7 @@ function formatDeadline(start) {
         :class="badgeClass(training.type?.alias)"
         >{{ training.type?.name }}</span
       >
-      <p class="small mb-1" v-if="coachList.length">
+      <p v-if="coachList.length" class="small mb-1">
         {{ coachLabel }}<span v-if="coachList.length > 1">ы</span>:
         <span v-for="(c, i) in coachList" :key="c.id">
           <a
@@ -117,7 +117,7 @@ function formatDeadline(start) {
           ><span v-if="i < coachList.length - 1">, </span>
         </span>
       </p>
-      <p class="small mb-1" v-else>{{ coachLabel }}: не назначен</p>
+      <p v-else class="small mb-1">{{ coachLabel }}: не назначен</p>
       <p
         v-if="training.equipment_managers && training.equipment_managers.length"
         class="small mb-2"
