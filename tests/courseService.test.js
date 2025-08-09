@@ -52,7 +52,12 @@ test('create saves course with actor id', async () => {
   userFindByPkMock.mockResolvedValue({ id: 'u1' });
   courseCreateMock.mockResolvedValue({ id: 'c1' });
   await service.create(
-    { name: 'Course', description: 'desc', responsible_id: 'u1', telegram_url: 't.me' },
+    {
+      name: 'Course',
+      description: 'desc',
+      responsible_id: 'u1',
+      telegram_url: 't.me',
+    },
     'admin'
   );
   expect(courseCreateMock).toHaveBeenCalledWith({
@@ -65,15 +70,15 @@ test('create saves course with actor id', async () => {
   });
 });
 
-test('assignUser creates new link', async () => {
-  courseFindByPkMock.mockResolvedValue(courseInstance);
+test('setUserCourse creates new link', async () => {
   userFindByPkMock.mockResolvedValue({ id: 'u1' });
+  courseFindByPkMock.mockResolvedValue(courseInstance);
   userCourseFindOneMock.mockResolvedValue(null);
   userCourseCreateMock.mockResolvedValue({});
-  await service.assignUser('c1', 'u1', 'admin');
+  await service.setUserCourse('u1', 'c1', 'admin');
   expect(userCourseCreateMock).toHaveBeenCalledWith({
-    course_id: 'c1',
     user_id: 'u1',
+    course_id: 'c1',
     created_by: 'admin',
     updated_by: 'admin',
   });
@@ -81,8 +86,7 @@ test('assignUser creates new link', async () => {
 
 test('removeUser destroys link when exists', async () => {
   userCourseFindOneMock.mockResolvedValue(userCourseInstance);
-  await service.removeUser('c1', 'u1', 'admin');
+  await service.removeUser('u1', 'admin');
   expect(userCourseUpdateMock).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(userCourseDestroyMock).toHaveBeenCalled();
 });
-
