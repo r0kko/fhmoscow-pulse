@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue';
-import TrainingCard from './TrainingCard.vue';
 
 const props = defineProps({
   trainings: { type: Array, default: () => [] },
@@ -8,53 +7,125 @@ const props = defineProps({
 const emit = defineEmits(['register', 'unregister']);
 
 const groups = computed(() => {
-  const sorted = [...props.trainings].sort(
-    (a, b) => new Date(a.start_at) - new Date(b.start_at)
-  );
-  const map = new Map();
-  sorted.forEach((t) => {
+  const map = {};
+  props.trainings.forEach((t) => {
     const d = new Date(t.start_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push(t);
+    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const idx = key.toISOString();
+    if (!map[idx]) map[idx] = { date: key, list: [] };
+    map[idx].list.push(t);
   });
-  return Array.from(map.entries()).map(([date, list]) => ({ date, list }));
+  return Object.values(map)
+    .sort((a, b) => a.date - b.date)
+    .map((g) => {
+      g.list.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+      return g;
+    });
 });
 
-function formatDate(dateStr) {
-  const d = new Date(`${dateStr}T00:00:00`);
-  return d.toLocaleDateString('ru-RU', {
+const registeredDates = computed(() => {
+  const set = new Set();
+  props.trainings.forEach((t) => {
+    if (t.registered) {
+      const d = new Date(t.start_at);
+      const key = new Date(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate()
+      ).toISOString();
+      set.add(key);
+    }
+  });
+  return set;
+});
+
+function formatDay(date) {
+  const text = date.toLocaleDateString('ru-RU', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     timeZone: 'Europe/Moscow',
   });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatTime(dateStr) {
+  return new Date(dateStr).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  });
+}
+
+function isDisabled(t) {
+  const d = new Date(t.start_at);
+  const key = new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate()
+  ).toISOString();
+  return registeredDates.value.has(key) && !t.registered;
 }
 </script>
 
 <template>
-  <div class="training-calendar">
-    <div v-for="group in groups" :key="group.date" class="mb-4">
-      <h3 class="h6 mb-3 calendar-date">{{ formatDate(group.date) }}</h3>
-      <div class="d-flex flex-column gap-3">
-        <TrainingCard
-          v-for="t in group.list"
-          :key="t.id"
-          :training="t"
-          @register="emit('register', $event)"
-          @unregister="emit('unregister', $event)"
-        />
-      </div>
+  <div class="training-schedule">
+    <div v-for="group in groups" :key="group.date" class="mb-3 schedule-day">
+      <h2 class="h6 mb-3">{{ formatDay(group.date) }}</h2>
+      <ul class="list-unstyled mb-0">
+        <li v-for="t in group.list" :key="t.id" class="schedule-item">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="me-3 flex-grow-1">
+              <div>
+                <strong
+                  >{{ formatTime(t.start_at) }}–{{
+                    formatTime(t.end_at)
+                  }}</strong
+                >
+                <span class="ms-2">{{ t.ground?.name }}</span>
+              </div>
+              <div class="text-muted small">{{ t.type?.name }}</div>
+            </div>
+            <div class="d-flex align-items-center">
+              <button
+                v-if="t.registered"
+                class="btn btn-sm btn-secondary"
+                @click="emit('unregister', t.id)"
+              >
+                Отменить
+              </button>
+              <button
+                v-else
+                class="btn btn-sm btn-brand"
+                :disabled="isDisabled(t) || !t.registration_open"
+                @click="emit('register', t.id)"
+              >
+                Записаться
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
 
 <style scoped>
-.calendar-date {
-  text-transform: capitalize;
+.schedule-day {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #dee2e6;
 }
 
-:deep(.training-card) {
-  width: 100%;
+.schedule-day:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.schedule-item {
+  margin-top: 0.5rem;
+}
+
+.schedule-item:first-child {
+  margin-top: 0;
 }
 </style>
