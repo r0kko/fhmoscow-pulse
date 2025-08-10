@@ -69,6 +69,7 @@ const refereeGroups = ref([]);
 const trainingForm = ref({
   type_id: '',
   ground_id: '',
+  url: '',
   start_at: '',
   end_at: '',
   capacity: '',
@@ -184,6 +185,8 @@ watch(
     }
     if (tt?.online) {
       trainingForm.value.ground_id = '';
+    } else {
+      trainingForm.value.url = '';
     }
   }
 );
@@ -382,6 +385,7 @@ function openCreateTraining() {
   trainingForm.value = {
     type_id: '',
     ground_id: '',
+    url: '',
     start_at: '',
     end_at: '',
     capacity: '',
@@ -456,6 +460,7 @@ function openEditTraining(t) {
   trainingForm.value = {
     type_id: t.type?.id || '',
     ground_id: t.ground?.id || '',
+    url: t.url || '',
     start_at: toInputValue(t.start_at),
     end_at: toInputValue(t.end_at),
     capacity: t.capacity || '',
@@ -474,7 +479,9 @@ async function saveTraining() {
   }
   const payload = {
     type_id: trainingForm.value.type_id,
-    ground_id: trainingForm.value.ground_id,
+    ...(selectedTrainingType.value?.online
+      ? { url: trainingForm.value.url || undefined }
+      : { ground_id: trainingForm.value.ground_id }),
     start_at: fromDateTimeLocal(trainingForm.value.start_at),
     end_at: fromDateTimeLocal(trainingForm.value.end_at),
     capacity: trainingForm.value.capacity || undefined,
@@ -1060,7 +1067,15 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3" v-if="!selectedTrainingType?.online">
+                <div class="mb-3" v-if="selectedTrainingType?.online">
+                  <label class="form-label">Ссылка</label>
+                  <input
+                    v-model="trainingForm.url"
+                    type="url"
+                    class="form-control"
+                  />
+                </div>
+                <div class="mb-3" v-else>
                   <label class="form-label">Площадка</label>
                   <select
                     v-model="trainingForm.ground_id"

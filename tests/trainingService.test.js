@@ -126,6 +126,7 @@ test('create uses provided season', async () => {
     start_at: '2024-01-01T10:00:00Z',
     end_at: '2024-01-01T11:00:00Z',
     capacity: undefined,
+    url: null,
     created_by: 'admin',
     updated_by: 'admin',
   });
@@ -273,4 +274,25 @@ test('create allows missing ground for online type', async () => {
     'admin'
   );
   expect(createMock.mock.calls[0][0].ground_id).toBeNull();
+});
+
+test('create saves url for online type', async () => {
+  findTrainingTypeMock.mockResolvedValueOnce({
+    id: 'tp',
+    for_camp: true,
+    online: true,
+  });
+  createMock.mockResolvedValue({ id: 't5', season_id: 's1' });
+  findByPkMock.mockResolvedValue({ get: () => ({ id: 't5' }) });
+  await service.create(
+    {
+      type_id: 'tp',
+      season_id: 's1',
+      start_at: '2024-01-01T10:00:00Z',
+      end_at: '2024-01-01T11:00:00Z',
+      url: 'https://example.com',
+    },
+    'admin'
+  );
+  expect(createMock.mock.calls[0][0].url).toBe('https://example.com');
 });

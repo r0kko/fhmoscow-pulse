@@ -231,6 +231,7 @@ async function create(data, actorId, forCamp) {
   const training = await Training.create({
     type_id: data.type_id,
     ground_id: type.online ? null : data.ground_id,
+    url: type.online ? data.url : null,
     season_id: seasonId,
     start_at: data.start_at,
     end_at: data.end_at,
@@ -294,6 +295,7 @@ async function update(id, data, actorId, forCamp) {
       ground_id: finalType.online
         ? null
         : (data.ground_id ?? training.ground_id),
+      url: finalType.online ? (data.url ?? training.url) : null,
       season_id: data.season_id ?? training.season_id,
       start_at: data.start_at ?? training.start_at,
       end_at: data.end_at ?? training.end_at,

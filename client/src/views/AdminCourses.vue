@@ -39,6 +39,7 @@ const grounds = ref([]);
 const trainingForm = ref({
   type_id: '',
   ground_id: '',
+  url: '',
   start_at: '',
   end_at: '',
   capacity: '',
@@ -99,6 +100,8 @@ watch(
     }
     if (tt?.online) {
       trainingForm.value.ground_id = '';
+    } else {
+      trainingForm.value.url = '';
     }
   }
 );
@@ -161,6 +164,7 @@ function openTrainingModal(training = null) {
     trainingForm.value = {
       type_id: training.type_id || training.type?.id || '',
       ground_id: training.ground_id || '',
+      url: training.url || '',
       start_at: toDateTimeLocal(training.start_at),
       end_at: toDateTimeLocal(training.end_at),
       capacity: training.capacity || '',
@@ -171,6 +175,7 @@ function openTrainingModal(training = null) {
     trainingForm.value = {
       type_id: '',
       ground_id: '',
+      url: '',
       start_at: '',
       end_at: '',
       capacity: '',
@@ -189,9 +194,14 @@ async function saveTraining() {
       ? `/course-trainings/${editingTraining.value.id}`
       : '/course-trainings';
     const body = {
-      ...trainingForm.value,
+      type_id: trainingForm.value.type_id,
       start_at: fromDateTimeLocal(trainingForm.value.start_at),
       end_at: fromDateTimeLocal(trainingForm.value.end_at),
+      capacity: trainingForm.value.capacity || undefined,
+      courses: trainingForm.value.courses,
+      ...(selectedTrainingType.value?.online
+        ? { url: trainingForm.value.url || undefined }
+        : { ground_id: trainingForm.value.ground_id }),
     };
     await apiFetch(url, {
       method,
@@ -722,7 +732,15 @@ onMounted(() => {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3" v-if="!selectedTrainingType?.online">
+                <div class="mb-3" v-if="selectedTrainingType?.online">
+                  <label class="form-label">Ссылка</label>
+                  <input
+                    v-model="trainingForm.url"
+                    type="url"
+                    class="form-control"
+                  />
+                </div>
+                <div class="mb-3" v-else>
                   <label class="form-label">Площадка</label>
                   <select v-model="trainingForm.ground_id" class="form-select">
                     <option value="">Выберите площадку</option>

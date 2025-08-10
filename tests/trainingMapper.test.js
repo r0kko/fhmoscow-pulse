@@ -49,3 +49,14 @@ test('includes training type online flag', () => {
   const res = mapper.toPublic(training);
   expect(res.type.online).toBe(true);
 });
+
+test('maps url field', () => {
+  const training = {
+    id: 't3',
+    start_at: new Date().toISOString(),
+    end_at: new Date(Date.now() + 3600000).toISOString(),
+    url: 'https://example.com',
+  };
+  const res = mapper.toPublic(training);
+  expect(res.url).toBe('https://example.com');
+});

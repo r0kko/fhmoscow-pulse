@@ -17,6 +17,7 @@ Training.init(
     end_at: { type: DataTypes.DATE, allowNull: false },
     capacity: { type: DataTypes.INTEGER },
     ground_id: { type: DataTypes.UUID },
+    url: { type: DataTypes.STRING },
     attendance_marked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

@@ -12,12 +12,18 @@ const icon = computed(() =>
 );
 const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'));
 const location = computed(() => {
+  if (isTraining.value && props.event.type?.online && props.event.url) {
+    return 'Подключиться по ссылке';
+  }
   const loc = isTraining.value
     ? props.event.ground?.address?.result
     : props.event.center?.address?.result;
   return loc || '';
 });
 const href = computed(() => {
+  if (isTraining.value && props.event.type?.online && props.event.url) {
+    return withHttp(props.event.url);
+  }
   return isTraining.value ? withHttp(props.event.ground?.yandex_url) : null;
 });
 

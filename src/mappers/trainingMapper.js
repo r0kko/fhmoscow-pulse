@@ -8,6 +8,7 @@ function sanitize(obj) {
     end_at,
     capacity,
     ground_id,
+    url,
     season_id,
     attendance_marked,
     TrainingType,
@@ -28,6 +29,7 @@ function sanitize(obj) {
     registered: obj.user_registered,
     registered_count,
     attendance_marked,
+    url,
   };
   if (TrainingType) {
     res.type = {

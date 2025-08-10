@@ -150,6 +150,13 @@ const myTrainings = computed(() =>
 function groupDetailed(list) {
   const map = {};
   list.forEach((t) => {
+    if (t.type?.online && t.url) {
+      map[t.id] = {
+        ground: { id: t.id, name: 'Онлайн', url: t.url, online: true },
+        trainings: [t],
+      };
+      return;
+    }
     const s = t.ground;
     if (!s) return;
     if (!map[s.id]) map[s.id] = { ground: s, trainings: [] };
@@ -742,7 +749,7 @@ function attendanceStatus(t) {
                 >
                   <h2 class="h6 mb-1">{{ g.ground.name }}</h2>
                   <a
-                    v-if="g.ground.yandex_url"
+                    v-if="!g.ground.online && g.ground.yandex_url"
                     :href="withHttp(g.ground.yandex_url)"
                     target="_blank"
                     rel="noopener"
@@ -752,16 +759,26 @@ function attendanceStatus(t) {
                     <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
                   </a>
                 </div>
-                <p class="text-muted mb-1 small d-flex align-items-center">
-                  <span>{{ g.ground.address?.result }}</span>
-                </p>
-                <p
-                  v-if="metroNames(g.ground.address)"
-                  class="text-muted mb-3 small d-flex align-items-center"
-                >
-                  <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
-                  <span>{{ metroNames(g.ground.address) }}</span>
-                </p>
+                <div v-if="g.ground.online && g.ground.url" class="mb-3">
+                  <a
+                    :href="withHttp(g.ground.url)"
+                    target="_blank"
+                    rel="noopener"
+                    >Подключиться по ссылке</a
+                  >
+                </div>
+                <template v-else>
+                  <p class="text-muted mb-1 small d-flex align-items-center">
+                    <span>{{ g.ground.address?.result }}</span>
+                  </p>
+                  <p
+                    v-if="metroNames(g.ground.address)"
+                    class="text-muted mb-3 small d-flex align-items-center"
+                  >
+                    <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
+                    <span>{{ metroNames(g.ground.address) }}</span>
+                  </p>
+                </template>
                 <div class="date-scroll mb-3">
                   <button
                     v-for="d in g.days"
