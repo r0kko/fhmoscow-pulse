@@ -132,6 +132,7 @@ defineExpose({ openModal });
           v-if="props.editable"
           type="button"
           class="btn btn-link p-0"
+          aria-label="Обновить статус"
           @click="openModal"
         >
           <i class="bi bi-arrow-clockwise"></i>
@@ -248,6 +249,7 @@ defineExpose({ openModal });
           <button
             type="button"
             class="btn-close"
+            aria-label="Закрыть"
             @click="modal.hide()"
           ></button>
         </div>
@@ -261,7 +263,11 @@ defineExpose({ openModal });
               <i :class="statusIcon(statuses.fns)" class="me-1"></i>
               <span>ФНС - {{ statusText(statuses.fns) }}</span>
             </div>
-            <button class="btn btn-link p-0 ms-auto" @click="runCheck()">
+            <button
+              class="btn btn-link p-0 ms-auto"
+              aria-label="Проверить статус"
+              @click="runCheck()"
+            >
               <i class="bi bi-arrow-repeat"></i>
             </button>
           </div>

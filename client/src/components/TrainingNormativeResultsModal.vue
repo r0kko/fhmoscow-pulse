@@ -201,7 +201,12 @@ async function removeResult(r) {
           <h2 class="modal-title h5">
             Нормативы {{ props.user.last_name }} {{ props.user.first_name }}
           </h2>
-          <button type="button" class="btn-close" @click="modal.hide()" />
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Закрыть"
+            @click="modal.hide()"
+          />
         </div>
         <div class="modal-body">
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -232,12 +237,14 @@ async function removeResult(r) {
                     <td class="text-end">
                       <button
                         class="btn btn-sm btn-secondary me-2"
+                        aria-label="Редактировать результат"
                         @click="startEdit(r)"
                       >
                         <i class="bi bi-pencil" />
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
+                        aria-label="Удалить результат"
                         @click="removeResult(r)"
                       >
                         <i class="bi bi-trash" />
@@ -263,12 +270,14 @@ async function removeResult(r) {
                   <div class="text-end">
                     <button
                       class="btn btn-sm btn-secondary me-2"
+                      aria-label="Редактировать результат"
                       @click="startEdit(r)"
                     >
                       <i class="bi bi-pencil" />
                     </button>
                     <button
                       class="btn btn-sm btn-danger"
+                      aria-label="Удалить результат"
                       @click="removeResult(r)"
                     >
                       <i class="bi bi-trash" />

@@ -447,6 +447,7 @@ defineExpose({ refresh });
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
+                    aria-label="Редактировать результат"
                     @click="openEdit(r)"
                   >
                     <i class="bi bi-pencil"></i>
@@ -454,6 +455,7 @@ defineExpose({ refresh });
                   <button
                     class="btn btn-sm btn-danger"
                     :disabled="deletingId === r.id"
+                    aria-label="Удалить результат"
                     @click="removeResult(r)"
                   >
                     <span
@@ -499,6 +501,7 @@ defineExpose({ refresh });
               <div class="text-end">
                 <button
                   class="btn btn-sm btn-secondary me-2"
+                  aria-label="Редактировать результат"
                   @click="openEdit(r)"
                 >
                   <i class="bi bi-pencil"></i>
@@ -506,6 +509,7 @@ defineExpose({ refresh });
                 <button
                   class="btn btn-sm btn-danger"
                   :disabled="deletingId === r.id"
+                  aria-label="Удалить результат"
                   @click="removeResult(r)"
                 >
                   <span
@@ -546,6 +550,7 @@ defineExpose({ refresh });
               <button
                 type="button"
                 class="btn-close"
+                aria-label="Закрыть"
                 @click="modal.hide()"
               ></button>
             </div>

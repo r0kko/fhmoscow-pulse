@@ -343,11 +343,16 @@ defineExpose({ refresh });
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
+                    aria-label="Редактировать тип"
                     @click="openEdit(t)"
                   >
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-danger" @click="removeType(t)">
+                  <button
+                    class="btn btn-sm btn-danger"
+                    aria-label="Удалить тип"
+                    @click="removeType(t)"
+                  >
                     <i class="bi bi-trash"></i>
                   </button>
                 </td>
@@ -373,11 +378,16 @@ defineExpose({ refresh });
               <div>
                 <button
                   class="btn btn-sm btn-secondary me-2"
+                  aria-label="Редактировать тип"
                   @click="openEdit(t)"
                 >
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" @click="removeType(t)">
+                <button
+                  class="btn btn-sm btn-danger"
+                  aria-label="Удалить тип"
+                  @click="removeType(t)"
+                >
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -412,6 +422,7 @@ defineExpose({ refresh });
               <button
                 type="button"
                 class="btn-close"
+                aria-label="Закрыть"
                 @click="modal.hide()"
               ></button>
             </div>

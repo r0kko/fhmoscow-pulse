@@ -241,6 +241,7 @@ defineExpose({ refresh });
                 <td class="text-center">
                   <button
                     class="btn btn-sm btn-outline-secondary"
+                    aria-label="История посещений"
                     @click="openHistory(j)"
                   >
                     <i class="bi bi-clock-history"></i>
@@ -305,6 +306,7 @@ defineExpose({ refresh });
             <button
               type="button"
               class="btn-close"
+              aria-label="Закрыть"
               @click="historyModal.hide()"
             ></button>
           </div>

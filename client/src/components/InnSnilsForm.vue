@@ -149,7 +149,11 @@ async function removeItem() {
               />
               <label for="innField">ИНН</label>
             </div>
-            <button class="btn btn-outline-secondary" @click="openEdit('inn')">
+            <button
+              class="btn btn-outline-secondary"
+              :aria-label="inn ? 'Редактировать ИНН' : 'Добавить ИНН'"
+              @click="openEdit('inn')"
+            >
               <i
                 class="bi text-muted"
                 :class="inn ? 'bi-pencil' : 'bi-plus'"
@@ -172,6 +176,7 @@ async function removeItem() {
             </div>
             <button
               class="btn btn-outline-secondary"
+              :aria-label="snils ? 'Редактировать СНИЛС' : 'Добавить СНИЛС'"
               @click="openEdit('snils')"
             >
               <i
@@ -204,6 +209,7 @@ async function removeItem() {
             <button
               type="button"
               class="btn-close"
+              aria-label="Закрыть"
               @click="modal.hide()"
             ></button>
           </div>
@@ -235,6 +241,7 @@ async function removeItem() {
               v-if="(mode === 'inn' && inn) || (mode === 'snils' && snils)"
               type="button"
               class="btn btn-danger me-auto"
+              aria-label="Удалить"
               @click="removeItem"
             >
               <i class="bi bi-trash"></i>

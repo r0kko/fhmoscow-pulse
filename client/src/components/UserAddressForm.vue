@@ -147,6 +147,9 @@ function applySuggestion(sug) {
             <button
               type="button"
               class="btn btn-link p-0"
+              :aria-label="
+                addresses[type.alias] ? 'Редактировать адрес' : 'Добавить адрес'
+              "
               @click="open(type.alias)"
             >
               <i
@@ -221,6 +224,7 @@ function applySuggestion(sug) {
               <button
                 type="button"
                 class="btn-close"
+                aria-label="Закрыть"
                 @click="modal.hide()"
               ></button>
             </div>
@@ -271,6 +275,7 @@ function applySuggestion(sug) {
                 v-if="addresses[current]"
                 type="button"
                 class="btn btn-danger me-auto"
+                aria-label="Удалить адрес"
                 @click="removeAddress"
               >
                 <i class="bi bi-trash"></i>
