@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -311,6 +311,20 @@ onMounted(() => {
   loadAllUsers();
   loadCourses();
 });
+
+onBeforeUnmount(() => {
+  try {
+    clearTimeout(searchTimeout);
+  } catch {}
+  try {
+    trainingModal?.hide?.();
+    trainingModal?.dispose?.();
+  } catch {}
+  try {
+    courseModal?.hide?.();
+    courseModal?.dispose?.();
+  } catch {}
+});
 </script>
 
 <template>
@@ -458,12 +472,14 @@ onMounted(() => {
                     <td class="text-end">
                       <button
                         class="btn btn-sm btn-primary me-2"
+                        aria-label="Редактировать курс"
                         @click="openCourseModal(c)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
+                        aria-label="Удалить курс"
                         @click="deleteCourse(c.id)"
                       >
                         <i class="bi bi-trash" aria-hidden="true"></i>
@@ -494,10 +510,18 @@ onMounted(() => {
                     </small>
                   </div>
                   <div class="btn-group btn-group-sm">
-                    <button class="btn btn-primary" @click="openCourseModal(c)">
+                    <button
+                      class="btn btn-primary"
+                      aria-label="Редактировать курс"
+                      @click="openCourseModal(c)"
+                    >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
-                    <button class="btn btn-danger" @click="deleteCourse(c.id)">
+                    <button
+                      class="btn btn-danger"
+                      aria-label="Удалить курс"
+                      @click="deleteCourse(c.id)"
+                    >
                       <i class="bi bi-trash" aria-hidden="true"></i>
                     </button>
                   </div>
@@ -632,17 +656,20 @@ onMounted(() => {
                       <RouterLink
                         :to="`/admin/course-trainings/${t.id}/registrations`"
                         class="btn btn-sm btn-primary me-2"
+                        aria-label="Регистрации"
                       >
                         <i class="bi bi-people" aria-hidden="true"></i>
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
+                        aria-label="Редактировать тренировку"
                         @click="openTrainingModal(t)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
+                        aria-label="Удалить тренировку"
                         @click="deleteTraining(t.id)"
                       >
                         <i class="bi bi-trash" aria-hidden="true"></i>
@@ -680,17 +707,20 @@ onMounted(() => {
                     <RouterLink
                       :to="`/admin/course-trainings/${t.id}/registrations`"
                       class="btn btn-primary"
+                      aria-label="Регистрации"
                     >
                       <i class="bi bi-people" aria-hidden="true"></i>
                     </RouterLink>
                     <button
                       class="btn btn-secondary"
+                      aria-label="Редактировать тренировку"
                       @click="openTrainingModal(t)"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="btn btn-danger"
+                      aria-label="Удалить тренировку"
                       @click="deleteTraining(t.id)"
                     >
                       <i class="bi bi-trash" aria-hidden="true"></i>
@@ -732,7 +762,10 @@ onMounted(() => {
               <div class="modal-body">
                 <div class="mb-3">
                   <label class="form-label">Тип</label>
-                  <select v-model="trainingForm.type_id" class="form-select">
+                  <select
+                    v-model.number="trainingForm.type_id"
+                    class="form-select"
+                  >
                     <option value="">Выберите тип</option>
                     <option
                       v-for="tt in trainingTypes"
@@ -752,9 +785,11 @@ onMounted(() => {
                   />
                 </div>
                 <div v-else class="mb-3">
-                <div v-if="!selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Площадка</label>
-                  <select v-model="trainingForm.ground_id" class="form-select">
+                  <select
+                    v-model.number="trainingForm.ground_id"
+                    class="form-select"
+                  >
                     <option value="">Выберите площадку</option>
                     <option v-for="g in grounds" :key="g.id" :value="g.id">
                       {{ g.name }}

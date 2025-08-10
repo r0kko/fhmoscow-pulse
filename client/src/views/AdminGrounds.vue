@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -118,6 +118,24 @@ onMounted(() => {
   loadGroundOptions();
   loadRefereeGroups();
   if (activeTab.value === 'groups') groupsRef.value?.refresh();
+});
+
+onBeforeUnmount(() => {
+  try {
+    clearTimeout(addrTimeout);
+  } catch {}
+  try {
+    modal?.hide?.();
+    modal?.dispose?.();
+  } catch {}
+  try {
+    trainingModal?.hide?.();
+    trainingModal?.dispose?.();
+  } catch {}
+  try {
+    trainingFilterModal?.hide?.();
+    trainingFilterModal?.dispose?.();
+  } catch {}
 });
 
 watch(currentPage, () => {
@@ -634,12 +652,14 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     <td class="text-end">
                       <button
                         class="btn btn-sm btn-secondary me-2"
+                        aria-label="Редактировать площадку"
                         @click="openEdit(st)"
                       >
                         <i class="bi bi-pencil"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
+                        aria-label="Удалить площадку"
                         @click="removeGround(st)"
                       >
                         <i class="bi bi-trash"></i>
@@ -669,12 +689,14 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <div class="text-end">
                     <button
                       class="btn btn-sm btn-secondary me-2"
+                      aria-label="Редактировать площадку"
                       @click="openEdit(st)"
                     >
                       <i class="bi bi-pencil"></i>
                     </button>
                     <button
                       class="btn btn-sm btn-danger"
+                      aria-label="Удалить площадку"
                       @click="removeGround(st)"
                     >
                       <i class="bi bi-trash"></i>
@@ -684,7 +706,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               </div>
             </div>
             <div v-else-if="!isLoading" class="alert alert-warning mb-0">
-              Площадкаов нет.
+              Площадок нет.
             </div>
           </div>
         </div>
@@ -741,6 +763,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <button
                 class="btn btn-light me-2"
                 title="Фильтры"
+                aria-label="Фильтры"
                 @click="openTrainingFilters"
               >
                 <i class="bi bi-funnel"></i>
@@ -824,6 +847,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       <input
                         type="checkbox"
                         class="form-check-input m-0"
+                        :aria-label="`Группа: ${g.name}`"
                         :checked="t.groups?.some((gr) => gr.id === g.id)"
                         @change="
                           toggleTrainingGroup(t, g.id, $event.target.checked)
@@ -834,17 +858,20 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       <RouterLink
                         :to="`/admin/camp-trainings/${t.id}/registrations`"
                         class="btn btn-sm btn-primary me-2"
+                        aria-label="Регистрации"
                       >
                         <i class="bi bi-people"></i>
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
+                        aria-label="Редактировать тренировку"
                         @click="openEditTraining(t)"
                       >
                         <i class="bi bi-pencil"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
+                        aria-label="Удалить тренировку"
                         @click="removeTraining(t)"
                       >
                         <i class="bi bi-trash"></i>
@@ -885,17 +912,20 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       <RouterLink
                         :to="`/admin/camp-trainings/${t.id}/registrations`"
                         class="btn btn-sm btn-primary me-2"
+                        aria-label="Регистрации"
                       >
                         <i class="bi bi-people"></i>
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
+                        aria-label="Редактировать тренировку"
                         @click="openEditTraining(t)"
                       >
                         <i class="bi bi-pencil"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
+                        aria-label="Удалить тренировку"
                         @click="removeTraining(t)"
                       >
                         <i class="bi bi-trash"></i>
@@ -992,7 +1022,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <div class="modal-body">
                 <div class="mb-3">
                   <label class="form-label">Площадка</label>
-                  <select v-model="trainingsFilterGround" class="form-select">
+                  <select
+                    v-model.number="trainingsFilterGround"
+                    class="form-select"
+                  >
                     <option value="">Все стадионы</option>
                     <option
                       v-for="s in groundOptions"
@@ -1005,7 +1038,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Группа</label>
-                  <select v-model="trainingsFilterGroup" class="form-select">
+                  <select
+                    v-model.number="trainingsFilterGroup"
+                    class="form-select"
+                  >
                     <option value="">Все группы</option>
                     <option
                       v-for="g in refereeGroups"
@@ -1066,7 +1102,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <div class="mb-3">
                     <label class="form-label">Тип</label>
                     <select
-                      v-model="trainingForm.type_id"
+                      v-model.number="trainingForm.type_id"
                       class="form-select"
                       required
                     >
@@ -1205,6 +1241,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     class="form-control"
                     rows="2"
                     placeholder="Адрес"
+                    autocomplete="street-address"
                     @blur="onAddressBlur"
                   ></textarea>
                   <label for="stadAddr">Адрес</label>
@@ -1227,6 +1264,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <input
                     id="stadYandex"
                     v-model="form.yandex_url"
+                    type="url"
                     class="form-control"
                     placeholder="URL в Яндекс.Картах"
                   />
@@ -1237,6 +1275,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     id="stadCapacity"
                     v-model="form.capacity"
                     type="number"
+                    min="0"
                     class="form-control"
                     placeholder="Вместимость"
                   />
@@ -1249,6 +1288,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     type="tel"
                     class="form-control"
                     placeholder="+7 (___) ___-__-__"
+                    inputmode="tel"
+                    autocomplete="tel"
                     @input="onPhoneInput"
                     @keydown="onPhoneKeydown"
                   />
@@ -1258,6 +1299,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <input
                     id="stadWebsite"
                     v-model="form.website"
+                    type="url"
                     class="form-control"
                     placeholder="Сайт"
                   />

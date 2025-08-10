@@ -82,8 +82,10 @@ function canCancel(t) {
       <h2 class="h6 mb-3">{{ formatDay(group.date) }}</h2>
       <ul class="list-unstyled mb-0">
         <li v-for="t in group.list" :key="t.id" class="schedule-item">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="me-3 flex-grow-1">
+          <div
+            class="d-flex justify-content-between align-items-start schedule-row"
+          >
+            <div class="me-3 flex-grow-1 schedule-details">
               <div>
                 <strong
                   >{{ formatTime(t.start_at) }}–{{
@@ -110,23 +112,20 @@ function canCancel(t) {
                   >
                     <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
                   </a>
-                  <span class="flex-grow-1">{{ t.ground?.address?.result || '—' }}</span>
+                  <span class="flex-grow-1">{{
+                    t.ground?.address?.result || '—'
+                  }}</span>
                 </div>
                 <div
                   v-if="metroNames(t.ground?.address)"
                   class="text-muted small d-flex align-items-center"
                 >
-                  <img
-                    :src="metroIcon"
-                    alt="Метро"
-                    height="14"
-                    class="me-1"
-                  />
+                  <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
                   <span>{{ metroNames(t.ground?.address) }}</span>
                 </div>
               </template>
             </div>
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center schedule-actions">
               <button
                 v-if="t.registered"
                 class="btn btn-sm btn-secondary"
@@ -189,5 +188,20 @@ function canCancel(t) {
 
 .schedule-item:first-child {
   margin-top: 0;
+}
+
+.schedule-details {
+  min-width: 0; /* allow long address text to wrap in flex */
+}
+
+@media (max-width: 575.98px) {
+  .schedule-row {
+    flex-wrap: wrap;
+  }
+  .schedule-actions {
+    width: 100%;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+  }
 }
 </style>
