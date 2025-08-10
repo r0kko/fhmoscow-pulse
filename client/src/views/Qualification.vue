@@ -153,46 +153,49 @@ function openContactModal(contact) {
             </div>
           </div>
         </div>
-        <div class="col-md-6 d-flex flex-column gap-3">
-          <div
-            v-if="responsibleContact"
-            class="card section-card tile fade-in shadow-sm cursor-pointer"
-            role="button"
-            tabindex="0"
-            @click="openContactModal(responsibleContact)"
-          >
-            <div class="card-body d-flex align-items-center">
+        <div class="col-md-6">
+          <div class="card section-card tile fade-in shadow-sm">
+            <div class="card-body p-0">
               <div
-                class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
-                style="width: 4rem; height: 4rem"
+                v-if="responsibleContact"
+                class="d-flex align-items-center p-3 cursor-pointer"
+                role="button"
+                tabindex="0"
+                @click="openContactModal(responsibleContact)"
               >
-                <i class="bi bi-person-fill text-muted fs-2"></i>
-              </div>
-              <div>
-                <div>{{ responsibleContact.name }}</div>
-                <div class="text-muted small">
-                  {{ responsibleContact.title }}
+                <div
+                  class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
+                  style="width: 3rem; height: 3rem"
+                >
+                  <i class="bi bi-person-fill text-muted fs-3"></i>
+                </div>
+                <div>
+                  <div>{{ responsibleContact.name }}</div>
+                  <div class="text-muted small">
+                    {{ responsibleContact.title }}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div
-            class="card section-card tile fade-in shadow-sm cursor-pointer"
-            role="button"
-            tabindex="0"
-            @click="openContactModal(olenin)"
-          >
-            <div class="card-body d-flex align-items-center">
+              <template v-if="responsibleContact">
+                <hr class="my-0" />
+              </template>
               <div
-                class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
-                style="width: 4rem; height: 4rem"
+                class="d-flex align-items-center p-3 cursor-pointer"
+                role="button"
+                tabindex="0"
+                @click="openContactModal(olenin)"
               >
-                <i class="bi bi-person-fill text-muted fs-2"></i>
-              </div>
-              <div>
-                <div>{{ olenin.name }}</div>
-                <div class="text-muted small">
-                  {{ olenin.title }}
+                <div
+                  class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
+                  style="width: 3rem; height: 3rem"
+                >
+                  <i class="bi bi-person-fill text-muted fs-3"></i>
+                </div>
+                <div>
+                  <div>{{ olenin.name }}</div>
+                  <div class="text-muted small">
+                    {{ olenin.title }}
+                  </div>
                 </div>
               </div>
             </div>
