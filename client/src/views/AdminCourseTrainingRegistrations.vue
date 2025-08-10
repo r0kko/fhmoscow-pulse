@@ -1,10 +1,9 @@
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
-import TrainingNormativeResultsModal from '../components/TrainingNormativeResultsModal.vue';
 
-const ROLE_ORDER = [];
+const ROLE_ORDER = ['TEACHER', 'LISTENER'];
 
 const route = useRoute();
 const training = ref(null);
@@ -27,14 +26,12 @@ const filteredJudges = computed(() => {
 });
 const trainingRoles = ref([]);
 const lastAddedUserId = ref(null);
-const normativeModalRef = ref(null);
-const selectedReg = ref(null);
 const finishLoading = ref(false);
 const finishError = ref('');
 
 function showAttendance(reg) {
   const alias = reg.role?.alias;
-  return alias === 'PARTICIPANT';
+  return alias === 'LISTENER';
 }
 
 const attendanceMarked = computed(() => training.value?.attendance_marked);
@@ -242,13 +239,6 @@ async function finish() {
     finishLoading.value = false;
   }
 }
-
-function openNormatives(reg) {
-  selectedReg.value = reg;
-  nextTick(() => {
-    normativeModalRef.value.open();
-  });
-}
 </script>
 
 <template>
@@ -333,7 +323,6 @@ function openNormatives(reg) {
                     <th>ФИО</th>
                     <th>Роль</th>
                     <th class="text-center">Посещение</th>
-                    <th class="text-center">Сдано нормативов</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -406,15 +395,7 @@ function openNormatives(reg) {
                         </div>
                       </template>
                     </td>
-                    <td class="text-center">{{ r.normative_count || 0 }}</td>
                     <td class="text-end">
-                      <button
-                        class="btn btn-sm btn-secondary me-2 action-btn"
-                        @click="openNormatives(r)"
-                      >
-                        <i class="bi bi-journal-text" aria-hidden="true"></i>
-                        <span class="visually-hidden">Нормативы</span>
-                      </button>
                       <button
                         class="btn btn-sm btn-danger action-btn"
                         @click="removeRegistration(r.user.id)"
@@ -504,13 +485,6 @@ function openNormatives(reg) {
                       </div>
                     </template>
                     <div class="ms-auto text-end">
-                      <span class="me-2">{{ r.normative_count || 0 }}</span>
-                      <button
-                        class="btn btn-sm btn-secondary me-2 action-btn"
-                        @click="openNormatives(r)"
-                      >
-                        <i class="bi bi-journal-text" aria-hidden="true"></i>
-                      </button>
                       <button
                         class="btn btn-sm btn-danger action-btn"
                         @click="removeRegistration(r.user.id)"
@@ -547,14 +521,6 @@ function openNormatives(reg) {
         </div>
       </template>
       <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
-      <TrainingNormativeResultsModal
-        v-if="selectedReg"
-        ref="normativeModalRef"
-        :training-id="route.params.id"
-        :season-id="training?.season_id"
-        :user="selectedReg.user"
-        @changed="loadRegistrations"
-      />
     </div>
   </div>
 </template>
