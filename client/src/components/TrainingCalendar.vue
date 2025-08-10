@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
+import { withHttp } from '../utils/url.js';
+import metroIcon from '../assets/metro.svg';
+import yandexLogo from '../assets/yandex-maps.svg';
 
 const props = defineProps({
   trainings: { type: Array, default: () => [] },
@@ -30,6 +33,16 @@ const registeredDates = computed(() => {
   });
   return set;
 });
+
+function metroNames(address) {
+  if (!address || !Array.isArray(address.metro) || !address.metro.length) {
+    return '';
+  }
+  return address.metro
+    .slice(0, 2)
+    .map((m) => m.name)
+    .join(', ');
+}
 
 function formatDay(date) {
   const text = date.toLocaleDateString('ru-RU', {
@@ -78,8 +91,40 @@ function canCancel(t) {
                   }}</strong
                 >
                 <span class="ms-2">{{ t.ground?.name }}</span>
+                <a
+                  v-if="!t.type?.online && t.ground?.yandex_url"
+                  :href="withHttp(t.ground.yandex_url)"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Открыть в Яндекс.Картах"
+                  class="ms-2"
+                >
+                  <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
+                </a>
               </div>
               <div class="text-muted small">{{ t.type?.name }}</div>
+              <div v-if="t.type?.online && t.url" class="mb-1">
+                <a :href="withHttp(t.url)" target="_blank" rel="noopener"
+                  >Подключиться по ссылке</a
+                >
+              </div>
+              <template v-else>
+                <div class="text-muted small">
+                  {{ t.ground?.address?.result || '—' }}
+                </div>
+                <div
+                  v-if="metroNames(t.ground?.address)"
+                  class="text-muted small d-flex align-items-center"
+                >
+                  <img
+                    :src="metroIcon"
+                    alt="Метро"
+                    height="14"
+                    class="me-1"
+                  />
+                  <span>{{ metroNames(t.ground?.address) }}</span>
+                </div>
+              </template>
             </div>
             <div class="d-flex align-items-center">
               <button
