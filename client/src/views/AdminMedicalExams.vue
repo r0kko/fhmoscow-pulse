@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -32,6 +32,13 @@ onMounted(() => {
   modal = new Modal(modalRef.value);
   load();
   loadCenters();
+});
+
+onBeforeUnmount(() => {
+  try {
+    modal?.hide?.();
+    modal?.dispose?.();
+  } catch {}
 });
 
 watch(currentPage, load);
@@ -190,17 +197,23 @@ function openRegistrations(exam) {
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-primary me-2"
+                    aria-label="Заявки на медосмотр"
                     @click="openRegistrations(ex)"
                   >
                     <i class="bi bi-people"></i>
                   </button>
                   <button
                     class="btn btn-sm btn-secondary me-2"
+                    aria-label="Редактировать запись"
                     @click="openEdit(ex)"
                   >
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-danger" @click="removeExam(ex)">
+                  <button
+                    class="btn btn-sm btn-danger"
+                    aria-label="Удалить запись"
+                    @click="removeExam(ex)"
+                  >
                     <i class="bi bi-trash"></i>
                   </button>
                 </td>
@@ -220,17 +233,23 @@ function openRegistrations(exam) {
               <div class="text-end">
                 <button
                   class="btn btn-sm btn-primary me-2"
+                  aria-label="Заявки на медосмотр"
                   @click="openRegistrations(ex)"
                 >
                   <i class="bi bi-people"></i>
                 </button>
                 <button
                   class="btn btn-sm btn-secondary me-2"
+                  aria-label="Редактировать запись"
                   @click="openEdit(ex)"
                 >
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" @click="removeExam(ex)">
+                <button
+                  class="btn btn-sm btn-danger"
+                  aria-label="Удалить запись"
+                  @click="removeExam(ex)"
+                >
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -292,7 +311,7 @@ function openRegistrations(exam) {
               <div class="mb-3">
                 <label class="form-label">Медицинский центр</label>
                 <select
-                  v-model="form.medical_center_id"
+                  v-model.number="form.medical_center_id"
                   class="form-select"
                   required
                 >

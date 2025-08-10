@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
@@ -34,6 +34,16 @@ const totalPages = computed(() =>
 onMounted(() => {
   modal = new Modal(modalRef.value);
   load();
+});
+
+onBeforeUnmount(() => {
+  try {
+    clearTimeout(addrTimeout);
+  } catch {}
+  try {
+    modal?.hide?.();
+    modal?.dispose?.();
+  } catch {}
 });
 
 watch(currentPage, load);
@@ -226,12 +236,14 @@ async function removeCenter(center) {
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-secondary me-2"
+                    aria-label="Редактировать центр"
                     @click="openEdit(c)"
                   >
                     <i class="bi bi-pencil"></i>
                   </button>
                   <button
                     class="btn btn-sm btn-danger"
+                    aria-label="Удалить центр"
                     @click="removeCenter(c)"
                   >
                     <i class="bi bi-trash"></i>
@@ -347,6 +359,7 @@ async function removeCenter(center) {
                   class="form-control"
                   rows="2"
                   placeholder="Адрес"
+                  autocomplete="street-address"
                   @blur="onAddrBlur"
                 ></textarea>
                 <label for="mcAddr">Адрес</label>
@@ -372,6 +385,8 @@ async function removeCenter(center) {
                   type="tel"
                   class="form-control"
                   placeholder="Телефон"
+                  inputmode="tel"
+                  autocomplete="tel"
                   @input="onPhoneInput"
                   @keydown="onPhoneKeydown"
                 />
@@ -391,6 +406,7 @@ async function removeCenter(center) {
                 <input
                   id="mcWeb"
                   v-model="form.website"
+                  type="url"
                   class="form-control"
                   placeholder="Сайт"
                 />
