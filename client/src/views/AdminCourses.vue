@@ -296,7 +296,6 @@ async function deleteCourse(id) {
   }
 }
 
-
 onMounted(() => {
   loadUsers();
   loadAllUsers();
@@ -620,8 +619,14 @@ onMounted(() => {
                       {{ t.courses.map((c) => c.name).join(', ') }}
                     </td>
                     <td class="text-end">
-                      <button
+                      <RouterLink
+                        :to="`/admin/course-trainings/${t.id}/registrations`"
                         class="btn btn-sm btn-primary me-2"
+                      >
+                        <i class="bi bi-people" aria-hidden="true"></i>
+                      </RouterLink>
+                      <button
+                        class="btn btn-sm btn-secondary me-2"
                         @click="openTrainingModal(t)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
@@ -662,8 +667,14 @@ onMounted(() => {
                     <small class="text-muted">{{ t.type?.name }}</small>
                   </div>
                   <div class="btn-group btn-group-sm">
-                    <button
+                    <RouterLink
+                      :to="`/admin/course-trainings/${t.id}/registrations`"
                       class="btn btn-primary"
+                    >
+                      <i class="bi bi-people" aria-hidden="true"></i>
+                    </RouterLink>
+                    <button
+                      class="btn btn-secondary"
                       @click="openTrainingModal(t)"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
@@ -722,7 +733,7 @@ onMounted(() => {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3" v-if="!selectedTrainingType?.online">
+                <div v-if="!selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Площадка</label>
                   <select v-model="trainingForm.ground_id" class="form-select">
                     <option value="">Выберите площадку</option>
@@ -797,7 +808,6 @@ onMounted(() => {
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </template>

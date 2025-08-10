@@ -20,6 +20,7 @@ import AdminGrounds from './views/AdminGrounds.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
 import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
+import AdminCourseTrainingRegistrations from './views/AdminCourseTrainingRegistrations.vue';
 import AdminDocuments from './views/AdminDocuments.vue';
 import AdminNormatives from './views/AdminNormatives.vue';
 import AdminDocumentsSignatures from './views/AdminDocumentsSignatures.vue';
@@ -178,6 +179,15 @@ const routes = [
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Участники тренировки',
+    },
+  },
+  {
+    path: '/admin/course-trainings/:id/registrations',
+    component: AdminCourseTrainingRegistrations,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Участники занятия',
     },
   },
   {
