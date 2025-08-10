@@ -1,5 +1,4 @@
 <script setup>
-import TaskList from '../components/TaskList.vue';
 import { RouterLink } from 'vue-router';
 </script>
 
@@ -16,8 +15,8 @@ import { RouterLink } from 'vue-router';
       </nav>
       <h1 class="mb-3">Задачи</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <TaskList />
+        <div class="card-body text-center py-5">
+          Раздел временно недоступен
         </div>
       </div>
     </div>

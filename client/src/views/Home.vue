@@ -14,7 +14,6 @@ const basePreparationSections = [
     referee: true,
   },
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
-  { title: 'Задачи', icon: 'bi-list-check', to: '/tasks' },
 ];
 
 const workSections = [
