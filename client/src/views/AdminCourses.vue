@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -30,12 +30,6 @@ const courseSaveLoading = ref(false);
 
 const trainingTypes = ref([]);
 const trainingTypesLoaded = ref(false);
-const typeForm = ref({ name: '', default_capacity: '' });
-const editingType = ref(null);
-const typeModalRef = ref(null);
-let typeModal;
-const typeFormError = ref('');
-const typeSaveLoading = ref(false);
 const typesError = ref('');
 
 const trainings = ref([]);
@@ -55,6 +49,9 @@ const trainingModalRef = ref(null);
 let trainingModal;
 const trainingFormError = ref('');
 const trainingSaveLoading = ref(false);
+const selectedTrainingType = computed(() =>
+  trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
+);
 
 async function loadUsers() {
   loadingUsers.value = true;
@@ -81,9 +78,6 @@ watch(search, () => {
 });
 
 watch(activeTab, (val) => {
-  if (val === 'types' && !trainingTypesLoaded.value) {
-    loadTrainingTypes();
-  }
   if (val === 'trainings') {
     if (!trainingTypesLoaded.value) loadTrainingTypes();
     loadCourses();
@@ -91,6 +85,23 @@ watch(activeTab, (val) => {
     loadTrainingsAdmin();
   }
 });
+
+watch(
+  () => trainingForm.value.type_id,
+  (val) => {
+    const tt = trainingTypes.value.find((t) => t.id === val);
+    if (
+      tt &&
+      tt.default_capacity &&
+      (!editingTraining.value || !trainingForm.value.capacity)
+    ) {
+      trainingForm.value.capacity = tt.default_capacity;
+    }
+    if (tt?.online) {
+      trainingForm.value.ground_id = '';
+    }
+  }
+);
 
 async function loadAllUsers() {
   try {
@@ -285,54 +296,6 @@ async function deleteCourse(id) {
   }
 }
 
-function openTypeModal(type = null) {
-  if (!typeModal) {
-    typeModal = new Modal(typeModalRef.value);
-  }
-  if (type) {
-    editingType.value = type;
-    typeForm.value = {
-      name: type.name,
-      default_capacity: type.default_capacity || '',
-    };
-  } else {
-    editingType.value = null;
-    typeForm.value = { name: '', default_capacity: '' };
-  }
-  typeFormError.value = '';
-  typeModal.show();
-}
-
-async function saveType() {
-  typeSaveLoading.value = true;
-  try {
-    const body = JSON.stringify(typeForm.value);
-    if (editingType.value) {
-      await apiFetch(`/course-training-types/${editingType.value.id}`, {
-        method: 'PUT',
-        body,
-      });
-    } else {
-      await apiFetch('/course-training-types', { method: 'POST', body });
-    }
-    await loadTrainingTypes();
-    typeModal.hide();
-  } catch (e) {
-    typeFormError.value = e.message;
-  } finally {
-    typeSaveLoading.value = false;
-  }
-}
-
-async function deleteType(id) {
-  if (!confirm('Удалить тип?')) return;
-  try {
-    await apiFetch(`/course-training-types/${id}`, { method: 'DELETE' });
-    await loadTrainingTypes();
-  } catch (e) {
-    alert(e.message);
-  }
-}
 
 onMounted(() => {
   loadUsers();
@@ -383,15 +346,6 @@ onMounted(() => {
                 @click="activeTab = 'trainings'"
               >
                 Тренировки
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'types' }"
-                @click="activeTab = 'types'"
-              >
-                Типы
               </button>
             </li>
           </ul>
@@ -768,7 +722,7 @@ onMounted(() => {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3">
+                <div class="mb-3" v-if="!selectedTrainingType?.online">
                   <label class="form-label">Площадка</label>
                   <select v-model="trainingForm.ground_id" class="form-select">
                     <option value="">Выберите площадку</option>
@@ -844,112 +798,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-else-if="activeTab === 'types'">
-        <div class="card section-card tile fade-in shadow-sm">
-          <div
-            class="card-header d-flex justify-content-between align-items-center"
-          >
-            <h2 class="h5 mb-0">Типы тренировок</h2>
-            <button class="btn btn-brand" @click="openTypeModal()">
-              Добавить тип
-            </button>
-          </div>
-          <div class="card-body p-3">
-            <div v-if="typesError" class="alert alert-danger">
-              {{ typesError }}
-            </div>
-            <ul class="list-group">
-              <li
-                v-for="t in trainingTypes"
-                :key="t.id"
-                class="list-group-item d-flex justify-content-between align-items-center"
-              >
-                <div>
-                  {{ t.name }}
-                  <small v-if="t.default_capacity" class="text-muted"
-                    >({{ t.default_capacity }})</small
-                  >
-                </div>
-                <div class="btn-group btn-group-sm">
-                  <button class="btn btn-primary" @click="openTypeModal(t)">
-                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                  </button>
-                  <button class="btn btn-danger" @click="deleteType(t.id)">
-                    <i class="bi bi-trash" aria-hidden="true"></i>
-                  </button>
-                </div>
-              </li>
-              <li
-                v-if="trainingTypes.length === 0"
-                class="list-group-item text-muted"
-              >
-                Нет типов
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div ref="typeModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">
-                  {{ editingType ? 'Редактировать тип' : 'Новый тип' }}
-                </h5>
-                <button
-                  type="button"
-                  class="btn-close"
-                  data-bs-dismiss="modal"
-                  aria-label="Close"
-                ></button>
-              </div>
-              <div class="modal-body">
-                <div class="mb-3">
-                  <label class="form-label">Название</label>
-                  <input
-                    v-model="typeForm.name"
-                    type="text"
-                    class="form-control"
-                  />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Емкость</label>
-                  <input
-                    v-model="typeForm.default_capacity"
-                    type="number"
-                    min="0"
-                    class="form-control"
-                  />
-                </div>
-                <div v-if="typeFormError" class="alert alert-danger">
-                  {{ typeFormError }}
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  data-bs-dismiss="modal"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-brand"
-                  :disabled="typeSaveLoading"
-                  @click="saveType"
-                >
-                  <span
-                    v-if="typeSaveLoading"
-                    class="spinner-border spinner-border-sm me-2"
-                  ></span>
-                  Сохранить
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>

@@ -1,6 +1,6 @@
 function sanitize(obj) {
-  const { id, name, alias, default_capacity } = obj;
-  return { id, name, alias, default_capacity };
+  const { id, name, alias, default_capacity, online } = obj;
+  return { id, name, alias, default_capacity, online };
 }
 
 function toPublic(type) {

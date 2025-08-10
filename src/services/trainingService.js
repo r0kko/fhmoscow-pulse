@@ -201,6 +201,9 @@ async function create(data, actorId, forCamp) {
   if (forCamp !== undefined && type.for_camp !== forCamp) {
     throw new ServiceError('access_denied', 403);
   }
+  if (!type.online && !data.ground_id) {
+    throw new ServiceError('ground_required');
+  }
   let seasonId = data.season_id;
   let groups = [];
   let courses = [];
@@ -227,7 +230,7 @@ async function create(data, actorId, forCamp) {
   }
   const training = await Training.create({
     type_id: data.type_id,
-    ground_id: data.ground_id,
+    ground_id: type.online ? null : data.ground_id,
     season_id: seasonId,
     start_at: data.start_at,
     end_at: data.end_at,
@@ -268,12 +271,17 @@ async function update(id, data, actorId, forCamp) {
   if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
     throw new ServiceError('access_denied', 403);
   }
+  let finalType = training.TrainingType;
   if (data.type_id && data.type_id !== training.type_id) {
     const newType = await TrainingType.findByPk(data.type_id);
     if (!newType) throw new ServiceError('training_type_not_found', 404);
     if (forCamp !== undefined && newType.for_camp !== forCamp) {
       throw new ServiceError('access_denied', 403);
     }
+    finalType = newType;
+  }
+  if (!finalType.online && !(data.ground_id ?? training.ground_id)) {
+    throw new ServiceError('ground_required');
   }
   const newStart = data.start_at ? new Date(data.start_at) : training.start_at;
   const newEnd = data.end_at ? new Date(data.end_at) : training.end_at;
@@ -283,7 +291,9 @@ async function update(id, data, actorId, forCamp) {
   await training.update(
     {
       type_id: data.type_id ?? training.type_id,
-      ground_id: data.ground_id ?? training.ground_id,
+      ground_id: finalType.online
+        ? null
+        : (data.ground_id ?? training.ground_id),
       season_id: data.season_id ?? training.season_id,
       start_at: data.start_at ?? training.start_at,
       end_at: data.end_at ?? training.end_at,

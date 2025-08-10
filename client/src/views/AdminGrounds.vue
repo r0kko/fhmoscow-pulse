@@ -51,15 +51,8 @@ const error = ref('');
 
 /* training types */
 const trainingTypes = ref([]);
-const typesTotal = ref(0);
-const typesPage = ref(1);
-const typesLoading = ref(false);
+const trainingTypesLoaded = ref(false);
 const typesError = ref('');
-const typeForm = ref({ name: '', default_capacity: '' });
-const typeEditing = ref(null);
-const typeModalRef = ref(null);
-let typeModal;
-const typeFormError = ref('');
 
 /* trainings */
 const trainings = ref([]);
@@ -85,9 +78,11 @@ const trainingModalRef = ref(null);
 let trainingModal;
 const trainingFilterModalRef = ref(null);
 let trainingFilterModal;
+const selectedTrainingType = computed(() =>
+  trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
+);
 const trainingFormError = ref('');
 const saveLoading = ref(false);
-const typeSaveLoading = ref(false);
 const trainingSaveLoading = ref(false);
 const assignmentsRef = ref(null);
 const groupsRef = ref(null);
@@ -110,9 +105,6 @@ let addrTimeout;
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize))
 );
-const typesTotalPages = computed(() =>
-  Math.max(1, Math.ceil(typesTotal.value / pageSize))
-);
 const trainingsTotalPages = computed(() =>
   Math.max(1, Math.ceil(trainingsTotal.value / trainingsPageSize.value))
 );
@@ -120,7 +112,7 @@ const trainingsTotalPages = computed(() =>
 onMounted(() => {
   modal = new Modal(modalRef.value);
   load();
-  loadTypes();
+  loadTrainingTypes();
   loadTrainings();
   loadGroundOptions();
   loadRefereeGroups();
@@ -129,9 +121,6 @@ onMounted(() => {
 
 watch(currentPage, () => {
   if (activeTab.value === 'grounds') load();
-});
-watch(typesPage, () => {
-  if (activeTab.value === 'types') loadTypes();
 });
 watch(trainingsPage, () => {
   if (activeTab.value === 'trainings') loadTrainings();
@@ -156,9 +145,8 @@ watch(
 
 watch(activeTab, (val) => {
   router.replace({ query: { ...route.query, tab: val } });
-  if (val === 'types' && !trainingTypes.value.length) {
-    loadTypes();
-  } else if (val === 'trainings' && !trainings.value.length) {
+  if (val === 'trainings' && !trainings.value.length) {
+    if (!trainingTypesLoaded.value) loadTrainingTypes();
     loadTrainings();
     if (!groundOptions.value.length) loadGroundOptions();
   } else if (val === 'judges') {
@@ -193,6 +181,9 @@ watch(
       (!trainingEditing.value || !trainingForm.value.capacity)
     ) {
       trainingForm.value.capacity = tt.default_capacity;
+    }
+    if (tt?.online) {
+      trainingForm.value.ground_id = '';
     }
   }
 );
@@ -319,72 +310,18 @@ async function onAddressBlur() {
   addressSuggestions.value = [];
 }
 
-async function loadTypes() {
+async function loadTrainingTypes() {
+  if (trainingTypesLoaded.value) return;
   try {
-    typesLoading.value = true;
-    const params = new URLSearchParams({
-      page: typesPage.value,
-      limit: pageSize,
-    });
+    const params = new URLSearchParams({ limit: 1000 });
     const data = await apiFetch(`/camp-training-types?${params}`);
     trainingTypes.value = data.types;
-    typesTotal.value = data.total;
+    trainingTypesLoaded.value = true;
   } catch (e) {
     typesError.value = e.message;
-  } finally {
-    typesLoading.value = false;
   }
 }
 
-function openCreateType() {
-  if (!typeModal) {
-    typeModal = new Modal(typeModalRef.value);
-  }
-  typeEditing.value = null;
-  typeForm.value = { name: '', default_capacity: '' };
-  typeFormError.value = '';
-  typeModal.show();
-}
-
-function openEditType(t) {
-  if (!typeModal) {
-    typeModal = new Modal(typeModalRef.value);
-  }
-  typeEditing.value = t;
-  typeForm.value = {
-    name: t.name,
-    default_capacity: t.default_capacity || '',
-  };
-  typeFormError.value = '';
-  typeModal.show();
-}
-
-async function saveType() {
-  const payload = {
-    name: typeForm.value.name,
-    default_capacity: typeForm.value.default_capacity || undefined,
-  };
-  try {
-    typeSaveLoading.value = true;
-    if (typeEditing.value) {
-      await apiFetch(`/camp-training-types/${typeEditing.value.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await apiFetch('/camp-training-types', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    }
-    typeModal.hide();
-    await loadTypes();
-  } catch (e) {
-    typeFormError.value = e.message;
-  } finally {
-    typeSaveLoading.value = false;
-  }
-}
 
 async function loadTrainings() {
   try {
@@ -634,15 +571,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
             <li class="nav-item">
               <button
                 class="nav-link"
-                :class="{ active: activeTab === 'types' }"
-                @click="activeTab = 'types'"
-              >
-                Типы тренировок
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
                 :class="{ active: activeTab === 'grounds' }"
                 @click="activeTab = 'grounds'"
               >
@@ -790,176 +718,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
           </ul>
         </nav>
       </div>
-
-      <div v-if="activeTab === 'types'">
-        <div v-if="typesError" class="alert alert-danger">{{ typesError }}</div>
-        <div v-if="typesLoading" class="text-center my-3">
-          <div class="spinner-border" role="status"></div>
-        </div>
-        <div class="card section-card tile fade-in shadow-sm">
-          <div
-            class="card-header d-flex justify-content-between align-items-center"
-          >
-            <h2 class="h5 mb-0">Типы тренировок</h2>
-            <button class="btn btn-brand" @click="openCreateType">
-              <i class="bi bi-plus-lg me-1"></i>Добавить
-            </button>
-          </div>
-          <div class="card-body p-3">
-            <div
-              v-if="trainingTypes.length"
-              class="table-responsive d-none d-sm-block"
-            >
-              <table class="table admin-table table-striped align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Название</th>
-                    <th class="text-center">Емкость</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="t in trainingTypes" :key="t.id">
-                    <td>{{ t.name }}</td>
-                    <td class="text-center">{{ t.default_capacity }}</td>
-                    <td class="text-end">
-                      <button
-                        class="btn btn-sm btn-secondary"
-                        @click="openEditType(t)"
-                      >
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-if="trainingTypes.length" class="d-block d-sm-none">
-              <div
-                v-for="t in trainingTypes"
-                :key="t.id"
-                class="card training-card mb-2"
-              >
-                <div class="card-body p-2 d-flex justify-content-between">
-                  <div>
-                    <h3 class="h6 mb-1">{{ t.name }}</h3>
-                    <p class="mb-1">Емкость: {{ t.default_capacity }}</p>
-                  </div>
-                  <button
-                    class="btn btn-sm btn-secondary"
-                    @click="openEditType(t)"
-                  >
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div v-else-if="!typesLoading" class="alert alert-info mb-0">
-              Типов тренировок нет.
-            </div>
-          </div>
-        </div>
-      </div>
-      <nav v-if="typesTotalPages > 1" class="mt-3">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: typesPage === 1 }">
-            <button
-              class="page-link"
-              :disabled="typesPage === 1"
-              @click="typesPage--"
-            >
-              Пред
-            </button>
-          </li>
-          <li
-            v-for="p in typesTotalPages"
-            :key="p"
-            class="page-item"
-            :class="{ active: typesPage === p }"
-          >
-            <button class="page-link" @click="typesPage = p">{{ p }}</button>
-          </li>
-          <li
-            class="page-item"
-            :class="{ disabled: typesPage === typesTotalPages }"
-          >
-            <button
-              class="page-link"
-              :disabled="typesPage === typesTotalPages"
-              @click="typesPage++"
-            >
-              След
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      <div ref="typeModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <form @submit.prevent="saveType">
-              <div class="modal-header">
-                <h2 class="modal-title h5">
-                  {{ typeEditing ? 'Изменить тип' : 'Добавить тип' }}
-                </h2>
-                <button
-                  type="button"
-                  class="btn-close"
-                  @click="typeModal.hide()"
-                ></button>
-              </div>
-              <div class="modal-body">
-                <div v-if="typeFormError" class="alert alert-danger">
-                  {{ typeFormError }}
-                </div>
-                <div class="form-floating mb-3">
-                  <input
-                    id="ttName"
-                    v-model="typeForm.name"
-                    class="form-control"
-                    placeholder="Название"
-                    required
-                    :disabled="!!typeEditing"
-                  />
-                  <label for="ttName">Наименование</label>
-                </div>
-                <div class="form-floating mb-3">
-                  <input
-                    id="ttCap"
-                    v-model="typeForm.default_capacity"
-                    type="number"
-                    min="0"
-                    class="form-control"
-                    placeholder="Емкость"
-                  />
-                  <label for="ttCap">Стандартная емкость группы</label>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  @click="typeModal.hide()"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-brand"
-                  :disabled="typeSaveLoading"
-                >
-                  <span
-                    v-if="typeSaveLoading"
-                    class="spinner-border spinner-border-sm me-2"
-                  ></span>
-                  Сохранить
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div v-if="activeTab === 'trainings'">
       <div v-if="trainingsError" class="alert alert-danger">
@@ -1302,7 +1060,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3">
+                <div class="mb-3" v-if="!selectedTrainingType?.online">
                   <label class="form-label">Площадка</label>
                   <select
                     v-model="trainingForm.ground_id"

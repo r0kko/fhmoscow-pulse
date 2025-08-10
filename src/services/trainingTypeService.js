@@ -30,6 +30,7 @@ async function create(data, actorId, forCamp) {
     alias: generateAlias(data.name),
     default_capacity: data.default_capacity,
     for_camp: forCamp,
+    online: Boolean(data.online),
     created_by: actorId,
     updated_by: actorId,
   });
@@ -43,6 +44,7 @@ async function update(id, data, actorId, forCamp) {
       name: data.name ?? type.name,
       alias: data.name ? generateAlias(data.name) : type.alias,
       default_capacity: data.default_capacity ?? type.default_capacity,
+      online: data.online ?? type.online,
       updated_by: actorId,
     },
     { returning: false }

@@ -35,6 +35,7 @@ test('update modifies name and capacity', async () => {
     name: 'Old',
     alias: 'old',
     for_camp: true,
+    online: false,
   });
   const data = { name: 'New', alias: 'old2', default_capacity: 10 };
   await service.update('t1', data, 'admin', true);
@@ -43,6 +44,7 @@ test('update modifies name and capacity', async () => {
       name: 'New',
       alias: 'NEW',
       default_capacity: 10,
+      online: false,
       updated_by: 'admin',
     },
     { returning: false }
@@ -56,6 +58,7 @@ test('create generates alias from name and sets flag', async () => {
   expect(arg.alias).toBe('TEST');
   expect(arg.created_by).toBe('admin');
   expect(arg.for_camp).toBe(true);
+  expect(arg.online).toBe(false);
 });
 
 test('remove deletes training type', async () => {
@@ -64,6 +67,7 @@ test('remove deletes training type', async () => {
     ...instance,
     update: updateMockLocal,
     for_camp: false,
+    online: false,
   });
   await service.remove('t1', 'admin', false);
   expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
@@ -113,6 +117,7 @@ test('update keeps existing name when not provided', async () => {
     name: 'Old',
     alias: 'OLD',
     for_camp: true,
+    online: false,
   });
   await service.update('t1', { default_capacity: 15 }, 'admin', true);
   expect(updateMock).toHaveBeenCalledWith(
@@ -120,6 +125,7 @@ test('update keeps existing name when not provided', async () => {
       name: 'Old',
       alias: 'OLD',
       default_capacity: 15,
+      online: false,
       updated_by: 'admin',
     },
     { returning: false }
