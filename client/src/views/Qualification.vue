@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TrainingCalendar from '../components/TrainingCalendar.vue';
+import { toDayKey } from '../utils/time.js';
 
 const course = ref(null);
 const error = ref('');
@@ -28,21 +29,10 @@ async function loadTrainings() {
 async function register(id) {
   const target = trainings.value.find((t) => t.id === id);
   if (target) {
-    const d = new Date(target.start_at);
-    const dayKey = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate()
-    ).getTime();
-    const conflict = trainings.value.some((t) => {
-      const td = new Date(t.start_at);
-      const key = new Date(
-        td.getFullYear(),
-        td.getMonth(),
-        td.getDate()
-      ).getTime();
-      return t.id !== id && t.registered && key === dayKey;
-    });
+    const dayKey = toDayKey(target.start_at);
+    const conflict = trainings.value.some(
+      (t) => t.id !== id && t.registered && toDayKey(t.start_at) === dayKey
+    );
     if (conflict) return;
   }
   await apiFetch(`/course-trainings/${id}/register`, { method: 'POST' });

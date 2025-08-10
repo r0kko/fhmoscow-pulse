@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
 
 const props = defineProps({
   trainings: { type: Array, default: () => [] },
@@ -7,15 +8,13 @@ const props = defineProps({
 const emit = defineEmits(['register', 'unregister']);
 
 const groups = computed(() => {
-  const map = {};
+  const map = new Map();
   props.trainings.forEach((t) => {
-    const d = new Date(t.start_at);
-    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const idx = key.toISOString();
-    if (!map[idx]) map[idx] = { date: key, list: [] };
-    map[idx].list.push(t);
+    const key = toDayKey(t.start_at);
+    if (!map.has(key)) map.set(key, { date: new Date(key), list: [] });
+    map.get(key).list.push(t);
   });
-  return Object.values(map)
+  return [...map.values()]
     .sort((a, b) => a.date - b.date)
     .map((g) => {
       g.list.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
@@ -26,15 +25,7 @@ const groups = computed(() => {
 const registeredDates = computed(() => {
   const set = new Set();
   props.trainings.forEach((t) => {
-    if (t.registered) {
-      const d = new Date(t.start_at);
-      const key = new Date(
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate()
-      ).toISOString();
-      set.add(key);
-    }
+    if (t.registered) set.add(toDayKey(t.start_at));
   });
   return set;
 });
@@ -44,7 +35,7 @@ function formatDay(date) {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    timeZone: 'Europe/Moscow',
+    timeZone: MOSCOW_TZ,
   });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -53,24 +44,23 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Moscow',
+    timeZone: MOSCOW_TZ,
   });
 }
 
 function isDisabled(t) {
-  const d = new Date(t.start_at);
-  const key = new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate()
-  ).toISOString();
+  const key = toDayKey(t.start_at);
   return registeredDates.value.has(key) && !t.registered;
 }
 </script>
 
 <template>
   <div class="training-schedule">
-    <div v-for="group in groups" :key="group.date" class="mb-3 schedule-day">
+    <div
+      v-for="group in groups"
+      :key="group.date.getTime()"
+      class="mb-3 schedule-day"
+    >
       <h2 class="h6 mb-3">{{ formatDay(group.date) }}</h2>
       <ul class="list-unstyled mb-0">
         <li v-for="t in group.list" :key="t.id" class="schedule-item">

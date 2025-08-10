@@ -33,6 +33,16 @@ export function parseMinutesSeconds(str) {
 const MOSCOW_TZ = 'Europe/Moscow';
 const MOSCOW_OFFSET = '+03:00';
 
+export function toDayKey(iso, timeZone = MOSCOW_TZ) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  const [year, month, day] = date
+    .toLocaleDateString('en-CA', { timeZone })
+    .split('-')
+    .map((v) => parseInt(v, 10));
+  return Date.UTC(year, month - 1, day);
+}
+
 export function toDateTimeLocal(iso, timeZone = MOSCOW_TZ) {
   if (!iso) return '';
   const date = new Date(iso);
