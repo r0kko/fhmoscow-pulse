@@ -744,21 +744,7 @@ function attendanceStatus(t) {
               class="ground-card card section-card tile fade-in shadow-sm"
             >
               <div class="card-body ground-body">
-                <div
-                  class="d-flex justify-content-between align-items-start mb-1"
-                >
-                  <h2 class="h6 mb-1">{{ g.ground.name }}</h2>
-                  <a
-                    v-if="!g.ground.online && g.ground.yandex_url"
-                    :href="withHttp(g.ground.yandex_url)"
-                    target="_blank"
-                    rel="noopener"
-                    aria-label="Открыть в Яндекс.Картах"
-                    class="ms-2"
-                  >
-                    <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
-                  </a>
-                </div>
+                <h2 class="h6 mb-1">{{ g.ground.name }}</h2>
                 <div v-if="g.ground.online && g.ground.url" class="mb-3">
                   <a
                     :href="withHttp(g.ground.url)"
@@ -769,7 +755,17 @@ function attendanceStatus(t) {
                 </div>
                 <template v-else>
                   <p class="text-muted mb-1 small d-flex align-items-center">
-                    <span>{{ g.ground.address?.result }}</span>
+                    <a
+                      v-if="g.ground.yandex_url"
+                      :href="withHttp(g.ground.yandex_url)"
+                      target="_blank"
+                      rel="noopener"
+                      aria-label="Открыть в Яндекс.Картах"
+                      class="me-1 flex-shrink-0"
+                    >
+                      <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
+                    </a>
+                    <span class="flex-grow-1">{{ g.ground.address?.result }}</span>
                   </p>
                   <p
                     v-if="metroNames(g.ground.address)"
