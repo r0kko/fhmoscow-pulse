@@ -166,6 +166,7 @@ async function addRegistration() {
     addForm.value.user_id = '';
     addForm.value.training_role_id = '';
     await loadRegistrations();
+    await loadTraining();
   } catch (e) {
     alert(e.message);
   } finally {

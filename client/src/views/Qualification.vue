@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import TrainingCalendar from '../components/TrainingCalendar.vue';
+import TrainingCard from '../components/TrainingCard.vue';
 import { toDayKey } from '../utils/time.js';
 
 const course = ref(null);
@@ -15,6 +16,12 @@ const trainingsLoading = ref(false);
 const actionPendingId = ref(null);
 const contactModalRef = ref(null);
 let contactModal;
+
+const mineUpcoming = ref([]);
+const minePast = ref([]);
+const mineView = ref('upcoming');
+const mineLoading = ref(false);
+const mineError = ref('');
 
 const olenin = {
   name: 'Оленин Константин Константинович',
@@ -53,6 +60,32 @@ async function loadTrainings() {
   }
 }
 
+async function loadMineUpcoming() {
+  mineLoading.value = true;
+  try {
+    const data = await apiFetch('/course-trainings/me/upcoming');
+    mineUpcoming.value = data.trainings || [];
+    mineError.value = '';
+  } catch (err) {
+    mineError.value = err.message;
+  } finally {
+    mineLoading.value = false;
+  }
+}
+
+async function loadMinePast() {
+  mineLoading.value = true;
+  try {
+    const data = await apiFetch('/course-trainings/me/past');
+    minePast.value = data.trainings || [];
+    mineError.value = '';
+  } catch (err) {
+    mineError.value = err.message;
+  } finally {
+    mineLoading.value = false;
+  }
+}
+
 async function register(id) {
   const target = trainings.value.find((t) => t.id === id);
   if (target) {
@@ -66,6 +99,7 @@ async function register(id) {
   try {
     await apiFetch(`/course-trainings/${id}/register`, { method: 'POST' });
     await loadTrainings();
+    await loadMineUpcoming();
   } finally {
     actionPendingId.value = null;
   }
@@ -81,6 +115,7 @@ async function unregister(id) {
   try {
     await apiFetch(`/course-trainings/${id}/register`, { method: 'DELETE' });
     await loadTrainings();
+    await loadMineUpcoming();
   } finally {
     actionPendingId.value = null;
   }
@@ -94,13 +129,55 @@ onMounted(async () => {
       throw e;
     });
     course.value = data ? data.course : null;
-    if (course.value) await loadTrainings();
+    if (course.value) {
+      await Promise.all([loadTrainings(), loadMineUpcoming()]);
+    }
   } catch (err) {
     error.value = err.message;
   } finally {
     loading.value = false;
   }
 });
+
+watch(mineView, (val) => {
+  if (val === 'past' && !minePast.value.length) {
+    loadMinePast();
+  } else if (val === 'upcoming' && !mineUpcoming.value.length) {
+    loadMineUpcoming();
+  }
+});
+
+function groupByDay(list) {
+  const map = {};
+  list.forEach((t) => {
+    const d = new Date(t.start_at);
+    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const idx = key.toISOString();
+    if (!map[idx]) map[idx] = { date: key, trainings: [] };
+    map[idx].trainings.push(t);
+  });
+  return Object.values(map).sort((a, b) => a.date - b.date);
+}
+
+const groupedMinePast = computed(() => groupByDay(minePast.value));
+
+function attendanceStatus(t) {
+  if (!t.attendance_marked) {
+    return { icon: 'bi-clock', text: 'Уточняется', class: 'text-muted' };
+  }
+  if (t.my_presence) {
+    return {
+      icon: 'bi-check-circle-fill',
+      text: 'Посещено',
+      class: 'text-success',
+    };
+  }
+  return {
+    icon: 'bi-x-circle-fill',
+    text: 'Не посещено',
+    class: 'text-danger',
+  };
+}
 
 function openContactModal(contact) {
   activeContact.value = contact;
@@ -224,6 +301,111 @@ function openContactModal(contact) {
           <div v-else class="alert alert-info mb-0">
             Нет доступных тренировок
           </div>
+        </div>
+      </div>
+      <div v-if="course" class="card section-card tile fade-in shadow-sm mb-3">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Мои тренировки</h2>
+          <ul class="nav nav-pills mb-3">
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: mineView === 'upcoming' }"
+                @click="mineView = 'upcoming'"
+              >
+                Ближайшие
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                :class="{ active: mineView === 'past' }"
+                @click="mineView = 'past'"
+              >
+                Архив
+              </button>
+            </li>
+          </ul>
+          <div v-if="mineError" class="alert alert-danger mb-0">
+            {{ mineError }}
+          </div>
+          <div v-else-if="mineLoading" class="text-center py-3">
+            <div class="spinner-border text-brand" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+          <template v-else>
+            <div v-if="mineView === 'upcoming'">
+              <div v-if="mineUpcoming.length" class="row g-3">
+                <div
+                  v-for="t in mineUpcoming"
+                  :key="t.id"
+                  class="col-12 col-md-6 col-lg-4"
+                >
+                  <TrainingCard
+                    :training="t"
+                    :loading="actionPendingId === t.id"
+                    :show-cancel="t.my_role?.alias === 'LISTENER'"
+                    @unregister="unregister"
+                  />
+                </div>
+              </div>
+              <p v-else class="alert alert-info mb-0">
+                Нет предстоящих тренировок
+              </p>
+            </div>
+            <div v-else>
+              <div v-if="minePast.length">
+                <div
+                  v-for="day in groupedMinePast"
+                  :key="day.date.toISOString()"
+                  class="mb-3"
+                >
+                  <h3 class="h6 mb-2">
+                    {{
+                      day.date.toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        timeZone: 'Europe/Moscow',
+                      })
+                    }}
+                  </h3>
+                  <div
+                    v-for="t in day.trainings"
+                    :key="t.id"
+                    class="d-flex justify-content-between align-items-center mb-2"
+                  >
+                    <div>
+                      {{
+                        new Date(t.start_at).toLocaleTimeString('ru-RU', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'Europe/Moscow',
+                        })
+                      }}
+                      — {{ t.type?.name }}
+                    </div>
+                    <div class="small d-flex align-items-center">
+                      <i
+                        :class="[
+                          'bi',
+                          attendanceStatus(t).icon,
+                          attendanceStatus(t).class,
+                          'me-1',
+                        ]"
+                        aria-hidden="true"
+                      ></i>
+                      <span :class="attendanceStatus(t).class">
+                        {{ attendanceStatus(t).text }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p v-else class="alert alert-info mb-0">Архив пуст</p>
+            </div>
+          </template>
         </div>
       </div>
     </div>

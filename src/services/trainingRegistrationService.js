@@ -197,6 +197,7 @@ async function register(userId, trainingId, actorId, forCamp) {
   if (!role) throw new ServiceError('training_role_not_found');
 
   await upsertRegistration(trainingId, userId, role.id, actorId);
+  await training.update({ attendance_marked: false, updated_by: actorId });
 
   const user = await User.findByPk(userId);
   if (user) {
@@ -268,6 +269,7 @@ async function add(trainingId, userId, roleId, actorId) {
   }
 
   await upsertRegistration(trainingId, userId, roleId, actorId);
+  await training.update({ attendance_marked: false, updated_by: actorId });
   await emailService.sendTrainingRegistrationEmail(user, training, role);
 }
 
