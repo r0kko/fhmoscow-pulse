@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -12,14 +12,16 @@ const loading = ref(true);
 const trainings = ref([]);
 const trainingsError = ref('');
 const trainingsLoading = ref(false);
+const actionPendingId = ref(null);
 const curatorModalRef = ref(null);
 let curatorModal;
 
-const curatorName = computed(() => {
-  if (!course.value?.responsible) return '';
-  const r = course.value.responsible;
-  return [r.last_name, r.first_name, r.patronymic].filter(Boolean).join(' ');
-});
+const curator = {
+  name: 'Оленин Константин Константинович',
+  title: 'Руководитель отдела организации судейства',
+  phone: '79257033737',
+  email: 'kkolenin@fhmoscow.com',
+};
 
 async function loadTrainings() {
   trainingsLoading.value = true;
@@ -44,13 +46,28 @@ async function register(id) {
     );
     if (conflict) return;
   }
-  await apiFetch(`/course-trainings/${id}/register`, { method: 'POST' });
-  await loadTrainings();
+  actionPendingId.value = id;
+  try {
+    await apiFetch(`/course-trainings/${id}/register`, { method: 'POST' });
+    await loadTrainings();
+  } finally {
+    actionPendingId.value = null;
+  }
 }
 
 async function unregister(id) {
-  await apiFetch(`/course-trainings/${id}/register`, { method: 'DELETE' });
-  await loadTrainings();
+  const target = trainings.value.find((t) => t.id === id);
+  if (target) {
+    const start = new Date(target.start_at).getTime();
+    if (start - Date.now() <= 48 * 60 * 60 * 1000) return;
+  }
+  actionPendingId.value = id;
+  try {
+    await apiFetch(`/course-trainings/${id}/register`, { method: 'DELETE' });
+    await loadTrainings();
+  } finally {
+    actionPendingId.value = null;
+  }
 }
 
 onMounted(async () => {
@@ -119,7 +136,7 @@ function openCuratorModal() {
             </div>
           </div>
         </div>
-        <div v-if="course?.responsible" class="col-md-6">
+        <div class="col-md-6">
           <div
             class="card section-card tile fade-in shadow-sm h-100 cursor-pointer"
             role="button"
@@ -134,8 +151,8 @@ function openCuratorModal() {
                 <i class="bi bi-person-fill text-muted fs-2"></i>
               </div>
               <div>
-                <div>{{ curatorName }}</div>
-                <div class="text-muted small">Куратор курса</div>
+                <div>{{ curator.name }}</div>
+                <div class="text-muted small">{{ curator.title }}</div>
               </div>
             </div>
           </div>
@@ -155,6 +172,7 @@ function openCuratorModal() {
           <TrainingCalendar
             v-else-if="trainings.length"
             :trainings="trainings"
+            :pending-id="actionPendingId"
             @register="register"
             @unregister="unregister"
           />
@@ -168,7 +186,7 @@ function openCuratorModal() {
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">{{ curatorName }}</h5>
+            <h5 class="modal-title">{{ curator.name }}</h5>
             <button
               type="button"
               class="btn-close"
@@ -176,17 +194,26 @@ function openCuratorModal() {
             ></button>
           </div>
           <div class="modal-body p-0">
+            <div class="text-center p-3">
+              <div
+                class="mx-auto mb-2 rounded-circle bg-light d-flex align-items-center justify-content-center"
+                style="width: 4rem; height: 4rem"
+              >
+                <i class="bi bi-person-fill text-muted fs-2"></i>
+              </div>
+              <div>{{ curator.name }}</div>
+              <div class="text-muted small">{{ curator.title }}</div>
+            </div>
+            <hr class="my-0" />
             <div class="list-group list-group-flush">
               <a
-                v-if="course?.responsible?.phone"
-                :href="`tel:+${course.responsible.phone}`"
+                :href="`tel:+${curator.phone}`"
                 class="list-group-item list-group-item-action"
               >
                 <i class="bi bi-telephone me-2"></i>Позвонить
               </a>
               <a
-                v-if="course?.responsible?.email"
-                :href="`mailto:${course.responsible.email}`"
+                :href="`mailto:${curator.email}`"
                 class="list-group-item list-group-item-action"
               >
                 <i class="bi bi-envelope me-2"></i>Написать на email

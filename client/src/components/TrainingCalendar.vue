@@ -4,6 +4,7 @@ import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
 
 const props = defineProps({
   trainings: { type: Array, default: () => [] },
+  pendingId: { type: Number, default: null },
 });
 const emit = defineEmits(['register', 'unregister']);
 
@@ -52,6 +53,10 @@ function isDisabled(t) {
   const key = toDayKey(t.start_at);
   return registeredDates.value.has(key) && !t.registered;
 }
+
+function canCancel(t) {
+  return new Date(t.start_at).getTime() - Date.now() > 48 * 60 * 60 * 1000;
+}
 </script>
 
 <template>
@@ -80,16 +85,38 @@ function isDisabled(t) {
               <button
                 v-if="t.registered"
                 class="btn btn-sm btn-secondary"
+                :disabled="props.pendingId !== null || !canCancel(t)"
+                :title="
+                  !canCancel(t)
+                    ? 'Отменить можно не позднее чем за 48 часов до начала'
+                    : ''
+                "
                 @click="emit('unregister', t.id)"
               >
+                <span
+                  v-if="props.pendingId === t.id"
+                  class="spinner-border spinner-border-sm me-1"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
                 Отменить
               </button>
               <button
                 v-else
                 class="btn btn-sm btn-brand"
-                :disabled="isDisabled(t) || !t.registration_open"
+                :disabled="
+                  isDisabled(t) ||
+                  !t.registration_open ||
+                  props.pendingId !== null
+                "
                 @click="emit('register', t.id)"
               >
+                <span
+                  v-if="props.pendingId === t.id"
+                  class="spinner-border spinner-border-sm me-1"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
                 Записаться
               </button>
             </div>
