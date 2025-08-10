@@ -229,7 +229,7 @@ function openContactModal(contact) {
     </div>
     <div ref="contactModalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content rounded-4 overflow-hidden">
           <div class="modal-header">
             <h5 class="modal-title">{{ activeContact?.name }}</h5>
             <button

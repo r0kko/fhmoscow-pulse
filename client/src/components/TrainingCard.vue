@@ -93,6 +93,11 @@ function formatDeadline(start) {
     timeZone: 'Europe/Moscow',
   });
 }
+
+function canCancel() {
+  return new Date(props.training.start_at).getTime() - Date.now() >
+    48 * 60 * 60 * 1000;
+}
 </script>
 
 <template>
@@ -131,13 +136,30 @@ function formatDeadline(start) {
           ><span v-if="i < training.equipment_managers.length - 1">, </span>
         </span>
       </p>
-      <button
+      <div
         v-if="training.registered && showCancel"
-        class="btn btn-sm btn-secondary mt-auto"
-        @click="emit('unregister', training.id)"
+        class="mt-auto d-flex align-items-center justify-content-between"
       >
-        Отменить
-      </button>
+        <div class="text-success small d-flex align-items-center">
+          <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+          <span>Вы записаны</span>
+        </div>
+        <button
+          v-if="canCancel()"
+          class="btn btn-link p-0 text-danger"
+          :disabled="loading"
+          @click="emit('unregister', training.id)"
+        >
+          <span
+            v-if="loading"
+            class="spinner-border spinner-border-sm"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <i v-else class="bi bi-x-lg" aria-hidden="true"></i>
+          <span class="visually-hidden">Отменить</span>
+        </button>
+      </div>
       <button
         v-else
         class="btn btn-sm btn-brand mt-auto"

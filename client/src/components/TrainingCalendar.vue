@@ -127,25 +127,28 @@ function canCancel(t) {
               </template>
             </div>
             <div class="d-flex align-items-center">
-              <button
+              <div
                 v-if="t.registered"
-                class="btn btn-sm btn-secondary"
-                :disabled="props.pendingId !== null || !canCancel(t)"
-                :title="
-                  !canCancel(t)
-                    ? 'Отменить можно не позднее чем за 48 часов до начала'
-                    : ''
-                "
-                @click="emit('unregister', t.id)"
+                class="d-flex align-items-center text-success small"
               >
-                <span
-                  v-if="props.pendingId === t.id"
-                  class="spinner-border spinner-border-sm me-1"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                Отменить
-              </button>
+                <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+                <span>Вы записаны</span>
+                <button
+                  v-if="canCancel(t)"
+                  class="btn btn-link p-0 ms-2 text-danger"
+                  :disabled="props.pendingId !== null"
+                  @click="emit('unregister', t.id)"
+                >
+                  <span
+                    v-if="props.pendingId === t.id"
+                    class="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  <i v-else class="bi bi-x-lg" aria-hidden="true"></i>
+                  <span class="visually-hidden">Отменить</span>
+                </button>
+              </div>
               <button
                 v-else
                 class="btn btn-sm btn-brand"
