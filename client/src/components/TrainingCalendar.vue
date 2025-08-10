@@ -91,16 +91,6 @@ function canCancel(t) {
                   }}</strong
                 >
                 <span class="ms-2">{{ t.ground?.name }}</span>
-                <a
-                  v-if="!t.type?.online && t.ground?.yandex_url"
-                  :href="withHttp(t.ground.yandex_url)"
-                  target="_blank"
-                  rel="noopener"
-                  aria-label="Открыть в Яндекс.Картах"
-                  class="ms-2"
-                >
-                  <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
-                </a>
               </div>
               <div class="text-muted small">{{ t.type?.name }}</div>
               <div v-if="t.type?.online && t.url" class="mb-1">
@@ -109,8 +99,18 @@ function canCancel(t) {
                 >
               </div>
               <template v-else>
-                <div class="text-muted small">
-                  {{ t.ground?.address?.result || '—' }}
+                <div class="text-muted small d-flex align-items-center">
+                  <a
+                    v-if="t.ground?.yandex_url"
+                    :href="withHttp(t.ground.yandex_url)"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="Открыть в Яндекс.Картах"
+                    class="me-1 flex-shrink-0"
+                  >
+                    <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
+                  </a>
+                  <span class="flex-grow-1">{{ t.ground?.address?.result || '—' }}</span>
                 </div>
                 <div
                   v-if="metroNames(t.ground?.address)"
