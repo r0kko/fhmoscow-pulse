@@ -775,7 +775,12 @@ function attendanceStatus(t) {
                     v-if="metroNames(g.ground.address)"
                     class="text-muted mb-3 small d-flex align-items-center"
                   >
-                    <img :src="metroIcon" alt="Метро" height="14" class="me-1" />
+                    <img
+                      :src="metroIcon"
+                      alt="Метро"
+                      height="14"
+                      class="me-1"
+                    />
                     <span>{{ metroNames(g.ground.address) }}</span>
                   </p>
                 </template>

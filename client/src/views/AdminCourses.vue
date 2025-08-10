@@ -306,7 +306,6 @@ async function deleteCourse(id) {
   }
 }
 
-
 onMounted(() => {
   loadUsers();
   loadAllUsers();
@@ -732,7 +731,7 @@ onMounted(() => {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3" v-if="selectedTrainingType?.online">
+                <div v-if="selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Ссылка</label>
                   <input
                     v-model="trainingForm.url"
@@ -740,7 +739,7 @@ onMounted(() => {
                     class="form-control"
                   />
                 </div>
-                <div class="mb-3" v-else>
+                <div v-else class="mb-3">
                   <label class="form-label">Площадка</label>
                   <select v-model="trainingForm.ground_id" class="form-select">
                     <option value="">Выберите площадку</option>
@@ -815,7 +814,6 @@ onMounted(() => {
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </template>
