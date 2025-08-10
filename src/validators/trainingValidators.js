@@ -3,7 +3,7 @@ import { body } from 'express-validator';
 export const trainingCreateRules = [
   body('type_id').isUUID(),
   body('season_id').optional().isUUID(),
-  body('ground_id').isUUID(),
+  body('ground_id').optional().isUUID(),
   body('start_at').isISO8601(),
   body('end_at')
     .isISO8601()

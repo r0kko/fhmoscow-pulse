@@ -19,6 +19,11 @@ TrainingType.init(
       allowNull: false,
       defaultValue: false,
     },
+    online: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

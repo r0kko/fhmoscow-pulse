@@ -34,6 +34,7 @@ function sanitize(obj) {
       id: TrainingType.id,
       name: TrainingType.name,
       alias: TrainingType.alias,
+      online: TrainingType.online,
     };
   }
   if (Ground) {

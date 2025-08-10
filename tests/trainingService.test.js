@@ -17,6 +17,10 @@ const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
   end_at: new Date('2024-01-01T12:00:00Z'),
   update: updateMock,
+  ground_id: 'g1',
+  season_id: 's1',
+  type_id: 'tp',
+  TrainingType: { for_camp: true, online: false },
 };
 
 beforeEach(() => {
@@ -32,7 +36,7 @@ beforeEach(() => {
   findUserMock.mockReset();
   findRegMock.mockReset();
   findTrainingTypeMock.mockReset();
-  findTrainingTypeMock.mockResolvedValue({ id: 'tp', for_camp: true });
+  findTrainingTypeMock.mockResolvedValue({ id: 'tp', for_camp: true, online: false });
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -235,4 +239,38 @@ test('setAttendanceMarked rejects when not coach', async () => {
   await expect(service.setAttendanceMarked('t1', true, 'u1')).rejects.toThrow(
     'access_denied'
   );
+});
+
+test('create requires ground for offline type', async () => {
+  await expect(
+    service.create(
+      {
+        type_id: 'tp',
+        season_id: 's1',
+        start_at: '2024-01-01T10:00:00Z',
+        end_at: '2024-01-01T11:00:00Z',
+      },
+      'admin'
+    )
+  ).rejects.toThrow('ground_required');
+});
+
+test('create allows missing ground for online type', async () => {
+  findTrainingTypeMock.mockResolvedValueOnce({
+    id: 'tp',
+    for_camp: true,
+    online: true,
+  });
+  createMock.mockResolvedValue({ id: 't4', season_id: 's1' });
+  findByPkMock.mockResolvedValue({ get: () => ({ id: 't4' }) });
+  await service.create(
+    {
+      type_id: 'tp',
+      season_id: 's1',
+      start_at: '2024-01-01T10:00:00Z',
+      end_at: '2024-01-01T11:00:00Z',
+    },
+    'admin'
+  );
+  expect(createMock.mock.calls[0][0].ground_id).toBeNull();
 });
