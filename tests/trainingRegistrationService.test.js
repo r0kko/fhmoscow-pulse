@@ -11,6 +11,7 @@ const destroyMock = jest.fn();
 const findTrainingRoleMock = jest.fn();
 const findRoleMock = jest.fn();
 const countMock = jest.fn();
+const updateTrainingMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -76,6 +77,7 @@ beforeEach(() => {
   destroyMock.mockReset();
   findRoleMock.mockReset();
   countMock.mockReset();
+  updateTrainingMock.mockReset();
   sendRegEmailMock.mockClear();
   sendCancelEmailMock.mockClear();
   sendSelfCancelEmailMock.mockClear();
@@ -90,6 +92,7 @@ const training = {
   start_at: '2099-01-01T10:00:00Z',
   RefereeGroups: [{ id: 'g1' }],
   TrainingRegistrations: [],
+  update: updateTrainingMock,
   get() {
     return this;
   },
@@ -108,6 +111,10 @@ test('register sends confirmation email', async () => {
     training,
     { id: 'role1' }
   );
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'u1',
+  });
 });
 
 test('register restores deleted registration', async () => {
@@ -129,6 +136,10 @@ test('register restores deleted registration', async () => {
   });
   expect(createRegMock).not.toHaveBeenCalled();
   expect(sendRegEmailMock).toHaveBeenCalled();
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'u1',
+  });
 });
 
 test('remove sends cancellation email', async () => {
@@ -146,7 +157,11 @@ test('remove sends cancellation email', async () => {
 });
 
 test('add creates registration for referee', async () => {
-  const tr = { ...training, TrainingRegistrations: [] };
+  const tr = {
+    ...training,
+    TrainingRegistrations: [],
+    update: updateTrainingMock,
+  };
   findTrainingMock.mockResolvedValue(tr);
   findUserMock.mockResolvedValue({
     id: 'u2',
@@ -166,10 +181,18 @@ test('add creates registration for referee', async () => {
     tr,
     { id: 'role1' }
   );
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'admin',
+  });
 });
 
 test('add restores deleted registration', async () => {
-  const tr = { ...training, TrainingRegistrations: [] };
+  const tr = {
+    ...training,
+    TrainingRegistrations: [],
+    update: updateTrainingMock,
+  };
   const restoreMock = jest.fn();
   const updateMock = jest.fn();
   findTrainingMock.mockResolvedValue(tr);
@@ -195,6 +218,10 @@ test('add restores deleted registration', async () => {
     tr,
     { id: 'role1' }
   );
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'admin',
+  });
 });
 
 test('register rejects when training is full', async () => {
