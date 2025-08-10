@@ -124,7 +124,7 @@ function openContactModal(contact) {
       <h1 class="mb-3">Повышение квалификации</h1>
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <div class="card section-card tile fade-in shadow-sm">
+          <div class="card section-card tile fade-in shadow-sm h-100">
             <div class="card-body">
               <div v-if="loading" class="text-center py-3">
                 <div class="spinner-border text-brand" role="status">
@@ -154,8 +154,9 @@ function openContactModal(contact) {
           </div>
         </div>
         <div class="col-md-6">
-          <div class="card section-card tile fade-in shadow-sm">
+          <div class="card section-card tile fade-in shadow-sm h-100">
             <div class="card-body p-0">
+              <h2 class="h5 mb-0 px-3 pt-3">Команда курса</h2>
               <div
                 v-if="responsibleContact"
                 class="d-flex align-items-center p-3 cursor-pointer"
@@ -177,7 +178,7 @@ function openContactModal(contact) {
                 </div>
               </div>
               <template v-if="responsibleContact">
-                <hr class="my-0" />
+                <hr class="my-0 mx-3" />
               </template>
               <div
                 class="d-flex align-items-center p-3 cursor-pointer"
