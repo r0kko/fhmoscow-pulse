@@ -5,11 +5,6 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
-    const [existing] = await queryInterface.sequelize.query(
-      // eslint-disable-next-line
-      "SELECT COUNT(*) AS cnt FROM training_roles WHERE alias IN ('PARTICIPANT','COACH','EQUIPMENT_MANAGER','TEACHER');"
-    );
-    if (Number(existing[0].cnt) > 0) return;
     await queryInterface.bulkInsert(
       'training_roles',
       [
@@ -39,6 +34,14 @@ module.exports = {
         },
         {
           id: uuidv4(),
+          name: 'Слушатель',
+          alias: 'LISTENER',
+          for_camp: false,
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: uuidv4(),
           name: 'Преподаватель',
           alias: 'TEACHER',
           for_camp: false,
@@ -52,7 +55,13 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.bulkDelete('training_roles', {
-      alias: ['PARTICIPANT', 'COACH', 'EQUIPMENT_MANAGER', 'TEACHER'],
+      alias: [
+        'PARTICIPANT',
+        'COACH',
+        'EQUIPMENT_MANAGER',
+        'LISTENER',
+        'TEACHER',
+      ],
     });
   },
 };
