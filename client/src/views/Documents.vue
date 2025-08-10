@@ -175,7 +175,7 @@ async function submit() {
                               <a
                                 v-if="d.file"
                                 class="btn btn-sm btn-outline-primary"
-                                :href="d.file.path"
+                                :href="d.file.url"
                                 target="_blank"
                                 rel="noopener"
                               >

@@ -48,7 +48,7 @@ async function listByUser(userId) {
     include: [
       { model: DocumentType, attributes: ['name', 'alias'] },
       { model: SignType, attributes: ['name', 'alias'] },
-      { model: File, attributes: ['id', 'path'] },
+      { model: File, attributes: ['id', 'key'] },
       { model: DocumentStatus, attributes: ['name', 'alias'] },
       {
         model: DocumentUserSign,
@@ -58,27 +58,34 @@ async function listByUser(userId) {
     ],
     order: [['created_at', 'DESC']],
   });
-  return docs.map((d) => ({
-    id: d.id,
-    name: d.name,
-    description: d.description,
-    documentDate: d.document_date,
-    documentType: d.DocumentType
-      ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
-      : null,
-    signType: d.SignType
-      ? { name: d.SignType.name, alias: d.SignType.alias }
-      : null,
-    status: d.DocumentStatus
-      ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
-      : null,
-    file: d.File ? { id: d.File.id, path: d.File.path } : null,
-    signs: d.DocumentUserSigns.map((s) => ({
-      id: s.id,
-      userId: s.user_id,
-      createdAt: s.created_at,
-    })),
-  }));
+  return Promise.all(
+    docs.map(async (d) => ({
+      id: d.id,
+      name: d.name,
+      description: d.description,
+      documentDate: d.document_date,
+      documentType: d.DocumentType
+        ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+        : null,
+      signType: d.SignType
+        ? { name: d.SignType.name, alias: d.SignType.alias }
+        : null,
+      status: d.DocumentStatus
+        ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
+        : null,
+      file: d.File
+        ? {
+            id: d.File.id,
+            url: await fileService.getDownloadUrl(d.File),
+          }
+        : null,
+      signs: d.DocumentUserSigns.map((s) => ({
+        id: s.id,
+        userId: s.user_id,
+        createdAt: s.created_at,
+      })),
+    }))
+  );
 }
 
 async function listAll() {
