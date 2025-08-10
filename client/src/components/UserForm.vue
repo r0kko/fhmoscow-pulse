@@ -165,6 +165,7 @@ defineExpose({ validate, unlock, lock, editing });
             v-if="!editing && !props.locked"
             type="button"
             class="btn btn-link p-0"
+            aria-label="Редактировать"
             @click="unlock"
           >
             <i class="bi bi-pencil"></i>

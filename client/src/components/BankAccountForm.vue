@@ -115,7 +115,12 @@ async function removeAccount() {
     <div class="card-body">
       <div class="d-flex justify-content-between mb-3">
         <h5 class="card-title mb-0">Банковский счёт</h5>
-        <button type="button" class="btn btn-link p-0" @click="open">
+        <button
+          type="button"
+          class="btn btn-link p-0"
+          aria-label="Редактировать банковский счёт"
+          @click="open"
+        >
           <i class="bi bi-pencil"></i>
         </button>
       </div>
@@ -243,6 +248,7 @@ async function removeAccount() {
             <button
               type="button"
               class="btn-close"
+              aria-label="Закрыть"
               @click="modal.hide()"
             ></button>
           </div>
@@ -352,6 +358,7 @@ async function removeAccount() {
               v-if="account"
               type="button"
               class="btn btn-danger me-auto"
+              aria-label="Удалить счёт"
               @click="removeAccount"
             >
               <i class="bi bi-trash"></i>

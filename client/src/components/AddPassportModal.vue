@@ -178,6 +178,7 @@ async function save() {
           <button
             type="button"
             class="btn-close"
+            aria-label="Закрыть"
             @click="modal.hide()"
           ></button>
         </div>
