@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -13,15 +13,31 @@ const trainings = ref([]);
 const trainingsError = ref('');
 const trainingsLoading = ref(false);
 const actionPendingId = ref(null);
-const curatorModalRef = ref(null);
-let curatorModal;
+const contactModalRef = ref(null);
+let contactModal;
 
-const curator = {
+const olenin = {
   name: 'Оленин Константин Константинович',
   title: 'Руководитель отдела организации судейства',
   phone: '79257033737',
   email: 'kkolenin@fhmoscow.com',
 };
+
+const activeContact = ref(null);
+
+const responsibleContact = computed(() => {
+  const r = course.value?.responsible;
+  if (!r) return null;
+  const name = [r.last_name, r.first_name, r.patronymic]
+    .filter(Boolean)
+    .join(' ');
+  return {
+    name,
+    title: 'Куратор курса',
+    phone: r.phone,
+    email: r.email,
+  };
+});
 
 async function loadTrainings() {
   trainingsLoading.value = true;
@@ -71,7 +87,7 @@ async function unregister(id) {
 }
 
 onMounted(async () => {
-  curatorModal = new Modal(curatorModalRef.value);
+  contactModal = new Modal(contactModalRef.value);
   try {
     const data = await apiFetch('/courses/me').catch((e) => {
       if (e.message === 'Курс не назначен') return null;
@@ -86,8 +102,9 @@ onMounted(async () => {
   }
 });
 
-function openCuratorModal() {
-  curatorModal?.show();
+function openContactModal(contact) {
+  activeContact.value = contact;
+  contactModal?.show();
 }
 </script>
 
@@ -107,7 +124,7 @@ function openCuratorModal() {
       <h1 class="mb-3">Повышение квалификации</h1>
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <div class="card section-card tile fade-in shadow-sm h-100">
+          <div class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
               <div v-if="loading" class="text-center py-3">
                 <div class="spinner-border text-brand" role="status">
@@ -136,12 +153,13 @@ function openCuratorModal() {
             </div>
           </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 d-flex flex-column gap-3">
           <div
-            class="card section-card tile fade-in shadow-sm h-100 cursor-pointer"
+            v-if="responsibleContact"
+            class="card section-card tile fade-in shadow-sm cursor-pointer"
             role="button"
             tabindex="0"
-            @click="openCuratorModal"
+            @click="openContactModal(responsibleContact)"
           >
             <div class="card-body d-flex align-items-center">
               <div
@@ -151,8 +169,31 @@ function openCuratorModal() {
                 <i class="bi bi-person-fill text-muted fs-2"></i>
               </div>
               <div>
-                <div>{{ curator.name }}</div>
-                <div class="text-muted small">{{ curator.title }}</div>
+                <div>{{ responsibleContact.name }}</div>
+                <div class="text-muted small">
+                  {{ responsibleContact.title }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            class="card section-card tile fade-in shadow-sm cursor-pointer"
+            role="button"
+            tabindex="0"
+            @click="openContactModal(olenin)"
+          >
+            <div class="card-body d-flex align-items-center">
+              <div
+                class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
+                style="width: 4rem; height: 4rem"
+              >
+                <i class="bi bi-person-fill text-muted fs-2"></i>
+              </div>
+              <div>
+                <div>{{ olenin.name }}</div>
+                <div class="text-muted small">
+                  {{ olenin.title }}
+                </div>
               </div>
             </div>
           </div>
@@ -182,11 +223,11 @@ function openCuratorModal() {
         </div>
       </div>
     </div>
-    <div ref="curatorModalRef" class="modal fade" tabindex="-1">
+    <div ref="contactModalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">{{ curator.name }}</h5>
+            <h5 class="modal-title">{{ activeContact?.name }}</h5>
             <button
               type="button"
               class="btn-close"
@@ -201,19 +242,21 @@ function openCuratorModal() {
               >
                 <i class="bi bi-person-fill text-muted fs-2"></i>
               </div>
-              <div>{{ curator.name }}</div>
-              <div class="text-muted small">{{ curator.title }}</div>
+              <div>{{ activeContact?.name }}</div>
+              <div class="text-muted small">{{ activeContact?.title }}</div>
             </div>
             <hr class="my-0" />
             <div class="list-group list-group-flush">
               <a
-                :href="`tel:+${curator.phone}`"
+                v-if="activeContact?.phone"
+                :href="`tel:+${activeContact.phone}`"
                 class="list-group-item list-group-item-action"
               >
                 <i class="bi bi-telephone me-2"></i>Позвонить
               </a>
               <a
-                :href="`mailto:${curator.email}`"
+                v-if="activeContact?.email"
+                :href="`mailto:${activeContact.email}`"
                 class="list-group-item list-group-item-action"
               >
                 <i class="bi bi-envelope me-2"></i>Написать на email
