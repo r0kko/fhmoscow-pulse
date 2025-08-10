@@ -765,7 +765,9 @@ function attendanceStatus(t) {
                     >
                       <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
                     </a>
-                    <span class="flex-grow-1">{{ g.ground.address?.result }}</span>
+                    <span class="flex-grow-1">{{
+                      g.ground.address?.result
+                    }}</span>
                   </p>
                   <p
                     v-if="metroNames(g.ground.address)"

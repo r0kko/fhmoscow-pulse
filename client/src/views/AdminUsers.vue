@@ -429,6 +429,7 @@ async function copy(text) {
                   <td class="text-end">
                     <button
                       class="btn btn-sm btn-secondary me-2"
+                      aria-label="Редактировать пользователя"
                       @click="openEdit(u)"
                     >
                       <i class="bi bi-pencil"></i>
@@ -436,6 +437,7 @@ async function copy(text) {
                     <button
                       v-if="u.status === 'ACTIVE'"
                       class="btn btn-sm btn-danger me-2"
+                      aria-label="Заблокировать пользователя"
                       @click="blockUser(u.id)"
                     >
                       <i class="bi bi-lock-fill"></i>
@@ -443,6 +445,7 @@ async function copy(text) {
                     <button
                       v-if="u.status === 'INACTIVE'"
                       class="btn btn-sm btn-success me-2"
+                      aria-label="Разблокировать пользователя"
                       @click="unblockUser(u.id)"
                     >
                       <i class="bi bi-unlock-fill"></i>
@@ -450,6 +453,7 @@ async function copy(text) {
                     <button
                       v-if="u.status === 'AWAITING_CONFIRMATION'"
                       class="btn btn-sm btn-success"
+                      aria-label="Подтвердить пользователя"
                       @click="approveUser(u.id)"
                     >
                       <i class="bi bi-check-lg"></i>
@@ -679,6 +683,7 @@ async function copy(text) {
                     <button
                       v-else-if="p.inn"
                       class="btn btn-link p-0 align-baseline"
+                      aria-label="Обновить налоговый статус"
                       @click="openTaxStatus(p.id)"
                     >
                       <i class="bi bi-arrow-clockwise"></i>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
@@ -183,6 +183,13 @@ function openContactModal(contact) {
   activeContact.value = contact;
   contactModal?.show();
 }
+
+onBeforeUnmount(() => {
+  try {
+    contactModal?.hide?.();
+    contactModal?.dispose?.();
+  } catch {}
+});
 </script>
 
 <template>
