@@ -1,10 +1,13 @@
 import express from 'express';
+import multer from 'multer';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/documentAdminController.js';
 import documentController from '../controllers/documentController.js';
 import { createDocumentValidator } from '../validators/documentValidators.js';
+
+const upload = multer();
 
 const router = express.Router();
 
@@ -31,6 +34,14 @@ router.post(
   auth,
   authorize('ADMIN'),
   controller.requestSignature
+);
+
+router.post(
+  '/:id/file',
+  auth,
+  authorize('ADMIN'),
+  upload.single('file'),
+  controller.uploadSigned
 );
 
 export default router;

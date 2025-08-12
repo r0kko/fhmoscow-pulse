@@ -100,29 +100,35 @@ async function listAll() {
         attributes: ['last_name', 'first_name', 'patronymic'],
       },
       { model: DocumentStatus, attributes: ['name', 'alias'] },
+      { model: File, attributes: ['id', 'key'] },
     ],
     order: [['created_at', 'DESC']],
   });
-  return docs.map((d) => ({
-    id: d.id,
-    name: d.name,
-    documentDate: d.document_date,
-    documentType: d.DocumentType
-      ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
-      : null,
-    signType: d.SignType
-      ? { name: d.SignType.name, alias: d.SignType.alias }
-      : null,
-    recipient: {
-      lastName: d.recipient.last_name,
-      firstName: d.recipient.first_name,
-      patronymic: d.recipient.patronymic,
-    },
-    status: d.DocumentStatus
-      ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
-      : null,
-    createdAt: d.created_at,
-  }));
+  return Promise.all(
+    docs.map(async (d) => ({
+      id: d.id,
+      name: d.name,
+      documentDate: d.document_date,
+      documentType: d.DocumentType
+        ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+        : null,
+      signType: d.SignType
+        ? { name: d.SignType.name, alias: d.SignType.alias }
+        : null,
+      recipient: {
+        lastName: d.recipient.last_name,
+        firstName: d.recipient.first_name,
+        patronymic: d.recipient.patronymic,
+      },
+      status: d.DocumentStatus
+        ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
+        : null,
+      file: d.File
+        ? { id: d.File.id, url: await fileService.getDownloadUrl(d.File) }
+        : null,
+      createdAt: d.created_at,
+    }))
+  );
 }
 
 async function sign(user, documentId) {
@@ -198,6 +204,48 @@ async function requestSignature(documentId, actorId) {
     await emailService.sendDocumentAwaitingSignatureEmail(doc.recipient, doc);
   }
   return { name: status.name, alias: status.alias };
+}
+
+async function uploadSignedFile(documentId, file, actorId) {
+  if (!file) {
+    throw new ServiceError('file_required', 400);
+  }
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: SignType, attributes: ['alias'] },
+      { model: DocumentStatus, attributes: ['alias'] },
+    ],
+  });
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  if (
+    !doc.SignType ||
+    !['HANDWRITTEN', 'KONTUR_SIGN'].includes(doc.SignType.alias)
+  ) {
+    throw new ServiceError('document_sign_type_invalid', 400);
+  }
+  if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE') {
+    throw new ServiceError('document_status_invalid', 400);
+  }
+  const signedStatus = await DocumentStatus.findOne({
+    where: { alias: 'SIGNED' },
+    attributes: ['id', 'name', 'alias'],
+  });
+  if (!signedStatus) {
+    throw new ServiceError('document_status_not_found', 500);
+  }
+  const newFile = await fileService.uploadDocument(file, actorId);
+  await doc.update({
+    file_id: newFile.id,
+    status_id: signedStatus.id,
+    updated_by: actorId,
+  });
+  const url = await fileService.getDownloadUrl(newFile);
+  return {
+    status: { name: signedStatus.name, alias: signedStatus.alias },
+    file: { id: newFile.id, url },
+  };
 }
 
 function createPdfBuffer(text) {
@@ -276,5 +324,6 @@ export default {
   listAll,
   sign,
   requestSignature,
+  uploadSignedFile,
   generateInitial,
 };
