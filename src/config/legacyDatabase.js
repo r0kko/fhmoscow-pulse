@@ -9,17 +9,25 @@ const legacyPool = mysql.createPool({
   database: process.env.LEGACY_DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
+  connectTimeout: 5000,
 });
+
+let legacyDbAvailable = false;
 
 export async function connectLegacyDatabase() {
   const { default: logger } = await import('../../logger.js');
   try {
     await legacyPool.query('SELECT 1');
+    legacyDbAvailable = true;
     logger.info('✅ Legacy DB connection established');
   } catch (err) {
-    logger.error('❌ Unable to connect to legacy DB:', err);
-    process.exit(1);
+    legacyDbAvailable = false;
+    logger.warn('⚠️ Unable to connect to legacy DB: %s', err.message);
   }
+}
+
+export function isLegacyDbAvailable() {
+  return legacyDbAvailable;
 }
 
 export default legacyPool;
