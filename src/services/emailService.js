@@ -28,6 +28,9 @@ import { renderNormativeResultUpdatedEmail } from '../templates/normativeResultU
 import { renderNormativeResultRemovedEmail } from '../templates/normativeResultRemovedEmail.js';
 import { renderSignTypeSelectionEmail } from '../templates/signTypeSelectionEmail.js';
 import { renderDocumentAwaitingSignatureEmail } from '../templates/documentAwaitingSignatureEmail.js';
+import { renderDocumentCreatedEmail } from '../templates/documentCreatedEmail.js';
+import { renderDocumentSignedEmail } from '../templates/documentSignedEmail.js';
+import { renderDocumentRejectedEmail } from '../templates/documentRejectedEmail.js';
 
 export const isEmailConfigured = Boolean(SMTP_HOST);
 
@@ -175,6 +178,21 @@ export async function sendNormativeResultRemovedEmail(user, result) {
   await sendMail(user.email, subject, text, html);
 }
 
+export async function sendDocumentCreatedEmail(user, document) {
+  const { subject, text, html } = renderDocumentCreatedEmail(document);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendDocumentSignedEmail(user, document) {
+  const { subject, text, html } = renderDocumentSignedEmail(document);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendDocumentRejectedEmail(user, document) {
+  const { subject, text, html } = renderDocumentRejectedEmail(document);
+  await sendMail(user.email, subject, text, html);
+}
+
 export async function sendDocumentAwaitingSignatureEmail(user, document) {
   const { subject, text, html } =
     renderDocumentAwaitingSignatureEmail(document);
@@ -202,5 +220,8 @@ export default {
   sendNormativeResultAddedEmail,
   sendNormativeResultUpdatedEmail,
   sendNormativeResultRemovedEmail,
+  sendDocumentCreatedEmail,
+  sendDocumentSignedEmail,
+  sendDocumentRejectedEmail,
   sendDocumentAwaitingSignatureEmail,
 };

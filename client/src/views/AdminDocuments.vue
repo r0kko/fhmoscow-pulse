@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
+import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -10,6 +11,13 @@ const tab = ref(route.query.tab === 'signatures' ? 'signatures' : 'documents');
 const documents = ref([]);
 const documentsLoading = ref(false);
 const documentsError = ref('');
+
+const search = ref('');
+const signTypeFilter = ref('');
+const statusFilter = ref('');
+const numberSearch = ref('');
+
+const uploadModal = ref(null);
 
 const users = ref([]);
 const usersLoading = ref(false);
@@ -79,6 +87,63 @@ async function requestSignature(doc) {
     actionId.value = '';
   }
 }
+
+async function regenerateDocument(doc) {
+  if (actionId.value) return;
+  actionId.value = doc.id;
+  actionError.value = '';
+  try {
+    const res = await apiFetch(`/documents/${doc.id}/regenerate`, {
+      method: 'POST',
+    });
+    doc.file = res.file;
+  } catch (e) {
+    actionError.value = e.message;
+  } finally {
+    actionId.value = '';
+  }
+}
+
+const filteredDocuments = computed(() => {
+  return documents.value.filter((d) => {
+    if (search.value) {
+      const q = search.value.toLowerCase();
+      const fio =
+        `${d.recipient.lastName} ${d.recipient.firstName} ${d.recipient.patronymic}`.toLowerCase();
+      if (!fio.includes(q)) return false;
+    }
+    if (numberSearch.value && !String(d.number).includes(numberSearch.value)) {
+      return false;
+    }
+    if (signTypeFilter.value && d.signType?.alias !== signTypeFilter.value) {
+      return false;
+    }
+    if (statusFilter.value && d.status?.alias !== statusFilter.value) {
+      return false;
+    }
+    return true;
+  });
+});
+
+const signTypes = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.signType?.alias) map.set(d.signType.alias, d.signType.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+const statuses = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.status?.alias) map.set(d.status.alias, d.status.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+function openUpload(doc) {
+  uploadModal.value.open(doc);
+}
 </script>
 
 <template>
@@ -131,10 +196,65 @@ async function requestSignature(doc) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
+            <div
+              class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 mb-3 align-items-end"
+            >
+              <div class="col">
+                <label for="doc-search" class="form-label">Получатель</label>
+                <input
+                  id="doc-search"
+                  v-model="search"
+                  type="search"
+                  class="form-control"
+                  placeholder="ФИО"
+                />
+              </div>
+              <div class="col">
+                <label for="number-search" class="form-label">Номер</label>
+                <input
+                  id="number-search"
+                  v-model="numberSearch"
+                  type="search"
+                  class="form-control"
+                  placeholder="25.08/1"
+                />
+              </div>
+              <div class="col">
+                <label for="sign-type" class="form-label">Тип подписи</label>
+                <select
+                  id="sign-type"
+                  v-model="signTypeFilter"
+                  class="form-select"
+                >
+                  <option value="">Все</option>
+                  <option
+                    v-for="st in signTypes"
+                    :key="st.alias"
+                    :value="st.alias"
+                  >
+                    {{ st.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col">
+                <label for="status-filter" class="form-label">Статус</label>
+                <select
+                  id="status-filter"
+                  v-model="statusFilter"
+                  class="form-select"
+                >
+                  <option value="">Все</option>
+                  <option v-for="s in statuses" :key="s.alias" :value="s.alias">
+                    {{ s.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
             <div class="table-responsive d-none d-sm-block">
               <table class="table mb-0">
                 <thead>
                   <tr>
+                    <th>Номер</th>
                     <th>Документ</th>
                     <th>Получатель</th>
                     <th>Тип подписи</th>
@@ -144,7 +264,8 @@ async function requestSignature(doc) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="d in documents" :key="d.id">
+                  <tr v-for="d in filteredDocuments" :key="d.id">
+                    <td>{{ d.number }}</td>
                     <td>{{ d.name }}</td>
                     <td>
                       {{ d.recipient.lastName }} {{ d.recipient.firstName }}
@@ -154,37 +275,85 @@ async function requestSignature(doc) {
                     <td>{{ d.status?.name }}</td>
                     <td>{{ formatDateTime(d.documentDate) }}</td>
                     <td>
-                      <button
-                        v-if="
-                          ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
-                            d.signType?.alias
-                          ) && d.status?.alias === 'CREATED'
-                        "
-                        class="btn btn-sm btn-primary"
-                        :disabled="actionId === d.id"
-                        @click="requestSignature(d)"
-                      >
-                        <span
-                          v-if="actionId === d.id"
-                          class="spinner-border spinner-border-sm me-1"
-                          aria-hidden="true"
-                        ></span>
-                        Отправить
-                      </button>
+                      <div class="d-flex flex-wrap gap-2">
+                        <a
+                          v-if="d.file"
+                          :href="d.file.url"
+                          class="btn btn-sm btn-outline-secondary"
+                          target="_blank"
+                          rel="noopener"
+                          title="Скачать"
+                        >
+                          <i class="bi bi-download" aria-hidden="true"></i>
+                        </a>
+                        <button
+                          v-if="
+                            d.documentType?.generated &&
+                            ['CREATED', 'AWAITING_SIGNATURE'].includes(
+                              d.status?.alias
+                            )
+                          "
+                          class="btn btn-sm btn-outline-secondary"
+                          :disabled="actionId === d.id"
+                          title="Перегенерировать"
+                          @click="regenerateDocument(d)"
+                        >
+                          <span
+                            v-if="actionId === d.id"
+                            class="spinner-border spinner-border-sm"
+                            aria-hidden="true"
+                          ></span>
+                          <i
+                            v-else
+                            class="bi bi-arrow-clockwise"
+                            aria-hidden="true"
+                          ></i>
+                        </button>
+                        <button
+                          v-if="
+                            ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                              d.signType?.alias
+                            ) && d.status?.alias === 'AWAITING_SIGNATURE'
+                          "
+                          class="btn btn-sm btn-primary"
+                          title="Загрузить подписанный файл"
+                          @click="openUpload(d)"
+                        >
+                          <i class="bi bi-upload" aria-hidden="true"></i>
+                        </button>
+                        <button
+                          v-else-if="
+                            ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                              d.signType?.alias
+                            ) && d.status?.alias === 'CREATED'
+                          "
+                          class="btn btn-sm btn-primary"
+                          :disabled="actionId === d.id"
+                          @click="requestSignature(d)"
+                        >
+                          <span
+                            v-if="actionId === d.id"
+                            class="spinner-border spinner-border-sm me-1"
+                            aria-hidden="true"
+                          ></span>
+                          Отправить
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                  <tr v-if="!documents.length">
-                    <td colspan="6" class="text-center">
+                  <tr v-if="!filteredDocuments.length">
+                    <td colspan="7" class="text-center">
                       Документы отсутствуют
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div v-if="documents.length" class="d-block d-sm-none">
-              <div v-for="d in documents" :key="d.id" class="card mb-2">
+            <div v-if="filteredDocuments.length" class="d-block d-sm-none">
+              <div v-for="d in filteredDocuments" :key="d.id" class="card mb-2">
                 <div class="card-body p-2">
                   <h3 class="h6 mb-1">{{ d.name }}</h3>
+                  <p class="mb-1 small">№ {{ d.number }}</p>
                   <p class="mb-1 small">
                     {{ d.recipient.lastName }} {{ d.recipient.firstName }}
                     {{ d.recipient.patronymic }}
@@ -196,23 +365,70 @@ async function requestSignature(doc) {
                   <p class="mb-2 small">
                     Дата: {{ formatDateTime(d.documentDate) }}
                   </p>
-                  <button
-                    v-if="
-                      ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
-                        d.signType?.alias
-                      ) && d.status?.alias === 'CREATED'
-                    "
-                    class="btn btn-sm btn-primary"
-                    :disabled="actionId === d.id"
-                    @click="requestSignature(d)"
-                  >
-                    <span
-                      v-if="actionId === d.id"
-                      class="spinner-border spinner-border-sm me-1"
-                      aria-hidden="true"
-                    ></span>
-                    Отправить
-                  </button>
+                  <div class="d-flex flex-wrap gap-2">
+                    <a
+                      v-if="d.file"
+                      :href="d.file.url"
+                      class="btn btn-sm btn-outline-secondary"
+                      target="_blank"
+                      rel="noopener"
+                      title="Скачать"
+                    >
+                      <i class="bi bi-download" aria-hidden="true"></i>
+                    </a>
+                    <button
+                      v-if="
+                        d.documentType?.generated &&
+                        ['CREATED', 'AWAITING_SIGNATURE'].includes(
+                          d.status?.alias
+                        )
+                      "
+                      class="btn btn-sm btn-outline-secondary"
+                      :disabled="actionId === d.id"
+                      title="Перегенерировать"
+                      @click="regenerateDocument(d)"
+                    >
+                      <span
+                        v-if="actionId === d.id"
+                        class="spinner-border spinner-border-sm"
+                        aria-hidden="true"
+                      ></span>
+                      <i
+                        v-else
+                        class="bi bi-arrow-clockwise"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                    <button
+                      v-if="
+                        ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                          d.signType?.alias
+                        ) && d.status?.alias === 'AWAITING_SIGNATURE'
+                      "
+                      class="btn btn-sm btn-primary"
+                      title="Загрузить подписанный файл"
+                      @click="openUpload(d)"
+                    >
+                      <i class="bi bi-upload" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      v-else-if="
+                        ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                          d.signType?.alias
+                        ) && d.status?.alias === 'CREATED'
+                      "
+                      class="btn btn-sm btn-primary"
+                      :disabled="actionId === d.id"
+                      @click="requestSignature(d)"
+                    >
+                      <span
+                        v-if="actionId === d.id"
+                        class="spinner-border spinner-border-sm me-1"
+                        aria-hidden="true"
+                      ></span>
+                      Отправить
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -267,6 +483,7 @@ async function requestSignature(doc) {
       </div>
     </div>
   </div>
+  <DocumentUploadModal ref="uploadModal" />
 </template>
 
 <style scoped>
