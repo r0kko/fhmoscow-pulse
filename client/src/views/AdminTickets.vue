@@ -218,6 +218,7 @@ async function changeStatus(ticket, alias) {
                   <button
                     class="btn btn-sm btn-success me-2"
                     title="Подтвердить"
+                    aria-label="Подтвердить"
                     @click="changeStatus(t, 'CONFIRMED')"
                   >
                     <i class="bi bi-check-lg"></i>
@@ -225,6 +226,7 @@ async function changeStatus(ticket, alias) {
                   <button
                     class="btn btn-sm btn-danger me-2"
                     title="Отклонить"
+                    aria-label="Отклонить"
                     @click="changeStatus(t, 'REJECTED')"
                   >
                     <i class="bi bi-x-lg"></i>

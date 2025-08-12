@@ -95,8 +95,10 @@ function formatDeadline(start) {
 }
 
 function canCancel() {
-  return new Date(props.training.start_at).getTime() - Date.now() >
-    48 * 60 * 60 * 1000;
+  return (
+    new Date(props.training.start_at).getTime() - Date.now() >
+    48 * 60 * 60 * 1000
+  );
 }
 </script>
 

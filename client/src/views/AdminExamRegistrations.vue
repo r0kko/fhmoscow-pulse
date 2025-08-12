@@ -249,6 +249,7 @@ async function exportPdf() {
                       v-if="r.status === 'PENDING'"
                       class="btn btn-sm btn-success me-2"
                       :disabled="statusLoading[r.user.id]"
+                      aria-label="Подтвердить"
                       @click="setStatus(r.user.id, 'APPROVED')"
                     >
                       <span
@@ -261,6 +262,7 @@ async function exportPdf() {
                       v-if="r.status === 'APPROVED'"
                       class="btn btn-sm btn-primary me-2"
                       :disabled="statusLoading[r.user.id]"
+                      aria-label="Завершить"
                       @click="setStatus(r.user.id, 'COMPLETED')"
                     >
                       <span
@@ -273,6 +275,7 @@ async function exportPdf() {
                       v-if="r.status !== 'COMPLETED' && r.status !== 'CANCELED'"
                       class="btn btn-sm btn-danger"
                       :disabled="statusLoading[r.user.id]"
+                      aria-label="Отменить"
                       @click="setStatus(r.user.id, 'CANCELED')"
                     >
                       <span
