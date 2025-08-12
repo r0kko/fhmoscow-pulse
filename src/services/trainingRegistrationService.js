@@ -75,10 +75,10 @@ async function listAvailable(userId, options = {}) {
   });
   return {
     rows: rows.map((t) => {
-      const participantRegs = t.TrainingRegistrations.filter(
-        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      const listenerRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === 'LISTENER'
       );
-      const registeredCount = participantRegs.length;
+      const registeredCount = listenerRegs.length;
       const userRegistered = t.TrainingRegistrations.some(
         (r) => r.user_id === userId
       );
@@ -130,10 +130,10 @@ async function listAvailableForCourse(userId, options = {}) {
   });
   return {
     rows: rows.map((t) => {
-      const participantRegs = t.TrainingRegistrations.filter(
-        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      const listenerRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === 'LISTENER'
       );
-      const registeredCount = participantRegs.length;
+      const registeredCount = listenerRegs.length;
       const userRegistered = t.TrainingRegistrations.some(
         (r) => r.user_id === userId
       );
@@ -183,17 +183,20 @@ async function register(userId, trainingId, actorId, forCamp) {
     allowed = training.Courses.some((c) => c.id === courseLink.course_id);
   }
   if (!allowed) throw new ServiceError('access_denied');
-  const participantRegs = training.TrainingRegistrations.filter(
-    (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+  const roleAlias = training.TrainingType?.for_camp
+    ? 'PARTICIPANT'
+    : 'LISTENER';
+  const relevantRegs = training.TrainingRegistrations.filter(
+    (r) => r.TrainingRole?.alias === roleAlias
   );
-  const registeredCount = participantRegs.length;
+  const registeredCount = relevantRegs.length;
   if (training.capacity && registeredCount >= training.capacity) {
     throw new ServiceError('training_full');
   }
   if (!trainingService.isRegistrationOpen(training, registeredCount)) {
     throw new ServiceError('registration_closed');
   }
-  const role = await TrainingRole.findOne({ where: { alias: 'PARTICIPANT' } });
+  const role = await TrainingRole.findOne({ where: { alias: roleAlias } });
   if (!role) throw new ServiceError('training_role_not_found');
 
   await upsertRegistration(trainingId, userId, role.id, actorId);
@@ -206,23 +209,28 @@ async function register(userId, trainingId, actorId, forCamp) {
 }
 
 async function unregister(userId, trainingId, actorId = null, forCamp) {
-  const registration = await TrainingRegistration.findOne({
-    where: { training_id: trainingId, user_id: userId },
-    include: [TrainingRole],
-  });
+  const [registration, training] = await Promise.all([
+    TrainingRegistration.findOne({
+      where: { training_id: trainingId, user_id: userId },
+      include: [TrainingRole],
+    }),
+    Training.findByPk(trainingId, {
+      include: [
+        { model: TrainingType },
+        { model: Season, where: { active: true }, required: true },
+      ],
+    }),
+  ]);
   if (!registration) throw new ServiceError('registration_not_found', 404);
-  if (registration.TrainingRole?.alias !== 'PARTICIPANT') {
-    throw new ServiceError('cancellation_forbidden');
-  }
-  const training = await Training.findByPk(trainingId, {
-    include: [
-      { model: TrainingType },
-      { model: Season, where: { active: true }, required: true },
-    ],
-  });
   if (!training) throw new ServiceError('training_not_found', 404);
   if (forCamp !== undefined && training.TrainingType?.for_camp !== forCamp) {
     throw new ServiceError('access_denied');
+  }
+  const roleAlias = training.TrainingType?.for_camp
+    ? 'PARTICIPANT'
+    : 'LISTENER';
+  if (registration.TrainingRole?.alias !== roleAlias) {
+    throw new ServiceError('cancellation_forbidden');
   }
 
   const start = new Date(training.start_at);
@@ -232,7 +240,7 @@ async function unregister(userId, trainingId, actorId = null, forCamp) {
   }
   const count = await TrainingRegistration.count({
     where: { training_id: trainingId },
-    include: [{ model: TrainingRole, where: { alias: 'PARTICIPANT' } }],
+    include: [{ model: TrainingRole, where: { alias: roleAlias } }],
   });
   if (!training || !trainingService.isRegistrationOpen(training, count)) {
     throw new ServiceError('registration_closed');
@@ -254,6 +262,7 @@ async function add(trainingId, userId, roleId, actorId) {
   const [training, user, role] = await Promise.all([
     Training.findByPk(trainingId, {
       include: [
+        { model: TrainingType },
         { model: TrainingRegistration },
         { model: Ground, include: [Address] },
         { model: Season, where: { active: true }, required: true },
@@ -265,11 +274,17 @@ async function add(trainingId, userId, roleId, actorId) {
   if (!training) throw new ServiceError('training_not_found', 404);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('training_role_not_found', 404);
+  let finalRole = role;
   if (!hasRefereeRole(user.Roles) && role.alias !== 'TEACHER') {
     throw new ServiceError('user_not_referee');
   }
+  if (!training.TrainingType?.for_camp && role.alias !== 'TEACHER') {
+    finalRole = await TrainingRole.findOne({ where: { alias: 'LISTENER' } });
+    if (!finalRole) throw new ServiceError('training_role_not_found', 404);
+    roleId = finalRole.id;
+  }
 
-  if (role.alias === 'TEACHER') {
+  if (finalRole.alias === 'TEACHER') {
     const existingTeacher = training.TrainingRegistrations.find(
       (r) => r.TrainingRole?.alias === 'TEACHER' && r.user_id !== userId
     );
@@ -279,7 +294,7 @@ async function add(trainingId, userId, roleId, actorId) {
   }
   await upsertRegistration(trainingId, userId, roleId, actorId);
   await training.update({ attendance_marked: false, updated_by: actorId });
-  await emailService.sendTrainingRegistrationEmail(user, training, role);
+  await emailService.sendTrainingRegistrationEmail(user, training, finalRole);
 }
 
 async function updateRole(trainingId, userId, roleId, actorId) {
@@ -421,10 +436,11 @@ async function listUpcomingByUser(userId, options = {}, forCamp) {
   );
   return {
     rows: mine.map((t) => {
-      const participantRegs = t.TrainingRegistrations.filter(
-        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      const roleAlias = forCamp ? 'PARTICIPANT' : 'LISTENER';
+      const relevantRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === roleAlias
       );
-      const registeredCount = participantRegs.length;
+      const registeredCount = relevantRegs.length;
       const plain = t.get();
       const available =
         typeof plain.capacity === 'number'
@@ -492,10 +508,11 @@ async function listPastByUser(userId, options = {}, forCamp, courseId) {
   );
   return {
     rows: mine.map((t) => {
-      const participantRegs = t.TrainingRegistrations.filter(
-        (r) => r.TrainingRole?.alias === 'PARTICIPANT'
+      const roleAlias = forCamp ? 'PARTICIPANT' : 'LISTENER';
+      const relevantRegs = t.TrainingRegistrations.filter(
+        (r) => r.TrainingRole?.alias === roleAlias
       );
-      const registeredCount = participantRegs.length;
+      const registeredCount = relevantRegs.length;
       const plain = t.get();
       const available =
         typeof plain.capacity === 'number'
