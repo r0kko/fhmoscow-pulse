@@ -14,7 +14,6 @@ const modalRef = ref(null);
 let modal;
 
 const local = reactive({
-  search: '',
   number: '',
   signType: '',
   status: '',
@@ -24,7 +23,14 @@ const local = reactive({
 });
 
 function open() {
-  Object.assign(local, props.filters);
+  Object.assign(local, {
+    number: props.filters.number,
+    signType: props.filters.signType,
+    status: props.filters.status,
+    docType: props.filters.docType,
+    dateFrom: props.filters.dateFrom,
+    dateTo: props.filters.dateTo,
+  });
   modal.show();
 }
 
@@ -58,16 +64,6 @@ defineExpose({ open });
           ></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="f-recipient" class="form-label">Получатель</label>
-            <input
-              id="f-recipient"
-              v-model="local.search"
-              type="search"
-              class="form-control"
-              placeholder="ФИО"
-            />
-          </div>
           <div class="mb-3">
             <label for="f-number" class="form-label">Номер</label>
             <input

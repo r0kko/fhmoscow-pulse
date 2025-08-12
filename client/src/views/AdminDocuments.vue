@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
@@ -75,6 +75,11 @@ onMounted(() => {
   loadDocuments();
   loadUsers();
 });
+
+watch(
+  () => filters.search,
+  () => localStorage.setItem('adminDocFilters', JSON.stringify(filters))
+);
 
 function applyFilters(newFilters) {
   Object.assign(filters, newFilters);
@@ -235,7 +240,13 @@ function openUpload(doc) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
-            <div class="d-flex justify-content-end mb-3">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <input
+                v-model="filters.search"
+                type="search"
+                class="form-control"
+                placeholder="Поиск по получателю"
+              />
               <button class="btn btn-outline-secondary" @click="openFilters">
                 <i class="bi bi-funnel" aria-hidden="true"></i>
                 <span class="visually-hidden">Фильтры</span>
