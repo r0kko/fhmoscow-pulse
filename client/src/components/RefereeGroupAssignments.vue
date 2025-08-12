@@ -237,7 +237,7 @@ defineExpose({ refresh });
                 <th class="text-center">Дата рождения</th>
                 <th class="text-center">Группа</th>
                 <th class="text-center sortable" @click="toggleSort">
-                  Тренировки
+                  Мероприятия
                   <i
                     :class="[
                       sortOrder === 'asc'

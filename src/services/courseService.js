@@ -123,6 +123,7 @@ async function getUserWithCourse(userId) {
 }
 
 async function getTrainingStats(userId, courseId) {
+  const { Op } = await import('sequelize');
   const [visited, total] = await Promise.all([
     TrainingRegistration.count({
       where: { user_id: userId, present: true },
@@ -130,6 +131,7 @@ async function getTrainingStats(userId, courseId) {
         {
           model: Training,
           required: true,
+          where: { start_at: { [Op.lte]: new Date() } },
           include: [
             {
               model: Course,

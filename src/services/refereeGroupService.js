@@ -118,6 +118,7 @@ async function listReferees(options = {}) {
 }
 
 async function getTrainingStats(userId, groupId, seasonId) {
+  const { Op } = await import('sequelize');
   const [visited, total] = await Promise.all([
     TrainingRegistration.count({
       where: { user_id: userId, present: true },
@@ -125,7 +126,7 @@ async function getTrainingStats(userId, groupId, seasonId) {
         {
           model: Training,
           required: true,
-          where: { season_id: seasonId },
+          where: { season_id: seasonId, start_at: { [Op.lte]: new Date() } },
           include: [
             {
               model: RefereeGroup,

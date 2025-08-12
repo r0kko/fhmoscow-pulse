@@ -98,12 +98,14 @@ test('removeUser destroys link when exists', async () => {
   expect(userCourseDestroyMock).toHaveBeenCalled();
 });
 
-test('getTrainingStats filters non-camp trainings', async () => {
+test('getTrainingStats filters past non-camp trainings', async () => {
   regCountMock.mockResolvedValue(1);
   trainingCountMock.mockResolvedValue(2);
   await service.getTrainingStats('u1', 'c1');
-  const regInclude = regCountMock.mock.calls[0][0].include[0].include;
+  const regCall = regCountMock.mock.calls[0][0];
+  const regInclude = regCall.include[0].include;
   expect(regInclude.some((i) => i.where?.for_camp === false)).toBe(true);
+  expect(regCall.include[0].where).toHaveProperty('start_at');
   const totalInclude = trainingCountMock.mock.calls[0][0].include;
   expect(totalInclude.some((i) => i.where?.for_camp === false)).toBe(true);
 });
