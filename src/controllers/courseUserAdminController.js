@@ -18,12 +18,21 @@ export default {
         limit: 1000,
         includeCourse: true,
       });
-      return res.json({
-        users: rows.map((u) => ({
-          user: userMapper.toPublic(u),
-          course: courseMapper.toPublic(u.UserCourse?.Course),
-        })),
-      });
+      const users = await Promise.all(
+        rows.map(async (u) => {
+          const course = u.UserCourse?.Course;
+          let stats = { visited: 0, total: 0 };
+          if (course) {
+            stats = await courseService.getTrainingStats(u.id, course.id);
+          }
+          return {
+            user: userMapper.toPublic(u),
+            course: courseMapper.toPublic(course),
+            training_stats: stats,
+          };
+        })
+      );
+      return res.json({ users });
     } catch (err) {
       return sendError(res, err);
     }

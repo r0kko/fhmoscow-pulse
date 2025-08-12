@@ -1,4 +1,10 @@
-import { Course, User, UserCourse } from '../models/index.js';
+import {
+  Course,
+  User,
+  UserCourse,
+  Training,
+  TrainingRegistration,
+} from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listAll(options = {}) {
@@ -115,6 +121,39 @@ async function getUserWithCourse(userId) {
   return { user, course };
 }
 
+async function getTrainingStats(userId, courseId) {
+  const [visited, total] = await Promise.all([
+    TrainingRegistration.count({
+      where: { user_id: userId, present: true },
+      include: [
+        {
+          model: Training,
+          required: true,
+          include: [
+            {
+              model: Course,
+              through: { attributes: [] },
+              where: { id: courseId },
+              required: true,
+            },
+          ],
+        },
+      ],
+    }),
+    Training.count({
+      include: [
+        {
+          model: Course,
+          through: { attributes: [] },
+          where: { id: courseId },
+          required: true,
+        },
+      ],
+    }),
+  ]);
+  return { visited, total };
+}
+
 export default {
   listAll,
   getById,
@@ -124,4 +163,5 @@ export default {
   setUserCourse,
   removeUser,
   getUserWithCourse,
+  getTrainingStats,
 };

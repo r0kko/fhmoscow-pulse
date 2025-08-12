@@ -15,6 +15,27 @@ const error = ref('');
 const courseError = ref('');
 const search = ref('');
 let searchTimeout;
+const filterRole = ref('');
+const history = ref([]);
+const historyLoading = ref(false);
+const historyError = ref('');
+const historyJudgeName = ref('');
+const historyModalRef = ref(null);
+let historyModal;
+const sortOrder = ref('desc');
+const sortedUsers = computed(() => {
+  const data = [...users.value];
+  data.sort((a, b) => {
+    const av = a.training_stats.total
+      ? a.training_stats.visited / a.training_stats.total
+      : 0;
+    const bv = b.training_stats.total
+      ? b.training_stats.visited / b.training_stats.total
+      : 0;
+    return sortOrder.value === 'asc' ? av - bv : bv - av;
+  });
+  return data;
+});
 
 const courseForm = ref({
   name: '',
@@ -73,8 +94,12 @@ async function loadUsers() {
   loadingUsers.value = true;
   try {
     const params = new URLSearchParams({ limit: 1000 });
-    params.append('role', 'REFEREE');
-    params.append('role', 'BRIGADE_REFEREE');
+    if (filterRole.value) {
+      params.append('role', filterRole.value);
+    } else {
+      params.append('role', 'REFEREE');
+      params.append('role', 'BRIGADE_REFEREE');
+    }
     if (search.value) params.append('search', search.value);
     const data = await apiFetch(`/course-users?${params.toString()}`);
     users.value = data.users.map((u) => ({
@@ -93,6 +118,8 @@ watch(search, () => {
   searchTimeout = setTimeout(loadUsers, 300);
 });
 
+watch(filterRole, loadUsers);
+
 watch(activeTab, (val) => {
   if (val === 'trainings') {
     if (!trainingTypesLoaded.value) loadTrainingTypes();
@@ -100,6 +127,9 @@ watch(activeTab, (val) => {
     loadGrounds();
     loadTeacherOptions();
     loadTrainingsAdmin();
+  } else if (val === 'assign') {
+    loadUsers();
+    loadCourses();
   }
 });
 
@@ -297,6 +327,58 @@ function formatName(u) {
   return `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.trim();
 }
 
+function formatDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}.${m}.${y}`;
+}
+
+function formatDateTimeRange(start, end) {
+  if (!start) return '';
+  const pad = (n) => (n < 10 ? '0' + n : '' + n);
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const date = `${pad(startDate.getDate())}.${pad(startDate.getMonth() + 1)}.${startDate.getFullYear()}`;
+  const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+  const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+  return `${date} ${startTime} - ${endTime}`;
+}
+
+function presenceIcon(val) {
+  if (val === true) return 'bi-check-lg text-success';
+  if (val === false) return 'bi-x-lg text-danger';
+  return 'bi-question-lg text-muted';
+}
+
+function presenceTitle(val) {
+  if (val === true) return 'Присутствовал';
+  if (val === false) return 'Отсутствовал';
+  return 'Не отмечено';
+}
+
+function toggleSort() {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
+async function openHistory(u) {
+  historyJudgeName.value = formatName(u.user);
+  history.value = [];
+  historyLoading.value = true;
+  historyError.value = '';
+  historyModal.show();
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 50 });
+    const data = await apiFetch(
+      `/course-trainings/users/${u.user.id}/history?${params}`
+    );
+    history.value = data.trainings || [];
+  } catch (e) {
+    historyError.value = e.message;
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
 function openCourseModal(course = null) {
   if (!courseModal) {
     courseModal = new Modal(courseModalRef.value);
@@ -359,6 +441,7 @@ async function deleteCourse(id) {
 }
 
 onMounted(() => {
+  historyModal = new Modal(historyModalRef.value);
   loadUsers();
   loadAllUsers();
   loadCourses();
@@ -375,6 +458,10 @@ onBeforeUnmount(() => {
   try {
     courseModal?.hide?.();
     courseModal?.dispose?.();
+  } catch {}
+  try {
+    historyModal?.hide?.();
+    historyModal?.dispose?.();
   } catch {}
 });
 </script>
@@ -402,7 +489,7 @@ onBeforeUnmount(() => {
                 :class="{ active: activeTab === 'assign' }"
                 @click="activeTab = 'assign'"
               >
-                Назначение
+                Список судей
               </button>
             </li>
             <li class="nav-item">
@@ -430,32 +517,54 @@ onBeforeUnmount(() => {
       <div v-if="activeTab === 'assign'">
         <div class="card section-card mb-3">
           <div class="card-body">
+            <h2 class="card-title h5 mb-3">Список судей</h2>
             <div class="row g-2 mb-3">
-              <div class="col-sm-6">
+              <div class="col-sm">
                 <input
                   v-model="search"
                   type="search"
                   class="form-control"
-                  placeholder="Поиск"
+                  placeholder="Поиск судьи"
                 />
+              </div>
+              <div class="col-sm">
+                <select v-model="filterRole" class="form-select">
+                  <option value="">Все роли</option>
+                  <option value="REFEREE">Судья в поле</option>
+                  <option value="BRIGADE_REFEREE">Судья в бригаде</option>
+                </select>
               </div>
             </div>
             <div v-if="loadingUsers" class="text-muted">Загрузка...</div>
             <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
             <div
-              v-else-if="users.length"
+              v-else-if="sortedUsers.length"
               class="table-responsive d-none d-sm-block"
             >
               <table class="table admin-table table-striped align-middle mb-0">
                 <thead>
                   <tr>
                     <th>ФИО</th>
+                    <th class="text-center">Дата рождения</th>
                     <th class="text-center">Курс</th>
+                    <th class="text-center sortable" @click="toggleSort">
+                      Тренировки
+                      <i
+                        :class="[
+                          sortOrder === 'asc'
+                            ? 'bi bi-caret-up-fill'
+                            : 'bi bi-caret-down-fill',
+                          'icon-brand',
+                        ]"
+                      ></i>
+                    </th>
+                    <th class="text-center">История</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="u in users" :key="u.user.id">
+                  <tr v-for="u in sortedUsers" :key="u.user.id">
                     <td>{{ formatName(u.user) }}</td>
+                    <td class="text-center">{{ formatDate(u.user.birth_date) }}</td>
                     <td class="text-center">
                       <select
                         v-model="u.course_id"
@@ -468,20 +577,38 @@ onBeforeUnmount(() => {
                         </option>
                       </select>
                     </td>
+                    <td class="text-center">
+                      {{ u.training_stats.visited }} / {{ u.training_stats.total }}
+                      <span v-if="u.training_stats.total">
+                        ({{
+                          Math.round(
+                            (u.training_stats.visited / u.training_stats.total) * 100
+                          )
+                        }}%)
+                      </span>
+                    </td>
+                    <td class="text-center">
+                      <button
+                        class="btn btn-sm btn-outline-secondary"
+                        aria-label="История посещений"
+                        @click="openHistory(u)"
+                      >
+                        <i class="bi bi-clock-history"></i>
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <p v-else-if="!users.length" class="text-muted mb-0">
-              Пользователи не найдены.
-            </p>
-            <div v-if="users.length" class="d-block d-sm-none">
-              <div v-for="u in users" :key="u.user.id" class="card mb-2">
+            <p v-else class="text-muted mb-0">Судьи не найдены.</p>
+            <div v-if="sortedUsers.length" class="d-block d-sm-none">
+              <div v-for="u in sortedUsers" :key="u.user.id" class="card mb-2">
                 <div class="card-body">
-                  <p class="mb-2 fw-semibold">{{ formatName(u.user) }}</p>
+                  <p class="mb-1 fw-semibold">{{ formatName(u.user) }}</p>
+                  <p class="mb-1 text-muted">{{ formatDate(u.user.birth_date) }}</p>
                   <select
                     v-model="u.course_id"
-                    class="form-select"
+                    class="form-select mt-1"
                     @change="setCourse(u)"
                   >
                     <option value="">Без курса</option>
@@ -489,14 +616,121 @@ onBeforeUnmount(() => {
                       {{ c.name }}
                     </option>
                   </select>
+                  <p class="mb-0 mt-1">
+                    {{ u.training_stats.visited }} / {{ u.training_stats.total }}
+                    <span v-if="u.training_stats.total">
+                      ({{
+                        Math.round(
+                          (u.training_stats.visited / u.training_stats.total) * 100
+                        )
+                      }}%)
+                    </span>
+                  </p>
+                  <div class="text-end mt-1">
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      aria-label="История посещений"
+                      @click="openHistory(u)"
+                    >
+                      <i class="bi bi-clock-history"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      ref="historyModalRef"
+      class="modal fade"
+      tabindex="-1"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title h5">
+              История посещений — {{ historyJudgeName }}
+            </h2>
+            <button
+              type="button"
+              class="btn-close"
+              aria-label="Закрыть"
+              @click="historyModal.hide()"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="historyError" class="alert alert-danger">
+              {{ historyError }}
+            </div>
+            <div v-if="historyLoading" class="text-center my-3">
+              <div class="spinner-border" role="status"></div>
+            </div>
+            <div v-if="history.length">
+              <div class="table-responsive d-none d-sm-block">
+                <table class="table table-striped align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Время</th>
+                      <th>Тренер</th>
+                      <th>Тип</th>
+                      <th>Стадион</th>
+                      <th class="text-center">Факт</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="t in history" :key="t.id">
+                      <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+                      <td>
+                        {{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}
+                      </td>
+                      <td>{{ t.type?.name }}</td>
+                      <td>{{ t.ground?.name }}</td>
+                      <td class="text-center">
+                        <i
+                          :class="presenceIcon(t.my_presence)"
+                          :title="presenceTitle(t.my_presence)"
+                        ></i>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="d-block d-sm-none">
+                <div
+                  v-for="t in history"
+                  :key="t.id"
+                  class="card training-card mb-2"
+                >
+                  <div class="card-body p-2">
+                    <p class="mb-1 fw-semibold">
+                      {{ formatDateTimeRange(t.start_at, t.end_at) }}
+                    </p>
+                    <p class="mb-1">
+                      {{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}
+                    </p>
+                    <p class="mb-1">{{ t.type?.name }}</p>
+                    <p class="mb-1">{{ t.ground?.name }}</p>
+                    <p class="mb-0 text-center">
+                      <i
+                        :class="presenceIcon(t.my_presence)"
+                        :title="presenceTitle(t.my_presence)"
+                      ></i>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p v-else-if="!historyLoading" class="text-muted mb-0">
+              История пуста.
+            </p>
           </div>
         </div>
       </div>
+    </div>
 
-      <div v-else-if="activeTab === 'courses'">
+    <div v-else-if="activeTab === 'courses'">
         <div class="card section-card mb-3">
           <div class="card-body">
             <div v-if="courseError" class="alert alert-danger mb-3">
