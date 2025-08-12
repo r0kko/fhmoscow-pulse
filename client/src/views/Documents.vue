@@ -124,9 +124,8 @@ async function submit() {
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
-                      <p class="text-muted mb-0">
-                        Дата выбора подписи:
-                        {{ formatDate(current.selectedAt) }}
+                      <p class="text-muted mb-0 small">
+                        Ожидаем Вас в офисе в будние дни с 10:00 до 17:00
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'KONTUR_SIGN'">
@@ -134,13 +133,17 @@ async function submit() {
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
                       <p class="text-muted mb-1">
-                        Дата выбора подписи:
-                        {{ formatDate(current.selectedAt) }}
-                      </p>
-                      <p class="text-muted mb-0">
                         Дата создания подписи:
                         {{ formatDate(current.signCreatedDate) }}
                       </p>
+                      <a
+                        href="https://sign.kontur.ru"
+                        target="_blank"
+                        rel="noopener"
+                        class="btn btn-sm btn-kontur mt-2"
+                      >
+                        Перейти в Контур.Сайн
+                      </a>
                     </template>
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
                       <p class="mb-2">Простая электронная подпись</p>
@@ -205,7 +208,7 @@ async function submit() {
           </div>
           <div v-else>
             <p class="mb-3">Выберите способ подписания первичных документов</p>
-            <div class="row row-cols-1 row-cols-md-2 g-3">
+            <div class="row row-cols-1 row-cols-md-2 gx-3 gy-4">
               <div v-for="t in signTypes" :key="t.alias" class="col">
                 <div class="card section-card tile fade-in h-100 shadow-sm">
                   <div class="card-body d-flex flex-column">
@@ -334,5 +337,17 @@ async function submit() {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.btn-kontur {
+  color: #fff;
+  background-color: #17b490;
+  border-color: #17b490;
+}
+.btn-kontur:hover,
+.btn-kontur:focus {
+  color: #fff;
+  background-color: #139e84;
+  border-color: #139e84;
 }
 </style>
