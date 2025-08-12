@@ -38,6 +38,9 @@ async function listAll(options = {}) {
   if (options.type_id) {
     where.type_id = options.type_id;
   }
+  if (options.course_id === 'none') {
+    where['$Courses.id$'] = null;
+  }
   const include = [
     {
       model: TrainingType,
@@ -55,7 +58,10 @@ async function listAll(options = {}) {
     {
       model: Course,
       through: { attributes: [] },
-      ...(options.course_id ? { where: { id: options.course_id } } : {}),
+      required: options.course_id ? options.course_id !== 'none' : false,
+      ...(options.course_id && options.course_id !== 'none'
+        ? { where: { id: options.course_id } }
+        : {}),
     },
     { model: TrainingRegistration, include: [User, TrainingRole] },
   ];
@@ -104,6 +110,9 @@ async function listUpcoming(options = {}) {
   if (options.type_id) {
     where.type_id = options.type_id;
   }
+  if (options.course_id === 'none') {
+    where['$Courses.id$'] = null;
+  }
   const include = [
     {
       model: TrainingType,
@@ -121,7 +130,10 @@ async function listUpcoming(options = {}) {
     {
       model: Course,
       through: { attributes: [] },
-      ...(options.course_id ? { where: { id: options.course_id } } : {}),
+      required: options.course_id ? options.course_id !== 'none' : false,
+      ...(options.course_id && options.course_id !== 'none'
+        ? { where: { id: options.course_id } }
+        : {}),
     },
     { model: TrainingRegistration, include: [User, TrainingRole] },
   ];
@@ -170,6 +182,9 @@ async function listPast(options = {}) {
   if (options.type_id) {
     where.type_id = options.type_id;
   }
+  if (options.course_id === 'none') {
+    where['$Courses.id$'] = null;
+  }
   const include = [
     {
       model: TrainingType,
@@ -187,7 +202,10 @@ async function listPast(options = {}) {
     {
       model: Course,
       through: { attributes: [] },
-      ...(options.course_id ? { where: { id: options.course_id } } : {}),
+      required: options.course_id ? options.course_id !== 'none' : false,
+      ...(options.course_id && options.course_id !== 'none'
+        ? { where: { id: options.course_id } }
+        : {}),
     },
     { model: TrainingRegistration, include: [User, TrainingRole] },
   ];

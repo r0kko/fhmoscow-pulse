@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
                     <th class="text-center">Дата рождения</th>
                     <th class="text-center">Курс</th>
                     <th class="text-center sortable" @click="toggleSort">
-                      Тренировки
+                      Мероприятия
                       <i
                         :class="[
                           sortOrder === 'asc'
@@ -941,6 +941,7 @@ onBeforeUnmount(() => {
               <div class="col-md-4">
                 <select v-model="filter.course" class="form-select">
                   <option value="">Все курсы</option>
+                  <option value="none">Без курса</option>
                   <option v-for="c in courses" :key="c.id" :value="c.id">
                     {{ c.name }}
                   </option>

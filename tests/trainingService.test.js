@@ -204,6 +204,15 @@ test('listAll returns trainings ordered by start date', async () => {
   );
 });
 
+test('listAll filters trainings without course', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listAll({ course_id: 'none' });
+  const args = findAndCountAllMock.mock.calls[0][0];
+  expect(args.where['$Courses.id$']).toBeNull();
+  const courseInclude = args.include.filter((i) => i.through)[1];
+  expect(courseInclude.required).toBe(false);
+});
+
 test('setAttendanceMarked updates for admin', async () => {
   findByPkMock.mockResolvedValue({ update: updateMock });
   findUserMock.mockResolvedValue({ Roles: [{ alias: 'ADMIN' }] });
