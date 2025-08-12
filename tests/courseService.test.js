@@ -44,6 +44,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findOne: userCourseFindOneMock,
     create: userCourseCreateMock,
   },
+  Training: {},
+  TrainingRegistration: {},
 }));
 
 const { default: service } = await import('../src/services/courseService.js');
