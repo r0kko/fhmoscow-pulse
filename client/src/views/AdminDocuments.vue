@@ -155,7 +155,11 @@ async function requestSignature(doc) {
                     <td>{{ formatDateTime(d.documentDate) }}</td>
                     <td>
                       <button
-                        v-if="['HANDWRITTEN', 'KONTUR_SIGN'].includes(d.signType?.alias) && d.status?.alias === 'CREATED'"
+                        v-if="
+                          ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                            d.signType?.alias
+                          ) && d.status?.alias === 'CREATED'
+                        "
                         class="btn btn-sm btn-primary"
                         :disabled="actionId === d.id"
                         @click="requestSignature(d)"
@@ -170,7 +174,9 @@ async function requestSignature(doc) {
                     </td>
                   </tr>
                   <tr v-if="!documents.length">
-                    <td colspan="6" class="text-center">Документы отсутствуют</td>
+                    <td colspan="6" class="text-center">
+                      Документы отсутствуют
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -183,11 +189,19 @@ async function requestSignature(doc) {
                     {{ d.recipient.lastName }} {{ d.recipient.firstName }}
                     {{ d.recipient.patronymic }}
                   </p>
-                  <p class="mb-1 small">Подпись: {{ d.signType?.name || '—' }}</p>
+                  <p class="mb-1 small">
+                    Подпись: {{ d.signType?.name || '—' }}
+                  </p>
                   <p class="mb-1 small">Статус: {{ d.status?.name || '—' }}</p>
-                  <p class="mb-2 small">Дата: {{ formatDateTime(d.documentDate) }}</p>
+                  <p class="mb-2 small">
+                    Дата: {{ formatDateTime(d.documentDate) }}
+                  </p>
                   <button
-                    v-if="['HANDWRITTEN', 'KONTUR_SIGN'].includes(d.signType?.alias) && d.status?.alias === 'CREATED'"
+                    v-if="
+                      ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                        d.signType?.alias
+                      ) && d.status?.alias === 'CREATED'
+                    "
                     class="btn btn-sm btn-primary"
                     :disabled="actionId === d.id"
                     @click="requestSignature(d)"
