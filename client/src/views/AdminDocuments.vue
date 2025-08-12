@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
+import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -12,10 +13,16 @@ const documents = ref([]);
 const documentsLoading = ref(false);
 const documentsError = ref('');
 
-const search = ref('');
-const signTypeFilter = ref('');
-const statusFilter = ref('');
-const numberSearch = ref('');
+const filters = reactive({
+  search: '',
+  number: '',
+  signType: '',
+  status: '',
+  docType: '',
+  dateFrom: '',
+  dateTo: '',
+});
+const filtersModal = ref(null);
 
 const uploadModal = ref(null);
 
@@ -63,9 +70,20 @@ async function loadUsers() {
 }
 
 onMounted(() => {
+  const saved = localStorage.getItem('adminDocFilters');
+  if (saved) Object.assign(filters, JSON.parse(saved));
   loadDocuments();
   loadUsers();
 });
+
+function applyFilters(newFilters) {
+  Object.assign(filters, newFilters);
+  localStorage.setItem('adminDocFilters', JSON.stringify(filters));
+}
+
+function openFilters() {
+  filtersModal.value.open();
+}
 
 function setTab(value) {
   tab.value = value;
@@ -106,20 +124,32 @@ async function regenerateDocument(doc) {
 
 const filteredDocuments = computed(() => {
   return documents.value.filter((d) => {
-    if (search.value) {
-      const q = search.value.toLowerCase();
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
       const fio =
         `${d.recipient.lastName} ${d.recipient.firstName} ${d.recipient.patronymic}`.toLowerCase();
       if (!fio.includes(q)) return false;
     }
-    if (numberSearch.value && !String(d.number).includes(numberSearch.value)) {
+    if (filters.number && !String(d.number).includes(filters.number)) {
       return false;
     }
-    if (signTypeFilter.value && d.signType?.alias !== signTypeFilter.value) {
+    if (filters.signType && d.signType?.alias !== filters.signType) {
       return false;
     }
-    if (statusFilter.value && d.status?.alias !== statusFilter.value) {
+    if (filters.status && d.status?.alias !== filters.status) {
       return false;
+    }
+    if (filters.docType && d.documentType?.alias !== filters.docType) {
+      return false;
+    }
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom);
+      if (new Date(d.documentDate) < from) return false;
+    }
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo);
+      to.setDate(to.getDate() + 1);
+      if (new Date(d.documentDate) >= to) return false;
     }
     return true;
   });
@@ -137,6 +167,15 @@ const statuses = computed(() => {
   const map = new Map();
   documents.value.forEach((d) => {
     if (d.status?.alias) map.set(d.status.alias, d.status.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+const docTypes = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.documentType?.alias)
+      map.set(d.documentType.alias, d.documentType.name);
   });
   return Array.from(map, ([alias, name]) => ({ alias, name }));
 });
@@ -196,59 +235,11 @@ function openUpload(doc) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
-            <div
-              class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 mb-3 align-items-end"
-            >
-              <div class="col">
-                <label for="doc-search" class="form-label">Получатель</label>
-                <input
-                  id="doc-search"
-                  v-model="search"
-                  type="search"
-                  class="form-control"
-                  placeholder="ФИО"
-                />
-              </div>
-              <div class="col">
-                <label for="number-search" class="form-label">Номер</label>
-                <input
-                  id="number-search"
-                  v-model="numberSearch"
-                  type="search"
-                  class="form-control"
-                  placeholder="25.08/1"
-                />
-              </div>
-              <div class="col">
-                <label for="sign-type" class="form-label">Тип подписи</label>
-                <select
-                  id="sign-type"
-                  v-model="signTypeFilter"
-                  class="form-select"
-                >
-                  <option value="">Все</option>
-                  <option
-                    v-for="st in signTypes"
-                    :key="st.alias"
-                    :value="st.alias"
-                  >
-                    {{ st.name }}
-                  </option>
-                </select>
-              </div>
-              <div class="col">
-                <label for="status-filter" class="form-label">Статус</label>
-                <select
-                  id="status-filter"
-                  v-model="statusFilter"
-                  class="form-select"
-                >
-                  <option value="">Все</option>
-                  <option v-for="s in statuses" :key="s.alias" :value="s.alias">
-                    {{ s.name }}
-                  </option>
-                </select>
-              </div>
+            <div class="d-flex justify-content-end mb-3">
+              <button class="btn btn-outline-secondary" @click="openFilters">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                <span class="visually-hidden">Фильтры</span>
+              </button>
             </div>
             <div class="table-responsive d-none d-sm-block">
               <table class="table mb-0">
@@ -484,6 +475,14 @@ function openUpload(doc) {
     </div>
   </div>
   <DocumentUploadModal ref="uploadModal" />
+  <DocumentFiltersModal
+    ref="filtersModal"
+    :filters="filters"
+    :sign-types="signTypes"
+    :statuses="statuses"
+    :doc-types="docTypes"
+    @apply="applyFilters"
+  />
 </template>
 
 <style scoped>
