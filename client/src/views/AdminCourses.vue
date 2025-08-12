@@ -8,7 +8,7 @@ import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 const activeTab = ref('assign');
 
 const users = ref([]); // referees with course assignments
-const allUsers = ref([]); // for responsible selector
+const allUsers = ref([]); // for responsible selector and teacher dropdown
 const courses = ref([]);
 const loadingUsers = ref(false);
 const error = ref('');
@@ -89,6 +89,18 @@ const pastTrainings = computed(() => {
 
 function fullName(u) {
   return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
+}
+
+function shortName(u) {
+  return [
+    u.last_name,
+    [u.first_name, u.patronymic]
+      .filter(Boolean)
+      .map((n) => `${n[0]}.`)
+      .join(' '),
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 async function loadUsers() {
@@ -222,8 +234,8 @@ async function loadTeacherRole() {
 
 async function loadTeacherOptions() {
   try {
-    const data = await apiFetch('/users?limit=1000&role=TEACHER');
-    teachers.value = data.users;
+    if (!allUsers.value.length) await loadAllUsers();
+    teachers.value = allUsers.value;
   } catch (_) {
     teachers.value = [];
   }
@@ -972,7 +984,7 @@ onBeforeUnmount(() => {
                     :key="t.id"
                     :value="t.id"
                   >
-                    {{ fullName(t) }}
+                    {{ shortName(t) }}
                   </option>
                 </select>
               </div>
@@ -1028,7 +1040,7 @@ onBeforeUnmount(() => {
                           :key="u.id"
                           :value="u.id"
                         >
-                          {{ fullName(u) }}
+                          {{ shortName(u) }}
                         </option>
                       </select>
                     </td>
@@ -1107,7 +1119,7 @@ onBeforeUnmount(() => {
                         :key="u.id"
                         :value="u.id"
                       >
-                        {{ fullName(u) }}
+                        {{ shortName(u) }}
                       </option>
                     </select>
                     <small class="text-muted d-block"
@@ -1192,7 +1204,7 @@ onBeforeUnmount(() => {
                           :key="u.id"
                           :value="u.id"
                         >
-                          {{ fullName(u) }}
+                          {{ shortName(u) }}
                         </option>
                       </select>
                     </td>
@@ -1271,7 +1283,7 @@ onBeforeUnmount(() => {
                         :key="u.id"
                         :value="u.id"
                       >
-                        {{ fullName(u) }}
+                        {{ shortName(u) }}
                       </option>
                     </select>
                     <small class="text-muted d-block"

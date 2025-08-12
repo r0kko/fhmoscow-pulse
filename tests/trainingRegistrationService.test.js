@@ -75,6 +75,7 @@ beforeEach(() => {
   findUserMock.mockReset();
   findRegMock.mockReset();
   destroyMock.mockReset();
+  findTrainingRoleMock.mockReset();
   findRoleMock.mockReset();
   countMock.mockReset();
   updateTrainingMock.mockReset();
@@ -256,6 +257,24 @@ test('add replaces existing teacher', async () => {
   expect(createRegMock).toHaveBeenCalledWith({
     training_id: 't1',
     user_id: 'uNew',
+    training_role_id: 'tRole',
+    created_by: 'admin',
+    updated_by: 'admin',
+  });
+});
+
+test('add allows non-referee as teacher', async () => {
+  findTrainingMock.mockResolvedValue({
+    ...training,
+    TrainingRegistrations: [],
+    update: updateTrainingMock,
+  });
+  findUserMock.mockResolvedValue({ id: 'u3', email: 'e3', Roles: [] });
+  findTrainingRoleMock.mockResolvedValueOnce({ id: 'tRole', alias: 'TEACHER' });
+  await service.add('t1', 'u3', 'tRole', 'admin');
+  expect(createRegMock).toHaveBeenCalledWith({
+    training_id: 't1',
+    user_id: 'u3',
     training_role_id: 'tRole',
     created_by: 'admin',
     updated_by: 'admin',

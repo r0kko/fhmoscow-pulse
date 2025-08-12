@@ -265,7 +265,7 @@ async function add(trainingId, userId, roleId, actorId) {
   if (!training) throw new ServiceError('training_not_found', 404);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('training_role_not_found', 404);
-  if (!hasRefereeRole(user.Roles)) {
+  if (!hasRefereeRole(user.Roles) && role.alias !== 'TEACHER') {
     throw new ServiceError('user_not_referee');
   }
 
