@@ -23,7 +23,6 @@ import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
 import AdminCourseTrainingRegistrations from './views/AdminCourseTrainingRegistrations.vue';
 import AdminDocuments from './views/AdminDocuments.vue';
 import AdminNormatives from './views/AdminNormatives.vue';
-import AdminDocumentsSignatures from './views/AdminDocumentsSignatures.vue';
 import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
@@ -141,12 +140,8 @@ const routes = [
   },
   {
     path: '/admin/documents-signatures',
-    component: AdminDocumentsSignatures,
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: true,
-      title: 'Документы и подписи',
-    },
+    redirect: { path: '/admin/documents', query: { tab: 'signatures' } },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/admin/courses',

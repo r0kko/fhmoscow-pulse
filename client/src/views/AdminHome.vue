@@ -4,11 +4,6 @@ import { RouterLink } from 'vue-router';
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
   { title: 'Документы', icon: 'bi-file-earmark', to: '/admin/documents' },
-  {
-    title: 'Документы и подписи',
-    icon: 'bi-pencil-square',
-    to: '/admin/documents-signatures',
-  },
   { title: 'Медицина', icon: 'bi-file-earmark-medical', to: '/admin/medical' },
   { title: 'Обращения', icon: 'bi-chat-dots', to: '/admin/tickets' },
 ];
