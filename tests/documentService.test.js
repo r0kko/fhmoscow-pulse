@@ -81,6 +81,7 @@ test('create sends document created email to recipient', async () => {
     id: 'd1',
     name: 'Doc',
     recipient_id: 'u1',
+    number: '25.08/000001',
   });
 
   await service.create(
@@ -90,7 +91,7 @@ test('create sends document created email to recipient', async () => {
 
   expect(sendCreatedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1', name: 'Doc' })
+    expect.objectContaining({ id: 'd1', name: 'Doc', number: '25.08/000001' })
   );
 });
 
@@ -100,6 +101,7 @@ test('sign sends document signed email', async () => {
     sign_type_id: 's1',
     recipient_id: 'u1',
     update: jest.fn(),
+    number: '25.08/000001',
   });
   countMock.mockResolvedValue(0);
   findOneSignMock.mockResolvedValue(null);
@@ -110,13 +112,18 @@ test('sign sends document signed email', async () => {
 
   expect(sendSignedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1' })
+    expect.objectContaining({ id: 'd1', number: '25.08/000001' })
   );
 });
 
 test('create skips email when recipient missing address', async () => {
   findUserByPkMock.mockResolvedValueOnce({ id: 'u1' });
-  createMock.mockResolvedValueOnce({ id: 'd2', name: 'Doc2', recipient_id: 'u1' });
+  createMock.mockResolvedValueOnce({
+    id: 'd2',
+    name: 'Doc2',
+    recipient_id: 'u1',
+    number: '25.08/000002',
+  });
 
   await service.create(
     { recipientId: 'u1', documentTypeId: 't1', signTypeId: 's1', name: 'Doc2' },
@@ -138,13 +145,14 @@ test('requestSignature sends awaiting signature email', async () => {
     },
     DocumentStatus: { alias: 'CREATED' },
     update: jest.fn(),
+    number: '25.08/000003',
   });
 
   await service.requestSignature('d1', 'adm');
 
   expect(sendAwaitingEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1' })
+    expect.objectContaining({ id: 'd1', number: '25.08/000003' })
   );
 });
 
@@ -156,6 +164,7 @@ test('uploadSignedFile updates document and notifies recipient', async () => {
     recipient_id: 'u1',
     file_id: 'old',
     update: jest.fn(),
+    number: '25.08/000004',
   });
   uploadDocumentMock.mockResolvedValue({ id: 'new' });
   getDownloadUrlMock.mockResolvedValue('url');
@@ -166,6 +175,6 @@ test('uploadSignedFile updates document and notifies recipient', async () => {
   expect(removeFileMock).toHaveBeenCalledWith('old');
   expect(sendSignedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1' })
+    expect.objectContaining({ id: 'd1', number: '25.08/000004' })
   );
 });

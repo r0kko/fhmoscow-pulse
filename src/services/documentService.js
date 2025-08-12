@@ -68,6 +68,7 @@ async function listByUser(userId) {
   return Promise.all(
     docs.map(async (d) => ({
       id: d.id,
+      number: d.number,
       name: d.name,
       description: d.description,
       documentDate: d.document_date,
@@ -117,6 +118,7 @@ async function listAll() {
   return Promise.all(
     docs.map(async (d) => ({
       id: d.id,
+      number: d.number,
       name: d.name,
       documentDate: d.document_date,
       documentType: d.DocumentType

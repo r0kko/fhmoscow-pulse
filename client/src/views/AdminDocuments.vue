@@ -266,6 +266,7 @@ function openUpload(doc) {
               <table class="table mb-0">
                 <thead>
                   <tr>
+                    <th>Номер</th>
                     <th>Документ</th>
                     <th>Получатель</th>
                     <th>Тип подписи</th>
@@ -276,6 +277,7 @@ function openUpload(doc) {
                 </thead>
                 <tbody>
                   <tr v-for="d in filteredDocuments" :key="d.id">
+                    <td>{{ d.number }}</td>
                     <td>{{ d.name }}</td>
                     <td>
                       {{ d.recipient.lastName }} {{ d.recipient.firstName }}
@@ -350,7 +352,7 @@ function openUpload(doc) {
                     </td>
                   </tr>
                   <tr v-if="!filteredDocuments.length">
-                    <td colspan="6" class="text-center">
+                    <td colspan="7" class="text-center">
                       Документы отсутствуют
                     </td>
                   </tr>
@@ -361,6 +363,7 @@ function openUpload(doc) {
               <div v-for="d in filteredDocuments" :key="d.id" class="card mb-2">
                 <div class="card-body p-2">
                   <h3 class="h6 mb-1">{{ d.name }}</h3>
+                  <p class="mb-1 small">№ {{ d.number }}</p>
                   <p class="mb-1 small">
                     {{ d.recipient.lastName }} {{ d.recipient.firstName }}
                     {{ d.recipient.patronymic }}
