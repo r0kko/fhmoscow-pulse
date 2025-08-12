@@ -36,10 +36,20 @@ async function updateForUser(userId, id, data, actorId) {
   return vehicle;
 }
 
-async function removeForUser(userId, id) {
+async function removeForUser(userId, id, actorId) {
   const vehicle = await Vehicle.findOne({ where: { id, user_id: userId } });
   if (!vehicle) throw new ServiceError('vehicle_not_found', 404);
+  const wasActive = vehicle.is_active;
   await vehicle.destroy();
+  if (wasActive) {
+    const next = await Vehicle.findOne({
+      where: { user_id: userId },
+      order: [['created_at', 'ASC']],
+    });
+    if (next) {
+      await next.update({ is_active: true, updated_by: actorId });
+    }
+  }
 }
 
 export default { listForUser, createForUser, updateForUser, removeForUser };

@@ -564,6 +564,7 @@ onMounted(() => {
                                 @change="setActive(v.id)"
                               />
                               <label
+                                v-if="v.is_active"
                                 class="form-check-label ms-1"
                                 :for="`vehicle-active-${v.id}`"
                               >
