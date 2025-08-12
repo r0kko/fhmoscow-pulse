@@ -117,6 +117,12 @@ export async function findOrganizationByInn(inn) {
   return data.suggestions[0];
 }
 
+export async function cleanVehicle(vehicle) {
+  if (!vehicle) return null;
+  const data = await request('/clean/vehicle', [vehicle], true, CLEANER_BASE);
+  return Array.isArray(data) ? data[0] : null;
+}
+
 export async function findPartyByInnWithStatus(inn) {
   if (!inn) return { data: null, status: 400 };
   const { data, status } = await requestRaw('/findById/party', {
@@ -138,4 +144,5 @@ export default {
   findPartyByInn,
   findPartyByInnWithStatus,
   findOrganizationByInn,
+  cleanVehicle,
 };

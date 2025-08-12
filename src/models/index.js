@@ -19,6 +19,7 @@ import Passport from './passport.js';
 import Inn from './inn.js';
 import Snils from './snils.js';
 import BankAccount from './bankAccount.js';
+import Vehicle from './vehicle.js';
 import MedicalCertificate from './medicalCertificate.js';
 import File from './file.js';
 import MedicalCertificateType from './medicalCertificateType.js';
@@ -89,6 +90,8 @@ User.hasOne(Snils, { foreignKey: 'user_id' });
 Snils.belongsTo(User, { foreignKey: 'user_id' });
 User.hasOne(BankAccount, { foreignKey: 'user_id' });
 BankAccount.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(Vehicle, { foreignKey: 'user_id' });
+Vehicle.belongsTo(User, { foreignKey: 'user_id' });
 User.hasOne(MedicalCertificate, { foreignKey: 'user_id' });
 MedicalCertificate.belongsTo(User, { foreignKey: 'user_id' });
 MedicalCertificate.hasMany(MedicalCertificateFile, {
@@ -362,6 +365,7 @@ export {
   Inn,
   Snils,
   BankAccount,
+  Vehicle,
   TaxationType,
   Taxation,
   ExternalSystem,

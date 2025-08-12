@@ -107,3 +107,16 @@ export async function findOrganizationByInn(inn) {
     return null;
   }
 }
+
+export async function cleanVehicle(vehicle) {
+  if (!vehicle) return null;
+  try {
+    const { result } = await apiFetch('/dadata/clean-vehicle', {
+      method: 'POST',
+      body: JSON.stringify({ vehicle }),
+    });
+    return result;
+  } catch (_err) {
+    return null;
+  }
+}

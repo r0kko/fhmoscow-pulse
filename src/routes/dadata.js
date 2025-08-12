@@ -109,4 +109,17 @@ router.post('/find-bank', auth, controller.findBank);
  */
 router.post('/find-organization', auth, controller.findOrganization);
 
+/**
+ * @swagger
+ * /dadata/clean-vehicle:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Standardize vehicle brand and model
+ *     responses:
+ *       200:
+ *         description: Standardized object
+ */
+router.post('/clean-vehicle', auth, controller.cleanVehicle);
+
 export default router;
