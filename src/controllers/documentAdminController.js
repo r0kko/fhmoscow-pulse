@@ -48,4 +48,15 @@ export default {
       sendError(res, err);
     }
   },
+  async regenerate(req, res) {
+    try {
+      const result = await documentService.regenerate(
+        req.params.id,
+        req.user.id
+      );
+      res.json(result);
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
 };

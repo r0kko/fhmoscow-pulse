@@ -36,6 +36,8 @@ router.post(
   controller.requestSignature
 );
 
+router.post('/:id/regenerate', auth, authorize('ADMIN'), controller.regenerate);
+
 router.post(
   '/:id/file',
   auth,
