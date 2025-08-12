@@ -14,29 +14,15 @@
       />
       <label :for="id">{{ label }}</label>
     </div>
-    <button
-      v-if="copyable && value"
-      type="button"
-      class="btn btn-outline-secondary"
-      title="Скопировать"
-      aria-label="Скопировать"
-      data-bs-toggle="tooltip"
-      @click="$emit('copy')"
-    >
-      <i class="bi bi-clipboard"></i>
-    </button>
   </div>
 </template>
 
 <script setup>
-defineEmits(['copy']);
-
 defineProps({
   id: { type: String, required: true },
   label: { type: String, required: true },
   icon: { type: String, default: null },
   value: { type: [String, Number], default: '' },
   placeholder: { type: String, default: '—' },
-  copyable: { type: Boolean, default: false },
 });
 </script>
