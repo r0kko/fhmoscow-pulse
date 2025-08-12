@@ -124,6 +124,10 @@ async function submit() {
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
+                      <p class="text-muted mb-1">
+                        Дата выбора подписи:
+                        {{ formatDate(current.selectedAt) }}
+                      </p>
                       <p class="text-muted mb-0 small">
                         Ожидаем Вас в офисе в будние дни с 10:00 до 17:00
                       </p>
@@ -133,8 +137,8 @@ async function submit() {
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
                       <p class="text-muted mb-1">
-                        Дата создания подписи:
-                        {{ formatDate(current.signCreatedDate) }}
+                        Дата выбора подписи:
+                        {{ formatDate(current.selectedAt) }}
                       </p>
                       <a
                         href="https://sign.kontur.ru"
@@ -172,6 +176,7 @@ async function submit() {
                           <tr>
                             <th scope="col">Название</th>
                             <th scope="col">Дата</th>
+                            <th scope="col">Тип подписи</th>
                             <th scope="col">Статус</th>
                             <th scope="col" class="text-end">Файл</th>
                           </tr>
@@ -180,6 +185,7 @@ async function submit() {
                           <tr v-for="d in documents" :key="d.id">
                             <td>{{ d.name }}</td>
                             <td>{{ formatDate(d.documentDate) }}</td>
+                            <td>{{ d.signType?.name || '-' }}</td>
                             <td>{{ d.status?.name || '-' }}</td>
                             <td class="text-end">
                               <a
@@ -194,7 +200,7 @@ async function submit() {
                             </td>
                           </tr>
                           <tr v-if="!documents.length">
-                            <td colspan="4" class="text-center text-muted">
+                            <td colspan="5" class="text-center text-muted">
                               Документы отсутствуют
                             </td>
                           </tr>
