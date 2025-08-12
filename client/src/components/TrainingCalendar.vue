@@ -62,6 +62,13 @@ function formatTime(dateStr) {
   });
 }
 
+function teacherName(t) {
+  if (!t.teacher) return '';
+  return [t.teacher.last_name, t.teacher.first_name, t.teacher.patronymic]
+    .filter(Boolean)
+    .join(' ');
+}
+
 function isDisabled(t) {
   const key = toDayKey(t.start_at);
   return registeredDates.value.has(key) && !t.registered;
@@ -94,7 +101,10 @@ function canCancel(t) {
                 >
                 <span class="ms-2">{{ t.ground?.name }}</span>
               </div>
-              <div class="text-muted small">{{ t.type?.name }}</div>
+              <div class="text-muted small">
+                {{ t.type?.name
+                }}<span v-if="t.teacher"> · {{ teacherName(t) }}</span>
+              </div>
               <div v-if="t.type?.online && t.url" class="mb-1">
                 <a :href="withHttp(t.url)" target="_blank" rel="noopener"
                   >Подключиться по ссылке</a

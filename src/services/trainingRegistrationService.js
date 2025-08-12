@@ -268,6 +268,14 @@ async function add(trainingId, userId, roleId, actorId) {
     throw new ServiceError('user_not_referee');
   }
 
+  if (role.alias === 'TEACHER') {
+    const existingTeacher = training.TrainingRegistrations.find(
+      (r) => r.TrainingRole?.alias === 'TEACHER' && r.user_id !== userId
+    );
+    if (existingTeacher) {
+      await existingTeacher.destroy();
+    }
+  }
   await upsertRegistration(trainingId, userId, roleId, actorId);
   await training.update({ attendance_marked: false, updated_by: actorId });
   await emailService.sendTrainingRegistrationEmail(user, training, role);
@@ -287,6 +295,15 @@ async function updateRole(trainingId, userId, roleId, actorId) {
   if (!registration) throw new ServiceError('registration_not_found', 404);
   if (!role) throw new ServiceError('training_role_not_found', 404);
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (role.alias === 'TEACHER') {
+    const existingTeacher = await TrainingRegistration.findOne({
+      where: { training_id: trainingId },
+      include: [{ model: TrainingRole, where: { alias: 'TEACHER' } }],
+    });
+    if (existingTeacher && existingTeacher.user_id !== userId) {
+      await existingTeacher.destroy();
+    }
+  }
   await registration.update({ training_role_id: roleId, updated_by: actorId });
   if (user) {
     await emailService.sendTrainingRoleChangedEmail(user, training, role);

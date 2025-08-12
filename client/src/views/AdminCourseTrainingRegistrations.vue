@@ -63,6 +63,10 @@ const allMarked = computed(() =>
     (r) => r.present === true || r.present === false
   )
 );
+const teacherId = computed(
+  () => list.value.find((r) => r.role?.alias === 'TEACHER')?.user.id || null
+);
+const hasTeacher = computed(() => teacherId.value !== null);
 
 onMounted(() => {
   loadTraining();
@@ -80,6 +84,10 @@ function formatDateTimeRange(start, end) {
   const startTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
   const endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
   return `${date} ${startTime} - ${endTime}`;
+}
+
+function fullName(u) {
+  return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
 }
 
 async function loadTraining() {
@@ -258,7 +266,8 @@ async function finish() {
       </nav>
       <h1 class="mb-3">Участники занятия</h1>
       <p v-if="training" class="mb-3">
-        <strong>{{ training.type?.name }}</strong
+        <strong>{{ training.type?.name }}</strong>
+        <span v-if="training.teacher"> · {{ fullName(training.teacher) }}</span
         >,
         {{ formatDateTimeRange(training.start_at, training.end_at) }}
       </p>
@@ -288,7 +297,12 @@ async function finish() {
           <label class="form-label">Роль</label>
           <select v-model="addForm.training_role_id" class="form-select">
             <option value="" disabled>Выберите роль</option>
-            <option v-for="r in trainingRoles" :key="r.id" :value="r.id">
+            <option
+              v-for="r in trainingRoles"
+              :key="r.id"
+              :value="r.id"
+              :disabled="r.alias === 'TEACHER' && hasTeacher"
+            >
               {{ r.name }}
             </option>
           </select>
@@ -348,6 +362,11 @@ async function finish() {
                           v-for="role in trainingRoles"
                           :key="role.id"
                           :value="role.id"
+                          :disabled="
+                            role.alias === 'TEACHER' &&
+                            hasTeacher &&
+                            teacherId !== r.user.id
+                          "
                         >
                           {{ role.name }}
                         </option>
@@ -436,6 +455,11 @@ async function finish() {
                         v-for="role in trainingRoles"
                         :key="role.id"
                         :value="role.id"
+                        :disabled="
+                          role.alias === 'TEACHER' &&
+                          hasTeacher &&
+                          teacherId !== r.user.id
+                        "
                       >
                         {{ role.name }}
                       </option>
