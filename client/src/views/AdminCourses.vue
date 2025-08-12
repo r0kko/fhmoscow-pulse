@@ -78,11 +78,6 @@ const selectedTrainingType = computed(() =>
 const filter = ref({ type: '', teacher: '', course: '' });
 const teachers = ref([]);
 const teacherRoleId = ref(null);
-const teacherMap = computed(() => {
-  const map = new Map();
-  teachers.value.forEach((u) => map.set(fullName(u), u.id));
-  return map;
-});
 const upcomingTrainings = computed(() => {
   const now = Date.now();
   return trainings.value.filter((t) => new Date(t.start_at).getTime() >= now);
@@ -244,7 +239,7 @@ async function loadTrainingsAdmin() {
     const data = await apiFetch(`/course-trainings?${params}`);
     trainings.value = data.trainings.map((t) => ({
       ...t,
-      teacherName: t.teacher ? fullName(t.teacher) : '',
+      teacher_id: t.teacher ? t.teacher.id : '',
     }));
   } catch (e) {
     trainingsError.value = e.message;
@@ -254,9 +249,8 @@ async function loadTrainingsAdmin() {
 }
 
 async function assignTeacher(training) {
-  const userId = teacherMap.value.get(training.teacherName) || null;
   try {
-    if (!userId) {
+    if (!training.teacher_id) {
       if (training.teacher) {
         await apiFetch(
           `/course-trainings/${training.id}/registrations/${training.teacher.id}`,
@@ -269,14 +263,15 @@ async function assignTeacher(training) {
     await apiFetch(`/course-trainings/${training.id}/registrations`, {
       method: 'POST',
       body: JSON.stringify({
-        user_id: userId,
+        user_id: training.teacher_id,
         training_role_id: teacherRoleId.value,
       }),
     });
-    training.teacher = teachers.value.find((u) => u.id === userId) || null;
+    training.teacher =
+      teachers.value.find((u) => u.id === training.teacher_id) || null;
   } catch (e) {
     alert(e.message);
-    training.teacherName = training.teacher ? fullName(training.teacher) : '';
+    training.teacher_id = training.teacher ? training.teacher.id : '';
   }
 }
 
@@ -992,14 +987,6 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <datalist id="teachers-list">
-              <option
-                v-for="u in teachers"
-                :key="u.id"
-                :value="fullName(u)"
-              />
-            </datalist>
-
             <h2 class="h5 mb-3">Будущие</h2>
             <div
               v-if="upcomingTrainings.length"
@@ -1030,12 +1017,20 @@ onBeforeUnmount(() => {
                     </td>
                     <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      <input
-                        v-model="t.teacherName"
-                        list="teachers-list"
-                        class="form-control form-control-sm"
+                      <select
+                        v-model="t.teacher_id"
+                        class="form-select form-select-sm"
                         @change="assignTeacher(t)"
-                      />
+                      >
+                        <option value="">Без преподавателя</option>
+                        <option
+                          v-for="u in teachers"
+                          :key="u.id"
+                          :value="u.id"
+                        >
+                          {{ fullName(u) }}
+                        </option>
+                      </select>
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
@@ -1101,12 +1096,20 @@ onBeforeUnmount(() => {
                       }}
                     </div>
                     <small class="text-muted d-block">{{ t.type?.name }}</small>
-                    <input
-                      v-model="t.teacherName"
-                      list="teachers-list"
-                      class="form-control form-control-sm mb-1"
+                    <select
+                      v-model="t.teacher_id"
+                      class="form-select form-select-sm mb-1"
                       @change="assignTeacher(t)"
-                    />
+                    >
+                      <option value="">Без преподавателя</option>
+                      <option
+                        v-for="u in teachers"
+                        :key="u.id"
+                        :value="u.id"
+                      >
+                        {{ fullName(u) }}
+                      </option>
+                    </select>
                     <small class="text-muted d-block"
                       >{{ t.courses.map((c) => c.name).join(', ') }}</small
                     >
@@ -1178,12 +1181,20 @@ onBeforeUnmount(() => {
                     </td>
                     <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      <input
-                        v-model="t.teacherName"
-                        list="teachers-list"
-                        class="form-control form-control-sm"
+                      <select
+                        v-model="t.teacher_id"
+                        class="form-select form-select-sm"
                         @change="assignTeacher(t)"
-                      />
+                      >
+                        <option value="">Без преподавателя</option>
+                        <option
+                          v-for="u in teachers"
+                          :key="u.id"
+                          :value="u.id"
+                        >
+                          {{ fullName(u) }}
+                        </option>
+                      </select>
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
@@ -1249,12 +1260,20 @@ onBeforeUnmount(() => {
                       }}
                     </div>
                     <small class="text-muted d-block">{{ t.type?.name }}</small>
-                    <input
-                      v-model="t.teacherName"
-                      list="teachers-list"
-                      class="form-control form-control-sm mb-1"
+                    <select
+                      v-model="t.teacher_id"
+                      class="form-select form-select-sm mb-1"
                       @change="assignTeacher(t)"
-                    />
+                    >
+                      <option value="">Без преподавателя</option>
+                      <option
+                        v-for="u in teachers"
+                        :key="u.id"
+                        :value="u.id"
+                      >
+                        {{ fullName(u) }}
+                      </option>
+                    </select>
                     <small class="text-muted d-block"
                       >{{ t.courses.map((c) => c.name).join(', ') }}</small
                     >
