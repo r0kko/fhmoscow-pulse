@@ -154,6 +154,10 @@ test('remove sends cancellation email', async () => {
     { id: 'u1', email: 'e' },
     training
   );
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'admin',
+  });
 });
 
 test('add creates registration for referee', async () => {
@@ -288,6 +292,10 @@ test('updateRole sends notification', async () => {
     training,
     { id: 'role1' }
   );
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'admin',
+  });
 });
 
 test('unregister sends notification', async () => {
@@ -306,6 +314,10 @@ test('unregister sends notification', async () => {
     { id: 'u1', email: 'e' },
     training
   );
+  expect(updateTrainingMock).toHaveBeenCalledWith({
+    attendance_marked: false,
+    updated_by: 'u1',
+  });
 });
 
 test('unregister rejects when deadline passed', async () => {
