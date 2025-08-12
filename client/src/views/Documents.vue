@@ -208,20 +208,22 @@ async function submit() {
                 <div class="card section-card tile fade-in h-100 shadow-sm">
                   <div class="card-body d-flex flex-column">
                     <h2 class="h6 mb-3">{{ t.name }}</h2>
-                      <ul class="list-unstyled flex-grow-1 mb-3">
-                        <li
-                          v-for="(item, i) in signInfo[t.alias]"
-                          :key="i"
-                          class="d-flex"
-                          :class="i !== signInfo[t.alias].length - 1 ? 'mb-2' : ''"
-                        >
-                          <i
-                            class="bi bi-check-circle text-brand me-2"
-                            aria-hidden="true"
-                          ></i>
-                          <span>{{ item }}</span>
-                        </li>
-                      </ul>
+                    <ul class="list-unstyled flex-grow-1 mb-3">
+                      <li
+                        v-for="(item, i) in signInfo[t.alias]"
+                        :key="i"
+                        class="d-flex"
+                        :class="
+                          i !== signInfo[t.alias].length - 1 ? 'mb-2' : ''
+                        "
+                      >
+                        <i
+                          class="bi bi-check-circle text-brand me-2"
+                          aria-hidden="true"
+                        ></i>
+                        <span>{{ item }}</span>
+                      </li>
+                    </ul>
                     <div class="text-end mt-auto">
                       <button
                         type="button"
