@@ -78,11 +78,6 @@ const selectedTrainingType = computed(() =>
 const filter = ref({ type: '', teacher: '', course: '' });
 const teachers = ref([]);
 const teacherRoleId = ref(null);
-const teacherMap = computed(() => {
-  const map = new Map();
-  teachers.value.forEach((u) => map.set(fullName(u), u.id));
-  return map;
-});
 const upcomingTrainings = computed(() => {
   const now = Date.now();
   return trainings.value.filter((t) => new Date(t.start_at).getTime() >= now);
@@ -244,7 +239,7 @@ async function loadTrainingsAdmin() {
     const data = await apiFetch(`/course-trainings?${params}`);
     trainings.value = data.trainings.map((t) => ({
       ...t,
-      teacherName: t.teacher ? fullName(t.teacher) : '',
+      teacher_id: t.teacher ? t.teacher.id : '',
     }));
   } catch (e) {
     trainingsError.value = e.message;
@@ -254,9 +249,8 @@ async function loadTrainingsAdmin() {
 }
 
 async function assignTeacher(training) {
-  const userId = teacherMap.value.get(training.teacherName) || null;
   try {
-    if (!userId) {
+    if (!training.teacher_id) {
       if (training.teacher) {
         await apiFetch(
           `/course-trainings/${training.id}/registrations/${training.teacher.id}`,
@@ -269,14 +263,15 @@ async function assignTeacher(training) {
     await apiFetch(`/course-trainings/${training.id}/registrations`, {
       method: 'POST',
       body: JSON.stringify({
-        user_id: userId,
+        user_id: training.teacher_id,
         training_role_id: teacherRoleId.value,
       }),
     });
-    training.teacher = teachers.value.find((u) => u.id === userId) || null;
+    training.teacher =
+      teachers.value.find((u) => u.id === training.teacher_id) || null;
   } catch (e) {
     alert(e.message);
-    training.teacherName = training.teacher ? fullName(training.teacher) : '';
+    training.teacher_id = training.teacher ? training.teacher.id : '';
   }
 }
 
@@ -517,9 +512,7 @@ onBeforeUnmount(() => {
           <li class="breadcrumb-item">
             <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Мероприятия
-          </li>
+          <li class="breadcrumb-item active" aria-current="page">Мероприятия</li>
         </ol>
       </nav>
       <h1 class="mb-3">Мероприятия</h1>
@@ -609,9 +602,7 @@ onBeforeUnmount(() => {
                 <tbody>
                   <tr v-for="u in sortedUsers" :key="u.user.id">
                     <td>{{ formatName(u.user) }}</td>
-                    <td class="text-center">
-                      {{ formatDate(u.user.birth_date) }}
-                    </td>
+                    <td class="text-center">{{ formatDate(u.user.birth_date) }}</td>
                     <td class="text-center">
                       <select
                         v-model="u.course_id"
@@ -625,14 +616,11 @@ onBeforeUnmount(() => {
                       </select>
                     </td>
                     <td class="text-center">
-                      {{ u.training_stats.visited }} /
-                      {{ u.training_stats.total }}
+                      {{ u.training_stats.visited }} / {{ u.training_stats.total }}
                       <span v-if="u.training_stats.total">
                         ({{
                           Math.round(
-                            (u.training_stats.visited /
-                              u.training_stats.total) *
-                              100
+                            (u.training_stats.visited / u.training_stats.total) * 100
                           )
                         }}%)
                       </span>
@@ -655,9 +643,7 @@ onBeforeUnmount(() => {
               <div v-for="u in sortedUsers" :key="u.user.id" class="card mb-2">
                 <div class="card-body">
                   <p class="mb-1 fw-semibold">{{ formatName(u.user) }}</p>
-                  <p class="mb-1 text-muted">
-                    {{ formatDate(u.user.birth_date) }}
-                  </p>
+                  <p class="mb-1 text-muted">{{ formatDate(u.user.birth_date) }}</p>
                   <select
                     v-model="u.course_id"
                     class="form-select mt-1"
@@ -669,13 +655,11 @@ onBeforeUnmount(() => {
                     </option>
                   </select>
                   <p class="mb-0 mt-1">
-                    {{ u.training_stats.visited }} /
-                    {{ u.training_stats.total }}
+                    {{ u.training_stats.visited }} / {{ u.training_stats.total }}
                     <span v-if="u.training_stats.total">
                       ({{
                         Math.round(
-                          (u.training_stats.visited / u.training_stats.total) *
-                            100
+                          (u.training_stats.visited / u.training_stats.total) * 100
                         )
                       }}%)
                     </span>
@@ -692,97 +676,99 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </div>
-          </div>
         </div>
       </div>
+    </div>
 
-      <div ref="historyModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2 class="modal-title h5">
-                История посещений — {{ historyJudgeName }}
-              </h2>
-              <button
-                type="button"
-                class="btn-close"
-                aria-label="Закрыть"
-                @click="historyModal.hide()"
-              ></button>
+    <div
+      ref="historyModalRef"
+      class="modal fade"
+      tabindex="-1"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title h5">
+              История посещений — {{ historyJudgeName }}
+            </h2>
+            <button
+              type="button"
+              class="btn-close"
+              aria-label="Закрыть"
+              @click="historyModal.hide()"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="historyError" class="alert alert-danger">
+              {{ historyError }}
             </div>
-            <div class="modal-body">
-              <div v-if="historyError" class="alert alert-danger">
-                {{ historyError }}
-              </div>
-              <div v-if="historyLoading" class="text-center my-3">
-                <div class="spinner-border" role="status"></div>
-              </div>
-              <div v-if="history.length">
-                <div class="table-responsive d-none d-sm-block">
-                  <table class="table table-striped align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Время</th>
-                        <th>Тренер</th>
-                        <th>Тип</th>
-                        <th>Стадион</th>
-                        <th class="text-center">Факт</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="t in history" :key="t.id">
-                        <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
-                        <td>
-                          {{
-                            t.coaches?.length ? formatName(t.coaches[0]) : ''
-                          }}
-                        </td>
-                        <td>{{ t.type?.name }}</td>
-                        <td>{{ t.ground?.name }}</td>
-                        <td class="text-center">
-                          <i
-                            :class="presenceIcon(t.my_presence)"
-                            :title="presenceTitle(t.my_presence)"
-                          ></i>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div class="d-block d-sm-none">
-                  <div
-                    v-for="t in history"
-                    :key="t.id"
-                    class="card training-card mb-2"
-                  >
-                    <div class="card-body p-2">
-                      <p class="mb-1 fw-semibold">
-                        {{ formatDateTimeRange(t.start_at, t.end_at) }}
-                      </p>
-                      <p class="mb-1">
+            <div v-if="historyLoading" class="text-center my-3">
+              <div class="spinner-border" role="status"></div>
+            </div>
+            <div v-if="history.length">
+              <div class="table-responsive d-none d-sm-block">
+                <table class="table table-striped align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Время</th>
+                      <th>Тренер</th>
+                      <th>Тип</th>
+                      <th>Стадион</th>
+                      <th class="text-center">Факт</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="t in history" :key="t.id">
+                      <td>{{ formatDateTimeRange(t.start_at, t.end_at) }}</td>
+                      <td>
                         {{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}
-                      </p>
-                      <p class="mb-1">{{ t.type?.name }}</p>
-                      <p class="mb-1">{{ t.ground?.name }}</p>
-                      <p class="mb-0 text-center">
+                      </td>
+                      <td>{{ t.type?.name }}</td>
+                      <td>{{ t.ground?.name }}</td>
+                      <td class="text-center">
                         <i
                           :class="presenceIcon(t.my_presence)"
                           :title="presenceTitle(t.my_presence)"
                         ></i>
-                      </p>
-                    </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="d-block d-sm-none">
+                <div
+                  v-for="t in history"
+                  :key="t.id"
+                  class="card training-card mb-2"
+                >
+                  <div class="card-body p-2">
+                    <p class="mb-1 fw-semibold">
+                      {{ formatDateTimeRange(t.start_at, t.end_at) }}
+                    </p>
+                    <p class="mb-1">
+                      {{ t.coaches?.length ? formatName(t.coaches[0]) : '' }}
+                    </p>
+                    <p class="mb-1">{{ t.type?.name }}</p>
+                    <p class="mb-1">{{ t.ground?.name }}</p>
+                    <p class="mb-0 text-center">
+                      <i
+                        :class="presenceIcon(t.my_presence)"
+                        :title="presenceTitle(t.my_presence)"
+                      ></i>
+                    </p>
                   </div>
                 </div>
               </div>
-              <p v-else-if="!historyLoading" class="text-muted mb-0">
-                История пуста.
-              </p>
             </div>
+            <p v-else-if="!historyLoading" class="text-muted mb-0">
+              История пуста.
+            </p>
           </div>
         </div>
       </div>
+    </div>
 
-      <div v-if="activeTab === 'courses'">
+    <div v-else-if="activeTab === 'courses'">
         <div class="card section-card mb-3">
           <div class="card-body">
             <div v-if="courseError" class="alert alert-danger mb-3">
@@ -959,7 +945,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div v-if="activeTab === 'trainings'">
+      <div v-else-if="activeTab === 'trainings'">
         <div class="card section-card mb-3">
           <div class="card-body">
             <div v-if="trainingsError" class="alert alert-danger mb-3">
@@ -981,7 +967,11 @@ onBeforeUnmount(() => {
               <div class="col-md-4">
                 <select v-model="filter.teacher" class="form-select">
                   <option value="">Все преподаватели</option>
-                  <option v-for="t in teachers" :key="t.id" :value="t.id">
+                  <option
+                    v-for="t in teachers"
+                    :key="t.id"
+                    :value="t.id"
+                  >
                     {{ fullName(t) }}
                   </option>
                 </select>
@@ -996,10 +986,6 @@ onBeforeUnmount(() => {
                 </select>
               </div>
             </div>
-
-            <datalist id="teachers-list">
-              <option v-for="u in teachers" :key="u.id" :value="fullName(u)" />
-            </datalist>
 
             <h2 class="h5 mb-3">Будущие</h2>
             <div
@@ -1031,12 +1017,20 @@ onBeforeUnmount(() => {
                     </td>
                     <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      <input
-                        v-model="t.teacherName"
-                        list="teachers-list"
-                        class="form-control form-control-sm"
+                      <select
+                        v-model="t.teacher_id"
+                        class="form-select form-select-sm"
                         @change="assignTeacher(t)"
-                      />
+                      >
+                        <option value="">Без преподавателя</option>
+                        <option
+                          v-for="u in teachers"
+                          :key="u.id"
+                          :value="u.id"
+                        >
+                          {{ fullName(u) }}
+                        </option>
+                      </select>
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
@@ -1084,7 +1078,7 @@ onBeforeUnmount(() => {
             <div v-else class="alert alert-info mb-3">
               Нет будущих мероприятий
             </div>
-            <div v-if="upcomingTrainings.length" class="d-sm-none">
+            <div class="d-sm-none" v-if="upcomingTrainings.length">
               <ul class="list-group">
                 <li
                   v-for="t in upcomingTrainings"
@@ -1102,15 +1096,23 @@ onBeforeUnmount(() => {
                       }}
                     </div>
                     <small class="text-muted d-block">{{ t.type?.name }}</small>
-                    <input
-                      v-model="t.teacherName"
-                      list="teachers-list"
-                      class="form-control form-control-sm mb-1"
+                    <select
+                      v-model="t.teacher_id"
+                      class="form-select form-select-sm mb-1"
                       @change="assignTeacher(t)"
-                    />
-                    <small class="text-muted d-block">{{
-                      t.courses.map((c) => c.name).join(', ')
-                    }}</small>
+                    >
+                      <option value="">Без преподавателя</option>
+                      <option
+                        v-for="u in teachers"
+                        :key="u.id"
+                        :value="u.id"
+                      >
+                        {{ fullName(u) }}
+                      </option>
+                    </select>
+                    <small class="text-muted d-block"
+                      >{{ t.courses.map((c) => c.name).join(', ') }}</small
+                    >
                     <small class="text-muted d-block"
                       >Запись: {{ t.registered_count }}, Посещ.:
                       {{ t.attendance_marked ? '✓' : '—' }}</small
@@ -1142,7 +1144,10 @@ onBeforeUnmount(() => {
                 </li>
               </ul>
             </div>
-            <div v-else class="d-sm-none mb-3 text-muted text-center">
+            <div
+              v-else
+              class="d-sm-none mb-3 text-muted text-center"
+            >
               Нет будущих мероприятий
             </div>
 
@@ -1176,12 +1181,20 @@ onBeforeUnmount(() => {
                     </td>
                     <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      <input
-                        v-model="t.teacherName"
-                        list="teachers-list"
-                        class="form-control form-control-sm"
+                      <select
+                        v-model="t.teacher_id"
+                        class="form-select form-select-sm"
                         @change="assignTeacher(t)"
-                      />
+                      >
+                        <option value="">Без преподавателя</option>
+                        <option
+                          v-for="u in teachers"
+                          :key="u.id"
+                          :value="u.id"
+                        >
+                          {{ fullName(u) }}
+                        </option>
+                      </select>
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
@@ -1229,7 +1242,7 @@ onBeforeUnmount(() => {
             <div v-else class="alert alert-info mb-3">
               Нет прошедших мероприятий
             </div>
-            <div v-if="pastTrainings.length" class="d-sm-none">
+            <div class="d-sm-none" v-if="pastTrainings.length">
               <ul class="list-group">
                 <li
                   v-for="t in pastTrainings"
@@ -1247,15 +1260,23 @@ onBeforeUnmount(() => {
                       }}
                     </div>
                     <small class="text-muted d-block">{{ t.type?.name }}</small>
-                    <input
-                      v-model="t.teacherName"
-                      list="teachers-list"
-                      class="form-control form-control-sm mb-1"
+                    <select
+                      v-model="t.teacher_id"
+                      class="form-select form-select-sm mb-1"
                       @change="assignTeacher(t)"
-                    />
-                    <small class="text-muted d-block">{{
-                      t.courses.map((c) => c.name).join(', ')
-                    }}</small>
+                    >
+                      <option value="">Без преподавателя</option>
+                      <option
+                        v-for="u in teachers"
+                        :key="u.id"
+                        :value="u.id"
+                      >
+                        {{ fullName(u) }}
+                      </option>
+                    </select>
+                    <small class="text-muted d-block"
+                      >{{ t.courses.map((c) => c.name).join(', ') }}</small
+                    >
                     <small class="text-muted d-block"
                       >Запись: {{ t.registered_count }}, Посещ.:
                       {{ t.attendance_marked ? '✓' : '—' }}</small
@@ -1287,7 +1308,10 @@ onBeforeUnmount(() => {
                 </li>
               </ul>
             </div>
-            <div v-else class="d-sm-none mb-3 text-muted text-center">
+            <div
+              v-else
+              class="d-sm-none mb-3 text-muted text-center"
+            >
               Нет прошедших мероприятий
             </div>
 
