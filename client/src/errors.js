@@ -58,6 +58,8 @@ export const ERROR_MESSAGES = {
   invalid_number: 'Введите корректный госномер',
   vehicle_qc1:
     'Попробуйте ввести марку или номер иначе или оставить только марку',
+  vehicle_not_found: 'Транспортное средство не найдено',
+  vehicle_limit: 'Достигнут лимит транспортных средств',
 };
 
 export function translateError(code) {

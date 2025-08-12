@@ -59,4 +59,13 @@ export default {
       return sendError(res, err, 404);
     }
   },
+
+  async remove(req, res) {
+    try {
+      await vehicleService.removeForUser(req.user.id, req.params.id);
+      return res.status(204).send();
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
 };

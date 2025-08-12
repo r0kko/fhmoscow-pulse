@@ -32,4 +32,10 @@ async function updateForUser(userId, id, data, actorId) {
   return vehicle;
 }
 
-export default { listForUser, createForUser, updateForUser };
+async function removeForUser(userId, id) {
+  const vehicle = await Vehicle.findOne({ where: { id, user_id: userId } });
+  if (!vehicle) throw new ServiceError('vehicle_not_found', 404);
+  await vehicle.destroy();
+}
+
+export default { listForUser, createForUser, updateForUser, removeForUser };
