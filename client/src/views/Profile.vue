@@ -529,16 +529,14 @@ onMounted(() => {
                           <div class="card-body d-flex flex-column h-100">
                             <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
                             <div class="mt-auto">
-                              <h3 class="card-title h5 mb-1">
+                              <h3 class="card-title h5 mb-2">
                                 {{ v.brand
                                 }}<span v-if="v.model"> {{ v.model }}</span>
-                              </h3>
-                              <p class="card-text text-muted mb-2">
                                 {{ v.number }}
-                              </p>
+                              </h3>
                               <div class="form-check">
                                 <input
-                                  class="form-check-input"
+                                  class="form-check-input brand-check"
                                   type="checkbox"
                                   name="activeVehicle"
                                   :checked="v.is_active"
