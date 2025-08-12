@@ -13,6 +13,8 @@ export default function createTrainingAdminController(forCamp) {
         ground_id,
         group_id,
         course_id,
+        type_id,
+        teacher_id,
       } = req.query;
       const { rows, count } = await trainingService.listAll({
         page: parseInt(page, 10),
@@ -20,6 +22,8 @@ export default function createTrainingAdminController(forCamp) {
         ground_id,
         group_id,
         course_id,
+        type_id,
+        teacher_id,
         forCamp,
       });
       return res.json({ trainings: rows.map(mapper.toPublic), total: count });
@@ -32,6 +36,8 @@ export default function createTrainingAdminController(forCamp) {
         ground_id,
         group_id,
         course_id,
+        type_id,
+        teacher_id,
       } = req.query;
       const { rows, count } = await trainingService.listUpcoming({
         page: parseInt(page, 10),
@@ -39,6 +45,8 @@ export default function createTrainingAdminController(forCamp) {
         ground_id,
         group_id,
         course_id,
+        type_id,
+        teacher_id,
         forCamp,
       });
       return res.json({ trainings: rows.map(mapper.toPublic), total: count });
@@ -51,6 +59,8 @@ export default function createTrainingAdminController(forCamp) {
         ground_id,
         group_id,
         course_id,
+        type_id,
+        teacher_id,
       } = req.query;
       const { rows, count } = await trainingService.listPast({
         page: parseInt(page, 10),
@@ -58,6 +68,8 @@ export default function createTrainingAdminController(forCamp) {
         ground_id,
         group_id,
         course_id,
+        type_id,
+        teacher_id,
         forCamp,
       });
       return res.json({ trainings: rows.map(mapper.toPublic), total: count });

@@ -55,37 +55,14 @@ const selectedTrainingType = computed(() =>
 );
 
 const filter = ref({ type: '', teacher: '', course: '' });
-const teacherOptions = computed(() => {
-  const map = new Map();
-  trainings.value.forEach((t) => {
-    if (t.teacher) map.set(t.teacher.id, t.teacher);
-  });
-  return Array.from(map.values());
-});
-const filteredTrainings = computed(() =>
-  trainings.value.filter((t) => {
-    if (filter.value.type && t.type?.id !== filter.value.type) return false;
-    if (filter.value.teacher && t.teacher?.id !== filter.value.teacher)
-      return false;
-    if (
-      filter.value.course &&
-      !t.courses?.some((c) => c.id === filter.value.course)
-    )
-      return false;
-    return true;
-  })
-);
+const teachers = ref([]);
 const upcomingTrainings = computed(() => {
   const now = Date.now();
-  return filteredTrainings.value.filter(
-    (t) => new Date(t.start_at).getTime() >= now
-  );
+  return trainings.value.filter((t) => new Date(t.start_at).getTime() >= now);
 });
 const pastTrainings = computed(() => {
   const now = Date.now();
-  return filteredTrainings.value.filter(
-    (t) => new Date(t.start_at).getTime() < now
-  );
+  return trainings.value.filter((t) => new Date(t.start_at).getTime() < now);
 });
 
 function fullName(u) {
@@ -121,9 +98,29 @@ watch(activeTab, (val) => {
     if (!trainingTypesLoaded.value) loadTrainingTypes();
     loadCourses();
     loadGrounds();
+    loadTeacherOptions();
     loadTrainingsAdmin();
   }
 });
+
+watch(
+  () => filter.value.type,
+  () => {
+    if (activeTab.value === 'trainings') loadTrainingsAdmin();
+  }
+);
+watch(
+  () => filter.value.teacher,
+  () => {
+    if (activeTab.value === 'trainings') loadTrainingsAdmin();
+  }
+);
+watch(
+  () => filter.value.course,
+  () => {
+    if (activeTab.value === 'trainings') loadTrainingsAdmin();
+  }
+);
 
 watch(
   () => trainingForm.value.type_id,
@@ -181,10 +178,27 @@ async function loadGrounds() {
   }
 }
 
+async function loadTeacherOptions() {
+  try {
+    const data = await apiFetch('/course-trainings?limit=1000');
+    const map = new Map();
+    data.trainings.forEach((t) => {
+      if (t.teacher) map.set(t.teacher.id, t.teacher);
+    });
+    teachers.value = Array.from(map.values());
+  } catch (_) {
+    teachers.value = [];
+  }
+}
+
 async function loadTrainingsAdmin() {
   loadingTrainings.value = true;
   try {
-    const data = await apiFetch('/course-trainings?limit=1000');
+    const params = new URLSearchParams({ limit: 1000 });
+    if (filter.value.type) params.append('type_id', filter.value.type);
+    if (filter.value.teacher) params.append('teacher_id', filter.value.teacher);
+    if (filter.value.course) params.append('course_id', filter.value.course);
+    const data = await apiFetch(`/course-trainings?${params}`);
     trainings.value = data.trainings;
   } catch (e) {
     trainingsError.value = e.message;
@@ -682,7 +696,7 @@ onBeforeUnmount(() => {
                 <select v-model="filter.teacher" class="form-select">
                   <option value="">Все преподаватели</option>
                   <option
-                    v-for="t in teacherOptions"
+                    v-for="t in teachers"
                     :key="t.id"
                     :value="t.id"
                   >
