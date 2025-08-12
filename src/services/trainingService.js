@@ -87,7 +87,12 @@ async function listAll(options = {}) {
   });
   return {
     rows: rows.map((t) => {
-      const registeredCount = t.TrainingRegistrations?.length || 0;
+      const roleAlias = options.forCamp ? 'PARTICIPANT' : 'LISTENER';
+      const registeredCount = t.TrainingRegistrations
+        ? t.TrainingRegistrations.filter(
+            (r) => r.TrainingRole?.alias === roleAlias
+          ).length
+        : 0;
       return {
         ...t.get(),
         registration_open: isRegistrationOpen(t, registeredCount),
@@ -159,7 +164,12 @@ async function listUpcoming(options = {}) {
   });
   return {
     rows: rows.map((t) => {
-      const registeredCount = t.TrainingRegistrations?.length || 0;
+      const roleAlias = options.forCamp ? 'PARTICIPANT' : 'LISTENER';
+      const registeredCount = t.TrainingRegistrations
+        ? t.TrainingRegistrations.filter(
+            (r) => r.TrainingRole?.alias === roleAlias
+          ).length
+        : 0;
       return {
         ...t.get(),
         registration_open: isRegistrationOpen(t, registeredCount),
@@ -231,7 +241,12 @@ async function listPast(options = {}) {
   });
   return {
     rows: rows.map((t) => {
-      const registeredCount = t.TrainingRegistrations?.length || 0;
+      const roleAlias = options.forCamp ? 'PARTICIPANT' : 'LISTENER';
+      const registeredCount = t.TrainingRegistrations
+        ? t.TrainingRegistrations.filter(
+            (r) => r.TrainingRole?.alias === roleAlias
+          ).length
+        : 0;
       return {
         ...t.get(),
         registration_open: isRegistrationOpen(t, registeredCount),

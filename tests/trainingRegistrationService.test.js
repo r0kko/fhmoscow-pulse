@@ -93,6 +93,7 @@ const training = {
   start_at: '2099-01-01T10:00:00Z',
   RefereeGroups: [{ id: 'g1' }],
   TrainingRegistrations: [],
+  TrainingType: { for_camp: true },
   update: updateTrainingMock,
   get() {
     return this;
@@ -188,6 +189,59 @@ test('add creates registration for referee', async () => {
   );
   expect(updateTrainingMock).toHaveBeenCalledWith({
     attendance_marked: false,
+    updated_by: 'admin',
+  });
+});
+
+test('register for course uses listener role', async () => {
+  const courseTraining = {
+    id: 't1',
+    start_at: '2099-01-01T10:00:00Z',
+    RefereeGroups: [],
+    Courses: [{ id: 'c1' }],
+    TrainingRegistrations: [],
+    TrainingType: { for_camp: false },
+    update: updateTrainingMock,
+    get() {
+      return this;
+    },
+  };
+  findTrainingMock.mockResolvedValue(courseTraining);
+  findCourseLinkMock.mockResolvedValue({ user_id: 'u1', course_id: 'c1' });
+  findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
+  await service.register('u1', 't1', 'u1', false);
+  expect(findTrainingRoleMock).toHaveBeenCalledWith({
+    where: { alias: 'LISTENER' },
+  });
+});
+
+test('add assigns listener role for course', async () => {
+  const tr = {
+    id: 't1',
+    start_at: '2099-01-01T10:00:00Z',
+    RefereeGroups: [],
+    TrainingRegistrations: [],
+    TrainingType: { for_camp: false },
+    update: updateTrainingMock,
+    get() {
+      return this;
+    },
+  };
+  findTrainingMock.mockResolvedValue(tr);
+  findUserMock.mockResolvedValue({
+    id: 'u2',
+    email: 'e2',
+    Roles: [{ alias: 'BRIGADE_REFEREE' }],
+  });
+  findTrainingRoleMock
+    .mockResolvedValueOnce({ id: 'role2', alias: 'PARTICIPANT' })
+    .mockResolvedValueOnce({ id: 'listener', alias: 'LISTENER' });
+  await service.add('t1', 'u2', 'role2', 'admin');
+  expect(createRegMock).toHaveBeenCalledWith({
+    training_id: 't1',
+    user_id: 'u2',
+    training_role_id: 'listener',
+    created_by: 'admin',
     updated_by: 'admin',
   });
 });
@@ -288,6 +342,8 @@ test('register rejects when training is full', async () => {
     capacity: 1,
     RefereeGroups: [{ id: 'g1' }],
     TrainingRegistrations: [{ TrainingRole: { alias: 'PARTICIPANT' } }],
+    TrainingType: { for_camp: true },
+    update: updateTrainingMock,
   };
   findTrainingMock.mockResolvedValue(tr);
   findGroupUserMock.mockResolvedValue({ user_id: 'u1', group_id: 'g1' });
@@ -377,7 +433,7 @@ test('listUpcomingByUser includes my role', async () => {
   };
   const tr = { ...trPlain, get: () => trPlain };
   findAndCountAllMock.mockResolvedValue({ rows: [tr], count: 1 });
-  const res = await service.listUpcomingByUser('u1', {});
+  const res = await service.listUpcomingByUser('u1', {}, true);
   expect(res.rows[0].my_role).toEqual({
     id: 'r1',
     name: 'Участник',
@@ -388,7 +444,7 @@ test('listUpcomingByUser includes my role', async () => {
 
 test('listUpcomingByUser excludes finished unmarked trainings', async () => {
   findAndCountAllMock.mockResolvedValueOnce({ rows: [], count: 0 });
-  await service.listUpcomingByUser('u1', {});
+  await service.listUpcomingByUser('u1', {}, true);
   const where = findAndCountAllMock.mock.calls[0][0].where;
   const cond = where[Object.getOwnPropertySymbols(where)[0]][1];
   expect(cond).not.toHaveProperty('attendance_marked');
@@ -409,7 +465,7 @@ test('listPastByUser includes my presence', async () => {
   };
   const tr = { ...trPlain, get: () => trPlain };
   findAndCountAllMock.mockResolvedValueOnce({ rows: [tr], count: 1 });
-  const res = await service.listPastByUser('u1', {});
+  const res = await service.listPastByUser('u1', {}, true);
   expect(res.rows[0].my_presence).toBe(true);
 });
 
@@ -427,7 +483,7 @@ test('listPastByUser returns unmarked trainings', async () => {
   };
   const tr = { ...trPlain, get: () => trPlain };
   findAndCountAllMock.mockResolvedValueOnce({ rows: [tr], count: 1 });
-  const res = await service.listPastByUser('u1', {});
+  const res = await service.listPastByUser('u1', {}, true);
   expect(res.rows[0].attendance_marked).toBe(false);
 });
 
