@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { apiFetch, apiFetchForm } from '../api.js';
+import { apiFetch } from '../api.js';
+import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -10,6 +11,14 @@ const tab = ref(route.query.tab === 'signatures' ? 'signatures' : 'documents');
 const documents = ref([]);
 const documentsLoading = ref(false);
 const documentsError = ref('');
+
+const search = ref('');
+const signTypeFilter = ref('');
+const statusFilter = ref('');
+const dateFrom = ref('');
+const dateTo = ref('');
+
+const uploadModal = ref(null);
 
 const users = ref([]);
 const usersLoading = ref(false);
@@ -80,21 +89,50 @@ async function requestSignature(doc) {
   }
 }
 
-async function uploadSigned(doc, file) {
-  if (!file || actionId.value) return;
-  actionId.value = doc.id;
-  actionError.value = '';
-  const form = new FormData();
-  form.append('file', file);
-  try {
-    const res = await apiFetchForm(`/documents/${doc.id}/file`, form);
-    doc.status = res.status;
-    doc.file = res.file;
-  } catch (e) {
-    actionError.value = e.message;
-  } finally {
-    actionId.value = '';
-  }
+const filteredDocuments = computed(() => {
+  return documents.value.filter((d) => {
+    if (search.value) {
+      const q = search.value.toLowerCase();
+      const fio =
+        `${d.recipient.lastName} ${d.recipient.firstName} ${d.recipient.patronymic}`.toLowerCase();
+      if (!fio.includes(q)) return false;
+    }
+    if (signTypeFilter.value && d.signType?.alias !== signTypeFilter.value) {
+      return false;
+    }
+    if (statusFilter.value && d.status?.alias !== statusFilter.value) {
+      return false;
+    }
+    if (dateFrom.value) {
+      const from = new Date(dateFrom.value);
+      if (new Date(d.documentDate) < from) return false;
+    }
+    if (dateTo.value) {
+      const to = new Date(dateTo.value);
+      if (new Date(d.documentDate) > to) return false;
+    }
+    return true;
+  });
+});
+
+const signTypes = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.signType?.alias) map.set(d.signType.alias, d.signType.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+const statuses = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.status?.alias) map.set(d.status.alias, d.status.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+function openUpload(doc) {
+  uploadModal.value.open(doc);
 }
 </script>
 
@@ -148,6 +186,52 @@ async function uploadSigned(doc, file) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
+            <div class="row g-2 mb-3">
+              <div class="col-md">
+                <input
+                  v-model="search"
+                  type="search"
+                  class="form-control"
+                  placeholder="Получатель"
+                />
+              </div>
+              <div class="col-md">
+                <select v-model="signTypeFilter" class="form-select">
+                  <option value="">Тип подписи</option>
+                  <option
+                    v-for="st in signTypes"
+                    :key="st.alias"
+                    :value="st.alias"
+                  >
+                    {{ st.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md">
+                <select v-model="statusFilter" class="form-select">
+                  <option value="">Статус</option>
+                  <option v-for="s in statuses" :key="s.alias" :value="s.alias">
+                    {{ s.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md">
+                <input
+                  v-model="dateFrom"
+                  type="date"
+                  class="form-control"
+                  placeholder="От"
+                />
+              </div>
+              <div class="col-md">
+                <input
+                  v-model="dateTo"
+                  type="date"
+                  class="form-control"
+                  placeholder="До"
+                />
+              </div>
+            </div>
             <div class="table-responsive d-none d-sm-block">
               <table class="table mb-0">
                 <thead>
@@ -161,7 +245,7 @@ async function uploadSigned(doc, file) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="d in documents" :key="d.id">
+                  <tr v-for="d in filteredDocuments" :key="d.id">
                     <td>{{ d.name }}</td>
                     <td>
                       {{ d.recipient.lastName }} {{ d.recipient.firstName }}
@@ -179,28 +263,17 @@ async function uploadSigned(doc, file) {
                         rel="noopener"
                         >Скачать</a
                       >
-                      <label
+                      <button
                         v-if="
                           ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
                             d.signType?.alias
                           ) && d.status?.alias === 'AWAITING_SIGNATURE'
                         "
-                        class="btn btn-sm btn-primary mb-0"
-                        :class="{ disabled: actionId === d.id }"
+                        class="btn btn-sm btn-primary"
+                        @click="openUpload(d)"
                       >
-                        <span
-                          v-if="actionId === d.id"
-                          class="spinner-border spinner-border-sm me-1"
-                          aria-hidden="true"
-                        ></span>
                         Загрузить
-                        <input
-                          type="file"
-                          class="d-none"
-                          :disabled="actionId === d.id"
-                          @change="(e) => uploadSigned(d, e.target.files[0])"
-                        />
-                      </label>
+                      </button>
                       <button
                         v-else-if="
                           ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
@@ -220,7 +293,7 @@ async function uploadSigned(doc, file) {
                       </button>
                     </td>
                   </tr>
-                  <tr v-if="!documents.length">
+                  <tr v-if="!filteredDocuments.length">
                     <td colspan="6" class="text-center">
                       Документы отсутствуют
                     </td>
@@ -228,8 +301,8 @@ async function uploadSigned(doc, file) {
                 </tbody>
               </table>
             </div>
-            <div v-if="documents.length" class="d-block d-sm-none">
-              <div v-for="d in documents" :key="d.id" class="card mb-2">
+            <div v-if="filteredDocuments.length" class="d-block d-sm-none">
+              <div v-for="d in filteredDocuments" :key="d.id" class="card mb-2">
                 <div class="card-body p-2">
                   <h3 class="h6 mb-1">{{ d.name }}</h3>
                   <p class="mb-1 small">
@@ -251,28 +324,17 @@ async function uploadSigned(doc, file) {
                     rel="noopener"
                     >Скачать</a
                   >
-                  <label
+                  <button
                     v-if="
                       ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
                         d.signType?.alias
                       ) && d.status?.alias === 'AWAITING_SIGNATURE'
                     "
-                    class="btn btn-sm btn-primary mb-0"
-                    :class="{ disabled: actionId === d.id }"
+                    class="btn btn-sm btn-primary"
+                    @click="openUpload(d)"
                   >
-                    <span
-                      v-if="actionId === d.id"
-                      class="spinner-border spinner-border-sm me-1"
-                      aria-hidden="true"
-                    ></span>
                     Загрузить
-                    <input
-                      type="file"
-                      class="d-none"
-                      :disabled="actionId === d.id"
-                      @change="(e) => uploadSigned(d, e.target.files[0])"
-                    />
-                  </label>
+                  </button>
                   <button
                     v-else-if="
                       ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
@@ -344,6 +406,7 @@ async function uploadSigned(doc, file) {
       </div>
     </div>
   </div>
+  <DocumentUploadModal ref="uploadModal" />
 </template>
 
 <style scoped>

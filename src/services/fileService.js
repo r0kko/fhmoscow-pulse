@@ -1,6 +1,10 @@
 import path from 'path';
 
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -271,6 +275,24 @@ async function uploadDocument(file, actorId) {
   return dbFile;
 }
 
+async function removeFile(id) {
+  const file = await File.findByPk(id);
+  if (!file) return;
+  if (!isTestEnvWithoutS3() && getS3Bucket()) {
+    try {
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: getS3Bucket(),
+          Key: file.key,
+        })
+      );
+    } catch (err) {
+      console.error('S3 delete failed', err);
+    }
+  }
+  await file.destroy();
+}
+
 async function saveGeneratedPdf(buffer, name, actorId) {
   if (isTestEnvWithoutS3() || !getS3Bucket()) {
     throw new ServiceError('s3_not_configured', 500);
@@ -310,5 +332,6 @@ export default {
   listForTicket,
   removeTicketFile,
   uploadDocument,
+  removeFile,
   saveGeneratedPdf,
 };
