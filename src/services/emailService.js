@@ -28,26 +28,36 @@ import { renderNormativeResultUpdatedEmail } from '../templates/normativeResultU
 import { renderNormativeResultRemovedEmail } from '../templates/normativeResultRemovedEmail.js';
 import { renderSignTypeSelectionEmail } from '../templates/signTypeSelectionEmail.js';
 
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: Number(SMTP_PORT),
-  secure: Number(SMTP_PORT) === 465,
-  auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-});
+export const isEmailConfigured = Boolean(SMTP_HOST);
+
+const transporter = isEmailConfigured
+  ? nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,
+      auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+    })
+  : null;
 
 export async function sendMail(to, subject, text, html) {
-  if (!SMTP_HOST) {
+  if (!isEmailConfigured) {
     logger.warn('Email not configured');
-    return;
+    return false;
   }
-  await transporter.sendMail({
-    from: EMAIL_FROM || SMTP_USER,
-    to,
-    subject,
-    text,
-    html,
-  });
-  logger.info('Email sent to %s', to);
+  try {
+    await transporter.sendMail({
+      from: EMAIL_FROM || SMTP_USER,
+      to,
+      subject,
+      text,
+      html,
+    });
+    logger.info('Email sent to %s', to);
+    return true;
+  } catch (err) {
+    logger.error('Failed to send email to %s: %s', to, err.message);
+    return false;
+  }
 }
 
 export async function sendVerificationEmail(user, code) {
@@ -164,6 +174,7 @@ export async function sendNormativeResultRemovedEmail(user, result) {
   await sendMail(user.email, subject, text, html);
 }
 export default {
+  isEmailConfigured,
   sendMail,
   sendVerificationEmail,
   sendSignTypeSelectionEmail,
