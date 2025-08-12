@@ -412,6 +412,13 @@ test('listPastByUser returns unmarked trainings', async () => {
   expect(res.rows[0].attendance_marked).toBe(false);
 });
 
+test('listPastByUser filters by course', async () => {
+  findAndCountAllMock.mockResolvedValueOnce({ rows: [], count: 0 });
+  await service.listPastByUser('u1', {}, false, 'c1');
+  const include = findAndCountAllMock.mock.calls[0][0].include;
+  expect(include.some((i) => i.where?.id === 'c1')).toBe(true);
+});
+
 test('updatePresence updates value for admin', async () => {
   const updateMock = jest.fn();
   findRegMock.mockResolvedValueOnce({ update: updateMock });

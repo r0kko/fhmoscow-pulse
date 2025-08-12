@@ -4,6 +4,7 @@ import {
   UserCourse,
   Training,
   TrainingRegistration,
+  TrainingType,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -136,6 +137,7 @@ async function getTrainingStats(userId, courseId) {
               where: { id: courseId },
               required: true,
             },
+            { model: TrainingType, where: { for_camp: false }, required: true },
           ],
         },
       ],
@@ -148,6 +150,7 @@ async function getTrainingStats(userId, courseId) {
           where: { id: courseId },
           required: true,
         },
+        { model: TrainingType, where: { for_camp: false }, required: true },
       ],
     }),
   ]);

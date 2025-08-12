@@ -455,7 +455,7 @@ async function listUpcomingByUser(userId, options = {}, forCamp) {
   };
 }
 
-async function listPastByUser(userId, options = {}, forCamp) {
+async function listPastByUser(userId, options = {}, forCamp, courseId) {
   const { Op } = await import('sequelize');
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
@@ -469,6 +469,11 @@ async function listPastByUser(userId, options = {}, forCamp) {
       },
       { model: Ground, include: [Address] },
       { model: Season, where: { active: true }, required: true },
+      {
+        model: Course,
+        through: { attributes: [] },
+        ...(courseId ? { where: { id: courseId }, required: true } : {}),
+      },
       {
         model: TrainingRegistration,
         include: [User, TrainingRole],

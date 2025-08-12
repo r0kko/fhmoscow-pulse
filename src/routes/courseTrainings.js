@@ -4,7 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import createAdminController from '../controllers/trainingAdminController.js';
 import createSelfController from '../controllers/trainingSelfController.js';
-import registrationsController from '../controllers/trainingRegistrationAdminController.js';
+import createRegistrationsController from '../controllers/trainingRegistrationAdminController.js';
 import {
   trainingCreateRules,
   trainingUpdateRules,
@@ -18,6 +18,7 @@ import {
 
 const controller = createAdminController(false);
 const selfController = createSelfController(false);
+const registrationsController = createRegistrationsController(false);
 const router = express.Router();
 
 router.get('/', auth, authorize('ADMIN'), controller.list);
