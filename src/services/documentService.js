@@ -40,6 +40,12 @@ async function create(data, userId) {
     created_by: userId,
     updated_by: userId,
   });
+  const recipient = await User.findByPk(data.recipientId, {
+    attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+  });
+  if (recipient?.email) {
+    await emailService.sendDocumentCreatedEmail(recipient, doc);
+  }
   return doc;
 }
 
@@ -47,7 +53,7 @@ async function listByUser(userId) {
   const docs = await Document.findAll({
     where: { recipient_id: userId },
     include: [
-      { model: DocumentType, attributes: ['name', 'alias'] },
+      { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
       { model: SignType, attributes: ['name', 'alias'] },
       { model: File, attributes: ['id', 'key'] },
       { model: DocumentStatus, attributes: ['name', 'alias'] },
@@ -62,11 +68,16 @@ async function listByUser(userId) {
   return Promise.all(
     docs.map(async (d) => ({
       id: d.id,
+      number: d.number,
       name: d.name,
       description: d.description,
       documentDate: d.document_date,
       documentType: d.DocumentType
-        ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+        ? {
+            name: d.DocumentType.name,
+            alias: d.DocumentType.alias,
+            generated: d.DocumentType.generated,
+          }
         : null,
       signType: d.SignType
         ? { name: d.SignType.name, alias: d.SignType.alias }
@@ -92,7 +103,7 @@ async function listByUser(userId) {
 async function listAll() {
   const docs = await Document.findAll({
     include: [
-      { model: DocumentType, attributes: ['name', 'alias'] },
+      { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
       { model: SignType, attributes: ['name', 'alias'] },
       {
         model: User,
@@ -100,29 +111,40 @@ async function listAll() {
         attributes: ['last_name', 'first_name', 'patronymic'],
       },
       { model: DocumentStatus, attributes: ['name', 'alias'] },
+      { model: File, attributes: ['id', 'key'] },
     ],
     order: [['created_at', 'DESC']],
   });
-  return docs.map((d) => ({
-    id: d.id,
-    name: d.name,
-    documentDate: d.document_date,
-    documentType: d.DocumentType
-      ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
-      : null,
-    signType: d.SignType
-      ? { name: d.SignType.name, alias: d.SignType.alias }
-      : null,
-    recipient: {
-      lastName: d.recipient.last_name,
-      firstName: d.recipient.first_name,
-      patronymic: d.recipient.patronymic,
-    },
-    status: d.DocumentStatus
-      ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
-      : null,
-    createdAt: d.created_at,
-  }));
+  return Promise.all(
+    docs.map(async (d) => ({
+      id: d.id,
+      number: d.number,
+      name: d.name,
+      documentDate: d.document_date,
+      documentType: d.DocumentType
+        ? {
+            name: d.DocumentType.name,
+            alias: d.DocumentType.alias,
+            generated: d.DocumentType.generated,
+          }
+        : null,
+      signType: d.SignType
+        ? { name: d.SignType.name, alias: d.SignType.alias }
+        : null,
+      recipient: {
+        lastName: d.recipient.last_name,
+        firstName: d.recipient.first_name,
+        patronymic: d.recipient.patronymic,
+      },
+      status: d.DocumentStatus
+        ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
+        : null,
+      file: d.File
+        ? { id: d.File.id, url: await fileService.getDownloadUrl(d.File) }
+        : null,
+      createdAt: d.created_at,
+    }))
+  );
 }
 
 async function sign(user, documentId) {
@@ -159,6 +181,12 @@ async function sign(user, documentId) {
   });
   if (signedStatus) {
     await doc.update({ status_id: signedStatus.id, updated_by: user.id });
+    const recipient = await User.findByPk(doc.recipient_id, {
+      attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+    });
+    if (recipient?.email) {
+      await emailService.sendDocumentSignedEmail(recipient, doc);
+    }
   }
 }
 
@@ -198,6 +226,89 @@ async function requestSignature(documentId, actorId) {
     await emailService.sendDocumentAwaitingSignatureEmail(doc.recipient, doc);
   }
   return { name: status.name, alias: status.alias };
+}
+
+async function uploadSignedFile(documentId, file, actorId) {
+  if (!file) {
+    throw new ServiceError('file_required', 400);
+  }
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: SignType, attributes: ['alias'] },
+      { model: DocumentStatus, attributes: ['alias'] },
+    ],
+  });
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  if (
+    !doc.SignType ||
+    !['HANDWRITTEN', 'KONTUR_SIGN'].includes(doc.SignType.alias)
+  ) {
+    throw new ServiceError('document_sign_type_invalid', 400);
+  }
+  if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE') {
+    throw new ServiceError('document_status_invalid', 400);
+  }
+  const signedStatus = await DocumentStatus.findOne({
+    where: { alias: 'SIGNED' },
+    attributes: ['id', 'name', 'alias'],
+  });
+  if (!signedStatus) {
+    throw new ServiceError('document_status_not_found', 500);
+  }
+  const oldFileId = doc.file_id;
+  const newFile = await fileService.uploadDocument(file, actorId);
+  await doc.update({
+    file_id: newFile.id,
+    status_id: signedStatus.id,
+    updated_by: actorId,
+  });
+  if (oldFileId) {
+    await fileService.removeFile(oldFileId);
+  }
+  const recipient = await User.findByPk(doc.recipient_id, {
+    attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+  });
+  if (recipient?.email) {
+    await emailService.sendDocumentSignedEmail(recipient, doc);
+  }
+  const url = await fileService.getDownloadUrl(newFile);
+  return {
+    status: { name: signedStatus.name, alias: signedStatus.alias },
+    file: { id: newFile.id, url },
+  };
+}
+
+async function regenerate(documentId, actorId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentType, attributes: ['name', 'generated'] },
+      { model: DocumentStatus, attributes: ['alias'] },
+    ],
+  });
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  if (!doc.DocumentType?.generated) {
+    throw new ServiceError('document_type_not_generated', 400);
+  }
+  if (!['CREATED', 'AWAITING_SIGNATURE'].includes(doc.DocumentStatus?.alias)) {
+    throw new ServiceError('document_status_invalid', 400);
+  }
+  const pdf = await createPdfBuffer(doc.name);
+  const newFile = await fileService.saveGeneratedPdf(
+    pdf,
+    `${doc.name}.pdf`,
+    actorId
+  );
+  const oldFileId = doc.file_id;
+  await doc.update({ file_id: newFile.id, updated_by: actorId });
+  if (oldFileId) {
+    await fileService.removeFile(oldFileId);
+  }
+  const url = await fileService.getDownloadUrl(newFile);
+  return { file: { id: newFile.id, url } };
 }
 
 function createPdfBuffer(text) {
@@ -276,5 +387,7 @@ export default {
   listAll,
   sign,
   requestSignature,
+  uploadSignedFile,
+  regenerate,
   generateInitial,
 };

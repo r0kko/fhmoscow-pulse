@@ -124,23 +124,22 @@ async function submit() {
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
-                      <p class="text-muted mb-0">
-                        Дата выбора подписи:
-                        {{ formatDate(current.selectedAt) }}
+                      <p class="text-muted mb-0 small">
+                        Ожидаем Вас в офисе в будние дни с 10:00 до 17:00
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'KONTUR_SIGN'">
                       <p class="mb-2">Подписание через Контур.Сайн</p>
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
-                      <p class="text-muted mb-1">
-                        Дата выбора подписи:
-                        {{ formatDate(current.selectedAt) }}
-                      </p>
-                      <p class="text-muted mb-0">
-                        Дата создания подписи:
-                        {{ formatDate(current.signCreatedDate) }}
-                      </p>
+                      <a
+                        href="https://sign.kontur.ru"
+                        target="_blank"
+                        rel="noopener"
+                        class="btn btn-sm btn-kontur mt-2"
+                      >
+                        Перейти в Контур.Сайн
+                      </a>
                     </template>
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
                       <p class="mb-2">Простая электронная подпись</p>
@@ -163,40 +162,77 @@ async function submit() {
                 <div class="card section-card tile fade-in shadow-sm">
                   <div class="card-body">
                     <h2 class="h6 mb-3">Ваши документы</h2>
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-sm-block">
                       <table class="table align-middle mb-0">
                         <thead>
                           <tr>
+                            <th scope="col">Номер</th>
                             <th scope="col">Название</th>
                             <th scope="col">Дата</th>
+                            <th scope="col">Тип подписи</th>
                             <th scope="col">Статус</th>
                             <th scope="col" class="text-end">Файл</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr v-for="d in documents" :key="d.id">
+                            <td>{{ d.number }}</td>
                             <td>{{ d.name }}</td>
                             <td>{{ formatDate(d.documentDate) }}</td>
+                            <td>{{ d.signType?.name || '-' }}</td>
                             <td>{{ d.status?.name || '-' }}</td>
                             <td class="text-end">
                               <a
                                 v-if="d.file"
-                                class="btn btn-sm btn-outline-primary"
+                                class="btn btn-sm btn-outline-secondary"
                                 :href="d.file.url"
                                 target="_blank"
                                 rel="noopener"
+                                title="Скачать"
                               >
-                                Скачать
+                                <i
+                                  class="bi bi-download"
+                                  aria-hidden="true"
+                                ></i>
                               </a>
                             </td>
                           </tr>
                           <tr v-if="!documents.length">
-                            <td colspan="4" class="text-center text-muted">
+                            <td colspan="6" class="text-center text-muted">
                               Документы отсутствуют
                             </td>
                           </tr>
                         </tbody>
                       </table>
+                    </div>
+                    <div v-if="documents.length" class="d-block d-sm-none">
+                      <div v-for="d in documents" :key="d.id" class="card mb-2">
+                        <div class="card-body p-2">
+                          <h3 class="h6 mb-1">{{ d.name }}</h3>
+                          <p class="mb-1 small">№ {{ d.number }}</p>
+                          <p class="mb-1 small">
+                            Дата: {{ formatDate(d.documentDate) }}
+                          </p>
+                          <p class="mb-1 small">
+                            Подпись: {{ d.signType?.name || '—' }}
+                          </p>
+                          <p class="mb-1 small">
+                            Статус: {{ d.status?.name || '—' }}
+                          </p>
+                          <div class="d-flex flex-wrap gap-2 mt-2">
+                            <a
+                              v-if="d.file"
+                              :href="d.file.url"
+                              class="btn btn-sm btn-outline-secondary"
+                              target="_blank"
+                              rel="noopener"
+                              title="Скачать"
+                            >
+                              <i class="bi bi-download" aria-hidden="true"></i>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -205,7 +241,7 @@ async function submit() {
           </div>
           <div v-else>
             <p class="mb-3">Выберите способ подписания первичных документов</p>
-            <div class="row row-cols-1 row-cols-md-2 g-3">
+            <div class="row row-cols-1 row-cols-md-2 gx-3 gy-4">
               <div v-for="t in signTypes" :key="t.alias" class="col">
                 <div class="card section-card tile fade-in h-100 shadow-sm">
                   <div class="card-body d-flex flex-column">
@@ -334,5 +370,17 @@ async function submit() {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.btn-kontur {
+  color: #fff;
+  background-color: #17b490;
+  border-color: #17b490;
+}
+.btn-kontur:hover,
+.btn-kontur:focus {
+  color: #fff;
+  background-color: #139e84;
+  border-color: #139e84;
 }
 </style>

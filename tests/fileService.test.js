@@ -31,6 +31,9 @@ jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
   GetObjectCommand: function GetObjectCommand(args) {
     this.args = args;
   },
+  DeleteObjectCommand: function DeleteObjectCommand(args) {
+    this.args = args;
+  },
 }));
 
 jest.unstable_mockModule('@aws-sdk/s3-request-presigner', () => ({
