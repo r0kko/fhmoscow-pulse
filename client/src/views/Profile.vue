@@ -1,16 +1,12 @@
 <script setup>
-import { ref, onMounted, reactive, nextTick, computed } from 'vue';
+import { ref, onMounted, reactive, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import Toast from 'bootstrap/js/dist/toast';
-import Tooltip from 'bootstrap/js/dist/tooltip';
 import { apiFetch } from '../api.js';
 import InfoField from '../components/InfoField.vue';
 
 const noDataPlaceholder = '—';
 
 const user = ref(null);
-const toastRef = ref(null);
-const toastMessage = ref('');
 const code = ref('');
 const codeSent = ref(false);
 const verifyError = ref('');
@@ -21,6 +17,8 @@ const snils = ref();
 const driverLicense = ref();
 const bankAccount = ref();
 const bankAccountError = ref('');
+const registrationAddress = ref();
+const residenceAddress = ref();
 const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
   const num = bankAccount.value.number;
@@ -39,6 +37,14 @@ const sectionNav = computed(() =>
         bankAccountError.value ||
         loading.bankAccount,
     },
+    {
+      id: 'addresses',
+      label: 'Адреса',
+      show:
+        registrationAddress.value !== undefined ||
+        residenceAddress.value !== undefined ||
+        loading.addresses,
+    },
   ].filter((s) => s.show)
 );
 const loading = reactive({
@@ -48,14 +54,8 @@ const loading = reactive({
   taxation: false,
   snils: false,
   bankAccount: false,
+  addresses: false,
 });
-let toast;
-
-function initTooltips() {
-  document
-    .querySelectorAll('[data-bs-toggle="tooltip"]')
-    .forEach((el) => new Tooltip(el));
-}
 
 function formatPhone(digits) {
   if (!digits) return '';
@@ -79,23 +79,6 @@ function maskPassportNumber(num) {
   const start = num.slice(0, 1);
   const end = num.slice(-1);
   return start + '*'.repeat(num.length - 2) + end;
-}
-
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) {
-    toast = new Toast(toastRef.value);
-  }
-  toast.show();
-}
-
-async function copyToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast('Скопировано');
-  } catch (_err) {
-    showToast('Не удалось скопировать');
-  }
 }
 
 async function sendCode() {
@@ -128,8 +111,6 @@ async function fetchProfile() {
   try {
     const data = await apiFetch('/users/me');
     user.value = data.user;
-    await nextTick();
-    initTooltips();
   } catch (_err) {
     user.value = null;
   } finally {
@@ -154,8 +135,6 @@ async function fetchInn() {
   try {
     const data = await apiFetch('/inns/me');
     inn.value = data.inn;
-    await nextTick();
-    initTooltips();
   } catch (_e) {
     inn.value = null;
   } finally {
@@ -180,8 +159,6 @@ async function fetchSnils() {
   try {
     const data = await apiFetch('/snils/me');
     snils.value = data.snils;
-    await nextTick();
-    initTooltips();
   } catch (_e) {
     snils.value = null;
   } finally {
@@ -195,13 +172,26 @@ async function fetchBankAccount() {
     const data = await apiFetch('/bank-accounts/me');
     bankAccount.value = data.account;
     bankAccountError.value = '';
-    await nextTick();
-    initTooltips();
   } catch (e) {
     bankAccountError.value = e.message;
     bankAccount.value = null;
   } finally {
     loading.bankAccount = false;
+  }
+}
+
+async function fetchAddresses() {
+  loading.addresses = true;
+  try {
+    const reg = await apiFetch('/addresses/REGISTRATION');
+    registrationAddress.value = reg.address?.result || null;
+    const res = await apiFetch('/addresses/RESIDENCE');
+    residenceAddress.value = res.address?.result || null;
+  } catch (_e) {
+    registrationAddress.value = null;
+    residenceAddress.value = null;
+  } finally {
+    loading.addresses = false;
   }
 }
 onMounted(() => {
@@ -211,6 +201,7 @@ onMounted(() => {
   fetchTaxation();
   fetchSnils();
   fetchBankAccount();
+  fetchAddresses();
 });
 </script>
 
@@ -327,8 +318,6 @@ onMounted(() => {
                         label="Телефон"
                         icon="bi bi-telephone"
                         :value="user.phone ? formatPhone(user.phone) : ''"
-                        :copyable="!!user.phone"
-                        @copy="copyToClipboard(user.phone)"
                       />
                     </div>
                     <div class="col">
@@ -337,8 +326,6 @@ onMounted(() => {
                         label="Email"
                         icon="bi bi-envelope"
                         :value="user.email"
-                        :copyable="!!user.email"
-                        @copy="copyToClipboard(user.email)"
                       />
                     </div>
                   </div>
@@ -403,18 +390,6 @@ onMounted(() => {
                           label="Счёт"
                           icon="bi bi-credit-card"
                           :value="maskedAccountNumber"
-                          :copyable="!!bankAccount.number"
-                          @copy="copyToClipboard(bankAccount.number)"
-                        />
-                      </div>
-                      <div class="col">
-                        <InfoField
-                          id="accBic"
-                          label="БИК"
-                          icon="bi bi-123"
-                          :value="bankAccount.bic"
-                          :copyable="!!bankAccount.bic"
-                          @copy="copyToClipboard(bankAccount.bic)"
                         />
                       </div>
                       <div class="col">
@@ -425,23 +400,53 @@ onMounted(() => {
                           :value="bankAccount.bank_name"
                         />
                       </div>
-                      <div class="col">
-                        <InfoField
-                          id="accCorr"
-                          label="Корсчёт"
-                          icon="bi bi-building"
-                          :value="bankAccount.correspondent_account"
-                          :copyable="!!bankAccount.correspondent_account"
-                          @copy="
-                            copyToClipboard(bankAccount.correspondent_account)
-                          "
-                        />
-                      </div>
                     </div>
                   </div>
                   <p v-else class="mb-0 text-muted">
                     {{ bankAccountError || 'Банковский счёт не найден.' }}
                   </p>
+                </div>
+              </div>
+            </section>
+            <section
+              v-if="
+                registrationAddress !== undefined ||
+                residenceAddress !== undefined ||
+                loading.addresses
+              "
+              id="addresses"
+              class="mb-4"
+            >
+              <div class="card section-card tile fade-in shadow-sm">
+                <div class="card-body">
+                  <h2 class="card-title h5 mb-3">Адреса</h2>
+                  <div v-if="loading.addresses" class="text-center py-4">
+                    <div
+                      class="spinner-border"
+                      role="status"
+                      aria-label="Загрузка"
+                    >
+                      <span class="visually-hidden">Загрузка…</span>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <div class="mb-3">
+                      <h3 class="h6 text-muted mb-1">
+                        Для юридически значимых документов
+                      </h3>
+                      <p class="mb-0">
+                        {{ registrationAddress || noDataPlaceholder }}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 class="h6 text-muted mb-1">
+                        Может использоваться для назначений
+                      </h3>
+                      <p class="mb-0">
+                        {{ residenceAddress || noDataPlaceholder }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
@@ -462,17 +467,6 @@ onMounted(() => {
         </div>
       </div>
       <p v-else>Данные пользователя не найдены.</p>
-      <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div
-          ref="toastRef"
-          class="toast text-bg-secondary"
-          role="status"
-          data-bs-delay="1500"
-          data-bs-autohide="true"
-        >
-          <div class="toast-body">{{ toastMessage }}</div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
