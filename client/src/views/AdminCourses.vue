@@ -54,6 +54,40 @@ const selectedTrainingType = computed(() =>
   trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
 );
 
+const filter = ref({ type: '', teacher: '', course: '' });
+const teacherOptions = computed(() => {
+  const map = new Map();
+  trainings.value.forEach((t) => {
+    if (t.teacher) map.set(t.teacher.id, t.teacher);
+  });
+  return Array.from(map.values());
+});
+const filteredTrainings = computed(() =>
+  trainings.value.filter((t) => {
+    if (filter.value.type && t.type?.id !== filter.value.type) return false;
+    if (filter.value.teacher && t.teacher?.id !== filter.value.teacher)
+      return false;
+    if (
+      filter.value.course &&
+      !t.courses?.some((c) => c.id === filter.value.course)
+    )
+      return false;
+    return true;
+  })
+);
+const upcomingTrainings = computed(() => {
+  const now = Date.now();
+  return filteredTrainings.value.filter(
+    (t) => new Date(t.start_at).getTime() >= now
+  );
+});
+const pastTrainings = computed(() => {
+  const now = Date.now();
+  return filteredTrainings.value.filter(
+    (t) => new Date(t.start_at).getTime() < now
+  );
+});
+
 function fullName(u) {
   return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
 }
@@ -339,10 +373,10 @@ onBeforeUnmount(() => {
           <li class="breadcrumb-item">
             <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
-          <li class="breadcrumb-item active" aria-current="page">Курсы</li>
+          <li class="breadcrumb-item active" aria-current="page">Мероприятия</li>
         </ol>
       </nav>
-      <h1 class="mb-3">Курсы</h1>
+      <h1 class="mb-3">Мероприятия</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body p-2">
           <ul
@@ -372,7 +406,7 @@ onBeforeUnmount(() => {
                 :class="{ active: activeTab === 'trainings' }"
                 @click="activeTab = 'trainings'"
               >
-                Тренировки
+                Мероприятия
               </button>
             </li>
           </ul>
@@ -631,18 +665,60 @@ onBeforeUnmount(() => {
             <div v-if="trainingsError" class="alert alert-danger mb-3">
               {{ trainingsError }}
             </div>
-            <div class="table-responsive d-none d-sm-block">
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <select v-model="filter.type" class="form-select">
+                  <option value="">Все типы</option>
+                  <option
+                    v-for="tt in trainingTypes"
+                    :key="tt.id"
+                    :value="tt.id"
+                  >
+                    {{ tt.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <select v-model="filter.teacher" class="form-select">
+                  <option value="">Все преподаватели</option>
+                  <option
+                    v-for="t in teacherOptions"
+                    :key="t.id"
+                    :value="t.id"
+                  >
+                    {{ fullName(t) }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <select v-model="filter.course" class="form-select">
+                  <option value="">Все курсы</option>
+                  <option v-for="c in courses" :key="c.id" :value="c.id">
+                    {{ c.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <h2 class="h5 mb-3">Будущие</h2>
+            <div
+              v-if="upcomingTrainings.length"
+              class="table-responsive d-none d-sm-block"
+            >
               <table class="table admin-table table-striped align-middle mb-0">
                 <thead>
                   <tr>
                     <th>Начало</th>
                     <th class="d-none d-md-table-cell">Тип</th>
+                    <th class="d-none d-md-table-cell">Преподаватель</th>
                     <th class="d-none d-md-table-cell">Курсы</th>
+                    <th class="text-center">Запись</th>
+                    <th class="text-center">Посещ.</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="t in trainings" :key="t.id">
+                  <tr v-for="t in upcomingTrainings" :key="t.id">
                     <td>
                       {{
                         new Date(t.start_at).toLocaleString('ru-RU', {
@@ -652,12 +728,25 @@ onBeforeUnmount(() => {
                         })
                       }}
                     </td>
+                    <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      {{ t.type?.name }}
-                      <span v-if="t.teacher"> · {{ fullName(t.teacher) }}</span>
+                      {{ t.teacher ? fullName(t.teacher) : '—' }}
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
+                    </td>
+                    <td class="text-center">{{ t.registered_count }}</td>
+                    <td class="text-center">
+                      <i
+                        v-if="t.attendance_marked"
+                        class="bi bi-check-circle text-success"
+                        aria-label="Отмечено"
+                      ></i>
+                      <i
+                        v-else
+                        class="bi bi-dash-circle text-muted"
+                        aria-label="Не отмечено"
+                      ></i>
                     </td>
                     <td class="text-end">
                       <RouterLink
@@ -683,18 +772,16 @@ onBeforeUnmount(() => {
                       </button>
                     </td>
                   </tr>
-                  <tr v-if="trainings.length === 0">
-                    <td colspan="4" class="text-center text-muted">
-                      Нет тренировок
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
-            <div class="d-sm-none">
+            <div v-else class="alert alert-info mb-3">
+              Нет будущих мероприятий
+            </div>
+            <div class="d-sm-none" v-if="upcomingTrainings.length">
               <ul class="list-group">
                 <li
-                  v-for="t in trainings"
+                  v-for="t in upcomingTrainings"
                   :key="t.id"
                   class="list-group-item d-flex justify-content-between align-items-center"
                 >
@@ -708,10 +795,17 @@ onBeforeUnmount(() => {
                         })
                       }}
                     </div>
-                    <small class="text-muted">
-                      {{ t.type?.name }}
-                      <span v-if="t.teacher"> · {{ fullName(t.teacher) }}</span>
-                    </small>
+                    <small class="text-muted d-block">{{ t.type?.name }}</small>
+                    <small class="text-muted d-block" v-if="t.teacher"
+                      >{{ fullName(t.teacher) }}</small
+                    >
+                    <small class="text-muted d-block"
+                      >{{ t.courses.map((c) => c.name).join(', ') }}</small
+                    >
+                    <small class="text-muted d-block"
+                      >Запись: {{ t.registered_count }}, Посещ.:
+                      {{ t.attendance_marked ? '✓' : '—' }}</small
+                    >
                   </div>
                   <div class="btn-group btn-group-sm">
                     <RouterLink
@@ -737,14 +831,155 @@ onBeforeUnmount(() => {
                     </button>
                   </div>
                 </li>
+              </ul>
+            </div>
+            <div
+              v-else
+              class="d-sm-none mb-3 text-muted text-center"
+            >
+              Нет будущих мероприятий
+            </div>
+
+            <h2 class="h5 mb-3 mt-4">Прошедшие</h2>
+            <div
+              v-if="pastTrainings.length"
+              class="table-responsive d-none d-sm-block"
+            >
+              <table class="table admin-table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Начало</th>
+                    <th class="d-none d-md-table-cell">Тип</th>
+                    <th class="d-none d-md-table-cell">Преподаватель</th>
+                    <th class="d-none d-md-table-cell">Курсы</th>
+                    <th class="text-center">Запись</th>
+                    <th class="text-center">Посещ.</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="t in pastTrainings" :key="t.id">
+                    <td>
+                      {{
+                        new Date(t.start_at).toLocaleString('ru-RU', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                          timeZone: 'Europe/Moscow',
+                        })
+                      }}
+                    </td>
+                    <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
+                    <td class="d-none d-md-table-cell">
+                      {{ t.teacher ? fullName(t.teacher) : '—' }}
+                    </td>
+                    <td class="d-none d-md-table-cell">
+                      {{ t.courses.map((c) => c.name).join(', ') }}
+                    </td>
+                    <td class="text-center">{{ t.registered_count }}</td>
+                    <td class="text-center">
+                      <i
+                        v-if="t.attendance_marked"
+                        class="bi bi-check-circle text-success"
+                        aria-label="Отмечено"
+                      ></i>
+                      <i
+                        v-else
+                        class="bi bi-dash-circle text-muted"
+                        aria-label="Не отмечено"
+                      ></i>
+                    </td>
+                    <td class="text-end">
+                      <RouterLink
+                        :to="`/admin/course-trainings/${t.id}/registrations`"
+                        class="btn btn-sm btn-primary me-2"
+                        aria-label="Регистрации"
+                      >
+                        <i class="bi bi-people" aria-hidden="true"></i>
+                      </RouterLink>
+                      <button
+                        class="btn btn-sm btn-secondary me-2"
+                        aria-label="Редактировать тренировку"
+                        @click="openTrainingModal(t)"
+                      >
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-danger"
+                        aria-label="Удалить тренировку"
+                        @click="deleteTraining(t.id)"
+                      >
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="alert alert-info mb-3">
+              Нет прошедших мероприятий
+            </div>
+            <div class="d-sm-none" v-if="pastTrainings.length">
+              <ul class="list-group">
                 <li
-                  v-if="trainings.length === 0"
-                  class="list-group-item text-muted"
+                  v-for="t in pastTrainings"
+                  :key="t.id"
+                  class="list-group-item d-flex justify-content-between align-items-center"
                 >
-                  Нет тренировок
+                  <div>
+                    <div>
+                      {{
+                        new Date(t.start_at).toLocaleString('ru-RU', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                          timeZone: 'Europe/Moscow',
+                        })
+                      }}
+                    </div>
+                    <small class="text-muted d-block">{{ t.type?.name }}</small>
+                    <small class="text-muted d-block" v-if="t.teacher"
+                      >{{ fullName(t.teacher) }}</small
+                    >
+                    <small class="text-muted d-block"
+                      >{{ t.courses.map((c) => c.name).join(', ') }}</small
+                    >
+                    <small class="text-muted d-block"
+                      >Запись: {{ t.registered_count }}, Посещ.:
+                      {{ t.attendance_marked ? '✓' : '—' }}</small
+                    >
+                  </div>
+                  <div class="btn-group btn-group-sm">
+                    <RouterLink
+                      :to="`/admin/course-trainings/${t.id}/registrations`"
+                      class="btn btn-primary"
+                      aria-label="Регистрации"
+                    >
+                      <i class="bi bi-people" aria-hidden="true"></i>
+                    </RouterLink>
+                    <button
+                      class="btn btn-secondary"
+                      aria-label="Редактировать тренировку"
+                      @click="openTrainingModal(t)"
+                    >
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      class="btn btn-danger"
+                      aria-label="Удалить тренировку"
+                      @click="deleteTraining(t.id)"
+                    >
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                  </div>
                 </li>
               </ul>
             </div>
+            <div
+              v-else
+              class="d-sm-none mb-3 text-muted text-center"
+            >
+              Нет прошедших мероприятий
+            </div>
+
             <button class="btn btn-brand mt-3" @click="openTrainingModal()">
               Добавить тренировку
             </button>
