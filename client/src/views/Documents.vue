@@ -132,8 +132,12 @@ async function submit() {
                       <p class="mb-2">Подписание через Контур.Сайн</p>
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
-                      <p class="text-muted mb-0">
+                      <p class="text-muted mb-1">
                         Заявка отправлена {{ formatDate(current.selectedAt) }}
+                      </p>
+                      <p class="text-muted mb-0">
+                        Дата создания подписи:
+                        {{ formatDate(current.signCreatedDate) }}
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
@@ -144,7 +148,8 @@ async function submit() {
                       </p>
                       <p class="mb-1">ID: {{ current.id }}</p>
                       <p class="text-muted mb-0">
-                        Дата выпуска: {{ formatDate(current.selectedAt) }}
+                        Дата создания подписи:
+                        {{ formatDate(current.signCreatedDate) }}
                       </p>
                     </template>
                   </div>
@@ -198,24 +203,25 @@ async function submit() {
           </div>
           <div v-else>
             <p class="mb-3">Выберите способ подписания первичных документов</p>
-            <div class="row g-3">
-              <div v-for="t in signTypes" :key="t.alias" class="col-md-6">
+            <div class="row row-cols-1 row-cols-md-2 g-3">
+              <div v-for="t in signTypes" :key="t.alias" class="col">
                 <div class="card section-card tile fade-in h-100 shadow-sm">
                   <div class="card-body d-flex flex-column">
                     <h2 class="h6 mb-3">{{ t.name }}</h2>
-                    <ul class="list-unstyled flex-grow-1 mb-3">
-                      <li
-                        v-for="(item, i) in signInfo[t.alias]"
-                        :key="i"
-                        class="d-flex mb-2"
-                      >
-                        <i
-                          class="bi bi-check-circle text-brand me-2"
-                          aria-hidden="true"
-                        ></i>
-                        <span>{{ item }}</span>
-                      </li>
-                    </ul>
+                      <ul class="list-unstyled flex-grow-1 mb-3">
+                        <li
+                          v-for="(item, i) in signInfo[t.alias]"
+                          :key="i"
+                          class="d-flex"
+                          :class="i !== signInfo[t.alias].length - 1 ? 'mb-2' : ''"
+                        >
+                          <i
+                            class="bi bi-check-circle text-brand me-2"
+                            aria-hidden="true"
+                          ></i>
+                          <span>{{ item }}</span>
+                        </li>
+                      </ul>
                     <div class="text-end mt-auto">
                       <button
                         type="button"
