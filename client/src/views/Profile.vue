@@ -228,6 +228,16 @@ async function setActive(id) {
   await fetchVehicles();
 }
 
+async function removeVehicle(id) {
+  if (!confirm('Удалить транспортное средство?')) return;
+  try {
+    await apiFetch(`/vehicles/${id}`, { method: 'DELETE' });
+    await fetchVehicles();
+  } catch (e) {
+    alert(e.message || 'Не удалось удалить');
+  }
+}
+
 function formatAddress(addr) {
   if (!addr) return '';
   const parts = [];
@@ -505,7 +515,18 @@ onMounted(() => {
             <section id="vehicles" class="mb-4">
               <div class="card section-card tile fade-in shadow-sm">
                 <div class="card-body">
-                  <h2 class="card-title h5 mb-3">Транспортные средства</h2>
+                  <div class="d-flex align-items-center mb-3">
+                    <h2 class="card-title h5 mb-0">Транспортные средства</h2>
+                    <button
+                      v-if="vehicles.length < 3"
+                      type="button"
+                      class="btn btn-sm btn-outline-brand ms-auto"
+                      aria-label="Добавить транспортное средство"
+                      @click="openAddVehicle"
+                    >
+                      <i class="bi bi-plus"></i>
+                    </button>
+                  </div>
                   <div v-if="loading.vehicles" class="text-center py-4">
                     <div
                       class="spinner-border"
@@ -524,29 +545,30 @@ onMounted(() => {
                       >
                         <i class="bi bi-car-front fs-5"></i>
                         <span>
-                          {{ v.brand
-                          }}<span v-if="v.model"> {{ v.model }}</span> &middot;
-                          {{ v.number }}
+                          {{ v.brand }}
+                          <span v-if="v.model"> {{ v.model }}</span>
+                          &middot; {{ v.number }}
                         </span>
-                        <div class="form-check ms-auto mb-0">
-                          <input
-                            class="form-check-input brand-check"
-                            type="checkbox"
-                            name="activeVehicle"
-                            :checked="v.is_active"
-                            @change="setActive(v.id)"
-                          />
-                          <label class="form-check-label">Активен</label>
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                          <div class="form-check mb-0">
+                            <input
+                              class="form-check-input brand-radio"
+                              type="radio"
+                              name="activeVehicle"
+                              :checked="v.is_active"
+                              aria-label="Активное транспортное средство"
+                              @change="setActive(v.id)"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            class="btn p-0 text-muted"
+                            aria-label="Удалить"
+                            @click="removeVehicle(v.id)"
+                          >
+                            <i class="bi bi-x"></i>
+                          </button>
                         </div>
-                      </li>
-                      <li v-if="vehicles.length < 3" class="list-group-item">
-                        <button
-                          type="button"
-                          class="btn btn-link p-0"
-                          @click="openAddVehicle"
-                        >
-                          Добавить транспортное средство
-                        </button>
                       </li>
                     </ul>
                   </div>
