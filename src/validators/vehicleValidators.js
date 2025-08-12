@@ -3,7 +3,9 @@ import { body } from 'express-validator';
 export const vehicleCreateRules = [
   body('vehicle').isString().trim().notEmpty().withMessage('invalid_vehicle'),
   body('number')
-    .matches(/^[A-ZА-ЯЁ][0-9]{3}[A-ZА-ЯЁ]{2}[0-9]{2,3}$/i)
+    .matches(
+      /^[ABEKMHOPCTYXАВЕКМНОРСТУХ]{1}\d{3}[ABEKMHOPCTYXАВЕКМНОРСТУХ]{2}\d{2,3}$/i
+    )
     .withMessage('invalid_number'),
 ];
 

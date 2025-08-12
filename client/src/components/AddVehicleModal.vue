@@ -12,6 +12,9 @@ let modal;
 const form = ref({ vehicle: '', number: '' });
 const errors = ref({});
 
+const plateRegex =
+  /^[ABEKMHOPCTYXАВЕКМНОРСТУХ]{1}\d{3}[ABEKMHOPCTYXАВЕКМНОРСТУХ]{2}\d{2,3}$/;
+
 function open() {
   form.value = { vehicle: '', number: '' };
   errors.value = {};
@@ -26,8 +29,21 @@ function onNumberInput(e) {
 
 async function save() {
   errors.value = {};
+  if (!form.value.number || !plateRegex.test(form.value.number)) {
+    errors.value.number = 'Введите корректный госномер';
+    return;
+  }
   const clean = await cleanVehicle(form.value.vehicle);
-  if (!clean || [1, 2].includes(clean.qc)) {
+  if (!clean) {
+    errors.value.vehicle = 'Введите корректно марку и модель';
+    return;
+  }
+  if (clean.qc === 1) {
+    errors.value.vehicle =
+      'Попробуйте ввести марку или номер иначе или оставить только марку';
+    return;
+  }
+  if (clean.qc === 2) {
     errors.value.vehicle = 'Введите корректно марку и модель';
     return;
   }
@@ -42,7 +58,11 @@ async function save() {
     modal.hide();
     emit('saved');
   } catch (err) {
-    errors.value.number = 'Не удалось сохранить';
+    if (err.message.includes('госномер')) {
+      errors.value.number = err.message;
+    } else {
+      errors.value.vehicle = err.message || 'Не удалось сохранить';
+    }
   }
 }
 

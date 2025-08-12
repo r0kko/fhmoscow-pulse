@@ -18,7 +18,13 @@ export default {
     }
     try {
       const clean = await dadataService.cleanVehicle(req.body.vehicle);
-      if (!clean || [1, 2].includes(clean.qc)) {
+      if (!clean) {
+        return res.status(400).json({ error: 'invalid_vehicle' });
+      }
+      if (clean.qc === 1) {
+        return res.status(400).json({ error: 'vehicle_qc1' });
+      }
+      if (clean.qc === 2) {
         return res.status(400).json({ error: 'invalid_vehicle' });
       }
       const vehicle = await vehicleService.createForUser(
