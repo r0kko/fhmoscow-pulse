@@ -44,6 +44,21 @@ const responsibleContact = computed(() => {
   };
 });
 
+function teacherName(t) {
+  if (!t.teacher) return '';
+  return [t.teacher.last_name, t.teacher.first_name, t.teacher.patronymic]
+    .filter(Boolean)
+    .join(' ');
+}
+
+function formatTime(dateStr) {
+  return new Date(dateStr).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  });
+}
+
 async function loadTrainings() {
   trainingsLoading.value = true;
   try {
@@ -335,17 +350,21 @@ function openContactModal(contact) {
                   <div
                     v-for="t in day.trainings"
                     :key="t.id"
-                    class="d-flex justify-content-between align-items-center mb-2"
+                    class="d-flex justify-content-between align-items-start mb-2"
                   >
-                    <div>
-                      {{
-                        new Date(t.start_at).toLocaleTimeString('ru-RU', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'Europe/Moscow',
-                        })
-                      }}
-                      — {{ t.type?.name }}
+                    <div class="me-3 flex-grow-1">
+                      <div>
+                        <strong
+                          >{{ formatTime(t.start_at) }}–{{
+                            formatTime(t.end_at)
+                          }}</strong
+                        >
+                        <span class="ms-2">{{ t.ground?.name }}</span>
+                      </div>
+                      <div class="text-muted small">
+                        {{ t.type?.name }}
+                        <span v-if="t.teacher"> · {{ teacherName(t) }}</span>
+                      </div>
                     </div>
                     <div class="small d-flex align-items-center">
                       <i

@@ -53,6 +53,10 @@ const selectedTrainingType = computed(() =>
   trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
 );
 
+function fullName(u) {
+  return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
+}
+
 async function loadUsers() {
   loadingUsers.value = true;
   try {
@@ -614,7 +618,10 @@ onMounted(() => {
                         })
                       }}
                     </td>
-                    <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
+                    <td class="d-none d-md-table-cell">
+                      {{ t.type?.name }}
+                      <span v-if="t.teacher"> · {{ fullName(t.teacher) }}</span>
+                    </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
                     </td>
@@ -664,7 +671,10 @@ onMounted(() => {
                         })
                       }}
                     </div>
-                    <small class="text-muted">{{ t.type?.name }}</small>
+                    <small class="text-muted">
+                      {{ t.type?.name }}
+                      <span v-if="t.teacher"> · {{ fullName(t.teacher) }}</span>
+                    </small>
                   </div>
                   <div class="btn-group btn-group-sm">
                     <RouterLink

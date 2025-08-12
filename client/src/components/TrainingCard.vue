@@ -18,14 +18,12 @@ const props = defineProps({
 const emit = defineEmits(['register', 'unregister']);
 
 const coachList = computed(() =>
-  props.training.teachers && props.training.teachers.length
-    ? props.training.teachers
+  props.training.teacher
+    ? [props.training.teacher]
     : props.training.coaches || []
 );
 const coachLabel = computed(() =>
-  props.training.teachers && props.training.teachers.length
-    ? 'Преподаватель'
-    : 'Тренер'
+  props.training.teacher ? 'Преподаватель' : 'Тренер'
 );
 
 function formatStart(date) {

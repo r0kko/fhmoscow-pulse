@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import mapper from '../src/mappers/trainingMapper.js';
 
-test('maps teachers and coaches', () => {
+test('maps teacher and coaches', () => {
   const start = new Date().toISOString();
   const end = new Date(Date.now() + 3600000).toISOString();
   const training = {
@@ -24,7 +24,7 @@ test('maps teachers and coaches', () => {
     ],
   };
   const res = mapper.toPublic(training);
-  expect(res.teachers).toHaveLength(1);
+  expect(res.teacher).toBeTruthy();
   expect(res.coaches).toHaveLength(1);
 });
 

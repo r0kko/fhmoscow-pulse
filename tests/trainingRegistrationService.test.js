@@ -224,6 +224,40 @@ test('add restores deleted registration', async () => {
   });
 });
 
+test('add replaces existing teacher', async () => {
+  const oldDestroy = jest.fn();
+  const tr = {
+    ...training,
+    TrainingRegistrations: [
+      {
+        user_id: 'uOld',
+        TrainingRole: { alias: 'TEACHER' },
+        destroy: oldDestroy,
+      },
+    ],
+    update: updateTrainingMock,
+  };
+  findTrainingMock.mockResolvedValue(tr);
+  findUserMock.mockResolvedValue({
+    id: 'uNew',
+    email: 'eNew',
+    Roles: [{ alias: 'BRIGADE_REFEREE' }],
+  });
+  findTrainingRoleMock.mockResolvedValueOnce({
+    id: 'tRole',
+    alias: 'TEACHER',
+  });
+  await service.add('t1', 'uNew', 'tRole', 'admin');
+  expect(oldDestroy).toHaveBeenCalled();
+  expect(createRegMock).toHaveBeenCalledWith({
+    training_id: 't1',
+    user_id: 'uNew',
+    training_role_id: 'tRole',
+    created_by: 'admin',
+    updated_by: 'admin',
+  });
+});
+
 test('register rejects when training is full', async () => {
   const tr = {
     id: 't1',

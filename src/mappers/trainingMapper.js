@@ -58,10 +58,10 @@ function sanitize(obj) {
       (r) => r.TrainingRole?.alias === 'COACH' && r.User
     ).map((r) => userMapper.toPublic(r.User));
     if (coaches.length) res.coaches = coaches;
-    const teachers = obj.TrainingRegistrations.filter(
+    const teacherReg = obj.TrainingRegistrations.find(
       (r) => r.TrainingRole?.alias === 'TEACHER' && r.User
-    ).map((r) => userMapper.toPublic(r.User));
-    if (teachers.length) res.teachers = teachers;
+    );
+    if (teacherReg) res.teacher = userMapper.toPublic(teacherReg.User);
     const inventory = obj.TrainingRegistrations.filter(
       (r) => r.TrainingRole?.alias === 'EQUIPMENT_MANAGER' && r.User
     ).map((r) => userMapper.toPublic(r.User));
