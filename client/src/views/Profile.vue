@@ -466,6 +466,27 @@ onMounted(() => {
                 </div>
               </div>
             </section>
+            <section class="mb-4">
+              <div class="section-card bg-body-tertiary p-3 fade-in">
+                <div class="d-flex align-items-start">
+                  <i class="bi bi-globe fs-4 me-3"></i>
+                  <div>
+                    <div>Российская Федерация</div>
+                    <div class="form-text">Налоговое резидентство</div>
+                  </div>
+                </div>
+                <hr class="my-3" />
+                <div class="d-flex align-items-start">
+                  <i class="bi bi-x-circle fs-4 me-3 text-secondary"></i>
+                  <div>
+                    <div>Удалить личный кабинет</div>
+                    <div class="form-text">
+                      Возможно после обращения в офис ФХМ с паспортом
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
           <div class="col-lg-3 d-none d-lg-block">
             <nav
