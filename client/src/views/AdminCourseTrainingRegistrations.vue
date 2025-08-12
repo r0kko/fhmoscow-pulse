@@ -3,8 +3,6 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
-const ROLE_ORDER = ['TEACHER', 'LISTENER'];
-
 const route = useRoute();
 const training = ref(null);
 const trainingError = ref('');
@@ -14,7 +12,7 @@ const list = ref([]);
 const loading = ref(false);
 const error = ref('');
 
-const addForm = ref({ user_id: '', training_role_id: '' });
+const addForm = ref({ user_id: '' });
 const addLoading = ref(false);
 const judges = ref([]);
 const filteredJudges = computed(() => {
@@ -24,55 +22,21 @@ const filteredJudges = computed(() => {
     (j) => j.course && courseIds.includes(j.course.id)
   );
 });
-const trainingRoles = ref([]);
+const listenerRoleId = ref(null);
 const lastAddedUserId = ref(null);
 const finishLoading = ref(false);
 const finishError = ref('');
 
-function showAttendance(reg) {
-  const alias = reg.role?.alias;
-  return alias === 'LISTENER';
-}
-
 const attendanceMarked = computed(() => training.value?.attendance_marked);
-
-const groupedRegistrations = computed(() => {
-  const map = {};
-  trainingRoles.value.forEach((r) => {
-    map[r.id] = { role: r, registrations: [] };
-  });
-  const none = { role: null, registrations: [] };
-  for (const r of list.value) {
-    const group = map[r.role_id] || none;
-    group.registrations.push(r);
-  }
-  const groups = [];
-  trainingRoles.value.forEach((r) => {
-    const g = map[r.id];
-    if (g.registrations.length) groups.push(g);
-  });
-  if (none.registrations.length) groups.push(none);
-  return groups;
-});
-
-const visibleRegistrations = computed(() =>
-  list.value.filter((r) => showAttendance(r))
-);
 const allMarked = computed(() =>
-  visibleRegistrations.value.every(
-    (r) => r.present === true || r.present === false
-  )
+  list.value.every((r) => r.present === true || r.present === false)
 );
-const teacherId = computed(
-  () => list.value.find((r) => r.role?.alias === 'TEACHER')?.user.id || null
-);
-const hasTeacher = computed(() => teacherId.value !== null);
 
 onMounted(() => {
   loadTraining();
   loadRegistrations();
   loadJudges();
-  loadTrainingRoles();
+  loadListenerRole();
 });
 
 function formatDateTimeRange(start, end) {
@@ -110,11 +74,9 @@ async function loadRegistrations() {
     const data = await apiFetch(
       `/course-trainings/${route.params.id}/registrations?limit=1000`
     );
-    list.value = data.registrations.map((r) => ({
-      ...r,
-      role_id: r.role ? r.role.id : '',
-      highlight: false,
-    }));
+    list.value = data.registrations
+      .filter((r) => r.role?.alias === 'LISTENER')
+      .map((r) => ({ ...r, highlight: false }));
     error.value = '';
     if (lastAddedUserId.value) {
       const added = list.value.find((r) => r.user.id === lastAddedUserId.value);
@@ -144,35 +106,29 @@ async function loadJudges() {
   }
 }
 
-async function loadTrainingRoles() {
+async function loadListenerRole() {
   try {
     const data = await apiFetch('/training-roles?forCamp=false');
-    trainingRoles.value = data.roles.slice().sort((a, b) => {
-      const i1 = ROLE_ORDER.indexOf(a.alias);
-      const i2 = ROLE_ORDER.indexOf(b.alias);
-      if (i1 === -1 && i2 === -1) {
-        return a.name.localeCompare(b.name);
-      }
-      if (i1 === -1) return 1;
-      if (i2 === -1) return -1;
-      return i1 - i2;
-    });
+    const role = data.roles.find((r) => r.alias === 'LISTENER');
+    listenerRoleId.value = role ? role.id : null;
   } catch (_) {
-    trainingRoles.value = [];
+    listenerRoleId.value = null;
   }
 }
 
 async function addRegistration() {
-  if (!addForm.value.user_id || !addForm.value.training_role_id) return;
+  if (!addForm.value.user_id || !listenerRoleId.value) return;
   try {
     addLoading.value = true;
     await apiFetch(`/course-trainings/${route.params.id}/registrations`, {
       method: 'POST',
-      body: JSON.stringify(addForm.value),
+      body: JSON.stringify({
+        user_id: addForm.value.user_id,
+        training_role_id: listenerRoleId.value,
+      }),
     });
     lastAddedUserId.value = addForm.value.user_id;
     addForm.value.user_id = '';
-    addForm.value.training_role_id = '';
     await loadRegistrations();
     await loadTraining();
   } catch (e) {
@@ -196,25 +152,6 @@ async function removeRegistration(userId) {
   }
 }
 
-async function updateRegistration(reg) {
-  try {
-    await apiFetch(
-      `/course-trainings/${route.params.id}/registrations/${reg.user.id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ training_role_id: reg.role_id }),
-      }
-    );
-    reg.role = trainingRoles.value.find((r) => r.id === reg.role_id) || null;
-    reg.highlight = true;
-    setTimeout(() => {
-      reg.highlight = false;
-    }, 1500);
-    await loadTraining();
-  } catch (e) {
-    alert(e.message);
-  }
-}
 
 async function setPresence(userId, value) {
   try {
@@ -294,231 +231,148 @@ async function finish() {
               {{ j.user.patronymic }}
             </option>
           </select>
-        </div>
-        <div class="col-12 col-sm">
-          <label class="form-label">Роль</label>
-          <select v-model="addForm.training_role_id" class="form-select">
-            <option value="" disabled>Выберите роль</option>
-            <option
-              v-for="r in trainingRoles"
-              :key="r.id"
-              :value="r.id"
-              :disabled="r.alias === 'TEACHER' && hasTeacher"
+          </div>
+          <div class="col-12 col-sm-auto d-grid d-sm-block">
+            <button
+              class="btn btn-brand"
+              :disabled="addLoading"
+              @click="addRegistration"
             >
-              {{ r.name }}
-            </option>
-          </select>
+              <span
+                v-if="addLoading"
+                class="spinner-border spinner-border-sm me-2"
+              ></span>
+              Добавить
+            </button>
+          </div>
         </div>
-        <div class="col-12 col-sm-auto d-grid d-sm-block">
-          <button
-            class="btn btn-brand"
-            :disabled="addLoading"
-            @click="addRegistration"
-          >
-            <span
-              v-if="addLoading"
-              class="spinner-border spinner-border-sm me-2"
-            ></span>
-            Добавить
-          </button>
-        </div>
-      </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
         <div class="card-body p-3">
-          <div
-            v-for="group in groupedRegistrations"
-            :key="group.role ? group.role.id : 'none'"
-            class="mb-4"
-          >
-            <h3 class="group-heading h6 mb-2 px-2 py-1">
-              {{ group.role ? group.role.name : 'Без роли' }}
-            </h3>
-            <div class="table-responsive d-none d-sm-block">
-              <table class="table admin-table table-striped align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>ФИО</th>
-                    <th>Роль</th>
-                    <th class="text-center">Посещение</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <TransitionGroup tag="tbody" name="fade-list">
-                  <tr
-                    v-for="r in group.registrations"
-                    :key="r.user.id"
-                    :class="{ highlight: r.highlight }"
-                  >
-                    <td>
-                      {{ r.user.last_name }} {{ r.user.first_name }}
-                      {{ r.user.patronymic }}
-                    </td>
-                    <td>
-                      <select
-                        v-model="r.role_id"
-                        class="form-select form-select-sm"
-                        @change="updateRegistration(r)"
-                      >
-                        <option value="" disabled>Выберите роль</option>
-                        <option
-                          v-for="role in trainingRoles"
-                          :key="role.id"
-                          :value="role.id"
-                          :disabled="
-                            role.alias === 'TEACHER' &&
-                            hasTeacher &&
-                            teacherId !== r.user.id
-                          "
-                        >
-                          {{ role.name }}
-                        </option>
-                      </select>
-                    </td>
-                    <td class="text-center">
-                      <template v-if="showAttendance(r)">
-                        <div
-                          class="btn-group btn-group-sm presence-group"
-                          role="group"
-                        >
-                          <input
-                            :id="`present-yes-${r.user.id}`"
-                            type="radio"
-                            class="btn-check"
-                            :name="`present-${r.user.id}`"
-                            autocomplete="off"
-                            :checked="r.present === true"
-                            :disabled="attendanceMarked"
-                            @change="setPresence(r.user.id, true)"
-                          />
-                          <label
-                            class="btn btn-outline-success presence-btn"
-                            :for="`present-yes-${r.user.id}`"
-                          >
-                            <i class="bi bi-check-lg" aria-hidden="true"></i>
-                            <span class="visually-hidden">Да</span>
-                          </label>
-                          <input
-                            :id="`present-no-${r.user.id}`"
-                            type="radio"
-                            class="btn-check"
-                            :name="`present-${r.user.id}`"
-                            autocomplete="off"
-                            :checked="r.present === false"
-                            :disabled="attendanceMarked"
-                            @change="setPresence(r.user.id, false)"
-                          />
-                          <label
-                            class="btn btn-outline-danger presence-btn"
-                            :for="`present-no-${r.user.id}`"
-                          >
-                            <i class="bi bi-x-lg" aria-hidden="true"></i>
-                            <span class="visually-hidden">Нет</span>
-                          </label>
-                        </div>
-                      </template>
-                    </td>
-                    <td class="text-end">
-                      <button
-                        class="btn btn-sm btn-danger action-btn"
-                        @click="removeRegistration(r.user.id)"
-                      >
-                        <i class="bi bi-x-lg" aria-hidden="true"></i>
-                        <span class="visually-hidden">Удалить</span>
-                      </button>
-                    </td>
-                  </tr>
-                </TransitionGroup>
-              </table>
-            </div>
-            <div class="d-block d-sm-none">
-              <div
-                v-for="r in group.registrations"
-                :key="r.user.id"
-                :class="[
-                  'card',
-                  'registration-card',
-                  'mb-2',
-                  { highlight: r.highlight },
-                ]"
-              >
-                <div class="card-body p-2">
-                  <div class="fw-medium mb-1">
+          <div class="table-responsive d-none d-sm-block">
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th class="text-center">Посещение</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <TransitionGroup tag="tbody" name="fade-list">
+                <tr
+                  v-for="r in list"
+                  :key="r.user.id"
+                  :class="{ highlight: r.highlight }"
+                >
+                  <td>
                     {{ r.user.last_name }} {{ r.user.first_name }}
                     {{ r.user.patronymic }}
-                  </div>
-                  <div class="mb-2">
-                    <select
-                      v-model="r.role_id"
-                      class="form-select form-select-sm"
-                      @change="updateRegistration(r)"
-                    >
-                      <option value="" disabled>Выберите роль</option>
-                      <option
-                        v-for="role in trainingRoles"
-                        :key="role.id"
-                        :value="role.id"
-                        :disabled="
-                          role.alias === 'TEACHER' &&
-                          hasTeacher &&
-                          teacherId !== r.user.id
-                        "
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group btn-group-sm presence-group" role="group">
+                      <input
+                        :id="`present-yes-${r.user.id}`"
+                        type="radio"
+                        class="btn-check"
+                        :name="`present-${r.user.id}`"
+                        autocomplete="off"
+                        :checked="r.present === true"
+                        :disabled="attendanceMarked"
+                        @change="setPresence(r.user.id, true)"
+                      />
+                      <label
+                        class="btn btn-outline-success presence-btn"
+                        :for="`present-yes-${r.user.id}`"
                       >
-                        {{ role.name }}
-                      </option>
-                    </select>
-                  </div>
-                  <div
-                    class="d-flex align-items-center justify-content-between"
-                  >
-                    <template v-if="showAttendance(r)">
-                      <div
-                        class="btn-group btn-group-sm presence-group me-2"
-                        role="group"
-                      >
-                        <input
-                          :id="`present-yes-m-${r.user.id}`"
-                          type="radio"
-                          class="btn-check"
-                          :name="`present-m-${r.user.id}`"
-                          autocomplete="off"
-                          :checked="r.present === true"
-                          :disabled="attendanceMarked"
-                          @change="setPresence(r.user.id, true)"
-                        />
-                        <label
-                          class="btn btn-outline-success presence-btn"
-                          :for="`present-yes-m-${r.user.id}`"
-                        >
-                          <i class="bi bi-check-lg" aria-hidden="true"></i>
-                          <span class="visually-hidden">Да</span>
-                        </label>
-                        <input
-                          :id="`present-no-m-${r.user.id}`"
-                          type="radio"
-                          class="btn-check"
-                          :name="`present-m-${r.user.id}`"
-                          autocomplete="off"
-                          :checked="r.present === false"
-                          :disabled="attendanceMarked"
-                          @change="setPresence(r.user.id, false)"
-                        />
-                        <label
-                          class="btn btn-outline-danger presence-btn"
-                          :for="`present-no-m-${r.user.id}`"
-                        >
-                          <i class="bi bi-x-lg" aria-hidden="true"></i>
-                          <span class="visually-hidden">Нет</span>
-                        </label>
-                      </div>
-                    </template>
-                    <div class="ms-auto text-end">
-                      <button
-                        class="btn btn-sm btn-danger action-btn"
-                        @click="removeRegistration(r.user.id)"
+                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        <span class="visually-hidden">Да</span>
+                      </label>
+                      <input
+                        :id="`present-no-${r.user.id}`"
+                        type="radio"
+                        class="btn-check"
+                        :name="`present-${r.user.id}`"
+                        autocomplete="off"
+                        :checked="r.present === false"
+                        :disabled="attendanceMarked"
+                        @change="setPresence(r.user.id, false)"
+                      />
+                      <label
+                        class="btn btn-outline-danger presence-btn"
+                        :for="`present-no-${r.user.id}`"
                       >
                         <i class="bi bi-x-lg" aria-hidden="true"></i>
-                      </button>
+                        <span class="visually-hidden">Нет</span>
+                      </label>
                     </div>
+                  </td>
+                  <td class="text-end">
+                    <button
+                      class="btn btn-sm btn-danger action-btn"
+                      @click="removeRegistration(r.user.id)"
+                    >
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Удалить</span>
+                    </button>
+                  </td>
+                </tr>
+              </TransitionGroup>
+            </table>
+          </div>
+          <div class="d-block d-sm-none">
+            <div
+              v-for="r in list"
+              :key="r.user.id"
+              :class="['card', 'registration-card', 'mb-2', { highlight: r.highlight }]"
+            >
+              <div class="card-body p-2">
+                <div class="fw-medium mb-1">
+                  {{ r.user.last_name }} {{ r.user.first_name }}
+                  {{ r.user.patronymic }}
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="btn-group btn-group-sm presence-group me-2" role="group">
+                    <input
+                      :id="`present-yes-m-${r.user.id}`"
+                      type="radio"
+                      class="btn-check"
+                      :name="`present-m-${r.user.id}`"
+                      autocomplete="off"
+                      :checked="r.present === true"
+                      :disabled="attendanceMarked"
+                      @change="setPresence(r.user.id, true)"
+                    />
+                    <label
+                      class="btn btn-outline-success presence-btn"
+                      :for="`present-yes-m-${r.user.id}`"
+                    >
+                      <i class="bi bi-check-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Да</span>
+                    </label>
+                    <input
+                      :id="`present-no-m-${r.user.id}`"
+                      type="radio"
+                      class="btn-check"
+                      :name="`present-m-${r.user.id}`"
+                      autocomplete="off"
+                      :checked="r.present === false"
+                      :disabled="attendanceMarked"
+                      @change="setPresence(r.user.id, false)"
+                    />
+                    <label
+                      class="btn btn-outline-danger presence-btn"
+                      :for="`present-no-m-${r.user.id}`"
+                    >
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      <span class="visually-hidden">Нет</span>
+                    </label>
+                  </div>
+                  <div class="ms-auto text-end">
+                    <button
+                      class="btn btn-sm btn-danger action-btn"
+                      @click="removeRegistration(r.user.id)"
+                    >
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -529,14 +383,12 @@ async function finish() {
       <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">
         Нет записей.
       </p>
-      <template v-if="!attendanceMarked">
-        <button
-          class="btn btn-brand mt-3"
-          :disabled="
-            !visibleRegistrations.length || !allMarked || finishLoading
-          "
-          @click="finish"
-        >
+        <template v-if="!attendanceMarked">
+          <button
+            class="btn btn-brand mt-3"
+            :disabled="!list.length || !allMarked || finishLoading"
+            @click="finish"
+          >
           <span
             v-if="finishLoading"
             class="spinner-border spinner-border-sm me-2"

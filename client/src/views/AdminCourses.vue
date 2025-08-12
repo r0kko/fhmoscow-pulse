@@ -77,6 +77,12 @@ const selectedTrainingType = computed(() =>
 
 const filter = ref({ type: '', teacher: '', course: '' });
 const teachers = ref([]);
+const teacherRoleId = ref(null);
+const teacherMap = computed(() => {
+  const map = new Map();
+  teachers.value.forEach((u) => map.set(fullName(u), u.id));
+  return map;
+});
 const upcomingTrainings = computed(() => {
   const now = Date.now();
   return trainings.value.filter((t) => new Date(t.start_at).getTime() >= now);
@@ -125,6 +131,7 @@ watch(activeTab, (val) => {
     if (!trainingTypesLoaded.value) loadTrainingTypes();
     loadCourses();
     loadGrounds();
+    loadTeacherRole();
     loadTeacherOptions();
     loadTrainingsAdmin();
   } else if (val === 'assign') {
@@ -208,14 +215,20 @@ async function loadGrounds() {
   }
 }
 
+async function loadTeacherRole() {
+  try {
+    const data = await apiFetch('/training-roles');
+    const role = data.roles.find((r) => r.alias === 'TEACHER');
+    teacherRoleId.value = role ? role.id : null;
+  } catch (_) {
+    teacherRoleId.value = null;
+  }
+}
+
 async function loadTeacherOptions() {
   try {
-    const data = await apiFetch('/course-trainings?limit=1000');
-    const map = new Map();
-    data.trainings.forEach((t) => {
-      if (t.teacher) map.set(t.teacher.id, t.teacher);
-    });
-    teachers.value = Array.from(map.values());
+    const data = await apiFetch('/users?limit=1000&role=TEACHER');
+    teachers.value = data.users;
   } catch (_) {
     teachers.value = [];
   }
@@ -229,11 +242,41 @@ async function loadTrainingsAdmin() {
     if (filter.value.teacher) params.append('teacher_id', filter.value.teacher);
     if (filter.value.course) params.append('course_id', filter.value.course);
     const data = await apiFetch(`/course-trainings?${params}`);
-    trainings.value = data.trainings;
+    trainings.value = data.trainings.map((t) => ({
+      ...t,
+      teacherName: t.teacher ? fullName(t.teacher) : '',
+    }));
   } catch (e) {
     trainingsError.value = e.message;
   } finally {
     loadingTrainings.value = false;
+  }
+}
+
+async function assignTeacher(training) {
+  const userId = teacherMap.value.get(training.teacherName) || null;
+  try {
+    if (!userId) {
+      if (training.teacher) {
+        await apiFetch(
+          `/course-trainings/${training.id}/registrations/${training.teacher.id}`,
+          { method: 'DELETE' }
+        );
+        training.teacher = null;
+      }
+      return;
+    }
+    await apiFetch(`/course-trainings/${training.id}/registrations`, {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        training_role_id: teacherRoleId.value,
+      }),
+    });
+    training.teacher = teachers.value.find((u) => u.id === userId) || null;
+  } catch (e) {
+    alert(e.message);
+    training.teacherName = training.teacher ? fullName(training.teacher) : '';
   }
 }
 
@@ -949,6 +992,14 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
+            <datalist id="teachers-list">
+              <option
+                v-for="u in teachers"
+                :key="u.id"
+                :value="fullName(u)"
+              />
+            </datalist>
+
             <h2 class="h5 mb-3">Будущие</h2>
             <div
               v-if="upcomingTrainings.length"
@@ -979,7 +1030,12 @@ onBeforeUnmount(() => {
                     </td>
                     <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      {{ t.teacher ? fullName(t.teacher) : '—' }}
+                      <input
+                        v-model="t.teacherName"
+                        list="teachers-list"
+                        class="form-control form-control-sm"
+                        @change="assignTeacher(t)"
+                      />
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
@@ -1045,9 +1101,12 @@ onBeforeUnmount(() => {
                       }}
                     </div>
                     <small class="text-muted d-block">{{ t.type?.name }}</small>
-                    <small class="text-muted d-block" v-if="t.teacher"
-                      >{{ fullName(t.teacher) }}</small
-                    >
+                    <input
+                      v-model="t.teacherName"
+                      list="teachers-list"
+                      class="form-control form-control-sm mb-1"
+                      @change="assignTeacher(t)"
+                    />
                     <small class="text-muted d-block"
                       >{{ t.courses.map((c) => c.name).join(', ') }}</small
                     >
@@ -1119,7 +1178,12 @@ onBeforeUnmount(() => {
                     </td>
                     <td class="d-none d-md-table-cell">{{ t.type?.name }}</td>
                     <td class="d-none d-md-table-cell">
-                      {{ t.teacher ? fullName(t.teacher) : '—' }}
+                      <input
+                        v-model="t.teacherName"
+                        list="teachers-list"
+                        class="form-control form-control-sm"
+                        @change="assignTeacher(t)"
+                      />
                     </td>
                     <td class="d-none d-md-table-cell">
                       {{ t.courses.map((c) => c.name).join(', ') }}
@@ -1185,9 +1249,12 @@ onBeforeUnmount(() => {
                       }}
                     </div>
                     <small class="text-muted d-block">{{ t.type?.name }}</small>
-                    <small class="text-muted d-block" v-if="t.teacher"
-                      >{{ fullName(t.teacher) }}</small
-                    >
+                    <input
+                      v-model="t.teacherName"
+                      list="teachers-list"
+                      class="form-control form-control-sm mb-1"
+                      @change="assignTeacher(t)"
+                    />
                     <small class="text-muted d-block"
                       >{{ t.courses.map((c) => c.name).join(', ') }}</small
                     >
