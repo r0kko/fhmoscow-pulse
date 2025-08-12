@@ -11,12 +11,16 @@ async function listForUser(userId) {
 async function createForUser(userId, data, actorId) {
   const count = await Vehicle.count({ where: { user_id: userId } });
   if (count >= 3) throw new ServiceError('vehicle_limit');
-  return Vehicle.create({
+  const payload = {
     user_id: userId,
     ...data,
     created_by: actorId,
     updated_by: actorId,
-  });
+  };
+  if (count === 0) {
+    payload.is_active = true;
+  }
+  return Vehicle.create(payload);
 }
 
 async function updateForUser(userId, id, data, actorId) {

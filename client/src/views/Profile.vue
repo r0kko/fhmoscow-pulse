@@ -537,40 +537,54 @@ onMounted(() => {
                     </div>
                   </div>
                   <div v-else>
-                    <ul class="list-group list-group-flush">
-                      <li
-                        v-for="v in vehicles"
-                        :key="v.id"
-                        class="list-group-item d-flex align-items-center gap-3"
-                      >
-                        <i class="bi bi-car-front fs-5"></i>
-                        <span>
-                          {{ v.brand }}
-                          <span v-if="v.model"> {{ v.model }}</span>
-                          &middot; {{ v.number }}
-                        </span>
-                        <div class="ms-auto d-flex align-items-center gap-2">
-                          <div class="form-check mb-0">
-                            <input
-                              class="form-check-input brand-radio"
-                              type="radio"
-                              name="activeVehicle"
-                              :checked="v.is_active"
-                              aria-label="Активное транспортное средство"
-                              @change="setActive(v.id)"
-                            />
+                    <template v-if="vehicles.length">
+                      <ul class="list-group list-group-flush">
+                        <li
+                          v-for="v in vehicles"
+                          :key="v.id"
+                          class="list-group-item d-flex align-items-center gap-3"
+                        >
+                          <i class="bi bi-car-front fs-5"></i>
+                          <span>
+                            {{ v.brand }}
+                            <span v-if="v.model"> {{ v.model }}</span>
+                            &middot; {{ v.number }}
+                          </span>
+                          <div class="ms-auto d-flex align-items-center gap-2">
+                            <div
+                              class="form-check mb-0 d-flex align-items-center"
+                            >
+                              <input
+                                :id="`vehicle-active-${v.id}`"
+                                class="form-check-input brand-radio"
+                                type="radio"
+                                name="activeVehicle"
+                                :checked="v.is_active"
+                                aria-label="Активное транспортное средство"
+                                @change="setActive(v.id)"
+                              />
+                              <label
+                                class="form-check-label ms-1"
+                                :for="`vehicle-active-${v.id}`"
+                              >
+                                Активен
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              class="btn p-0 text-muted"
+                              aria-label="Удалить"
+                              @click="removeVehicle(v.id)"
+                            >
+                              <i class="bi bi-x"></i>
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            class="btn p-0 text-muted"
-                            aria-label="Удалить"
-                            @click="removeVehicle(v.id)"
-                          >
-                            <i class="bi bi-x"></i>
-                          </button>
-                        </div>
-                      </li>
-                    </ul>
+                        </li>
+                      </ul>
+                    </template>
+                    <p v-else class="text-muted text-center py-4">
+                      Вы пока не добавили транспортных средств
+                    </p>
                   </div>
                 </div>
               </div>
