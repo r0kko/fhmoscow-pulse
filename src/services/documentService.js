@@ -47,7 +47,7 @@ async function listByUser(userId) {
   const docs = await Document.findAll({
     where: { recipient_id: userId },
     include: [
-      { model: DocumentType, attributes: ['name', 'alias'] },
+      { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
       { model: SignType, attributes: ['name', 'alias'] },
       { model: File, attributes: ['id', 'key'] },
       { model: DocumentStatus, attributes: ['name', 'alias'] },
@@ -66,7 +66,11 @@ async function listByUser(userId) {
       description: d.description,
       documentDate: d.document_date,
       documentType: d.DocumentType
-        ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+        ? {
+            name: d.DocumentType.name,
+            alias: d.DocumentType.alias,
+            generated: d.DocumentType.generated,
+          }
         : null,
       signType: d.SignType
         ? { name: d.SignType.name, alias: d.SignType.alias }
@@ -92,7 +96,7 @@ async function listByUser(userId) {
 async function listAll() {
   const docs = await Document.findAll({
     include: [
-      { model: DocumentType, attributes: ['name', 'alias'] },
+      { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
       { model: SignType, attributes: ['name', 'alias'] },
       {
         model: User,
@@ -110,7 +114,11 @@ async function listAll() {
       name: d.name,
       documentDate: d.document_date,
       documentType: d.DocumentType
-        ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+        ? {
+            name: d.DocumentType.name,
+            alias: d.DocumentType.alias,
+            generated: d.DocumentType.generated,
+          }
         : null,
       signType: d.SignType
         ? { name: d.SignType.name, alias: d.SignType.alias }
@@ -252,6 +260,37 @@ async function uploadSignedFile(documentId, file, actorId) {
   };
 }
 
+async function regenerate(documentId, actorId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentType, attributes: ['name', 'generated'] },
+      { model: DocumentStatus, attributes: ['alias'] },
+    ],
+  });
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  if (!doc.DocumentType?.generated) {
+    throw new ServiceError('document_type_not_generated', 400);
+  }
+  if (!['CREATED', 'AWAITING_SIGNATURE'].includes(doc.DocumentStatus?.alias)) {
+    throw new ServiceError('document_status_invalid', 400);
+  }
+  const pdf = await createPdfBuffer(doc.name);
+  const newFile = await fileService.saveGeneratedPdf(
+    pdf,
+    `${doc.name}.pdf`,
+    actorId
+  );
+  const oldFileId = doc.file_id;
+  await doc.update({ file_id: newFile.id, updated_by: actorId });
+  if (oldFileId) {
+    await fileService.removeFile(oldFileId);
+  }
+  const url = await fileService.getDownloadUrl(newFile);
+  return { file: { id: newFile.id, url } };
+}
+
 function createPdfBuffer(text) {
   return new Promise((resolve) => {
     const doc = new PDFDocument();
@@ -329,5 +368,6 @@ export default {
   sign,
   requestSignature,
   uploadSignedFile,
+  regenerate,
   generateInitial,
 };

@@ -194,8 +194,12 @@ async function submit() {
                                 :href="d.file.url"
                                 target="_blank"
                                 rel="noopener"
+                                title="Скачать"
                               >
-                                Скачать
+                                <i
+                                  class="bi bi-download"
+                                  aria-hidden="true"
+                                ></i>
                               </a>
                             </td>
                           </tr>
