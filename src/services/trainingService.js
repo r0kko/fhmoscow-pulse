@@ -35,28 +35,44 @@ async function listAll(options = {}) {
   if (options.ground_id) {
     where.ground_id = options.ground_id;
   }
+  if (options.type_id) {
+    where.type_id = options.type_id;
+  }
+  const include = [
+    {
+      model: TrainingType,
+      ...(options.forCamp !== undefined
+        ? { where: { for_camp: options.forCamp } }
+        : {}),
+    },
+    { model: Ground, include: [Address] },
+    { model: Season, where: { active: true }, required: true },
+    {
+      model: RefereeGroup,
+      through: { attributes: [] },
+      ...(options.group_id ? { where: { id: options.group_id } } : {}),
+    },
+    {
+      model: Course,
+      through: { attributes: [] },
+      ...(options.course_id ? { where: { id: options.course_id } } : {}),
+    },
+    { model: TrainingRegistration, include: [User, TrainingRole] },
+  ];
+  if (options.teacher_id) {
+    include.push({
+      model: TrainingRegistration,
+      as: 'TeacherRegistrations',
+      required: true,
+      where: { user_id: options.teacher_id },
+      include: [
+        { model: TrainingRole, where: { alias: 'TEACHER' }, required: true },
+      ],
+      duplicating: false,
+    });
+  }
   const { rows, count } = await Training.findAndCountAll({
-    include: [
-      {
-        model: TrainingType,
-        ...(options.forCamp !== undefined
-          ? { where: { for_camp: options.forCamp } }
-          : {}),
-      },
-      { model: Ground, include: [Address] },
-      { model: Season, where: { active: true }, required: true },
-      {
-        model: RefereeGroup,
-        through: { attributes: [] },
-        ...(options.group_id ? { where: { id: options.group_id } } : {}),
-      },
-      {
-        model: Course,
-        through: { attributes: [] },
-        ...(options.course_id ? { where: { id: options.course_id } } : {}),
-      },
-      { model: TrainingRegistration, include: [User, TrainingRole] },
-    ],
+    include,
     distinct: true,
     order: [['start_at', 'ASC']],
     where,
@@ -85,28 +101,44 @@ async function listUpcoming(options = {}) {
   if (options.ground_id) {
     where.ground_id = options.ground_id;
   }
+  if (options.type_id) {
+    where.type_id = options.type_id;
+  }
+  const include = [
+    {
+      model: TrainingType,
+      ...(options.forCamp !== undefined
+        ? { where: { for_camp: options.forCamp } }
+        : {}),
+    },
+    { model: Ground, include: [Address] },
+    { model: Season, where: { active: true }, required: true },
+    {
+      model: RefereeGroup,
+      through: { attributes: [] },
+      ...(options.group_id ? { where: { id: options.group_id } } : {}),
+    },
+    {
+      model: Course,
+      through: { attributes: [] },
+      ...(options.course_id ? { where: { id: options.course_id } } : {}),
+    },
+    { model: TrainingRegistration, include: [User, TrainingRole] },
+  ];
+  if (options.teacher_id) {
+    include.push({
+      model: TrainingRegistration,
+      as: 'TeacherRegistrations',
+      required: true,
+      where: { user_id: options.teacher_id },
+      include: [
+        { model: TrainingRole, where: { alias: 'TEACHER' }, required: true },
+      ],
+      duplicating: false,
+    });
+  }
   const { rows, count } = await Training.findAndCountAll({
-    include: [
-      {
-        model: TrainingType,
-        ...(options.forCamp !== undefined
-          ? { where: { for_camp: options.forCamp } }
-          : {}),
-      },
-      { model: Ground, include: [Address] },
-      { model: Season, where: { active: true }, required: true },
-      {
-        model: RefereeGroup,
-        through: { attributes: [] },
-        ...(options.group_id ? { where: { id: options.group_id } } : {}),
-      },
-      {
-        model: Course,
-        through: { attributes: [] },
-        ...(options.course_id ? { where: { id: options.course_id } } : {}),
-      },
-      { model: TrainingRegistration, include: [User, TrainingRole] },
-    ],
+    include,
     distinct: true,
     order: [['start_at', 'ASC']],
     where,
@@ -135,28 +167,44 @@ async function listPast(options = {}) {
   if (options.ground_id) {
     where.ground_id = options.ground_id;
   }
+  if (options.type_id) {
+    where.type_id = options.type_id;
+  }
+  const include = [
+    {
+      model: TrainingType,
+      ...(options.forCamp !== undefined
+        ? { where: { for_camp: options.forCamp } }
+        : {}),
+    },
+    { model: Ground, include: [Address] },
+    { model: Season, where: { active: true }, required: true },
+    {
+      model: RefereeGroup,
+      through: { attributes: [] },
+      ...(options.group_id ? { where: { id: options.group_id } } : {}),
+    },
+    {
+      model: Course,
+      through: { attributes: [] },
+      ...(options.course_id ? { where: { id: options.course_id } } : {}),
+    },
+    { model: TrainingRegistration, include: [User, TrainingRole] },
+  ];
+  if (options.teacher_id) {
+    include.push({
+      model: TrainingRegistration,
+      as: 'TeacherRegistrations',
+      required: true,
+      where: { user_id: options.teacher_id },
+      include: [
+        { model: TrainingRole, where: { alias: 'TEACHER' }, required: true },
+      ],
+      duplicating: false,
+    });
+  }
   const { rows, count } = await Training.findAndCountAll({
-    include: [
-      {
-        model: TrainingType,
-        ...(options.forCamp !== undefined
-          ? { where: { for_camp: options.forCamp } }
-          : {}),
-      },
-      { model: Ground, include: [Address] },
-      { model: Season, where: { active: true }, required: true },
-      {
-        model: RefereeGroup,
-        through: { attributes: [] },
-        ...(options.group_id ? { where: { id: options.group_id } } : {}),
-      },
-      {
-        model: Course,
-        through: { attributes: [] },
-        ...(options.course_id ? { where: { id: options.course_id } } : {}),
-      },
-      { model: TrainingRegistration, include: [User, TrainingRole] },
-    ],
+    include,
     distinct: true,
     order: [['start_at', 'DESC']],
     where,

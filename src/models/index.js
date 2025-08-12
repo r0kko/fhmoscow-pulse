@@ -145,6 +145,14 @@ Season.hasMany(RefereeGroup, { foreignKey: 'season_id' });
 RefereeGroup.belongsTo(Season, { foreignKey: 'season_id' });
 Training.hasMany(TrainingRegistration, { foreignKey: 'training_id' });
 TrainingRegistration.belongsTo(Training, { foreignKey: 'training_id' });
+Training.hasMany(TrainingRegistration, {
+  foreignKey: 'training_id',
+  as: 'TeacherRegistrations',
+});
+TrainingRegistration.belongsTo(Training, {
+  foreignKey: 'training_id',
+  as: 'TeacherTraining',
+});
 User.hasMany(TrainingRegistration, { foreignKey: 'user_id' });
 TrainingRegistration.belongsTo(User, { foreignKey: 'user_id' });
 TrainingRole.hasMany(TrainingRegistration, { foreignKey: 'training_role_id' });
