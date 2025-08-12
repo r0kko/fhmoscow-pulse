@@ -174,6 +174,7 @@ async function submit() {
                       <table class="table align-middle mb-0">
                         <thead>
                           <tr>
+                            <th scope="col">Номер</th>
                             <th scope="col">Название</th>
                             <th scope="col">Дата</th>
                             <th scope="col">Тип подписи</th>
@@ -183,6 +184,7 @@ async function submit() {
                         </thead>
                         <tbody>
                           <tr v-for="d in documents" :key="d.id">
+                            <td>{{ d.number }}</td>
                             <td>{{ d.name }}</td>
                             <td>{{ formatDate(d.documentDate) }}</td>
                             <td>{{ d.signType?.name || '-' }}</td>
@@ -204,7 +206,7 @@ async function submit() {
                             </td>
                           </tr>
                           <tr v-if="!documents.length">
-                            <td colspan="5" class="text-center text-muted">
+                            <td colspan="6" class="text-center text-muted">
                               Документы отсутствуют
                             </td>
                           </tr>
