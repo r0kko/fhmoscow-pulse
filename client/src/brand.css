@@ -168,7 +168,10 @@ body {
 }
 
 .fio-col {
-  white-space: nowrap;
+  /* Allow names to wrap within table cells to avoid horizontal overflow */
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .ledger-col {

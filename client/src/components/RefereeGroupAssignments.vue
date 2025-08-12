@@ -229,7 +229,10 @@ defineExpose({ refresh });
             </select>
           </div>
         </div>
-        <div v-if="sortedJudges.length" class="table-responsive d-none d-sm-block">
+        <div
+          v-if="sortedJudges.length"
+          class="table-responsive d-none d-sm-block"
+        >
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>

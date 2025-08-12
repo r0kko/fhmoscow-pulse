@@ -152,7 +152,6 @@ async function removeRegistration(userId) {
   }
 }
 
-
 async function setPresence(userId, value) {
   try {
     await apiFetch(
@@ -231,21 +230,21 @@ async function finish() {
               {{ j.user.patronymic }}
             </option>
           </select>
-          </div>
-          <div class="col-12 col-sm-auto d-grid d-sm-block">
-            <button
-              class="btn btn-brand"
-              :disabled="addLoading"
-              @click="addRegistration"
-            >
-              <span
-                v-if="addLoading"
-                class="spinner-border spinner-border-sm me-2"
-              ></span>
-              Добавить
-            </button>
-          </div>
         </div>
+        <div class="col-12 col-sm-auto d-grid d-sm-block">
+          <button
+            class="btn btn-brand"
+            :disabled="addLoading"
+            @click="addRegistration"
+          >
+            <span
+              v-if="addLoading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            Добавить
+          </button>
+        </div>
+      </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
         <div class="card-body p-3">
           <div class="table-responsive d-none d-sm-block">
@@ -268,7 +267,10 @@ async function finish() {
                     {{ r.user.patronymic }}
                   </td>
                   <td class="text-center">
-                    <div class="btn-group btn-group-sm presence-group" role="group">
+                    <div
+                      class="btn-group btn-group-sm presence-group"
+                      role="group"
+                    >
                       <input
                         :id="`present-yes-${r.user.id}`"
                         type="radio"
@@ -322,7 +324,12 @@ async function finish() {
             <div
               v-for="r in list"
               :key="r.user.id"
-              :class="['card', 'registration-card', 'mb-2', { highlight: r.highlight }]"
+              :class="[
+                'card',
+                'registration-card',
+                'mb-2',
+                { highlight: r.highlight },
+              ]"
             >
               <div class="card-body p-2">
                 <div class="fw-medium mb-1">
@@ -330,7 +337,10 @@ async function finish() {
                   {{ r.user.patronymic }}
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
-                  <div class="btn-group btn-group-sm presence-group me-2" role="group">
+                  <div
+                    class="btn-group btn-group-sm presence-group me-2"
+                    role="group"
+                  >
                     <input
                       :id="`present-yes-m-${r.user.id}`"
                       type="radio"
@@ -383,12 +393,12 @@ async function finish() {
       <p v-else-if="!loading && !loadingTraining" class="text-muted mb-0">
         Нет записей.
       </p>
-        <template v-if="!attendanceMarked">
-          <button
-            class="btn btn-brand mt-3"
-            :disabled="!list.length || !allMarked || finishLoading"
-            @click="finish"
-          >
+      <template v-if="!attendanceMarked">
+        <button
+          class="btn btn-brand mt-3"
+          :disabled="!list.length || !allMarked || finishLoading"
+          @click="finish"
+        >
           <span
             v-if="finishLoading"
             class="spinner-border spinner-border-sm me-2"

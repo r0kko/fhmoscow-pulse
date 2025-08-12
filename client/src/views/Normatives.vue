@@ -296,13 +296,13 @@ function thresholdText(t, zone) {
                   >
                     {{ formatValue(t.result) }}
                   </td>
-                  <td class="text-center text-nowrap">
+                  <td class="text-center">
                     {{
                       t.result?.retake
                         ? 'Перезачет'
                         : t.result?.online
                           ? 'Онлайн'
-                          : formatDate(t.result?.training?.start_at)
+                          : formatDateTime(t.result?.training?.start_at)
                     }}
                   </td>
                   <td class="text-center d-none d-md-table-cell">
@@ -313,37 +313,39 @@ function thresholdText(t, zone) {
                     }}
                   </td>
                   <td class="text-end">
-                    <button
-                      v-if="t.history && t.history.length"
-                      class="btn btn-sm p-0 text-brand"
-                      aria-label="Другие попытки"
-                      @click="openHistory(t)"
-                    >
-                      <i class="bi bi-clock-history"></i>
-                    </button>
-                    <i
-                      v-else
-                      class="bi bi-clock-history invisible"
-                      aria-label="Нет других попыток"
-                    ></i>
-                    <RouterLink
-                      v-if="t.active_ticket"
-                      to="/tickets"
-                      class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
-                      aria-label="Перейти к обращению"
-                    >
-                      <i class="bi bi-hourglass" aria-hidden="true"></i>
-                      <span class="ms-1 d-none d-md-inline">Проверка</span>
-                    </RouterLink>
-                    <button
-                      v-else-if="t.can_upload"
-                      class="btn btn-outline-brand btn-sm ms-2 d-inline-flex align-items-center text-nowrap"
-                      aria-label="Загрузить видео"
-                      @click="openUpload(t)"
-                    >
-                      <i class="bi bi-upload" aria-hidden="true"></i>
-                      <span class="ms-1 d-none d-md-inline">Загрузить</span>
-                    </button>
+                    <div class="actions-cell">
+                      <button
+                        v-if="t.history && t.history.length"
+                        class="btn btn-sm p-0 text-brand"
+                        aria-label="Другие попытки"
+                        @click="openHistory(t)"
+                      >
+                        <i class="bi bi-clock-history"></i>
+                      </button>
+                      <i
+                        v-else
+                        class="bi bi-clock-history invisible"
+                        aria-label="Нет других попыток"
+                      ></i>
+                      <RouterLink
+                        v-if="t.active_ticket"
+                        to="/tickets"
+                        class="btn btn-outline-brand btn-sm d-inline-flex align-items-center text-nowrap"
+                        aria-label="Перейти к обращению"
+                      >
+                        <i class="bi bi-hourglass" aria-hidden="true"></i>
+                        <span class="ms-1 d-none d-md-inline">Проверка</span>
+                      </RouterLink>
+                      <button
+                        v-else-if="t.can_upload"
+                        class="btn btn-outline-brand btn-sm d-inline-flex align-items-center text-nowrap"
+                        aria-label="Загрузить видео"
+                        @click="openUpload(t)"
+                      >
+                        <i class="bi bi-upload" aria-hidden="true"></i>
+                        <span class="ms-1 d-none d-md-inline">Загрузить</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -402,7 +404,7 @@ function thresholdText(t, zone) {
                       ? 'Перезачет'
                       : t.result?.online
                         ? 'Онлайн'
-                        : `${formatDate(t.result?.training?.start_at)}, ${
+                        : `${formatDateTime(t.result?.training?.start_at)}, ${
                             t.result?.training?.Ground?.name ||
                             t.result?.training?.ground?.name ||
                             '-'
@@ -464,7 +466,7 @@ function thresholdText(t, zone) {
                   </div>
                   <div class="small text-muted">
                     {{
-                      r.training?.Grpund?.name ||
+                      r.training?.Ground?.name ||
                       r.training?.ground?.name ||
                       '-'
                     }}
@@ -634,7 +636,7 @@ function thresholdText(t, zone) {
 }
 .normatives-table th:first-child,
 .normatives-table td:first-child {
-  width: 30%;
+  width: 28%;
 }
 .normatives-table th:nth-child(2),
 .normatives-table td:nth-child(2) {
@@ -642,16 +644,32 @@ function thresholdText(t, zone) {
 }
 .normatives-table th:nth-child(3),
 .normatives-table td:nth-child(3) {
-  width: 21%;
+  width: 18%;
 }
 .normatives-table th:nth-child(4),
 .normatives-table td:nth-child(4) {
-  width: 22%;
+  width: 27%;
 }
 .normatives-table th:last-child,
 .normatives-table td:last-child {
-  width: 10%;
-  white-space: nowrap;
+  width: 15%;
+}
+/* Let action buttons wrap to a second line if needed */
+.normatives-table td:last-child {
+  white-space: normal;
+}
+/* Prevent long normative names from forcing overflow */
+.normatives-table td:first-child {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Compact, wrapping actions block inside last column */
+.actions-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
 }
 
 .header-controls .season-select {
