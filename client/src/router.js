@@ -146,7 +146,7 @@ const routes = [
   {
     path: '/admin/courses',
     component: AdminCourses,
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Курсы' },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Мероприятия' },
   },
   {
     path: '/admin/normatives',
