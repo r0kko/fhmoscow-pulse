@@ -43,4 +43,9 @@ export default {
     const organization = await dadata.findOrganizationByInn(req.body.inn);
     return res.json({ organization });
   },
+
+  async cleanVehicle(req, res) {
+    const result = await dadata.cleanVehicle(req.body.vehicle);
+    return res.json({ result });
+  },
 };

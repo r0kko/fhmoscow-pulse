@@ -3,6 +3,7 @@ import { ref, onMounted, reactive, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import InfoField from '../components/InfoField.vue';
+import AddVehicleModal from '../components/AddVehicleModal.vue';
 
 const noDataPlaceholder = '—';
 
@@ -19,6 +20,8 @@ const bankAccount = ref();
 const bankAccountError = ref('');
 const registrationAddress = ref();
 const residenceAddress = ref();
+const vehicles = ref([]);
+const addVehicleModal = ref(null);
 const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
   const num = bankAccount.value.number;
@@ -45,6 +48,11 @@ const sectionNav = computed(() =>
         residenceAddress.value !== undefined ||
         loading.addresses,
     },
+    {
+      id: 'vehicles',
+      label: 'Транспорт',
+      show: true,
+    },
   ].filter((s) => s.show)
 );
 const loading = reactive({
@@ -55,6 +63,7 @@ const loading = reactive({
   snils: false,
   bankAccount: false,
   addresses: false,
+  vehicles: false,
 });
 
 function formatPhone(digits) {
@@ -195,6 +204,30 @@ async function fetchAddresses() {
   }
 }
 
+async function fetchVehicles() {
+  loading.vehicles = true;
+  try {
+    const data = await apiFetch('/vehicles/me');
+    vehicles.value = data.vehicles || [];
+  } catch (_e) {
+    vehicles.value = [];
+  } finally {
+    loading.vehicles = false;
+  }
+}
+
+function openAddVehicle() {
+  addVehicleModal.value.open();
+}
+
+async function setActive(id) {
+  await apiFetch(`/vehicles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_active: true }),
+  });
+  await fetchVehicles();
+}
+
 function formatAddress(addr) {
   if (!addr) return '';
   const parts = [];
@@ -210,6 +243,7 @@ onMounted(() => {
   fetchSnils();
   fetchBankAccount();
   fetchAddresses();
+  fetchVehicles();
 });
 </script>
 
@@ -445,6 +479,7 @@ onMounted(() => {
                           label="Адрес регистрации"
                           icon="bi bi-geo-alt"
                           :value="formatAddress(registrationAddress)"
+                          multiline
                         />
                         <div class="form-text">
                           Для юридически значимых документов
@@ -456,10 +491,82 @@ onMounted(() => {
                           label="Адрес проживания"
                           icon="bi bi-geo-alt"
                           :value="formatAddress(residenceAddress)"
+                          multiline
                         />
                         <div class="form-text">
                           Может использоваться для назначений
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section id="vehicles" class="mb-4">
+              <div class="card section-card tile fade-in shadow-sm">
+                <div class="card-body">
+                  <h2 class="card-title h5 mb-3">Транспортные средства</h2>
+                  <div v-if="loading.vehicles" class="text-center py-4">
+                    <div
+                      class="spinner-border"
+                      role="status"
+                      aria-label="Загрузка"
+                    >
+                      <span class="visually-hidden">Загрузка…</span>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <div class="tiles-row" role="list">
+                      <div
+                        v-for="v in vehicles"
+                        :key="v.id"
+                        class="tile-col"
+                        role="listitem"
+                      >
+                        <div
+                          class="card section-card tile h-100 fade-in shadow-sm"
+                        >
+                          <div class="card-body d-flex flex-column h-100">
+                            <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
+                            <div class="mt-auto">
+                              <h3 class="card-title h5 mb-1">
+                                {{ v.brand
+                                }}<span v-if="v.model"> {{ v.model }}</span>
+                              </h3>
+                              <p class="card-text text-muted mb-2">
+                                {{ v.number }}
+                              </p>
+                              <div class="form-check">
+                                <input
+                                  class="form-check-input"
+                                  type="checkbox"
+                                  name="activeVehicle"
+                                  :checked="v.is_active"
+                                  @change="setActive(v.id)"
+                                />
+                                <label class="form-check-label">Активен</label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        v-if="vehicles.length < 3"
+                        class="tile-col"
+                        role="listitem"
+                      >
+                        <button
+                          type="button"
+                          class="card section-card tile h-100 fade-in shadow-sm w-100 btn btn-link text-decoration-none text-muted"
+                          @click="openAddVehicle"
+                        >
+                          <div
+                            class="card-body d-flex flex-column justify-content-center align-items-center h-100"
+                          >
+                            <i class="bi bi-plus-circle fs-3"></i>
+                            <span class="mt-2">Добавить ТС</span>
+                          </div>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -506,6 +613,7 @@ onMounted(() => {
       <p v-else>Данные пользователя не найдены.</p>
     </div>
   </div>
+  <AddVehicleModal ref="addVehicleModal" @saved="fetchVehicles" />
 </template>
 
 <style scoped>
