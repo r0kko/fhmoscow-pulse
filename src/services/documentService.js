@@ -40,6 +40,12 @@ async function create(data, userId) {
     created_by: userId,
     updated_by: userId,
   });
+  const recipient = await User.findByPk(data.recipientId, {
+    attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+  });
+  if (recipient?.email) {
+    await emailService.sendDocumentCreatedEmail(recipient, doc);
+  }
   return doc;
 }
 
@@ -173,6 +179,12 @@ async function sign(user, documentId) {
   });
   if (signedStatus) {
     await doc.update({ status_id: signedStatus.id, updated_by: user.id });
+    const recipient = await User.findByPk(doc.recipient_id, {
+      attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+    });
+    if (recipient?.email) {
+      await emailService.sendDocumentSignedEmail(recipient, doc);
+    }
   }
 }
 
@@ -252,6 +264,12 @@ async function uploadSignedFile(documentId, file, actorId) {
   });
   if (oldFileId) {
     await fileService.removeFile(oldFileId);
+  }
+  const recipient = await User.findByPk(doc.recipient_id, {
+    attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+  });
+  if (recipient?.email) {
+    await emailService.sendDocumentSignedEmail(recipient, doc);
   }
   const url = await fileService.getDownloadUrl(newFile);
   return {
