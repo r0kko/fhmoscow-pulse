@@ -239,6 +239,7 @@ async function unregister(userId, trainingId, actorId = null, forCamp) {
   }
   await registration.update({ updated_by: actorId });
   await registration.destroy();
+  await training.update({ attendance_marked: false, updated_by: actorId });
 
   const user = await User.findByPk(userId);
   if (user) {
@@ -308,6 +309,7 @@ async function updateRole(trainingId, userId, roleId, actorId) {
   if (user) {
     await emailService.sendTrainingRoleChangedEmail(user, training, role);
   }
+  await training.update({ attendance_marked: false, updated_by: actorId });
 }
 
 async function updatePresence(trainingId, userId, present, actorId) {
@@ -548,6 +550,9 @@ async function remove(trainingId, userId, actorId = null) {
     }),
     User.findByPk(userId),
   ]);
+  if (training) {
+    await training.update({ attendance_marked: false, updated_by: actorId });
+  }
   if (user && training) {
     await emailService.sendTrainingRegistrationCancelledEmail(user, training);
   }

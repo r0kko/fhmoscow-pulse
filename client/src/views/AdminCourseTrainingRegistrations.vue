@@ -190,6 +190,7 @@ async function removeRegistration(userId) {
       { method: 'DELETE' }
     );
     await loadRegistrations();
+    await loadTraining();
   } catch (e) {
     alert(e.message);
   }
@@ -209,6 +210,7 @@ async function updateRegistration(reg) {
     setTimeout(() => {
       reg.highlight = false;
     }, 1500);
+    await loadTraining();
   } catch (e) {
     alert(e.message);
   }
