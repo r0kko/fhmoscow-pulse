@@ -184,15 +184,23 @@ async function fetchAddresses() {
   loading.addresses = true;
   try {
     const reg = await apiFetch('/addresses/REGISTRATION');
-    registrationAddress.value = reg.address?.result || null;
+    registrationAddress.value = reg.address || null;
     const res = await apiFetch('/addresses/RESIDENCE');
-    residenceAddress.value = res.address?.result || null;
+    residenceAddress.value = res.address || null;
   } catch (_e) {
     registrationAddress.value = null;
     residenceAddress.value = null;
   } finally {
     loading.addresses = false;
   }
+}
+
+function formatAddress(addr) {
+  if (!addr) return '';
+  const parts = [];
+  if (addr.postal_code) parts.push(addr.postal_code);
+  if (addr.result) parts.push(addr.result);
+  return parts.join(', ');
 }
 onMounted(() => {
   fetchProfile();
@@ -430,21 +438,29 @@ onMounted(() => {
                     </div>
                   </div>
                   <div v-else>
-                    <div class="mb-3">
-                      <h3 class="h6 text-muted mb-1">
-                        Для юридически значимых документов
-                      </h3>
-                      <p class="mb-0">
-                        {{ registrationAddress || noDataPlaceholder }}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 class="h6 text-muted mb-1">
-                        Может использоваться для назначений
-                      </h3>
-                      <p class="mb-0">
-                        {{ residenceAddress || noDataPlaceholder }}
-                      </p>
+                    <div class="row row-cols-1 g-3">
+                      <div class="col">
+                        <InfoField
+                          id="regAddress"
+                          label="Адрес регистрации"
+                          icon="bi bi-geo-alt"
+                          :value="formatAddress(registrationAddress)"
+                        />
+                        <div class="form-text">
+                          Для юридически значимых документов
+                        </div>
+                      </div>
+                      <div class="col">
+                        <InfoField
+                          id="resAddress"
+                          label="Адрес проживания"
+                          icon="bi bi-geo-alt"
+                          :value="formatAddress(residenceAddress)"
+                        />
+                        <div class="form-text">
+                          Может использоваться для назначений
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -486,7 +502,7 @@ onMounted(() => {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   padding-bottom: 0.25rem;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
