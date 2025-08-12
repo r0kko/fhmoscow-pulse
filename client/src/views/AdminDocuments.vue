@@ -15,8 +15,7 @@ const documentsError = ref('');
 const search = ref('');
 const signTypeFilter = ref('');
 const statusFilter = ref('');
-const dateFrom = ref('');
-const dateTo = ref('');
+const numberSearch = ref('');
 
 const uploadModal = ref(null);
 
@@ -113,19 +112,14 @@ const filteredDocuments = computed(() => {
         `${d.recipient.lastName} ${d.recipient.firstName} ${d.recipient.patronymic}`.toLowerCase();
       if (!fio.includes(q)) return false;
     }
+    if (numberSearch.value && !String(d.number).includes(numberSearch.value)) {
+      return false;
+    }
     if (signTypeFilter.value && d.signType?.alias !== signTypeFilter.value) {
       return false;
     }
     if (statusFilter.value && d.status?.alias !== statusFilter.value) {
       return false;
-    }
-    if (dateFrom.value) {
-      const from = new Date(dateFrom.value);
-      if (new Date(d.documentDate) < from) return false;
-    }
-    if (dateTo.value) {
-      const to = new Date(dateTo.value);
-      if (new Date(d.documentDate) > to) return false;
     }
     return true;
   });
@@ -202,8 +196,10 @@ function openUpload(doc) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
-            <div class="row g-2 mb-3 align-items-end">
-              <div class="col-md">
+            <div
+              class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 mb-3 align-items-end"
+            >
+              <div class="col">
                 <label for="doc-search" class="form-label">Получатель</label>
                 <input
                   id="doc-search"
@@ -213,7 +209,17 @@ function openUpload(doc) {
                   placeholder="ФИО"
                 />
               </div>
-              <div class="col-md">
+              <div class="col">
+                <label for="number-search" class="form-label">Номер</label>
+                <input
+                  id="number-search"
+                  v-model="numberSearch"
+                  type="search"
+                  class="form-control"
+                  placeholder="25.08/1"
+                />
+              </div>
+              <div class="col">
                 <label for="sign-type" class="form-label">Тип подписи</label>
                 <select
                   id="sign-type"
@@ -230,7 +236,7 @@ function openUpload(doc) {
                   </option>
                 </select>
               </div>
-              <div class="col-md">
+              <div class="col">
                 <label for="status-filter" class="form-label">Статус</label>
                 <select
                   id="status-filter"
@@ -242,24 +248,6 @@ function openUpload(doc) {
                     {{ s.name }}
                   </option>
                 </select>
-              </div>
-              <div class="col-md">
-                <label for="date-from" class="form-label">Дата от</label>
-                <input
-                  id="date-from"
-                  v-model="dateFrom"
-                  type="date"
-                  class="form-control"
-                />
-              </div>
-              <div class="col-md">
-                <label for="date-to" class="form-label">Дата до</label>
-                <input
-                  id="date-to"
-                  v-model="dateTo"
-                  type="date"
-                  class="form-control"
-                />
               </div>
             </div>
             <div class="table-responsive d-none d-sm-block">
@@ -287,68 +275,70 @@ function openUpload(doc) {
                     <td>{{ d.status?.name }}</td>
                     <td>{{ formatDateTime(d.documentDate) }}</td>
                     <td>
-                      <a
-                        v-if="d.file"
-                        :href="d.file.url"
-                        class="btn btn-sm btn-outline-secondary me-2"
-                        target="_blank"
-                        rel="noopener"
-                        title="Скачать"
-                      >
-                        <i class="bi bi-download" aria-hidden="true"></i>
-                      </a>
-                      <button
-                        v-if="
-                          d.documentType?.generated &&
-                          ['CREATED', 'AWAITING_SIGNATURE'].includes(
-                            d.status?.alias
-                          )
-                        "
-                        class="btn btn-sm btn-outline-secondary me-2"
-                        :disabled="actionId === d.id"
-                        title="Перегенерировать"
-                        @click="regenerateDocument(d)"
-                      >
-                        <span
-                          v-if="actionId === d.id"
-                          class="spinner-border spinner-border-sm"
-                          aria-hidden="true"
-                        ></span>
-                        <i
-                          v-else
-                          class="bi bi-arrow-clockwise"
-                          aria-hidden="true"
-                        ></i>
-                      </button>
-                      <button
-                        v-if="
-                          ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
-                            d.signType?.alias
-                          ) && d.status?.alias === 'AWAITING_SIGNATURE'
-                        "
-                        class="btn btn-sm btn-primary me-2"
-                        title="Загрузить подписанный файл"
-                        @click="openUpload(d)"
-                      >
-                        <i class="bi bi-upload" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        v-else-if="
-                          ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
-                            d.signType?.alias
-                          ) && d.status?.alias === 'CREATED'
-                        "
-                        class="btn btn-sm btn-primary"
-                        :disabled="actionId === d.id"
-                        @click="requestSignature(d)"
-                      >
-                        <span
-                          v-if="actionId === d.id"
-                          class="spinner-border spinner-border-sm me-1"
-                          aria-hidden="true"
-                        ></span>
-                        Отправить
-                      </button>
+                      <div class="d-flex flex-wrap gap-2">
+                        <a
+                          v-if="d.file"
+                          :href="d.file.url"
+                          class="btn btn-sm btn-outline-secondary"
+                          target="_blank"
+                          rel="noopener"
+                          title="Скачать"
+                        >
+                          <i class="bi bi-download" aria-hidden="true"></i>
+                        </a>
+                        <button
+                          v-if="
+                            d.documentType?.generated &&
+                            ['CREATED', 'AWAITING_SIGNATURE'].includes(
+                              d.status?.alias
+                            )
+                          "
+                          class="btn btn-sm btn-outline-secondary"
+                          :disabled="actionId === d.id"
+                          title="Перегенерировать"
+                          @click="regenerateDocument(d)"
+                        >
+                          <span
+                            v-if="actionId === d.id"
+                            class="spinner-border spinner-border-sm"
+                            aria-hidden="true"
+                          ></span>
+                          <i
+                            v-else
+                            class="bi bi-arrow-clockwise"
+                            aria-hidden="true"
+                          ></i>
+                        </button>
+                        <button
+                          v-if="
+                            ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                              d.signType?.alias
+                            ) && d.status?.alias === 'AWAITING_SIGNATURE'
+                          "
+                          class="btn btn-sm btn-primary"
+                          title="Загрузить подписанный файл"
+                          @click="openUpload(d)"
+                        >
+                          <i class="bi bi-upload" aria-hidden="true"></i>
+                        </button>
+                        <button
+                          v-else-if="
+                            ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                              d.signType?.alias
+                            ) && d.status?.alias === 'CREATED'
+                          "
+                          class="btn btn-sm btn-primary"
+                          :disabled="actionId === d.id"
+                          @click="requestSignature(d)"
+                        >
+                          <span
+                            v-if="actionId === d.id"
+                            class="spinner-border spinner-border-sm me-1"
+                            aria-hidden="true"
+                          ></span>
+                          Отправить
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   <tr v-if="!filteredDocuments.length">
@@ -375,68 +365,70 @@ function openUpload(doc) {
                   <p class="mb-2 small">
                     Дата: {{ formatDateTime(d.documentDate) }}
                   </p>
-                  <a
-                    v-if="d.file"
-                    :href="d.file.url"
-                    class="btn btn-sm btn-outline-secondary me-2"
-                    target="_blank"
-                    rel="noopener"
-                    title="Скачать"
-                  >
-                    <i class="bi bi-download" aria-hidden="true"></i>
-                  </a>
-                  <button
-                    v-if="
-                      d.documentType?.generated &&
-                      ['CREATED', 'AWAITING_SIGNATURE'].includes(
-                        d.status?.alias
-                      )
-                    "
-                    class="btn btn-sm btn-outline-secondary me-2"
-                    :disabled="actionId === d.id"
-                    title="Перегенерировать"
-                    @click="regenerateDocument(d)"
-                  >
-                    <span
-                      v-if="actionId === d.id"
-                      class="spinner-border spinner-border-sm"
-                      aria-hidden="true"
-                    ></span>
-                    <i
-                      v-else
-                      class="bi bi-arrow-clockwise"
-                      aria-hidden="true"
-                    ></i>
-                  </button>
-                  <button
-                    v-if="
-                      ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
-                        d.signType?.alias
-                      ) && d.status?.alias === 'AWAITING_SIGNATURE'
-                    "
-                    class="btn btn-sm btn-primary me-2"
-                    title="Загрузить подписанный файл"
-                    @click="openUpload(d)"
-                  >
-                    <i class="bi bi-upload" aria-hidden="true"></i>
-                  </button>
-                  <button
-                    v-else-if="
-                      ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
-                        d.signType?.alias
-                      ) && d.status?.alias === 'CREATED'
-                    "
-                    class="btn btn-sm btn-primary"
-                    :disabled="actionId === d.id"
-                    @click="requestSignature(d)"
-                  >
-                    <span
-                      v-if="actionId === d.id"
-                      class="spinner-border spinner-border-sm me-1"
-                      aria-hidden="true"
-                    ></span>
-                    Отправить
-                  </button>
+                  <div class="d-flex flex-wrap gap-2">
+                    <a
+                      v-if="d.file"
+                      :href="d.file.url"
+                      class="btn btn-sm btn-outline-secondary"
+                      target="_blank"
+                      rel="noopener"
+                      title="Скачать"
+                    >
+                      <i class="bi bi-download" aria-hidden="true"></i>
+                    </a>
+                    <button
+                      v-if="
+                        d.documentType?.generated &&
+                        ['CREATED', 'AWAITING_SIGNATURE'].includes(
+                          d.status?.alias
+                        )
+                      "
+                      class="btn btn-sm btn-outline-secondary"
+                      :disabled="actionId === d.id"
+                      title="Перегенерировать"
+                      @click="regenerateDocument(d)"
+                    >
+                      <span
+                        v-if="actionId === d.id"
+                        class="spinner-border spinner-border-sm"
+                        aria-hidden="true"
+                      ></span>
+                      <i
+                        v-else
+                        class="bi bi-arrow-clockwise"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                    <button
+                      v-if="
+                        ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                          d.signType?.alias
+                        ) && d.status?.alias === 'AWAITING_SIGNATURE'
+                      "
+                      class="btn btn-sm btn-primary"
+                      title="Загрузить подписанный файл"
+                      @click="openUpload(d)"
+                    >
+                      <i class="bi bi-upload" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      v-else-if="
+                        ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                          d.signType?.alias
+                        ) && d.status?.alias === 'CREATED'
+                      "
+                      class="btn btn-sm btn-primary"
+                      :disabled="actionId === d.id"
+                      @click="requestSignature(d)"
+                    >
+                      <span
+                        v-if="actionId === d.id"
+                        class="spinner-border spinner-border-sm me-1"
+                        aria-hidden="true"
+                      ></span>
+                      Отправить
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

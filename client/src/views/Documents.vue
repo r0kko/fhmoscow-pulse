@@ -124,10 +124,6 @@ async function submit() {
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">Собственноручная подпись</p>
-                      <p class="text-muted mb-1">
-                        Дата выбора подписи:
-                        {{ formatDate(current.selectedAt) }}
-                      </p>
                       <p class="text-muted mb-0 small">
                         Ожидаем Вас в офисе в будние дни с 10:00 до 17:00
                       </p>
@@ -136,10 +132,6 @@ async function submit() {
                       <p class="mb-2">Подписание через Контур.Сайн</p>
                       <p class="mb-1">ИНН: {{ current.inn }}</p>
                       <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
-                      <p class="text-muted mb-1">
-                        Дата выбора подписи:
-                        {{ formatDate(current.selectedAt) }}
-                      </p>
                       <a
                         href="https://sign.kontur.ru"
                         target="_blank"
@@ -170,7 +162,7 @@ async function submit() {
                 <div class="card section-card tile fade-in shadow-sm">
                   <div class="card-body">
                     <h2 class="h6 mb-3">Ваши документы</h2>
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-sm-block">
                       <table class="table align-middle mb-0">
                         <thead>
                           <tr>
@@ -192,7 +184,7 @@ async function submit() {
                             <td class="text-end">
                               <a
                                 v-if="d.file"
-                                class="btn btn-sm btn-outline-primary"
+                                class="btn btn-sm btn-outline-secondary"
                                 :href="d.file.url"
                                 target="_blank"
                                 rel="noopener"
@@ -212,6 +204,35 @@ async function submit() {
                           </tr>
                         </tbody>
                       </table>
+                    </div>
+                    <div v-if="documents.length" class="d-block d-sm-none">
+                      <div v-for="d in documents" :key="d.id" class="card mb-2">
+                        <div class="card-body p-2">
+                          <h3 class="h6 mb-1">{{ d.name }}</h3>
+                          <p class="mb-1 small">№ {{ d.number }}</p>
+                          <p class="mb-1 small">
+                            Дата: {{ formatDate(d.documentDate) }}
+                          </p>
+                          <p class="mb-1 small">
+                            Подпись: {{ d.signType?.name || '—' }}
+                          </p>
+                          <p class="mb-1 small">
+                            Статус: {{ d.status?.name || '—' }}
+                          </p>
+                          <div class="d-flex flex-wrap gap-2 mt-2">
+                            <a
+                              v-if="d.file"
+                              :href="d.file.url"
+                              class="btn btn-sm btn-outline-secondary"
+                              target="_blank"
+                              rel="noopener"
+                              title="Скачать"
+                            >
+                              <i class="bi bi-download" aria-hidden="true"></i>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
