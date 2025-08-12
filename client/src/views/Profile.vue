@@ -467,7 +467,7 @@ onMounted(() => {
               </div>
             </section>
             <section class="mb-4">
-              <div class="section-card bg-body-tertiary p-3 fade-in">
+              <div class="section-card p-3 fade-in">
                 <div class="d-flex align-items-start">
                   <i class="bi bi-globe fs-4 me-3"></i>
                   <div>
