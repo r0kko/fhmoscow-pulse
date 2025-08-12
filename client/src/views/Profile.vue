@@ -516,57 +516,39 @@ onMounted(() => {
                     </div>
                   </div>
                   <div v-else>
-                    <div class="tiles-row" role="list">
-                      <div
+                    <ul class="list-group list-group-flush">
+                      <li
                         v-for="v in vehicles"
                         :key="v.id"
-                        class="tile-col"
-                        role="listitem"
+                        class="list-group-item d-flex align-items-center gap-3"
                       >
-                        <div
-                          class="card section-card tile h-100 fade-in shadow-sm"
-                        >
-                          <div class="card-body d-flex flex-column h-100">
-                            <i class="bi bi-car-front fs-3 icon-brand mb-2"></i>
-                            <div class="mt-auto">
-                              <h3 class="card-title h5 mb-2">
-                                {{ v.brand
-                                }}<span v-if="v.model"> {{ v.model }}</span>
-                                {{ v.number }}
-                              </h3>
-                              <div class="form-check">
-                                <input
-                                  class="form-check-input brand-check"
-                                  type="checkbox"
-                                  name="activeVehicle"
-                                  :checked="v.is_active"
-                                  @change="setActive(v.id)"
-                                />
-                                <label class="form-check-label">Активен</label>
-                              </div>
-                            </div>
-                          </div>
+                        <i class="bi bi-car-front fs-5"></i>
+                        <span>
+                          {{ v.brand
+                          }}<span v-if="v.model"> {{ v.model }}</span> &middot;
+                          {{ v.number }}
+                        </span>
+                        <div class="form-check ms-auto mb-0">
+                          <input
+                            class="form-check-input brand-check"
+                            type="checkbox"
+                            name="activeVehicle"
+                            :checked="v.is_active"
+                            @change="setActive(v.id)"
+                          />
+                          <label class="form-check-label">Активен</label>
                         </div>
-                      </div>
-                      <div
-                        v-if="vehicles.length < 3"
-                        class="tile-col"
-                        role="listitem"
-                      >
+                      </li>
+                      <li v-if="vehicles.length < 3" class="list-group-item">
                         <button
                           type="button"
-                          class="card section-card tile h-100 fade-in shadow-sm w-100 btn btn-link text-decoration-none text-muted"
+                          class="btn btn-link p-0"
                           @click="openAddVehicle"
                         >
-                          <div
-                            class="card-body d-flex flex-column justify-content-center align-items-center h-100"
-                          >
-                            <i class="bi bi-plus-circle fs-3"></i>
-                            <span class="mt-2">Добавить ТС</span>
-                          </div>
+                          Добавить транспортное средство
                         </button>
-                      </div>
-                    </div>
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </div>
