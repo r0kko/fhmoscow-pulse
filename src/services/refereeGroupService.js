@@ -96,11 +96,14 @@ async function listReferees(options = {}) {
   } else if (options.season_id) {
     groupInclude.include[0].where = { season_id: options.season_id };
   }
+  const roleWhere = options.role
+    ? { alias: options.role }
+    : { alias: REFEREE_ROLES };
   return User.findAll({
     include: [
       {
         model: Role,
-        where: { alias: REFEREE_ROLES },
+        where: roleWhere,
         through: { attributes: [] },
         required: true,
       },

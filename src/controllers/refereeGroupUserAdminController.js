@@ -7,11 +7,12 @@ import { sendError } from '../utils/api.js';
 
 export default {
   async list(req, res) {
-    const { search, group_id, season_id } = req.query;
+    const { search, group_id, season_id, role } = req.query;
     const judges = await refereeGroupService.listReferees({
       search,
       group_id,
       season_id,
+      role,
     });
     const data = await Promise.all(
       judges.map(async (u) => {

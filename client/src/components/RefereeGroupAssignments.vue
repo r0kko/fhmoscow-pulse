@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 
@@ -11,6 +11,7 @@ const error = ref('');
 const search = ref('');
 const filterGroup = ref('');
 const filterSeason = ref('');
+const filterRole = ref('');
 let searchTimeout;
 
 const history = ref([]);
@@ -20,6 +21,25 @@ const historyJudgeName = ref('');
 const historyModalRef = ref(null);
 let historyModal;
 
+const sortOrder = ref('desc');
+const sortedJudges = computed(() => {
+  const data = [...judges.value];
+  data.sort((a, b) => {
+    const av = a.training_stats.total
+      ? a.training_stats.visited / a.training_stats.total
+      : 0;
+    const bv = b.training_stats.total
+      ? b.training_stats.visited / b.training_stats.total
+      : 0;
+    return sortOrder.value === 'asc' ? av - bv : bv - av;
+  });
+  return data;
+});
+
+function toggleSort() {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
 async function loadJudges() {
   loading.value = true;
   error.value = '';
@@ -28,6 +48,7 @@ async function loadJudges() {
     if (search.value) params.append('search', search.value);
     if (filterGroup.value) params.append('group_id', filterGroup.value);
     if (filterSeason.value) params.append('season_id', filterSeason.value);
+    if (filterRole.value) params.append('role', filterRole.value);
     const query = params.toString();
     const url = query
       ? `/referee-group-users?${query}`
@@ -147,6 +168,7 @@ watch(filterSeason, () => {
 });
 
 watch(filterGroup, loadJudges);
+watch(filterRole, loadJudges);
 
 watch(search, () => {
   clearTimeout(searchTimeout);
@@ -172,7 +194,7 @@ defineExpose({ refresh });
       <div
         class="card-header d-flex justify-content-between align-items-center"
       >
-        <h2 class="h5 mb-0">Назначение судей</h2>
+        <h2 class="h5 mb-0">Список судей</h2>
       </div>
       <div class="card-body p-3">
         <div class="row g-2 mb-3">
@@ -199,20 +221,37 @@ defineExpose({ refresh });
               </option>
             </select>
           </div>
+          <div class="col-sm">
+            <select v-model="filterRole" class="form-select">
+              <option value="">Все роли</option>
+              <option value="REFEREE">Судья в поле</option>
+              <option value="BRIGADE_REFEREE">Судья в бригаде</option>
+            </select>
+          </div>
         </div>
-        <div v-if="judges.length" class="table-responsive d-none d-sm-block">
+        <div v-if="sortedJudges.length" class="table-responsive d-none d-sm-block">
           <table class="table admin-table table-striped align-middle mb-0">
             <thead>
               <tr>
                 <th>ФИО</th>
                 <th class="text-center">Дата рождения</th>
                 <th class="text-center">Группа</th>
-                <th class="text-center">Тренировки</th>
+                <th class="text-center sortable" @click="toggleSort">
+                  Тренировки
+                  <i
+                    :class="[
+                      sortOrder === 'asc'
+                        ? 'bi bi-caret-up-fill'
+                        : 'bi bi-caret-down-fill',
+                      'icon-brand',
+                    ]"
+                  ></i>
+                </th>
                 <th class="text-center">История</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="j in judges" :key="j.user.id">
+              <tr v-for="j in sortedJudges" :key="j.user.id">
                 <td>{{ formatName(j.user) }}</td>
                 <td class="text-center">{{ formatDate(j.user.birth_date) }}</td>
                 <td class="text-center">
@@ -251,9 +290,9 @@ defineExpose({ refresh });
             </tbody>
           </table>
         </div>
-        <div v-if="judges.length" class="d-block d-sm-none">
+        <div v-if="sortedJudges.length" class="d-block d-sm-none">
           <div
-            v-for="j in judges"
+            v-for="j in sortedJudges"
             :key="j.user.id"
             class="card training-card mb-2"
           >
