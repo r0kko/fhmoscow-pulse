@@ -4,7 +4,6 @@ import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import TrainingCalendar from '../components/TrainingCalendar.vue';
-import TrainingCard from '../components/TrainingCard.vue';
 import { toDayKey } from '../utils/time.js';
 
 const course = ref(null);
@@ -17,11 +16,10 @@ const actionPendingId = ref(null);
 const contactModalRef = ref(null);
 let contactModal;
 
-const mineUpcoming = ref([]);
-const minePast = ref([]);
-const mineView = ref('upcoming');
-const mineLoading = ref(false);
-const mineError = ref('');
+const pastTrainings = ref([]);
+const eventsView = ref('future');
+const pastLoading = ref(false);
+const pastError = ref('');
 
 const olenin = {
   name: 'Оленин Константин Константинович',
@@ -60,29 +58,16 @@ async function loadTrainings() {
   }
 }
 
-async function loadMineUpcoming() {
-  mineLoading.value = true;
-  try {
-    const data = await apiFetch('/course-trainings/me/upcoming');
-    mineUpcoming.value = data.trainings || [];
-    mineError.value = '';
-  } catch (err) {
-    mineError.value = err.message;
-  } finally {
-    mineLoading.value = false;
-  }
-}
-
-async function loadMinePast() {
-  mineLoading.value = true;
+async function loadPastTrainings() {
+  pastLoading.value = true;
   try {
     const data = await apiFetch('/course-trainings/me/past');
-    minePast.value = data.trainings || [];
-    mineError.value = '';
+    pastTrainings.value = data.trainings || [];
+    pastError.value = '';
   } catch (err) {
-    mineError.value = err.message;
+    pastError.value = err.message;
   } finally {
-    mineLoading.value = false;
+    pastLoading.value = false;
   }
 }
 
@@ -99,7 +84,6 @@ async function register(id) {
   try {
     await apiFetch(`/course-trainings/${id}/register`, { method: 'POST' });
     await loadTrainings();
-    await loadMineUpcoming();
   } finally {
     actionPendingId.value = null;
   }
@@ -115,7 +99,6 @@ async function unregister(id) {
   try {
     await apiFetch(`/course-trainings/${id}/register`, { method: 'DELETE' });
     await loadTrainings();
-    await loadMineUpcoming();
   } finally {
     actionPendingId.value = null;
   }
@@ -130,7 +113,7 @@ onMounted(async () => {
     });
     course.value = data ? data.course : null;
     if (course.value) {
-      await Promise.all([loadTrainings(), loadMineUpcoming()]);
+      await loadTrainings();
     }
   } catch (err) {
     error.value = err.message;
@@ -139,11 +122,11 @@ onMounted(async () => {
   }
 });
 
-watch(mineView, (val) => {
-  if (val === 'past' && !minePast.value.length) {
-    loadMinePast();
-  } else if (val === 'upcoming' && !mineUpcoming.value.length) {
-    loadMineUpcoming();
+watch(eventsView, (val) => {
+  if (val === 'past' && !pastTrainings.value.length) {
+    loadPastTrainings();
+  } else if (val === 'future' && !trainings.value.length) {
+    loadTrainings();
   }
 });
 
@@ -159,7 +142,7 @@ function groupByDay(list) {
   return Object.values(map).sort((a, b) => a.date - b.date);
 }
 
-const groupedMinePast = computed(() => groupByDay(minePast.value));
+const groupedPast = computed(() => groupByDay(pastTrainings.value));
 
 function attendanceStatus(t) {
   if (!t.attendance_marked) {
@@ -282,82 +265,60 @@ function openContactModal(contact) {
       </div>
       <div v-if="course" class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
-          <h2 class="h5 mb-3">Ближайшие тренировки</h2>
-          <div v-if="trainingsLoading" class="text-center py-3">
-            <div class="spinner-border text-brand" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
-          </div>
-          <div v-else-if="trainingsError" class="alert alert-danger mb-0">
-            {{ trainingsError }}
-          </div>
-          <TrainingCalendar
-            v-else-if="trainings.length"
-            :trainings="trainings"
-            :pending-id="actionPendingId"
-            @register="register"
-            @unregister="unregister"
-          />
-          <div v-else class="alert alert-info mb-0">
-            Нет доступных тренировок
-          </div>
-        </div>
-      </div>
-      <div v-if="course" class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <h2 class="h5 mb-3">Мои тренировки</h2>
+          <h2 class="h5 mb-3">Мероприятия</h2>
           <ul class="nav nav-pills mb-3">
             <li class="nav-item">
               <button
                 class="nav-link"
-                :class="{ active: mineView === 'upcoming' }"
-                @click="mineView = 'upcoming'"
+                :class="{ active: eventsView === 'future' }"
+                @click="eventsView = 'future'"
               >
-                Ближайшие
+                Будущие
               </button>
             </li>
             <li class="nav-item">
               <button
                 class="nav-link"
-                :class="{ active: mineView === 'past' }"
-                @click="mineView = 'past'"
+                :class="{ active: eventsView === 'past' }"
+                @click="eventsView = 'past'"
               >
-                Архив
+                Прошедшие
               </button>
             </li>
           </ul>
-          <div v-if="mineError" class="alert alert-danger mb-0">
-            {{ mineError }}
-          </div>
-          <div v-else-if="mineLoading" class="text-center py-3">
-            <div class="spinner-border text-brand" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
-          </div>
-          <template v-else>
-            <div v-if="mineView === 'upcoming'">
-              <div v-if="mineUpcoming.length" class="row g-3">
-                <div
-                  v-for="t in mineUpcoming"
-                  :key="t.id"
-                  class="col-12 col-md-6 col-lg-4"
-                >
-                  <TrainingCard
-                    :training="t"
-                    :loading="actionPendingId === t.id"
-                    :show-cancel="t.my_role?.alias === 'LISTENER'"
-                    @unregister="unregister"
-                  />
-                </div>
+          <template v-if="eventsView === 'future'">
+            <div v-if="trainingsLoading" class="text-center py-3">
+              <div class="spinner-border text-brand" role="status">
+                <span class="visually-hidden">Загрузка...</span>
               </div>
-              <p v-else class="alert alert-info mb-0">
-                Нет предстоящих тренировок
-              </p>
+            </div>
+            <div v-else-if="trainingsError" class="alert alert-danger mb-0">
+              {{ trainingsError }}
+            </div>
+            <TrainingCalendar
+              v-else-if="trainings.length"
+              :trainings="trainings"
+              :pending-id="actionPendingId"
+              @register="register"
+              @unregister="unregister"
+            />
+            <div v-else class="alert alert-info mb-0">
+              Нет доступных мероприятий
+            </div>
+          </template>
+          <template v-else>
+            <div v-if="pastError" class="alert alert-danger mb-0">
+              {{ pastError }}
+            </div>
+            <div v-else-if="pastLoading" class="text-center py-3">
+              <div class="spinner-border text-brand" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+              </div>
             </div>
             <div v-else>
-              <div v-if="minePast.length">
+              <div v-if="pastTrainings.length">
                 <div
-                  v-for="day in groupedMinePast"
+                  v-for="day in groupedPast"
                   :key="day.date.toISOString()"
                   class="mb-3"
                 >
