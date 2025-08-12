@@ -27,6 +27,7 @@ import { renderNormativeResultAddedEmail } from '../templates/normativeResultAdd
 import { renderNormativeResultUpdatedEmail } from '../templates/normativeResultUpdatedEmail.js';
 import { renderNormativeResultRemovedEmail } from '../templates/normativeResultRemovedEmail.js';
 import { renderSignTypeSelectionEmail } from '../templates/signTypeSelectionEmail.js';
+import { renderDocumentAwaitingSignatureEmail } from '../templates/documentAwaitingSignatureEmail.js';
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -163,6 +164,12 @@ export async function sendNormativeResultRemovedEmail(user, result) {
   const { subject, text, html } = renderNormativeResultRemovedEmail(result);
   await sendMail(user.email, subject, text, html);
 }
+
+export async function sendDocumentAwaitingSignatureEmail(user, document) {
+  const { subject, text, html } =
+    renderDocumentAwaitingSignatureEmail(document);
+  await sendMail(user.email, subject, text, html);
+}
 export default {
   sendMail,
   sendVerificationEmail,
@@ -184,4 +191,5 @@ export default {
   sendNormativeResultAddedEmail,
   sendNormativeResultUpdatedEmail,
   sendNormativeResultRemovedEmail,
+  sendDocumentAwaitingSignatureEmail,
 };

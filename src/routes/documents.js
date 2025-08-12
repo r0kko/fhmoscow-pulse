@@ -26,5 +26,11 @@ router.post(
   documentController.create
 );
 router.post('/:id/sign', auth, documentController.sign);
+router.post(
+  '/:id/request-sign',
+  auth,
+  authorize('ADMIN'),
+  controller.requestSignature
+);
 
 export default router;

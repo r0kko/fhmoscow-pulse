@@ -14,6 +14,7 @@ import {
 import ServiceError from '../errors/ServiceError.js';
 
 import fileService from './fileService.js';
+import emailService from './emailService.js';
 
 async function create(data, userId) {
   let statusId = data.statusId;
@@ -92,6 +93,7 @@ async function listAll() {
   const docs = await Document.findAll({
     include: [
       { model: DocumentType, attributes: ['name', 'alias'] },
+      { model: SignType, attributes: ['name', 'alias'] },
       {
         model: User,
         as: 'recipient',
@@ -107,6 +109,9 @@ async function listAll() {
     documentDate: d.document_date,
     documentType: d.DocumentType
       ? { name: d.DocumentType.name, alias: d.DocumentType.alias }
+      : null,
+    signType: d.SignType
+      ? { name: d.SignType.name, alias: d.SignType.alias }
       : null,
     recipient: {
       lastName: d.recipient.last_name,
@@ -155,6 +160,44 @@ async function sign(user, documentId) {
   if (signedStatus) {
     await doc.update({ status_id: signedStatus.id, updated_by: user.id });
   }
+}
+
+async function requestSignature(documentId, actorId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: SignType, attributes: ['alias', 'name'] },
+      {
+        model: User,
+        as: 'recipient',
+        attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+      },
+      { model: DocumentStatus, attributes: ['alias'] },
+    ],
+  });
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  if (
+    !doc.SignType ||
+    !['HANDWRITTEN', 'KONTUR_SIGN'].includes(doc.SignType.alias)
+  ) {
+    throw new ServiceError('document_sign_type_invalid', 400);
+  }
+  if (doc.DocumentStatus?.alias !== 'CREATED') {
+    throw new ServiceError('document_status_invalid', 400);
+  }
+  const status = await DocumentStatus.findOne({
+    where: { alias: 'AWAITING_SIGNATURE' },
+    attributes: ['id', 'name', 'alias'],
+  });
+  if (!status) {
+    throw new ServiceError('document_status_not_found', 500);
+  }
+  await doc.update({ status_id: status.id, updated_by: actorId });
+  if (doc.recipient?.email) {
+    await emailService.sendDocumentAwaitingSignatureEmail(doc.recipient, doc);
+  }
+  return { name: status.name, alias: status.alias };
 }
 
 function createPdfBuffer(text) {
@@ -227,4 +270,11 @@ async function generateInitial(user, signTypeId) {
   }
 }
 
-export default { create, listByUser, listAll, sign, generateInitial };
+export default {
+  create,
+  listByUser,
+  listAll,
+  sign,
+  requestSignature,
+  generateInitial,
+};

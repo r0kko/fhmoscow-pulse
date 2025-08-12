@@ -25,4 +25,15 @@ export default {
       return sendError(res, err, 404);
     }
   },
+  async requestSignature(req, res) {
+    try {
+      const status = await documentService.requestSignature(
+        req.params.id,
+        req.user.id
+      );
+      res.json({ status });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
 };
