@@ -235,12 +235,16 @@ async function uploadSignedFile(documentId, file, actorId) {
   if (!signedStatus) {
     throw new ServiceError('document_status_not_found', 500);
   }
+  const oldFileId = doc.file_id;
   const newFile = await fileService.uploadDocument(file, actorId);
   await doc.update({
     file_id: newFile.id,
     status_id: signedStatus.id,
     updated_by: actorId,
   });
+  if (oldFileId) {
+    await fileService.removeFile(oldFileId);
+  }
   const url = await fileService.getDownloadUrl(newFile);
   return {
     status: { name: signedStatus.name, alias: signedStatus.alias },
