@@ -234,6 +234,43 @@ async function removeTicketFile(id, actorId = null) {
   await attachment.File.destroy();
 }
 
+async function uploadDocument(file, actorId) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+  if (file.size > MAX_FILE_SIZE) {
+    throw new ServiceError('file_too_large', 400);
+  }
+  if (!ALLOWED_TYPES.includes(file.mimetype)) {
+    throw new ServiceError('invalid_file_type', 400);
+  }
+  const key = `documents/${uuidv4()}${path.extname(file.originalname)}`;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: getS3Bucket(),
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+  } catch (err) {
+    console.error('S3 upload failed', err);
+    throw new ServiceError('s3_upload_failed');
+  }
+  const dbFile = await File.create({
+    key,
+    original_name: file.originalname,
+    mime_type: file.mimetype,
+    size: file.size,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+  return dbFile;
+}
+
 async function saveGeneratedPdf(buffer, name, actorId) {
   if (isTestEnvWithoutS3() || !getS3Bucket()) {
     throw new ServiceError('s3_not_configured', 500);
@@ -272,5 +309,6 @@ export default {
   uploadForNormativeTicket,
   listForTicket,
   removeTicketFile,
+  uploadDocument,
   saveGeneratedPdf,
 };

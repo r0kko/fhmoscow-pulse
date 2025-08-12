@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch, apiFetchForm } from '../api.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -73,6 +73,23 @@ async function requestSignature(doc) {
       method: 'POST',
     });
     doc.status = res.status;
+  } catch (e) {
+    actionError.value = e.message;
+  } finally {
+    actionId.value = '';
+  }
+}
+
+async function uploadSigned(doc, file) {
+  if (!file || actionId.value) return;
+  actionId.value = doc.id;
+  actionError.value = '';
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await apiFetchForm(`/documents/${doc.id}/file`, form);
+    doc.status = res.status;
+    doc.file = res.file;
   } catch (e) {
     actionError.value = e.message;
   } finally {
@@ -154,8 +171,38 @@ async function requestSignature(doc) {
                     <td>{{ d.status?.name }}</td>
                     <td>{{ formatDateTime(d.documentDate) }}</td>
                     <td>
-                      <button
+                      <a
+                        v-if="d.file"
+                        :href="d.file.url"
+                        class="btn btn-sm btn-outline-secondary me-2"
+                        target="_blank"
+                        rel="noopener"
+                        >Скачать</a
+                      >
+                      <label
                         v-if="
+                          ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                            d.signType?.alias
+                          ) && d.status?.alias === 'AWAITING_SIGNATURE'
+                        "
+                        class="btn btn-sm btn-primary mb-0"
+                        :class="{ disabled: actionId === d.id }"
+                      >
+                        <span
+                          v-if="actionId === d.id"
+                          class="spinner-border spinner-border-sm me-1"
+                          aria-hidden="true"
+                        ></span>
+                        Загрузить
+                        <input
+                          type="file"
+                          class="d-none"
+                          :disabled="actionId === d.id"
+                          @change="(e) => uploadSigned(d, e.target.files[0])"
+                        />
+                      </label>
+                      <button
+                        v-else-if="
                           ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
                             d.signType?.alias
                           ) && d.status?.alias === 'CREATED'
@@ -196,8 +243,38 @@ async function requestSignature(doc) {
                   <p class="mb-2 small">
                     Дата: {{ formatDateTime(d.documentDate) }}
                   </p>
-                  <button
+                  <a
+                    v-if="d.file"
+                    :href="d.file.url"
+                    class="btn btn-sm btn-outline-secondary me-2"
+                    target="_blank"
+                    rel="noopener"
+                    >Скачать</a
+                  >
+                  <label
                     v-if="
+                      ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
+                        d.signType?.alias
+                      ) && d.status?.alias === 'AWAITING_SIGNATURE'
+                    "
+                    class="btn btn-sm btn-primary mb-0"
+                    :class="{ disabled: actionId === d.id }"
+                  >
+                    <span
+                      v-if="actionId === d.id"
+                      class="spinner-border spinner-border-sm me-1"
+                      aria-hidden="true"
+                    ></span>
+                    Загрузить
+                    <input
+                      type="file"
+                      class="d-none"
+                      :disabled="actionId === d.id"
+                      @change="(e) => uploadSigned(d, e.target.files[0])"
+                    />
+                  </label>
+                  <button
+                    v-else-if="
                       ['HANDWRITTEN', 'KONTUR_SIGN'].includes(
                         d.signType?.alias
                       ) && d.status?.alias === 'CREATED'
