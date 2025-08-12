@@ -445,12 +445,6 @@ async function finish() {
   border: 1px solid #dee2e6;
 }
 
-.group-heading {
-  background-color: #f8f9fa;
-  border-radius: 0.25rem;
-  font-weight: 600;
-}
-
 @media (max-width: 575.98px) {
   .admin-training-registrations-page {
     padding-top: 0.5rem !important;
