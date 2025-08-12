@@ -39,7 +39,7 @@ Document.addHook('beforeCreate', async (doc) => {
   const date = doc.document_date || new Date();
   const yy = String(date.getFullYear()).slice(-2);
   const mm = String(date.getMonth() + 1).padStart(2, '0');
-  doc.number = `${yy}.${mm}/${String(nextval).padStart(6, '0')}`;
+  doc.number = `${yy}.${mm}/${nextval}`;
 });
 
 export default Document;

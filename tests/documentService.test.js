@@ -81,7 +81,7 @@ test('create sends document created email to recipient', async () => {
     id: 'd1',
     name: 'Doc',
     recipient_id: 'u1',
-    number: '25.08/000001',
+    number: '25.08/1',
   });
 
   await service.create(
@@ -91,7 +91,7 @@ test('create sends document created email to recipient', async () => {
 
   expect(sendCreatedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1', name: 'Doc', number: '25.08/000001' })
+    expect.objectContaining({ id: 'd1', name: 'Doc', number: '25.08/1' })
   );
 });
 
@@ -101,7 +101,7 @@ test('sign sends document signed email', async () => {
     sign_type_id: 's1',
     recipient_id: 'u1',
     update: jest.fn(),
-    number: '25.08/000001',
+    number: '25.08/1',
   });
   countMock.mockResolvedValue(0);
   findOneSignMock.mockResolvedValue(null);
@@ -112,7 +112,7 @@ test('sign sends document signed email', async () => {
 
   expect(sendSignedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1', number: '25.08/000001' })
+    expect.objectContaining({ id: 'd1', number: '25.08/1' })
   );
 });
 
@@ -122,7 +122,7 @@ test('create skips email when recipient missing address', async () => {
     id: 'd2',
     name: 'Doc2',
     recipient_id: 'u1',
-    number: '25.08/000002',
+     number: '25.08/2',
   });
 
   await service.create(
@@ -145,14 +145,14 @@ test('requestSignature sends awaiting signature email', async () => {
     },
     DocumentStatus: { alias: 'CREATED' },
     update: jest.fn(),
-    number: '25.08/000003',
+    number: '25.08/3',
   });
 
   await service.requestSignature('d1', 'adm');
 
   expect(sendAwaitingEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1', number: '25.08/000003' })
+    expect.objectContaining({ id: 'd1', number: '25.08/3' })
   );
 });
 
@@ -164,7 +164,7 @@ test('uploadSignedFile updates document and notifies recipient', async () => {
     recipient_id: 'u1',
     file_id: 'old',
     update: jest.fn(),
-    number: '25.08/000004',
+    number: '25.08/4',
   });
   uploadDocumentMock.mockResolvedValue({ id: 'new' });
   getDownloadUrlMock.mockResolvedValue('url');
@@ -175,6 +175,6 @@ test('uploadSignedFile updates document and notifies recipient', async () => {
   expect(removeFileMock).toHaveBeenCalledWith('old');
   expect(sendSignedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
-    expect.objectContaining({ id: 'd1', number: '25.08/000004' })
+    expect.objectContaining({ id: 'd1', number: '25.08/4' })
   );
 });
