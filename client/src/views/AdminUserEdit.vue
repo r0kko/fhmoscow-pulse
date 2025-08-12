@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
+import { auth } from '../auth.js';
 import UserForm from '../components/UserForm.vue';
 import AddPassportModal from '../components/AddPassportModal.vue';
 import InnSnilsForm from '../components/InnSnilsForm.vue';
@@ -38,6 +39,8 @@ const tabs = computed(() => [
     disabled: true,
   })),
 ]);
+
+const canManageRoles = computed(() => auth.roles.includes('ADMIN'));
 
 const editing = ref(false);
 let originalUser = null;
@@ -199,7 +202,7 @@ async function save() {
         </UserForm>
       </form>
       <UserRolesForm
-        v-if="user"
+        v-if="user && canManageRoles"
         :user-id="route.params.id"
         :user-roles="user.roles"
         @updated="(roles) => (user.roles = roles)"

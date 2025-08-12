@@ -1,8 +1,11 @@
+export const ADMINISTRATOR_ROLES = ['ADMIN'];
+
 export const ADMIN_ROLES = [
-  'ADMIN',
+  ...ADMINISTRATOR_ROLES,
   'FIELD_REFEREE_SPECIALIST',
   'BRIGADE_REFEREE_SPECIALIST',
 ];
+
 export const REFEREE_ROLES = ['REFEREE', 'BRIGADE_REFEREE'];
 
 export function hasRole(roles, allowed) {

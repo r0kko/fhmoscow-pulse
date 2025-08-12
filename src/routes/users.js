@@ -252,7 +252,7 @@ router.post(
 router.post(
   '/:id/roles/:roleAlias',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMINISTRATOR'),
   admin.assignRole
 );
 /**
@@ -280,7 +280,7 @@ router.post(
 router.delete(
   '/:id/roles/:roleAlias',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMINISTRATOR'),
   admin.removeRole
 );
 

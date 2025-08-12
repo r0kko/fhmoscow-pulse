@@ -1,8 +1,13 @@
-import { ADMIN_ROLES, REFEREE_ROLES } from '../utils/roles.js';
+import {
+  ADMIN_ROLES,
+  REFEREE_ROLES,
+  ADMINISTRATOR_ROLES,
+} from '../utils/roles.js';
 
 const ROLE_GROUPS = {
   ADMIN: ADMIN_ROLES,
   REFEREE: REFEREE_ROLES,
+  ADMINISTRATOR: ADMINISTRATOR_ROLES,
 };
 
 export default function authorize(...aliases) {
