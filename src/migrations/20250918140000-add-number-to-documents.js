@@ -22,7 +22,8 @@ module.exports = {
         FROM documents
       )
       UPDATE documents d
-      SET number = to_char(document_date, 'YY.MM') || '/' || LPAD(seq::text, 6, '0')
+      SET number =
+        to_char(o.document_date, 'YY.MM') || '/' || LPAD(o.seq::text, 6, '0')
       FROM ordered o
       WHERE d.id = o.id;
     `);
