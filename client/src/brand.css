@@ -42,6 +42,18 @@
   border-color: var(--brand-color) !important;
 }
 
+.form-check-input.brand-check:checked,
+.form-check-input.brand-radio:checked {
+  background-color: var(--brand-color);
+  border-color: var(--brand-color);
+}
+
+.form-check-input.brand-check:focus,
+.form-check-input.brand-radio:focus {
+  border-color: var(--brand-color);
+  box-shadow: 0 0 0 0.25rem rgba(17, 56, 103, 0.25);
+}
+
 /*
  * Use corporate color for Bootstrap "pills" navigation
  * on the profile page tabs.

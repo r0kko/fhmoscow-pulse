@@ -54,6 +54,12 @@ export const ERROR_MESSAGES = {
   status_unknown: 'Неизвестный статус',
   not_found: 'Не найдено',
   course_not_found: 'Курс не назначен',
+  invalid_vehicle: 'Введите корректно марку и модель',
+  invalid_number: 'Введите корректный госномер',
+  vehicle_qc1:
+    'Попробуйте ввести марку или номер иначе или оставить только марку',
+  vehicle_not_found: 'Транспортное средство не найдено',
+  vehicle_limit: 'Достигнут лимит транспортных средств',
 };
 
 export function translateError(code) {
