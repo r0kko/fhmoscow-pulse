@@ -25,8 +25,6 @@ export function renderTrainingRoleChangedEmail(training, role, byAdmin = true) {
     if (yandexUrl) text += ` (${yandexUrl})`;
     text += '.';
   }
-  text +=
-    '\n\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
   const htmlRole = roleName
     ? `<p style="font-size:16px;margin:0 0 16px;">Новая роль: ${roleName}.</p>`
     : '';
@@ -47,9 +45,6 @@ export function renderTrainingRoleChangedEmail(training, role, byAdmin = true) {
       </p>
       ${htmlRole}
       ${htmlAddress}
-      <p style="font-size:12px;color:#777;margin:0;">
-        Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.
-      </p>
     </div>`;
   return { subject, text, html };
 }

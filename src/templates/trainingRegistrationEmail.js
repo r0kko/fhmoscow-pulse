@@ -30,7 +30,6 @@ export function renderTrainingRegistrationEmail(
     if (yandexUrl) text += ` (${yandexUrl})`;
     text += '.';
   }
-  text += `\n\nЕсли вы не записывались на ${typeAcc}, обратитесь к сотруднику отдела организации судейства.`;
 
   const htmlRole = roleName
     ? `<p style="font-size:16px;margin:0 0 16px;">Ваша роль: ${roleName}.</p>`
@@ -52,9 +51,6 @@ export function renderTrainingRegistrationEmail(
       </p>
       ${htmlRole}
       ${htmlAddress}
-      <p style="font-size:12px;color:#777;margin:0;">
-        Если вы не записывались на ${typeAcc}, обратитесь к сотруднику отдела организации судейства.
-      </p>
     </div>`;
   return { subject, text, html };
 }
