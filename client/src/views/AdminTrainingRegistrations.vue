@@ -133,7 +133,7 @@ async function loadJudges() {
 
 async function loadTrainingRoles() {
   try {
-    const data = await apiFetch('/training-roles');
+    const data = await apiFetch('/training-roles?forCamp=true');
     trainingRoles.value = data.roles.slice().sort((a, b) => {
       const i1 = ROLE_ORDER.indexOf(a.alias);
       const i2 = ROLE_ORDER.indexOf(b.alias);

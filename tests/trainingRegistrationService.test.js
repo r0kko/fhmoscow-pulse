@@ -290,6 +290,7 @@ test('add replaces existing teacher', async () => {
   const oldDestroy = jest.fn();
   const tr = {
     ...training,
+    TrainingType: { for_camp: false },
     TrainingRegistrations: [
       {
         user_id: 'uOld',
@@ -323,6 +324,7 @@ test('add replaces existing teacher', async () => {
 test('add allows non-referee as teacher', async () => {
   findTrainingMock.mockResolvedValue({
     ...training,
+    TrainingType: { for_camp: false },
     TrainingRegistrations: [],
     update: updateTrainingMock,
   });
@@ -336,6 +338,23 @@ test('add allows non-referee as teacher', async () => {
     created_by: 'admin',
     updated_by: 'admin',
   });
+});
+
+test('add rejects listener for camp training', async () => {
+  findTrainingMock.mockResolvedValue({
+    ...training,
+    TrainingRegistrations: [],
+    update: updateTrainingMock,
+  });
+  findUserMock.mockResolvedValue({
+    id: 'u4',
+    email: 'e4',
+    Roles: [{ alias: 'BRIGADE_REFEREE' }],
+  });
+  findTrainingRoleMock.mockResolvedValueOnce({ id: 'listener', alias: 'LISTENER' });
+  await expect(service.add('t1', 'u4', 'listener', 'admin')).rejects.toThrow(
+    'training_role_forbidden'
+  );
 });
 
 test('register rejects when training is full', async () => {
@@ -375,6 +394,16 @@ test('updateRole sends notification', async () => {
     attendance_marked: false,
     updated_by: 'admin',
   });
+});
+
+test('updateRole rejects teacher for camp training', async () => {
+  findRegMock.mockResolvedValue({ update: jest.fn() });
+  findTrainingRoleMock.mockResolvedValueOnce({ id: 'tRole', alias: 'TEACHER' });
+  findTrainingMock.mockResolvedValue(training);
+  findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
+  await expect(service.updateRole('t1', 'u1', 'tRole', 'admin')).rejects.toThrow(
+    'training_role_forbidden'
+  );
 });
 
 test('unregister sends notification', async () => {

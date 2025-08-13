@@ -224,7 +224,7 @@ async function loadGrounds() {
 
 async function loadTeacherRole() {
   try {
-    const data = await apiFetch('/training-roles');
+    const data = await apiFetch('/training-roles?forCamp=false');
     const role = data.roles.find((r) => r.alias === 'TEACHER');
     teacherRoleId.value = role ? role.id : null;
   } catch (_) {

@@ -280,6 +280,12 @@ async function add(trainingId, userId, roleId, actorId) {
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('training_role_not_found', 404);
   let finalRole = role;
+  if (
+    training.TrainingType?.for_camp &&
+    (role.alias === 'LISTENER' || role.alias === 'TEACHER')
+  ) {
+    throw new ServiceError('training_role_forbidden');
+  }
   if (!hasRefereeRole(user.Roles) && role.alias !== 'TEACHER') {
     throw new ServiceError('user_not_referee');
   }
@@ -314,13 +320,23 @@ async function updateRole(trainingId, userId, roleId, actorId) {
     }),
     TrainingRole.findByPk(roleId),
     Training.findByPk(trainingId, {
-      include: [{ model: Ground, include: [Address] }, { model: Season }],
+      include: [
+        { model: Ground, include: [Address] },
+        { model: Season },
+        { model: TrainingType },
+      ],
     }),
     User.findByPk(userId),
   ]);
   if (!registration) throw new ServiceError('registration_not_found', 404);
   if (!role) throw new ServiceError('training_role_not_found', 404);
   if (!training) throw new ServiceError('training_not_found', 404);
+  if (
+    training.TrainingType?.for_camp &&
+    (role.alias === 'LISTENER' || role.alias === 'TEACHER')
+  ) {
+    throw new ServiceError('training_role_forbidden');
+  }
   if (role.alias === 'TEACHER') {
     const existingTeacher = await TrainingRegistration.findOne({
       where: { training_id: trainingId },
