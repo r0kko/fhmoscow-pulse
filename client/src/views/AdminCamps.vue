@@ -248,6 +248,18 @@ function parseInput(val) {
   return new Date(fromDateTimeLocal(val));
 }
 
+// Inline validation helpers
+const isOnline = computed(() => !!selectedTrainingType.value?.online);
+const isTypeMissing = computed(() => !trainingForm.value.type_id);
+const isStartMissing = computed(() => !trainingForm.value.start_at);
+const isEndMissing = computed(() => !trainingForm.value.end_at);
+const isOrderInvalid = computed(() => {
+  if (!trainingForm.value.start_at || !trainingForm.value.end_at) return false;
+  return parseInput(trainingForm.value.end_at) <= parseInput(trainingForm.value.start_at);
+});
+const isGroundRequired = computed(() => !isOnline.value && !trainingForm.value.ground_id);
+const isUrlRequired = computed(() => isOnline.value && !trainingForm.value.url);
+
 function formatDateTimeRange(start, end) {
   if (!start) return '';
   const startDate = new Date(start);
@@ -307,10 +319,7 @@ function openEditTraining(t) {
 }
 
 async function saveTraining() {
-  if (
-    parseInput(trainingForm.value.end_at) <=
-    parseInput(trainingForm.value.start_at)
-  ) {
+  if (isOrderInvalid.value) {
     trainingFormError.value = 'Время окончания должно быть позже начала';
     return;
   }
@@ -667,7 +676,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
           data-bs-backdrop="static"
           data-bs-keyboard="false"
         >
-          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">Фильтры</h5>
@@ -738,7 +749,9 @@ async function toggleTrainingGroup(training, groupId, checked) {
           data-bs-backdrop="static"
           data-bs-keyboard="false"
         >
-          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <form @submit.prevent="saveTraining">
                 <div class="modal-header">
@@ -776,7 +789,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       </option>
                     </select>
                   </div>
-                  <div class="mb-3" v-show="selectedTrainingType?.online">
+                  <div v-show="selectedTrainingType?.online" class="mb-3">
                     <label class="form-label">Ссылка</label>
                     <input
                       v-model="trainingForm.url"
@@ -785,7 +798,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       :disabled="!selectedTrainingType?.online"
                     />
                   </div>
-                  <div class="mb-3" v-show="!selectedTrainingType?.online">
+                  <div v-show="!selectedTrainingType?.online" class="mb-3">
                     <label class="form-label">Площадка</label>
                     <select
                       v-model="trainingForm.ground_id"

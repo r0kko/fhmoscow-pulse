@@ -306,7 +306,11 @@ function openRegistrations(exam) {
               </div>
               <div class="mb-3">
                 <label class="form-label">Медицинский центр</label>
-                <select v-model="form.medical_center_id" class="form-select" required>
+                <select
+                  v-model="form.medical_center_id"
+                  class="form-select"
+                  required
+                >
                   <option value="" disabled>Выберите центр</option>
                   <option v-for="c in centers" :key="c.id" :value="c.id">
                     {{ c.name }}

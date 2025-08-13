@@ -305,7 +305,10 @@ async function openTrainingModal(training = null) {
     try {
       trainingModalRef.value.addEventListener('shown.bs.modal', () => {
         // Set initial focus for better UX
-        const el = trainingTypeRef.value || trainingGroundRef.value || trainingUrlRef.value;
+        const el =
+          trainingTypeRef.value ||
+          trainingGroundRef.value ||
+          trainingUrlRef.value;
         if (el && typeof el.focus === 'function') el.focus();
       });
     } catch {}
@@ -323,7 +326,9 @@ async function openTrainingModal(training = null) {
       start_at: toDateTimeLocal(training.start_at),
       end_at: toDateTimeLocal(training.end_at),
       capacity: training.capacity || '',
-      courses: training.courses ? training.courses.map((c) => c.id).filter(Boolean) : [],
+      courses: training.courses
+        ? training.courses.map((c) => c.id).filter(Boolean)
+        : [],
     };
   } else {
     editingTraining.value = null;
@@ -373,7 +378,9 @@ async function saveTraining() {
       ? `/course-trainings/${editingTraining.value.id}`
       : '/course-trainings';
     const courseIds = Array.isArray(trainingForm.value.courses)
-      ? trainingForm.value.courses.filter((id) => typeof id === 'string' && id.length > 0)
+      ? trainingForm.value.courses.filter(
+          (id) => typeof id === 'string' && id.length > 0
+        )
       : [];
     const capacityValue =
       trainingForm.value.capacity === '' || trainingForm.value.capacity === null
@@ -628,21 +635,23 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <div
+        ref="historyModalRef"
+        class="modal fade"
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+        data-bs-backdrop="static"
+        data-bs-keyboard="false"
+      >
         <div
-          ref="historyModalRef"
-          class="modal fade"
-          tabindex="-1"
-          role="dialog"
-          aria-modal="true"
-          data-bs-backdrop="static"
-          data-bs-keyboard="false"
+          class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
         >
-          <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h2 class="modal-title h5">
-                  История посещений — {{ historyJudgeName }}
-                </h2>
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 class="modal-title h5">
+                История посещений — {{ historyJudgeName }}
+              </h2>
               <button
                 type="button"
                 class="btn-close"
@@ -969,7 +978,9 @@ onBeforeUnmount(() => {
           data-bs-backdrop="static"
           data-bs-keyboard="false"
         >
-          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">
@@ -1408,7 +1419,9 @@ onBeforeUnmount(() => {
           data-bs-backdrop="static"
           data-bs-keyboard="false"
         >
-          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">
@@ -1443,7 +1456,7 @@ onBeforeUnmount(() => {
                     </option>
                   </select>
                 </div>
-                <div class="mb-3" v-show="selectedTrainingType?.online">
+                <div v-show="selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Ссылка</label>
                   <input
                     ref="trainingUrlRef"
@@ -1453,7 +1466,7 @@ onBeforeUnmount(() => {
                     :disabled="!selectedTrainingType?.online"
                   />
                 </div>
-                <div class="mb-3" v-show="!selectedTrainingType?.online">
+                <div v-show="!selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Площадка</label>
                   <select
                     ref="trainingGroundRef"
