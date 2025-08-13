@@ -141,7 +141,7 @@ async function submit() {
                         href="https://sign.kontur.ru"
                         target="_blank"
                         rel="noopener"
-                        class="btn btn-sm btn-kontur mt-2"
+                        class="btn btn-sm btn-brand mt-2"
                       >
                         Перейти в Контур.Сайн
                       </a>
@@ -277,7 +277,7 @@ async function submit() {
                     <div class="text-end mt-auto">
                       <button
                         type="button"
-                        class="btn btn-kontur"
+                        class="btn btn-brand"
                         :disabled="loadingAlias || confirming"
                         @click="choose(t.alias)"
                       >
@@ -320,7 +320,7 @@ async function submit() {
                 </div>
                 <button
                   type="button"
-                  class="btn btn-kontur"
+                  class="btn btn-brand"
                   :disabled="code.length !== 6 || confirming"
                   @click="submit"
                 >
@@ -382,17 +382,5 @@ async function submit() {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.btn-kontur {
-  color: #fff;
-  background-color: #17b490;
-  border-color: #17b490;
-}
-.btn-kontur:hover,
-.btn-kontur:focus {
-  color: #fff;
-  background-color: #139e84;
-  border-color: #139e84;
 }
 </style>
