@@ -51,10 +51,10 @@ export async function sendMail(to, subject, text, html) {
   const footerText =
     '\n\nС уважением,\nкоманда АСОУ ПД Пульс.\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
   const footerHtml =
-    '\n      <p style="font-size:16px;margin:0 0 16px;">С уважением,<br/>команда АСОУ ПД Пульс</p>\n      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.</p>';
+    '\n      <br/>\n      <p style="font-size:16px;margin:0 0 16px;">С уважением,<br/>команда АСОУ ПД Пульс</p>\n      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.</p>';
   const finalText = `${text}${footerText}`;
-  const finalHtml = html.includes('</div>')
-    ? html.replace('</div>', `${footerHtml}</div>`)
+  const finalHtml = /<\/div>\s*$/.test(html)
+    ? html.replace(/<\/div>\s*$/, `${footerHtml}</div>`)
     : `${html}${footerHtml}`;
   try {
     await transporter.sendMail({
