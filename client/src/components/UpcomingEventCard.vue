@@ -19,7 +19,10 @@ const title = computed(() => {
   return 'Мероприятие';
 });
 const isOnline = computed(
-  () => (isTraining.value || !isExam.value) && props.event.type?.online && props.event.url
+  () =>
+    (isTraining.value || !isExam.value) &&
+    props.event.type?.online &&
+    props.event.url
 );
 const location = computed(() => {
   if (isOnline.value) {
@@ -36,6 +39,24 @@ const href = computed(() => {
   }
   return isExam.value ? null : withHttp(props.event.ground?.yandex_url);
 });
+
+const startDate = computed(() => new Date(props.event.start_at));
+const dayNum = computed(() => startDate.value.getDate());
+const monthShort = computed(() =>
+  startDate.value
+    .toLocaleDateString('ru-RU', {
+      month: 'short',
+      timeZone: 'Europe/Moscow',
+    })
+    .replace('.', '')
+);
+const timeShort = computed(() =>
+  startDate.value.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  })
+);
 
 function formatStart(date) {
   const d = new Date(date);
@@ -59,20 +80,29 @@ function formatStart(date) {
     :href="href"
     target="_blank"
     class="text-decoration-none text-body"
+    :aria-label="`${title} — ${formatStart(event.start_at)}${location ? ', ' + location : ''}`"
   >
     <div class="card h-100 upcoming-card">
-      <div class="card-body d-flex align-items-start p-3">
-        <i :class="`bi ${icon} fs-3 me-3 text-brand`" aria-hidden="true"></i>
-        <div>
-          <h3 class="card-title h6 mb-1">{{ title }}</h3>
-          <p class="mb-1 small">
-            <i class="bi bi-clock me-1" aria-hidden="true"></i>
-            {{ formatStart(event.start_at) }}
-          </p>
-          <p class="mb-0 small">
+      <div class="card-body d-flex align-items-start">
+        <div class="date-pill me-3" aria-hidden="true">
+          <div class="day">{{ dayNum }}</div>
+          <div class="month text-uppercase">{{ monthShort }}</div>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i :class="`bi ${icon} text-brand`" aria-hidden="true"></i>
+            <span class="badge badge-brand-soft">{{ title }}</span>
+            <span v-if="isOnline" class="badge bg-light text-muted border">
+              Онлайн
+            </span>
+          </div>
+          <p v-if="location" class="mb-0 small text-body-secondary">
             <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
             {{ location }}
           </p>
+        </div>
+        <div class="ms-2 text-nowrap text-muted small" aria-hidden="true">
+          {{ timeShort }}
         </div>
       </div>
     </div>
@@ -86,13 +116,49 @@ function formatStart(date) {
   scroll-snap-align: start;
   scroll-snap-stop: always;
   border-radius: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .upcoming-card .card-body {
-  padding: 0.75rem;
+  padding: 0.75rem 0.75rem 0.75rem 0.75rem;
 }
 
-.upcoming-card i {
+/* subtle focus ring for accessibility */
+:focus-visible .upcoming-card,
+.upcoming-card:focus-visible {
+  outline: 2px solid rgba(17, 56, 103, 0.35);
+  outline-offset: 2px;
+}
+
+.date-pill {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 3rem;
+  border-radius: 0.5rem;
+  background: #f4f6f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.date-pill .day {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+.date-pill .month {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.badge-brand-soft {
   color: var(--brand-color);
+  background: rgba(17, 56, 103, 0.12);
+  border: 1px solid rgba(17, 56, 103, 0.2);
+}
+
+.text-brand {
+  color: var(--brand-color) !important;
 }
 </style>

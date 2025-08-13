@@ -100,7 +100,9 @@ async function loadUpcoming() {
     const [trainingData, examData, eventData] = await Promise.all([
       apiFetch('/camp-trainings/me/upcoming?limit=100'),
       apiFetch('/medical-exams/me/upcoming?limit=100'),
-      apiFetch('/course-trainings/me/upcoming?limit=100').catch(() => ({ trainings: [] })),
+      apiFetch('/course-trainings/me/upcoming?limit=100').catch(() => ({
+        trainings: [],
+      })),
     ]);
     const trainings = (trainingData.trainings || []).map((t) => ({
       ...t,
@@ -144,13 +146,30 @@ async function loadUpcoming() {
       </h3>
       <div v-if="showUpcoming" class="card section-card mb-2 text-start">
         <div class="card-body">
-          <h2 class="card-title h5 mb-3">Ближайшие события</h2>
-          <div v-if="loadingUpcoming" class="text-center py-3">
-            <div class="spinner-border" role="status" aria-label="Загрузка">
-              <span class="visually-hidden">Загрузка…</span>
-            </div>
+          <h2 class="card-title h5 mb-3">
+            <i
+              class="bi bi-calendar-event text-brand me-2"
+              aria-hidden="true"
+            ></i>
+            Ближайшие события
+          </h2>
+          <div
+            v-if="loadingUpcoming"
+            class="upcoming-scroll scroll-container"
+            aria-label="Загрузка ближайших событий"
+          >
+            <div
+              v-for="i in 3"
+              :key="i"
+              class="skeleton-card"
+              aria-hidden="true"
+            ></div>
           </div>
-          <div v-else class="upcoming-scroll d-flex flex-nowrap gap-3">
+          <div
+            v-else
+            class="upcoming-scroll scroll-container"
+            aria-label="Список ближайших событий"
+          >
             <UpcomingEventCard
               v-for="item in upcoming"
               :key="item.kind + '-' + item.id"
@@ -252,14 +271,34 @@ async function loadUpcoming() {
   box-shadow: none;
 }
 .upcoming-scroll {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  gap: 0.5rem;
-  padding-bottom: 0.25rem;
-  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+/* Skeleton placeholders for upcoming cards */
+.skeleton-card {
+  width: clamp(14rem, 70vw, 18rem);
+  height: 5.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-card {
+    animation: none;
+  }
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
 }
 
 /* Текстовый fallback-значок рубля для стабильного отображения */

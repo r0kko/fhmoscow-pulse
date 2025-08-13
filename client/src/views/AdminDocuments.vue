@@ -1,5 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
+import BrandSpinner from '../components/BrandSpinner.vue';
+import EmptyState from '../components/EmptyState.vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
@@ -353,13 +355,7 @@ function onCreated() {
       <div v-if="documentsError" class="alert alert-danger" role="alert">
         {{ documentsError }}
       </div>
-      <div v-else-if="documentsLoading" class="text-center p-3">
-        <div
-          class="spinner-border text-primary"
-          role="status"
-          aria-label="loading"
-        ></div>
-      </div>
+      <BrandSpinner v-else-if="documentsLoading" label="Загрузка" />
       <div v-else>
         <div v-if="actionError" class="alert alert-danger mb-3" role="alert">
           {{ actionError }}
@@ -461,7 +457,7 @@ function onCreated() {
                         >
                           <span
                             v-if="actionId === d.id"
-                            class="spinner-border spinner-border-sm"
+                            class="spinner-border spinner-border-sm spinner-brand"
                             aria-hidden="true"
                           ></span>
                           <i
@@ -494,7 +490,7 @@ function onCreated() {
                         >
                           <span
                             v-if="actionId === d.id"
-                            class="spinner-border spinner-border-sm me-1"
+                            class="spinner-border spinner-border-sm spinner-brand me-1"
                             aria-hidden="true"
                           ></span>
                           Отправить
@@ -510,8 +506,12 @@ function onCreated() {
                     </td>
                   </tr>
                   <tr v-if="!filteredDocuments.length">
-                    <td colspan="7" class="text-center">
-                      Документы отсутствуют
+                    <td colspan="7" class="p-0">
+                      <EmptyState
+                        icon="bi-file-earmark"
+                        title="Документы отсутствуют"
+                        description="Измените фильтры или создайте новый документ"
+                      />
                     </td>
                   </tr>
                 </tbody>

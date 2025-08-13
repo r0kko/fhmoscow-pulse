@@ -268,7 +268,11 @@ function openNormatives(reg) {
       </div>
       <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
       <div v-if="loading || loadingTraining" class="text-center my-3">
-        <div class="spinner-border" role="status"></div>
+        <div
+          class="spinner-border spinner-brand"
+          role="status"
+          aria-label="Загрузка"
+        ></div>
       </div>
       <div class="row g-2 align-items-end mb-3">
         <div class="col-12 col-sm">
@@ -298,7 +302,7 @@ function openNormatives(reg) {
           >
             <span
               v-if="addLoading"
-              class="spinner-border spinner-border-sm me-2"
+              class="spinner-border spinner-border-sm spinner-brand me-2"
             ></span>
             Добавить
           </button>

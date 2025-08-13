@@ -418,7 +418,11 @@ async function toggleTrainingGroup(training, groupId, checked) {
           {{ trainingsError }}
         </div>
         <div v-if="trainingsLoading" class="text-center my-3">
-          <div class="spinner-border" role="status"></div>
+          <div
+            class="spinner-border spinner-brand"
+            role="status"
+            aria-label="Загрузка"
+          ></div>
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div
@@ -853,7 +857,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   >
                     <span
                       v-if="trainingSaveLoading"
-                      class="spinner-border spinner-border-sm me-2"
+                      class="spinner-border spinner-border-sm spinner-brand me-2"
                     ></span>
                     Сохранить
                   </button>

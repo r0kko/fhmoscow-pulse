@@ -191,7 +191,7 @@ async function exportPdf() {
           >
             <span
               v-if="downloading"
-              class="spinner-border spinner-border-sm me-2"
+              class="spinner-border spinner-border-sm spinner-brand me-2"
             ></span>
             PDF
           </button>
@@ -202,7 +202,11 @@ async function exportPdf() {
       </div>
       <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
       <div v-if="loading || loadingExam" class="text-center my-3">
-        <div class="spinner-border" role="status"></div>
+        <div
+          class="spinner-border spinner-brand"
+          role="status"
+          aria-label="Загрузка"
+        ></div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
         <div class="card-body p-3">
@@ -254,7 +258,7 @@ async function exportPdf() {
                     >
                       <span
                         v-if="statusLoading[r.user.id]"
-                        class="spinner-border spinner-border-sm me-2"
+                        class="spinner-border spinner-border-sm spinner-brand me-2"
                       ></span>
                       ✓
                     </button>
@@ -267,7 +271,7 @@ async function exportPdf() {
                     >
                       <span
                         v-if="statusLoading[r.user.id]"
-                        class="spinner-border spinner-border-sm me-2"
+                        class="spinner-border spinner-border-sm spinner-brand me-2"
                       ></span>
                       <i class="bi bi-check2-all"></i>
                     </button>
@@ -280,7 +284,7 @@ async function exportPdf() {
                     >
                       <span
                         v-if="statusLoading[r.user.id]"
-                        class="spinner-border spinner-border-sm me-2"
+                        class="spinner-border spinner-border-sm spinner-brand me-2"
                       ></span>
                       ✕
                     </button>
@@ -332,7 +336,7 @@ async function exportPdf() {
                     >
                       <span
                         v-if="statusLoading[r.user.id]"
-                        class="spinner-border spinner-border-sm me-2"
+                        class="spinner-border spinner-border-sm spinner-brand me-2"
                       ></span>
                       Подтвердить
                     </button>
@@ -344,7 +348,7 @@ async function exportPdf() {
                     >
                       <span
                         v-if="statusLoading[r.user.id]"
-                        class="spinner-border spinner-border-sm me-2"
+                        class="spinner-border spinner-border-sm spinner-brand me-2"
                       ></span>
                       Завершить
                     </button>

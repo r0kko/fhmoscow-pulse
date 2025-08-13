@@ -68,6 +68,19 @@
 }
 
 /*
+ * Compact, scrollable tab selectors used across admin views
+ */
+.tab-selector {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0.25rem;
+  padding: 0.25rem;
+}
+.tab-selector .nav-link {
+  white-space: nowrap;
+}
+
+/*
  * Consistent tile hover behaviour across the application
  */
 .tile,
@@ -225,6 +238,21 @@ body {
   gap: 0.75rem;
   padding-bottom: 0.25rem;
   justify-content: flex-start;
+  /* soft edge fades for better affordance */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
 }
 
 .menu-card {
@@ -256,6 +284,13 @@ body {
   color: var(--brand-color);
 }
 
+/* keyboard focus for tiles */
+.menu-card:focus-visible,
+.tile:focus-visible {
+  outline: 2px solid rgba(17, 56, 103, 0.35);
+  outline-offset: 2px;
+}
+
 .section-card {
   border-radius: 1rem;
   overflow: hidden;
@@ -280,4 +315,9 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* brand-colored spinner utility */
+.spinner-brand {
+  color: var(--brand-color) !important;
 }

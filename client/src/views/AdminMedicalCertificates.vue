@@ -279,7 +279,11 @@ async function loadJudges() {
           {{ judgesError }}
         </div>
         <div v-if="judgesLoading" class="text-center my-3">
-          <div class="spinner-border" role="status"></div>
+          <div
+            class="spinner-border spinner-brand"
+            role="status"
+            aria-label="Загрузка"
+          ></div>
         </div>
         <div v-if="judges.length" class="table-responsive d-none d-sm-block">
           <table class="table table-hover align-middle mb-0">
@@ -485,7 +489,11 @@ async function loadJudges() {
                 </div>
                 <div v-if="editing">
                   <div v-if="filesLoading" class="text-center py-2">
-                    Загрузка...
+                    <span
+                      class="spinner-border spinner-border-sm spinner-brand me-1"
+                      aria-hidden="true"
+                    ></span
+                    >Загрузка...
                   </div>
                   <ul v-if="files.length" class="list-group mb-3">
                     <li
@@ -522,7 +530,7 @@ async function loadJudges() {
                 >
                   <span
                     v-if="fileUploading"
-                    class="spinner-border spinner-border-sm me-2"
+                    class="spinner-border spinner-border-sm spinner-brand me-2"
                   ></span>
                   Загрузить
                 </button>
@@ -538,7 +546,7 @@ async function loadJudges() {
               >
                 <span
                   v-if="deleting"
-                  class="spinner-border spinner-border-sm me-2"
+                  class="spinner-border spinner-border-sm spinner-brand me-2"
                 ></span>
                 <i class="bi bi-trash"></i>
               </button>
@@ -556,7 +564,7 @@ async function loadJudges() {
               >
                 <span
                   v-if="saving"
-                  class="spinner-border spinner-border-sm me-2"
+                  class="spinner-border spinner-border-sm spinner-brand me-2"
                 ></span>
                 Сохранить
               </button>

@@ -202,7 +202,11 @@ async function removeCenter(center) {
       <div class="card-body p-3">
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
-          <div class="spinner-border" role="status"></div>
+          <div
+            class="spinner-border spinner-brand"
+            role="status"
+            aria-label="Загрузка"
+          ></div>
         </div>
         <div v-if="centers.length" class="table-responsive d-none d-sm-block">
           <table class="table table-striped align-middle mb-0">

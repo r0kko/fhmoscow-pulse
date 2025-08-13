@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
+import BrandSpinner from '../components/BrandSpinner.vue';
 import { apiFetch } from '../api.js';
 import { auth } from '../auth.js';
 import UserForm from '../components/UserForm.vue';
@@ -182,7 +183,7 @@ async function save() {
         </button>
       </li>
     </ul>
-    <p v-else-if="isLoading">Загрузка...</p>
+    <BrandSpinner v-else-if="isLoading" label="Загрузка" />
 
     <div v-show="activeTab === 'info'">
       <form v-if="user" @submit.prevent="save">

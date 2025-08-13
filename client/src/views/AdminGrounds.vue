@@ -206,7 +206,11 @@ async function load() {
       <h1 class="mb-3">Площадки</h1>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-if="isLoading" class="text-center my-3">
-        <div class="spinner-border" role="status"></div>
+        <div
+          class="spinner-border spinner-brand"
+          role="status"
+          aria-label="Загрузка"
+        ></div>
       </div>
       <div class="card section-card tile fade-in shadow-sm">
         <div
@@ -457,7 +461,7 @@ async function load() {
               >
                 <span
                   v-if="saveLoading"
-                  class="spinner-border spinner-border-sm me-2"
+                  class="spinner-border spinner-border-sm spinner-brand me-2"
                 ></span>
                 Сохранить
               </button>

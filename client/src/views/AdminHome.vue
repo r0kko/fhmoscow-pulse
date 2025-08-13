@@ -22,11 +22,14 @@ const systemSections = [
 <template>
   <div class="py-4">
     <div class="container">
-      <h1 class="mb-3 text-center">Администрирование</h1>
+      <h1 class="mb-3 text-start">Администрирование</h1>
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h2 class="card-title h5 mb-3">Пользователи системы</h2>
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-people text-brand me-2" aria-hidden="true"></i>
+            Пользователи системы
+          </h2>
           <div class="scroll-container">
             <RouterLink
               v-for="item in userSections"
@@ -46,7 +49,10 @@ const systemSections = [
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h2 class="card-title h5 mb-3">Управление судейским корпусом</h2>
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-trophy text-brand me-2" aria-hidden="true"></i>
+            Управление судейским корпусом
+          </h2>
           <div class="scroll-container">
             <RouterLink
               v-for="item in refereeSections"
@@ -66,7 +72,10 @@ const systemSections = [
 
       <div class="card section-card mb-2">
         <div class="card-body">
-          <h2 class="card-title h5 mb-3">Управление сущностями системы</h2>
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-gear text-brand me-2" aria-hidden="true"></i>
+            Управление сущностями системы
+          </h2>
           <div class="scroll-container">
             <RouterLink
               v-for="item in systemSections"

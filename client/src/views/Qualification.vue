@@ -206,8 +206,10 @@ onBeforeUnmount(() => {
       <h1 class="mb-3">Повышение квалификации</h1>
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <div class="card section-card tile fade-in shadow-sm h-100">
-            <div class="card-body">
+          <div
+            class="card section-card tile fade-in shadow-sm h-100 d-flex flex-column"
+          >
+            <div class="card-body flex-grow-1">
               <div v-if="loading" class="text-center py-3">
                 <div class="spinner-border text-brand" role="status">
                   <span class="visually-hidden">Загрузка...</span>
@@ -221,17 +223,34 @@ onBeforeUnmount(() => {
                 <p v-if="course.description" class="mb-3">
                   {{ course.description }}
                 </p>
-                <p v-if="course.telegram_url">
-                  <a
-                    :href="course.telegram_url"
-                    target="_blank"
-                    rel="noopener"
-                    class="link-primary"
-                    >Чат в Telegram</a
-                  >
-                </p>
               </div>
               <div v-else class="alert alert-info mb-0">Курс не назначен</div>
+            </div>
+            <div
+              v-if="course && course.telegram_url"
+              class="card-footer bg-transparent border-0 pt-0 px-3 pb-3"
+            >
+              <a
+                :href="course.telegram_url"
+                target="_blank"
+                rel="noopener"
+                class="btn btn-brand d-inline-flex align-items-center"
+                aria-label="Чат курса в Telegram"
+              >
+                <i
+                  :class="
+                    'bi ' +
+                    (course.telegram_url?.includes('t.me') ||
+                    course.telegram_url?.includes('telegram') ||
+                    course.telegram_url?.startsWith('tg:')
+                      ? 'bi-telegram'
+                      : 'bi-chat-dots-fill') +
+                    ' me-2'
+                  "
+                  aria-hidden="true"
+                ></i>
+                Чат в Telegram
+              </a>
             </div>
           </div>
         </div>

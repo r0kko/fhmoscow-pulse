@@ -3,6 +3,8 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import BrandSpinner from '../components/BrandSpinner.vue';
+import EmptyState from '../components/EmptyState.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 
 const activeTab = ref('assign');
@@ -673,7 +675,7 @@ onBeforeUnmount(() => {
                 </select>
               </div>
             </div>
-            <div v-if="loadingUsers" class="text-muted">Загрузка...</div>
+            <BrandSpinner v-if="loadingUsers" label="Загрузка" />
             <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
             <div
               v-else-if="sortedUsers.length"
@@ -743,7 +745,12 @@ onBeforeUnmount(() => {
                 </tbody>
               </table>
             </div>
-            <p v-else class="text-muted mb-0">Судьи не найдены.</p>
+            <EmptyState
+              v-else
+              icon="bi-people"
+              title="Судьи не найдены"
+              description="Измените фильтры или попробуйте позже"
+            />
             <div v-if="sortedUsers.length" class="d-block d-sm-none">
               <div v-for="u in sortedUsers" :key="u.user.id" class="card mb-2">
                 <div class="card-body">

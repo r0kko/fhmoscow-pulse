@@ -118,7 +118,11 @@ async function changeStatus(ticket, alias) {
         </div>
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
         <div v-if="loading" class="text-center my-3">
-          <div class="spinner-border" role="status"></div>
+          <div
+            class="spinner-border spinner-brand"
+            role="status"
+            aria-label="Загрузка"
+          ></div>
         </div>
         <div v-if="tickets.length" class="table-responsive d-none d-sm-block">
           <table class="table align-middle mb-0">
