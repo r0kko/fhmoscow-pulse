@@ -20,7 +20,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Document: { create: createMock, findByPk: findByPkMock },
   DocumentStatus: { findOne: findOneStatusMock },
-  DocumentUserSign: { count: countMock, findOne: findOneSignMock, create: createSignMock },
+  DocumentUserSign: {
+    count: countMock,
+    findOne: findOneSignMock,
+    create: createSignMock,
+  },
   UserSignType: {
     findOne: findUserSignTypeMock,
     destroy: destroyUserSignMock,
@@ -98,7 +102,13 @@ test('create sends document created email to recipient', async () => {
   });
 
   await service.create(
-    { recipientId: 'u1', documentTypeId: 't1', signTypeId: 's1', name: 'Doc' },
+    {
+      recipientId: 'u1',
+      documentTypeId: 't1',
+      signTypeId: 's1',
+      name: 'Doc',
+      fileId: 'f1',
+    },
     'adm'
   );
 
@@ -149,7 +159,9 @@ test('sign assigns simple electronic sign type after agreement', async () => {
 
   await service.sign({ id: 'u1' }, 'd1');
 
-  expect(destroyUserSignMock).toHaveBeenCalledWith({ where: { user_id: 'u1' } });
+  expect(destroyUserSignMock).toHaveBeenCalledWith({
+    where: { user_id: 'u1' },
+  });
   expect(createUserSignTypeMock).toHaveBeenCalledWith(
     expect.objectContaining({ user_id: 'u1', sign_type_id: 'simple-id' })
   );
@@ -161,11 +173,17 @@ test('create skips email when recipient missing address', async () => {
     id: 'd2',
     name: 'Doc2',
     recipient_id: 'u1',
-     number: '25.08/2',
+    number: '25.08/2',
   });
 
   await service.create(
-    { recipientId: 'u1', documentTypeId: 't1', signTypeId: 's1', name: 'Doc2' },
+    {
+      recipientId: 'u1',
+      documentTypeId: 't1',
+      signTypeId: 's1',
+      name: 'Doc2',
+      fileId: 'f1',
+    },
     'adm'
   );
 

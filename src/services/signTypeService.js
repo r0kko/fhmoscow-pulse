@@ -7,7 +7,9 @@ import emailVerificationService from './emailVerificationService.js';
 import documentService from './documentService.js';
 
 async function list() {
-  const types = await SignType.findAll({ attributes: ['name', 'alias'] });
+  const types = await SignType.findAll({
+    attributes: ['id', 'name', 'alias'],
+  });
   return types;
 }
 
@@ -72,6 +74,7 @@ async function listUsers() {
         required: false,
         include: [{ model: SignType, attributes: ['name', 'alias'] }],
       },
+      { model: Inn, attributes: ['number'], required: false },
     ],
     order: [
       ['last_name', 'ASC'],
@@ -85,6 +88,7 @@ async function listUsers() {
     firstName: u.first_name,
     patronymic: u.patronymic,
     email: u.email,
+    inn: u.Inn ? u.Inn.number : null,
     signType:
       u.UserSignTypes[0] && u.UserSignTypes[0].SignType
         ? {

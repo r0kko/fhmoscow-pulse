@@ -5,7 +5,10 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/documentAdminController.js';
 import documentController from '../controllers/documentController.js';
-import { createDocumentValidator } from '../validators/documentValidators.js';
+import {
+  createDocumentValidator,
+  updateDocumentValidator,
+} from '../validators/documentValidators.js';
 
 const upload = multer();
 
@@ -25,6 +28,7 @@ router.post(
   '/',
   auth,
   authorize('ADMIN'),
+  upload.single('file'),
   createDocumentValidator,
   documentController.create
 );
@@ -35,6 +39,16 @@ router.post(
   authorize('ADMIN'),
   controller.requestSignature
 );
+
+router.put(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  updateDocumentValidator,
+  documentController.update
+);
+
+router.delete('/:id', auth, authorize('ADMIN'), documentController.remove);
 
 router.post('/:id/regenerate', auth, authorize('ADMIN'), controller.regenerate);
 
