@@ -345,6 +345,7 @@ export {
   parseResultValue,
   stepForUnit,
   determineZone,
+  buildZones,
   recalcResults,
 };
 export default { listAll, getById, create, update, remove };

@@ -305,3 +305,16 @@ test('create saves url for online type', async () => {
   );
   expect(createMock.mock.calls[0][0].url).toBe('https://example.com');
 });
+
+test('isRegistrationOpen respects window and capacity', () => {
+  const training = { start_at: '2024-01-15T12:00:00Z', capacity: 2 };
+  jest.useFakeTimers().setSystemTime(new Date('2024-01-08T12:00:00Z'));
+  expect(service.isRegistrationOpen(training, 1)).toBe(true);
+  jest.setSystemTime(new Date('2024-01-07T11:59:59Z'));
+  expect(service.isRegistrationOpen(training, 0)).toBe(false);
+  jest.setSystemTime(new Date('2024-01-15T11:20:00Z'));
+  expect(service.isRegistrationOpen(training, 0)).toBe(false);
+  jest.setSystemTime(new Date('2024-01-10T12:00:00Z'));
+  expect(service.isRegistrationOpen(training, 2)).toBe(false);
+  jest.useRealTimers();
+});
