@@ -198,23 +198,14 @@ async function sign(user, documentId) {
       attributes: ['id'],
     });
     if (signType) {
-      const [record] = await UserSignType.findOrCreate({
-        where: { user_id: user.id },
-        defaults: {
-          user_id: user.id,
-          sign_type_id: signType.id,
-          sign_created_date: new Date(),
-          created_by: user.id,
-          updated_by: user.id,
-        },
+      await UserSignType.destroy({ where: { user_id: user.id } });
+      await UserSignType.create({
+        user_id: user.id,
+        sign_type_id: signType.id,
+        sign_created_date: new Date(),
+        created_by: user.id,
+        updated_by: user.id,
       });
-      if (record.sign_type_id !== signType.id) {
-        await record.update({
-          sign_type_id: signType.id,
-          sign_created_date: new Date(),
-          updated_by: user.id,
-        });
-      }
     }
   }
 }

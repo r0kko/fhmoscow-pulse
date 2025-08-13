@@ -10,8 +10,8 @@ const findUserByPkMock = jest.fn();
 const findUserSignTypeMock = jest.fn();
 const findDocTypeByPkMock = jest.fn();
 const findSignTypeMock = jest.fn();
-const findOrCreateUserSignMock = jest.fn();
-const updateUserSignMock = jest.fn();
+const destroyUserSignMock = jest.fn();
+const createUserSignTypeMock = jest.fn();
 const uploadDocumentMock = jest.fn();
 const getDownloadUrlMock = jest.fn();
 const removeFileMock = jest.fn();
@@ -21,7 +21,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Document: { create: createMock, findByPk: findByPkMock },
   DocumentStatus: { findOne: findOneStatusMock },
   DocumentUserSign: { count: countMock, findOne: findOneSignMock, create: createSignMock },
-  UserSignType: { findOne: findUserSignTypeMock, findOrCreate: findOrCreateUserSignMock },
+  UserSignType: {
+    findOne: findUserSignTypeMock,
+    destroy: destroyUserSignMock,
+    create: createUserSignTypeMock,
+  },
   User: { findByPk: findUserByPkMock },
   SignType: { findOne: findSignTypeMock },
   DocumentType: { findByPk: findDocTypeByPkMock },
@@ -67,8 +71,8 @@ beforeEach(() => {
   findUserSignTypeMock.mockReset();
   findDocTypeByPkMock.mockReset();
   findSignTypeMock.mockReset();
-  findOrCreateUserSignMock.mockReset();
-  updateUserSignMock.mockReset();
+  destroyUserSignMock.mockReset();
+  createUserSignTypeMock.mockReset();
   sendCreatedEmailMock.mockReset();
   sendSignedEmailMock.mockReset();
   sendAwaitingEmailMock.mockReset();
@@ -141,16 +145,13 @@ test('sign assigns simple electronic sign type after agreement', async () => {
     alias: 'ELECTRONIC_INTERACTION_AGREEMENT',
   });
   findSignTypeMock.mockResolvedValue({ id: 'simple-id' });
-  findOrCreateUserSignMock.mockResolvedValue([
-    { sign_type_id: 's1', update: updateUserSignMock },
-    false,
-  ]);
   createSignMock.mockResolvedValue({});
 
   await service.sign({ id: 'u1' }, 'd1');
 
-  expect(updateUserSignMock).toHaveBeenCalledWith(
-    expect.objectContaining({ sign_type_id: 'simple-id' })
+  expect(destroyUserSignMock).toHaveBeenCalledWith({ where: { user_id: 'u1' } });
+  expect(createUserSignTypeMock).toHaveBeenCalledWith(
+    expect.objectContaining({ user_id: 'u1', sign_type_id: 'simple-id' })
   );
 });
 
