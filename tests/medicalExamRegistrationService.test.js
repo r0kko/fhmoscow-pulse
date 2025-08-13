@@ -95,7 +95,8 @@ test('register creates new registration', async () => {
   });
   expect(sendCreatedMock).toHaveBeenCalledWith(
     { id: 'u1', email: 'e' },
-    exam
+    exam,
+    false
   );
 });
 

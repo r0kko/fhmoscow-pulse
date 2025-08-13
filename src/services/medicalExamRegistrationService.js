@@ -229,7 +229,11 @@ async function register(userId, examId, actorId) {
     });
     const user = await User.findByPk(userId);
     if (user) {
-      await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
+      await emailService.sendMedicalExamRegistrationCreatedEmail(
+        user,
+        exam,
+        actorId !== userId
+      );
     }
     return;
   }
@@ -242,7 +246,11 @@ async function register(userId, examId, actorId) {
   });
   const user = await User.findByPk(userId);
   if (user) {
-    await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
+    await emailService.sendMedicalExamRegistrationCreatedEmail(
+      user,
+      exam,
+      actorId !== userId
+    );
   }
 }
 
@@ -301,7 +309,11 @@ async function setStatus(examId, userId, status, actorId) {
         );
         break;
       default:
-        await emailService.sendMedicalExamRegistrationCreatedEmail(user, exam);
+        await emailService.sendMedicalExamRegistrationCreatedEmail(
+          user,
+          exam,
+          actorId !== userId
+        );
     }
   }
 }
