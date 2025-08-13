@@ -7,24 +7,34 @@ const props = defineProps({
 });
 
 const isTraining = computed(() => props.event.kind === 'training');
-const icon = computed(() =>
-  isTraining.value ? 'bi-people-fill' : 'bi-heart-pulse'
+const isExam = computed(() => props.event.kind === 'exam');
+const icon = computed(() => {
+  if (isTraining.value) return 'bi-people-fill';
+  if (isExam.value) return 'bi-heart-pulse';
+  return 'bi-calendar-event';
+});
+const title = computed(() => {
+  if (isTraining.value) return 'Тренировка';
+  if (isExam.value) return 'Медосмотр';
+  return 'Мероприятие';
+});
+const isOnline = computed(
+  () => (isTraining.value || !isExam.value) && props.event.type?.online && props.event.url
 );
-const title = computed(() => (isTraining.value ? 'Тренировка' : 'Медосмотр'));
 const location = computed(() => {
-  if (isTraining.value && props.event.type?.online && props.event.url) {
+  if (isOnline.value) {
     return 'Подключиться по ссылке';
   }
-  const loc = isTraining.value
-    ? props.event.ground?.address?.result
-    : props.event.center?.address?.result;
+  const loc = isExam.value
+    ? props.event.center?.address?.result
+    : props.event.ground?.address?.result;
   return loc || '';
 });
 const href = computed(() => {
-  if (isTraining.value && props.event.type?.online && props.event.url) {
+  if (isOnline.value) {
     return withHttp(props.event.url);
   }
-  return isTraining.value ? withHttp(props.event.ground?.yandex_url) : null;
+  return isExam.value ? null : withHttp(props.event.ground?.yandex_url);
 });
 
 function formatStart(date) {
