@@ -16,17 +16,40 @@ const basePreparationSections = [
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
 ];
 
-const workSections = [
+const baseWorkSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
   { title: 'Доходы', icon: 'ruble-icon' },
-  {
-    title: 'Повышение квалификации',
-    icon: 'bi-mortarboard',
-    to: '/qualification',
-  },
 ];
+
+const qualificationSection = {
+  title: 'Повышение квалификации',
+  icon: 'bi-mortarboard',
+  to: '/qualification',
+};
+
+const hasCourse = ref(false);
+
+onMounted(checkCourse);
+
+async function checkCourse() {
+  try {
+    const data = await apiFetch('/courses/me').catch((e) => {
+      if (e.message === 'Курс не назначен') return null;
+      throw e;
+    });
+    hasCourse.value = !!(data && data.course);
+  } catch (_err) {
+    hasCourse.value = false;
+  }
+}
+
+const workSections = computed(() =>
+  hasCourse.value
+    ? [...baseWorkSections, qualificationSection]
+    : baseWorkSections
+);
 
 const docsSections = [
   { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
