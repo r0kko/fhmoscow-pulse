@@ -10,8 +10,10 @@ const findAllGroupsMock = jest.fn();
 const findOneSeasonMock = jest.fn();
 const findAllCoursesMock = jest.fn();
 const findUserMock = jest.fn();
+const findAllUsersMock = jest.fn();
 const findRegMock = jest.fn();
 const findTrainingTypeMock = jest.fn();
+const sendInvitationMock = jest.fn();
 
 const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
@@ -34,9 +36,11 @@ beforeEach(() => {
   findOneSeasonMock.mockReset();
   findAllCoursesMock.mockReset();
   findUserMock.mockReset();
+  findAllUsersMock.mockReset();
   findRegMock.mockReset();
   findTrainingTypeMock.mockReset();
   findTrainingTypeMock.mockResolvedValue({ id: 'tp', for_camp: true, online: false });
+  sendInvitationMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -53,7 +57,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
   TrainingCourse: { destroy: destroyMock, bulkCreate: bulkCreateMock },
   Course: { findAll: findAllCoursesMock },
-  User: { findByPk: findUserMock },
+  User: { findByPk: findUserMock, findAll: findAllUsersMock },
   TrainingRole: {},
   Role: {},
   TrainingRegistration: { findOne: findRegMock },
@@ -63,6 +67,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 jest.unstable_mockModule('../src/models/trainingRegistration.js', () => ({
   __esModule: true,
   default: { findOne: findRegMock },
+}));
+
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
+  __esModule: true,
+  sendTrainingInvitationEmail: sendInvitationMock,
 }));
 
 const { default: service } = await import('../src/services/trainingService.js');
@@ -304,6 +313,33 @@ test('create saves url for online type', async () => {
     'admin'
   );
   expect(createMock.mock.calls[0][0].url).toBe('https://example.com');
+});
+
+test('create sends invitation email for seminar course', async () => {
+  findTrainingTypeMock.mockResolvedValueOnce({
+    id: 'tp',
+    alias: 'SEMINAR',
+    for_camp: true,
+    online: false,
+  });
+  createMock.mockResolvedValue({ id: 't6', season_id: 's1' });
+  findAllCoursesMock.mockResolvedValue([{ id: 'c1' }]);
+  findAllUsersMock.mockResolvedValue([{ id: 'u1' }]);
+  findByPkMock.mockResolvedValue({
+    get: () => ({ id: 't6', TrainingType: { alias: 'SEMINAR', name: 'Семинар', online: false } }),
+  });
+  await service.create(
+    {
+      type_id: 'tp',
+      ground_id: 'g1',
+      season_id: 's1',
+      start_at: '2024-01-01T10:00:00Z',
+      end_at: '2024-01-01T11:00:00Z',
+      courses: ['c1'],
+    },
+    'admin'
+  );
+  expect(sendInvitationMock).toHaveBeenCalled();
 });
 
 test('isRegistrationOpen respects window and capacity', () => {

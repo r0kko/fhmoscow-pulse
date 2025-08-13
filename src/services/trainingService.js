@@ -16,6 +16,8 @@ import ServiceError from '../errors/ServiceError.js';
 import TrainingRegistration from '../models/trainingRegistration.js';
 import { hasAdminRole, hasRefereeRole } from '../utils/roles.js';
 
+import { sendTrainingInvitationEmail } from './emailService.js';
+
 function isRegistrationOpen(training, registeredCount = 0) {
   const start = new Date(training.start_at);
   const openAt = new Date(start);
@@ -25,6 +27,20 @@ function isRegistrationOpen(training, registeredCount = 0) {
   if (training.capacity && registeredCount >= training.capacity) return false;
   const now = new Date();
   return now >= openAt && now < closeAt;
+}
+
+async function notifyCourseUsers(courseIds, training) {
+  const users = await User.findAll({
+    include: [
+      {
+        model: Course,
+        where: { id: courseIds },
+        through: { attributes: [] },
+        required: true,
+      },
+    ],
+  });
+  await Promise.all(users.map((u) => sendTrainingInvitationEmail(u, training)));
 }
 
 async function listAll(options = {}) {
@@ -344,7 +360,14 @@ async function create(data, actorId, forCamp) {
       }))
     );
   }
-  return getById(training.id, forCamp);
+  const result = await getById(training.id, forCamp);
+  if (courses.length && ['SEMINAR', 'WEBINAR'].includes(type.alias)) {
+    await notifyCourseUsers(
+      courses.map((c) => c.id),
+      result
+    );
+  }
+  return result;
 }
 
 async function update(id, data, actorId, forCamp) {
@@ -404,10 +427,15 @@ async function update(id, data, actorId, forCamp) {
       );
     }
   }
+  let addedCourseIds = [];
   if (data.courses !== undefined) {
+    const prevCourses = await TrainingCourse.findAll({
+      where: { training_id: id },
+    });
     await TrainingCourse.destroy({ where: { training_id: id } });
+    let courses = [];
     if (Array.isArray(data.courses) && data.courses.length) {
-      const courses = await Course.findAll({ where: { id: data.courses } });
+      courses = await Course.findAll({ where: { id: data.courses } });
       await TrainingCourse.bulkCreate(
         courses.map((c) => ({
           training_id: id,
@@ -417,8 +445,18 @@ async function update(id, data, actorId, forCamp) {
         }))
       );
     }
+    addedCourseIds = courses
+      .map((c) => c.id)
+      .filter((cid) => !prevCourses.some((p) => p.course_id === cid));
   }
-  return getById(id, forCamp);
+  const result = await getById(id, forCamp);
+  if (
+    addedCourseIds.length &&
+    ['SEMINAR', 'WEBINAR'].includes(result.TrainingType.alias)
+  ) {
+    await notifyCourseUsers(addedCourseIds, result);
+  }
+  return result;
 }
 
 async function remove(id, actorId = null, forCamp) {

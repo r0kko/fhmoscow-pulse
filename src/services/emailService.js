@@ -16,6 +16,7 @@ import { renderTrainingRegistrationEmail } from '../templates/trainingRegistrati
 import { renderTrainingRegistrationCancelledEmail } from '../templates/trainingRegistrationCancelledEmail.js';
 import { renderTrainingRegistrationSelfCancelledEmail } from '../templates/trainingRegistrationSelfCancelledEmail.js';
 import { renderTrainingRoleChangedEmail } from '../templates/trainingRoleChangedEmail.js';
+import { renderTrainingInvitationEmail } from '../templates/trainingInvitationEmail.js';
 import { renderMedicalExamRegistrationCreatedEmail } from '../templates/medicalExamRegistrationCreatedEmail.js';
 import { renderMedicalExamRegistrationApprovedEmail } from '../templates/medicalExamRegistrationApprovedEmail.js';
 import { renderMedicalExamRegistrationCancelledEmail } from '../templates/medicalExamRegistrationCancelledEmail.js';
@@ -140,6 +141,11 @@ export async function sendTrainingRoleChangedEmail(
   await sendMail(user.email, subject, text, html);
 }
 
+export async function sendTrainingInvitationEmail(user, training) {
+  const { subject, text, html } = renderTrainingInvitationEmail(training);
+  await sendMail(user.email, subject, text, html);
+}
+
 export async function sendMedicalExamRegistrationCreatedEmail(
   user,
   exam,
@@ -236,6 +242,7 @@ export default {
   sendTrainingRegistrationCancelledEmail,
   sendTrainingRegistrationSelfCancelledEmail,
   sendTrainingRoleChangedEmail,
+  sendTrainingInvitationEmail,
   sendMedicalExamRegistrationCreatedEmail,
   sendMedicalExamRegistrationApprovedEmail,
   sendMedicalExamRegistrationCancelledEmail,
