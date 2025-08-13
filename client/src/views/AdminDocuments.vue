@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
+import DocumentCreateModal from '../components/DocumentCreateModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -12,6 +13,7 @@ const tab = ref(route.query.tab === 'signatures' ? 'signatures' : 'documents');
 const documents = ref([]);
 const documentsLoading = ref(false);
 const documentsError = ref('');
+const allSignTypes = ref([]);
 
 const filters = reactive({
   search: '',
@@ -25,6 +27,7 @@ const filters = reactive({
 const filtersModal = ref(null);
 
 const uploadModal = ref(null);
+const createModal = ref(null);
 
 const users = ref([]);
 const usersLoading = ref(false);
@@ -49,7 +52,10 @@ async function loadDocuments() {
   documentsLoading.value = true;
   try {
     const data = await apiFetch('/documents/admin');
-    documents.value = data.documents;
+    documents.value = data.documents.map((d) => ({
+      ...d,
+      signTypeId: d.signType?.id || null,
+    }));
   } catch (_) {
     documentsError.value = 'Не удалось загрузить документы';
   } finally {
@@ -69,11 +75,56 @@ async function loadUsers() {
   }
 }
 
+async function loadSignTypes() {
+  try {
+    const data = await apiFetch('/sign-types');
+    allSignTypes.value = data.signTypes;
+  } catch (_) {
+    allSignTypes.value = [];
+  }
+}
+
+const pageSizeUsers = ref(10);
+const currentPageUsers = ref(1);
+const totalPagesUsers = computed(() =>
+  Math.max(1, Math.ceil(users.value.length / pageSizeUsers.value))
+);
+const visiblePagesUsers = computed(() => {
+  const totalVal = totalPagesUsers.value;
+  const current = currentPageUsers.value;
+  const pages = [];
+  if (totalVal <= 7) {
+    for (let i = 1; i <= totalVal; i++) pages.push(i);
+    return pages;
+  }
+  pages.push(1);
+  const start = Math.max(2, current - 1);
+  const end = Math.min(totalVal - 1, current + 1);
+  if (start > 2) pages.push('...');
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < totalVal - 1) pages.push('...');
+  pages.push(totalVal);
+  return pages;
+});
+watch(pageSizeUsers, () => {
+  currentPageUsers.value = 1;
+});
+const pagedUsers = computed(() => {
+  const start = (currentPageUsers.value - 1) * pageSizeUsers.value;
+  return users.value.slice(start, start + pageSizeUsers.value);
+});
+
+watch(users, () => {
+  if (currentPageUsers.value > totalPagesUsers.value)
+    currentPageUsers.value = totalPagesUsers.value;
+});
+
 onMounted(() => {
   const saved = localStorage.getItem('adminDocFilters');
   if (saved) Object.assign(filters, JSON.parse(saved));
   loadDocuments();
   loadUsers();
+  loadSignTypes();
 });
 
 watch(
@@ -160,6 +211,41 @@ const filteredDocuments = computed(() => {
   });
 });
 
+const pageSizeDocs = ref(10);
+const currentPageDocs = ref(1);
+const totalPagesDocs = computed(() =>
+  Math.max(1, Math.ceil(filteredDocuments.value.length / pageSizeDocs.value))
+);
+const visiblePagesDocs = computed(() => {
+  const totalVal = totalPagesDocs.value;
+  const current = currentPageDocs.value;
+  const pages = [];
+  if (totalVal <= 7) {
+    for (let i = 1; i <= totalVal; i++) pages.push(i);
+    return pages;
+  }
+  pages.push(1);
+  const start = Math.max(2, current - 1);
+  const end = Math.min(totalVal - 1, current + 1);
+  if (start > 2) pages.push('...');
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < totalVal - 1) pages.push('...');
+  pages.push(totalVal);
+  return pages;
+});
+watch(pageSizeDocs, () => {
+  currentPageDocs.value = 1;
+});
+const pagedDocuments = computed(() => {
+  const start = (currentPageDocs.value - 1) * pageSizeDocs.value;
+  return filteredDocuments.value.slice(start, start + pageSizeDocs.value);
+});
+
+watch(filteredDocuments, () => {
+  if (currentPageDocs.value > totalPagesDocs.value)
+    currentPageDocs.value = totalPagesDocs.value;
+});
+
 const signTypes = computed(() => {
   const map = new Map();
   documents.value.forEach((d) => {
@@ -180,13 +266,51 @@ const docTypes = computed(() => {
   const map = new Map();
   documents.value.forEach((d) => {
     if (d.documentType?.alias)
-      map.set(d.documentType.alias, d.documentType.name);
+      map.set(d.documentType.alias, {
+        id: d.documentType.id,
+        name: d.documentType.name,
+      });
   });
-  return Array.from(map, ([alias, name]) => ({ alias, name }));
+  return Array.from(map, ([alias, info]) => ({
+    alias,
+    name: info.name,
+    id: info.id,
+  }));
 });
 
 function openUpload(doc) {
   uploadModal.value.open(doc);
+}
+
+function openCreate() {
+  createModal.value.open();
+}
+
+async function updateSignType(doc) {
+  try {
+    await apiFetch(`/documents/${doc.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ signTypeId: doc.signTypeId }),
+    });
+    const st = allSignTypes.value.find((s) => s.id === doc.signTypeId);
+    doc.signType = st || null;
+  } catch (e) {
+    actionError.value = e.message;
+  }
+}
+
+async function deleteDocument(doc) {
+  if (!confirm('Удалить документ?')) return;
+  try {
+    await apiFetch(`/documents/${doc.id}`, { method: 'DELETE' });
+    documents.value = documents.value.filter((d) => d.id !== doc.id);
+  } catch (e) {
+    actionError.value = e.message;
+  }
+}
+
+function onCreated() {
+  loadDocuments();
 }
 </script>
 
@@ -202,24 +326,26 @@ function openUpload(doc) {
     </nav>
     <h1 class="mb-3">Документы</h1>
 
-    <ul class="nav nav-tabs mb-3">
+    <ul class="nav nav-pills nav-fill justify-content-between mb-4">
       <li class="nav-item">
-        <a
-          href="#"
+        <button
+          type="button"
           class="nav-link"
           :class="{ active: tab === 'documents' }"
-          @click.prevent="setTab('documents')"
-          >Документы</a
+          @click="setTab('documents')"
         >
+          Документы
+        </button>
       </li>
       <li class="nav-item">
-        <a
-          href="#"
+        <button
+          type="button"
           class="nav-link"
           :class="{ active: tab === 'signatures' }"
-          @click.prevent="setTab('signatures')"
-          >Документы и подписи</a
+          @click="setTab('signatures')"
         >
+          Типы подписей
+        </button>
       </li>
     </ul>
 
@@ -240,17 +366,36 @@ function openUpload(doc) {
         </div>
         <div class="card section-card tile fade-in shadow-sm">
           <div class="card-body">
-            <div class="d-flex align-items-center gap-2 mb-3">
-              <input
-                v-model="filters.search"
-                type="search"
-                class="form-control"
-                placeholder="Поиск по получателю"
-              />
-              <button class="btn btn-outline-secondary" @click="openFilters">
-                <i class="bi bi-funnel" aria-hidden="true"></i>
-                <span class="visually-hidden">Фильтры</span>
-              </button>
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-12 col-sm">
+                <input
+                  v-model="filters.search"
+                  type="search"
+                  class="form-control"
+                  placeholder="Поиск по получателю"
+                />
+              </div>
+              <div class="col-6 col-sm-auto">
+                <button
+                  class="btn btn-outline-secondary w-100"
+                  @click="openFilters"
+                >
+                  <i class="bi bi-funnel" aria-hidden="true"></i>
+                  <span class="visually-hidden">Фильтры</span>
+                </button>
+              </div>
+              <div class="col-6 col-sm-auto">
+                <select v-model.number="pageSizeDocs" class="form-select">
+                  <option :value="5">5</option>
+                  <option :value="10">10</option>
+                  <option :value="20">20</option>
+                </select>
+              </div>
+              <div class="col-12 col-sm-auto">
+                <button class="btn btn-brand w-100" @click="openCreate">
+                  <i class="bi bi-plus-lg me-1"></i>Добавить
+                </button>
+              </div>
             </div>
             <div class="table-responsive d-none d-sm-block">
               <table class="table mb-0">
@@ -266,14 +411,28 @@ function openUpload(doc) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="d in filteredDocuments" :key="d.id">
+                  <tr v-for="d in pagedDocuments" :key="d.id">
                     <td>{{ d.number }}</td>
                     <td>{{ d.name }}</td>
                     <td>
                       {{ d.recipient.lastName }} {{ d.recipient.firstName }}
                       {{ d.recipient.patronymic }}
                     </td>
-                    <td>{{ d.signType?.name }}</td>
+                    <td>
+                      <select
+                        v-model="d.signTypeId"
+                        class="form-select form-select-sm"
+                        @change="updateSignType(d)"
+                      >
+                        <option
+                          v-for="st in allSignTypes"
+                          :key="st.id"
+                          :value="st.id"
+                        >
+                          {{ st.name }}
+                        </option>
+                      </select>
+                    </td>
                     <td>{{ d.status?.name }}</td>
                     <td>{{ formatDateTime(d.documentDate) }}</td>
                     <td>
@@ -340,6 +499,13 @@ function openUpload(doc) {
                           ></span>
                           Отправить
                         </button>
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          title="Удалить"
+                          @click="deleteDocument(d)"
+                        >
+                          <i class="bi bi-trash" aria-hidden="true"></i>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -352,7 +518,7 @@ function openUpload(doc) {
               </table>
             </div>
             <div v-if="filteredDocuments.length" class="d-block d-sm-none">
-              <div v-for="d in filteredDocuments" :key="d.id" class="card mb-2">
+              <div v-for="d in pagedDocuments" :key="d.id" class="card mb-2">
                 <div class="card-body p-2">
                   <h3 class="h6 mb-1">{{ d.name }}</h3>
                   <p class="mb-1 small">№ {{ d.number }}</p>
@@ -360,9 +526,21 @@ function openUpload(doc) {
                     {{ d.recipient.lastName }} {{ d.recipient.firstName }}
                     {{ d.recipient.patronymic }}
                   </p>
-                  <p class="mb-1 small">
-                    Подпись: {{ d.signType?.name || '—' }}
-                  </p>
+                  <div class="mb-1 small">
+                    <select
+                      v-model="d.signTypeId"
+                      class="form-select form-select-sm"
+                      @change="updateSignType(d)"
+                    >
+                      <option
+                        v-for="st in allSignTypes"
+                        :key="st.id"
+                        :value="st.id"
+                      >
+                        {{ st.name }}
+                      </option>
+                    </select>
+                  </div>
                   <p class="mb-1 small">Статус: {{ d.status?.name || '—' }}</p>
                   <p class="mb-2 small">
                     Дата: {{ formatDateTime(d.documentDate) }}
@@ -430,6 +608,13 @@ function openUpload(doc) {
                       ></span>
                       Отправить
                     </button>
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      title="Удалить"
+                      @click="deleteDocument(d)"
+                    >
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -438,6 +623,45 @@ function openUpload(doc) {
         </div>
       </div>
     </div>
+    <nav v-if="totalPagesDocs > 1" class="mt-3">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" :class="{ disabled: currentPageDocs === 1 }">
+          <button
+            class="page-link"
+            :disabled="currentPageDocs === 1"
+            @click="currentPageDocs--"
+          >
+            Пред
+          </button>
+        </li>
+        <li
+          v-for="page in visiblePagesDocs"
+          :key="page + '-doc-page'"
+          class="page-item"
+          :class="{
+            active: page === currentPageDocs,
+            disabled: page === '...',
+          }"
+        >
+          <span v-if="page === '...'" class="page-link">&hellip;</span>
+          <button v-else class="page-link" @click="currentPageDocs = page">
+            {{ page }}
+          </button>
+        </li>
+        <li
+          class="page-item"
+          :class="{ disabled: currentPageDocs === totalPagesDocs }"
+        >
+          <button
+            class="page-link"
+            :disabled="currentPageDocs === totalPagesDocs"
+            @click="currentPageDocs++"
+          >
+            След
+          </button>
+        </li>
+      </ul>
+    </nav>
 
     <div v-else>
       <div v-if="usersError" class="alert alert-danger" role="alert">
@@ -452,37 +676,91 @@ function openUpload(doc) {
       </div>
       <div v-else class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
+          <div class="row g-2 justify-content-end mb-3">
+            <div class="col-auto">
+              <select v-model.number="pageSizeUsers" class="form-select">
+                <option :value="5">5</option>
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+              </select>
+            </div>
+          </div>
           <div class="table-responsive d-none d-sm-block">
             <table class="table align-middle mb-0">
               <thead>
                 <tr>
                   <th scope="col">ФИО</th>
-                  <th scope="col">Email</th>
+                  <th scope="col">Email / ИНН</th>
                   <th scope="col">Тип подписи</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="u in users" :key="u.id">
+                <tr v-for="u in pagedUsers" :key="u.id">
                   <td>{{ u.lastName }} {{ u.firstName }} {{ u.patronymic }}</td>
-                  <td>{{ u.email }}</td>
+                  <td>
+                    {{ u.email }}<br />
+                    <small class="text-muted">{{ u.inn || '—' }}</small>
+                  </td>
                   <td>{{ u.signType ? u.signType.name : '—' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div v-if="users.length" class="d-block d-sm-none">
-            <div v-for="u in users" :key="u.id" class="card mb-2">
+            <div v-for="u in pagedUsers" :key="u.id" class="card mb-2">
               <div class="card-body p-2">
                 <h3 class="h6 mb-1">
                   {{ u.lastName }} {{ u.firstName }} {{ u.patronymic }}
                 </h3>
-                <p class="mb-1 small">{{ u.email || '—' }}</p>
+                <p class="mb-1 small">
+                  {{ u.email || '—' }}<br />
+                  <span class="text-muted">{{ u.inn || '—' }}</span>
+                </p>
                 <p class="mb-0 small">Подпись: {{ u.signType?.name || '—' }}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
+      <nav v-if="totalPagesUsers > 1" class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: currentPageUsers === 1 }">
+            <button
+              class="page-link"
+              :disabled="currentPageUsers === 1"
+              @click="currentPageUsers--"
+            >
+              Пред
+            </button>
+          </li>
+          <li
+            v-for="page in visiblePagesUsers"
+            :key="page + '-user-page'"
+            class="page-item"
+            :class="{
+              active: page === currentPageUsers,
+              disabled: page === '...',
+            }"
+          >
+            <span v-if="page === '...'" class="page-link">&hellip;</span>
+            <button v-else class="page-link" @click="currentPageUsers = page">
+              {{ page }}
+            </button>
+          </li>
+          <li
+            class="page-item"
+            :class="{ disabled: currentPageUsers === totalPagesUsers }"
+          >
+            <button
+              class="page-link"
+              :disabled="currentPageUsers === totalPagesUsers"
+              @click="currentPageUsers++"
+            >
+              След
+            </button>
+          </li>
+        </ul>
+      </nav>
     </div>
   </div>
   <DocumentUploadModal ref="uploadModal" />
@@ -493,6 +771,13 @@ function openUpload(doc) {
     :statuses="statuses"
     :doc-types="docTypes"
     @apply="applyFilters"
+  />
+  <DocumentCreateModal
+    ref="createModal"
+    :users="users"
+    :doc-types="docTypes"
+    :sign-types="allSignTypes"
+    @created="onCreated"
   />
 </template>
 

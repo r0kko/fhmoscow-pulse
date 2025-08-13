@@ -140,7 +140,7 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Документы' },
   },
   {
-    path: '/admin/documents-signatures',
+    path: '/admin/signature-types',
     redirect: { path: '/admin/documents', query: { tab: 'signatures' } },
     meta: { requiresAuth: true, requiresAdmin: true },
   },

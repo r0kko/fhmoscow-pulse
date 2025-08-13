@@ -28,11 +28,20 @@ async function create(data, userId) {
     }
     statusId = status.id;
   }
+  let fileId = data.fileId;
+  if (!fileId && data.file) {
+    const file = await fileService.uploadDocument(data.file, userId);
+    fileId = file.id;
+  }
+  if (!fileId) {
+    throw new ServiceError('file_required', 400);
+  }
+
   const doc = await Document.create({
     recipient_id: data.recipientId,
     document_type_id: data.documentTypeId,
     status_id: statusId,
-    file_id: data.fileId,
+    file_id: fileId,
     sign_type_id: data.signTypeId,
     name: data.name,
     description: data.description,
@@ -123,13 +132,18 @@ async function listAll() {
       documentDate: d.document_date,
       documentType: d.DocumentType
         ? {
+            id: d.document_type_id,
             name: d.DocumentType.name,
             alias: d.DocumentType.alias,
             generated: d.DocumentType.generated,
           }
         : null,
       signType: d.SignType
-        ? { name: d.SignType.name, alias: d.SignType.alias }
+        ? {
+            id: d.sign_type_id,
+            name: d.SignType.name,
+            alias: d.SignType.alias,
+          }
         : null,
       recipient: {
         lastName: d.recipient.last_name,
@@ -401,6 +415,38 @@ async function generateInitial(user, signTypeId) {
   }
 }
 
+async function update(documentId, data, actorId) {
+  const doc = await Document.findByPk(documentId);
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  const updates = {};
+  if (data.signTypeId) {
+    const signType = await SignType.findByPk(data.signTypeId);
+    if (!signType) {
+      throw new ServiceError('sign_type_not_found', 404);
+    }
+    updates.sign_type_id = data.signTypeId;
+  }
+  if (Object.keys(updates).length === 0) return doc;
+  updates.updated_by = actorId;
+  await doc.update(updates);
+  return doc;
+}
+
+async function remove(documentId, actorId) {
+  const doc = await Document.findByPk(documentId);
+  if (!doc) {
+    throw new ServiceError('document_not_found', 404);
+  }
+  await doc.update({ updated_by: actorId });
+  const fileId = doc.file_id;
+  await doc.destroy();
+  if (fileId) {
+    await fileService.removeFile(fileId);
+  }
+}
+
 export default {
   create,
   listByUser,
@@ -410,4 +456,6 @@ export default {
   uploadSignedFile,
   regenerate,
   generateInitial,
+  update,
+  remove,
 };

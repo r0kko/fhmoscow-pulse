@@ -7,7 +7,7 @@ export default {
   async list(_req, res) {
     const types = await signTypeService.list();
     res.json({
-      signTypes: types.map((t) => ({ name: t.name, alias: t.alias })),
+      signTypes: types.map((t) => ({ id: t.id, name: t.name, alias: t.alias })),
     });
   },
 
