@@ -14,6 +14,7 @@ import { connectToDatabase } from '../src/config/database.js';
 import { connectLegacyDatabase } from '../src/config/legacyDatabase.js';
 import { connectRedis } from '../src/config/redis.js';
 import validateEnv from '../src/config/validateEnv.js';
+import startTaxationCron from '../src/jobs/taxationCron.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -63,6 +64,7 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   await connectToDatabase();
   await connectRedis();
   await connectLegacyDatabase(); // continue even if legacy DB is unreachable
+  startTaxationCron();
   server.listen(port);
 })();
 
