@@ -188,6 +188,35 @@ async function sign(user, documentId) {
       await emailService.sendDocumentSignedEmail(recipient, doc);
     }
   }
+
+  const docType = await DocumentType.findByPk(doc.document_type_id, {
+    attributes: ['alias'],
+  });
+  if (docType?.alias === 'ELECTRONIC_INTERACTION_AGREEMENT') {
+    const signType = await SignType.findOne({
+      where: { alias: 'SIMPLE_ELECTRONIC' },
+      attributes: ['id'],
+    });
+    if (signType) {
+      const [record] = await UserSignType.findOrCreate({
+        where: { user_id: user.id },
+        defaults: {
+          user_id: user.id,
+          sign_type_id: signType.id,
+          sign_created_date: new Date(),
+          created_by: user.id,
+          updated_by: user.id,
+        },
+      });
+      if (record.sign_type_id !== signType.id) {
+        await record.update({
+          sign_type_id: signType.id,
+          sign_created_date: new Date(),
+          updated_by: user.id,
+        });
+      }
+    }
+  }
 }
 
 async function requestSignature(documentId, actorId) {

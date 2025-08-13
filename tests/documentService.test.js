@@ -8,6 +8,10 @@ const findOneSignMock = jest.fn();
 const createSignMock = jest.fn();
 const findUserByPkMock = jest.fn();
 const findUserSignTypeMock = jest.fn();
+const findDocTypeByPkMock = jest.fn();
+const findSignTypeMock = jest.fn();
+const findOrCreateUserSignMock = jest.fn();
+const updateUserSignMock = jest.fn();
 const uploadDocumentMock = jest.fn();
 const getDownloadUrlMock = jest.fn();
 const removeFileMock = jest.fn();
@@ -17,10 +21,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Document: { create: createMock, findByPk: findByPkMock },
   DocumentStatus: { findOne: findOneStatusMock },
   DocumentUserSign: { count: countMock, findOne: findOneSignMock, create: createSignMock },
-  UserSignType: { findOne: findUserSignTypeMock },
+  UserSignType: { findOne: findUserSignTypeMock, findOrCreate: findOrCreateUserSignMock },
   User: { findByPk: findUserByPkMock },
-  SignType: {},
-  DocumentType: {},
+  SignType: { findOne: findSignTypeMock },
+  DocumentType: { findByPk: findDocTypeByPkMock },
   File: {},
   MedicalCertificate: {},
   MedicalCertificateFile: {},
@@ -61,6 +65,10 @@ beforeEach(() => {
   createSignMock.mockReset();
   findUserByPkMock.mockReset();
   findUserSignTypeMock.mockReset();
+  findDocTypeByPkMock.mockReset();
+  findSignTypeMock.mockReset();
+  findOrCreateUserSignMock.mockReset();
+  updateUserSignMock.mockReset();
   sendCreatedEmailMock.mockReset();
   sendSignedEmailMock.mockReset();
   sendAwaitingEmailMock.mockReset();
@@ -74,6 +82,7 @@ beforeEach(() => {
     first_name: 'F',
     patronymic: 'P',
   });
+  findDocTypeByPkMock.mockResolvedValue({ alias: 'OTHER' });
 });
 
 test('create sends document created email to recipient', async () => {
@@ -113,6 +122,35 @@ test('sign sends document signed email', async () => {
   expect(sendSignedEmailMock).toHaveBeenCalledWith(
     expect.objectContaining({ email: 'user@example.com' }),
     expect.objectContaining({ id: 'd1', number: '25.08/1' })
+  );
+});
+
+test('sign assigns simple electronic sign type after agreement', async () => {
+  findByPkMock.mockResolvedValue({
+    id: 'd1',
+    sign_type_id: 's1',
+    document_type_id: 'dt1',
+    recipient_id: 'u1',
+    update: jest.fn(),
+    number: '25.08/5',
+  });
+  countMock.mockResolvedValue(0);
+  findOneSignMock.mockResolvedValue(null);
+  findUserSignTypeMock.mockResolvedValue({ user_id: 'u1', sign_type_id: 's1' });
+  findDocTypeByPkMock.mockResolvedValue({
+    alias: 'ELECTRONIC_INTERACTION_AGREEMENT',
+  });
+  findSignTypeMock.mockResolvedValue({ id: 'simple-id' });
+  findOrCreateUserSignMock.mockResolvedValue([
+    { sign_type_id: 's1', update: updateUserSignMock },
+    false,
+  ]);
+  createSignMock.mockResolvedValue({});
+
+  await service.sign({ id: 'u1' }, 'd1');
+
+  expect(updateUserSignMock).toHaveBeenCalledWith(
+    expect.objectContaining({ sign_type_id: 'simple-id' })
   );
 });
 

@@ -36,7 +36,12 @@ const signInfo = {
   ],
   KONTUR_SIGN: [
     'Можно сделать не выходя из дома, в любое время',
-    'Потребуется регистрация в сервисе с дистанционной проверкой документов в МВД',
+    {
+      before: 'Потребуется ',
+      linkText: 'регистрация в сервисе',
+      after: ' с дистанционной проверкой документов в МВД',
+      url: 'https://support.kontur.ru/sign/53303-pep',
+    },
     'Юридическая значимость гарантируется СКБ Контур',
   ],
 };
@@ -259,13 +264,20 @@ async function submit() {
                           class="bi bi-check-circle text-brand me-2"
                           aria-hidden="true"
                         ></i>
-                        <span>{{ item }}</span>
+                        <span v-if="typeof item === 'string'">{{ item }}</span>
+                        <span v-else>
+                          {{ item.before }}
+                          <a :href="item.url" target="_blank" rel="noopener">{{
+                            item.linkText
+                          }}</a
+                          >{{ item.after }}
+                        </span>
                       </li>
                     </ul>
                     <div class="text-end mt-auto">
                       <button
                         type="button"
-                        class="btn btn-primary"
+                        class="btn btn-kontur"
                         :disabled="loadingAlias || confirming"
                         @click="choose(t.alias)"
                       >
@@ -308,7 +320,7 @@ async function submit() {
                 </div>
                 <button
                   type="button"
-                  class="btn btn-primary"
+                  class="btn btn-kontur"
                   :disabled="code.length !== 6 || confirming"
                   @click="submit"
                 >
