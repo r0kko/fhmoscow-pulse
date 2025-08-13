@@ -20,7 +20,7 @@ const baseWorkSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
-  { title: 'Доходы', icon: 'ruble-icon' },
+  { title: 'Доходы', icon: 'bi-currency-ruble' },
 ];
 
 const qualificationSection = {
