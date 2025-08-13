@@ -171,12 +171,19 @@ async function save() {
     <h1 class="mb-3">Редактирование пользователя</h1>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
-    <ul v-if="user" class="nav nav-pills nav-fill justify-content-between mb-4">
+    <ul
+      v-if="user"
+      v-edge-fade
+      class="nav nav-pills nav-fill justify-content-between mb-4 tab-selector"
+      role="tablist"
+    >
       <li v-for="tab in tabs" :key="tab.id" class="nav-item">
         <button
           type="button"
           class="nav-link"
           :class="{ active: activeTab === tab.id, disabled: tab.disabled }"
+          role="tab"
+          :aria-selected="activeTab === tab.id"
           @click="!tab.disabled && (activeTab = tab.id)"
         >
           {{ tab.label }}

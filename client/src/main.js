@@ -6,11 +6,15 @@ import './brand.css';
 import './mobile.css';
 import { refreshFromCookie } from './auth.js';
 import { initCsrf } from './api.js';
+import edgeFade from './utils/edgeFade.js';
 
 initCsrf()
   .catch(() => {})
   .finally(() => {
     refreshFromCookie().finally(() => {
-      createApp(App).use(router).mount('#app');
+      const app = createApp(App);
+      app.use(router);
+      app.directive('edge-fade', edgeFade);
+      app.mount('#app');
     });
   });

@@ -535,12 +535,16 @@ onBeforeUnmount(() => {
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body p-2">
           <ul
+            v-edge-fade
             class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
+            role="tablist"
           >
             <li class="nav-item">
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'assign' }"
+                role="tab"
+                :aria-selected="activeTab === 'assign'"
                 @click="activeTab = 'assign'"
               >
                 Список судей
@@ -550,6 +554,8 @@ onBeforeUnmount(() => {
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'courses' }"
+                role="tab"
+                :aria-selected="activeTab === 'courses'"
                 @click="activeTab = 'courses'"
               >
                 Курсы
@@ -559,6 +565,8 @@ onBeforeUnmount(() => {
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'trainings' }"
+                role="tab"
+                :aria-selected="activeTab === 'trainings'"
                 @click="activeTab = 'trainings'"
               >
                 Мероприятия

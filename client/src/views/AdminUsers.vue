@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
+import Pagination from '../components/Pagination.vue';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
 import Toast from 'bootstrap/js/dist/toast';
 import TaxationInfo from '../components/TaxationInfo.vue';
@@ -20,7 +22,7 @@ const search = ref('');
 const statusFilter = ref('');
 const roleFilter = ref('');
 const currentPage = ref(1);
-const pageSize = ref(8);
+const pageSize = ref(loadPageSize('adminUsersPageSize', 8));
 const roles = ref([]);
 const sortField = ref('last_name');
 const sortOrder = ref('asc');
@@ -36,28 +38,7 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
-const visiblePages = computed(() => {
-  const totalVal = totalPages.value;
-  const current = currentPage.value;
-  const pages = [];
-
-  if (totalVal <= 7) {
-    for (let i = 1; i <= totalVal; i++) pages.push(i);
-    return pages;
-  }
-
-  pages.push(1);
-
-  const start = Math.max(2, current - 1);
-  const end = Math.min(totalVal - 1, current + 1);
-
-  if (start > 2) pages.push('...');
-  for (let i = start; i <= end; i++) pages.push(i);
-  if (end < totalVal - 1) pages.push('...');
-
-  pages.push(totalVal);
-  return pages;
-});
+// Pagination visible pages handled by Pagination.vue
 
 async function loadRoles() {
   try {
@@ -80,6 +61,10 @@ watch(search, () => {
 watch([sortField, sortOrder, statusFilter, roleFilter, pageSize], () => {
   currentPage.value = 1;
   loadUsers();
+});
+
+watch(pageSize, (val) => {
+  savePageSize('adminUsersPageSize', val);
 });
 
 watch(currentPage, () => {
@@ -246,11 +231,17 @@ async function copy(text) {
       <h1 class="mb-3">Пользователи</h1>
       <div class="card tile mb-3">
         <div class="card-body p-2">
-          <ul class="nav nav-pills nav-fill mb-0 tab-selector">
+          <ul
+            v-edge-fade
+            class="nav nav-pills nav-fill mb-0 tab-selector"
+            role="tablist"
+          >
             <li class="nav-item">
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'users' }"
+                role="tab"
+                :aria-selected="activeTab === 'users'"
                 @click="activeTab = 'users'"
               >
                 Пользователи
@@ -260,6 +251,8 @@ async function copy(text) {
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'profiles' }"
+                role="tab"
+                :aria-selected="activeTab === 'profiles'"
                 @click="activeTab = 'profiles'"
               >
                 Заполнение профиля
@@ -306,13 +299,6 @@ async function copy(text) {
                 <option v-for="r in roles" :key="r.id" :value="r.alias">
                   {{ r.name }}
                 </option>
-              </select>
-            </div>
-            <div class="col-6 col-sm-auto">
-              <select v-model.number="pageSize" class="form-select">
-                <option :value="5">5</option>
-                <option :value="10">10</option>
-                <option :value="20">20</option>
               </select>
             </div>
           </div>
@@ -472,41 +458,20 @@ async function copy(text) {
           </p>
         </div>
       </div>
-      <nav v-if="activeTab === 'users' && totalPages > 1" class="mt-3">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: currentPage === 1 }">
-            <button
-              class="page-link"
-              :disabled="currentPage === 1"
-              @click="currentPage--"
-            >
-              Пред
-            </button>
-          </li>
-          <li
-            v-for="page in visiblePages"
-            :key="page + '-page'"
-            class="page-item"
-            :class="{ active: page === currentPage, disabled: page === '...' }"
-          >
-            <span v-if="page === '...'" class="page-link">&hellip;</span>
-            <button v-else class="page-link" @click="currentPage = page">
-              {{ page }}
-            </button>
-          </li>
-          <li
-            class="page-item"
-            :class="{ disabled: currentPage === totalPages }"
-          >
-            <button
-              class="page-link"
-              :disabled="currentPage === totalPages"
-              @click="currentPage++"
-            >
-              След
-            </button>
-          </li>
-        </ul>
+      <nav
+        v-if="activeTab === 'users' && totalPages > 1"
+        class="mt-3 d-flex align-items-center justify-content-between"
+      >
+        <select
+          v-model.number="pageSize"
+          class="form-select form-select-sm w-auto"
+        >
+          <option :value="5">5</option>
+          <option :value="8">8</option>
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+        </select>
+        <Pagination v-model="currentPage" :total-pages="totalPages" />
       </nav>
       <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div

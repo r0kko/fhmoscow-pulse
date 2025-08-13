@@ -155,6 +155,7 @@ async function loadUpcoming() {
           </h2>
           <div
             v-if="loadingUpcoming"
+            v-edge-fade
             class="upcoming-scroll scroll-container"
             aria-label="Загрузка ближайших событий"
           >
@@ -167,6 +168,7 @@ async function loadUpcoming() {
           </div>
           <div
             v-else
+            v-edge-fade
             class="upcoming-scroll scroll-container"
             aria-label="Список ближайших событий"
           >
@@ -181,7 +183,7 @@ async function loadUpcoming() {
       <div class="card section-card mb-2">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Подготовка к сезону</h2>
-          <div class="scroll-container">
+          <div v-edge-fade class="scroll-container">
             <component
               :is="item.to ? RouterLink : 'div'"
               v-for="item in preparationSections"
@@ -203,7 +205,7 @@ async function loadUpcoming() {
       <div class="card section-card mb-2">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
-          <div class="scroll-container">
+          <div v-edge-fade class="scroll-container">
             <component
               :is="item.to ? RouterLink : 'div'"
               v-for="item in workSections"
@@ -225,7 +227,7 @@ async function loadUpcoming() {
       <div class="card section-card mb-2">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Документы и формальности</h2>
-          <div class="scroll-container">
+          <div v-edge-fade class="scroll-container">
             <component
               :is="item.to ? RouterLink : 'div'"
               v-for="item in docsSections"

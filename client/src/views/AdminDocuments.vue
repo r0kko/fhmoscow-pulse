@@ -3,6 +3,8 @@ import { ref, reactive, onMounted, computed, watch } from 'vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
+import Pagination from '../components/Pagination.vue';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
@@ -86,30 +88,14 @@ async function loadSignTypes() {
   }
 }
 
-const pageSizeUsers = ref(10);
+const pageSizeUsers = ref(loadPageSize('adminSignaturesPageSize', 10));
 const currentPageUsers = ref(1);
 const totalPagesUsers = computed(() =>
   Math.max(1, Math.ceil(users.value.length / pageSizeUsers.value))
 );
-const visiblePagesUsers = computed(() => {
-  const totalVal = totalPagesUsers.value;
-  const current = currentPageUsers.value;
-  const pages = [];
-  if (totalVal <= 7) {
-    for (let i = 1; i <= totalVal; i++) pages.push(i);
-    return pages;
-  }
-  pages.push(1);
-  const start = Math.max(2, current - 1);
-  const end = Math.min(totalVal - 1, current + 1);
-  if (start > 2) pages.push('...');
-  for (let i = start; i <= end; i++) pages.push(i);
-  if (end < totalVal - 1) pages.push('...');
-  pages.push(totalVal);
-  return pages;
-});
 watch(pageSizeUsers, () => {
   currentPageUsers.value = 1;
+  savePageSize('adminSignaturesPageSize', pageSizeUsers.value);
 });
 const pagedUsers = computed(() => {
   const start = (currentPageUsers.value - 1) * pageSizeUsers.value;
@@ -147,6 +133,14 @@ function setTab(value) {
   tab.value = value;
   router.replace({ query: value === 'documents' ? {} : { tab: value } });
 }
+
+// keep tab in sync with route changes (e.g., back/forward)
+watch(
+  () => route.query.tab,
+  (val) => {
+    tab.value = val === 'signatures' ? 'signatures' : 'documents';
+  }
+);
 
 async function requestSignature(doc) {
   if (actionId.value) return;
@@ -213,30 +207,14 @@ const filteredDocuments = computed(() => {
   });
 });
 
-const pageSizeDocs = ref(10);
+const pageSizeDocs = ref(loadPageSize('adminDocumentsPageSize', 10));
 const currentPageDocs = ref(1);
 const totalPagesDocs = computed(() =>
   Math.max(1, Math.ceil(filteredDocuments.value.length / pageSizeDocs.value))
 );
-const visiblePagesDocs = computed(() => {
-  const totalVal = totalPagesDocs.value;
-  const current = currentPageDocs.value;
-  const pages = [];
-  if (totalVal <= 7) {
-    for (let i = 1; i <= totalVal; i++) pages.push(i);
-    return pages;
-  }
-  pages.push(1);
-  const start = Math.max(2, current - 1);
-  const end = Math.min(totalVal - 1, current + 1);
-  if (start > 2) pages.push('...');
-  for (let i = start; i <= end; i++) pages.push(i);
-  if (end < totalVal - 1) pages.push('...');
-  pages.push(totalVal);
-  return pages;
-});
 watch(pageSizeDocs, () => {
   currentPageDocs.value = 1;
+  savePageSize('adminDocumentsPageSize', pageSizeDocs.value);
 });
 const pagedDocuments = computed(() => {
   const start = (currentPageDocs.value - 1) * pageSizeDocs.value;
@@ -328,12 +306,18 @@ function onCreated() {
     </nav>
     <h1 class="mb-3">Документы</h1>
 
-    <ul class="nav nav-pills nav-fill justify-content-between mb-4">
+    <ul
+      v-edge-fade
+      class="nav nav-pills nav-fill justify-content-between mb-4 tab-selector"
+      role="tablist"
+    >
       <li class="nav-item">
         <button
           type="button"
           class="nav-link"
           :class="{ active: tab === 'documents' }"
+          role="tab"
+          :aria-selected="tab === 'documents'"
           @click="setTab('documents')"
         >
           Документы
@@ -344,6 +328,8 @@ function onCreated() {
           type="button"
           class="nav-link"
           :class="{ active: tab === 'signatures' }"
+          role="tab"
+          :aria-selected="tab === 'signatures'"
           @click="setTab('signatures')"
         >
           Типы подписей
@@ -380,13 +366,7 @@ function onCreated() {
                   <span class="visually-hidden">Фильтры</span>
                 </button>
               </div>
-              <div class="col-6 col-sm-auto">
-                <select v-model.number="pageSizeDocs" class="form-select">
-                  <option :value="5">5</option>
-                  <option :value="10">10</option>
-                  <option :value="20">20</option>
-                </select>
-              </div>
+
               <div class="col-12 col-sm-auto">
                 <button class="btn btn-brand w-100" @click="openCreate">
                   <i class="bi bi-plus-lg me-1"></i>Добавить
@@ -621,70 +601,30 @@ function onCreated() {
             </div>
           </div>
         </div>
+        <nav
+          v-if="filteredDocuments.length"
+          class="mt-3 d-flex align-items-center justify-content-between"
+        >
+          <select
+            v-model.number="pageSizeDocs"
+            class="form-select form-select-sm w-auto"
+          >
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+          </select>
+          <Pagination v-model="currentPageDocs" :total-pages="totalPagesDocs" />
+        </nav>
       </div>
     </div>
-    <nav v-if="totalPagesDocs > 1" class="mt-3">
-      <ul class="pagination justify-content-center">
-        <li class="page-item" :class="{ disabled: currentPageDocs === 1 }">
-          <button
-            class="page-link"
-            :disabled="currentPageDocs === 1"
-            @click="currentPageDocs--"
-          >
-            Пред
-          </button>
-        </li>
-        <li
-          v-for="page in visiblePagesDocs"
-          :key="page + '-doc-page'"
-          class="page-item"
-          :class="{
-            active: page === currentPageDocs,
-            disabled: page === '...',
-          }"
-        >
-          <span v-if="page === '...'" class="page-link">&hellip;</span>
-          <button v-else class="page-link" @click="currentPageDocs = page">
-            {{ page }}
-          </button>
-        </li>
-        <li
-          class="page-item"
-          :class="{ disabled: currentPageDocs === totalPagesDocs }"
-        >
-          <button
-            class="page-link"
-            :disabled="currentPageDocs === totalPagesDocs"
-            @click="currentPageDocs++"
-          >
-            След
-          </button>
-        </li>
-      </ul>
-    </nav>
 
     <div v-else>
       <div v-if="usersError" class="alert alert-danger" role="alert">
         {{ usersError }}
       </div>
-      <div v-else-if="usersLoading" class="text-center p-3">
-        <div
-          class="spinner-border text-primary"
-          role="status"
-          aria-label="loading"
-        ></div>
-      </div>
+      <BrandSpinner v-else-if="usersLoading" label="Загрузка" />
       <div v-else class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
-          <div class="row g-2 justify-content-end mb-3">
-            <div class="col-auto">
-              <select v-model.number="pageSizeUsers" class="form-select">
-                <option :value="5">5</option>
-                <option :value="10">10</option>
-                <option :value="20">20</option>
-              </select>
-            </div>
-          </div>
           <div class="table-responsive d-none d-sm-block">
             <table class="table align-middle mb-0">
               <thead>
@@ -722,44 +662,19 @@ function onCreated() {
           </div>
         </div>
       </div>
-      <nav v-if="totalPagesUsers > 1" class="mt-3">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: currentPageUsers === 1 }">
-            <button
-              class="page-link"
-              :disabled="currentPageUsers === 1"
-              @click="currentPageUsers--"
-            >
-              Пред
-            </button>
-          </li>
-          <li
-            v-for="page in visiblePagesUsers"
-            :key="page + '-user-page'"
-            class="page-item"
-            :class="{
-              active: page === currentPageUsers,
-              disabled: page === '...',
-            }"
-          >
-            <span v-if="page === '...'" class="page-link">&hellip;</span>
-            <button v-else class="page-link" @click="currentPageUsers = page">
-              {{ page }}
-            </button>
-          </li>
-          <li
-            class="page-item"
-            :class="{ disabled: currentPageUsers === totalPagesUsers }"
-          >
-            <button
-              class="page-link"
-              :disabled="currentPageUsers === totalPagesUsers"
-              @click="currentPageUsers++"
-            >
-              След
-            </button>
-          </li>
-        </ul>
+      <nav
+        v-if="users.length"
+        class="mt-3 d-flex align-items-center justify-content-between"
+      >
+        <select
+          v-model.number="pageSizeUsers"
+          class="form-select form-select-sm w-auto"
+        >
+          <option :value="5">5</option>
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+        </select>
+        <Pagination v-model="currentPageUsers" :total-pages="totalPagesUsers" />
       </nav>
     </div>
   </div>

@@ -30,7 +30,7 @@ const systemSections = [
             <i class="bi bi-people text-brand me-2" aria-hidden="true"></i>
             Пользователи системы
           </h2>
-          <div class="scroll-container">
+          <div v-edge-fade class="scroll-container">
             <RouterLink
               v-for="item in userSections"
               :key="item.to"
@@ -53,7 +53,7 @@ const systemSections = [
             <i class="bi bi-trophy text-brand me-2" aria-hidden="true"></i>
             Управление судейским корпусом
           </h2>
-          <div class="scroll-container">
+          <div v-edge-fade class="scroll-container">
             <RouterLink
               v-for="item in refereeSections"
               :key="item.to"
@@ -76,7 +76,7 @@ const systemSections = [
             <i class="bi bi-gear text-brand me-2" aria-hidden="true"></i>
             Управление сущностями системы
           </h2>
-          <div class="scroll-container">
+          <div v-edge-fade class="scroll-container">
             <RouterLink
               v-for="item in systemSections"
               :key="item.to"

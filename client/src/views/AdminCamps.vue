@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import Pagination from '../components/Pagination.vue';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 
@@ -21,7 +22,9 @@ const typesError = ref('');
 const trainings = ref([]);
 const trainingsTotal = ref(0);
 const trainingsPage = ref(1);
-const trainingsPageSize = ref(20);
+const trainingsPageSize = ref(
+  parseInt(localStorage.getItem('adminCampsTrainingsPageSize') || '20', 10)
+);
 const trainingsLoading = ref(false);
 const trainingsError = ref('');
 const trainingsView = ref('upcoming');
@@ -78,6 +81,9 @@ watch(trainingsPage, () => {
 watch([trainingsPageSize, trainingsFilterGround, trainingsFilterGroup], () => {
   trainingsPage.value = 1;
   if (activeTab.value === 'trainings') loadTrainings();
+});
+watch(trainingsPageSize, (val) => {
+  localStorage.setItem('adminCampsTrainingsPageSize', String(val));
 });
 watch(trainingsView, () => {
   trainingsPage.value = 1;
@@ -380,12 +386,16 @@ async function toggleTrainingGroup(training, groupId, checked) {
       <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
           <ul
+            v-edge-fade
             class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
+            role="tablist"
           >
             <li class="nav-item">
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'trainings' }"
+                role="tab"
+                :aria-selected="activeTab === 'trainings'"
                 @click="activeTab = 'trainings'"
               >
                 Тренировки
@@ -395,6 +405,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'judges' }"
+                role="tab"
+                :aria-selected="activeTab === 'judges'"
                 @click="activeTab = 'judges'"
               >
                 Судьи
@@ -404,6 +416,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <button
                 class="nav-link"
                 :class="{ active: activeTab === 'groups' }"
+                role="tab"
+                :aria-selected="activeTab === 'groups'"
                 @click="activeTab = 'groups'"
               >
                 Группы
@@ -444,11 +458,17 @@ async function toggleTrainingGroup(training, groupId, checked) {
             </div>
           </div>
           <div class="card-body p-3">
-            <ul class="nav nav-pills nav-fill mb-3 tab-selector">
+            <ul
+              v-edge-fade
+              class="nav nav-pills nav-fill mb-3 tab-selector"
+              role="tablist"
+            >
               <li class="nav-item">
                 <button
                   class="nav-link"
                   :class="{ active: trainingsView === 'upcoming' }"
+                  role="tab"
+                  :aria-selected="trainingsView === 'upcoming'"
                   @click="trainingsView = 'upcoming'"
                 >
                   Ближайшие
@@ -458,6 +478,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 <button
                   class="nav-link"
                   :class="{ active: trainingsView === 'past' }"
+                  role="tab"
+                  :aria-selected="trainingsView === 'past'"
                   @click="trainingsView = 'past'"
                 >
                   Прошедшие
@@ -643,39 +665,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
             <option :value="40">40</option>
             <option :value="100">100</option>
           </select>
-          <ul class="pagination mb-0">
-            <li class="page-item" :class="{ disabled: trainingsPage === 1 }">
-              <button
-                class="page-link"
-                :disabled="trainingsPage === 1"
-                @click="trainingsPage--"
-              >
-                Пред
-              </button>
-            </li>
-            <li
-              v-for="p in trainingsTotalPages"
-              :key="p"
-              class="page-item"
-              :class="{ active: trainingsPage === p }"
-            >
-              <button class="page-link" @click="trainingsPage = p">
-                {{ p }}
-              </button>
-            </li>
-            <li
-              class="page-item"
-              :class="{ disabled: trainingsPage === trainingsTotalPages }"
-            >
-              <button
-                class="page-link"
-                :disabled="trainingsPage === trainingsTotalPages"
-                @click="trainingsPage++"
-              >
-                След
-              </button>
-            </li>
-          </ul>
+          <Pagination
+            v-model="trainingsPage"
+            :total-pages="trainingsTotalPages"
+          />
         </nav>
 
         <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">

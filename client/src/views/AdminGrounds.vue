@@ -3,6 +3,8 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import Pagination from '../components/Pagination.vue';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
 const phoneInput = ref('');
@@ -37,7 +39,7 @@ function onPhoneKeydown(e) {
 const grounds = ref([]);
 const total = ref(0);
 const currentPage = ref(1);
-const pageSize = 8;
+const pageSize = ref(loadPageSize('adminGroundsPageSize', 8));
 const isLoading = ref(false);
 const error = ref('');
 
@@ -58,7 +60,7 @@ let addrTimeout;
 const saveLoading = ref(false);
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize))
+  Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
 onMounted(() => {
@@ -77,6 +79,11 @@ onBeforeUnmount(() => {
 });
 
 watch(currentPage, load);
+watch(pageSize, (val) => {
+  currentPage.value = 1;
+  savePageSize('adminGroundsPageSize', val);
+  load();
+});
 watch(
   () => form.value.address.result,
   (val) => {
@@ -179,7 +186,7 @@ async function load() {
     isLoading.value = true;
     const params = new URLSearchParams({
       page: currentPage.value,
-      limit: pageSize,
+      limit: pageSize.value,
     });
     const data = await apiFetch(`/grounds?${params}`);
     grounds.value = data.grounds;
@@ -309,40 +316,20 @@ async function load() {
           </div>
         </div>
       </div>
-      <nav v-if="totalPages > 1" class="mt-3">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: currentPage === 1 }">
-            <button
-              class="page-link"
-              :disabled="currentPage === 1"
-              @click="currentPage--"
-            >
-              Пред
-            </button>
-          </li>
-          <li
-            v-for="p in totalPages"
-            :key="p"
-            class="page-item"
-            :class="{ active: currentPage === p }"
-          >
-            <button class="page-link" @click="currentPage = p">
-              {{ p }}
-            </button>
-          </li>
-          <li
-            class="page-item"
-            :class="{ disabled: currentPage === totalPages }"
-          >
-            <button
-              class="page-link"
-              :disabled="currentPage === totalPages"
-              @click="currentPage++"
-            >
-              След
-            </button>
-          </li>
-        </ul>
+      <nav
+        v-if="totalPages > 1"
+        class="mt-3 d-flex align-items-center justify-content-between"
+      >
+        <select
+          v-model.number="pageSize"
+          class="form-select form-select-sm w-auto"
+        >
+          <option :value="5">5</option>
+          <option :value="8">8</option>
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+        </select>
+        <Pagination v-model="currentPage" :total-pages="totalPages" />
       </nav>
     </div>
 

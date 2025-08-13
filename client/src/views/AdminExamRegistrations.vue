@@ -2,6 +2,8 @@
 import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch, apiFetchBlob } from '../api.js';
+import Pagination from '../components/Pagination.vue';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const route = useRoute();
 const exam = ref(null);
@@ -11,7 +13,7 @@ const loadingExam = ref(false);
 const list = ref([]);
 const total = ref(0);
 const page = ref(1);
-const pageSize = ref(8);
+const pageSize = ref(loadPageSize('adminExamRegsPageSize', 8));
 const downloading = ref(false);
 const loading = ref(false);
 const error = ref('');
@@ -40,6 +42,12 @@ onMounted(() => {
 });
 
 watch([page, pageSize], loadRegistrations);
+watch(pageSize, (val) => {
+  savePageSize('adminExamRegsPageSize', val);
+});
+watch(pageSize, (val) => {
+  localStorage.setItem('adminExamRegsPageSize', String(val));
+});
 let searchTimeout;
 watch(search, () => {
   clearTimeout(searchTimeout);
@@ -374,31 +382,20 @@ async function exportPdf() {
       <p v-else-if="!loading && !loadingExam" class="text-muted mb-0">
         Нет заявок.
       </p>
-      <nav v-if="totalPages > 1" class="mt-3">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" :disabled="page === 1" @click="page--">
-              Пред
-            </button>
-          </li>
-          <li
-            v-for="p in totalPages"
-            :key="p"
-            class="page-item"
-            :class="{ active: page === p }"
-          >
-            <button class="page-link" @click="page = p">{{ p }}</button>
-          </li>
-          <li class="page-item" :class="{ disabled: page === totalPages }">
-            <button
-              class="page-link"
-              :disabled="page === totalPages"
-              @click="page++"
-            >
-              След
-            </button>
-          </li>
-        </ul>
+      <nav
+        v-if="totalPages > 1"
+        class="mt-3 d-flex align-items-center justify-content-between"
+      >
+        <select
+          v-model.number="pageSize"
+          class="form-select form-select-sm w-auto"
+        >
+          <option :value="5">5</option>
+          <option :value="8">8</option>
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+        </select>
+        <Pagination v-model="page" :total-pages="totalPages" />
       </nav>
     </div>
   </div>
