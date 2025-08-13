@@ -24,8 +24,20 @@ export async function runTaxationCheck() {
     });
 
     if (user?.Inn?.number) {
-      await taxationService.updateByInn(user.id, user.Inn.number, null);
-      logger.info(`Taxation cron updated user ${user.id}`);
+      const data = await taxationService.fetchByInn(user.Inn.number);
+      const { dadata, fns } = data.statuses || {};
+      const dadataOk = dadata >= 200 && dadata < 300;
+      const fnsOk = fns >= 200 && fns < 300;
+      if (dadataOk && fnsOk) {
+        await taxationService.updateByInn(user.id, user.Inn.number, null, data);
+        logger.info(`Taxation cron updated user ${user.id}`);
+      } else {
+        logger.warn(
+          'Taxation cron skipped user %s due to API failure %o',
+          user.id,
+          data.statuses
+        );
+      }
     } else {
       logger.debug('Taxation cron: no users to update');
     }

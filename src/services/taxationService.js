@@ -58,16 +58,16 @@ async function fetchByInn(inn, opts = { dadata: true, fns: true }) {
   };
 }
 
-async function updateByInn(userId, inn, actorId) {
-  const data = await fetchByInn(inn);
+async function updateByInn(userId, inn, actorId, data) {
+  const fetched = data || (await fetchByInn(inn));
 
   let taxation = await Taxation.findOne({ where: { user_id: userId } });
   const payload = {
-    taxation_type_id: data.TaxationType.id,
-    check_date: data.check_date,
-    registration_date: data.registration_date,
-    ogrn: data.ogrn,
-    okved: data.okved,
+    taxation_type_id: fetched.TaxationType.id,
+    check_date: fetched.check_date,
+    registration_date: fetched.registration_date,
+    ogrn: fetched.ogrn,
+    okved: fetched.okved,
   };
   if (!taxation) {
     taxation = await Taxation.create({
@@ -101,6 +101,7 @@ async function updateForUser(userId, actorId) {
 
 export default {
   getByUser,
+  fetchByInn,
   updateByInn,
   removeByUser,
   previewForUser,
