@@ -187,6 +187,16 @@ watch(
   }
 );
 
+watch(
+  () => trainingForm.value.start_at,
+  (val) => {
+    if (!val || editingTraining.value) return;
+    const end = new Date(val);
+    end.setMinutes(end.getMinutes() + 90);
+    trainingForm.value.end_at = toDateTimeLocal(end.toISOString());
+  }
+);
+
 async function loadAllUsers() {
   try {
     const data = await apiFetch('/users?limit=1000');
@@ -331,11 +341,14 @@ async function saveTraining() {
       type_id: trainingForm.value.type_id,
       start_at: fromDateTimeLocal(trainingForm.value.start_at),
       end_at: fromDateTimeLocal(trainingForm.value.end_at),
-      capacity: trainingForm.value.capacity || undefined,
-      courses: trainingForm.value.courses,
+      capacity:
+        trainingForm.value.capacity === ''
+          ? undefined
+          : trainingForm.value.capacity,
+      courses: trainingForm.value.courses.map(Number),
       ...(selectedTrainingType.value?.online
         ? { url: trainingForm.value.url || undefined }
-        : { ground_id: trainingForm.value.ground_id }),
+        : { ground_id: trainingForm.value.ground_id || undefined }),
     };
     await apiFetch(url, {
       method,
@@ -351,7 +364,7 @@ async function saveTraining() {
 }
 
 async function deleteTraining(id) {
-  if (!confirm('Удалить тренировку?')) return;
+  if (!confirm('Удалить мероприятие?')) return;
   try {
     await apiFetch(`/course-trainings/${id}`, { method: 'DELETE' });
     await loadTrainingsAdmin();
@@ -1086,14 +1099,14 @@ onBeforeUnmount(() => {
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
-                        aria-label="Редактировать тренировку"
+                        aria-label="Редактировать мероприятие"
                         @click="openTrainingModal(t)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
-                        aria-label="Удалить тренировку"
+                        aria-label="Удалить мероприятие"
                         @click="deleteTraining(t.id)"
                       >
                         <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1152,14 +1165,14 @@ onBeforeUnmount(() => {
                     </RouterLink>
                     <button
                       class="btn btn-secondary"
-                      aria-label="Редактировать тренировку"
+                      aria-label="Редактировать мероприятие"
                       @click="openTrainingModal(t)"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="btn btn-danger"
-                      aria-label="Удалить тренировку"
+                      aria-label="Удалить мероприятие"
                       @click="deleteTraining(t.id)"
                     >
                       <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1239,14 +1252,14 @@ onBeforeUnmount(() => {
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
-                        aria-label="Редактировать тренировку"
+                        aria-label="Редактировать мероприятие"
                         @click="openTrainingModal(t)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
-                        aria-label="Удалить тренировку"
+                        aria-label="Удалить мероприятие"
                         @click="deleteTraining(t.id)"
                       >
                         <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1305,14 +1318,14 @@ onBeforeUnmount(() => {
                     </RouterLink>
                     <button
                       class="btn btn-secondary"
-                      aria-label="Редактировать тренировку"
+                      aria-label="Редактировать мероприятие"
                       @click="openTrainingModal(t)"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="btn btn-danger"
-                      aria-label="Удалить тренировку"
+                      aria-label="Удалить мероприятие"
                       @click="deleteTraining(t.id)"
                     >
                       <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1326,7 +1339,7 @@ onBeforeUnmount(() => {
             </div>
 
             <button class="btn btn-brand mt-3" @click="openTrainingModal()">
-              Добавить тренировку
+              Добавить мероприятие
             </button>
           </div>
         </div>
@@ -1338,8 +1351,8 @@ onBeforeUnmount(() => {
                 <h5 class="modal-title">
                   {{
                     editingTraining
-                      ? 'Редактировать тренировку'
-                      : 'Новая тренировка'
+                      ? 'Редактировать мероприятие'
+                      : 'Новое мероприятие'
                   }}
                 </h5>
                 <button
@@ -1405,7 +1418,7 @@ onBeforeUnmount(() => {
                 <div class="mb-3">
                   <label class="form-label">Вместимость</label>
                   <input
-                    v-model="trainingForm.capacity"
+                    v-model.number="trainingForm.capacity"
                     type="number"
                     min="0"
                     class="form-control"
