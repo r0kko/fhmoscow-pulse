@@ -312,7 +312,11 @@ function openTrainingModal(training = null) {
       start_at: toDateTimeLocal(training.start_at),
       end_at: toDateTimeLocal(training.end_at),
       capacity: training.capacity || '',
-      courses: training.courses ? training.courses.map((c) => c.id) : [],
+      courses: training.courses
+        ? training.courses
+            .map((c) => Number(c.id))
+            .filter((id) => Number.isInteger(id) && id > 0)
+        : [],
     };
   } else {
     editingTraining.value = null;
@@ -337,15 +341,21 @@ async function saveTraining() {
     const url = editingTraining.value
       ? `/course-trainings/${editingTraining.value.id}`
       : '/course-trainings';
+    const courseIds = Array.isArray(trainingForm.value.courses)
+      ? trainingForm.value.courses
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      : [];
+    const capacityValue =
+      trainingForm.value.capacity === '' || trainingForm.value.capacity === null
+        ? undefined
+        : trainingForm.value.capacity;
     const body = {
       type_id: trainingForm.value.type_id,
       start_at: fromDateTimeLocal(trainingForm.value.start_at),
       end_at: fromDateTimeLocal(trainingForm.value.end_at),
-      capacity:
-        trainingForm.value.capacity === ''
-          ? undefined
-          : trainingForm.value.capacity,
-      courses: trainingForm.value.courses.map(Number),
+      capacity: capacityValue,
+      courses: courseIds,
       ...(selectedTrainingType.value?.online
         ? { url: trainingForm.value.url || undefined }
         : { ground_id: trainingForm.value.ground_id || undefined }),
