@@ -97,13 +97,18 @@ onMounted(loadUpcoming);
 async function loadUpcoming() {
   loadingUpcoming.value = true;
   try {
-    const [trainingData, examData] = await Promise.all([
+    const [trainingData, examData, eventData] = await Promise.all([
       apiFetch('/camp-trainings/me/upcoming?limit=100'),
       apiFetch('/medical-exams/me/upcoming?limit=100'),
+      apiFetch('/course-trainings/me/upcoming?limit=100').catch(() => ({ trainings: [] })),
     ]);
     const trainings = (trainingData.trainings || []).map((t) => ({
       ...t,
       kind: 'training',
+    }));
+    const events = (eventData.trainings || []).map((e) => ({
+      ...e,
+      kind: 'event',
     }));
     const exams = (examData.exams || [])
       .filter(
@@ -117,7 +122,7 @@ async function loadUpcoming() {
       }));
     const now = new Date();
     const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    upcoming.value = [...trainings, ...exams]
+    upcoming.value = [...trainings, ...events, ...exams]
       .filter((e) => {
         const start = new Date(e.start_at);
         return start >= now && start < end;
