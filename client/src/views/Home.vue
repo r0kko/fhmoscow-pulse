@@ -20,7 +20,8 @@ const baseWorkSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
-  { title: 'Доходы', icon: 'bi-currency-ruble' },
+  // Надёжный текстовый fallback-значок рубля
+  { title: 'Доходы', icon: 'ruble-icon' },
 ];
 
 const qualificationSection = {
@@ -254,5 +255,26 @@ async function loadUpcoming() {
   gap: 0.5rem;
   padding-bottom: 0.25rem;
   justify-content: flex-start;
+}
+
+/* Текстовый fallback-значок рубля для стабильного отображения */
+.ruble-icon::before {
+  content: '₽';
+  display: inline-block;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: -0.125em;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Noto Sans',
+    'Helvetica Neue',
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Noto Color Emoji';
 }
 </style>
