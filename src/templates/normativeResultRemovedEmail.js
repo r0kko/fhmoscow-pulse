@@ -35,7 +35,8 @@ export function renderNormativeResultRemovedEmail(result) {
   } else if (result.online) {
     text += '\nОнлайн.';
   }
-  text += '\n\nЕсли вы считаете это ошибкой, обратитесь в службу поддержки.';
+  text +=
+    '\n\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
   const htmlAddress = address
     ? `<p style="font-size:16px;margin:0 0 16px;">Стадион: ${address}${
         yandexUrl
@@ -60,7 +61,7 @@ export function renderNormativeResultRemovedEmail(result) {
       ${htmlDate}
       ${htmlAddress}
       ${htmlMode}
-      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь в службу поддержки.</p>
+      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.</p>
     </div>`;
   return { subject, text, html };
 }

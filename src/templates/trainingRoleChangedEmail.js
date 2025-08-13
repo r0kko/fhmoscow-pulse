@@ -1,4 +1,7 @@
-export function renderTrainingRoleChangedEmail(training, role) {
+export function renderTrainingRoleChangedEmail(training, role, byAdmin = true) {
+  const isCamp = training.TrainingType?.for_camp;
+  const typePrep = isCamp ? 'тренировке' : 'мероприятии';
+  const subject = `Изменена роль на ${typePrep}`;
   const date = new Date(training.start_at)
     .toLocaleString('ru-RU', {
       timeZone: 'Europe/Moscow',
@@ -13,15 +16,17 @@ export function renderTrainingRoleChangedEmail(training, role) {
   const address = ground.Address?.result || ground.address?.result;
   const yandexUrl = ground.yandex_url;
   const roleName = role?.name || role?.alias;
-  const subject = 'Изменена роль на тренировке';
-  let text = `Администратор изменил вашу роль на тренировке ${date}.`;
+  let text = byAdmin
+    ? `Администратор изменил вашу роль на ${typePrep} ${date}.`
+    : `Вы изменили свою роль на ${typePrep} ${date}.`;
   if (roleName) text += `\nНовая роль: ${roleName}.`;
   if (address) {
     text += `\nМесто проведения: ${address}`;
     if (yandexUrl) text += ` (${yandexUrl})`;
     text += '.';
   }
-  text += '\n\nЕсли вы считаете это ошибкой, обратитесь в службу поддержки.';
+  text +=
+    '\n\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
   const htmlRole = roleName
     ? `<p style="font-size:16px;margin:0 0 16px;">Новая роль: ${roleName}.</p>`
     : '';
@@ -36,12 +41,14 @@ export function renderTrainingRoleChangedEmail(training, role) {
     <div style="font-family: Arial, sans-serif; color: #333;">
       <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
       <p style="font-size:16px;margin:0 0 16px;">
-        Администратор изменил вашу роль на тренировке ${date} (МСК).
+        ${byAdmin ? 'Администратор изменил вашу роль' : 'Вы изменили свою роль'} на ${
+          typePrep
+        } ${date} (МСК).
       </p>
       ${htmlRole}
       ${htmlAddress}
       <p style="font-size:12px;color:#777;margin:0;">
-        Если вы считаете это ошибкой, обратитесь в службу поддержки.
+        Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.
       </p>
     </div>`;
   return { subject, text, html };

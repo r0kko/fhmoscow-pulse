@@ -204,7 +204,12 @@ async function register(userId, trainingId, actorId, forCamp) {
 
   const user = await User.findByPk(userId);
   if (user) {
-    await emailService.sendTrainingRegistrationEmail(user, training, role);
+    await emailService.sendTrainingRegistrationEmail(
+      user,
+      training,
+      role,
+      actorId !== userId
+    );
   }
 }
 
@@ -294,7 +299,12 @@ async function add(trainingId, userId, roleId, actorId) {
   }
   await upsertRegistration(trainingId, userId, roleId, actorId);
   await training.update({ attendance_marked: false, updated_by: actorId });
-  await emailService.sendTrainingRegistrationEmail(user, training, finalRole);
+  await emailService.sendTrainingRegistrationEmail(
+    user,
+    training,
+    finalRole,
+    true
+  );
 }
 
 async function updateRole(trainingId, userId, roleId, actorId) {
@@ -322,7 +332,12 @@ async function updateRole(trainingId, userId, roleId, actorId) {
   }
   await registration.update({ training_role_id: roleId, updated_by: actorId });
   if (user) {
-    await emailService.sendTrainingRoleChangedEmail(user, training, role);
+    await emailService.sendTrainingRoleChangedEmail(
+      user,
+      training,
+      role,
+      actorId !== userId
+    );
   }
   await training.update({ attendance_marked: false, updated_by: actorId });
 }
@@ -568,7 +583,10 @@ async function remove(trainingId, userId, actorId = null) {
   await registration.destroy();
   const [training, user] = await Promise.all([
     Training.findByPk(trainingId, {
-      include: [{ model: Season, where: { active: true }, required: true }],
+      include: [
+        { model: TrainingType },
+        { model: Season, where: { active: true }, required: true },
+      ],
     }),
     User.findByPk(userId),
   ]);

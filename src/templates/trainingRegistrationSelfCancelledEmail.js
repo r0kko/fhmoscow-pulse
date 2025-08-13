@@ -1,4 +1,7 @@
 export function renderTrainingRegistrationSelfCancelledEmail(training) {
+  const isCamp = training.TrainingType?.for_camp;
+  const typeAcc = isCamp ? 'тренировку' : 'мероприятие';
+  const subject = `Запись на ${typeAcc} отменена`;
   const date = new Date(training.start_at)
     .toLocaleString('ru-RU', {
       timeZone: 'Europe/Moscow',
@@ -9,13 +12,12 @@ export function renderTrainingRegistrationSelfCancelledEmail(training) {
       minute: '2-digit',
     })
     .replace(',', '');
-  const subject = 'Запись на тренировку отменена';
-  const text = `Вы отменили свою запись на тренировку ${date}.`;
+  const text = `Вы отменили свою запись на ${typeAcc} ${date}.`;
   const html = `
     <div style="font-family: Arial, sans-serif; color: #333;">
       <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
       <p style="font-size:16px;margin:0 0 16px;">
-        Вы отменили свою запись на тренировку ${date} (МСК).
+        Вы отменили свою запись на ${typeAcc} ${date} (МСК).
       </p>
     </div>`;
   return { subject, text, html };

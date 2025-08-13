@@ -48,13 +48,21 @@ export async function sendMail(to, subject, text, html) {
     logger.warn('Email not configured');
     return false;
   }
+  const footerText =
+    '\n\nС уважением,\nкоманда АСОУ ПД Пульс.\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
+  const footerHtml =
+    '\n      <p style="font-size:16px;margin:0 0 16px;">С уважением,<br/>команда АСОУ ПД Пульс</p>\n      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.</p>';
+  const finalText = `${text}${footerText}`;
+  const finalHtml = html.includes('</div>')
+    ? html.replace('</div>', `${footerHtml}</div>`)
+    : `${html}${footerHtml}`;
   try {
     await transporter.sendMail({
       from: EMAIL_FROM || SMTP_USER,
       to,
       subject,
-      text,
-      html,
+      text: finalText,
+      html: finalHtml,
     });
     logger.info('Email sent to %s', to);
     return true;
@@ -89,10 +97,16 @@ export async function sendAccountActivatedEmail(user) {
   await sendMail(user.email, subject, text, html);
 }
 
-export async function sendTrainingRegistrationEmail(user, training, role) {
+export async function sendTrainingRegistrationEmail(
+  user,
+  training,
+  role,
+  byAdmin = false
+) {
   const { subject, text, html } = renderTrainingRegistrationEmail(
     training,
-    role
+    role,
+    byAdmin
   );
   await sendMail(user.email, subject, text, html);
 }
@@ -112,17 +126,29 @@ export async function sendTrainingRegistrationSelfCancelledEmail(
   await sendMail(user.email, subject, text, html);
 }
 
-export async function sendTrainingRoleChangedEmail(user, training, role) {
+export async function sendTrainingRoleChangedEmail(
+  user,
+  training,
+  role,
+  byAdmin = true
+) {
   const { subject, text, html } = renderTrainingRoleChangedEmail(
     training,
-    role
+    role,
+    byAdmin
   );
   await sendMail(user.email, subject, text, html);
 }
 
-export async function sendMedicalExamRegistrationCreatedEmail(user, exam) {
-  const { subject, text, html } =
-    renderMedicalExamRegistrationCreatedEmail(exam);
+export async function sendMedicalExamRegistrationCreatedEmail(
+  user,
+  exam,
+  byAdmin = false
+) {
+  const { subject, text, html } = renderMedicalExamRegistrationCreatedEmail(
+    exam,
+    byAdmin
+  );
   await sendMail(user.email, subject, text, html);
 }
 

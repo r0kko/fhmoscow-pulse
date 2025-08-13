@@ -111,7 +111,8 @@ test('register sends confirmation email', async () => {
   expect(sendRegEmailMock).toHaveBeenCalledWith(
     { id: 'u1', email: 'e' },
     training,
-    { id: 'role1' }
+    { id: 'role1' },
+    false
   );
   expect(updateTrainingMock).toHaveBeenCalledWith({
     attendance_marked: false,
@@ -185,7 +186,8 @@ test('add creates registration for referee', async () => {
   expect(sendRegEmailMock).toHaveBeenCalledWith(
     { id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] },
     tr,
-    { id: 'role1' }
+    { id: 'role1' },
+    true
   );
   expect(updateTrainingMock).toHaveBeenCalledWith({
     attendance_marked: false,
@@ -275,7 +277,8 @@ test('add restores deleted registration', async () => {
   expect(sendRegEmailMock).toHaveBeenCalledWith(
     { id: 'u2', email: 'e2', Roles: [{ alias: 'BRIGADE_REFEREE' }] },
     tr,
-    { id: 'role1' }
+    { id: 'role1' },
+    true
   );
   expect(updateTrainingMock).toHaveBeenCalledWith({
     attendance_marked: false,
@@ -365,7 +368,8 @@ test('updateRole sends notification', async () => {
   expect(sendRoleChangedEmailMock).toHaveBeenCalledWith(
     { id: 'u1', email: 'e' },
     training,
-    { id: 'role1' }
+    { id: 'role1' },
+    true
   );
   expect(updateTrainingMock).toHaveBeenCalledWith({
     attendance_marked: false,
