@@ -8,6 +8,8 @@ import yandexLogo from '../assets/yandex-maps.svg';
 import Toast from 'bootstrap/js/dist/toast';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import { withHttp } from '../utils/url.js';
+import PageNav from '../components/PageNav.vue';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const selectedDates = ref({});
 
@@ -16,7 +18,7 @@ const mineUpcoming = ref([]);
 const minePast = ref([]);
 const mineView = ref('upcoming');
 const page = ref(1);
-const pageSize = 50;
+const pageSize = ref(loadPageSize('clientCampsPageSize', 50));
 const loading = ref(true);
 const error = ref('');
 const activeTab = ref('mine');
@@ -61,7 +63,7 @@ async function loadAvailable() {
   loading.value = true;
   try {
     const data = await apiFetch(
-      `/camp-trainings/available?page=${page.value}&limit=${pageSize}`
+      `/camp-trainings/available?page=${page.value}&limit=${pageSize.value}`
     );
     trainings.value = data.trainings || [];
     error.value = '';
@@ -75,7 +77,7 @@ async function loadAvailable() {
 async function loadMineUpcoming() {
   try {
     const data = await apiFetch(
-      `/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize}`
+      `/camp-trainings/me/upcoming?page=${page.value}&limit=${pageSize.value}`
     );
     mineUpcoming.value = data.trainings || [];
     await nextTick();
@@ -89,7 +91,7 @@ async function loadMinePast() {
   try {
     loading.value = true;
     const data = await apiFetch(
-      `/camp-trainings/me/past?page=${page.value}&limit=${pageSize}`
+      `/camp-trainings/me/past?page=${page.value}&limit=${pageSize.value}`
     );
     minePast.value = data.trainings || [];
     await nextTick();
@@ -317,6 +319,23 @@ function applyTooltips() {
       .forEach((el) => new Tooltip(el));
   });
 }
+
+watch(pageSize, (val) => {
+  page.value = 1;
+  savePageSize('clientCampsPageSize', val);
+  if (activeTab.value === 'register') loadAvailable();
+  else if (activeTab.value === 'mine') {
+    if (mineView.value === 'upcoming') loadMineUpcoming();
+    else loadMinePast();
+  }
+});
+watch(page, () => {
+  if (activeTab.value === 'register') loadAvailable();
+  else if (activeTab.value === 'mine') {
+    if (mineView.value === 'upcoming') loadMineUpcoming();
+    else loadMinePast();
+  }
+});
 
 function selectDate(id, iso) {
   const current = selectedDates.value[id];
@@ -817,6 +836,13 @@ function attendanceStatus(t) {
               </div>
             </div>
           </div>
+          <PageNav
+            v-if="groupedAllByDay.length"
+            v-model:page="page"
+            v-model:page-size="pageSize"
+            :total-pages="page + (trainings.length === pageSize ? 1 : 0)"
+            :sizes="[10, 20, 50]"
+          />
         </div>
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
           <div

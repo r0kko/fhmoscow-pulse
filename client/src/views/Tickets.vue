@@ -3,6 +3,8 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import Pagination from '../components/Pagination.vue';
+import PageNav from '../components/PageNav.vue';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const tickets = ref([]);
 const loading = ref(true);
@@ -10,7 +12,7 @@ const error = ref('');
 const view = ref('active');
 const search = ref('');
 const archivePage = ref(1);
-const pageSize = 10;
+const pageSize = ref(loadPageSize('clientTicketsPageSize', 10));
 
 const activeTickets = computed(() =>
   tickets.value.filter((t) =>
@@ -32,11 +34,11 @@ const filteredArchivedTickets = computed(() => {
   );
 });
 const totalArchivePages = computed(() =>
-  Math.max(1, Math.ceil(filteredArchivedTickets.value.length / pageSize))
+  Math.max(1, Math.ceil(filteredArchivedTickets.value.length / pageSize.value))
 );
 const paginatedArchivedTickets = computed(() => {
-  const start = (archivePage.value - 1) * pageSize;
-  return filteredArchivedTickets.value.slice(start, start + pageSize);
+  const start = (archivePage.value - 1) * pageSize.value;
+  return filteredArchivedTickets.value.slice(start, start + pageSize.value);
 });
 const currentTickets = computed(() =>
   view.value === 'active' ? activeTickets.value : paginatedArchivedTickets.value
@@ -48,6 +50,10 @@ const noTicketsMessage = computed(() => {
 
 watch(search, () => {
   archivePage.value = 1;
+});
+watch(pageSize, (val) => {
+  archivePage.value = 1;
+  savePageSize('clientTicketsPageSize', val);
 });
 watch(view, (v) => {
   if (v === 'archive') {
@@ -191,12 +197,12 @@ async function deleteTicket(ticket) {
             {{ noTicketsMessage }}
           </p>
         </div>
-        <nav
+        <PageNav
           v-if="view === 'archive' && totalArchivePages > 1"
-          class="mt-3 d-flex justify-content-center"
-        >
-          <Pagination v-model="archivePage" :total-pages="totalArchivePages" />
-        </nav>
+          v-model:page="archivePage"
+          v-model:page-size="pageSize"
+          :total-pages="totalArchivePages"
+        />
       </div>
     </div>
   </div>

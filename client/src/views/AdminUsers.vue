@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import Pagination from '../components/Pagination.vue';
+import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
 import Toast from 'bootstrap/js/dist/toast';
@@ -458,21 +459,13 @@ async function copy(text) {
           </p>
         </div>
       </div>
-      <nav
+      <PageNav
         v-if="activeTab === 'users' && totalPages > 1"
-        class="mt-3 d-flex align-items-center justify-content-between"
-      >
-        <select
-          v-model.number="pageSize"
-          class="form-select form-select-sm w-auto"
-        >
-          <option :value="5">5</option>
-          <option :value="8">8</option>
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-        </select>
-        <Pagination v-model="currentPage" :total-pages="totalPages" />
-      </nav>
+        v-model:page="currentPage"
+        v-model:page-size="pageSize"
+        :total-pages="totalPages"
+        :sizes="[5, 8, 10, 20]"
+      />
       <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div
           ref="toastRef"

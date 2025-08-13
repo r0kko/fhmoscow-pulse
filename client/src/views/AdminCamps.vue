@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import Pagination from '../components/Pagination.vue';
+import PageNav from '../components/PageNav.vue';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 
@@ -653,23 +654,13 @@ async function toggleTrainingGroup(training, groupId, checked) {
             <div v-else class="alert alert-info mb-0">Тренировок нет.</div>
           </div>
         </div>
-        <nav
+        <PageNav
           v-if="trainings.length"
-          class="mt-3 d-flex align-items-center justify-content-between"
-        >
-          <select
-            v-model.number="trainingsPageSize"
-            class="form-select form-select-sm w-auto"
-          >
-            <option :value="20">20</option>
-            <option :value="40">40</option>
-            <option :value="100">100</option>
-          </select>
-          <Pagination
-            v-model="trainingsPage"
-            :total-pages="trainingsTotalPages"
-          />
-        </nav>
+          v-model:page="trainingsPage"
+          v-model:page-size="trainingsPageSize"
+          :total-pages="trainingsTotalPages"
+          :sizes="[20, 40, 100]"
+        />
 
         <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
           <div class="modal-dialog">

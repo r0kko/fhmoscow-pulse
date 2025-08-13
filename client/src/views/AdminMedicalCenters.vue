@@ -294,21 +294,13 @@ async function removeCenter(center) {
         <p v-else-if="!isLoading" class="text-muted mb-0">Записей нет.</p>
       </div>
     </div>
-    <nav
+    <PageNav
       v-if="totalPages > 1"
-      class="mt-3 d-flex align-items-center justify-content-between"
-    >
-      <select
-        v-model.number="pageSize"
-        class="form-select form-select-sm w-auto"
-      >
-        <option :value="5">5</option>
-        <option :value="8">8</option>
-        <option :value="10">10</option>
-        <option :value="20">20</option>
-      </select>
-      <Pagination v-model="currentPage" :total-pages="totalPages" />
-    </nav>
+      v-model:page="currentPage"
+      v-model:page-size="pageSize"
+      :total-pages="totalPages"
+      :sizes="[5, 8, 10, 20]"
+    />
 
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog">

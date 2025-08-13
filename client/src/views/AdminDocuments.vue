@@ -4,6 +4,7 @@ import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Pagination from '../components/Pagination.vue';
+import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
@@ -601,20 +602,12 @@ function onCreated() {
             </div>
           </div>
         </div>
-        <nav
+        <PageNav
           v-if="filteredDocuments.length"
-          class="mt-3 d-flex align-items-center justify-content-between"
-        >
-          <select
-            v-model.number="pageSizeDocs"
-            class="form-select form-select-sm w-auto"
-          >
-            <option :value="5">5</option>
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-          </select>
-          <Pagination v-model="currentPageDocs" :total-pages="totalPagesDocs" />
-        </nav>
+          v-model:page="currentPageDocs"
+          v-model:page-size="pageSizeDocs"
+          :total-pages="totalPagesDocs"
+        />
       </div>
     </div>
 
@@ -662,20 +655,12 @@ function onCreated() {
           </div>
         </div>
       </div>
-      <nav
+      <PageNav
         v-if="users.length"
-        class="mt-3 d-flex align-items-center justify-content-between"
-      >
-        <select
-          v-model.number="pageSizeUsers"
-          class="form-select form-select-sm w-auto"
-        >
-          <option :value="5">5</option>
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-        </select>
-        <Pagination v-model="currentPageUsers" :total-pages="totalPagesUsers" />
-      </nav>
+        v-model:page="currentPageUsers"
+        v-model:page-size="pageSizeUsers"
+        :total-pages="totalPagesUsers"
+      />
     </div>
   </div>
   <DocumentUploadModal ref="uploadModal" />
