@@ -3,7 +3,7 @@
     <span v-if="icon" class="input-group-text">
       <i :class="icon"></i>
     </span>
-    <div class="form-floating flex-grow-1">
+    <div class="form-floating flex-grow-1" style="min-width: 0">
       <component
         :is="multiline ? 'textarea' : 'input'"
         :id="id"
@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
 defineProps({
   id: { type: String, required: true },
@@ -42,7 +42,13 @@ function adjustHeight() {
   textareaHeight.value = field.value.scrollHeight + 'px';
 }
 
-onMounted(adjustHeight);
+onMounted(() => {
+  adjustHeight();
+  window.addEventListener('resize', adjustHeight);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', adjustHeight);
+});
 watch(() => value, adjustHeight);
 </script>
 
@@ -50,5 +56,7 @@ watch(() => value, adjustHeight);
 textarea.form-control {
   resize: none;
   overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 </style>

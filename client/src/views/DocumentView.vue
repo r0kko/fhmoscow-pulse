@@ -107,52 +107,62 @@ onMounted(async () => {
         <div v-else>
           <div class="card section-card tile fade-in shadow-sm">
             <div class="card-body">
-              <div
-                v-if="type === 'passport' && passport && user"
-                class="row g-3"
-              >
-                <div class="col-12 col-sm-6">
-                  <InfoItem label="ФИО" :value="fullName" />
+              <div v-if="type === 'passport' && passport && user">
+                <div class="row g-3">
+                  <div class="col-12 col-sm-6">
+                    <InfoItem label="ФИО" :value="fullName" />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem
+                      label="Дата рождения"
+                      :value="
+                        user.birth_date ? formatDate(user.birth_date) : ''
+                      "
+                    />
+                  </div>
+                  <div class="col-12"><hr class="my-2" /></div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem
+                      label="Тип документа"
+                      :value="passport.document_type_name || 'Паспорт РФ'"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem
+                      label="Серия и номер"
+                      :value="passport.series + ' ' + passport.number"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem label="Срок действия" :value="validity" />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem
+                      label="Орган выдачи"
+                      :value="passport.issuing_authority"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem
+                      label="Код подразделения"
+                      :value="passport.issuing_authority_code"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <InfoItem
+                      label="Место рождения"
+                      :value="passport.place_of_birth"
+                    />
+                  </div>
                 </div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem
-                    label="Дата рождения"
-                    :value="user.birth_date ? formatDate(user.birth_date) : ''"
-                  />
-                </div>
-                <div class="col-12"><hr class="my-2" /></div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem
-                    label="Тип документа"
-                    :value="passport.document_type_name || 'Паспорт РФ'"
-                  />
-                </div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem
-                    label="Серия и номер"
-                    :value="passport.series + ' ' + passport.number"
-                  />
-                </div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem label="Срок действия" :value="validity" />
-                </div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem
-                    label="Орган выдачи"
-                    :value="passport.issuing_authority"
-                  />
-                </div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem
-                    label="Код подразделения"
-                    :value="passport.issuing_authority_code"
-                  />
-                </div>
-                <div class="col-12 col-sm-6">
-                  <InfoItem
-                    label="Место рождения"
-                    :value="passport.place_of_birth"
-                  />
+                <div
+                  class="alert alert-warning d-flex align-items-center mt-3 mb-0"
+                >
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  <div>
+                    Для изменения или удаления нужно обратиться в офис ФХМ с
+                    оригиналом документа и паспортом
+                  </div>
                 </div>
               </div>
               <div v-else-if="type === 'inn' && inn">
