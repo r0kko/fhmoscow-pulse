@@ -768,7 +768,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                   <div class="mb-3">
                     <label class="form-label">Тип</label>
                     <select
-                      v-model.number="trainingForm.type_id"
+                      v-model="trainingForm.type_id"
                       class="form-select"
                       required
                     >
