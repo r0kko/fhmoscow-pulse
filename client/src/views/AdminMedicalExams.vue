@@ -278,8 +278,16 @@ function openRegistrations(exam) {
       :sizes="[5, 8, 10, 20]"
     />
 
-    <div ref="modalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
+    <div
+      ref="modalRef"
+      class="modal fade"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
@@ -298,11 +306,7 @@ function openRegistrations(exam) {
               </div>
               <div class="mb-3">
                 <label class="form-label">Медицинский центр</label>
-                <select
-                  v-model.number="form.medical_center_id"
-                  class="form-select"
-                  required
-                >
+                <select v-model="form.medical_center_id" class="form-select" required>
                   <option value="" disabled>Выберите центр</option>
                   <option v-for="c in centers" :key="c.id" :value="c.id">
                     {{ c.name }}

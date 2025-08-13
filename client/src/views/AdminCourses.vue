@@ -73,6 +73,9 @@ const trainingModalRef = ref(null);
 let trainingModal;
 const trainingFormError = ref('');
 const trainingSaveLoading = ref(false);
+const trainingTypeRef = ref(null);
+const trainingGroundRef = ref(null);
+const trainingUrlRef = ref(null);
 const selectedTrainingType = computed(() =>
   trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
 );
@@ -179,11 +182,8 @@ watch(
     ) {
       trainingForm.value.capacity = tt.default_capacity;
     }
-    if (tt?.online) {
-      trainingForm.value.ground_id = '';
-    } else {
-      trainingForm.value.url = '';
-    }
+    // Не сбрасываем ground/url при переключении типа, чтобы не терять ввод.
+    // Ненужное поле будет проигнорировано при отправке.
   }
 );
 
@@ -299,10 +299,21 @@ async function assignTeacher(training) {
   }
 }
 
-function openTrainingModal(training = null) {
+async function openTrainingModal(training = null) {
   if (!trainingModal) {
     trainingModal = new Modal(trainingModalRef.value);
+    try {
+      trainingModalRef.value.addEventListener('shown.bs.modal', () => {
+        // Set initial focus for better UX
+        const el = trainingTypeRef.value || trainingGroundRef.value || trainingUrlRef.value;
+        if (el && typeof el.focus === 'function') el.focus();
+      });
+    } catch {}
   }
+  // Ensure reference lists are loaded
+  if (!trainingTypesLoaded.value) await loadTrainingTypes();
+  if (!grounds.value.length) await loadGrounds();
+  if (!courses.value.length) await loadCourses();
   if (training) {
     editingTraining.value = training;
     trainingForm.value = {
@@ -312,11 +323,7 @@ function openTrainingModal(training = null) {
       start_at: toDateTimeLocal(training.start_at),
       end_at: toDateTimeLocal(training.end_at),
       capacity: training.capacity || '',
-      courses: training.courses
-        ? training.courses
-            .map((c) => Number(c.id))
-            .filter((id) => Number.isInteger(id) && id > 0)
-        : [],
+      courses: training.courses ? training.courses.map((c) => c.id).filter(Boolean) : [],
     };
   } else {
     editingTraining.value = null;
@@ -337,14 +344,36 @@ function openTrainingModal(training = null) {
 async function saveTraining() {
   trainingSaveLoading.value = true;
   try {
+    // Базовая валидация формы для предотвращения 400
+    trainingFormError.value = '';
+    const tt = selectedTrainingType.value;
+    if (!trainingForm.value.type_id) {
+      throw new Error('Укажите тип мероприятия');
+    }
+    if (!trainingForm.value.start_at) {
+      throw new Error('Укажите дату и время начала');
+    }
+    if (!trainingForm.value.end_at) {
+      throw new Error('Укажите дату и время окончания');
+    }
+    const startISO = fromDateTimeLocal(trainingForm.value.start_at);
+    const endISO = fromDateTimeLocal(trainingForm.value.end_at);
+    if (!startISO || !endISO || new Date(endISO) <= new Date(startISO)) {
+      throw new Error('Время окончания должно быть позже начала');
+    }
+    if (tt?.online) {
+      if (!trainingForm.value.url)
+        throw new Error('Укажите ссылку для онлайн‑мероприятия');
+    } else {
+      if (!trainingForm.value.ground_id) throw new Error('Выберите площадку');
+    }
+
     const method = editingTraining.value ? 'PUT' : 'POST';
     const url = editingTraining.value
       ? `/course-trainings/${editingTraining.value.id}`
       : '/course-trainings';
     const courseIds = Array.isArray(trainingForm.value.courses)
-      ? trainingForm.value.courses
-          .map((id) => Number(id))
-          .filter((id) => Number.isInteger(id) && id > 0)
+      ? trainingForm.value.courses.filter((id) => typeof id === 'string' && id.length > 0)
       : [];
     const capacityValue =
       trainingForm.value.capacity === '' || trainingForm.value.capacity === null
@@ -352,8 +381,8 @@ async function saveTraining() {
         : trainingForm.value.capacity;
     const body = {
       type_id: trainingForm.value.type_id,
-      start_at: fromDateTimeLocal(trainingForm.value.start_at),
-      end_at: fromDateTimeLocal(trainingForm.value.end_at),
+      start_at: startISO,
+      end_at: endISO,
       capacity: capacityValue,
       courses: courseIds,
       ...(selectedTrainingType.value?.online
@@ -599,13 +628,21 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div ref="historyModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2 class="modal-title h5">
-                История посещений — {{ historyJudgeName }}
-              </h2>
+        <div
+          ref="historyModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2 class="modal-title h5">
+                  История посещений — {{ historyJudgeName }}
+                </h2>
               <button
                 type="button"
                 class="btn-close"
@@ -923,8 +960,16 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div ref="courseModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="courseModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">
@@ -1354,8 +1399,16 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div ref="trainingModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="trainingModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">
@@ -1376,7 +1429,8 @@ onBeforeUnmount(() => {
                 <div class="mb-3">
                   <label class="form-label">Тип</label>
                   <select
-                    v-model.number="trainingForm.type_id"
+                    ref="trainingTypeRef"
+                    v-model="trainingForm.type_id"
                     class="form-select"
                   >
                     <option value="">Выберите тип</option>
@@ -1389,19 +1443,23 @@ onBeforeUnmount(() => {
                     </option>
                   </select>
                 </div>
-                <div v-if="selectedTrainingType?.online" class="mb-3">
+                <div class="mb-3" v-show="selectedTrainingType?.online">
                   <label class="form-label">Ссылка</label>
                   <input
+                    ref="trainingUrlRef"
                     v-model="trainingForm.url"
                     type="url"
                     class="form-control"
+                    :disabled="!selectedTrainingType?.online"
                   />
                 </div>
-                <div v-else class="mb-3">
+                <div class="mb-3" v-show="!selectedTrainingType?.online">
                   <label class="form-label">Площадка</label>
                   <select
-                    v-model.number="trainingForm.ground_id"
+                    ref="trainingGroundRef"
+                    v-model="trainingForm.ground_id"
                     class="form-select"
+                    :disabled="selectedTrainingType?.online"
                   >
                     <option value="">Выберите площадку</option>
                     <option v-for="g in grounds" :key="g.id" :value="g.id">

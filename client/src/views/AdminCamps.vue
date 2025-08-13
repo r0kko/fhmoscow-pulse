@@ -123,11 +123,8 @@ watch(
     ) {
       trainingForm.value.capacity = tt.default_capacity;
     }
-    if (tt?.online) {
-      trainingForm.value.ground_id = '';
-    } else {
-      trainingForm.value.url = '';
-    }
+    // Не сбрасываем ground/url при переключении типа, чтобы не терять ввод.
+    // Ненужное поле будет проигнорировано при отправке.
   }
 );
 
@@ -661,8 +658,16 @@ async function toggleTrainingGroup(training, groupId, checked) {
           :sizes="[20, 40, 100]"
         />
 
-        <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="trainingFilterModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">Фильтры</h5>
@@ -675,10 +680,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <div class="modal-body">
                 <div class="mb-3">
                   <label class="form-label">Площадка</label>
-                  <select
-                    v-model.number="trainingsFilterGround"
-                    class="form-select"
-                  >
+                  <select v-model="trainingsFilterGround" class="form-select">
                     <option value="">Все стадионы</option>
                     <option
                       v-for="s in groundOptions"
@@ -691,10 +693,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Группа</label>
-                  <select
-                    v-model.number="trainingsFilterGroup"
-                    class="form-select"
-                  >
+                  <select v-model="trainingsFilterGroup" class="form-select">
                     <option value="">Все группы</option>
                     <option
                       v-for="g in refereeGroups"
@@ -730,8 +729,16 @@ async function toggleTrainingGroup(training, groupId, checked) {
           </div>
         </div>
 
-        <div ref="trainingModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="trainingModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
               <form @submit.prevent="saveTraining">
                 <div class="modal-header">
@@ -769,20 +776,22 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       </option>
                     </select>
                   </div>
-                  <div v-if="selectedTrainingType?.online" class="mb-3">
+                  <div class="mb-3" v-show="selectedTrainingType?.online">
                     <label class="form-label">Ссылка</label>
                     <input
                       v-model="trainingForm.url"
                       type="url"
                       class="form-control"
+                      :disabled="!selectedTrainingType?.online"
                     />
                   </div>
-                  <div v-else class="mb-3">
+                  <div class="mb-3" v-show="!selectedTrainingType?.online">
                     <label class="form-label">Площадка</label>
                     <select
                       v-model="trainingForm.ground_id"
                       class="form-select"
-                      required
+                      :required="!selectedTrainingType?.online"
+                      :disabled="selectedTrainingType?.online"
                     >
                       <option value="" disabled>Выберите стадион</option>
                       <option
