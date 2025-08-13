@@ -9,9 +9,13 @@ const userSections = [
 ];
 
 const refereeSections = [
-  { title: 'Сборы', icon: 'bi-building', to: '/admin/grounds' },
+  { title: 'Сборы', icon: 'bi-building', to: '/admin/camps' },
   { title: 'Нормативы', icon: 'bi-speedometer2', to: '/admin/normatives' },
   { title: 'Мероприятия', icon: 'bi-calendar-event', to: '/admin/courses' },
+];
+
+const systemSections = [
+  { title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' },
 ];
 </script>
 
@@ -46,6 +50,26 @@ const refereeSections = [
           <div class="scroll-container">
             <RouterLink
               v-for="item in refereeSections"
+              :key="item.to"
+              :to="item.to"
+              class="menu-card card text-decoration-none text-body tile fade-in"
+              :aria-label="item.title"
+            >
+              <div class="card-body">
+                <p class="card-title small mb-2">{{ item.title }}</p>
+                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+              </div>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+
+      <div class="card section-card mb-2">
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">Управление сущностями системы</h2>
+          <div class="scroll-container">
+            <RouterLink
+              v-for="item in systemSections"
               :key="item.to"
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"
