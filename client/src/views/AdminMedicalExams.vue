@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
-import Pagination from '../components/Pagination.vue';
 import PageNav from '../components/PageNav.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 

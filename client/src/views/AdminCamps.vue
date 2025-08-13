@@ -3,7 +3,6 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
-import Pagination from '../components/Pagination.vue';
 import PageNav from '../components/PageNav.vue';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';

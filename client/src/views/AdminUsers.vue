@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
-import Pagination from '../components/Pagination.vue';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';

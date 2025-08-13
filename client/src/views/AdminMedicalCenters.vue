@@ -3,7 +3,6 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
-import Pagination from '../components/Pagination.vue';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
 const centers = ref([]);

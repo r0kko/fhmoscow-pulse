@@ -2,7 +2,6 @@
 import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch, apiFetchBlob } from '../api.js';
-import Pagination from '../components/Pagination.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const route = useRoute();

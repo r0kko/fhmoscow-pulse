@@ -3,7 +3,6 @@ import { ref, reactive, onMounted, computed, watch } from 'vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import Pagination from '../components/Pagination.vue';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
