@@ -5,7 +5,9 @@ import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
+import InlineError from '../components/InlineError.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
+import { endAfterStart, required } from '../utils/validation.js';
 
 const activeTab = ref('assign');
 
@@ -78,6 +80,25 @@ const trainingGroundRef = ref(null);
 const trainingUrlRef = ref(null);
 const selectedTrainingType = computed(() =>
   trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
+);
+
+// Inline validation flags using shared helpers
+const isTypeMissing = computed(() => !required(trainingForm.value.type_id));
+const isStartMissing = computed(() => !required(trainingForm.value.start_at));
+const isEndMissing = computed(() => !required(trainingForm.value.end_at));
+const isOrderInvalid = computed(
+  () =>
+    !endAfterStart(
+      trainingForm.value.start_at || '',
+      trainingForm.value.end_at || ''
+    )
+);
+const isOnline = computed(() => !!selectedTrainingType.value?.online);
+const isGroundRequired = computed(
+  () => !isOnline.value && !required(trainingForm.value.ground_id)
+);
+const isUrlRequired = computed(
+  () => isOnline.value && !required(trainingForm.value.url)
 );
 
 const filter = ref({ type: '', teacher: '', course: '' });
@@ -1445,6 +1466,7 @@ onBeforeUnmount(() => {
                     ref="trainingTypeRef"
                     v-model="trainingForm.type_id"
                     class="form-select"
+                    :class="{ 'is-invalid': isTypeMissing }"
                   >
                     <option value="">Выберите тип</option>
                     <option
@@ -1455,6 +1477,10 @@ onBeforeUnmount(() => {
                       {{ tt.name }}
                     </option>
                   </select>
+                  <InlineError
+                    v-if="isTypeMissing"
+                    message="Укажите тип мероприятия"
+                  />
                 </div>
                 <div v-show="selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Ссылка</label>
@@ -1463,7 +1489,12 @@ onBeforeUnmount(() => {
                     v-model="trainingForm.url"
                     type="url"
                     class="form-control"
+                    :class="{ 'is-invalid': isUrlRequired }"
                     :disabled="!selectedTrainingType?.online"
+                  />
+                  <InlineError
+                    v-if="isUrlRequired"
+                    message="Укажите ссылку для онлайн‑мероприятия"
                   />
                 </div>
                 <div v-show="!selectedTrainingType?.online" class="mb-3">
@@ -1472,6 +1503,7 @@ onBeforeUnmount(() => {
                     ref="trainingGroundRef"
                     v-model="trainingForm.ground_id"
                     class="form-select"
+                    :class="{ 'is-invalid': isGroundRequired }"
                     :disabled="selectedTrainingType?.online"
                   >
                     <option value="">Выберите площадку</option>
@@ -1479,6 +1511,10 @@ onBeforeUnmount(() => {
                       {{ g.name }}
                     </option>
                   </select>
+                  <InlineError
+                    v-if="isGroundRequired"
+                    message="Выберите площадку"
+                  />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Начало</label>
@@ -1486,6 +1522,11 @@ onBeforeUnmount(() => {
                     v-model="trainingForm.start_at"
                     type="datetime-local"
                     class="form-control"
+                    :class="{ 'is-invalid': isStartMissing }"
+                  />
+                  <InlineError
+                    v-if="isStartMissing"
+                    message="Укажите дату и время начала"
                   />
                 </div>
                 <div class="mb-3">
@@ -1494,6 +1535,15 @@ onBeforeUnmount(() => {
                     v-model="trainingForm.end_at"
                     type="datetime-local"
                     class="form-control"
+                    :class="{ 'is-invalid': isEndMissing || isOrderInvalid }"
+                  />
+                  <InlineError
+                    v-if="isEndMissing"
+                    message="Укажите дату и время окончания"
+                  />
+                  <InlineError
+                    v-else-if="isOrderInvalid"
+                    message="Время окончания должно быть позже начала"
                   />
                 </div>
                 <div class="mb-3">
