@@ -30,7 +30,8 @@ Document.init(
   }
 );
 
-Document.addHook('beforeCreate', async (doc) => {
+Document.addHook('beforeValidate', async (doc) => {
+  if (doc.number) return;
   const [{ nextval }] = await sequelize.query(
     // eslint-disable-next-line quotes
     "SELECT nextval('documents_number_seq') AS nextval",
