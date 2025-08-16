@@ -48,7 +48,7 @@ async function checkCourse() {
 
 const workSections = computed(() =>
   hasCourse.value
-    ? [...baseWorkSections, qualificationSection]
+    ? [qualificationSection, ...baseWorkSections]
     : baseWorkSections
 );
 
