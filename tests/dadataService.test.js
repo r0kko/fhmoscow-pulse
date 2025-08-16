@@ -108,11 +108,9 @@ test('findOrganizationByInn returns first suggestion', async () => {
 test('returns null when token missing', async () => {
   const original = process.env.DADATA_TOKEN;
   delete process.env.DADATA_TOKEN;
-  let res;
-  await jest.isolateModulesAsync(async () => {
-    const { suggestFio } = await import('../src/services/dadataService.js');
-    res = await suggestFio('x');
-  });
+  jest.resetModules();
+  const { suggestFio } = await import('../src/services/dadataService.js');
+  const res = await suggestFio('x');
   expect(res).toEqual([]);
   process.env.DADATA_TOKEN = original;
 });
@@ -122,23 +120,20 @@ test('returns status 0 when secret missing for cleanPassport', async () => {
   const secret = process.env.DADATA_SECRET;
   process.env.DADATA_TOKEN = 'token';
   delete process.env.DADATA_SECRET;
-  let res;
-  await jest.isolateModulesAsync(async () => {
-    const { cleanPassport } = await import('../src/services/dadataService.js');
-    res = await cleanPassport('1234');
-  });
+  jest.resetModules();
+  const { cleanPassport } = await import('../src/services/dadataService.js');
+  const res = await cleanPassport('1234');
   expect(res).toBeNull();
   process.env.DADATA_TOKEN = token;
   process.env.DADATA_SECRET = secret;
 });
 
 test('request handles fetch rejection', async () => {
-  let res;
-  await jest.isolateModulesAsync(async () => {
-    const { suggestFio } = await import('../src/services/dadataService.js');
-    fetch.mockRejectedValueOnce(new Error('fail'));
-    res = await suggestFio('x');
-  });
+  jest.resetModules();
+  const { suggestFio } = await import('../src/services/dadataService.js');
+  fetch.mockRejectedValueOnce(new Error('fail'));
+  const res = await suggestFio('x');
   expect(res).toEqual([]);
   expect(warnMock).toHaveBeenCalled();
 });
+

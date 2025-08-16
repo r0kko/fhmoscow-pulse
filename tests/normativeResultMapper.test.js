@@ -1,20 +1,10 @@
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect } from '@jest/globals';
+import mapper from '../src/mappers/normativeResultMapper.js';
 
-let mapper;
-let zoneMapper;
-let groupMapper;
-let userMapper;
-let trainingMapper;
-
-beforeEach(async () => {
-  await jest.isolateModulesAsync(async () => {
-    ({ default: mapper } = await import('../src/mappers/normativeResultMapper.js'));
-    ({ default: zoneMapper } = await import('../src/mappers/normativeZoneMapper.js'));
-    ({ default: groupMapper } = await import('../src/mappers/normativeGroupMapper.js'));
-    ({ default: userMapper } = await import('../src/mappers/userMapper.js'));
-    ({ default: trainingMapper } = await import('../src/mappers/trainingMapper.js'));
-  });
-});
+const zoneMapper = await import('../src/mappers/normativeZoneMapper.js');
+const groupMapper = await import('../src/mappers/normativeGroupMapper.js');
+const userMapper = await import('../src/mappers/userMapper.js');
+const trainingMapper = await import('../src/mappers/trainingMapper.js');
 
 const zone = { alias: 'GREEN', name: 'Green' };
 const group = { id: 'g1', name: 'Group1' };
@@ -52,10 +42,10 @@ describe('normativeResultMapper', () => {
       online: false,
       retake: false,
       value: 10,
-      zone: zoneMapper.toPublic(zone),
-      group: groupMapper.toPublic(group),
-      user: userMapper.toPublic({ id: 'u1', first_name: 'John' }),
-      training: trainingMapper.toPublic({
+      zone: zoneMapper.default.toPublic(zone),
+      group: groupMapper.default.toPublic(group),
+      user: userMapper.default.toPublic({ id: 'u1', first_name: 'John' }),
+      training: trainingMapper.default.toPublic({
         id: 't1',
         start_at: '2025-07-18T10:00:00Z',
       }),

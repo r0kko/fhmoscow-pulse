@@ -12,10 +12,8 @@ const findResultByPkMock = jest.fn();
 const sendAddEmailMock = jest.fn();
 const sendUpdateEmailMock = jest.fn();
 const sendRemoveEmailMock = jest.fn();
-const determineZoneMock = jest.fn();
 
-function mockAll() {
-  jest.unstable_mockModule('../src/models/index.js', () => ({
+jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   NormativeResult: {
     findAndCountAll: findAndCountAllMock,
@@ -37,29 +35,25 @@ function mockAll() {
     create: createRegMock,
   },
   TrainingRole: { findOne: findRoleMock },
-  }));
+}));
 
-  jest.unstable_mockModule('../src/services/normativeTypeService.js', () => ({
+const determineZoneMock = jest.fn();
+jest.unstable_mockModule('../src/services/normativeTypeService.js', () => ({
   __esModule: true,
   parseResultValue: jest.fn((v) => v),
   determineZone: determineZoneMock,
-  }));
+}));
 
-  jest.unstable_mockModule('../src/services/emailService.js', () => ({
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
   __esModule: true,
   default: {
     sendNormativeResultAddedEmail: sendAddEmailMock,
     sendNormativeResultUpdatedEmail: sendUpdateEmailMock,
     sendNormativeResultRemovedEmail: sendRemoveEmailMock,
   },
-  }));
-}
+}));
 
-let service;
-await jest.isolateModulesAsync(async () => {
-  mockAll();
-  ({ default: service } = await import('../src/services/normativeResultService.js'));
-});
+const { default: service } = await import('../src/services/normativeResultService.js');
 
 const dataRow = {
   setDataValue(key, val) {

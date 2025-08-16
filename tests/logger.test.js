@@ -8,14 +8,10 @@ jest.unstable_mockModule('../src/models/log.js', () => ({
   default: { create: createMock },
 }));
 
-let logger;
-let stream;
+const { default: logger } = await import('../logger.js');
+const stream = logger.transports[0]._stream;
 
-beforeEach(async () => {
-  await jest.isolateModulesAsync(async () => {
-    ({ default: logger } = await import('../logger.js'));
-  });
-  stream = logger.transports[0]._stream;
+beforeEach(() => {
   jest.clearAllMocks();
 });
 

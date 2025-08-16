@@ -1,15 +1,10 @@
-import { beforeEach, jest, expect, test } from '@jest/globals';
+import { jest, expect, test } from '@jest/globals';
 
-let sequelize;
-let Document;
+import sequelize from '../src/config/database.js';
+import Document from '../src/models/document.js';
 
-beforeEach(async () => {
-  await jest.isolateModulesAsync(async () => {
-    sequelize = (await import('../src/config/database.js')).default;
-    Document = (await import('../src/models/document.js')).default;
-  });
-  jest.spyOn(sequelize, 'query').mockResolvedValue([{ nextval: 7 }]);
-});
+// Mock sequence generation
+jest.spyOn(sequelize, 'query').mockResolvedValue([{ nextval: 7 }]);
 
 test('generates document number before validation', async () => {
   const doc = Document.build({
