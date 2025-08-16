@@ -6,6 +6,12 @@ import { apiFetch } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import PageNav from '../components/PageNav.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
+import {
+  endAfterStart,
+  required,
+  nonNegativeNumber,
+} from '../utils/validation.js';
+import InlineError from '../components/InlineError.vue';
 
 const exams = ref([]);
 const total = ref(0);
@@ -25,6 +31,16 @@ const editing = ref(null);
 const modalRef = ref(null);
 let modal;
 const formError = ref('');
+// Inline validation via shared helpers
+const isCenterMissing = computed(() => !required(form.value.medical_center_id));
+const isStartMissing = computed(() => !required(form.value.start_at));
+const isEndMissing = computed(() => !required(form.value.end_at));
+const isOrderInvalid = computed(
+  () => !endAfterStart(form.value.start_at || '', form.value.end_at || '')
+);
+const isCapacityInvalid = computed(
+  () => !nonNegativeNumber(form.value.capacity)
+);
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
@@ -132,6 +148,14 @@ async function save() {
       end_at: fromDateTimeLocal(form.value.end_at),
       capacity: form.value.capacity,
     };
+    if (!body.medical_center_id) throw new Error('Выберите медицинский центр');
+    if (!body.start_at) throw new Error('Укажите дату и время начала');
+    if (!body.end_at) throw new Error('Укажите дату и время окончания');
+    if (new Date(body.end_at) < new Date(body.start_at)) {
+      throw new Error('Время окончания должно быть позже начала');
+    }
+    if (isCapacityInvalid.value)
+      throw new Error('Вместимость должна быть неотрицательным числом');
     if (editing.value) {
       await apiFetch(`/medical-exams/${editing.value.id}`, {
         method: 'PUT',
@@ -278,8 +302,16 @@ function openRegistrations(exam) {
       :sizes="[5, 8, 10, 20]"
     />
 
-    <div ref="modalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog">
+    <div
+      ref="modalRef"
+      class="modal fade"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
@@ -299,8 +331,9 @@ function openRegistrations(exam) {
               <div class="mb-3">
                 <label class="form-label">Медицинский центр</label>
                 <select
-                  v-model.number="form.medical_center_id"
+                  v-model="form.medical_center_id"
                   class="form-select"
+                  :class="{ 'is-invalid': isCenterMissing }"
                   required
                 >
                   <option value="" disabled>Выберите центр</option>
@@ -308,6 +341,10 @@ function openRegistrations(exam) {
                     {{ c.name }}
                   </option>
                 </select>
+                <InlineError
+                  v-if="isCenterMissing"
+                  message="Выберите медицинский центр"
+                />
               </div>
               <div class="form-floating mb-3">
                 <input
@@ -315,9 +352,14 @@ function openRegistrations(exam) {
                   v-model="form.start_at"
                   type="datetime-local"
                   class="form-control"
+                  :class="{ 'is-invalid': isStartMissing }"
                   required
                 />
                 <label for="exStart">Начало</label>
+                <InlineError
+                  v-if="isStartMissing"
+                  message="Укажите дату и время начала"
+                />
               </div>
               <div class="form-floating mb-3">
                 <input
@@ -325,9 +367,18 @@ function openRegistrations(exam) {
                   v-model="form.end_at"
                   type="datetime-local"
                   class="form-control"
+                  :class="{ 'is-invalid': isEndMissing || isOrderInvalid }"
                   required
                 />
                 <label for="exEnd">Окончание</label>
+                <InlineError
+                  v-if="isEndMissing"
+                  message="Укажите дату и время окончания"
+                />
+                <InlineError
+                  v-else-if="isOrderInvalid"
+                  message="Время окончания должно быть позже начала"
+                />
               </div>
               <div class="form-floating mb-3">
                 <input
@@ -336,8 +387,13 @@ function openRegistrations(exam) {
                   type="number"
                   min="0"
                   class="form-control"
+                  :class="{ 'is-invalid': isCapacityInvalid }"
                 />
                 <label for="exCap">Количество мест</label>
+                <InlineError
+                  v-if="isCapacityInvalid"
+                  message="Введите неотрицательное число"
+                />
               </div>
             </div>
             <div class="modal-footer">

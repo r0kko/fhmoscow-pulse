@@ -8,7 +8,7 @@
     "start": "node ./bin/www",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --maxWorkers=2",
     "test:coverage": "npm test -- --coverage --coverageReporters=text-summary",
     "format": "prettier --write \"./{src,routes,controllers,services,models,public,scripts,test}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"./{src,routes,controllers,services,models,public,scripts,test}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
@@ -46,14 +46,15 @@
     "pdfkit-table": "^0.1.99",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
-    "redis": "^5.7.0",
+    "redis": "^5.8.1",
     "safe-regex": "^2.1.1",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "bwip-js": "^4.5.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

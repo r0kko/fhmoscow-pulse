@@ -6,8 +6,14 @@ import { apiFetch } from '../api.js';
 import PageNav from '../components/PageNav.vue';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
+import {
+  endAfterStart,
+  required,
+  nonNegativeNumber,
+} from '../utils/validation.js';
 
 import RefereeGroups from '../components/RefereeGroups.vue';
+import InlineError from '../components/InlineError.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -123,11 +129,8 @@ watch(
     ) {
       trainingForm.value.capacity = tt.default_capacity;
     }
-    if (tt?.online) {
-      trainingForm.value.ground_id = '';
-    } else {
-      trainingForm.value.url = '';
-    }
+    // Не сбрасываем ground/url при переключении типа, чтобы не терять ввод.
+    // Ненужное поле будет проигнорировано при отправке.
   }
 );
 
@@ -251,6 +254,25 @@ function parseInput(val) {
   return new Date(fromDateTimeLocal(val));
 }
 
+// Inline validation helpers
+const isOnline = computed(() => !!selectedTrainingType.value?.online);
+const isTypeMissing = computed(() => !required(trainingForm.value.type_id));
+const isStartMissing = computed(() => !required(trainingForm.value.start_at));
+const isEndMissing = computed(() => !required(trainingForm.value.end_at));
+const isOrderInvalid = computed(
+  () =>
+    !endAfterStart(
+      trainingForm.value.start_at || '',
+      trainingForm.value.end_at || ''
+    )
+);
+const isGroundRequired = computed(
+  () => !isOnline.value && !required(trainingForm.value.ground_id)
+);
+const isUrlRequired = computed(
+  () => isOnline.value && !required(trainingForm.value.url)
+);
+
 function formatDateTimeRange(start, end) {
   if (!start) return '';
   const startDate = new Date(start);
@@ -310,10 +332,7 @@ function openEditTraining(t) {
 }
 
 async function saveTraining() {
-  if (
-    parseInput(trainingForm.value.end_at) <=
-    parseInput(trainingForm.value.start_at)
-  ) {
+  if (isOrderInvalid.value) {
     trainingFormError.value = 'Время окончания должно быть позже начала';
     return;
   }
@@ -661,8 +680,18 @@ async function toggleTrainingGroup(training, groupId, checked) {
           :sizes="[20, 40, 100]"
         />
 
-        <div ref="trainingFilterModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="trainingFilterModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">Фильтры</h5>
@@ -675,10 +704,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
               <div class="modal-body">
                 <div class="mb-3">
                   <label class="form-label">Площадка</label>
-                  <select
-                    v-model.number="trainingsFilterGround"
-                    class="form-select"
-                  >
+                  <select v-model="trainingsFilterGround" class="form-select">
                     <option value="">Все стадионы</option>
                     <option
                       v-for="s in groundOptions"
@@ -691,10 +717,7 @@ async function toggleTrainingGroup(training, groupId, checked) {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Группа</label>
-                  <select
-                    v-model.number="trainingsFilterGroup"
-                    class="form-select"
-                  >
+                  <select v-model="trainingsFilterGroup" class="form-select">
                     <option value="">Все группы</option>
                     <option
                       v-for="g in refereeGroups"
@@ -730,8 +753,18 @@ async function toggleTrainingGroup(training, groupId, checked) {
           </div>
         </div>
 
-        <div ref="trainingModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="trainingModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <form @submit.prevent="saveTraining">
                 <div class="modal-header">
@@ -757,7 +790,8 @@ async function toggleTrainingGroup(training, groupId, checked) {
                     <select
                       v-model="trainingForm.type_id"
                       class="form-select"
-                      required
+                      :class="{ 'is-invalid': isTypeMissing }"
+                      :required="true"
                     >
                       <option value="" disabled>Выберите тип</option>
                       <option
@@ -768,21 +802,33 @@ async function toggleTrainingGroup(training, groupId, checked) {
                         {{ tt.name }}
                       </option>
                     </select>
+                    <InlineError
+                      v-if="isTypeMissing"
+                      message="Укажите тип тренировки"
+                    />
                   </div>
-                  <div v-if="selectedTrainingType?.online" class="mb-3">
+                  <div v-show="selectedTrainingType?.online" class="mb-3">
                     <label class="form-label">Ссылка</label>
                     <input
                       v-model="trainingForm.url"
                       type="url"
                       class="form-control"
+                      :class="{ 'is-invalid': isUrlRequired }"
+                      :disabled="!selectedTrainingType?.online"
+                    />
+                    <InlineError
+                      v-if="isUrlRequired"
+                      message="Укажите ссылку для онлайн‑тренировки"
                     />
                   </div>
-                  <div v-else class="mb-3">
+                  <div v-show="!selectedTrainingType?.online" class="mb-3">
                     <label class="form-label">Площадка</label>
                     <select
                       v-model="trainingForm.ground_id"
                       class="form-select"
-                      required
+                      :required="!selectedTrainingType?.online"
+                      :disabled="selectedTrainingType?.online"
+                      :class="{ 'is-invalid': isGroundRequired }"
                     >
                       <option value="" disabled>Выберите стадион</option>
                       <option
@@ -793,6 +839,10 @@ async function toggleTrainingGroup(training, groupId, checked) {
                         {{ s.name }}
                       </option>
                     </select>
+                    <InlineError
+                      v-if="isGroundRequired"
+                      message="Выберите площадку"
+                    />
                   </div>
                   <div class="form-floating mb-3">
                     <input
@@ -800,9 +850,14 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       v-model="trainingForm.start_at"
                       type="datetime-local"
                       class="form-control"
-                      required
+                      :class="{ 'is-invalid': isStartMissing }"
+                      :required="true"
                     />
                     <label for="trStart">Начало</label>
+                    <InlineError
+                      v-if="isStartMissing"
+                      message="Укажите дату и время начала"
+                    />
                   </div>
                   <div class="form-floating mb-3">
                     <input
@@ -810,9 +865,18 @@ async function toggleTrainingGroup(training, groupId, checked) {
                       v-model="trainingForm.end_at"
                       type="datetime-local"
                       class="form-control"
-                      required
+                      :class="{ 'is-invalid': isEndMissing || isOrderInvalid }"
+                      :required="true"
                     />
                     <label for="trEnd">Окончание</label>
+                    <InlineError
+                      v-if="isEndMissing"
+                      message="Укажите дату и время окончания"
+                    />
+                    <InlineError
+                      v-else-if="isOrderInvalid"
+                      message="Время окончания должно быть позже начала"
+                    />
                   </div>
                   <div class="form-floating mb-3">
                     <input

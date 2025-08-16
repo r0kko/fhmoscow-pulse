@@ -3,7 +3,15 @@ import { Writable } from 'stream';
 import { createLogger, format, transports } from 'winston';
 import { v4 as uuidv4 } from 'uuid';
 
-import Log from './src/models/log.js';
+// Lazy import to avoid ESM module being linked too early across tests.
+// This helps prevent "module is already linked" errors when tests mock the model.
+let _LogModule = null;
+async function getLogModel() {
+  if (_LogModule) return _LogModule;
+  const mod = await import('./src/models/log.js');
+  _LogModule = mod.default || mod;
+  return _LogModule;
+}
 
 const { combine, timestamp, printf, errors, colorize, json, splat } = format;
 
@@ -60,6 +68,7 @@ const logger = createLogger({
           if (!parsed) return cb();
 
           try {
+            const Log = await getLogModel();
             await Log.create({
               id: uuidv4(),
               method: parsed.method,

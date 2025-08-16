@@ -5,7 +5,9 @@ import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
+import InlineError from '../components/InlineError.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
+import { endAfterStart, required } from '../utils/validation.js';
 
 const activeTab = ref('assign');
 
@@ -73,8 +75,30 @@ const trainingModalRef = ref(null);
 let trainingModal;
 const trainingFormError = ref('');
 const trainingSaveLoading = ref(false);
+const trainingTypeRef = ref(null);
+const trainingGroundRef = ref(null);
+const trainingUrlRef = ref(null);
 const selectedTrainingType = computed(() =>
   trainingTypes.value.find((t) => t.id === trainingForm.value.type_id)
+);
+
+// Inline validation flags using shared helpers
+const isTypeMissing = computed(() => !required(trainingForm.value.type_id));
+const isStartMissing = computed(() => !required(trainingForm.value.start_at));
+const isEndMissing = computed(() => !required(trainingForm.value.end_at));
+const isOrderInvalid = computed(
+  () =>
+    !endAfterStart(
+      trainingForm.value.start_at || '',
+      trainingForm.value.end_at || ''
+    )
+);
+const isOnline = computed(() => !!selectedTrainingType.value?.online);
+const isGroundRequired = computed(
+  () => !isOnline.value && !required(trainingForm.value.ground_id)
+);
+const isUrlRequired = computed(
+  () => isOnline.value && !required(trainingForm.value.url)
 );
 
 const filter = ref({ type: '', teacher: '', course: '' });
@@ -179,11 +203,18 @@ watch(
     ) {
       trainingForm.value.capacity = tt.default_capacity;
     }
-    if (tt?.online) {
-      trainingForm.value.ground_id = '';
-    } else {
-      trainingForm.value.url = '';
-    }
+    // Не сбрасываем ground/url при переключении типа, чтобы не терять ввод.
+    // Ненужное поле будет проигнорировано при отправке.
+  }
+);
+
+watch(
+  () => trainingForm.value.start_at,
+  (val) => {
+    if (!val || editingTraining.value) return;
+    const end = new Date(val);
+    end.setMinutes(end.getMinutes() + 90);
+    trainingForm.value.end_at = toDateTimeLocal(end.toISOString());
   }
 );
 
@@ -289,10 +320,24 @@ async function assignTeacher(training) {
   }
 }
 
-function openTrainingModal(training = null) {
+async function openTrainingModal(training = null) {
   if (!trainingModal) {
     trainingModal = new Modal(trainingModalRef.value);
+    try {
+      trainingModalRef.value.addEventListener('shown.bs.modal', () => {
+        // Set initial focus for better UX
+        const el =
+          trainingTypeRef.value ||
+          trainingGroundRef.value ||
+          trainingUrlRef.value;
+        if (el && typeof el.focus === 'function') el.focus();
+      });
+    } catch {}
   }
+  // Ensure reference lists are loaded
+  if (!trainingTypesLoaded.value) await loadTrainingTypes();
+  if (!grounds.value.length) await loadGrounds();
+  if (!courses.value.length) await loadCourses();
   if (training) {
     editingTraining.value = training;
     trainingForm.value = {
@@ -302,7 +347,9 @@ function openTrainingModal(training = null) {
       start_at: toDateTimeLocal(training.start_at),
       end_at: toDateTimeLocal(training.end_at),
       capacity: training.capacity || '',
-      courses: training.courses ? training.courses.map((c) => c.id) : [],
+      courses: training.courses
+        ? training.courses.map((c) => c.id).filter(Boolean)
+        : [],
     };
   } else {
     editingTraining.value = null;
@@ -323,19 +370,52 @@ function openTrainingModal(training = null) {
 async function saveTraining() {
   trainingSaveLoading.value = true;
   try {
+    // Базовая валидация формы для предотвращения 400
+    trainingFormError.value = '';
+    const tt = selectedTrainingType.value;
+    if (!trainingForm.value.type_id) {
+      throw new Error('Укажите тип мероприятия');
+    }
+    if (!trainingForm.value.start_at) {
+      throw new Error('Укажите дату и время начала');
+    }
+    if (!trainingForm.value.end_at) {
+      throw new Error('Укажите дату и время окончания');
+    }
+    const startISO = fromDateTimeLocal(trainingForm.value.start_at);
+    const endISO = fromDateTimeLocal(trainingForm.value.end_at);
+    if (!startISO || !endISO || new Date(endISO) <= new Date(startISO)) {
+      throw new Error('Время окончания должно быть позже начала');
+    }
+    if (tt?.online) {
+      if (!trainingForm.value.url)
+        throw new Error('Укажите ссылку для онлайн‑мероприятия');
+    } else {
+      if (!trainingForm.value.ground_id) throw new Error('Выберите площадку');
+    }
+
     const method = editingTraining.value ? 'PUT' : 'POST';
     const url = editingTraining.value
       ? `/course-trainings/${editingTraining.value.id}`
       : '/course-trainings';
+    const courseIds = Array.isArray(trainingForm.value.courses)
+      ? trainingForm.value.courses.filter(
+          (id) => typeof id === 'string' && id.length > 0
+        )
+      : [];
+    const capacityValue =
+      trainingForm.value.capacity === '' || trainingForm.value.capacity === null
+        ? undefined
+        : trainingForm.value.capacity;
     const body = {
       type_id: trainingForm.value.type_id,
-      start_at: fromDateTimeLocal(trainingForm.value.start_at),
-      end_at: fromDateTimeLocal(trainingForm.value.end_at),
-      capacity: trainingForm.value.capacity || undefined,
-      courses: trainingForm.value.courses,
+      start_at: startISO,
+      end_at: endISO,
+      capacity: capacityValue,
+      courses: courseIds,
       ...(selectedTrainingType.value?.online
         ? { url: trainingForm.value.url || undefined }
-        : { ground_id: trainingForm.value.ground_id }),
+        : { ground_id: trainingForm.value.ground_id || undefined }),
     };
     await apiFetch(url, {
       method,
@@ -351,7 +431,7 @@ async function saveTraining() {
 }
 
 async function deleteTraining(id) {
-  if (!confirm('Удалить тренировку?')) return;
+  if (!confirm('Удалить мероприятие?')) return;
   try {
     await apiFetch(`/course-trainings/${id}`, { method: 'DELETE' });
     await loadTrainingsAdmin();
@@ -576,8 +656,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div ref="historyModalRef" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+      <div
+        ref="historyModalRef"
+        class="modal fade"
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+        data-bs-backdrop="static"
+        data-bs-keyboard="false"
+      >
+        <div
+          class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+        >
           <div class="modal-content">
             <div class="modal-header">
               <h2 class="modal-title h5">
@@ -900,8 +990,18 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div ref="courseModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="courseModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">
@@ -1086,14 +1186,14 @@ onBeforeUnmount(() => {
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
-                        aria-label="Редактировать тренировку"
+                        aria-label="Редактировать мероприятие"
                         @click="openTrainingModal(t)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
-                        aria-label="Удалить тренировку"
+                        aria-label="Удалить мероприятие"
                         @click="deleteTraining(t.id)"
                       >
                         <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1152,14 +1252,14 @@ onBeforeUnmount(() => {
                     </RouterLink>
                     <button
                       class="btn btn-secondary"
-                      aria-label="Редактировать тренировку"
+                      aria-label="Редактировать мероприятие"
                       @click="openTrainingModal(t)"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="btn btn-danger"
-                      aria-label="Удалить тренировку"
+                      aria-label="Удалить мероприятие"
                       @click="deleteTraining(t.id)"
                     >
                       <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1239,14 +1339,14 @@ onBeforeUnmount(() => {
                       </RouterLink>
                       <button
                         class="btn btn-sm btn-secondary me-2"
-                        aria-label="Редактировать тренировку"
+                        aria-label="Редактировать мероприятие"
                         @click="openTrainingModal(t)"
                       >
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                       </button>
                       <button
                         class="btn btn-sm btn-danger"
-                        aria-label="Удалить тренировку"
+                        aria-label="Удалить мероприятие"
                         @click="deleteTraining(t.id)"
                       >
                         <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1305,14 +1405,14 @@ onBeforeUnmount(() => {
                     </RouterLink>
                     <button
                       class="btn btn-secondary"
-                      aria-label="Редактировать тренировку"
+                      aria-label="Редактировать мероприятие"
                       @click="openTrainingModal(t)"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>
                     <button
                       class="btn btn-danger"
-                      aria-label="Удалить тренировку"
+                      aria-label="Удалить мероприятие"
                       @click="deleteTraining(t.id)"
                     >
                       <i class="bi bi-trash" aria-hidden="true"></i>
@@ -1326,20 +1426,30 @@ onBeforeUnmount(() => {
             </div>
 
             <button class="btn btn-brand mt-3" @click="openTrainingModal()">
-              Добавить тренировку
+              Добавить мероприятие
             </button>
           </div>
         </div>
 
-        <div ref="trainingModalRef" class="modal fade" tabindex="-1">
-          <div class="modal-dialog">
+        <div
+          ref="trainingModalRef"
+          class="modal fade"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+        >
+          <div
+            class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">
                   {{
                     editingTraining
-                      ? 'Редактировать тренировку'
-                      : 'Новая тренировка'
+                      ? 'Редактировать мероприятие'
+                      : 'Новое мероприятие'
                   }}
                 </h5>
                 <button
@@ -1353,8 +1463,10 @@ onBeforeUnmount(() => {
                 <div class="mb-3">
                   <label class="form-label">Тип</label>
                   <select
-                    v-model.number="trainingForm.type_id"
+                    ref="trainingTypeRef"
+                    v-model="trainingForm.type_id"
                     class="form-select"
+                    :class="{ 'is-invalid': isTypeMissing }"
                   >
                     <option value="">Выберите тип</option>
                     <option
@@ -1365,26 +1477,44 @@ onBeforeUnmount(() => {
                       {{ tt.name }}
                     </option>
                   </select>
+                  <InlineError
+                    v-if="isTypeMissing"
+                    message="Укажите тип мероприятия"
+                  />
                 </div>
-                <div v-if="selectedTrainingType?.online" class="mb-3">
+                <div v-show="selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Ссылка</label>
                   <input
+                    ref="trainingUrlRef"
                     v-model="trainingForm.url"
                     type="url"
                     class="form-control"
+                    :class="{ 'is-invalid': isUrlRequired }"
+                    :disabled="!selectedTrainingType?.online"
+                  />
+                  <InlineError
+                    v-if="isUrlRequired"
+                    message="Укажите ссылку для онлайн‑мероприятия"
                   />
                 </div>
-                <div v-else class="mb-3">
+                <div v-show="!selectedTrainingType?.online" class="mb-3">
                   <label class="form-label">Площадка</label>
                   <select
-                    v-model.number="trainingForm.ground_id"
+                    ref="trainingGroundRef"
+                    v-model="trainingForm.ground_id"
                     class="form-select"
+                    :class="{ 'is-invalid': isGroundRequired }"
+                    :disabled="selectedTrainingType?.online"
                   >
                     <option value="">Выберите площадку</option>
                     <option v-for="g in grounds" :key="g.id" :value="g.id">
                       {{ g.name }}
                     </option>
                   </select>
+                  <InlineError
+                    v-if="isGroundRequired"
+                    message="Выберите площадку"
+                  />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Начало</label>
@@ -1392,6 +1522,11 @@ onBeforeUnmount(() => {
                     v-model="trainingForm.start_at"
                     type="datetime-local"
                     class="form-control"
+                    :class="{ 'is-invalid': isStartMissing }"
+                  />
+                  <InlineError
+                    v-if="isStartMissing"
+                    message="Укажите дату и время начала"
                   />
                 </div>
                 <div class="mb-3">
@@ -1400,12 +1535,21 @@ onBeforeUnmount(() => {
                     v-model="trainingForm.end_at"
                     type="datetime-local"
                     class="form-control"
+                    :class="{ 'is-invalid': isEndMissing || isOrderInvalid }"
+                  />
+                  <InlineError
+                    v-if="isEndMissing"
+                    message="Укажите дату и время окончания"
+                  />
+                  <InlineError
+                    v-else-if="isOrderInvalid"
+                    message="Время окончания должно быть позже начала"
                   />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Вместимость</label>
                   <input
-                    v-model="trainingForm.capacity"
+                    v-model.number="trainingForm.capacity"
                     type="number"
                     min="0"
                     class="form-control"

@@ -62,6 +62,12 @@ LEGACY_DB_PORT=3306
 LEGACY_DB_NAME=legacydb
 LEGACY_DB_USER=root
 LEGACY_DB_PASS=secret
+# optional: external MariaDB/MySQL connection (no migrations)
+# EXT_DB_HOST=external-host
+# EXT_DB_PORT=3306
+# EXT_DB_NAME=externaldb
+# EXT_DB_USER=external_user
+# EXT_DB_PASS=secret
 JWT_SECRET=your_jwt_secret
 SESSION_SECRET=your_session_secret
 # optional overrides
@@ -159,6 +165,25 @@ Cyrillic characters incorrectly.
 
 Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application
 starts in HTTP mode and relies on nginx for TLS termination.
+
+## External MariaDB models
+
+Integration with the legacy MariaDB is handled via Sequelize models placed in `src/externalModels/`.
+
+- Configure `EXT_DB_*` variables in `.env`.
+- Startup probes the connection and continues even if unavailable.
+- Models are read‑only and map directly to existing tables.
+
+Example:
+
+```js
+import { isExternalDbAvailable } from './src/config/externalMariaDb.js';
+import { User } from './src/externalModels/index.js';
+
+if (isExternalDbAvailable()) {
+  const u = await User.findOne({ where: { email: 'user@example.com' } });
+}
+```
 
 ## Local development
 

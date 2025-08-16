@@ -83,26 +83,30 @@ function formatStart(date) {
     :aria-label="`${title} — ${formatStart(event.start_at)}${location ? ', ' + location : ''}`"
   >
     <div class="card h-100 upcoming-card">
-      <div class="card-body d-flex align-items-start">
-        <div class="date-pill me-3" aria-hidden="true">
-          <div class="day">{{ dayNum }}</div>
-          <div class="month text-uppercase">{{ monthShort }}</div>
-        </div>
-        <div class="flex-grow-1">
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <i :class="`bi ${icon} text-brand`" aria-hidden="true"></i>
-            <span class="badge badge-brand-soft">{{ title }}</span>
-            <span v-if="isOnline" class="badge bg-light text-muted border">
-              Онлайн
-            </span>
+      <div class="card-body">
+        <div class="d-flex align-items-start">
+          <div class="date-pill me-3" aria-hidden="true">
+            <div class="day">{{ dayNum }}</div>
+            <div class="month text-uppercase">{{ monthShort }}</div>
           </div>
-          <p v-if="location" class="mb-0 small text-body-secondary">
-            <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
-            {{ location }}
-          </p>
-        </div>
-        <div class="ms-2 text-nowrap text-muted small" aria-hidden="true">
-          {{ timeShort }}
+          <div class="flex-grow-1 content-col">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-1 header-row">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <i :class="`bi ${icon} text-brand`" aria-hidden="true"></i>
+                <span class="badge badge-brand-soft">{{ title }}</span>
+                <span v-if="isOnline" class="badge bg-light text-muted border">
+                  Онлайн
+                </span>
+              </div>
+              <div class="text-muted small time" aria-hidden="true">
+                {{ timeShort }}
+              </div>
+            </div>
+            <div v-if="location" class="small text-body-secondary address" :title="location">
+              <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+              <span class="align-middle">{{ location }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -111,7 +115,7 @@ function formatStart(date) {
 
 <style scoped>
 .upcoming-card {
-  width: clamp(14rem, 70vw, 18rem);
+  width: clamp(16rem, 85vw, 20rem);
   margin: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -121,7 +125,22 @@ function formatStart(date) {
 }
 
 .upcoming-card .card-body {
-  padding: 0.75rem 0.75rem 0.75rem 0.75rem;
+  padding: 0.75rem;
+}
+
+.content-col {
+  min-width: 0; /* allow header/address to wrap properly */
+}
+
+.address {
+  white-space: normal;
+  word-break: break-word;
+}
+
+@media (min-width: 576px) {
+  .upcoming-card {
+    width: 22rem;
+  }
 }
 
 /* subtle focus ring for accessibility */
@@ -150,6 +169,10 @@ function formatStart(date) {
 .date-pill .month {
   font-size: 0.75rem;
   color: #6c757d;
+}
+.header-row .time {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .badge-brand-soft {
