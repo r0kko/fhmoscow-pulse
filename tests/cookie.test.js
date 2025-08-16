@@ -35,11 +35,13 @@ test('clearRefreshCookie calls res.clearCookie with options', () => {
 });
 
 test('refresh cookie respects configured domain', async () => {
-  jest.resetModules();
   process.env.COOKIE_DOMAIN = 'example.com';
-  const { setRefreshCookie: setCookie, clearRefreshCookie: clearCookie } = await import(
-    '../src/utils/cookie.js'
-  );
+  let setCookie, clearCookie;
+  await jest.isolateModulesAsync(async () => {
+    ({ setRefreshCookie: setCookie, clearRefreshCookie: clearCookie } = await import(
+      '../src/utils/cookie.js'
+    ));
+  });
   const res = { cookie: jest.fn(), clearCookie: jest.fn() };
   setCookie(res, 'tok');
   clearCookie(res);

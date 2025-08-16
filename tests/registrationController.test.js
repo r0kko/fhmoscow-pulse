@@ -1,5 +1,4 @@
 import { expect, jest, test, beforeEach } from '@jest/globals';
-jest.resetModules();
 
 let validationOk = true;
 

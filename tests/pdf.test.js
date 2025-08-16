@@ -32,7 +32,6 @@ function setup(logos) {
 }
 
 beforeEach(() => {
-  jest.resetModules();
   accessMock.mockReset();
   registerFontMock.mockReset();
   imageMock.mockReset();

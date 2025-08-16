@@ -22,9 +22,11 @@ function buildMocks() {
 
 test('session cookie secure and sameSite none in production', async () => {
   process.env.NODE_ENV = 'production';
-  jest.resetModules();
   const { sessionMock } = buildMocks();
-  const { default: session } = await import('../src/config/session.js');
+  let session;
+  await jest.isolateModulesAsync(async () => {
+    ({ default: session } = await import('../src/config/session.js'));
+  });
   expect(sessionMock).toHaveBeenCalledWith(
     expect.objectContaining({
       cookie: expect.objectContaining({ secure: true, sameSite: 'none' }),
@@ -35,9 +37,11 @@ test('session cookie secure and sameSite none in production', async () => {
 
 test('session cookie lax in development', async () => {
   process.env.NODE_ENV = 'development';
-  jest.resetModules();
   const { sessionMock } = buildMocks();
-  const { default: session } = await import('../src/config/session.js');
+  let session;
+  await jest.isolateModulesAsync(async () => {
+    ({ default: session } = await import('../src/config/session.js'));
+  });
   expect(sessionMock).toHaveBeenCalledWith(
     expect.objectContaining({
       cookie: expect.objectContaining({ secure: false, sameSite: 'lax' }),

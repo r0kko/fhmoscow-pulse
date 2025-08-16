@@ -1,5 +1,4 @@
-import {beforeAll, describe, expect, jest, test} from '@jest/globals';
-jest.resetModules();
+import { beforeAll, describe, expect, jest, test } from '@jest/globals';
 
 const verifyCredentialsMock = jest.fn();
 const rotateTokensMock = jest.fn();

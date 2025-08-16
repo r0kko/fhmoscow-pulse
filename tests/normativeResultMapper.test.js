@@ -1,6 +1,4 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-// fresh registry for ESM imports across suites
-jest.resetModules();
 
 let mapper;
 let zoneMapper;
@@ -9,12 +7,13 @@ let userMapper;
 let trainingMapper;
 
 beforeEach(async () => {
-  jest.resetModules();
-  ({ default: mapper } = await import('../src/mappers/normativeResultMapper.js'));
-  ({ default: zoneMapper } = await import('../src/mappers/normativeZoneMapper.js'));
-  ({ default: groupMapper } = await import('../src/mappers/normativeGroupMapper.js'));
-  ({ default: userMapper } = await import('../src/mappers/userMapper.js'));
-  ({ default: trainingMapper } = await import('../src/mappers/trainingMapper.js'));
+  await jest.isolateModulesAsync(async () => {
+    ({ default: mapper } = await import('../src/mappers/normativeResultMapper.js'));
+    ({ default: zoneMapper } = await import('../src/mappers/normativeZoneMapper.js'));
+    ({ default: groupMapper } = await import('../src/mappers/normativeGroupMapper.js'));
+    ({ default: userMapper } = await import('../src/mappers/userMapper.js'));
+    ({ default: trainingMapper } = await import('../src/mappers/trainingMapper.js'));
+  });
 });
 
 const zone = { alias: 'GREEN', name: 'Green' };

@@ -4,9 +4,10 @@ let sequelize;
 let Document;
 
 beforeEach(async () => {
-  jest.resetModules();
-  sequelize = (await import('../src/config/database.js')).default;
-  Document = (await import('../src/models/document.js')).default;
+  await jest.isolateModulesAsync(async () => {
+    sequelize = (await import('../src/config/database.js')).default;
+    Document = (await import('../src/models/document.js')).default;
+  });
   jest.spyOn(sequelize, 'query').mockResolvedValue([{ nextval: 7 }]);
 });
 

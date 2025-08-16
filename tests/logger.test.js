@@ -1,8 +1,5 @@
 import { jest, expect, test, beforeEach } from '@jest/globals';
-jest.resetModules();
 import { setImmediate as setImmediateAsync } from 'node:timers';
-
-jest.resetModules();
 
 const createMock = jest.fn();
 
@@ -15,8 +12,9 @@ let logger;
 let stream;
 
 beforeEach(async () => {
-  jest.resetModules();
-  ({ default: logger } = await import('../logger.js'));
+  await jest.isolateModulesAsync(async () => {
+    ({ default: logger } = await import('../logger.js'));
+  });
   stream = logger.transports[0]._stream;
   jest.clearAllMocks();
 });
