@@ -15,50 +15,7 @@ const ticketFileCreateMock = jest.fn();
 const ticketFileFindByPkMock = jest.fn();
 const ticketFileFindAllMock = jest.fn();
 const ticketFileFindOneMock = jest.fn();
-
-jest.unstable_mockModule('../src/utils/s3Client.js', () => ({
-  __esModule: true,
-  default: { send: sendMock },
-}));
-
 const getSignedUrlMock = jest.fn(async () => 'signed');
-
-jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
-  __esModule: true,
-  PutObjectCommand: function PutObjectCommand(args) {
-    this.args = args;
-  },
-  GetObjectCommand: function GetObjectCommand(args) {
-    this.args = args;
-  },
-  DeleteObjectCommand: function DeleteObjectCommand(args) {
-    this.args = args;
-  },
-}));
-
-jest.unstable_mockModule('@aws-sdk/s3-request-presigner', () => ({
-  __esModule: true,
-  getSignedUrl: getSignedUrlMock,
-}));
-
-jest.unstable_mockModule('../src/models/index.js', () => ({
-  __esModule: true,
-  File: { create: fileCreateMock, findByPk: jest.fn() },
-  MedicalCertificate: { findByPk: findByPkMock },
-  MedicalCertificateFile: {
-    create: mcCreateMock,
-    findByPk: mcFindMock,
-    findAll: mcFindAllMock,
-  },
-  MedicalCertificateType: { findOne: findOneMock },
-  Ticket: { findByPk: ticketFindByPkMock },
-  TicketFile: {
-    create: ticketFileCreateMock,
-    findByPk: ticketFileFindByPkMock,
-    findAll: ticketFileFindAllMock,
-    findOne: ticketFileFindOneMock,
-  },
-}));
 
 let service;
 
@@ -78,12 +35,43 @@ beforeEach(async () => {
   getSignedUrlMock.mockClear();
   delete process.env.S3_BUCKET;
   await jest.isolateModulesAsync(async () => {
+    jest.unstable_mockModule('../src/utils/s3Client.js', () => ({
+      __esModule: true,
+      default: { send: sendMock },
+    }));
+    jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
+      __esModule: true,
+      PutObjectCommand: function PutObjectCommand(args) { this.args = args; },
+      GetObjectCommand: function GetObjectCommand(args) { this.args = args; },
+      DeleteObjectCommand: function DeleteObjectCommand(args) { this.args = args; },
+    }));
+    jest.unstable_mockModule('@aws-sdk/s3-request-presigner', () => ({
+      __esModule: true,
+      getSignedUrl: getSignedUrlMock,
+    }));
+    jest.unstable_mockModule('../src/models/index.js', () => ({
+      __esModule: true,
+      File: { create: fileCreateMock, findByPk: jest.fn() },
+      MedicalCertificate: { findByPk: findByPkMock },
+      MedicalCertificateFile: {
+        create: mcCreateMock,
+        findByPk: mcFindMock,
+        findAll: mcFindAllMock,
+      },
+      MedicalCertificateType: { findOne: findOneMock },
+      Ticket: { findByPk: ticketFindByPkMock },
+      TicketFile: {
+        create: ticketFileCreateMock,
+        findByPk: ticketFileFindByPkMock,
+        findAll: ticketFileFindAllMock,
+        findOne: ticketFileFindOneMock,
+      },
+    }));
     ({ default: service } = await import('../src/services/fileService.js'));
   });
 });
 
 test('uploadForCertificate throws when S3 not configured', async () => {
-  // Ensure no S3 bucket configured and fresh module load
   delete process.env.S3_BUCKET;
   await expect(
     service.uploadForCertificate(
@@ -210,3 +198,4 @@ test('removeTicketFile deletes attachment', async () => {
   expect(destroyA).toHaveBeenCalled();
   expect(destroyB).toHaveBeenCalled();
 });
+
