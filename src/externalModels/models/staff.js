@@ -27,7 +27,15 @@ Staff.init(
   }
 );
 
-Staff.associate = ({ ExtFile, Photo, Sex, ClubStaff, GameStaff, StaffStatistic, TeamStaff }) => {
+Staff.associate = ({
+  ExtFile,
+  Photo,
+  Sex,
+  ClubStaff,
+  GameStaff,
+  StaffStatistic,
+  TeamStaff,
+}) => {
   Staff.belongsTo(ExtFile, { foreignKey: 'photo_id' });
   Staff.belongsTo(Photo, { foreignKey: 'photo_id' });
   Staff.belongsTo(Sex, { foreignKey: 'sex_id' });

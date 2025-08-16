@@ -17,7 +17,8 @@ GameViolation.init(
 );
 
 GameViolation.associate = ({ GameEvent }) => {
-  if (GameEvent) GameViolation.hasMany(GameEvent, { foreignKey: 'penalty_violation_id' });
+  if (GameEvent)
+    GameViolation.hasMany(GameEvent, { foreignKey: 'penalty_violation_id' });
 };
 
 export default GameViolation;

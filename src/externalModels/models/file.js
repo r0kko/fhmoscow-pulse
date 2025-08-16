@@ -23,7 +23,27 @@ ExtFile.init(
   }
 );
 
-ExtFile.associate = ({ Banner, BasicDocument, Club, ClubPlayer, ClubStaff, Document, News, NewsImage, Photo, PhotoImage, Player, Protocol, Referee, Sponsor, Stadium, Team, Tournament, TournamentType, Video }) => {
+ExtFile.associate = ({
+  Banner,
+  BasicDocument,
+  Club,
+  ClubPlayer,
+  ClubStaff,
+  Document,
+  News,
+  NewsImage,
+  Photo,
+  PhotoImage,
+  Player,
+  Protocol,
+  Referee,
+  Sponsor,
+  Stadium,
+  Team,
+  Tournament,
+  TournamentType,
+  Video,
+}) => {
   // Representative hasMany relations (keep light to avoid heavy cross-deps)
   if (Banner) ExtFile.hasMany(Banner, { foreignKey: 'image_id' });
   if (BasicDocument) ExtFile.hasMany(BasicDocument, { foreignKey: 'file_id' });
@@ -42,7 +62,8 @@ ExtFile.associate = ({ Banner, BasicDocument, Club, ClubPlayer, ClubStaff, Docum
   if (Stadium) ExtFile.hasMany(Stadium, { foreignKey: 'image_id' });
   if (Team) ExtFile.hasMany(Team, { foreignKey: 'logo_id' });
   if (Tournament) ExtFile.hasMany(Tournament, { foreignKey: 'logo_id' });
-  if (TournamentType) ExtFile.hasMany(TournamentType, { foreignKey: 'logo_id' });
+  if (TournamentType)
+    ExtFile.hasMany(TournamentType, { foreignKey: 'logo_id' });
   if (Video) ExtFile.hasMany(Video, { foreignKey: 'preview_image_id' });
 };
 

@@ -33,7 +33,9 @@ TournamentTable.init(
 );
 
 TournamentTable.associate = ({ TournamentGroup, Season, Team, Tournament }) => {
-  TournamentTable.belongsTo(TournamentGroup, { foreignKey: 'tournament_group_id' });
+  TournamentTable.belongsTo(TournamentGroup, {
+    foreignKey: 'tournament_group_id',
+  });
   TournamentTable.belongsTo(Season, { foreignKey: 'season_id' });
   TournamentTable.belongsTo(Team, { foreignKey: 'team_id' });
   TournamentTable.belongsTo(Tournament, { foreignKey: 'tournament_id' });

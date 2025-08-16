@@ -38,20 +38,52 @@ GameEvent.init(
   }
 );
 
-GameEvent.associate = ({ Game, GameEventType, GameSituation, GameViolation, PenaltyMinutes, Player, Team }) => {
+GameEvent.associate = ({
+  Game,
+  GameEventType,
+  GameSituation,
+  GameViolation,
+  PenaltyMinutes,
+  Player,
+  Team,
+}) => {
   GameEvent.belongsTo(Game, { foreignKey: 'game_id' });
   GameEvent.belongsTo(GameEventType, { foreignKey: 'event_type_id' });
   GameEvent.belongsTo(GameSituation, { foreignKey: 'goal_situation_id' });
   GameEvent.belongsTo(GameViolation, { foreignKey: 'penalty_violation_id' });
   GameEvent.belongsTo(PenaltyMinutes, { foreignKey: 'penalty_minutes_id' });
-  GameEvent.belongsTo(Player, { as: 'shootout_goalkeeper', foreignKey: 'shootout_goalkeeper_id' });
-  GameEvent.belongsTo(Player, { as: 'shootout_player', foreignKey: 'shootout_player_id' });
-  GameEvent.belongsTo(Player, { as: 'goalkeeper_team1', foreignKey: 'goalkeeper_team1_id' });
-  GameEvent.belongsTo(Player, { as: 'goalkeeper_team2', foreignKey: 'goalkeeper_team2_id' });
-  GameEvent.belongsTo(Player, { as: 'penalty_player', foreignKey: 'penalty_player_id' });
-  GameEvent.belongsTo(Player, { as: 'goal_author', foreignKey: 'goal_author_id' });
-  GameEvent.belongsTo(Player, { as: 'goal_assistant2', foreignKey: 'goal_assistant2_id' });
-  GameEvent.belongsTo(Player, { as: 'goal_assistant1', foreignKey: 'goal_assistant1_id' });
+  GameEvent.belongsTo(Player, {
+    as: 'shootout_goalkeeper',
+    foreignKey: 'shootout_goalkeeper_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'shootout_player',
+    foreignKey: 'shootout_player_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'goalkeeper_team1',
+    foreignKey: 'goalkeeper_team1_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'goalkeeper_team2',
+    foreignKey: 'goalkeeper_team2_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'penalty_player',
+    foreignKey: 'penalty_player_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'goal_author',
+    foreignKey: 'goal_author_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'goal_assistant2',
+    foreignKey: 'goal_assistant2_id',
+  });
+  GameEvent.belongsTo(Player, {
+    as: 'goal_assistant1',
+    foreignKey: 'goal_assistant1_id',
+  });
   GameEvent.belongsTo(Team, { foreignKey: 'team_id' });
 };
 

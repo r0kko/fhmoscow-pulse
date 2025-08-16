@@ -15,7 +15,10 @@ RefereeQualificationHockeyLeague.init(
 );
 
 RefereeQualificationHockeyLeague.associate = ({ Referee }) => {
-  if (Referee) RefereeQualificationHockeyLeague.hasMany(Referee, { foreignKey: 'qualification_hockey_league_id' });
+  if (Referee)
+    RefereeQualificationHockeyLeague.hasMany(Referee, {
+      foreignKey: 'qualification_hockey_league_id',
+    });
 };
 
 export default RefereeQualificationHockeyLeague;

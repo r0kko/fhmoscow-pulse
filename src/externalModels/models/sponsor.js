@@ -29,9 +29,13 @@ Sponsor.init(
 
 Sponsor.associate = ({ Banner, ExtFile }) => {
   Sponsor.belongsTo(Banner, { foreignKey: 'banner_id' });
-  Sponsor.belongsTo(ExtFile, { as: 'previewImage', foreignKey: 'preview_image_id' });
+  Sponsor.belongsTo(ExtFile, {
+    as: 'previewImage',
+    foreignKey: 'preview_image_id',
+  });
   Sponsor.belongsTo(ExtFile, { as: 'bannerImage', foreignKey: 'banner_id' });
-  if (Banner && Banner.hasMany) Banner.hasMany(Sponsor, { foreignKey: 'banner_id' });
+  if (Banner && Banner.hasMany)
+    Banner.hasMany(Sponsor, { foreignKey: 'banner_id' });
 };
 
 export default Sponsor;

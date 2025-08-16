@@ -18,11 +18,21 @@ TournamentType.init(
   }
 );
 
-TournamentType.associate = ({ ExtFile, Tags, GameSetting, TournamentSetting, Tournament }) => {
+TournamentType.associate = ({
+  ExtFile,
+  Tags,
+  GameSetting,
+  TournamentSetting,
+  Tournament,
+}) => {
   TournamentType.belongsTo(ExtFile, { foreignKey: 'logo_id' });
   TournamentType.belongsTo(Tags, { foreignKey: 'tags_id' });
-  if (GameSetting) TournamentType.hasMany(GameSetting, { foreignKey: 'tournament_type_id' });
-  if (TournamentSetting) TournamentType.hasMany(TournamentSetting, { foreignKey: 'tournament_type_id' });
+  if (GameSetting)
+    TournamentType.hasMany(GameSetting, { foreignKey: 'tournament_type_id' });
+  if (TournamentSetting)
+    TournamentType.hasMany(TournamentSetting, {
+      foreignKey: 'tournament_type_id',
+    });
   if (Tournament) TournamentType.hasMany(Tournament, { foreignKey: 'type_id' });
 };
 

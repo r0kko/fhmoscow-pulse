@@ -17,7 +17,9 @@ BasicDocumentParentCategory.init(
 );
 
 BasicDocumentParentCategory.associate = ({ BasicDocument }) => {
-  BasicDocumentParentCategory.hasMany(BasicDocument, { foreignKey: 'category_id' });
+  BasicDocumentParentCategory.hasMany(BasicDocument, {
+    foreignKey: 'category_id',
+  });
 };
 
 export default BasicDocumentParentCategory;

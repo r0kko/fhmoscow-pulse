@@ -142,9 +142,8 @@ export async function setupExternalAssociations() {
     Sex: (await import('./models/sex.js')).default,
     PayerType: (await import('./models/payerType.js')).default,
     RefereeCategory: (await import('./models/refereeCategory.js')).default,
-    RefereeQualification: (
-      await import('./models/refereeQualification.js')
-    ).default,
+    RefereeQualification: (await import('./models/refereeQualification.js'))
+      .default,
     RefereeQualificationHockeyLeague: (
       await import('./models/refereeQualificationHockeyLeague.js')
     ).default,
@@ -159,4 +158,3 @@ export async function setupExternalAssociations() {
     }
   }
 }
-

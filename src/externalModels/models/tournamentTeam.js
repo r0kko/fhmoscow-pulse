@@ -20,7 +20,9 @@ TournamentTeam.init(
 );
 
 TournamentTeam.associate = ({ TournamentGroup, Team, Tournament }) => {
-  TournamentTeam.belongsTo(TournamentGroup, { foreignKey: 'tournament_group_id' });
+  TournamentTeam.belongsTo(TournamentGroup, {
+    foreignKey: 'tournament_group_id',
+  });
   TournamentTeam.belongsTo(Team, { foreignKey: 'team_id' });
   TournamentTeam.belongsTo(Tournament, { foreignKey: 'tournament_id' });
 };

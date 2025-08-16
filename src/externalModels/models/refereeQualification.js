@@ -15,7 +15,8 @@ RefereeQualification.init(
 );
 
 RefereeQualification.associate = ({ Referee }) => {
-  if (Referee) RefereeQualification.hasMany(Referee, { foreignKey: 'qualification_id' });
+  if (Referee)
+    RefereeQualification.hasMany(Referee, { foreignKey: 'qualification_id' });
 };
 
 export default RefereeQualification;

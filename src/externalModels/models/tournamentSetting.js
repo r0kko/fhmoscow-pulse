@@ -28,7 +28,9 @@ TournamentSetting.init(
 
 TournamentSetting.associate = ({ Tournament, TournamentType }) => {
   TournamentSetting.belongsTo(Tournament, { foreignKey: 'tournament_id' });
-  TournamentSetting.belongsTo(TournamentType, { foreignKey: 'tournament_type_id' });
+  TournamentSetting.belongsTo(TournamentType, {
+    foreignKey: 'tournament_type_id',
+  });
 };
 
 export default TournamentSetting;

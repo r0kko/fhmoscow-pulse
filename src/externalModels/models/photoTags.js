@@ -20,7 +20,8 @@ PhotoTags.init(
 PhotoTags.associate = ({ Photo, Tags }) => {
   PhotoTags.belongsTo(Photo, { foreignKey: 'photo_id' });
   PhotoTags.belongsTo(Tags, { foreignKey: 'tags_id' });
-  if (Photo && Photo.hasMany) Photo.hasMany(PhotoTags, { foreignKey: 'photo_id' });
+  if (Photo && Photo.hasMany)
+    Photo.hasMany(PhotoTags, { foreignKey: 'photo_id' });
   if (Tags && Tags.hasMany) Tags.hasMany(PhotoTags, { foreignKey: 'tags_id' });
 };
 

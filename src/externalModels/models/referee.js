@@ -43,12 +43,21 @@ Referee.init(
   }
 );
 
-Referee.associate = ({ ExtFile, Photo, RefereeCategory, RefereeQualification, RefereeQualificationHockeyLeague, Sex }) => {
+Referee.associate = ({
+  ExtFile,
+  Photo,
+  RefereeCategory,
+  RefereeQualification,
+  RefereeQualificationHockeyLeague,
+  Sex,
+}) => {
   Referee.belongsTo(ExtFile, { foreignKey: 'photo_id' });
   Referee.belongsTo(Photo, { foreignKey: 'photo_id' });
   Referee.belongsTo(RefereeCategory, { foreignKey: 'category_id' });
   Referee.belongsTo(RefereeQualification, { foreignKey: 'qualification_id' });
-  Referee.belongsTo(RefereeQualificationHockeyLeague, { foreignKey: 'qualification_hockey_league_id' });
+  Referee.belongsTo(RefereeQualificationHockeyLeague, {
+    foreignKey: 'qualification_hockey_league_id',
+  });
   Referee.belongsTo(Sex, { foreignKey: 'sex_id' });
 };
 

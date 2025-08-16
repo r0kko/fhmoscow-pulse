@@ -17,7 +17,8 @@ PayerType.init(
 );
 
 PayerType.associate = ({ RefereeTaxation }) => {
-  if (RefereeTaxation) PayerType.hasMany(RefereeTaxation, { foreignKey: 'payer_type_id' });
+  if (RefereeTaxation)
+    PayerType.hasMany(RefereeTaxation, { foreignKey: 'payer_type_id' });
 };
 
 export default PayerType;

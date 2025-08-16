@@ -26,7 +26,8 @@ Stadium.associate = ({ City, ExtFile, Game, GameAssignment, Team }) => {
   Stadium.belongsTo(City, { foreignKey: 'city_id' });
   Stadium.belongsTo(ExtFile, { foreignKey: 'image_id' });
   if (Game) Stadium.hasMany(Game, { foreignKey: 'stadium_id' });
-  if (GameAssignment) Stadium.hasMany(GameAssignment, { foreignKey: 'stadium_id' });
+  if (GameAssignment)
+    Stadium.hasMany(GameAssignment, { foreignKey: 'stadium_id' });
   if (Team) Stadium.hasMany(Team, { foreignKey: 'stadium_id' });
 };
 

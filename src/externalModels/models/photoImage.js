@@ -21,7 +21,8 @@ PhotoImage.init(
 PhotoImage.associate = ({ ExtFile, Photo }) => {
   PhotoImage.belongsTo(ExtFile, { foreignKey: 'file_id' });
   PhotoImage.belongsTo(Photo, { foreignKey: 'photo_id' });
-  if (Photo && Photo.hasMany) Photo.hasMany(PhotoImage, { foreignKey: 'photo_id' });
+  if (Photo && Photo.hasMany)
+    Photo.hasMany(PhotoImage, { foreignKey: 'photo_id' });
 };
 
 export default PhotoImage;

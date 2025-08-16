@@ -21,7 +21,14 @@ ClubPlayer.init(
   }
 );
 
-ClubPlayer.associate = ({ Club, Player, TeamPlayerRole, ExtFile, Photo, Season }) => {
+ClubPlayer.associate = ({
+  Club,
+  Player,
+  TeamPlayerRole,
+  ExtFile,
+  Photo,
+  Season,
+}) => {
   ClubPlayer.belongsTo(Club, { foreignKey: 'club_id' });
   ClubPlayer.belongsTo(Player, { foreignKey: 'player_id' });
   ClubPlayer.belongsTo(TeamPlayerRole, { foreignKey: 'role_id' });

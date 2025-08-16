@@ -21,7 +21,8 @@ VideoTags.associate = ({ Tags, Video }) => {
   VideoTags.belongsTo(Tags, { foreignKey: 'tags_id' });
   VideoTags.belongsTo(Video, { foreignKey: 'video_id' });
   if (Tags && Tags.hasMany) Tags.hasMany(VideoTags, { foreignKey: 'tags_id' });
-  if (Video && Video.hasMany) Video.hasMany(VideoTags, { foreignKey: 'video_id' });
+  if (Video && Video.hasMany)
+    Video.hasMany(VideoTags, { foreignKey: 'video_id' });
 };
 
 export default VideoTags;

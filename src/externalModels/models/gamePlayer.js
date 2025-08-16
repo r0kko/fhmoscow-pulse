@@ -21,7 +21,13 @@ GamePlayer.init(
   }
 );
 
-GamePlayer.associate = ({ Game, Player, PlayerPosition, Team, TeamPlayerRole }) => {
+GamePlayer.associate = ({
+  Game,
+  Player,
+  PlayerPosition,
+  Team,
+  TeamPlayerRole,
+}) => {
   GamePlayer.belongsTo(Game, { foreignKey: 'game_id' });
   GamePlayer.belongsTo(Player, { foreignKey: 'player_id' });
   GamePlayer.belongsTo(PlayerPosition, { foreignKey: 'position_id' });

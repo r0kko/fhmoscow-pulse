@@ -5,7 +5,10 @@ import sequelize from '../../config/externalMariaDb.js';
 class RefereeDocument extends Model {}
 
 RefereeDocument.init(
-  { id: { type: DataTypes.INTEGER, primaryKey: true }, referee_id: { type: DataTypes.INTEGER } },
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true },
+    referee_id: { type: DataTypes.INTEGER },
+  },
   {
     sequelize,
     modelName: 'RefereeDocument',

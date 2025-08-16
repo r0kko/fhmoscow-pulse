@@ -17,7 +17,8 @@ PenaltyMinutes.init(
 );
 
 PenaltyMinutes.associate = ({ GameEvent }) => {
-  if (GameEvent) PenaltyMinutes.hasMany(GameEvent, { foreignKey: 'penalty_minutes_id' });
+  if (GameEvent)
+    PenaltyMinutes.hasMany(GameEvent, { foreignKey: 'penalty_minutes_id' });
 };
 
 export default PenaltyMinutes;

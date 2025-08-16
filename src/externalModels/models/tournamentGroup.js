@@ -23,13 +23,28 @@ TournamentGroup.init(
   }
 );
 
-TournamentGroup.associate = ({ Stage, Tournament, Tour, TournamentTable, CustomScore, TournamentTeam }) => {
+TournamentGroup.associate = ({
+  Stage,
+  Tournament,
+  Tour,
+  TournamentTable,
+  CustomScore,
+  TournamentTeam,
+}) => {
   TournamentGroup.belongsTo(Stage, { foreignKey: 'stage_id' });
   TournamentGroup.belongsTo(Tournament, { foreignKey: 'tournament_id' });
-  if (Tour) TournamentGroup.hasMany(Tour, { foreignKey: 'tournament_group_id' });
-  if (TournamentTable) TournamentGroup.hasMany(TournamentTable, { foreignKey: 'tournament_group_id' });
-  if (CustomScore) TournamentGroup.hasMany(CustomScore, { foreignKey: 'tournament_group_id' });
-  if (TournamentTeam) TournamentGroup.hasMany(TournamentTeam, { foreignKey: 'tournament_group_id' });
+  if (Tour)
+    TournamentGroup.hasMany(Tour, { foreignKey: 'tournament_group_id' });
+  if (TournamentTable)
+    TournamentGroup.hasMany(TournamentTable, {
+      foreignKey: 'tournament_group_id',
+    });
+  if (CustomScore)
+    TournamentGroup.hasMany(CustomScore, { foreignKey: 'tournament_group_id' });
+  if (TournamentTeam)
+    TournamentGroup.hasMany(TournamentTeam, {
+      foreignKey: 'tournament_group_id',
+    });
 };
 
 export default TournamentGroup;

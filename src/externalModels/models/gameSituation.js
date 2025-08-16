@@ -17,7 +17,8 @@ GameSituation.init(
 );
 
 GameSituation.associate = ({ GameEvent }) => {
-  if (GameEvent) GameSituation.hasMany(GameEvent, { foreignKey: 'goal_situation_id' });
+  if (GameEvent)
+    GameSituation.hasMany(GameEvent, { foreignKey: 'goal_situation_id' });
 };
 
 export default GameSituation;

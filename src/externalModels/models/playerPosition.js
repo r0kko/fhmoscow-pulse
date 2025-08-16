@@ -17,7 +17,8 @@ PlayerPosition.init(
 );
 
 PlayerPosition.associate = ({ GamePlayer }) => {
-  if (GamePlayer) PlayerPosition.hasMany(GamePlayer, { foreignKey: 'position_id' });
+  if (GamePlayer)
+    PlayerPosition.hasMany(GamePlayer, { foreignKey: 'position_id' });
 };
 
 export default PlayerPosition;

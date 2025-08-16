@@ -21,13 +21,24 @@ Season.init(
   }
 );
 
-Season.associate = ({ BasicDocument, Sdk, SeasonResults, PlayerStatistic, StaffStatistic, TournamentTable, CustomScore }) => {
+Season.associate = ({
+  BasicDocument,
+  Sdk,
+  SeasonResults,
+  PlayerStatistic,
+  StaffStatistic,
+  TournamentTable,
+  CustomScore,
+}) => {
   if (BasicDocument) Season.hasMany(BasicDocument, { foreignKey: 'season_id' });
   if (Sdk) Season.hasMany(Sdk, { foreignKey: 'season_id' });
   if (SeasonResults) Season.hasMany(SeasonResults, { foreignKey: 'season_id' });
-  if (PlayerStatistic) Season.hasMany(PlayerStatistic, { foreignKey: 'season_id' });
-  if (StaffStatistic) Season.hasMany(StaffStatistic, { foreignKey: 'season_id' });
-  if (TournamentTable) Season.hasMany(TournamentTable, { foreignKey: 'season_id' });
+  if (PlayerStatistic)
+    Season.hasMany(PlayerStatistic, { foreignKey: 'season_id' });
+  if (StaffStatistic)
+    Season.hasMany(StaffStatistic, { foreignKey: 'season_id' });
+  if (TournamentTable)
+    Season.hasMany(TournamentTable, { foreignKey: 'season_id' });
   if (CustomScore) Season.hasMany(CustomScore, { foreignKey: 'season_id' });
 };
 

@@ -31,24 +31,59 @@ Player.init(
   }
 );
 
-Player.associate = ({ ExtFile, Photo, Sex, ClubPlayer, TeamPlayer, GamePlayer, PlayerStatistic, Document, GameEvent }) => {
+Player.associate = ({
+  ExtFile,
+  Photo,
+  Sex,
+  ClubPlayer,
+  TeamPlayer,
+  GamePlayer,
+  PlayerStatistic,
+  Document,
+  GameEvent,
+}) => {
   Player.belongsTo(ExtFile, { foreignKey: 'photo_id' });
   Player.belongsTo(Photo, { foreignKey: 'photo_id' });
   Player.belongsTo(Sex, { foreignKey: 'sex_id' });
   if (ClubPlayer) Player.hasMany(ClubPlayer, { foreignKey: 'player_id' });
   if (TeamPlayer) Player.hasMany(TeamPlayer, { foreignKey: 'player_id' });
   if (GamePlayer) Player.hasMany(GamePlayer, { foreignKey: 'player_id' });
-  if (PlayerStatistic) Player.hasMany(PlayerStatistic, { foreignKey: 'player_id' });
+  if (PlayerStatistic)
+    Player.hasMany(PlayerStatistic, { foreignKey: 'player_id' });
   if (Document) Player.hasMany(Document, { foreignKey: 'player_id' });
   if (GameEvent) {
-    Player.hasMany(GameEvent, { as: 'ShootoutGoalkeeperEvents', foreignKey: 'shootout_goalkeeper_id' });
-    Player.hasMany(GameEvent, { as: 'ShootoutPlayerEvents', foreignKey: 'shootout_player_id' });
-    Player.hasMany(GameEvent, { as: 'GoalkeeperTeam1Events', foreignKey: 'goalkeeper_team1_id' });
-    Player.hasMany(GameEvent, { as: 'GoalkeeperTeam2Events', foreignKey: 'goalkeeper_team2_id' });
-    Player.hasMany(GameEvent, { as: 'PenaltyPlayerEvents', foreignKey: 'penalty_player_id' });
-    Player.hasMany(GameEvent, { as: 'GoalAuthorEvents', foreignKey: 'goal_author_id' });
-    Player.hasMany(GameEvent, { as: 'GoalAssistant2Events', foreignKey: 'goal_assistant2_id' });
-    Player.hasMany(GameEvent, { as: 'GoalAssistant1Events', foreignKey: 'goal_assistant1_id' });
+    Player.hasMany(GameEvent, {
+      as: 'ShootoutGoalkeeperEvents',
+      foreignKey: 'shootout_goalkeeper_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'ShootoutPlayerEvents',
+      foreignKey: 'shootout_player_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'GoalkeeperTeam1Events',
+      foreignKey: 'goalkeeper_team1_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'GoalkeeperTeam2Events',
+      foreignKey: 'goalkeeper_team2_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'PenaltyPlayerEvents',
+      foreignKey: 'penalty_player_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'GoalAuthorEvents',
+      foreignKey: 'goal_author_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'GoalAssistant2Events',
+      foreignKey: 'goal_assistant2_id',
+    });
+    Player.hasMany(GameEvent, {
+      as: 'GoalAssistant1Events',
+      foreignKey: 'goal_assistant1_id',
+    });
   }
 };
 

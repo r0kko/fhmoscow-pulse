@@ -17,7 +17,8 @@ GameEventType.init(
 );
 
 GameEventType.associate = ({ GameEvent }) => {
-  if (GameEvent) GameEventType.hasMany(GameEvent, { foreignKey: 'event_type_id' });
+  if (GameEvent)
+    GameEventType.hasMany(GameEvent, { foreignKey: 'event_type_id' });
 };
 
 export default GameEventType;

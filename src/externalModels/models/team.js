@@ -31,7 +31,20 @@ Team.init(
   }
 );
 
-Team.associate = ({ Club, ExtFile, Stadium, Tags, GamePlayer, GameStaff, PlayerStatistic, StaffStatistic, TournamentTable, CustomScore, UserTeam, TeamPlayer }) => {
+Team.associate = ({
+  Club,
+  ExtFile,
+  Stadium,
+  Tags,
+  GamePlayer,
+  GameStaff,
+  PlayerStatistic,
+  StaffStatistic,
+  TournamentTable,
+  CustomScore,
+  UserTeam,
+  TeamPlayer,
+}) => {
   Team.belongsTo(Club, { foreignKey: 'club_id' });
   Team.belongsTo(ExtFile, { foreignKey: 'logo_id' });
   Team.belongsTo(Stadium, { foreignKey: 'stadium_id' });

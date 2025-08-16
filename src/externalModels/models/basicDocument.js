@@ -20,8 +20,15 @@ BasicDocument.init(
   }
 );
 
-BasicDocument.associate = ({ BasicDocumentParentCategory, ExtFile, Season, Tournament }) => {
-  BasicDocument.belongsTo(BasicDocumentParentCategory, { foreignKey: 'category_id' });
+BasicDocument.associate = ({
+  BasicDocumentParentCategory,
+  ExtFile,
+  Season,
+  Tournament,
+}) => {
+  BasicDocument.belongsTo(BasicDocumentParentCategory, {
+    foreignKey: 'category_id',
+  });
   BasicDocument.belongsTo(ExtFile, { foreignKey: 'file_id' });
   BasicDocument.belongsTo(Season, { foreignKey: 'season_id' });
   BasicDocument.belongsTo(Tournament, { foreignKey: 'tournament_id' });

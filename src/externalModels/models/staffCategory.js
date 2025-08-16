@@ -21,7 +21,8 @@ StaffCategory.init(
 );
 
 StaffCategory.associate = ({ ClubStaff }) => {
-  if (ClubStaff) StaffCategory.hasMany(ClubStaff, { foreignKey: 'category_id' });
+  if (ClubStaff)
+    StaffCategory.hasMany(ClubStaff, { foreignKey: 'category_id' });
 };
 
 export default StaffCategory;

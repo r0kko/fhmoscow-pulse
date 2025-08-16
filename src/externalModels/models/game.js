@@ -39,7 +39,20 @@ Game.init(
   }
 );
 
-Game.associate = ({ Stadium, Team, Tour, GameAssignment, GameEvent, GamePlayer, GameReferee, GameRemark, GameStaff, Protocol, PlayerStatistic, Report }) => {
+Game.associate = ({
+  Stadium,
+  Team,
+  Tour,
+  GameAssignment,
+  GameEvent,
+  GamePlayer,
+  GameReferee,
+  GameRemark,
+  GameStaff,
+  Protocol,
+  PlayerStatistic,
+  Report,
+}) => {
   Game.belongsTo(Stadium, { foreignKey: 'stadium_id' });
   Game.belongsTo(Team, { as: 'Team1', foreignKey: 'team1_id' });
   Game.belongsTo(Team, { as: 'Team2', foreignKey: 'team2_id' });

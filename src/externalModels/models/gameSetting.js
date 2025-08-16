@@ -20,7 +20,12 @@ GameSetting.init(
   }
 );
 
-GameSetting.associate = ({ Game, OvertimeType, Tournament, TournamentType }) => {
+GameSetting.associate = ({
+  Game,
+  OvertimeType,
+  Tournament,
+  TournamentType,
+}) => {
   GameSetting.belongsTo(Game, { foreignKey: 'game_id' });
   GameSetting.belongsTo(OvertimeType, { foreignKey: 'type_overtime_id' });
   GameSetting.belongsTo(Tournament, { foreignKey: 'tournament_id' });
