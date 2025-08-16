@@ -75,13 +75,11 @@ beforeEach(() => {
   ticketFileFindOneMock.mockClear();
   getSignedUrlMock.mockClear();
   delete process.env.S3_BUCKET;
-  jest.resetModules();
 });
 
 test('uploadForCertificate throws when S3 not configured', async () => {
   // Ensure no S3 bucket configured and fresh module load
   delete process.env.S3_BUCKET;
-  jest.resetModules();
   const { default: service } = await import('../src/services/fileService.js');
   await expect(
     service.uploadForCertificate(
