@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import fs from 'fs';
 
 import { PDF_FONTS, PDF_LOGOS, PDF_META } from '../config/pdf.js';

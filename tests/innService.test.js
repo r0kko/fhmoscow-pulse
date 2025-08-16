@@ -1,4 +1,4 @@
-import { expect, jest, test } from '@jest/globals';
+import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findOneMock = jest.fn();
 const createMock = jest.fn();
@@ -18,7 +18,11 @@ jest.unstable_mockModule('../src/services/taxationService.js', () => ({
   default: { removeByUser: jest.fn() },
 }));
 
-const { default: service } = await import('../src/services/innService.js');
+let service;
+beforeEach(async () => {
+  jest.clearAllMocks();
+  ({ default: service } = await import('../src/services/innService.js'));
+});
 
 test('create throws when duplicate exists', async () => {
   findOneMock.mockResolvedValueOnce({ id: 'd' });
