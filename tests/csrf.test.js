@@ -11,32 +11,34 @@ function buildRes() {
 
 test('csrf middleware sets lax cookie in development', async () => {
   process.env.NODE_ENV = 'development';
-  jest.resetModules();
-  const { default: csrf } = await import('../src/config/csrf.js');
-  const req = buildReq();
-  const res = buildRes();
-  const next = jest.fn();
-  csrf(req, res, next);
-  expect(res.cookie).toHaveBeenCalledWith(
-    'XSRF-TOKEN',
-    expect.any(String),
-    expect.objectContaining({ sameSite: 'lax', secure: false })
-  );
-  expect(next).toHaveBeenCalled();
+  await jest.isolateModulesAsync(async () => {
+    const { default: csrf } = await import('../src/config/csrf.js');
+    const req = buildReq();
+    const res = buildRes();
+    const next = jest.fn();
+    csrf(req, res, next);
+    expect(res.cookie).toHaveBeenCalledWith(
+      'XSRF-TOKEN',
+      expect.any(String),
+      expect.objectContaining({ sameSite: 'lax', secure: false })
+    );
+    expect(next).toHaveBeenCalled();
+  });
 });
 
 test('csrf middleware uses sameSite none and secure cookie in production', async () => {
   process.env.NODE_ENV = 'production';
-  jest.resetModules();
-  const { default: csrf } = await import('../src/config/csrf.js');
-  const req = buildReq();
-  const res = buildRes();
-  const next = jest.fn();
-  csrf(req, res, next);
-  expect(res.cookie).toHaveBeenCalledWith(
-    'XSRF-TOKEN',
-    expect.any(String),
-    expect.objectContaining({ sameSite: 'none', secure: true })
-  );
-  expect(next).toHaveBeenCalled();
+  await jest.isolateModulesAsync(async () => {
+    const { default: csrf } = await import('../src/config/csrf.js');
+    const req = buildReq();
+    const res = buildRes();
+    const next = jest.fn();
+    csrf(req, res, next);
+    expect(res.cookie).toHaveBeenCalledWith(
+      'XSRF-TOKEN',
+      expect.any(String),
+      expect.objectContaining({ sameSite: 'none', secure: true })
+    );
+    expect(next).toHaveBeenCalled();
+  });
 });

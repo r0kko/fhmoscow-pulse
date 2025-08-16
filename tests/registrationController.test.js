@@ -1,4 +1,4 @@
-import { expect, jest, test } from '@jest/globals';
+import { expect, jest, test, beforeEach } from '@jest/globals';
 
 let validationOk = true;
 
@@ -96,9 +96,15 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserExternalId: { create: createExtMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/registrationController.js'
-);
+let controller;
+
+beforeEach(async () => {
+  await jest.isolateModulesAsync(async () => {
+    ({ default: controller } = await import('../src/controllers/registrationController.js'));
+  });
+  jest.clearAllMocks();
+  validationOk = true;
+});
 
 function createRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

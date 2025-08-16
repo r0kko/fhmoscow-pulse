@@ -15,52 +15,11 @@ const ticketFileCreateMock = jest.fn();
 const ticketFileFindByPkMock = jest.fn();
 const ticketFileFindAllMock = jest.fn();
 const ticketFileFindOneMock = jest.fn();
-
-jest.unstable_mockModule('../src/utils/s3Client.js', () => ({
-  __esModule: true,
-  default: { send: sendMock },
-}));
-
 const getSignedUrlMock = jest.fn(async () => 'signed');
 
-jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
-  __esModule: true,
-  PutObjectCommand: function PutObjectCommand(args) {
-    this.args = args;
-  },
-  GetObjectCommand: function GetObjectCommand(args) {
-    this.args = args;
-  },
-  DeleteObjectCommand: function DeleteObjectCommand(args) {
-    this.args = args;
-  },
-}));
+let service;
 
-jest.unstable_mockModule('@aws-sdk/s3-request-presigner', () => ({
-  __esModule: true,
-  getSignedUrl: getSignedUrlMock,
-}));
-
-jest.unstable_mockModule('../src/models/index.js', () => ({
-  __esModule: true,
-  File: { create: fileCreateMock, findByPk: jest.fn() },
-  MedicalCertificate: { findByPk: findByPkMock },
-  MedicalCertificateFile: {
-    create: mcCreateMock,
-    findByPk: mcFindMock,
-    findAll: mcFindAllMock,
-  },
-  MedicalCertificateType: { findOne: findOneMock },
-  Ticket: { findByPk: ticketFindByPkMock },
-  TicketFile: {
-    create: ticketFileCreateMock,
-    findByPk: ticketFileFindByPkMock,
-    findAll: ticketFileFindAllMock,
-    findOne: ticketFileFindOneMock,
-  },
-}));
-
-beforeEach(() => {
+beforeEach(async () => {
   sendMock.mockClear();
   findByPkMock.mockClear();
   findOneMock.mockClear();
@@ -75,14 +34,45 @@ beforeEach(() => {
   ticketFileFindOneMock.mockClear();
   getSignedUrlMock.mockClear();
   delete process.env.S3_BUCKET;
-  jest.resetModules();
+  await jest.isolateModulesAsync(async () => {
+    jest.unstable_mockModule('../src/utils/s3Client.js', () => ({
+      __esModule: true,
+      default: { send: sendMock },
+    }));
+    jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
+      __esModule: true,
+      PutObjectCommand: function PutObjectCommand(args) { this.args = args; },
+      GetObjectCommand: function GetObjectCommand(args) { this.args = args; },
+      DeleteObjectCommand: function DeleteObjectCommand(args) { this.args = args; },
+    }));
+    jest.unstable_mockModule('@aws-sdk/s3-request-presigner', () => ({
+      __esModule: true,
+      getSignedUrl: getSignedUrlMock,
+    }));
+    jest.unstable_mockModule('../src/models/index.js', () => ({
+      __esModule: true,
+      File: { create: fileCreateMock, findByPk: jest.fn() },
+      MedicalCertificate: { findByPk: findByPkMock },
+      MedicalCertificateFile: {
+        create: mcCreateMock,
+        findByPk: mcFindMock,
+        findAll: mcFindAllMock,
+      },
+      MedicalCertificateType: { findOne: findOneMock },
+      Ticket: { findByPk: ticketFindByPkMock },
+      TicketFile: {
+        create: ticketFileCreateMock,
+        findByPk: ticketFileFindByPkMock,
+        findAll: ticketFileFindAllMock,
+        findOne: ticketFileFindOneMock,
+      },
+    }));
+    ({ default: service } = await import('../src/services/fileService.js'));
+  });
 });
 
 test('uploadForCertificate throws when S3 not configured', async () => {
-  // Ensure no S3 bucket configured and fresh module load
   delete process.env.S3_BUCKET;
-  jest.resetModules();
-  const { default: service } = await import('../src/services/fileService.js');
   await expect(
     service.uploadForCertificate(
       '1',
@@ -95,7 +85,6 @@ test('uploadForCertificate throws when S3 not configured', async () => {
 
 test('uploadForCertificate validates file type', async () => {
   process.env.S3_BUCKET = 'test';
-  const { default: service } = await import('../src/services/fileService.js');
   findByPkMock.mockResolvedValue({ id: '1', getUser: () => ({ last_name: 'L', first_name: 'F' }) });
   findOneMock.mockResolvedValue({ id: 't', name: 'Type' });
   const file = { originalname: 'test.exe', mimetype: 'application/x-msdownload', size: 10 };
@@ -106,7 +95,6 @@ test('uploadForCertificate validates file type', async () => {
 
 test('uploadForCertificate validates file size', async () => {
   process.env.S3_BUCKET = 'test';
-  const { default: service } = await import('../src/services/fileService.js');
   findByPkMock.mockResolvedValue({ id: '1', getUser: () => ({ last_name: 'L', first_name: 'F' }) });
   findOneMock.mockResolvedValue({ id: 't', name: 'Type' });
   const file = { originalname: 'test.pdf', mimetype: 'application/pdf', size: 6 * 1024 * 1024 };
@@ -117,7 +105,6 @@ test('uploadForCertificate validates file size', async () => {
 
 test('uploadForCertificate uploads and returns attachment', async () => {
   process.env.S3_BUCKET = 'test';
-  const { default: service } = await import('../src/services/fileService.js');
   findByPkMock.mockResolvedValue({ id: '1', getUser: () => ({ last_name: 'L', first_name: 'F' }) });
   findOneMock.mockResolvedValue({ id: 't', name: 'Type' });
   fileCreateMock.mockResolvedValue({ id: 'f1' });
@@ -134,7 +121,6 @@ test('uploadForCertificate uploads and returns attachment', async () => {
 
 test('getDownloadUrl returns signed url', async () => {
   process.env.S3_BUCKET = 'bucket';
-  const { default: service } = await import('../src/services/fileService.js');
   const url = await service.getDownloadUrl({ key: 'k' });
   expect(getSignedUrlMock).toHaveBeenCalled();
   expect(url).toBe('signed');
@@ -142,7 +128,6 @@ test('getDownloadUrl returns signed url', async () => {
 
 test('uploadForTicket uploads file', async () => {
   process.env.S3_BUCKET = 'test';
-  const { default: service } = await import('../src/services/fileService.js');
   ticketFindByPkMock.mockResolvedValue({ id: 't1', getUser: () => ({ last_name: 'L', first_name: 'F' }) });
   fileCreateMock.mockResolvedValue({ id: 'f1' });
   ticketFileCreateMock.mockResolvedValue({ id: 'tf1' });
@@ -156,7 +141,6 @@ test('uploadForTicket uploads file', async () => {
 
 test('uploadForNormativeTicket validates file size', async () => {
   process.env.S3_BUCKET = 'test';
-  const { default: service } = await import('../src/services/fileService.js');
   ticketFindByPkMock.mockResolvedValue({ id: 't1' });
   const bigFile = {
     originalname: 'v.mp4',
@@ -176,7 +160,6 @@ test('uploadForNormativeTicket validates file size', async () => {
 
 test('uploadForNormativeTicket uploads file', async () => {
   process.env.S3_BUCKET = 'test';
-  const { default: service } = await import('../src/services/fileService.js');
   ticketFindByPkMock.mockResolvedValue({ id: 't1' });
   fileCreateMock.mockResolvedValue({ id: 'f1' });
   ticketFileCreateMock.mockResolvedValue({ id: 'tf1' });
@@ -209,10 +192,10 @@ test('removeTicketFile deletes attachment', async () => {
     destroy: destroyA,
     File: { update: updateB, destroy: destroyB },
   });
-  const { default: service } = await import('../src/services/fileService.js');
   await service.removeTicketFile('f1', 'u1');
   expect(updateA).toHaveBeenCalled();
   expect(updateB).toHaveBeenCalled();
   expect(destroyA).toHaveBeenCalled();
   expect(destroyB).toHaveBeenCalled();
 });
+

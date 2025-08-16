@@ -15,11 +15,15 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   default: { sendPasswordResetEmail: sendEmailMock },
 }));
 
-import * as attemptStore from '../src/services/emailCodeAttempts.js';
+let attemptStore;
+let sendCode;
+let verifyCode;
 
-const { sendCode, verifyCode } = await import('../src/services/passwordResetService.js');
-
-beforeEach(() => {
+beforeEach(async () => {
+  await jest.isolateModulesAsync(async () => {
+    attemptStore = await import('../src/services/emailCodeAttempts.js');
+    ({ sendCode, verifyCode } = await import('../src/services/passwordResetService.js'));
+  });
   createMock.mockClear();
   destroyMock.mockClear();
   findOneMock.mockClear();
