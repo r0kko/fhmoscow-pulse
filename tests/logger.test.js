@@ -1,4 +1,5 @@
 import { jest, expect, test, beforeEach } from '@jest/globals';
+jest.resetModules();
 import { setImmediate as setImmediateAsync } from 'node:timers';
 
 jest.resetModules();

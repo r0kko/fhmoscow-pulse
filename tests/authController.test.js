@@ -1,4 +1,6 @@
 import { describe, expect, jest, test } from '@jest/globals';
+// Ensure a fresh module registry for ESM + unstable_mockModule in runInBand
+jest.resetModules();
 
 const verifyCredentialsMock = jest.fn();
 const rotateTokensMock = jest.fn();

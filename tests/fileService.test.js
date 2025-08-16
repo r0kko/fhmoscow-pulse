@@ -1,5 +1,7 @@
 /* global process */
 import { expect, jest, test, beforeEach } from '@jest/globals';
+// Fresh module registry for ESM mocks in CI runInBand
+jest.resetModules();
 import { Buffer } from 'buffer';
 import { MAX_NORMATIVE_FILE_SIZE } from '../src/config/fileLimits.js';
 

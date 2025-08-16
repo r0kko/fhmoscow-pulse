@@ -1,4 +1,5 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
+jest.resetModules();
 
 const createMock = jest.fn();
 const destroyMock = jest.fn();

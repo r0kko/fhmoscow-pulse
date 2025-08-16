@@ -1,4 +1,5 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
+jest.resetModules();
 import jwt from 'jsonwebtoken';
 
 const store = new Map();

@@ -1,4 +1,6 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+// fresh registry for ESM imports across suites
+jest.resetModules();
 
 let mapper;
 let zoneMapper;
