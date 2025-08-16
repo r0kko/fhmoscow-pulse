@@ -1,5 +1,3 @@
-// Sequelize external MariaDB models exports and association bootstrap
-
 export { default as Banner } from './models/banner.js';
 export { default as BannerPosition } from './models/bannerPosition.js';
 export { default as BasicDocument } from './models/basicDocument.js';
