@@ -227,11 +227,9 @@ async function buildPersonalDataConsentPdf(user, meta = {}) {
     } catch {
       /* keep current */
     }
-    doc
-      .fontSize(10)
-      .text('для спортивного судьи Федерации хоккея Москвы', {
-        align: 'center',
-      });
+    doc.fontSize(10).text('для спортивного судьи Федерации хоккея Москвы', {
+      align: 'center',
+    });
     if (savedFont) doc.font(savedFont);
     doc.fillColor('black');
   } catch {
@@ -466,11 +464,9 @@ async function buildPersonalDataConsentPdf(user, meta = {}) {
   );
   doc.moveDown();
 
-  doc
-    .font(fonts.bold)
-    .text('Согласие на распространение персональных данных', {
-      align: 'center',
-    });
+  doc.font(fonts.bold).text('Согласие на распространение персональных данных', {
+    align: 'center',
+  });
   doc.moveDown();
   doc
     .font(fonts.regular)
@@ -794,11 +790,9 @@ async function buildElectronicInteractionAgreementPdf(user, meta = {}) {
     } catch {
       /* empty */
     }
-    doc
-      .fontSize(10)
-      .text('для спортивного судьи Федерации хоккея Москвы', {
-        align: 'center',
-      });
+    doc.fontSize(10).text('для спортивного судьи Федерации хоккея Москвы', {
+      align: 'center',
+    });
     if (savedFont) doc.font(savedFont);
     doc.fillColor('black');
   } catch {
