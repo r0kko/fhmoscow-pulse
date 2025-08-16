@@ -4,7 +4,6 @@ import { PDF_FONTS, PDF_LOGOS, PDF_META } from '../config/pdf.js';
 
 import { renderPdf417 } from './barcode.js';
 
-
 const FALLBACK_REGULAR = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
 const FALLBACK_BOLD = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
 
@@ -123,7 +122,10 @@ function formatRuDateTime(d) {
   }
 }
 
-export async function applyFooter(doc, { page, total, barcodeText, numberText }) {
+export async function applyFooter(
+  doc,
+  { page, total, barcodeText, numberText }
+) {
   const outerLeft = 30;
   const outerRight = 30;
   const outerBottom = 20;
@@ -152,7 +154,9 @@ export async function applyFooter(doc, { page, total, barcodeText, numberText })
     const prevY = doc.y;
     doc.save();
     doc.fontSize(size).fillColor('#666666');
-    const leftLine = numberText ? `${String(numberText)} · ${pageLabel}` : pageLabel;
+    const leftLine = numberText
+      ? `${String(numberText)} · ${pageLabel}`
+      : pageLabel;
     doc.text(leftLine, outerLeft, textY, { lineBreak: false });
     const metaBits = [];
     if (PDF_META?.systemLabel) metaBits.push(PDF_META.systemLabel);

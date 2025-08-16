@@ -1,13 +1,19 @@
 import fs from 'fs';
 import path from 'path';
-import {fileURLToPath} from 'url';
+import { fileURLToPath } from 'url';
 import './env.js';
 
 // Candidate font directories, in priority order
 const CANDIDATE_FONT_DIRS = [
   process.env.PDF_FONT_DIR,
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets/fonts'),
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/src/fonts'),
+  path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../assets/fonts'
+  ),
+  path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../client/src/fonts'
+  ),
 ].filter(Boolean);
 
 function readable(file) {
@@ -51,7 +57,7 @@ function resolveFederationLogo() {
   // Priority: env override -> fhm-for-documents.png -> fhm-logo.png
   const env = resolveLogo('PDF_FEDERATION_LOGO', 'fhm-for-documents.png');
   if (env) return env;
-    return resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png');
+  return resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png');
 }
 
 export const PDF_LOGOS = {
