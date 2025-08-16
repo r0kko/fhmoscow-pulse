@@ -168,20 +168,20 @@ starts in HTTP mode and relies on nginx for TLS termination.
 
 ## External MariaDB models
 
-For integration with an external MariaDB service (no migrations), use repositories in `src/externalModels/` built on `mysql2/promise`.
+Integration with the legacy MariaDB is handled via Sequelize models placed in `src/externalModels/`.
 
 - Configure `EXT_DB_*` variables in `.env`.
 - Startup probes the connection and continues even if unavailable.
-- Use parameterized queries and optional Joi schemas for row validation.
+- Models are read‑only and map directly to existing tables.
 
 Example:
 
 ```js
 import { isExternalDbAvailable } from './src/config/externalMariaDb.js';
-import { ExternalUser } from './src/externalModels/index.js';
+import { User } from './src/externalModels/index.js';
 
 if (isExternalDbAvailable()) {
-  const u = await ExternalUser.findByEmail('user@example.com');
+  const u = await User.findOne({ where: { email: 'user@example.com' } });
 }
 ```
 

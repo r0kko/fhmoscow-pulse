@@ -4,10 +4,13 @@ export function calculateValidUntil(birthDate, issueDate) {
   const issue = parseYmdUtc(issueDate);
   if (!birth || !issue) return null;
 
-  const ageYears = (issue.getTime() - birth.getTime()) / (365.25 * 24 * 3600 * 1000);
+  const ageYears =
+    (issue.getTime() - birth.getTime()) / (365.25 * 24 * 3600 * 1000);
 
   // Base renewal date is 20th, 45th, or 100th birthday — computed in UTC to avoid TZ drift.
-  let until = new Date(Date.UTC(birth.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate()));
+  const until = new Date(
+    Date.UTC(birth.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate())
+  );
   if (ageYears < 20) {
     until.setUTCFullYear(until.getUTCFullYear() + 20);
     until.setUTCDate(until.getUTCDate() + 90); // 90 days after 20th birthday
@@ -25,7 +28,9 @@ export function calculateValidUntil(birthDate, issueDate) {
 function parseYmdUtc(s) {
   if (typeof s !== 'string') {
     const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? null : new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    return Number.isNaN(d.getTime())
+      ? null
+      : new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   }
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) {

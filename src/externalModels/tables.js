@@ -1,28 +1,24 @@
-import Joi from 'joi';
-
 import { createModel } from './modelFactory.js';
 
 // Minimal, conservative column validation. Unknown columns are allowed.
 // Extend schemas per table as needed while keeping unknown(true).
 
-const id = Joi.number().integer();
-const int = Joi.number().integer();
-const str = Joi.string();
-const txt = Joi.string();
-const dt = Joi.date();
-const bool = Joi.boolean();
+const id = 'int';
+const int = 'int';
+const str = 'string';
+const txt = 'text';
+const dt = 'date';
+const bool = 'boolean';
+const num = 'number';
 
 // Helper to build a model with a lightweight schema
 function M(table, primaryKey = 'id', shape = {}) {
-  const schema = Object.keys(shape).length
-    ? Joi.object(shape).unknown(true)
-    : null;
-  return createModel({ table, primaryKey, schema });
+  return createModel({ table, primaryKey, shape });
 }
 
 // Core media/files
 export const File = M('file', 'id', {
-  id: id.required(),
+  id: id,
   module: str,
   mime_type: str,
   size: int,
@@ -33,69 +29,69 @@ export const File = M('file', 'id', {
 });
 
 // Simple dictionaries / reference tables
-export const Country = M('country', 'id', { id: id.required(), name: str });
+export const Country = M('country', 'id', { id: id, name: str });
 export const City = M('city', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   country_id: int,
 });
-export const Sex = M('sex', 'id', { id: id.required(), name: str });
+export const Sex = M('sex', 'id', { id: id, name: str });
 export const BannerPosition = M('banner_position', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const GameEventType = M('game_event_type', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const GamePeriod = M('game_period', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const GameSituation = M('game_situation', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const GameStatus = M('game_status', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const GameViolation = M('game_violation', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   full_name: str,
 });
 export const OvertimeType = M('overtime_type', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const PenaltyMinutes = M('penalty_minutes', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const PayerType = M('payer_type', 'id', {
-  id: id.required(),
+  id: id,
   type: str,
 });
 export const RefereeCategory = M('referee_category', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const RefereeQualification = M('referee_qualification', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const RefereeQualificationHockeyLeague = M(
   'referee_qualification_hockey_league',
   'id',
-  { id: id.required(), name: str }
+  { id: id, name: str }
 );
 export const ReportStatus = M('report_status', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
 });
 export const Season = M('season', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   date_create: dt,
   date_update: dt,
@@ -103,7 +99,7 @@ export const Season = M('season', 'id', {
   current: bool,
 });
 export const Stage = M('stage', 'id', {
-  id: id.required(),
+  id: id,
   tournament_id: int,
   name: str,
   date_create: dt,
@@ -115,7 +111,7 @@ export const Stage = M('stage', 'id', {
   play_off_bracket: int,
 });
 export const Tags = M('tags', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   date_create: dt,
   date_update: dt,
@@ -124,7 +120,7 @@ export const Tags = M('tags', 'id', {
 
 // Banners / sponsors
 export const Banner = M('banner', 'id', {
-  id: id.required(),
+  id: id,
   position_id: int,
   image_id: int,
   name: str,
@@ -136,7 +132,7 @@ export const Banner = M('banner', 'id', {
 });
 
 export const Sponsor = M('sponsor', 'id', {
-  id: id.required(),
+  id: id,
   preview_image_id: int,
   name: str,
   text: txt,
@@ -152,7 +148,7 @@ export const Sponsor = M('sponsor', 'id', {
 
 // Stadiums / locations
 export const Stadium = M('stadium', 'id', {
-  id: id.required(),
+  id: id,
   city_id: int,
   create_date: dt,
   update_date: dt,
@@ -163,7 +159,7 @@ export const Stadium = M('stadium', 'id', {
 
 // Media
 export const Media = M('media', 'id', {
-  id: id.required(),
+  id: id,
   type: str,
   object_status: str,
   date_publication: dt,
@@ -172,7 +168,7 @@ export const Media = M('media', 'id', {
 });
 
 export const Photo = M('photo', 'id', {
-  id: id.required(),
+  id: id,
   preview_image_id: int,
   full_title: str,
   short_title: str,
@@ -186,7 +182,7 @@ export const Photo = M('photo', 'id', {
 });
 
 export const PhotoImage = M('photo_image', 'id', {
-  id: id.required(),
+  id: id,
   file_id: int,
   photo_id: int,
   name: str,
@@ -202,7 +198,7 @@ export const PhotoTags = M('photo_tags', undefined, {
 });
 
 export const Video = M('video', 'id', {
-  id: id.required(),
+  id: id,
   preview_image_id: int,
   full_title: str,
   short_title: str,
@@ -223,7 +219,7 @@ export const VideoTags = M('video_tags', undefined, {
 
 // News / pages / docs
 export const News = M('news', 'id', {
-  id: id.required(),
+  id: id,
   preview_image_id: int,
   full_title: txt,
   short_title: str,
@@ -239,7 +235,7 @@ export const News = M('news', 'id', {
 });
 
 export const NewsImage = M('news_image', 'id', {
-  id: id.required(),
+  id: id,
   file_id: int,
   news_id: int,
   name: str,
@@ -253,7 +249,7 @@ export const NewsTags = M('news_tags', undefined, {
 });
 
 export const PageEditor = M('page_editor', 'id', {
-  id: id.required(),
+  id: id,
   title: str,
   slug: str,
   html: txt,
@@ -266,7 +262,7 @@ export const BasicDocumentParentCategory = M(
   'basic_document_parent_category',
   'id',
   {
-    id: id.required(),
+    id: id,
     name: str,
     date_create: dt,
     date_update: dt,
@@ -276,7 +272,7 @@ export const BasicDocumentParentCategory = M(
 );
 
 export const BasicDocument = M('basic_document', 'id', {
-  id: id.required(),
+  id: id,
   file_id: int,
   name: str,
   date_create: dt,
@@ -289,7 +285,7 @@ export const BasicDocument = M('basic_document', 'id', {
 });
 
 export const Document = M('document', 'id', {
-  id: id.required(),
+  id: id,
   file_id: int,
   player_id: int,
   name: str,
@@ -299,7 +295,7 @@ export const Document = M('document', 'id', {
 });
 
 export const Protocol = M('protocol', 'id', {
-  id: id.required(),
+  id: id,
   file_id: int,
   game_id: int,
   date_create: dt,
@@ -309,7 +305,7 @@ export const Protocol = M('protocol', 'id', {
 
 // Clubs / teams / players / staff
 export const Club = M('club', 'id', {
-  id: id.required(),
+  id: id,
   date_create: dt,
   date_update: dt,
   full_name: str,
@@ -327,7 +323,7 @@ export const Club = M('club', 'id', {
 });
 
 export const Team = M('team', 'id', {
-  id: id.required(),
+  id: id,
   club_id: int,
   date_create: dt,
   date_update: dt,
@@ -346,7 +342,7 @@ export const Team = M('team', 'id', {
 });
 
 export const Staff = M('staff', 'id', {
-  id: id.required(),
+  id: id,
   reason_for_refusal: str,
   surname: str,
   name: str,
@@ -361,7 +357,7 @@ export const Staff = M('staff', 'id', {
 });
 
 export const StaffCategory = M('staff_category', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   date_create: dt,
   date_update: dt,
@@ -369,7 +365,7 @@ export const StaffCategory = M('staff_category', 'id', {
 });
 
 export const Player = M('player', 'id', {
-  id: id.required(),
+  id: id,
   grip: str,
   height: int,
   weight: int,
@@ -388,19 +384,19 @@ export const Player = M('player', 'id', {
 });
 
 export const PlayerPosition = M('player_position', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   abbreviation: str,
 });
 
 export const TeamPlayerRole = M('team_player_role', 'id', {
-  id: id.required(),
+  id: id,
   name: str,
   abbreviation: str,
 });
 
 export const ClubPlayer = M('club_player', 'id', {
-  id: id.required(),
+  id: id,
   club_id: int,
   player_id: int,
   date_create: dt,
@@ -415,7 +411,7 @@ export const ClubPlayer = M('club_player', 'id', {
 });
 
 export const TeamPlayer = M('team_player', 'id', {
-  id: id.required(),
+  id: id,
   player_id: int,
   object_status: str,
   date_create: dt,
@@ -425,7 +421,7 @@ export const TeamPlayer = M('team_player', 'id', {
 });
 
 export const ClubStaff = M('club_staff', 'id', {
-  id: id.required(),
+  id: id,
   club_id: int,
   staff_id: int,
   date_create: dt,
@@ -438,7 +434,7 @@ export const ClubStaff = M('club_staff', 'id', {
 });
 
 export const TeamStaff = M('team_staff', 'id', {
-  id: id.required(),
+  id: id,
   staff_id: int,
   team_id: int,
   date_create: dt,
@@ -449,7 +445,7 @@ export const TeamStaff = M('team_staff', 'id', {
 
 // Tournaments / groups / tours
 export const TournamentType = M('tournament_type', 'id', {
-  id: id.required(),
+  id: id,
   date_create: dt,
   date_update: dt,
   full_name: str,
@@ -463,7 +459,7 @@ export const TournamentType = M('tournament_type', 'id', {
 });
 
 export const Tournament = M('tournament', 'id', {
-  id: id.required(),
+  id: id,
   type_id: int,
   season_id: int,
   date_create: dt,
@@ -481,7 +477,7 @@ export const Tournament = M('tournament', 'id', {
 
 // group is a reserved word; quoted by factory
 export const TournamentGroup = M('group', 'id', {
-  id: id.required(),
+  id: id,
   tournament_id: int,
   date_create: dt,
   date_update: dt,
@@ -492,7 +488,7 @@ export const TournamentGroup = M('group', 'id', {
 });
 
 export const Tour = M('tour', 'id', {
-  id: id.required(),
+  id: id,
   tournament_group_id: int,
   name: str,
   date_start: dt,
@@ -504,7 +500,7 @@ export const Tour = M('tour', 'id', {
 });
 
 export const TournamentTeam = M('tournament_team', 'id', {
-  id: id.required(),
+  id: id,
   tournament_id: int,
   tournament_group_id: int,
   team_id: int,
@@ -513,7 +509,7 @@ export const TournamentTeam = M('tournament_team', 'id', {
 });
 
 export const TournamentSetting = M('tournament_setting', 'id', {
-  id: id.required(),
+  id: id,
   tournament_type_id: int,
   tournament_id: int,
   duration_period: int,
@@ -527,7 +523,7 @@ export const TournamentSetting = M('tournament_setting', 'id', {
 });
 
 export const TournamentTable = M('tournament_table', 'id', {
-  id: id.required(),
+  id: id,
   season_id: int,
   tournament_id: int,
   tournament_group_id: int,
@@ -537,7 +533,7 @@ export const TournamentTable = M('tournament_table', 'id', {
   loss_count: int,
   pucks_scored: int,
   pucks_missed: int,
-  pucks_difference: Joi.number(),
+  pucks_difference: num,
   score: int,
   position: int,
   team_id: int,
@@ -547,7 +543,7 @@ export const TournamentTable = M('tournament_table', 'id', {
 });
 
 export const CustomScore = M('custom_score', 'id', {
-  id: id.required(),
+  id: id,
   season_id: int,
   tournament_id: int,
   tournament_group_id: int,
@@ -558,7 +554,7 @@ export const CustomScore = M('custom_score', 'id', {
 
 // Games
 export const Game = M('game', 'id', {
-  id: id.required(),
+  id: id,
   date_create: dt,
   date_update: dt,
   date_start: dt,
@@ -585,7 +581,7 @@ export const Game = M('game', 'id', {
 });
 
 export const GameAssignment = M('game_assignment', 'id', {
-  id: id.required(),
+  id: id,
   game_id: int,
   stadium_id: int,
   date_start: dt,
@@ -593,7 +589,7 @@ export const GameAssignment = M('game_assignment', 'id', {
 });
 
 export const GameEvent = M('game_event', 'id', {
-  id: id.required(),
+  id: id,
   game_id: int,
   event_type_id: int,
   goal_author_id: int,
@@ -619,7 +615,7 @@ export const GameEvent = M('game_event', 'id', {
 });
 
 export const GamePlayer = M('game_player', 'id', {
-  id: id.required(),
+  id: id,
   player_id: int,
   game_id: int,
   number: int,
@@ -632,21 +628,21 @@ export const GamePlayer = M('game_player', 'id', {
 });
 
 export const GameReferee = M('game_referee', 'id', {
-  id: id.required(),
+  id: id,
   referee_id: int,
   game_id: int,
   position: str,
 });
 
 export const GameRemark = M('game_remark', 'id', {
-  id: id.required(),
+  id: id,
   game_id: int,
   type: int,
   description: txt,
 });
 
 export const GameSetting = M('game_setting', 'id', {
-  id: id.required(),
+  id: id,
   type_overtime_id: int,
   number_periods: int,
   number_timeouts: int,
@@ -662,7 +658,7 @@ export const GameSetting = M('game_setting', 'id', {
 });
 
 export const GameStaff = M('game_staff', 'id', {
-  id: id.required(),
+  id: id,
   game_id: int,
   staff_id: int,
   team_id: int,
@@ -671,7 +667,7 @@ export const GameStaff = M('game_staff', 'id', {
 
 // Stats and results
 export const PlayerStatistic = M('player_statistic', 'id', {
-  id: id.required(),
+  id: id,
   season_id: int,
   tournament_id: int,
   team_id: int,
@@ -682,14 +678,14 @@ export const PlayerStatistic = M('player_statistic', 'id', {
   goal_pass: int,
   penalty: int,
   missed: int,
-  time: Joi.number(),
-  reliability_factor: Joi.number(),
+  time: num,
+  reliability_factor: num,
   game_time_percent: int,
   is_started: bool,
 });
 
 export const StaffStatistic = M('staff_statistic', 'id', {
-  id: id.required(),
+  id: id,
   season_id: int,
   tournament_id: int,
   team_id: int,
@@ -701,7 +697,7 @@ export const StaffStatistic = M('staff_statistic', 'id', {
 });
 
 export const SeasonResults = M('season_results', 'id', {
-  id: id.required(),
+  id: id,
   season_id: int,
   date: str,
   place: str,
@@ -714,7 +710,7 @@ export const SeasonResults = M('season_results', 'id', {
 
 // Referees and related
 export const Referee = M('referee', 'id', {
-  id: id.required(),
+  id: id,
   category_id: int,
   date_create: dt,
   date_update: dt,
@@ -745,7 +741,7 @@ export const Referee = M('referee', 'id', {
 });
 
 export const RefereeDocument = M('referee_document', 'id', {
-  id: id.required(),
+  id: id,
   referee_id: int,
   series: str,
   number: str,
@@ -758,7 +754,7 @@ export const RefereeDocument = M('referee_document', 'id', {
 });
 
 export const RefereeTaxation = M('referee_taxation', 'id', {
-  id: id.required(),
+  id: id,
   referee_id: int,
   payer_type_id: int,
   inn: str,
@@ -771,7 +767,7 @@ export const RefereeTaxation = M('referee_taxation', 'id', {
 });
 
 export const Report = M('report', 'id', {
-  id: id.required(),
+  id: id,
   referee_id: int,
   game_id: int,
   status_id: int,
@@ -785,7 +781,7 @@ export const Report = M('report', 'id', {
 
 // Misc
 export const Sdk = M('sdk', 'id', {
-  id: id.required(),
+  id: id,
   season_id: int,
   title: str,
   date_publication: dt,
@@ -798,7 +794,7 @@ export const Sdk = M('sdk', 'id', {
 });
 
 export const Log = M('log', 'id', {
-  id: id.required(),
+  id: id,
   user_id: int,
   datetime: dt,
   entity: str,
@@ -807,7 +803,7 @@ export const Log = M('log', 'id', {
 });
 
 export const User = M('user', 'id', {
-  id: id.required(),
+  id: id,
   email: str,
   roles: txt,
   password: str,
@@ -824,14 +820,14 @@ export const User = M('user', 'id', {
 });
 
 export const RefreshTokens = M('refresh_tokens', 'id', {
-  id: id.required(),
+  id: id,
   refresh_token: str,
   username: str,
   valid: dt,
 });
 
 export const MessengerMessages = M('messenger_messages', 'id', {
-  id: Joi.number().integer().required(),
+  id: int,
   queue_name: str,
   body: txt,
   headers: txt,
@@ -844,7 +840,7 @@ export const DoctrineMigrationVersions = M(
   'doctrine_migration_versions',
   'version',
   {
-    version: str.required(),
+    version: str,
     executed_at: dt,
     execution_time: int,
   }

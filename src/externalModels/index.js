@@ -1,4 +1,2 @@
-export * as ExternalDb from './base.js';
-export * as ExternalUser from './user.js';
-// All external MariaDB models (read‑only helpers)
+// Sequelize models for the external MariaDB
 export * from './tables.js';

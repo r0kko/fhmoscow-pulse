@@ -1,22 +1,28 @@
-import mysql from 'mysql2/promise';
+import { Sequelize } from 'sequelize';
 import './env.js';
 
-const externalPool = mysql.createPool({
-  host: process.env.EXT_DB_HOST,
-  port: process.env.EXT_DB_PORT || 3306,
-  user: process.env.EXT_DB_USER,
-  password: process.env.EXT_DB_PASS,
-  database: process.env.EXT_DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  connectTimeout: 5000,
-});
+const externalSequelize = new Sequelize(
+  process.env.EXT_DB_NAME,
+  process.env.EXT_DB_USER,
+  process.env.EXT_DB_PASS,
+  {
+    host: process.env.EXT_DB_HOST,
+    port: process.env.EXT_DB_PORT || 3306,
+    dialect: 'mysql',
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  }
+);
 
 let externalDbAvailable = false;
 
 export async function connectExternalMariaDb() {
   const { default: logger } = await import('../../logger.js');
-  // Allow running without EXT_* configured; skip probing if missing
   if (
     !process.env.EXT_DB_HOST ||
     !process.env.EXT_DB_USER ||
@@ -27,7 +33,7 @@ export async function connectExternalMariaDb() {
     return;
   }
   try {
-    await externalPool.query('SELECT 1');
+    await externalSequelize.authenticate();
     externalDbAvailable = true;
     logger.info('✅ External MariaDB connection established');
   } catch (err) {
@@ -40,4 +46,8 @@ export function isExternalDbAvailable() {
   return externalDbAvailable;
 }
 
-export default externalPool;
+export async function closeExternalMariaDb() {
+  await externalSequelize.close();
+}
+
+export default externalSequelize;
