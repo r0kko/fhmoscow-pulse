@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import {fileURLToPath} from 'url';
 import './env.js';
 
 // Candidate font directories, in priority order
@@ -51,8 +51,7 @@ function resolveFederationLogo() {
   // Priority: env override -> fhm-for-documents.png -> fhm-logo.png
   const env = resolveLogo('PDF_FEDERATION_LOGO', 'fhm-for-documents.png');
   if (env) return env;
-  const alt1 = resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png');
-  return alt1;
+    return resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png');
 }
 
 export const PDF_LOGOS = {
