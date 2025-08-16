@@ -34,7 +34,6 @@ jest.unstable_mockModule('../src/services/legacyUserService.js', () => ({
 const servicePath = '../src/services/addressService.js';
 
 beforeEach(() => {
-  jest.resetModules();
   userFindMock.mockReset();
   addressTypeFindMock.mockReset();
   userAddressFindMock.mockReset();
