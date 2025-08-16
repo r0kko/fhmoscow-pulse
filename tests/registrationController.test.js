@@ -100,8 +100,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 let controller;
 
 beforeEach(async () => {
-  jest.resetModules();
-  ({ default: controller } = await import('../src/controllers/registrationController.js'));
+  await jest.isolateModulesAsync(async () => {
+    ({ default: controller } = await import('../src/controllers/registrationController.js'));
+  });
   jest.clearAllMocks();
   validationOk = true;
 });

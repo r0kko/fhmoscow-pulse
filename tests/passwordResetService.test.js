@@ -1,5 +1,4 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
-jest.resetModules();
 
 const createMock = jest.fn();
 const destroyMock = jest.fn();
@@ -21,9 +20,10 @@ let sendCode;
 let verifyCode;
 
 beforeEach(async () => {
-  jest.resetModules();
-  attemptStore = await import('../src/services/emailCodeAttempts.js');
-  ({ sendCode, verifyCode } = await import('../src/services/passwordResetService.js'));
+  await jest.isolateModulesAsync(async () => {
+    attemptStore = await import('../src/services/emailCodeAttempts.js');
+    ({ sendCode, verifyCode } = await import('../src/services/passwordResetService.js'));
+  });
   createMock.mockClear();
   destroyMock.mockClear();
   findOneMock.mockClear();

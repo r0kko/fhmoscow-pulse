@@ -73,8 +73,9 @@ const user = {
 };
 
 beforeEach(async () => {
-  jest.resetModules();
-  ({ default: authService } = await import('../src/services/authService.js'));
+  await jest.isolateModulesAsync(async () => {
+    ({ default: authService } = await import('../src/services/authService.js'));
+  });
   attemptStore = await import('../src/services/loginAttempts.js');
   updateMock.mockClear();
   incrementMock.mockClear();

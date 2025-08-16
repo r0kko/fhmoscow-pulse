@@ -1,5 +1,4 @@
-import { describe, expect, jest, test } from '@jest/globals';
-// Ensure a fresh module registry for ESM + unstable_mockModule in runInBand
+import {beforeAll, describe, expect, jest, test} from '@jest/globals';
 jest.resetModules();
 
 const verifyCredentialsMock = jest.fn();
@@ -73,7 +72,12 @@ jest.unstable_mockModule('express-validator', () => ({
   })),
 }));
 
-const { default: authController } = await import('../src/controllers/authController.js');
+let authController;
+beforeAll(async () => {
+  await jest.isolateModulesAsync(async () => {
+    ({ default: authController } = await import('../src/controllers/authController.js'));
+  });
+});
 
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
