@@ -1,7 +1,14 @@
-import { beforeEach, jest, expect, test } from '@jest/globals';
+import { beforeEach, jest, expect, test, beforeAll } from '@jest/globals';
 
-import sequelize from '../src/config/database.js';
-import Document from '../src/models/document.js';
+jest.resetModules();
+
+let sequelize;
+let Document;
+
+beforeAll(async () => {
+  sequelize = (await import('../src/config/database.js')).default;
+  Document = (await import('../src/models/document.js')).default;
+});
 
 beforeEach(() => {
   jest.spyOn(sequelize, 'query').mockResolvedValue([{ nextval: 7 }]);

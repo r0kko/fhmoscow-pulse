@@ -3,6 +3,8 @@ import { expect, jest, test, beforeEach } from '@jest/globals';
 import { Buffer } from 'buffer';
 import { MAX_NORMATIVE_FILE_SIZE } from '../src/config/fileLimits.js';
 
+jest.resetModules();
+
 const sendMock = jest.fn();
 const findByPkMock = jest.fn();
 const findOneMock = jest.fn();

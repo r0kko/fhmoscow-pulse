@@ -1,4 +1,7 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
+import jwt from 'jsonwebtoken';
+
+jest.resetModules();
 
 const store = new Map();
 jest.unstable_mockModule('../src/config/redis.js', () => ({
@@ -50,7 +53,6 @@ jest.unstable_mockModule('bcryptjs', () => ({
 process.env.JWT_SECRET = 'secret';
 const { default: authService } = await import('../src/services/authService.js');
 const attemptStore = await import('../src/services/loginAttempts.js');
-import jwt from 'jsonwebtoken';
 
 const updateMock = jest.fn(async function (data) {
   Object.assign(user, data);

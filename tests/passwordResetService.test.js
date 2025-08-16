@@ -1,4 +1,6 @@
-import { beforeEach, expect, jest, test } from '@jest/globals';
+import { beforeEach, expect, jest, test, beforeAll } from '@jest/globals';
+
+jest.resetModules();
 
 const createMock = jest.fn();
 const destroyMock = jest.fn();
@@ -15,9 +17,14 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   default: { sendPasswordResetEmail: sendEmailMock },
 }));
 
-import * as attemptStore from '../src/services/emailCodeAttempts.js';
+let attemptStore;
+let sendCode;
+let verifyCode;
 
-const { sendCode, verifyCode } = await import('../src/services/passwordResetService.js');
+beforeAll(async () => {
+  attemptStore = await import('../src/services/emailCodeAttempts.js');
+  ({ sendCode, verifyCode } = await import('../src/services/passwordResetService.js'));
+});
 
 beforeEach(() => {
   createMock.mockClear();

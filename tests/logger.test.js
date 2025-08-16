@@ -1,6 +1,8 @@
 import { jest, expect, test, beforeEach } from '@jest/globals';
 import { setImmediate as setImmediateAsync } from 'node:timers';
 
+jest.resetModules();
+
 const createMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/log.js', () => ({
