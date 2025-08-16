@@ -63,6 +63,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 }));
 
 beforeEach(() => {
+  jest.resetModules();
   sendMock.mockClear();
   findByPkMock.mockClear();
   findOneMock.mockClear();

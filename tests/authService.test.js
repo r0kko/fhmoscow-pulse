@@ -1,8 +1,6 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 
-jest.resetModules();
-
 const store = new Map();
 jest.unstable_mockModule('../src/config/redis.js', () => ({
   __esModule: true,
@@ -51,8 +49,9 @@ jest.unstable_mockModule('bcryptjs', () => ({
 
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
-const { default: authService } = await import('../src/services/authService.js');
-const attemptStore = await import('../src/services/loginAttempts.js');
+
+let authService;
+let attemptStore;
 
 const updateMock = jest.fn(async function (data) {
   Object.assign(user, data);
@@ -73,6 +72,9 @@ const user = {
 };
 
 beforeEach(async () => {
+  jest.resetModules();
+  ({ default: authService } = await import('../src/services/authService.js'));
+  attemptStore = await import('../src/services/loginAttempts.js');
   updateMock.mockClear();
   incrementMock.mockClear();
   reloadMock.mockClear();

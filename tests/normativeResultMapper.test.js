@@ -1,6 +1,4 @@
-import { describe, test, expect, beforeAll, jest } from '@jest/globals';
-
-jest.resetModules();
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 
 let mapper;
 let zoneMapper;
@@ -8,7 +6,8 @@ let groupMapper;
 let userMapper;
 let trainingMapper;
 
-beforeAll(async () => {
+beforeEach(async () => {
+  jest.resetModules();
   ({ default: mapper } = await import('../src/mappers/normativeResultMapper.js'));
   ({ default: zoneMapper } = await import('../src/mappers/normativeZoneMapper.js'));
   ({ default: groupMapper } = await import('../src/mappers/normativeGroupMapper.js'));
