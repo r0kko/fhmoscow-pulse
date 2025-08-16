@@ -12,6 +12,12 @@ const schema = Joi.object({
   LEGACY_DB_NAME: Joi.string().required(),
   LEGACY_DB_USER: Joi.string().required(),
   LEGACY_DB_PASS: Joi.string().required(),
+  // Optional second external MariaDB connection
+  EXT_DB_HOST: Joi.string().optional(),
+  EXT_DB_PORT: Joi.string().optional(),
+  EXT_DB_NAME: Joi.string().optional(),
+  EXT_DB_USER: Joi.string().optional(),
+  EXT_DB_PASS: Joi.string().optional(),
   JWT_SECRET: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
   S3_BUCKET: Joi.string().optional(),

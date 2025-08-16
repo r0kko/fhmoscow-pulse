@@ -12,6 +12,7 @@ import debugLib from 'debug';
 import app from '../app.js';
 import { connectToDatabase } from '../src/config/database.js';
 import { connectLegacyDatabase } from '../src/config/legacyDatabase.js';
+import { connectExternalMariaDb } from '../src/config/externalMariaDb.js';
 import { connectRedis } from '../src/config/redis.js';
 import validateEnv from '../src/config/validateEnv.js';
 import startTaxationCron from '../src/jobs/taxationCron.js';
@@ -64,6 +65,7 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   await connectToDatabase();
   await connectRedis();
   await connectLegacyDatabase(); // continue even if legacy DB is unreachable
+  await connectExternalMariaDb(); // optional external MariaDB
   startTaxationCron();
   server.listen(port);
 })();
