@@ -25,6 +25,7 @@ function setup(logos) {
       boldItalic: '/bi.ttf',
     },
     PDF_LOGOS: logos,
+    PDF_META: { systemLabel: 'Test System' },
   }));
 
   return import('../src/utils/pdf.js');
@@ -81,8 +82,8 @@ test('applyFirstPageHeader draws logos and sets styles', async () => {
   };
   docStub = doc;
   applyFirstPageHeader(doc);
-  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 25 });
-  expect(imageMock).toHaveBeenCalledWith('/sys.png', 370, 30, { width: 100 });
+  expect(imageMock).toHaveBeenCalledWith('/fhm.png', 30, 30, { height: 32 });
+  expect(imageMock).toHaveBeenCalledWith('/sys.png', 390, 30, { width: 80 });
   expect(textMock).not.toHaveBeenCalled();
   expect(fillColorMock).toHaveBeenCalledWith('black');
   expect(fontSizeMock).toHaveBeenCalledWith(10);

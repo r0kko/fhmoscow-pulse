@@ -3,10 +3,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import './env.js';
 
-const DEFAULT_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../assets/fonts'
-);
+// Candidate font directories, in priority order
+const CANDIDATE_FONT_DIRS = [
+  process.env.PDF_FONT_DIR,
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets/fonts'),
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/src/fonts'),
+].filter(Boolean);
 
 function readable(file) {
   try {
@@ -17,11 +19,12 @@ function readable(file) {
   }
 }
 
-const dir = process.env.PDF_FONT_DIR || DEFAULT_DIR;
-
 function resolveFont(name) {
-  const file = path.join(dir, name);
-  return readable(file) ? file : undefined;
+  for (const dir of CANDIDATE_FONT_DIRS) {
+    const file = path.join(dir, name);
+    if (readable(file)) return file;
+  }
+  return undefined;
 }
 
 export const PDF_FONTS = {
@@ -43,7 +46,27 @@ function resolveLogo(envName, fallback) {
   return readable(file) ? file : undefined;
 }
 
+/* istanbul ignore next */
+function resolveFederationLogo() {
+  // Priority: env override -> fhm-for-documents.png -> fhm-logo.png
+  const env = resolveLogo('PDF_FEDERATION_LOGO', 'fhm-for-documents.png');
+  if (env) return env;
+  const alt1 = resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png');
+  return alt1;
+}
+
 export const PDF_LOGOS = {
-  federation: resolveLogo('PDF_FEDERATION_LOGO', 'fhm-logo.png'),
+  federation: resolveFederationLogo(),
   system: resolveLogo('PDF_SYSTEM_LOGO', 'system-logo.png'),
+};
+
+export const PDF_META = {
+  systemLabel: process.env.PDF_SYSTEM_LABEL || undefined,
+  // Optional style tuning for barcodes
+  barcodeWidth: process.env.PDF_BARCODE_WIDTH
+    ? Number(process.env.PDF_BARCODE_WIDTH)
+    : undefined,
+  barcodeOpacity: process.env.PDF_BARCODE_OPACITY
+    ? Number(process.env.PDF_BARCODE_OPACITY)
+    : undefined,
 };
