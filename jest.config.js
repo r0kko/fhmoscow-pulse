@@ -1,9 +1,11 @@
 export default {
   testEnvironment: 'node',
   transform: {},
-  // Do NOT reset modules globally with ESM + unstable_mockModule.
-  // Global resets cause "module is already linked" with ESM graphs.
-  // Tests that need isolation should use `jest.isolateModulesAsync` locally.
+  // Run tests sequentially to avoid concurrent ESM linking issues
+  maxWorkers: 1,
+  // Ensure each test file gets a fresh module registry to prevent
+  // "module is already linked" errors when using `unstable_mockModule`.
+  resetModules: true,
   clearMocks: true,
   restoreMocks: true,
   collectCoverage: true,
