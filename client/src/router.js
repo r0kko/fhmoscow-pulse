@@ -17,6 +17,7 @@ import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminGrounds from './views/AdminGrounds.vue';
+import AdminTeams from './views/AdminTeams.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
@@ -38,6 +39,7 @@ const adminRoles = [
   'ADMIN',
   'FIELD_REFEREE_SPECIALIST',
   'BRIGADE_REFEREE_SPECIALIST',
+  'SPORT_SCHOOL_STAFF',
 ];
 const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
 
@@ -190,6 +192,11 @@ const routes = [
     path: '/admin/camps',
     component: AdminCamps,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Сборы' },
+  },
+  {
+    path: '/admin/teams',
+    component: AdminTeams,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Команды' },
   },
   {
     path: '/admin/grounds',

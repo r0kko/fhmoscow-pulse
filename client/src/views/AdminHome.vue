@@ -1,5 +1,7 @@
 <script setup>
 import { RouterLink } from 'vue-router';
+import { computed } from 'vue';
+import { auth } from '../auth.js';
 
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
@@ -14,9 +16,16 @@ const refereeSections = [
   { title: 'Мероприятия', icon: 'bi-calendar-event', to: '/admin/courses' },
 ];
 
-const systemSections = [
-  { title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' },
-];
+const systemSections = computed(() => {
+  const items = [];
+  if (auth.roles.includes('ADMIN')) {
+    items.push({ title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' });
+  }
+  if (auth.roles.includes('SPORT_SCHOOL_STAFF')) {
+    items.push({ title: 'Команды', icon: 'bi-people', to: '/admin/teams' });
+  }
+  return items;
+});
 </script>
 
 <template>

@@ -48,6 +48,8 @@ import courseUsersRouter from './courseUsers.js';
 import courseTrainingTypesRouter from './courseTrainingTypes.js';
 import courseTrainingsRouter from './courseTrainings.js';
 import vehiclesRouter from './vehicles.js';
+import teamsRouter from './teams.js';
+import userTeamsRouter from './userTeams.js';
 
 const router = express.Router();
 
@@ -95,6 +97,8 @@ router.use('/course-users', courseUsersRouter);
 router.use('/tasks', tasksRouter);
 router.use('/tickets', ticketsRouter);
 router.use('/vehicles', vehiclesRouter);
+router.use('/teams', teamsRouter);
+router.use('/user-teams', userTeamsRouter);
 
 /**
  * @swagger

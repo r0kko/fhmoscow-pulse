@@ -64,6 +64,8 @@ import TicketType from './ticketType.js';
 import TicketStatus from './ticketStatus.js';
 import Ticket from './ticket.js';
 import TicketFile from './ticketFile.js';
+import Team from './team.js';
+import UserTeam from './userTeam.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -76,6 +78,10 @@ User.belongsTo(Sex, { foreignKey: 'sex_id' });
 /* многие-ко-многим: пользователь ↔ роли */
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'user_id' });
 Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id' });
+
+/* many-to-many: user ↔ teams */
+User.belongsToMany(Team, { through: UserTeam, foreignKey: 'user_id' });
+Team.belongsToMany(User, { through: UserTeam, foreignKey: 'team_id' });
 
 /* лог ↔ пользователь (опциональная связь) */
 User.hasMany(Log, { foreignKey: 'user_id' });
@@ -407,6 +413,8 @@ export {
   TicketType,
   TicketStatus,
   TicketFile,
+  Team,
+  UserTeam,
   Course,
   UserCourse,
   NormativeValueType,
