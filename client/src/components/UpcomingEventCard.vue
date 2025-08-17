@@ -90,7 +90,9 @@ function formatStart(date) {
             <div class="month text-uppercase">{{ monthShort }}</div>
           </div>
           <div class="flex-grow-1 content-col">
-            <div class="d-flex align-items-start justify-content-between gap-2 mb-1 header-row">
+            <div
+              class="d-flex align-items-start justify-content-between gap-2 mb-1 header-row"
+            >
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <i :class="`bi ${icon} text-brand`" aria-hidden="true"></i>
                 <span class="badge badge-brand-soft">{{ title }}</span>
@@ -102,7 +104,11 @@ function formatStart(date) {
                 {{ timeShort }}
               </div>
             </div>
-            <div v-if="location" class="small text-body-secondary address" :title="location">
+            <div
+              v-if="location"
+              class="small text-body-secondary address"
+              :title="location"
+            >
               <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
               <span class="align-middle">{{ location }}</span>
             </div>
