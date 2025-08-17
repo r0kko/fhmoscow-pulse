@@ -20,8 +20,6 @@ const systemSections = computed(() => {
   const items = [];
   if (auth.roles.includes('ADMIN')) {
     items.push({ title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' });
-  }
-  if (auth.roles.includes('SPORT_SCHOOL_STAFF')) {
     items.push({ title: 'Команды', icon: 'bi-people', to: '/admin/teams' });
   }
   return items;

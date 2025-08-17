@@ -6,7 +6,12 @@ import controller from '../controllers/teamController.js';
 
 const router = express.Router();
 
-router.get('/', auth, authorize('SPORT_SCHOOL_STAFF'), controller.list);
+router.get(
+  '/',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  controller.list
+);
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);
 
 export default router;

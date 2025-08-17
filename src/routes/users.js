@@ -14,6 +14,7 @@ import addressAdmin from '../controllers/addressAdminController.js';
 import medicalCertificateAdmin from '../controllers/medicalCertificateAdminController.js';
 import taskAdmin from '../controllers/taskAdminController.js';
 import ticketAdmin from '../controllers/ticketAdminController.js';
+import userTeamController from '../controllers/userTeamController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -32,6 +33,7 @@ import {
   createTicketRules,
   updateTicketRules,
 } from '../validators/ticketValidators.js';
+import { addTeamRules } from '../validators/userTeamValidators.js';
 
 const router = express.Router();
 
@@ -282,6 +284,84 @@ router.delete(
   auth,
   authorize('ADMINISTRATOR'),
   admin.removeRole
+);
+
+/**
+ * @swagger
+ * /users/{id}/teams:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List teams for user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Array of teams
+ */
+router.get(
+  '/:id/teams',
+  auth,
+  authorize('ADMIN'),
+  userTeamController.listByUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/teams:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Add team to user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Team added
+ */
+router.post(
+  '/:id/teams',
+  auth,
+  authorize('ADMIN'),
+  addTeamRules,
+  userTeamController.addForUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/teams/{teamId}:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Remove team from user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Team removed
+ */
+router.delete(
+  '/:id/teams/:teamId',
+  auth,
+  authorize('ADMIN'),
+  userTeamController.removeForUser
 );
 
 /**

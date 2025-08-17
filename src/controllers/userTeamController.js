@@ -5,37 +5,39 @@ import teamMapper from '../mappers/teamMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
-  async list(req, res) {
+  async listByUser(req, res) {
     try {
-      const teams = await teamService.listUserTeams(req.user.id);
+      const teams = await teamService.listUserTeams(req.params.id);
       return res.json({ teams: teams.map(teamMapper.toPublic) });
     } catch (err) {
       return sendError(res, err);
     }
   },
-
-  async add(req, res) {
+  async addForUser(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      await teamService.addUserTeam(req.user.id, req.body.team_id, req.user.id);
-      const teams = await teamService.listUserTeams(req.user.id);
+      await teamService.addUserTeam(
+        req.params.id,
+        req.body.team_id,
+        req.user.id
+      );
+      const teams = await teamService.listUserTeams(req.params.id);
       return res.json({ teams: teams.map(teamMapper.toPublic) });
     } catch (err) {
       return sendError(res, err);
     }
   },
-
-  async remove(req, res) {
+  async removeForUser(req, res) {
     try {
       await teamService.removeUserTeam(
-        req.user.id,
+        req.params.id,
         req.params.teamId,
         req.user.id
       );
-      const teams = await teamService.listUserTeams(req.user.id);
+      const teams = await teamService.listUserTeams(req.params.id);
       return res.json({ teams: teams.map(teamMapper.toPublic) });
     } catch (err) {
       return sendError(res, err);

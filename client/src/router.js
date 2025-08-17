@@ -39,7 +39,6 @@ const adminRoles = [
   'ADMIN',
   'FIELD_REFEREE_SPECIALIST',
   'BRIGADE_REFEREE_SPECIALIST',
-  'SPORT_SCHOOL_STAFF',
 ];
 const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
 
