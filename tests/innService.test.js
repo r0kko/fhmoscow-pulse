@@ -13,9 +13,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: createMock,
   },
 }));
+const removeByUserMock = jest.fn();
 jest.unstable_mockModule('../src/services/taxationService.js', () => ({
   __esModule: true,
-  default: { removeByUser: jest.fn() },
+  default: { removeByUser: removeByUserMock },
 }));
 
 const { default: service } = await import('../src/services/innService.js');
@@ -66,11 +67,10 @@ test('remove destroys record and taxation removed', async () => {
     destroy: destroyMock,
     update: updateMockLocal,
   });
-  const taxation = await import('../src/services/taxationService.js');
   await service.remove('u1', 'admin');
   expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
-  expect(taxation.default.removeByUser).toHaveBeenCalledWith('u1');
+  expect(removeByUserMock).toHaveBeenCalledWith('u1');
 });
 
 test('remove throws when record not found', async () => {

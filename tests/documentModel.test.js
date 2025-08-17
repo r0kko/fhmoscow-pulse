@@ -1,10 +1,21 @@
 import { jest, expect, test } from '@jest/globals';
 
-import sequelize from '../src/config/database.js';
-import Document from '../src/models/document.js';
+import { Sequelize } from 'sequelize';
 
-// Mock sequence generation
-jest.spyOn(sequelize, 'query').mockResolvedValue([{ nextval: 7 }]);
+// Create isolated Sequelize instance; connection calls are mocked
+const sequelize = new Sequelize('postgres://user:pass@localhost:5432/db', {
+  logging: false,
+});
+
+// Mock query before importing model to avoid real DB calls
+sequelize.query = jest.fn().mockResolvedValue([{ nextval: 7 }]);
+
+jest.unstable_mockModule('../src/config/database.js', () => ({
+  __esModule: true,
+  default: sequelize,
+}));
+
+const { default: Document } = await import('../src/models/document.js');
 
 test('generates document number before validation', async () => {
   const doc = Document.build({
