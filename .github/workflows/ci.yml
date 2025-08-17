@@ -42,8 +42,10 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests (CI mode without VM modules)
+        env:
+          NODE_OPTIONS: ''
+        run: npm run test:ci
 
       - name: Install client dependencies
         working-directory: client

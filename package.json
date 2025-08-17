@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:ci": "jest --maxWorkers=4",
     "test:coverage": "npm test -- --coverage --coverageReporters=text-summary",
     "format": "prettier --write \"./{src,routes,controllers,services,models,public,scripts,test}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"./{src,routes,controllers,services,models,public,scripts,test}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
