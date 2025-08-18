@@ -14,8 +14,8 @@ async function syncExternal(actorId = null) {
     await Team.upsert(
       {
         external_id: t.id,
-        full_name: t.full_name,
-        short_name: t.short_name,
+        name: t.short_name,
+        birth_year: t.year,
         deleted_at: null,
         created_by: actorId,
         updated_by: actorId,
@@ -35,7 +35,7 @@ async function syncExternal(actorId = null) {
 }
 
 async function listAll() {
-  return Team.findAll({ order: [['full_name', 'ASC']] });
+  return Team.findAll({ order: [['name', 'ASC']] });
 }
 
 async function listUserTeams(userId) {

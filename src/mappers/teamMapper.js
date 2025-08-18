@@ -4,8 +4,8 @@ export default {
     return {
       id: team.id,
       external_id: team.external_id,
-      full_name: team.full_name,
-      short_name: team.short_name,
+      name: team.name,
+      birth_year: team.birth_year,
     };
   },
 };

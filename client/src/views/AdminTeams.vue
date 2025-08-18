@@ -196,7 +196,7 @@ function name(u) {
                     @change="toggle(team.id, $event.target.checked)"
                   />
                   <label class="form-check-label" :for="`team-${team.id}`">
-                    {{ team.full_name }}
+                    {{ team.name }}<span v-if="team.birth_year"> ({{ team.birth_year }})</span>
                   </label>
                 </div>
               </div>

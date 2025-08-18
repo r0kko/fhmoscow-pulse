@@ -43,7 +43,7 @@ const { default: service } = await import('../src/services/teamService.js');
 
 test('syncExternal upserts active teams and soft deletes missing ones', async () => {
   extFindAllMock.mockResolvedValue([
-    { id: 1, full_name: 'Team1', short_name: 'T1' },
+    { id: 1, short_name: 'T1', year: 2005 },
   ]);
   await service.syncExternal('admin');
   expect(extFindAllMock).toHaveBeenCalledWith({
@@ -52,8 +52,8 @@ test('syncExternal upserts active teams and soft deletes missing ones', async ()
   expect(teamUpsertMock).toHaveBeenCalledWith(
     {
       external_id: 1,
-      full_name: 'Team1',
-      short_name: 'T1',
+      name: 'T1',
+      birth_year: 2005,
       deleted_at: null,
       created_by: 'admin',
       updated_by: 'admin',
