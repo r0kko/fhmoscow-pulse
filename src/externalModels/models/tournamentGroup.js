@@ -31,8 +31,10 @@ TournamentGroup.associate = ({
   CustomScore,
   TournamentTeam,
 }) => {
-  TournamentGroup.belongsTo(Stage, { foreignKey: 'stage_id' });
-  TournamentGroup.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+  const isModel = (m) => m && typeof m === 'function' && m.prototype instanceof Model;
+  if (isModel(Stage)) TournamentGroup.belongsTo(Stage, { foreignKey: 'stage_id' });
+  if (isModel(Tournament))
+    TournamentGroup.belongsTo(Tournament, { foreignKey: 'tournament_id' });
   if (Tour)
     TournamentGroup.hasMany(Tour, { foreignKey: 'tournament_group_id' });
   if (TournamentTable)
