@@ -1,18 +1,37 @@
+import { Op } from 'sequelize';
+
 import { Team, User, UserTeam } from '../models/index.js';
 import { Team as ExtTeam } from '../externalModels/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function syncExternal(actorId = null) {
-  const extTeams = await ExtTeam.findAll();
+  const extTeams = await ExtTeam.findAll({
+    where: { object_status: 'active' },
+  });
+  const activeIds = extTeams.map((t) => t.id);
+
   for (const t of extTeams) {
-    await Team.upsert({
-      external_id: t.id,
-      full_name: t.full_name,
-      short_name: t.short_name,
-      created_by: actorId,
-      updated_by: actorId,
-    });
+    await Team.upsert(
+      {
+        external_id: t.id,
+        full_name: t.full_name,
+        short_name: t.short_name,
+        deleted_at: null,
+        created_by: actorId,
+        updated_by: actorId,
+      },
+      { paranoid: false }
+    );
   }
+
+  await Team.update(
+    { deleted_at: new Date(), updated_by: actorId },
+    {
+      where: {
+        external_id: { [Op.notIn]: activeIds },
+      },
+    }
+  );
 }
 
 async function listAll() {

@@ -74,8 +74,10 @@ async function save() {
   if (!currentUser.value || !changed.value) return;
   saving.value = true;
   modalError.value = '';
-  const toAdd = [...selected.value].filter((id) => !current.has(id));
-  const toRemove = [...current].filter((id) => !selected.value.has(id));
+  const toAdd = [...selected.value].filter((id) => !current.value.has(id));
+  const toRemove = [...current.value].filter(
+    (id) => !selected.value.has(id)
+  );
   try {
     for (const id of toAdd) {
       await apiFetch(`/users/${currentUser.value.id}/teams`, {
