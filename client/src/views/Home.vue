@@ -17,6 +17,12 @@ const basePreparationSections = [
 ];
 
 const baseWorkSections = [
+  {
+    title: 'Моя занятость',
+    icon: 'bi-calendar-week',
+    to: '/availability',
+    referee: true,
+  },
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
@@ -47,9 +53,10 @@ async function checkCourse() {
 }
 
 const workSections = computed(() =>
-  hasCourse.value
+  (hasCourse.value
     ? [qualificationSection, ...baseWorkSections]
     : baseWorkSections
+  ).filter((s) => !s.referee || isReferee.value)
 );
 
 const docsSections = [

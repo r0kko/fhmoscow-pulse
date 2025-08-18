@@ -86,7 +86,7 @@ const routes = [
   {
     path: '/availability',
     component: Availability,
-    meta: { requiresAuth: true, title: 'Моя занятость' },
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Моя занятость' },
   },
   {
     path: '/normatives',
