@@ -18,6 +18,7 @@ import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminGrounds from './views/AdminGrounds.vue';
 import AdminTeams from './views/AdminTeams.vue';
+import SchoolMatches from './views/SchoolMatches.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
@@ -41,6 +42,7 @@ const adminRoles = [
   'BRIGADE_REFEREE_SPECIALIST',
 ];
 const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
+const staffRoles = ['SPORT_SCHOOL_STAFF'];
 
 const routes = [
   {
@@ -198,6 +200,15 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Команды' },
   },
   {
+    path: '/school-matches',
+    component: SchoolMatches,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Управление матчами школы',
+    },
+  },
+  {
     path: '/admin/grounds',
     component: AdminGrounds,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Площадки' },
@@ -275,6 +286,11 @@ router.beforeEach(async (to, _from, next) => {
   } else if (
     to.meta.requiresReferee &&
     !roles.some((r) => refereeRoles.includes(r))
+  ) {
+    next('/forbidden');
+  } else if (
+    to.meta.requiresStaff &&
+    !roles.some((r) => staffRoles.includes(r))
   ) {
     next('/forbidden');
   } else if (

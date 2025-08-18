@@ -20,6 +20,7 @@ const baseWorkSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
+  { title: 'Матчи школы', icon: 'bi-calendar-week', to: '/school-matches', staff: true },
   // Надёжный текстовый fallback-значок рубля
   { title: 'Доходы', icon: 'ruble-icon' },
 ];
@@ -46,10 +47,13 @@ async function checkCourse() {
   }
 }
 
+const workBase = computed(() =>
+  baseWorkSections.filter(
+    (s) => !s.staff || auth.roles.includes('SPORT_SCHOOL_STAFF')
+  )
+);
 const workSections = computed(() =>
-  hasCourse.value
-    ? [qualificationSection, ...baseWorkSections]
-    : baseWorkSections
+  hasCourse.value ? [qualificationSection, ...workBase.value] : workBase.value
 );
 
 const docsSections = [
