@@ -19,5 +19,6 @@ export async function runTeamSync() {
 }
 
 export default function startTeamSyncCron() {
-  cron.schedule('0 * * * *', runTeamSync);
+  // run daily at midnight UTC+3
+  cron.schedule('0 0 * * *', runTeamSync, { timezone: 'Etc/GMT-3' });
 }

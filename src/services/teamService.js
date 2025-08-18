@@ -32,22 +32,25 @@ async function addUserTeam(userId, teamId, actorId) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!team) throw new ServiceError('team_not_found', 404);
-  await UserTeam.create({
-    user_id: userId,
-    team_id: teamId,
-    created_by: actorId,
-    updated_by: actorId,
+  await user.addTeam(team, {
+    through: { created_by: actorId, updated_by: actorId },
   });
 }
 
 async function removeUserTeam(userId, teamId, actorId = null) {
+  const [user, team] = await Promise.all([
+    User.findByPk(userId),
+    Team.findByPk(teamId),
+  ]);
+  if (!user) throw new ServiceError('user_not_found', 404);
+  if (!team) throw new ServiceError('team_not_found', 404);
   const link = await UserTeam.findOne({
     where: { user_id: userId, team_id: teamId },
   });
   if (link) {
     await link.update({ updated_by: actorId });
-    await link.destroy();
   }
+  await user.removeTeam(team);
 }
 
 export default {

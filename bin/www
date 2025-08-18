@@ -17,6 +17,7 @@ import { setupExternalAssociations } from '../src/externalModels/index.js';
 import { connectRedis } from '../src/config/redis.js';
 import validateEnv from '../src/config/validateEnv.js';
 import startTaxationCron from '../src/jobs/taxationCron.js';
+import startTeamSyncCron, { runTeamSync } from '../src/jobs/teamSyncCron.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -69,6 +70,8 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   await connectExternalMariaDb(); // optional external MariaDB
   if (isExternalDbAvailable()) {
     await setupExternalAssociations();
+    await runTeamSync();
+    startTeamSyncCron();
   }
   startTaxationCron();
   server.listen(port);

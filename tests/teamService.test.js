@@ -4,14 +4,20 @@ const extFindAllMock = jest.fn();
 const teamUpsertMock = jest.fn();
 const userFindByPkMock = jest.fn();
 const teamFindByPkMock = jest.fn();
-const userTeamCreateMock = jest.fn();
+const userAddTeamMock = jest.fn();
+const userRemoveTeamMock = jest.fn();
+const userTeamFindOneMock = jest.fn();
+const userTeamUpdateMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
   teamUpsertMock.mockReset();
   userFindByPkMock.mockReset();
   teamFindByPkMock.mockReset();
-  userTeamCreateMock.mockReset();
+  userAddTeamMock.mockReset();
+  userRemoveTeamMock.mockReset();
+  userTeamFindOneMock.mockReset();
+  userTeamUpdateMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
@@ -23,7 +29,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Team: { upsert: teamUpsertMock, findByPk: teamFindByPkMock },
   User: { findByPk: userFindByPkMock },
-  UserTeam: { create: userTeamCreateMock },
+  UserTeam: { findOne: userTeamFindOneMock },
 }));
 
 const { default: service } = await import('../src/services/teamService.js');
@@ -40,14 +46,21 @@ test('syncExternal upserts teams', async () => {
   });
 });
 
-test('addUserTeam creates link with audit fields', async () => {
-  userFindByPkMock.mockResolvedValue({ id: 'u1' });
+test('addUserTeam uses association with audit fields', async () => {
+  userFindByPkMock.mockResolvedValue({ id: 'u1', addTeam: userAddTeamMock });
   teamFindByPkMock.mockResolvedValue({ id: 't1' });
   await service.addUserTeam('u1', 't1', 'actor');
-  expect(userTeamCreateMock).toHaveBeenCalledWith({
-    user_id: 'u1',
-    team_id: 't1',
-    created_by: 'actor',
-    updated_by: 'actor',
-  });
+  expect(userAddTeamMock).toHaveBeenCalledWith(
+    { id: 't1' },
+    { through: { created_by: 'actor', updated_by: 'actor' } }
+  );
+});
+
+test('removeUserTeam updates audit and removes link', async () => {
+  userFindByPkMock.mockResolvedValue({ id: 'u1', removeTeam: userRemoveTeamMock });
+  teamFindByPkMock.mockResolvedValue({ id: 't1' });
+  userTeamFindOneMock.mockResolvedValue({ update: userTeamUpdateMock });
+  await service.removeUserTeam('u1', 't1', 'actor');
+  expect(userTeamUpdateMock).toHaveBeenCalledWith({ updated_by: 'actor' });
+  expect(userRemoveTeamMock).toHaveBeenCalledWith({ id: 't1' });
 });
