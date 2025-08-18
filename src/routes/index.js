@@ -32,6 +32,7 @@ import sexesRouter from './sexes.js';
 import documentsRouter from './documents.js';
 import ticketsRouter from './tickets.js';
 import tasksRouter from './tasks.js';
+import availabilitiesRouter from './availabilities.js';
 import signTypesRouter from './signTypes.js';
 import normativeTypesRouter from './normativeTypes.js';
 import normativeGroupsRouter from './normativeGroups.js';
@@ -93,6 +94,7 @@ router.use('/normative-tickets', normativeTicketsRouter);
 router.use('/courses', coursesRouter);
 router.use('/course-users', courseUsersRouter);
 router.use('/tasks', tasksRouter);
+router.use('/availabilities', availabilitiesRouter);
 router.use('/tickets', ticketsRouter);
 router.use('/vehicles', vehiclesRouter);
 
