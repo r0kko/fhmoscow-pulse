@@ -66,6 +66,8 @@ import Ticket from './ticket.js';
 import TicketFile from './ticketFile.js';
 import Team from './team.js';
 import UserTeam from './userTeam.js';
+import AvailabilityType from './availabilityType.js';
+import UserAvailability from './userAvailability.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -98,6 +100,10 @@ User.hasOne(BankAccount, { foreignKey: 'user_id' });
 BankAccount.belongsTo(User, { foreignKey: 'user_id' });
 User.hasMany(Vehicle, { foreignKey: 'user_id' });
 Vehicle.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(UserAvailability, { foreignKey: 'user_id' });
+UserAvailability.belongsTo(User, { foreignKey: 'user_id' });
+AvailabilityType.hasMany(UserAvailability, { foreignKey: 'type_id' });
+UserAvailability.belongsTo(AvailabilityType, { foreignKey: 'type_id' });
 User.hasOne(MedicalCertificate, { foreignKey: 'user_id' });
 MedicalCertificate.belongsTo(User, { foreignKey: 'user_id' });
 MedicalCertificate.hasMany(MedicalCertificateFile, {
@@ -417,6 +423,8 @@ export {
   UserTeam,
   Course,
   UserCourse,
+  AvailabilityType,
+  UserAvailability,
   NormativeValueType,
   MeasurementUnit,
   NormativeZone,

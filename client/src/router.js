@@ -11,6 +11,7 @@ import Documents from './views/Documents.vue';
 import Medical from './views/Medical.vue';
 import Camps from './views/Camps.vue';
 import Tasks from './views/Tasks.vue';
+import Availability from './views/Availability.vue';
 import Normatives from './views/Normatives.vue';
 import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
@@ -84,6 +85,11 @@ const routes = [
     path: '/tasks',
     component: Tasks,
     meta: { requiresAuth: true, title: 'Задачи' },
+  },
+  {
+    path: '/availability',
+    component: Availability,
+    meta: { requiresAuth: true, title: 'Моя занятость' },
   },
   {
     path: '/normatives',
