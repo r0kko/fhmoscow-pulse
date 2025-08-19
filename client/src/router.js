@@ -31,6 +31,7 @@ import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
+import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
 import Qualification from './views/Qualification.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import NotFound from './views/NotFound.vue';
@@ -113,6 +114,15 @@ const routes = [
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Администрирование',
+    },
+  },
+  {
+    path: '/admin/referee-availability',
+    component: AdminRefereeAvailability,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Занятость судей',
     },
   },
   {

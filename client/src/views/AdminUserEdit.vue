@@ -11,6 +11,7 @@ import BankAccountForm from '../components/BankAccountForm.vue';
 import TaxationInfo from '../components/TaxationInfo.vue';
 import UserAddressForm from '../components/UserAddressForm.vue';
 import UserRolesForm from '../components/UserRolesForm.vue';
+import ConfirmModal from '../components/ConfirmModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,6 +23,10 @@ const formRef = ref(null);
 const passportModalRef = ref(null);
 const passport = ref(null);
 const passportError = ref('');
+const confirmRef = ref(null);
+const confirmTitle = ref('Подтверждение');
+const confirmMessage = ref('');
+let onConfirmAction = null;
 const sexes = ref([]);
 // Placeholder sections hidden until inventory feature is ready
 const placeholderSections = [];
@@ -111,14 +116,24 @@ async function savePassport(data) {
 }
 
 async function deletePassport() {
-  if (!confirm('Удалить паспортные данные?')) return;
-  try {
-    await apiFetch(`/users/${route.params.id}/passport`, { method: 'DELETE' });
-    passport.value = null;
-    passportError.value = '';
-  } catch (e) {
-    passportError.value = e.message;
-  }
+  confirmTitle.value = 'Удаление паспорта';
+  confirmMessage.value = 'Удалить паспортные данные пользователя?';
+  onConfirmAction = async () => {
+    try {
+      await apiFetch(`/users/${route.params.id}/passport`, {
+        method: 'DELETE',
+      });
+      passport.value = null;
+      passportError.value = '';
+    } catch (e) {
+      passportError.value = e.message;
+    }
+  };
+  confirmRef.value?.open();
+}
+
+function onConfirm() {
+  if (typeof onConfirmAction === 'function') onConfirmAction();
 }
 
 function openPassportModal() {
@@ -405,6 +420,15 @@ async function save() {
         </div>
       </div>
     </div>
+    <ConfirmModal
+      ref="confirmRef"
+      :title="confirmTitle"
+      confirm-text="Удалить"
+      confirm-variant="danger"
+      @confirm="onConfirm"
+    >
+      <p class="mb-0">{{ confirmMessage }}</p>
+    </ConfirmModal>
   </div>
 </template>
 

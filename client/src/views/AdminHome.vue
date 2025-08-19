@@ -14,6 +14,11 @@ const refereeSections = [
   { title: 'Сборы', icon: 'bi-building', to: '/admin/camps' },
   { title: 'Нормативы', icon: 'bi-speedometer2', to: '/admin/normatives' },
   { title: 'Мероприятия', icon: 'bi-calendar-event', to: '/admin/courses' },
+  {
+    title: 'Занятость судей',
+    icon: 'bi-calendar-week',
+    to: '/admin/referee-availability',
+  },
 ];
 
 const systemSections = computed(() => {

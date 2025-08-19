@@ -25,6 +25,7 @@ function updatePageSize(e) {
       :value="pageSize"
       class="form-select w-auto"
       :class="{ 'form-select-sm': small }"
+      aria-label="Количество на странице"
       @change="updatePageSize"
     >
       <option v-for="s in sizes" :key="s" :value="s">{{ s }}</option>

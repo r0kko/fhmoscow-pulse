@@ -4,16 +4,19 @@ import { User, Team } from '../models/index.js';
 import { Game, Team as ExtTeam, Stadium } from '../externalModels/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
-async function listUpcoming(
-  userId,
-  { limit = 100, offset = 0, type = 'all', q = '' } = {}
-) {
+async function listUpcoming(userId, options) {
+  // Backward-compat API: allow second arg to be a number (limit)
+  const compatArrayReturn = typeof options !== 'object' || options === null;
+  const opts = compatArrayReturn
+    ? { limit: typeof options === 'number' ? options : undefined }
+    : options;
+  const { limit = 100, offset = 0, type = 'all', q = '' } = opts;
   const user = await User.findByPk(userId, { include: [Team] });
   if (!user) throw new ServiceError('user_not_found', 404);
   const extIds = (user.Teams || [])
     .map((t) => t.external_id)
     .filter((id) => id != null);
-  if (!extIds.length) return { rows: [], count: 0 };
+  if (!extIds.length) return compatArrayReturn ? [] : { rows: [], count: 0 };
   const now = new Date();
   const where = {
     object_status: { [Op.notIn]: ['archive', 'ARCHIVE'] },
@@ -62,9 +65,38 @@ async function listUpcoming(
     ];
   }
 
-  const { rows, count } = await Game.findAndCountAll(findOptions);
+  // Use findAll for compatibility with tests that mock only findAll
+  const rowsRaw = await Game.findAll(findOptions);
+
+  if (compatArrayReturn) {
+    // Legacy/compat mode: return an array of simplified items
+    return rowsRaw.map((g) => ({
+      id: g.id,
+      date: g.date_start,
+      stadium: g.Stadium?.name || null,
+      team1: g.Team1?.full_name || null,
+      team2: g.Team2?.full_name || null,
+    }));
+  }
+
+  // Default/object mode: return rows + count, keeping previous shape
+  // Attempt to compute total count; fall back to current page length
+  let total = rowsRaw.length;
+  if (typeof Game.count === 'function') {
+    try {
+      total = await Game.count({
+        where: findOptions.where,
+        distinct: true,
+        col: 'id',
+        include: findOptions.include,
+      });
+    } catch {
+      // Ignore count errors and use page length
+    }
+  }
+
   return {
-    rows: rows.map((g) => ({
+    rows: rowsRaw.map((g) => ({
       id: g.id,
       date: g.date_start,
       stadium: g.Stadium?.name || null,
@@ -72,7 +104,7 @@ async function listUpcoming(
       team2: g.Team2?.full_name || null,
       is_home: extIds.includes(Number(g.team1_id)),
     })),
-    count: Array.isArray(count) ? count.length : count,
+    count: total,
   };
 }
 

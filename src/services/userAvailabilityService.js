@@ -93,3 +93,18 @@ async function setForUser(userId, days, actorId, options = {}) {
 }
 
 export default { listForUser, setForUser };
+
+export async function listForUsers(userIds = [], startDate, endDate) {
+  if (!Array.isArray(userIds) || userIds.length === 0) return [];
+  return UserAvailability.findAll({
+    where: {
+      user_id: { [Op.in]: userIds },
+      date: { [Op.between]: [startDate, endDate] },
+    },
+    order: [
+      ['user_id', 'ASC'],
+      ['date', 'ASC'],
+    ],
+    include: [{ model: AvailabilityType, attributes: ['alias'] }],
+  });
+}

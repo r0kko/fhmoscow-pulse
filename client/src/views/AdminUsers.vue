@@ -6,6 +6,9 @@ import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
 import Toast from 'bootstrap/js/dist/toast';
 import TaxationInfo from '../components/TaxationInfo.vue';
+import ConfirmModal from '../components/ConfirmModal.vue';
+import UsersFilterModal from '../components/UsersFilterModal.vue';
+import Tooltip from 'bootstrap/js/dist/tooltip';
 
 const users = ref([]);
 const total = ref(0);
@@ -26,6 +29,7 @@ const pageSize = ref(loadPageSize('adminUsersPageSize', 8));
 const roles = ref([]);
 const sortField = ref('last_name');
 const sortOrder = ref('asc');
+const selected = ref(new Set());
 
 const toastRef = ref(null);
 const toastMessage = ref('');
@@ -34,9 +38,36 @@ let toast;
 const taxModal = ref(null);
 const taxUserId = ref('');
 
+// Confirm modal state
+const confirmRef = ref(null);
+const confirmTitle = ref('Подтверждение');
+const confirmMessage = ref('');
+let confirmAction = null;
+
+// Filters modal state
+const filtersOpen = ref(false);
+
+const activeFiltersCount = computed(() => {
+  let c = 0;
+  if (search.value) c++;
+  if (statusFilter.value) c++;
+  if (roleFilter.value) c++;
+  return c;
+});
+
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
+
+const anySelected = computed(() => selected.value.size > 0);
+const allSelectedOnPage = computed({
+  get() {
+    return users.value.length > 0 && selected.value.size === users.value.length;
+  },
+  set(val) {
+    selected.value = new Set(val ? users.value.map((u) => u.id) : []);
+  },
+});
 
 // Pagination visible pages handled by Pagination.vue
 
@@ -55,12 +86,14 @@ watch(search, () => {
   searchTimeout = setTimeout(() => {
     currentPage.value = 1;
     loadUsers();
+    syncQuery();
   }, 300);
 });
 
 watch([sortField, sortOrder, statusFilter, roleFilter, pageSize], () => {
   currentPage.value = 1;
   loadUsers();
+  syncQuery();
 });
 
 watch(pageSize, (val) => {
@@ -69,6 +102,7 @@ watch(pageSize, (val) => {
 
 watch(currentPage, () => {
   loadUsers();
+  syncQuery();
 });
 
 watch(activeTab, (tab) => {
@@ -79,6 +113,7 @@ watch(activeTab, (tab) => {
   ) {
     loadCompletion();
   }
+  syncQuery();
 });
 
 async function loadUsers() {
@@ -101,6 +136,8 @@ async function loadUsers() {
   } finally {
     isLoading.value = false;
   }
+  await nextTick();
+  applyTooltips();
 }
 
 async function loadCompletion() {
@@ -116,10 +153,66 @@ async function loadCompletion() {
 }
 
 onMounted(() => {
+  // Initialize from URL query for shareable state
+  try {
+    const q = router.currentRoute.value.query;
+    if (q.tab && (q.tab === 'users' || q.tab === 'profiles'))
+      activeTab.value = q.tab;
+    if (q.search) search.value = String(q.search);
+    if (q.status) statusFilter.value = String(q.status);
+    if (q.role) roleFilter.value = String(q.role);
+    if (q.page) currentPage.value = Number(q.page) || 1;
+    if (q.limit) pageSize.value = Number(q.limit) || pageSize.value;
+    if (q.sort) sortField.value = String(q.sort);
+    if (q.order) sortOrder.value = String(q.order) === 'desc' ? 'desc' : 'asc';
+  } catch (_) {}
+
   loadUsers();
   loadRoles();
   if (activeTab.value === 'profiles') loadCompletion();
+  applyTooltips();
 });
+
+// Keep URL query in sync without spamming history
+function syncQuery() {
+  router.replace({
+    query: {
+      tab: activeTab.value,
+      search: search.value || undefined,
+      status: statusFilter.value || undefined,
+      role: roleFilter.value || undefined,
+      page: currentPage.value !== 1 ? String(currentPage.value) : undefined,
+      limit: pageSize.value !== 8 ? String(pageSize.value) : undefined,
+      sort: sortField.value !== 'last_name' ? sortField.value : undefined,
+      order: sortOrder.value !== 'asc' ? sortOrder.value : undefined,
+    },
+  });
+}
+
+function applyTooltips() {
+  nextTick(() => {
+    document
+      .querySelectorAll('[data-bs-toggle="tooltip"]')
+      .forEach((el) => new Tooltip(el));
+  });
+}
+
+function openFilters() {
+  filtersOpen.value = true;
+}
+function onFiltersApply({ search: s, status: st, role: rl }) {
+  filtersOpen.value = false;
+  search.value = s;
+  statusFilter.value = st;
+  roleFilter.value = rl;
+  currentPage.value = 1;
+  loadUsers();
+  syncQuery();
+}
+function onFiltersReset() {
+  filtersOpen.value = false;
+  resetFilters();
+}
 
 function openCreate() {
   router.push('/admin/users/new');
@@ -141,21 +234,48 @@ async function onTaxSaved() {
 }
 
 async function blockUser(id) {
-  if (!confirm('Заблокировать пользователя?')) return;
-  await apiFetch(`/users/${id}/block`, { method: 'POST' });
-  await loadUsers();
+  confirmTitle.value = 'Блокировка пользователя';
+  confirmMessage.value = 'Вы уверены, что хотите заблокировать пользователя?';
+  confirmAction = async () => {
+    try {
+      await apiFetch(`/users/${id}/block`, { method: 'POST' });
+      showToast('Пользователь заблокирован');
+      await loadUsers();
+    } catch (e) {
+      showToast(e.message || 'Ошибка при блокировке');
+    }
+  };
+  confirmRef.value?.open();
 }
 
 async function unblockUser(id) {
-  if (!confirm('Разблокировать пользователя?')) return;
-  await apiFetch(`/users/${id}/unblock`, { method: 'POST' });
-  await loadUsers();
+  confirmTitle.value = 'Разблокировка пользователя';
+  confirmMessage.value = 'Подтвердите разблокировку пользователя.';
+  confirmAction = async () => {
+    try {
+      await apiFetch(`/users/${id}/unblock`, { method: 'POST' });
+      showToast('Пользователь разблокирован');
+      await loadUsers();
+    } catch (e) {
+      showToast(e.message || 'Ошибка при разблокировке');
+    }
+  };
+  confirmRef.value?.open();
 }
 
 async function approveUser(id) {
-  if (!confirm('Подтвердить пользователя?')) return;
-  await apiFetch(`/users/${id}/approve`, { method: 'POST' });
-  await loadUsers();
+  confirmTitle.value = 'Подтверждение аккаунта';
+  confirmMessage.value = 'Подтвердить пользователя и активировать аккаунт?';
+  confirmAction = async () => {
+    try {
+      await apiFetch(`/users/${id}/approve`, { method: 'POST' });
+      showToast('Пользователь подтвержден');
+      await loadUsers();
+    } catch (e) {
+      showToast(e.message || 'Ошибка при подтверждении');
+    }
+  };
+  confirmRef.value?.open();
 }
 
 function statusClass(status) {
@@ -213,6 +333,81 @@ async function copy(text) {
     showToast('Не удалось скопировать');
   }
 }
+
+function onConfirm() {
+  if (typeof confirmAction === 'function') confirmAction();
+}
+
+function clearSearch() {
+  if (search.value) {
+    search.value = '';
+    currentPage.value = 1;
+    loadUsers();
+    syncQuery();
+  }
+}
+
+function resetFilters() {
+  search.value = '';
+  statusFilter.value = '';
+  roleFilter.value = '';
+  sortField.value = 'last_name';
+  sortOrder.value = 'asc';
+  currentPage.value = 1;
+  loadUsers();
+  syncQuery();
+}
+
+function toggleSelected(id) {
+  const set = new Set(selected.value);
+  if (set.has(id)) set.delete(id);
+  else set.add(id);
+  selected.value = set;
+}
+
+watch(users, () => {
+  // Clear selection when page results change
+  selected.value = new Set();
+});
+
+async function bulk(action) {
+  if (!anySelected.value) return;
+  const ids = Array.from(selected.value);
+  const messages = {
+    block: {
+      title: 'Блокировка пользователей',
+      text: `Заблокировать выбранных пользователей (${ids.length})?`,
+    },
+    unblock: {
+      title: 'Разблокировка пользователей',
+      text: `Разблокировать выбранных пользователей (${ids.length})?`,
+    },
+    approve: {
+      title: 'Подтверждение пользователей',
+      text: `Подтвердить выбранных пользователей (${ids.length})?`,
+    },
+  };
+  confirmTitle.value = messages[action].title;
+  confirmMessage.value = messages[action].text;
+  confirmAction = async () => {
+    const endpoints = {
+      block: (id) => apiFetch(`/users/${id}/block`, { method: 'POST' }),
+      unblock: (id) => apiFetch(`/users/${id}/unblock`, { method: 'POST' }),
+      approve: (id) => apiFetch(`/users/${id}/approve`, { method: 'POST' }),
+    };
+    const results = await Promise.allSettled(
+      ids.map((id) => endpoints[action](id))
+    );
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const fail = ids.length - ok;
+    showToast(
+      `${messages[action].title}: выполнено ${ok}${fail ? `, ошибок ${fail}` : ''}`
+    );
+    await loadUsers();
+    selected.value = new Set();
+  };
+  confirmRef.value?.open();
+}
 </script>
 
 <template>
@@ -266,57 +461,104 @@ async function copy(text) {
         class="card section-card tile fade-in shadow-sm"
       >
         <div
-          class="card-header d-flex justify-content-between align-items-center"
+          class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center"
         >
           <h2 class="h5 mb-0">Пользователи</h2>
-          <button class="btn btn-brand" @click="openCreate">
-            <i class="bi bi-plus-lg me-1"></i>Добавить
-          </button>
+          <div class="d-flex gap-2 align-items-center">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              @click="openFilters"
+            >
+              <i class="bi bi-funnel me-1"></i>
+              Фильтры
+              <span
+                v-if="activeFiltersCount"
+                class="badge text-bg-secondary ms-2"
+                >{{ activeFiltersCount }}</span
+              >
+            </button>
+            <div class="btn-group" role="group" aria-label="Групповые действия">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="!anySelected"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                title="Заблокировать выбранных"
+                @click="bulk('block')"
+              >
+                <i class="bi bi-lock-fill"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="!anySelected"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                title="Разблокировать выбранных"
+                @click="bulk('unblock')"
+              >
+                <i class="bi bi-unlock-fill"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="!anySelected"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                title="Подтвердить выбранных"
+                @click="bulk('approve')"
+              >
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </div>
+            <button class="btn btn-brand" @click="openCreate">
+              <i class="bi bi-plus-lg me-1"></i>Добавить
+            </button>
+          </div>
         </div>
         <div class="card-body p-3">
-          <div class="row g-2 align-items-end mb-3">
-            <div class="col-12 col-sm">
-              <input
-                v-model="search"
-                type="text"
-                class="form-control"
-                placeholder="Поиск"
-              />
-            </div>
-            <div class="col-6 col-sm-auto">
-              <select v-model="statusFilter" class="form-select">
-                <option value="">Все статусы</option>
-                <option value="ACTIVE">Активные</option>
-                <option value="INACTIVE">Заблокированные</option>
-                <option value="AWAITING_CONFIRMATION">
-                  Требуют подтверждения
-                </option>
-              </select>
-            </div>
-            <div class="col-6 col-sm-auto">
-              <select v-model="roleFilter" class="form-select">
-                <option value="">Все роли</option>
-                <option v-for="r in roles" :key="r.id" :value="r.alias">
-                  {{ r.name }}
-                </option>
-              </select>
-            </div>
-          </div>
           <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
-          <div v-if="isLoading" class="text-center my-3">
-            <div
-              class="spinner-border spinner-brand"
-              role="status"
-              aria-label="Загрузка"
-            ></div>
-          </div>
-          <div v-if="users.length" class="table-responsive">
+          <div
+            v-if="users.length || isLoading"
+            class="table-responsive d-none d-lg-block"
+          >
             <table
               class="table admin-table table-hover table-striped align-middle mb-0"
+              aria-describedby="usersTableCaption"
             >
+              <caption id="usersTableCaption" class="visually-hidden">
+                Таблица пользователей с возможностью сортировки и фильтрации
+              </caption>
               <thead>
                 <tr>
-                  <th class="sortable" @click="toggleSort('last_name')">
+                  <th scope="col" class="text-center" style="width: 2.5rem">
+                    <input
+                      class="form-check-input brand-check"
+                      type="checkbox"
+                      :checked="allSelectedOnPage"
+                      :indeterminate="anySelected && !allSelectedOnPage"
+                      aria-label="Выбрать все на странице"
+                      @change="allSelectedOnPage = !allSelectedOnPage"
+                    />
+                  </th>
+                  <th
+                    scope="col"
+                    class="sortable fio-col"
+                    :aria-sort="
+                      sortField === 'last_name'
+                        ? sortOrder === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    "
+                    role="button"
+                    tabindex="0"
+                    @click="toggleSort('last_name')"
+                    @keydown.enter.prevent="toggleSort('last_name')"
+                    @keydown.space.prevent="toggleSort('last_name')"
+                  >
                     ФИО
                     <i
                       v-if="sortField === 'last_name'"
@@ -329,8 +571,20 @@ async function copy(text) {
                     ></i>
                   </th>
                   <th
-                    class="sortable d-none d-md-table-cell"
+                    scope="col"
+                    class="sortable phone-col d-none d-md-table-cell"
+                    :aria-sort="
+                      sortField === 'phone'
+                        ? sortOrder === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    "
+                    role="button"
+                    tabindex="0"
                     @click="toggleSort('phone')"
+                    @keydown.enter.prevent="toggleSort('phone')"
+                    @keydown.space.prevent="toggleSort('phone')"
                   >
                     Телефон
                     <i
@@ -344,8 +598,20 @@ async function copy(text) {
                     ></i>
                   </th>
                   <th
-                    class="sortable d-none d-lg-table-cell"
+                    scope="col"
+                    class="sortable email-col d-none d-lg-table-cell"
+                    :aria-sort="
+                      sortField === 'email'
+                        ? sortOrder === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    "
+                    role="button"
+                    tabindex="0"
                     @click="toggleSort('email')"
+                    @keydown.enter.prevent="toggleSort('email')"
+                    @keydown.space.prevent="toggleSort('email')"
                   >
                     Email
                     <i
@@ -359,8 +625,20 @@ async function copy(text) {
                     ></i>
                   </th>
                   <th
-                    class="sortable d-none d-lg-table-cell"
+                    scope="col"
+                    class="sortable date-col d-none d-lg-table-cell"
+                    :aria-sort="
+                      sortField === 'birth_date'
+                        ? sortOrder === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    "
+                    role="button"
+                    tabindex="0"
                     @click="toggleSort('birth_date')"
+                    @keydown.enter.prevent="toggleSort('birth_date')"
+                    @keydown.space.prevent="toggleSort('birth_date')"
                   >
                     Дата рождения
                     <i
@@ -373,8 +651,22 @@ async function copy(text) {
                       ]"
                     ></i>
                   </th>
-                  <th class="d-none d-lg-table-cell">Роли</th>
-                  <th class="sortable" @click="toggleSort('status')">
+                  <th
+                    scope="col"
+                    class="sortable status-col"
+                    :aria-sort="
+                      sortField === 'status'
+                        ? sortOrder === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    "
+                    role="button"
+                    tabindex="0"
+                    @click="toggleSort('status')"
+                    @keydown.enter.prevent="toggleSort('status')"
+                    @keydown.space.prevent="toggleSort('status')"
+                  >
                     Статус
                     <i
                       v-if="sortField === 'status'"
@@ -386,30 +678,34 @@ async function copy(text) {
                       ]"
                     ></i>
                   </th>
-                  <th></th>
+                  <th class="actions-col"></th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="u in users" :key="u.id">
-                  <td>
-                    {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
+              <tbody v-if="!isLoading">
+                <tr v-for="u in users" :key="u.id" @dblclick="openEdit(u)">
+                  <td class="text-center">
+                    <input
+                      class="form-check-input brand-check"
+                      type="checkbox"
+                      :checked="selected.has(u.id)"
+                      :aria-label="`Выбрать ${u.last_name} ${u.first_name}`"
+                      @change="toggleSelected(u.id)"
+                    />
                   </td>
-                  <td class="d-none d-md-table-cell">
-                    <span class="cursor-pointer" @click="copy(u.phone)">
-                      {{ formatPhone(u.phone) }}
-                    </span>
-                  </td>
-                  <td class="d-none d-lg-table-cell">{{ u.email }}</td>
-                  <td class="d-none d-lg-table-cell">
-                    {{ formatDate(u.birth_date) }}
-                  </td>
-                  <td class="d-none d-lg-table-cell">
-                    <span
-                      v-for="(name, idx) in u.role_names"
-                      :key="u.roles[idx]"
-                      class="badge bg-info me-1"
-                      >{{ name }}</span
+                  <td class="text-nowrap">
+                    <span class="cell-text"
+                      >{{ u.last_name }} {{ u.first_name }}
+                      {{ u.patronymic }}</span
                     >
+                  </td>
+                  <td class="d-none d-md-table-cell text-nowrap">
+                    {{ formatPhone(u.phone) }}
+                  </td>
+                  <td class="d-none d-lg-table-cell text-nowrap">
+                    {{ u.email }}
+                  </td>
+                  <td class="d-none d-lg-table-cell text-nowrap">
+                    {{ formatDate(u.birth_date) }}
                   </td>
                   <td>
                     <span class="badge" :class="statusClass(u.status)">{{
@@ -420,6 +716,8 @@ async function copy(text) {
                     <button
                       class="btn btn-sm btn-secondary me-2"
                       aria-label="Редактировать пользователя"
+                      data-bs-toggle="tooltip"
+                      title="Редактировать"
                       @click="openEdit(u)"
                     >
                       <i class="bi bi-pencil"></i>
@@ -428,6 +726,8 @@ async function copy(text) {
                       v-if="u.status === 'ACTIVE'"
                       class="btn btn-sm btn-danger me-2"
                       aria-label="Заблокировать пользователя"
+                      data-bs-toggle="tooltip"
+                      title="Заблокировать"
                       @click="blockUser(u.id)"
                     >
                       <i class="bi bi-lock-fill"></i>
@@ -436,6 +736,8 @@ async function copy(text) {
                       v-if="u.status === 'INACTIVE'"
                       class="btn btn-sm btn-success me-2"
                       aria-label="Разблокировать пользователя"
+                      data-bs-toggle="tooltip"
+                      title="Разблокировать"
                       @click="unblockUser(u.id)"
                     >
                       <i class="bi bi-unlock-fill"></i>
@@ -444,6 +746,8 @@ async function copy(text) {
                       v-if="u.status === 'AWAITING_CONFIRMATION'"
                       class="btn btn-sm btn-success"
                       aria-label="Подтвердить пользователя"
+                      data-bs-toggle="tooltip"
+                      title="Подтвердить"
                       @click="approveUser(u.id)"
                     >
                       <i class="bi bi-check-lg"></i>
@@ -451,11 +755,105 @@ async function copy(text) {
                   </td>
                 </tr>
               </tbody>
+              <!-- Skeleton rows -->
+              <tbody v-else>
+                <tr v-for="i in pageSize" :key="'skel-' + i" aria-hidden="true">
+                  <td></td>
+                  <td><div class="skeleton-line w-75"></div></td>
+                  <td class="d-none d-md-table-cell">
+                    <div class="skeleton-line w-50"></div>
+                  </td>
+                  <td class="d-none d-lg-table-cell">
+                    <div class="skeleton-line w-50"></div>
+                  </td>
+                  <td><div class="skeleton-badge w-50"></div></td>
+                  <td class="text-end">
+                    <div class="d-inline-flex gap-2">
+                      <span class="skeleton-icon"></span>
+                      <span class="skeleton-icon"></span>
+                      <span class="skeleton-icon"></span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </div>
-          <p v-else-if="!isLoading" class="text-muted mb-0">
-            Нет пользователей.
-          </p>
+          <!-- Mobile list rendering -->
+          <div v-if="users.length && !isLoading" class="d-block d-lg-none">
+            <div v-for="u in users" :key="'m-' + u.id" class="card mb-2">
+              <div class="card-body p-2">
+                <div
+                  class="d-flex justify-content-between align-items-start mb-1"
+                >
+                  <h3 class="h6 mb-0 text-truncate" style="max-width: 75%">
+                    {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
+                  </h3>
+                  <span class="badge" :class="statusClass(u.status)">{{
+                    u.status_name
+                  }}</span>
+                </div>
+                <div class="small text-muted mb-1">
+                  <span v-if="u.phone" class="me-2">{{
+                    formatPhone(u.phone)
+                  }}</span>
+                  <span v-if="u.email" class="me-2">{{ u.email }}</span>
+                  <span v-if="u.birth_date">{{
+                    formatDate(u.birth_date)
+                  }}</span>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    aria-label="Редактировать пользователя"
+                    @click="openEdit(u)"
+                  >
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button
+                    v-if="u.status === 'ACTIVE'"
+                    class="btn btn-sm btn-danger"
+                    aria-label="Заблокировать пользователя"
+                    @click="blockUser(u.id)"
+                  >
+                    <i class="bi bi-lock-fill"></i>
+                  </button>
+                  <button
+                    v-if="u.status === 'INACTIVE'"
+                    class="btn btn-sm btn-success"
+                    aria-label="Разблокировать пользователя"
+                    @click="unblockUser(u.id)"
+                  >
+                    <i class="bi bi-unlock-fill"></i>
+                  </button>
+                  <button
+                    v-if="u.status === 'AWAITING_CONFIRMATION'"
+                    class="btn btn-sm btn-success"
+                    aria-label="Подтвердить пользователя"
+                    @click="approveUser(u.id)"
+                  >
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-muted mb-0">
+            <p class="mb-2">
+              {{
+                search || statusFilter || roleFilter
+                  ? 'Ничего не найдено по заданным фильтрам.'
+                  : 'Нет пользователей.'
+              }}
+            </p>
+            <button
+              v-if="search || statusFilter || roleFilter"
+              class="btn btn-outline-secondary btn-sm"
+              type="button"
+              @click="resetFilters"
+            >
+              Сбросить фильтры
+            </button>
+          </div>
         </div>
       </div>
       <PageNav
@@ -463,7 +861,6 @@ async function copy(text) {
         v-model:page="currentPage"
         v-model:page-size="pageSize"
         :total-pages="totalPages"
-        :sizes="[5, 8, 10, 20]"
       />
       <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div
@@ -672,6 +1069,24 @@ async function copy(text) {
     modal-only
     @saved="onTaxSaved"
   />
+  <ConfirmModal
+    ref="confirmRef"
+    :title="confirmTitle"
+    confirm-text="Подтвердить"
+    confirm-variant="brand"
+    @confirm="onConfirm"
+  >
+    <p class="mb-0">{{ confirmMessage }}</p>
+  </ConfirmModal>
+  <UsersFilterModal
+    v-model="filtersOpen"
+    :search="search"
+    :status="statusFilter"
+    :role="roleFilter"
+    :roles="roles"
+    @apply="onFiltersApply"
+    @reset="onFiltersReset"
+  />
 </template>
 
 <style scoped>
@@ -710,6 +1125,75 @@ async function copy(text) {
   .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
+  }
+}
+
+/* Column widths for better scanability */
+.fio-col {
+  min-width: 16rem;
+}
+.phone-col {
+  width: 11rem;
+}
+.email-col {
+  min-width: 16rem;
+}
+.date-col {
+  width: 9rem;
+}
+.status-col {
+  width: 10rem;
+}
+.actions-col {
+  width: 10rem;
+}
+
+/* Prevent wrapping and enable ellipsis for long names */
+td .cell-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Skeleton styles */
+.skeleton-line {
+  height: 0.875rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  border-radius: 4px;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+.skeleton-badge {
+  height: 1.25rem;
+  width: 4.5rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  border-radius: 999px;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+.skeleton-icon {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1.5rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  border-radius: 0.375rem;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line,
+  .skeleton-badge,
+  .skeleton-icon {
+    animation: none;
+  }
+}
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
   }
 }
 </style>

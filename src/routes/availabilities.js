@@ -9,5 +9,6 @@ const router = express.Router();
 
 router.get('/', auth, requireActive, authorize('REFEREE'), controller.list);
 router.put('/', auth, requireActive, authorize('REFEREE'), controller.set);
+router.get('/admin-grid', auth, authorize('ADMIN'), controller.adminGrid);
 
 export default router;
