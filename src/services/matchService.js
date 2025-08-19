@@ -24,7 +24,10 @@ async function listUpcoming(
   } else if (type === 'away') {
     where.team2_id = { [Op.in]: extIds };
   } else {
-    where[Op.or] = [{ team1_id: { [Op.in]: extIds } }, { team2_id: { [Op.in]: extIds } }];
+    where[Op.or] = [
+      { team1_id: { [Op.in]: extIds } },
+      { team2_id: { [Op.in]: extIds } },
+    ];
   }
 
   const search = (q || '').trim();
@@ -39,7 +42,12 @@ async function listUpcoming(
     order: [['date_start', 'ASC']],
     distinct: true,
   };
-  if (typeof offset === 'number' && offset >= 0 && typeof limit === 'number' && limit > 0) {
+  if (
+    typeof offset === 'number' &&
+    offset >= 0 &&
+    typeof limit === 'number' &&
+    limit > 0
+  ) {
     findOptions.offset = offset;
     findOptions.limit = limit;
   }
