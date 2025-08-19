@@ -59,6 +59,19 @@ const workSections = computed(() =>
   ).filter((s) => !s.referee || isReferee.value)
 );
 
+// Раздел управления спортивной школой — формируется только для роли сотрудника СШ
+const schoolSections = computed(() =>
+  isStaff.value
+    ? [
+        {
+          title: 'Ближайшие матчи',
+          icon: 'bi-calendar-event',
+          to: '/school-matches',
+        },
+      ]
+    : []
+);
+
 const docsSections = [
   { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
   { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
@@ -71,11 +84,13 @@ const adminRoles = [
   'BRIGADE_REFEREE_SPECIALIST',
 ];
 const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
+const staffRoles = ['SPORT_SCHOOL_STAFF'];
 
 const isAdmin = computed(() => auth.roles.some((r) => adminRoles.includes(r)));
 const isReferee = computed(() =>
   auth.roles.some((r) => refereeRoles.includes(r))
 );
+const isStaff = computed(() => auth.roles.some((r) => staffRoles.includes(r)));
 const preparationSections = computed(() =>
   basePreparationSections.filter((s) => !s.referee || isReferee.value)
 );
@@ -216,6 +231,28 @@ async function loadUpcoming() {
             <component
               :is="item.to ? RouterLink : 'div'"
               v-for="item in workSections"
+              :key="item.title"
+              :to="item.to"
+              class="menu-card card text-decoration-none text-body tile fade-in"
+              :class="{ 'placeholder-card': !item.to }"
+              :aria-label="item.to ? item.title : null"
+            >
+              <div class="card-body">
+                <p class="card-title small mb-2">{{ item.title }}</p>
+                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
+              </div>
+            </component>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="isStaff" class="card section-card mb-2">
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">Управление спортивной школой</h2>
+          <div v-edge-fade class="scroll-container">
+            <component
+              :is="item.to ? RouterLink : 'div'"
+              v-for="item in schoolSections"
               :key="item.title"
               :to="item.to"
               class="menu-card card text-decoration-none text-body tile fade-in"

@@ -173,6 +173,20 @@ Integration with the legacy MariaDB is handled via Sequelize models placed in `s
 - Configure `EXT_DB_*` variables in `.env`.
 - Startup probes the connection and continues even if unavailable.
 - Models are read‑only and map directly to existing tables.
+- The application enforces a strict read‑only guard at the connection level
+  (blocks INSERT/UPDATE/DELETE/DDL). Use a DB user with read‑only privileges
+  for additional defense‑in‑depth.
+
+### External data synchronization (Teams)
+
+Service `teamService.syncExternal()` imports active teams from the external DB and
+soft‑deletes local teams that no longer exist externally:
+
+- Active only: pulls records where `object_status = 'active'`.
+- Missing externally: if a local `external_id` is not found in the external set,
+  it is soft‑deleted locally (`deleted_at` set).
+- Archived externally: records with `object_status = 'archive'` are treated the
+  same as missing and are soft‑deleted locally.
 
 Example:
 

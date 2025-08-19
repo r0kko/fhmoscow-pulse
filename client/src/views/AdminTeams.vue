@@ -75,9 +75,7 @@ async function save() {
   saving.value = true;
   modalError.value = '';
   const toAdd = [...selected.value].filter((id) => !current.value.has(id));
-  const toRemove = [...current.value].filter(
-    (id) => !selected.value.has(id)
-  );
+  const toRemove = [...current.value].filter((id) => !selected.value.has(id));
   try {
     for (const id of toAdd) {
       await apiFetch(`/users/${currentUser.value.id}/teams`, {
@@ -125,7 +123,10 @@ function name(u) {
       <div class="card section-card mb-2">
         <div class="card-body">
           <div v-if="loadingUsers" class="text-center my-5">
-            <span class="spinner-border spinner-brand" aria-hidden="true"></span>
+            <span
+              class="spinner-border spinner-brand"
+              aria-hidden="true"
+            ></span>
           </div>
           <div v-else>
             <div v-if="users.length">
@@ -183,7 +184,10 @@ function name(u) {
           </div>
           <div class="modal-body">
             <div v-if="loadingModal" class="text-center my-5">
-              <span class="spinner-border spinner-brand" aria-hidden="true"></span>
+              <span
+                class="spinner-border spinner-brand"
+                aria-hidden="true"
+              ></span>
             </div>
             <div v-else>
               <div v-if="teams.length">
@@ -196,13 +200,18 @@ function name(u) {
                     @change="toggle(team.id, $event.target.checked)"
                   />
                   <label class="form-check-label" :for="`team-${team.id}`">
-                    {{ team.name }}<span v-if="team.birth_year"> ({{ team.birth_year }})</span>
+                    {{ team.name
+                    }}<span v-if="team.birth_year">
+                      ({{ team.birth_year }})</span
+                    >
                   </label>
                 </div>
               </div>
               <p v-else class="mb-0">Нет доступных команд.</p>
             </div>
-            <div v-if="modalError" class="text-danger mt-2">{{ modalError }}</div>
+            <div v-if="modalError" class="text-danger mt-2">
+              {{ modalError }}
+            </div>
           </div>
           <div class="modal-footer">
             <button
@@ -237,4 +246,3 @@ function name(u) {
   border: 0;
 }
 </style>
-

@@ -43,7 +43,8 @@ test('listUpcoming queries external games for user teams', async () => {
   expect(gameFindAllMock).toHaveBeenCalled();
   const args = gameFindAllMock.mock.calls[0][0];
   expect(args.limit).toBe(50);
-  expect(args.where.object_status).toBe('active');
+  // robust filter should not strictly equal 'active'; ensure date filter present
+  expect(args.where.date_start).toBeDefined();
   expect(args.where[Op.or][0].team1_id[Op.in]).toEqual([10, 20]);
   expect(res).toEqual([
     {

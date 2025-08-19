@@ -31,17 +31,23 @@ canvas {
 @supports (padding: env(safe-area-inset-left)) {
   .navbar .container-fluid {
     padding-left: calc(env(safe-area-inset-left) + (var(--bs-gutter-x) * 0.5));
-    padding-right: calc(env(safe-area-inset-right) + (var(--bs-gutter-x) * 0.5));
+    padding-right: calc(
+      env(safe-area-inset-right) + (var(--bs-gutter-x) * 0.5)
+    );
   }
 
   footer .container {
     padding-left: calc(env(safe-area-inset-left) + (var(--bs-gutter-x) * 0.5));
-    padding-right: calc(env(safe-area-inset-right) + (var(--bs-gutter-x) * 0.5));
+    padding-right: calc(
+      env(safe-area-inset-right) + (var(--bs-gutter-x) * 0.5)
+    );
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
   }
 }
 
 /* Prevent iOS zoom on small text inputs */
-input, select, textarea {
+input,
+select,
+textarea {
   font-size: 16px;
 }

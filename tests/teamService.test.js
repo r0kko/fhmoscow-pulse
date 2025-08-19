@@ -15,6 +15,7 @@ beforeEach(() => {
   extFindAllMock.mockReset();
   teamUpsertMock.mockReset();
   teamUpdateMock.mockReset();
+  teamUpdateMock.mockResolvedValue([0]);
   userFindByPkMock.mockReset();
   teamFindByPkMock.mockReset();
   userAddTeamMock.mockReset();
@@ -26,6 +27,14 @@ beforeEach(() => {
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
   __esModule: true,
   Team: { findAll: extFindAllMock },
+}));
+
+// Mock sequelize transaction to avoid real DB calls
+const txMock = {};
+const transactionMock = jest.fn(async (cb) => cb(txMock));
+jest.unstable_mockModule('../src/config/database.js', () => ({
+  __esModule: true,
+  default: { transaction: transactionMock },
 }));
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -58,10 +67,11 @@ test('syncExternal upserts active teams and soft deletes missing ones', async ()
       created_by: 'admin',
       updated_by: 'admin',
     },
-    { paranoid: false }
+    expect.objectContaining({ paranoid: false, transaction: expect.any(Object) })
   );
   const whereArg = teamUpdateMock.mock.calls[0][1].where;
   expect(whereArg.external_id[Op.notIn]).toEqual([1]);
+  expect(whereArg.external_id[Op.ne]).toBeNull();
   expect(teamUpdateMock.mock.calls[0][0]).toMatchObject({
     updated_by: 'admin',
   });
