@@ -11,7 +11,8 @@ const saving = ref(false);
 const error = ref('');
 const savedAt = ref(0);
 const pendingByDate = ref(new Set());
-// No modals needed now; locked days are fully non-editable
+// Confirmation modal for switching to FREE under limited lock
+const confirmFree = ref({ visible: false, day: null, loading: false });
 
 const statuses = [
   {
@@ -266,6 +267,36 @@ function saveDayIfValid(d) {
   if (isValidPartial(d)) saveDay(d);
 }
 
+function onClickFree(d) {
+  if (isFullyLocked(d)) return;
+  if (isActive(d, 'FREE')) return; // nothing to do
+  if (isLimitedLocked(d)) {
+    confirmFree.value = { visible: true, day: d, loading: false };
+    return;
+  }
+  setStatus(d, 'FREE');
+}
+
+async function confirmSwitchToFree() {
+  const d = confirmFree.value.day;
+  if (!d) {
+    confirmFree.value.visible = false;
+    return;
+  }
+  confirmFree.value.loading = true;
+  try {
+    setStatus(d, 'FREE');
+    confirmFree.value.visible = false;
+  } finally {
+    confirmFree.value.loading = false;
+  }
+}
+
+function cancelConfirmFree() {
+  confirmFree.value.visible = false;
+  confirmFree.value.day = null;
+}
+
 function setPartialMode(d, mode) {
   if (isFullyLocked(d) || isLimitedLocked(d)) return;
   d.partialMode = mode;
@@ -435,7 +466,7 @@ onBeforeUnmount(() => {});
                       "
                       aria-label="Отметить как свободен"
                       title="Свободен"
-                      @click="setStatus(d, 'FREE')"
+                      @click="onClickFree(d)"
                     >
                       <i class="bi bi-check-circle" aria-hidden="true"></i>
                     </button>
@@ -592,7 +623,63 @@ onBeforeUnmount(() => {});
       </div>
     </div>
   </div>
-  <!-- No confirmation modal; locked days cannot be edited -->
+  <!-- Confirmation modal for switching to FREE under limited lock -->
+  <div v-if="confirmFree.visible">
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Подтвердите изменение статуса</h5>
+            <button
+              type="button"
+              class="btn-close"
+              aria-label="Закрыть"
+              :disabled="confirmFree.loading"
+              @click="cancelConfirmFree"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-2">
+              День находится в периоде ограничения (за 96 часов до начала
+              суток). Изменение возможно только на «Свободен».
+            </p>
+            <p class="mb-0">
+              Продолжить и установить статус «Свободен» для дня
+              <strong>{{
+                confirmFree.day && formatDay(confirmFree.day.date)
+              }}</strong
+              >?
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="confirmFree.loading"
+              @click="cancelConfirmFree"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              class="btn btn-brand"
+              :disabled="confirmFree.loading"
+              @click="confirmSwitchToFree"
+            >
+              <span
+                v-if="confirmFree.loading"
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              Подтвердить
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+  </div>
 </template>
 
 <style scoped>

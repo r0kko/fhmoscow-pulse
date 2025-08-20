@@ -63,15 +63,70 @@ const error = ref('');
 const loading = ref(false);
 const formRef = ref(null);
 const passportRef = ref(null);
+const sexes = ref([]);
 
 onMounted(async () => {
+  const padLeft = (digits, len) => {
+    const d = (digits || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.length >= len) return d;
+    return '0'.repeat(len - d.length) + d;
+  };
+  const normalizePhone = (value) => {
+    let d = (value || '').replace(/\D/g, '');
+    if (!d) return '';
+    // Normalize 8XXXXXXXXXX to 7XXXXXXXXXX
+    if (d[0] === '8' && d.length >= 10) d = '7' + d.slice(1);
+    // Case: already 11 digits and starts with 7
+    if (d.length === 11 && d[0] === '7') {
+      const region = d.slice(1, 4);
+      let local = d.slice(4);
+      if (local.length < 7) local = padLeft(local, 7);
+      return '7' + region + local;
+    }
+    // Case: 10 digits without country code
+    if (d.length === 10) {
+      const region = d.slice(0, 3);
+      let local = d.slice(3);
+      local = padLeft(local, 7).slice(-7);
+      return '7' + region + local;
+    }
+    // Partial but with region+local segments
+    if (d.length > 4) {
+      let region, local;
+      if (d[0] === '7') {
+        region = d.slice(1, 4);
+        local = d.slice(4);
+      } else {
+        region = d.slice(0, 3);
+        local = d.slice(3);
+      }
+      if (region.length === 3 && local.length > 0 && local.length < 7) {
+        local = padLeft(local, 7);
+        return '7' + region + local;
+      }
+    }
+    // Fallback: return digits as-is to avoid corrupting unknown formats
+    return d;
+  };
+  try {
+    const data = await apiFetch('/sexes');
+    sexes.value = data.sexes || [];
+  } catch (_) {
+    sexes.value = [];
+  }
   try {
     const data = await apiFetch('/users/me');
     user.value = data.user;
+    if (user.value && typeof user.value.phone === 'string') {
+      const fixed = normalizePhone(user.value.phone);
+      if (fixed) user.value.phone = fixed;
+    }
   } catch (_) {}
   try {
     const data = await apiFetch('/inns/me');
-    inn.value = data.inn.number.replace(/\D/g, '');
+    const raw = data.inn.number.replace(/\D/g, '');
+    inn.value = raw && raw.length < 12 ? padLeft(raw, 12) : raw;
     innLocked.value = Boolean(data.inn.id) || isValidInn(inn.value);
   } catch (_) {}
   try {
@@ -142,6 +197,16 @@ onMounted(async () => {
     step.value = 4;
   }
 });
+
+function onBicInput(e) {
+  // BIC is 9 digits
+  bank.value.bic = (e.target.value || '').replace(/\D/g, '').slice(0, 9);
+}
+
+function onBankNumberInput(e) {
+  // Account number is typically up to 20 digits in Russia
+  bank.value.number = (e.target.value || '').replace(/\D/g, '').slice(0, 20);
+}
 
 function onInnInput(e) {
   inn.value = e.target.value.replace(/\D/g, '').slice(0, 12);
@@ -384,19 +449,34 @@ async function saveStep() {
 <template>
   <div class="container py-5" style="max-width: 600px">
     <h1 class="mb-3 text-center">Заполнение профиля</h1>
-    <div class="progress mb-4">
+    <div class="progress mb-4" aria-label="Прогресс заполнения профиля">
       <div
-        class="progress-bar"
+        class="progress-bar bg-brand"
         role="progressbar"
         :style="{ width: (step / total) * 100 + '%' }"
       ></div>
     </div>
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <form @submit.prevent="saveStep">
+    <div v-if="error" class="alert alert-danger" role="alert" aria-live="polite">{{ error }}</div>
+    <form novalidate @submit.prevent="saveStep">
       <div v-if="step === 1" class="mb-4">
-        <UserForm ref="formRef" v-model="user" :locked="true" />
+        <div class="card section-card fade-in">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Основные данные</h2>
+            <UserForm
+              ref="formRef"
+              v-model="user"
+              :locked="true"
+              :sexes="sexes"
+              :show-sex="false"
+              :require-sex="false"
+            />
+          </div>
+        </div>
       </div>
       <div v-else-if="step === 2" class="mb-4">
+        <div class="card section-card fade-in">
+          <div class="card-body">
+            <h2 class="h5 mb-3">ИНН и СНИЛС</h2>
         <div class="form-floating mb-3">
           <input
             id="snils"
@@ -404,9 +484,13 @@ async function saveStep() {
             class="form-control"
             placeholder="СНИЛС"
             :disabled="snilsLocked"
+            inputmode="numeric"
+            autocomplete="off"
+            :aria-invalid="!isValidSnils(snilsDigits) && snilsInput ? 'true' : 'false'"
             @input="onSnilsInput"
           />
           <label for="snils">СНИЛС</label>
+          <small class="text-muted">11 цифр, формат ХХХ-ХХХ-ХХХ XX</small>
         </div>
         <div class="form-floating">
           <input
@@ -415,26 +499,38 @@ async function saveStep() {
             class="form-control"
             placeholder="ИНН"
             :disabled="innLocked"
+            inputmode="numeric"
+            autocomplete="off"
+            :aria-invalid="!isValidInn(inn) && inn ? 'true' : 'false'"
             @input="onInnInput"
           />
           <label for="inn">ИНН</label>
+          <small class="text-muted">10–12 цифр</small>
         </div>
         <div v-if="innLocked && snilsLocked" class="alert alert-success mt-3">
           Данные импортированы корректно
         </div>
+          </div>
+        </div>
       </div>
       <div v-else-if="step === 3" class="mb-4">
+        <div class="card section-card fade-in">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Паспорт</h2>
         <PassportForm
           ref="passportRef"
           v-model="passport"
           :birth-date="user.birth_date"
           :locked-fields="passportLockFields"
+          :frame="false"
         />
-        <div v-if="passportLocked" class="alert alert-success mt-3">
-          Паспорт проверен
+          </div>
         </div>
       </div>
       <div v-else-if="step === 4" class="mb-4">
+        <div class="card section-card fade-in">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Адреса</h2>
         <div class="form-floating mb-3">
           <textarea
             id="regAddr"
@@ -444,6 +540,7 @@ async function saveStep() {
             placeholder="Адрес регистрации"
           ></textarea>
           <label for="regAddr">Адрес регистрации</label>
+          <small class="text-muted">Укажите адрес в свободной форме</small>
         </div>
         <div class="form-check mb-3">
           <input
@@ -451,6 +548,7 @@ async function saveStep() {
             v-model="sameAddress"
             class="form-check-input"
             type="checkbox"
+            aria-describedby="resAddrHelp"
           />
           <label for="sameAddr" class="form-check-label"
             >Совпадает с адресом проживания</label
@@ -466,9 +564,15 @@ async function saveStep() {
             :disabled="sameAddress"
           ></textarea>
           <label for="resAddr">Адрес проживания</label>
+          <small id="resAddrHelp" class="text-muted">Если отличается от адреса регистрации</small>
+        </div>
+          </div>
         </div>
       </div>
       <div v-else-if="step === 5" class="mb-4">
+        <div class="card section-card fade-in">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Банковские реквизиты</h2>
         <div class="form-floating mb-3">
           <input
             id="accNum"
@@ -476,8 +580,13 @@ async function saveStep() {
             class="form-control"
             placeholder="Счёт"
             :disabled="bankLocked"
+            inputmode="numeric"
+            autocomplete="off"
+            maxlength="20"
+            @input="onBankNumberInput"
           />
           <label for="accNum">Расчётный счёт</label>
+          <small class="text-muted">20 цифр</small>
         </div>
         <div class="form-floating">
           <input
@@ -486,13 +595,18 @@ async function saveStep() {
             class="form-control"
             placeholder="БИК"
             :disabled="bankLocked"
+            inputmode="numeric"
+            autocomplete="off"
+            maxlength="9"
+            @input="onBicInput"
           />
           <label for="bic">БИК</label>
+          <small class="text-muted">9 цифр</small>
         </div>
         <button
           v-if="!bankLocked"
           type="button"
-          class="btn btn-outline-secondary mt-3"
+          class="btn btn-outline-brand mt-3"
           @click="checkBank"
         >
           Проверить
@@ -522,6 +636,8 @@ async function saveStep() {
               placeholder="Корсчёт"
             />
             <label>Корсчёт</label>
+          </div>
+        </div>
           </div>
         </div>
       </div>

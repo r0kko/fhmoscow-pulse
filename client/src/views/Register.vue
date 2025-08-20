@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed, nextTick } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
@@ -14,6 +14,46 @@ const password = ref('');
 const confirm = ref('');
 const error = ref('');
 const loading = ref(false);
+const resentAt = ref(0);
+const now = ref(Date.now());
+const emailInput = ref(null);
+const codeInput = ref(null);
+
+// Cooldown for resending code (seconds)
+const RESEND_COOLDOWN = 60;
+const secondsUntilResend = computed(() => {
+  const diff = Math.ceil(
+    (resentAt.value + RESEND_COOLDOWN * 1000 - now.value) / 1000
+  );
+  return Math.max(0, diff);
+});
+
+// Basic client-side validations (complement server-side)
+const normalizedEmail = computed(() => email.value.trim().toLowerCase());
+const isEmailValid = computed(() =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail.value)
+);
+const sanitizedCode = computed(() =>
+  code.value.replace(/\s+/g, '').toUpperCase()
+);
+const passwordMeetsMin = computed(() => password.value.length >= 8);
+const passwordsMatch = computed(() =>
+  password.value && password.value === confirm.value
+);
+const canSubmitStart = computed(() => isEmailValid.value && !loading.value);
+const canSubmitFinish = computed(() =>
+  sanitizedCode.value.length > 0 &&
+  passwordMeetsMin.value &&
+  passwordsMatch.value &&
+  !loading.value
+);
+
+// tick timer for resend cooldown
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    now.value = Date.now();
+  }, 500);
+}
 
 watch(error, (val) => {
   if (val) {
@@ -23,15 +63,27 @@ watch(error, (val) => {
   }
 });
 
+function onEmailInput(e) {
+  // normalize as user types without being disruptive
+  email.value = (e?.target?.value ?? email.value).trimStart().toLowerCase();
+}
+
+function onCodeInput(e) {
+  code.value = (e?.target?.value ?? code.value).replace(/\s+/g, '');
+}
+
 async function start() {
   error.value = '';
   loading.value = true;
   try {
     await apiFetch('/register/start', {
       method: 'POST',
-      body: JSON.stringify({ email: email.value }),
+      body: JSON.stringify({ email: normalizedEmail.value }),
     });
     step.value = 2;
+    resentAt.value = Date.now();
+    await nextTick();
+    codeInput.value?.focus?.();
   } catch (err) {
     error.value = err.message || 'Ошибка регистрации';
   } finally {
@@ -45,13 +97,17 @@ async function finish() {
     error.value = 'Пароли не совпадают';
     return;
   }
+  if (!passwordMeetsMin.value) {
+    error.value = 'Минимальная длина пароля — 8 символов';
+    return;
+  }
   loading.value = true;
   try {
     const data = await apiFetch('/register/finish', {
       method: 'POST',
       body: JSON.stringify({
-        email: email.value,
-        code: code.value,
+        email: normalizedEmail.value,
+        code: sanitizedCode.value,
         password: password.value,
       }),
     });
@@ -65,6 +121,11 @@ async function finish() {
     loading.value = false;
   }
 }
+
+async function resend() {
+  if (secondsUntilResend.value > 0 || loading.value) return;
+  await start();
+}
 </script>
 
 <template>
@@ -77,22 +138,36 @@ async function finish() {
         с использованием существующей учетной записи в личном кабинете судьи
       </p>
       <transition name="fade">
-        <div v-if="error" class="alert alert-danger">{{ error }}</div>
+        <div
+          v-if="error"
+          class="alert alert-danger"
+          role="alert"
+          aria-live="polite"
+        >
+          {{ error }}
+        </div>
       </transition>
-      <form v-if="step === 1" @submit.prevent="start">
+      <form v-if="step === 1" novalidate @submit.prevent="start">
         <div class="form-floating mb-3">
           <input
             id="email"
             v-model="email"
+            ref="emailInput"
             type="email"
             class="form-control"
             placeholder="Email"
             autocomplete="email"
             required
+            :aria-invalid="!isEmailValid && email.length > 0 ? 'true' : 'false'"
+            @input="onEmailInput"
           />
           <label for="email">Email</label>
         </div>
-        <button type="submit" class="btn btn-brand w-100" :disabled="loading">
+        <button
+          type="submit"
+          class="btn btn-brand w-100"
+          :disabled="!canSubmitStart"
+        >
           <span
             v-if="loading"
             class="spinner-border spinner-border-sm me-2"
@@ -106,19 +181,27 @@ async function finish() {
         </div>
       </form>
 
-      <form v-else @submit.prevent="finish">
-        <p class="mb-3">На {{ email }} отправлен код подтверждения.</p>
+      <form v-else novalidate @submit.prevent="finish">
+        <p class="mb-3">
+          На <strong>{{ normalizedEmail }}</strong> отправлен код подтверждения.
+          <br />
+          Если письмо не пришло, проверьте папку «Спам» или отправьте код повторно.
+        </p>
         <div class="form-floating mb-3">
           <input
             id="code"
             v-model="code"
+            ref="codeInput"
             class="form-control"
             placeholder="Код"
             required
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            @input="onCodeInput"
           />
           <label for="code">Код из письма</label>
         </div>
-        <div class="form-floating mb-3">
+        <div class="form-floating mb-2">
           <input
             id="password"
             v-model="password"
@@ -127,10 +210,16 @@ async function finish() {
             placeholder="Пароль"
             autocomplete="new-password"
             required
+            :aria-invalid="!passwordMeetsMin && password.length > 0 ? 'true' : 'false'"
+            aria-describedby="passwordHelp"
           />
           <label for="password">Пароль</label>
         </div>
         <PasswordStrengthMeter class="mb-3" :password="password" />
+        <small id="passwordHelp" class="text-muted d-block mb-3"
+          >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
+          символы.</small
+        >
         <div class="form-floating mb-3">
           <input
             id="confirm"
@@ -140,16 +229,33 @@ async function finish() {
             placeholder="Повторите пароль"
             autocomplete="new-password"
             required
+            :aria-invalid="!passwordsMatch && confirm.length > 0 ? 'true' : 'false'"
           />
           <label for="confirm">Повторите пароль</label>
         </div>
-        <button type="submit" class="btn btn-brand w-100" :disabled="loading">
+        <button
+          type="submit"
+          class="btn btn-brand w-100"
+          :disabled="!canSubmitFinish"
+        >
           <span
             v-if="loading"
             class="spinner-border spinner-border-sm me-2"
           ></span>
           Завершить регистрацию
         </button>
+        <div class="d-flex justify-content-end align-items-center mt-3">
+          <button
+            type="button"
+            class="btn btn-link p-0"
+            :disabled="secondsUntilResend > 0 || loading"
+            @click="resend"
+          >
+            Отправить код повторно<span v-if="secondsUntilResend > 0">
+              ({{ secondsUntilResend }}с)</span
+            >
+          </button>
+        </div>
       </form>
     </div>
     <CookieNotice />
