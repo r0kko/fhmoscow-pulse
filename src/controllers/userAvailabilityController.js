@@ -18,7 +18,8 @@ export default {
     const todayKey = formatDate(today);
     const moscow = new Date(`${todayKey}T00:00:00+03:00`);
     const dayNum = moscow.getUTCDay();
-    const mondayMs = moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
+    const mondayMs =
+      moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
     const start = formatDate(new Date(mondayMs));
 
     const end = new Date(today);

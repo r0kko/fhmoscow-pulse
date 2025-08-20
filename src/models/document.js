@@ -98,7 +98,7 @@ Document.addHook('afterUpdate', async (doc, options) => {
     );
   } catch (e) {
     // Don’t block the main flow on sync issues; log if logger is available
-     
+
     console.error('Document.afterUpdate hook failed:', e);
   }
 });
