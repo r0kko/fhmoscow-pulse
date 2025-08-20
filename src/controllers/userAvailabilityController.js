@@ -1,5 +1,6 @@
 import userAvailabilityService, {
   listForUsers as listForUsersService,
+  getAvailabilityLocks,
 } from '../services/userAvailabilityService.js';
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
@@ -8,19 +9,18 @@ function formatDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-function isWeekLocked(key) {
-  const moscow = new Date(`${key}T00:00:00+03:00`);
-  const dayNum = moscow.getUTCDay();
-  const mondayMs = moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
-  const tuesdayEndMs =
-    mondayMs + 24 * 60 * 60 * 1000 + (23 * 60 * 60 + 59 * 60 + 59) * 1000;
-  return Date.now() >= tuesdayEndMs;
-}
+// Availability lock flags are derived in service (Moscow time)
 
 export default {
   async list(req, res) {
     const today = new Date();
-    const start = formatDate(today);
+    // Start from Monday of the current week (Moscow time)
+    const todayKey = formatDate(today);
+    const moscow = new Date(`${todayKey}T00:00:00+03:00`);
+    const dayNum = moscow.getUTCDay();
+    const mondayMs = moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
+    const start = formatDate(new Date(mondayMs));
+
     const end = new Date(today);
     end.setDate(end.getDate() + (7 - end.getDay()) + 7);
     const endStr = formatDate(end);
@@ -34,10 +34,9 @@ export default {
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const key = formatDate(d);
       const rec = map.get(key);
-      // Determine editability: lock edits within 72 hours to the day's start in Moscow time (+03:00)
-      const moscowStart = new Date(`${key}T00:00:00+03:00`).getTime();
-      let editable = Date.now() < moscowStart - 72 * 60 * 60 * 1000;
-      if (isWeekLocked(key)) editable = false;
+      // Determine editability and lock flags (Moscow time, corporate policy)
+      const locks = getAvailabilityLocks(key);
+      const editable = !locks.fullyLocked && !locks.limitedLocked;
       days.push({
         date: key,
         status: rec?.AvailabilityType?.alias ?? 'FREE',
@@ -45,7 +44,8 @@ export default {
         to_time: rec?.to_time ?? null,
         preset: !!rec, // indicates whether value was explicitly set by user
         editable,
-        week_locked: isWeekLocked(key),
+        fully_locked: !!locks.fullyLocked,
+        limited_locked: !!locks.limitedLocked,
       });
     }
     res.json({ days });

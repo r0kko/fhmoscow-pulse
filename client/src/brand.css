@@ -293,6 +293,15 @@ body {
 .menu-card .card-title {
   line-height: 1.2;
   font-weight: 600;
+  /* Prevent long labels from overflowing tiles */
+  overflow-wrap: anywhere;
+  word-break: break-word; /* fallback */
+  hyphens: auto; /* language-aware hyphenation (html[lang] is set) */
+  /* Keep labels readable without colliding with the icon */
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* up to 3 lines on small tiles */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .menu-card .icon {
   position: absolute;

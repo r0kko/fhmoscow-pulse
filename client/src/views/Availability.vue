@@ -3,7 +3,6 @@ import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import { MOSCOW_TZ } from '../utils/time.js';
-import Modal from 'bootstrap/js/dist/modal';
 
 const days = ref([]);
 const original = ref([]);
@@ -12,9 +11,7 @@ const saving = ref(false);
 const error = ref('');
 const savedAt = ref(0);
 const pendingByDate = ref(new Set());
-const confirmModalRef = ref(null);
-let confirmModal = null;
-const confirmDay = ref(null);
+// No modals needed now; locked days are fully non-editable
 
 const statuses = [
   {
@@ -94,6 +91,11 @@ const invalidCount = computed(
 function toMoscowMidnight(dateStr) {
   return new Date(`${dateStr}T00:00:00+03:00`);
 }
+
+// Time helpers (Moscow timezone)
+function mskStartOfDayMs(dateStr) {
+  return new Date(`${dateStr}T00:00:00+03:00`).getTime();
+}
 function isoWeek(date) {
   const d = new Date(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
@@ -126,11 +128,22 @@ function isActive(d, status) {
   if (eff == null) return false;
   return eff === status;
 }
-function isLocked(d) {
-  const startMs = toMoscowMidnight(d.date).getTime();
-  const seventyTwoH = 72 * 60 * 60 * 1000;
-  if (typeof d.editable === 'boolean') return !d.editable;
-  return Date.now() >= startMs - seventyTwoH;
+// Lock model:
+// - Full lock: past and current day (no edits at all)
+// - Limited lock: only allow switching back to FREE
+//   • within 72h before day start
+//   • after Tue 23:59 for the rest of the current week
+function isFullyLocked(d) {
+  const startMs = mskStartOfDayMs(d.date);
+  return Date.now() >= startMs; // past and current day
+}
+function isLimitedLocked(d) {
+  const now = Date.now();
+  const startMs = mskStartOfDayMs(d.date);
+  if (now >= startMs) return false; // handled by full lock
+  // 96h window
+  const ninetySixH = 96 * 60 * 60 * 1000;
+  return now >= startMs - ninetySixH;
 }
 function isPending(d) {
   return pendingByDate.value.has(d.date);
@@ -216,7 +229,6 @@ async function saveDay(d, opts = {}) {
     status: d.currentStatus ?? d.status,
     from_time: d.from_time ?? null,
     to_time: d.to_time ?? null,
-    override_free: !!opts.overrideFree,
   };
   try {
     await apiFetch('/availabilities', {
@@ -236,15 +248,8 @@ async function saveDay(d, opts = {}) {
 }
 
 function setStatus(d, status) {
-  if (isLocked(d)) {
-    // allow FREE with modal confirmation
-    if (status !== 'FREE' || isActive(d, 'FREE')) return;
-    confirmDay.value = d;
-    if (!confirmModal && confirmModalRef.value)
-      confirmModal = new Modal(confirmModalRef.value);
-    confirmModal?.show();
-    return;
-  }
+  if (isFullyLocked(d)) return;
+  if (status !== 'FREE' && isLimitedLocked(d)) return;
   d.currentStatus = status;
   if (status === 'PARTIAL') {
     if (!d.partialMode) d.partialMode = 'AFTER';
@@ -256,28 +261,13 @@ function setStatus(d, status) {
   }
 }
 
-function confirmFreeOverride() {
-  const d = confirmDay.value;
-  if (!d) return;
-  d.currentStatus = 'FREE';
-  d.from_time = null;
-  d.to_time = null;
-  saveDay(d, { overrideFree: true });
-  confirmModal?.hide();
-  confirmDay.value = null;
-}
-
-function cancelFreeOverride() {
-  confirmModal?.hide();
-  confirmDay.value = null;
-}
-
 function saveDayIfValid(d) {
-  if (isLocked(d)) return;
+  if (isFullyLocked(d) || isLimitedLocked(d)) return;
   if (isValidPartial(d)) saveDay(d);
 }
 
 function setPartialMode(d, mode) {
+  if (isFullyLocked(d) || isLimitedLocked(d)) return;
   d.partialMode = mode;
   if (mode === 'BEFORE') {
     d.from_time = null;
@@ -310,16 +300,8 @@ watch(
 
 onMounted(() => {
   load();
-  if (confirmModalRef.value) confirmModal = new Modal(confirmModalRef.value);
 });
-onBeforeUnmount(() => {
-  if (confirmModal) {
-    try {
-      confirmModal.hide();
-    } catch (_) {}
-    confirmModal = null;
-  }
-});
+onBeforeUnmount(() => {});
 </script>
 
 <template>
@@ -386,9 +368,14 @@ onBeforeUnmount(() => {
               </li>
               <li class="d-flex align-items-start">
                 <i class="bi bi-lock me-2" aria-hidden="true"></i>
+                <span>Заблокированные дни недоступны для редактирования.</span>
+              </li>
+              <li class="d-flex align-items-start">
+                <i class="bi bi-hourglass-split me-2" aria-hidden="true"></i>
                 <span
-                  >Заблокированные дни (за 72 часа) можно изменить только в
-                  сторону «Свободен».</span
+                  >За 96 часов можно только изменить занятость на "Свободен".
+                  Сотрудники отдела организации судейства будут уведомлены
+                  автоматически.</span
                 >
               </li>
             </ul>
@@ -420,7 +407,7 @@ onBeforeUnmount(() => {
                 v-for="d in group.list"
                 :key="d.date"
                 class="mb-3 schedule-day"
-                :class="{ locked: isLocked(d) }"
+                :class="{ locked: isFullyLocked(d) || isLimitedLocked(d) }"
               >
                 <div
                   class="d-flex justify-content-between align-items-center flex-wrap gap-2"
@@ -428,18 +415,24 @@ onBeforeUnmount(() => {
                   <div class="day-title d-flex align-items-center">
                     {{ formatDay(d.date) }}
                     <i
-                      v-if="isLocked(d)"
+                      v-if="isFullyLocked(d) || isLimitedLocked(d)"
                       class="bi bi-lock ms-2 text-muted"
                       aria-hidden="true"
-                      title="Редактирование недоступно за 72 часа до суток"
+                      :title="
+                        isFullyLocked(d)
+                          ? 'Редактирование недоступно для текущего и прошедших дней'
+                          : 'Доступно только возвращение к «Свободен»'
+                      "
                     ></i>
                   </div>
                   <div class="d-flex align-items-center gap-2">
                     <button
                       class="btn btn-sm btn-outline-success btn-square status-icon"
                       :class="isActive(d, 'FREE') && 'active'"
-                      :disabled="isPending(d)"
-                      :aria-disabled="isLocked(d) ? 'true' : 'false'"
+                      :disabled="isFullyLocked(d) || isPending(d)"
+                      :aria-disabled="
+                        isFullyLocked(d) || isPending(d) ? 'true' : 'false'
+                      "
                       aria-label="Отметить как свободен"
                       title="Свободен"
                       @click="setStatus(d, 'FREE')"
@@ -449,9 +442,13 @@ onBeforeUnmount(() => {
                     <button
                       class="btn btn-sm btn-outline-warning btn-square status-icon"
                       :class="isActive(d, 'PARTIAL') && 'active'"
-                      :disabled="isLocked(d) || isPending(d)"
+                      :disabled="
+                        isFullyLocked(d) || isLimitedLocked(d) || isPending(d)
+                      "
                       :aria-disabled="
-                        isLocked(d) || isPending(d) ? 'true' : 'false'
+                        isFullyLocked(d) || isLimitedLocked(d) || isPending(d)
+                          ? 'true'
+                          : 'false'
                       "
                       aria-label="Отметить частичную доступность"
                       title="Частично"
@@ -462,9 +459,13 @@ onBeforeUnmount(() => {
                     <button
                       class="btn btn-sm btn-outline-secondary btn-square status-icon"
                       :class="isActive(d, 'BUSY') && 'active'"
-                      :disabled="isLocked(d) || isPending(d)"
+                      :disabled="
+                        isFullyLocked(d) || isLimitedLocked(d) || isPending(d)
+                      "
                       :aria-disabled="
-                        isLocked(d) || isPending(d) ? 'true' : 'false'
+                        isFullyLocked(d) || isLimitedLocked(d) || isPending(d)
+                          ? 'true'
+                          : 'false'
                       "
                       aria-label="Отметить как занят"
                       title="Занят"
@@ -482,7 +483,12 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div
-                  v-if="isPartial(d) && isActive(d, 'PARTIAL') && !isLocked(d)"
+                  v-if="
+                    isPartial(d) &&
+                    isActive(d, 'PARTIAL') &&
+                    !isFullyLocked(d) &&
+                    !isLimitedLocked(d)
+                  "
                   class="row g-2 align-items-end mt-2"
                 >
                   <div class="col-12 mb-1">
@@ -586,49 +592,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
-  <div
-    ref="confirmModalRef"
-    class="modal fade"
-    tabindex="-1"
-    aria-hidden="true"
-  >
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Подтверждение</h5>
-          <button
-            type="button"
-            class="btn-close"
-            aria-label="Закрыть"
-            @click="cancelFreeOverride"
-          ></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-0">
-            Подтвердите, что вы полностью готовы работать в этот день. Изменение
-            будет сохранено.
-          </p>
-        </div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-outline-secondary"
-            @click="cancelFreeOverride"
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            class="btn btn-brand"
-            @click="confirmFreeOverride"
-          >
-            Подтвердить
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Confirmation Modal -->
+  <!-- No confirmation modal; locked days cannot be edited -->
 </template>
 
 <style scoped>

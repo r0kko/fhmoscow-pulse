@@ -14,18 +14,16 @@ async function listForUser(userId, startDate, endDate) {
   });
 }
 
-function isWeekLocked(dateStr) {
-  const moscow = new Date(`${dateStr}T00:00:00+03:00`);
-  const dayNum = moscow.getUTCDay(); // 0..6 (Sun..Sat)
-  const mondayMs = moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
-  const tuesdayEndMs =
-    mondayMs + 24 * 60 * 60 * 1000 + (23 * 60 * 60 + 59 * 60 + 59) * 1000;
-  return Date.now() >= tuesdayEndMs;
+function mskStartOfDayMs(dateStr) {
+  return new Date(`${dateStr}T00:00:00+03:00`).getTime();
 }
-
-function isDayLocked(dateStr) {
-  const startMs = new Date(`${dateStr}T00:00:00+03:00`).getTime();
-  return Date.now() >= startMs - 72 * 60 * 60 * 1000;
+function getAvailabilityLocks(dateStr) {
+  const now = Date.now();
+  const startMs = mskStartOfDayMs(dateStr);
+  const fullyLocked = now >= startMs; // past and current day
+  const within96h = !fullyLocked && now >= startMs - 96 * 60 * 60 * 1000;
+  const limitedLocked = within96h;
+  return { fullyLocked, limitedLocked, within96h };
 }
 
 async function setForUser(userId, days, actorId, options = {}) {
@@ -40,13 +38,13 @@ async function setForUser(userId, days, actorId, options = {}) {
     if (!typeId) throw new ServiceError('invalid_status', 400);
 
     if (enforcePolicy) {
-      const weekLocked = isWeekLocked(day.date);
-      const dayLocked = isDayLocked(day.date);
-      const attemptingFree =
-        day.status === 'FREE' && day.from_time == null && day.to_time == null;
-      const allowOverrideFree = !!day.override_free && attemptingFree;
-      if ((weekLocked || dayLocked) && !allowOverrideFree) {
-        throw new ServiceError('week_locked', 400);
+      const { fullyLocked, within96h } = getAvailabilityLocks(day.date);
+      if (fullyLocked) {
+        throw new ServiceError('availability_day_locked', 400);
+      }
+      // Limited lock: only allow switch to FREE
+      if (within96h && day.status !== 'FREE') {
+        throw new ServiceError('availability_limited_96h', 400);
       }
     }
 
@@ -108,3 +106,5 @@ export async function listForUsers(userIds = [], startDate, endDate) {
     include: [{ model: AvailabilityType, attributes: ['alias'] }],
   });
 }
+
+export { getAvailabilityLocks };

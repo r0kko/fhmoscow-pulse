@@ -31,7 +31,7 @@ const baseWorkSections = [
 ];
 
 const qualificationSection = {
-  title: 'Повышение квалификации',
+  title: 'Семинары',
   icon: 'bi-mortarboard',
   to: '/qualification',
 };

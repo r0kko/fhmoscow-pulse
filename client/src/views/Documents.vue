@@ -65,6 +65,15 @@ onMounted(async () => {
   }
 });
 
+async function reloadDocuments() {
+  try {
+    const docs = await apiFetch('/documents');
+    documents.value = docs.documents || [];
+  } catch (e) {
+    // Silently ignore to not interrupt the flow; page will still work
+  }
+}
+
 async function choose(alias) {
   if (loadingAlias.value) return;
   loadingAlias.value = alias;
@@ -93,6 +102,7 @@ async function submit() {
     const res = await apiFetch('/sign-types/me');
     current.value = res.signType;
     success.value = true;
+    await reloadDocuments();
   } catch (e) {
     verifyError.value = e.message;
   } finally {
@@ -128,15 +138,34 @@ async function submit() {
                   <div class="card-body">
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
-                      <p class="mb-2">Собственноручная подпись</p>
+                      <p class="mb-2">
+                        <span
+                          class="badge rounded-pill text-bg-light fw-semibold badge-sign-type"
+                        >
+                          Собственноручная подпись
+                        </span>
+                      </p>
                       <p class="text-muted mb-0 small">
-                        Ожидаем Вас в офисе в будние дни с 10:00 до 17:00
+                        <span class="fw-semibold">Где оформить:</span>
+                        офис Федерации в будние дни с 10:00 до 17:00
                       </p>
                     </template>
                     <template v-else-if="current.alias === 'KONTUR_SIGN'">
-                      <p class="mb-2">Подписание через Контур.Сайн</p>
-                      <p class="mb-1">ИНН: {{ current.inn }}</p>
-                      <p class="mb-1">Эмитент сертификата: СКБ Контур</p>
+                      <p class="mb-2">
+                        <span
+                          class="badge rounded-pill text-bg-light fw-semibold badge-sign-type"
+                        >
+                          Подписание через Контур.Сайн
+                        </span>
+                      </p>
+                      <p class="mb-1">
+                        <span class="fw-semibold">ИНН:</span>
+                        <span class="ms-1">{{ current.inn }}</span>
+                      </p>
+                      <p class="mb-1">
+                        <span class="fw-semibold">Эмитент сертификата:</span>
+                        <span class="ms-1">СКБ Контур</span>
+                      </p>
                       <a
                         href="https://sign.kontur.ru"
                         target="_blank"
@@ -147,22 +176,37 @@ async function submit() {
                       </a>
                     </template>
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
-                      <p class="mb-2">Простая электронная подпись</p>
-                      <p class="mb-1">ИНН: {{ current.inn }}</p>
-                      <p class="mb-1">
-                        Эмитент сертификата: Федерация хоккея Москвы
+                      <p class="mb-2">
+                        <span
+                          class="badge rounded-pill text-bg-light fw-semibold badge-sign-type"
+                        >
+                          Простая электронная подпись
+                        </span>
                       </p>
-                      <p class="mb-1">ID: {{ current.id }}</p>
+                      <p class="mb-1">
+                        <span class="fw-semibold">ИНН:</span>
+                        <span class="ms-1">{{ current.inn }}</span>
+                      </p>
+                      <p class="mb-1">
+                        <span class="fw-semibold">Эмитент сертификата:</span>
+                        <span class="ms-1">Федерация хоккея Москвы</span>
+                      </p>
+                      <p class="mb-1">
+                        <span class="fw-semibold">ID:</span>
+                        <span class="ms-1">{{ current.id }}</span>
+                      </p>
                       <p class="text-muted mb-0">
-                        Дата создания подписи:
-                        {{ formatDate(current.signCreatedDate) }}
+                        <span class="fw-semibold">Дата создания подписи:</span>
+                        <span class="ms-1">{{
+                          formatDate(current.signCreatedDate)
+                        }}</span>
                       </p>
                     </template>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="row mt-4">
+            <div class="row mt-2">
               <div class="col-12">
                 <div class="card section-card tile fade-in shadow-sm">
                   <div class="card-body">
@@ -194,6 +238,7 @@ async function submit() {
                                 target="_blank"
                                 rel="noopener"
                                 title="Скачать"
+                                :aria-label="`Скачать документ ${d.name}`"
                               >
                                 <i
                                   class="bi bi-download"
@@ -232,6 +277,7 @@ async function submit() {
                               target="_blank"
                               rel="noopener"
                               title="Скачать"
+                              :aria-label="`Скачать документ ${d.name}`"
                             >
                               <i class="bi bi-download" aria-hidden="true"></i>
                             </a>
@@ -295,7 +341,7 @@ async function submit() {
             </div>
             <div
               v-if="selected"
-              class="card section-card tile fade-in mt-3 shadow-sm"
+              class="card section-card tile fade-in mt-2 shadow-sm"
             >
               <div class="card-body">
                 <h2 class="h6 mb-3">
@@ -312,10 +358,18 @@ async function submit() {
                     maxlength="6"
                   />
                 </div>
-                <div v-if="verifyError" class="text-danger mb-2">
+                <div
+                  v-if="verifyError"
+                  class="alert alert-danger py-2 mb-2"
+                  role="alert"
+                >
                   {{ verifyError }}
                 </div>
-                <div v-if="success" class="text-success mb-2">
+                <div
+                  v-if="success"
+                  class="alert alert-success py-2 mb-2"
+                  role="alert"
+                >
                   Подпись сохранена
                 </div>
                 <button
@@ -382,5 +436,10 @@ async function submit() {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Slightly increase signature type pill font for better hierarchy */
+.badge-sign-type {
+  font-size: 0.95rem;
 }
 </style>

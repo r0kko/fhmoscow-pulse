@@ -60,6 +60,12 @@ export const ERROR_MESSAGES = {
     'Попробуйте ввести марку или номер иначе или оставить только марку',
   vehicle_not_found: 'Транспортное средство не найдено',
   vehicle_limit: 'Достигнут лимит транспортных средств',
+  // Availability
+  availability_day_locked: 'День недоступен для редактирования',
+  availability_limited_96h:
+    'За 96 часов до дня изменения ограничены: доступен только «Свободен»',
+  invalid_partial_time: 'Укажите корректное время для частичной доступности',
+  invalid_status: 'Некорректный статус',
 };
 
 export function translateError(code) {
