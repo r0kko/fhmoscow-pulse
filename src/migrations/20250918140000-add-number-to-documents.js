@@ -37,11 +37,21 @@ module.exports = {
       WHERE d.id = o.id
         AND d.number IS NULL;
     `);
-    await queryInterface.sequelize.query(
-      // eslint-disable-next-line quotes
-      "SELECT setval('documents_number_seq', (SELECT COUNT(*) FROM documents))"
-    );
-    // Enforce NOT NULL if column exists
+    // Initialize sequence to the correct next value.
+    // Use the max numeric suffix from existing numbers; if none, start at 1 (uncalled)
+    await queryInterface.sequelize.query(`
+      SELECT setval(
+        'documents_number_seq',
+        COALESCE(
+          (SELECT MAX(split_part(number, '/', 2)::int)
+             FROM documents
+            WHERE number IS NOT NULL AND position('/' in number) > 0),
+          1
+        ),
+        EXISTS(SELECT 1 FROM documents)
+      )
+    `);
+
     const tableAfter = await queryInterface.describeTable('documents');
     if (tableAfter.number) {
       await queryInterface.changeColumn('documents', 'number', {
