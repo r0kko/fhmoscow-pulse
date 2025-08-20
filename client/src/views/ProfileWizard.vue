@@ -456,7 +456,14 @@ async function saveStep() {
         :style="{ width: (step / total) * 100 + '%' }"
       ></div>
     </div>
-    <div v-if="error" class="alert alert-danger" role="alert" aria-live="polite">{{ error }}</div>
+    <div
+      v-if="error"
+      class="alert alert-danger"
+      role="alert"
+      aria-live="polite"
+    >
+      {{ error }}
+    </div>
     <form novalidate @submit.prevent="saveStep">
       <div v-if="step === 1" class="mb-4">
         <div class="card section-card fade-in">
@@ -477,39 +484,44 @@ async function saveStep() {
         <div class="card section-card fade-in">
           <div class="card-body">
             <h2 class="h5 mb-3">ИНН и СНИЛС</h2>
-        <div class="form-floating mb-3">
-          <input
-            id="snils"
-            v-model="snilsInput"
-            class="form-control"
-            placeholder="СНИЛС"
-            :disabled="snilsLocked"
-            inputmode="numeric"
-            autocomplete="off"
-            :aria-invalid="!isValidSnils(snilsDigits) && snilsInput ? 'true' : 'false'"
-            @input="onSnilsInput"
-          />
-          <label for="snils">СНИЛС</label>
-          <small class="text-muted">11 цифр, формат ХХХ-ХХХ-ХХХ XX</small>
-        </div>
-        <div class="form-floating">
-          <input
-            id="inn"
-            v-model="inn"
-            class="form-control"
-            placeholder="ИНН"
-            :disabled="innLocked"
-            inputmode="numeric"
-            autocomplete="off"
-            :aria-invalid="!isValidInn(inn) && inn ? 'true' : 'false'"
-            @input="onInnInput"
-          />
-          <label for="inn">ИНН</label>
-          <small class="text-muted">10–12 цифр</small>
-        </div>
-        <div v-if="innLocked && snilsLocked" class="alert alert-success mt-3">
-          Данные импортированы корректно
-        </div>
+            <div class="form-floating mb-3">
+              <input
+                id="snils"
+                v-model="snilsInput"
+                class="form-control"
+                placeholder="СНИЛС"
+                :disabled="snilsLocked"
+                inputmode="numeric"
+                autocomplete="off"
+                :aria-invalid="
+                  !isValidSnils(snilsDigits) && snilsInput ? 'true' : 'false'
+                "
+                @input="onSnilsInput"
+              />
+              <label for="snils">СНИЛС</label>
+              <small class="text-muted">11 цифр, формат ХХХ-ХХХ-ХХХ XX</small>
+            </div>
+            <div class="form-floating">
+              <input
+                id="inn"
+                v-model="inn"
+                class="form-control"
+                placeholder="ИНН"
+                :disabled="innLocked"
+                inputmode="numeric"
+                autocomplete="off"
+                :aria-invalid="!isValidInn(inn) && inn ? 'true' : 'false'"
+                @input="onInnInput"
+              />
+              <label for="inn">ИНН</label>
+              <small class="text-muted">10–12 цифр</small>
+            </div>
+            <div
+              v-if="innLocked && snilsLocked"
+              class="alert alert-success mt-3"
+            >
+              Данные импортированы корректно
+            </div>
           </div>
         </div>
       </div>
@@ -517,13 +529,13 @@ async function saveStep() {
         <div class="card section-card fade-in">
           <div class="card-body">
             <h2 class="h5 mb-3">Паспорт</h2>
-        <PassportForm
-          ref="passportRef"
-          v-model="passport"
-          :birth-date="user.birth_date"
-          :locked-fields="passportLockFields"
-          :frame="false"
-        />
+            <PassportForm
+              ref="passportRef"
+              v-model="passport"
+              :birth-date="user.birth_date"
+              :locked-fields="passportLockFields"
+              :frame="false"
+            />
           </div>
         </div>
       </div>
@@ -531,41 +543,43 @@ async function saveStep() {
         <div class="card section-card fade-in">
           <div class="card-body">
             <h2 class="h5 mb-3">Адреса</h2>
-        <div class="form-floating mb-3">
-          <textarea
-            id="regAddr"
-            v-model="regAddress"
-            class="form-control"
-            rows="3"
-            placeholder="Адрес регистрации"
-          ></textarea>
-          <label for="regAddr">Адрес регистрации</label>
-          <small class="text-muted">Укажите адрес в свободной форме</small>
-        </div>
-        <div class="form-check mb-3">
-          <input
-            id="sameAddr"
-            v-model="sameAddress"
-            class="form-check-input"
-            type="checkbox"
-            aria-describedby="resAddrHelp"
-          />
-          <label for="sameAddr" class="form-check-label"
-            >Совпадает с адресом проживания</label
-          >
-        </div>
-        <div class="form-floating">
-          <textarea
-            id="resAddr"
-            v-model="resAddress"
-            class="form-control"
-            rows="3"
-            placeholder="Адрес проживания"
-            :disabled="sameAddress"
-          ></textarea>
-          <label for="resAddr">Адрес проживания</label>
-          <small id="resAddrHelp" class="text-muted">Если отличается от адреса регистрации</small>
-        </div>
+            <div class="form-floating mb-3">
+              <textarea
+                id="regAddr"
+                v-model="regAddress"
+                class="form-control"
+                rows="3"
+                placeholder="Адрес регистрации"
+              ></textarea>
+              <label for="regAddr">Адрес регистрации</label>
+              <small class="text-muted">Укажите адрес в свободной форме</small>
+            </div>
+            <div class="form-check mb-3">
+              <input
+                id="sameAddr"
+                v-model="sameAddress"
+                class="form-check-input"
+                type="checkbox"
+                aria-describedby="resAddrHelp"
+              />
+              <label for="sameAddr" class="form-check-label"
+                >Совпадает с адресом проживания</label
+              >
+            </div>
+            <div class="form-floating">
+              <textarea
+                id="resAddr"
+                v-model="resAddress"
+                class="form-control"
+                rows="3"
+                placeholder="Адрес проживания"
+                :disabled="sameAddress"
+              ></textarea>
+              <label for="resAddr">Адрес проживания</label>
+              <small id="resAddrHelp" class="text-muted"
+                >Если отличается от адреса регистрации</small
+              >
+            </div>
           </div>
         </div>
       </div>
@@ -573,71 +587,79 @@ async function saveStep() {
         <div class="card section-card fade-in">
           <div class="card-body">
             <h2 class="h5 mb-3">Банковские реквизиты</h2>
-        <div class="form-floating mb-3">
-          <input
-            id="accNum"
-            v-model="bank.number"
-            class="form-control"
-            placeholder="Счёт"
-            :disabled="bankLocked"
-            inputmode="numeric"
-            autocomplete="off"
-            maxlength="20"
-            @input="onBankNumberInput"
-          />
-          <label for="accNum">Расчётный счёт</label>
-          <small class="text-muted">20 цифр</small>
-        </div>
-        <div class="form-floating">
-          <input
-            id="bic"
-            v-model="bank.bic"
-            class="form-control"
-            placeholder="БИК"
-            :disabled="bankLocked"
-            inputmode="numeric"
-            autocomplete="off"
-            maxlength="9"
-            @input="onBicInput"
-          />
-          <label for="bic">БИК</label>
-          <small class="text-muted">9 цифр</small>
-        </div>
-        <button
-          v-if="!bankLocked"
-          type="button"
-          class="btn btn-outline-brand mt-3"
-          @click="checkBank"
-        >
-          Проверить
-        </button>
-        <div v-if="bankCheckStatus === 'pending'" class="mt-2">Проверка...</div>
-        <div v-if="bankCheckStatus === 'not_found'" class="text-danger mt-2">
-          Банк не найден
-        </div>
-        <div v-if="bankLocked && bankInfo" class="alert alert-success mt-3">
-          Данные импортированы корректно
-        </div>
-        <div v-else-if="bankCheckStatus === 'found' && bankInfo" class="mt-3">
-          <div class="form-floating mb-2">
-            <input
-              class="form-control"
-              :value="bankInfo.bank_name"
-              readonly
-              placeholder="Банк"
-            />
-            <label>Банк</label>
-          </div>
-          <div class="form-floating">
-            <input
-              class="form-control"
-              :value="bankInfo.correspondent_account"
-              readonly
-              placeholder="Корсчёт"
-            />
-            <label>Корсчёт</label>
-          </div>
-        </div>
+            <div class="form-floating mb-3">
+              <input
+                id="accNum"
+                v-model="bank.number"
+                class="form-control"
+                placeholder="Счёт"
+                :disabled="bankLocked"
+                inputmode="numeric"
+                autocomplete="off"
+                maxlength="20"
+                @input="onBankNumberInput"
+              />
+              <label for="accNum">Расчётный счёт</label>
+              <small class="text-muted">20 цифр</small>
+            </div>
+            <div class="form-floating">
+              <input
+                id="bic"
+                v-model="bank.bic"
+                class="form-control"
+                placeholder="БИК"
+                :disabled="bankLocked"
+                inputmode="numeric"
+                autocomplete="off"
+                maxlength="9"
+                @input="onBicInput"
+              />
+              <label for="bic">БИК</label>
+              <small class="text-muted">9 цифр</small>
+            </div>
+            <button
+              v-if="!bankLocked"
+              type="button"
+              class="btn btn-outline-brand mt-3"
+              @click="checkBank"
+            >
+              Проверить
+            </button>
+            <div v-if="bankCheckStatus === 'pending'" class="mt-2">
+              Проверка...
+            </div>
+            <div
+              v-if="bankCheckStatus === 'not_found'"
+              class="text-danger mt-2"
+            >
+              Банк не найден
+            </div>
+            <div v-if="bankLocked && bankInfo" class="alert alert-success mt-3">
+              Данные импортированы корректно
+            </div>
+            <div
+              v-else-if="bankCheckStatus === 'found' && bankInfo"
+              class="mt-3"
+            >
+              <div class="form-floating mb-2">
+                <input
+                  class="form-control"
+                  :value="bankInfo.bank_name"
+                  readonly
+                  placeholder="Банк"
+                />
+                <label>Банк</label>
+              </div>
+              <div class="form-floating">
+                <input
+                  class="form-control"
+                  :value="bankInfo.correspondent_account"
+                  readonly
+                  placeholder="Корсчёт"
+                />
+                <label>Корсчёт</label>
+              </div>
+            </div>
           </div>
         </div>
       </div>

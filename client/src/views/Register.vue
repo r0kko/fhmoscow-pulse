@@ -37,15 +37,16 @@ const sanitizedCode = computed(() =>
   code.value.replace(/\s+/g, '').toUpperCase()
 );
 const passwordMeetsMin = computed(() => password.value.length >= 8);
-const passwordsMatch = computed(() =>
-  password.value && password.value === confirm.value
+const passwordsMatch = computed(
+  () => password.value && password.value === confirm.value
 );
 const canSubmitStart = computed(() => isEmailValid.value && !loading.value);
-const canSubmitFinish = computed(() =>
-  sanitizedCode.value.length > 0 &&
-  passwordMeetsMin.value &&
-  passwordsMatch.value &&
-  !loading.value
+const canSubmitFinish = computed(
+  () =>
+    sanitizedCode.value.length > 0 &&
+    passwordMeetsMin.value &&
+    passwordsMatch.value &&
+    !loading.value
 );
 
 // tick timer for resend cooldown
@@ -151,8 +152,8 @@ async function resend() {
         <div class="form-floating mb-3">
           <input
             id="email"
-            v-model="email"
             ref="emailInput"
+            v-model="email"
             type="email"
             class="form-control"
             placeholder="Email"
@@ -185,13 +186,14 @@ async function resend() {
         <p class="mb-3">
           На <strong>{{ normalizedEmail }}</strong> отправлен код подтверждения.
           <br />
-          Если письмо не пришло, проверьте папку «Спам» или отправьте код повторно.
+          Если письмо не пришло, проверьте папку «Спам» или отправьте код
+          повторно.
         </p>
         <div class="form-floating mb-3">
           <input
             id="code"
-            v-model="code"
             ref="codeInput"
+            v-model="code"
             class="form-control"
             placeholder="Код"
             required
@@ -210,7 +212,9 @@ async function resend() {
             placeholder="Пароль"
             autocomplete="new-password"
             required
-            :aria-invalid="!passwordMeetsMin && password.length > 0 ? 'true' : 'false'"
+            :aria-invalid="
+              !passwordMeetsMin && password.length > 0 ? 'true' : 'false'
+            "
             aria-describedby="passwordHelp"
           />
           <label for="password">Пароль</label>
@@ -229,7 +233,9 @@ async function resend() {
             placeholder="Повторите пароль"
             autocomplete="new-password"
             required
-            :aria-invalid="!passwordsMatch && confirm.length > 0 ? 'true' : 'false'"
+            :aria-invalid="
+              !passwordsMatch && confirm.length > 0 ? 'true' : 'false'
+            "
           />
           <label for="confirm">Повторите пароль</label>
         </div>
