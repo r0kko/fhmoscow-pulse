@@ -246,7 +246,13 @@ function name(u) {
     </div>
   </div>
   <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div ref="toastRef" class="toast text-bg-secondary" role="status" aria-live="polite" aria-atomic="true">
+    <div
+      ref="toastRef"
+      class="toast text-bg-secondary"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <div class="toast-body">{{ toastMessage }}</div>
     </div>
   </div>

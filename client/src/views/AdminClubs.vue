@@ -66,11 +66,13 @@ onMounted(load);
       <h1 class="mb-3 text-start">Клубы</h1>
 
       <div class="card section-card tile fade-in shadow-sm">
-        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div
+          class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center"
+        >
           <h2 class="h5 mb-0">Список клубов</h2>
           <div class="d-flex gap-2 align-items-center flex-wrap">
             <div class="input-group input-group-sm" style="min-width: 260px">
-              <span class="input-group-text" id="search-addon">
+              <span id="search-addon" class="input-group-text">
                 <i class="bi bi-search" aria-hidden="true"></i>
               </span>
               <input
@@ -78,12 +80,19 @@ onMounted(load);
                 type="text"
                 class="form-control"
                 placeholder="Поиск по названию"
-                @input="applyFilter"
                 aria-label="Поиск клубов"
+                @input="applyFilter"
               />
             </div>
-            <button class="btn btn-outline-secondary btn-sm" :disabled="syncing" @click="syncClubs">
-              <span v-if="syncing" class="spinner-border spinner-border-sm me-2"></span>
+            <button
+              class="btn btn-outline-secondary btn-sm"
+              :disabled="syncing"
+              @click="syncClubs"
+            >
+              <span
+                v-if="syncing"
+                class="spinner-border spinner-border-sm me-2"
+              ></span>
               Синхронизировать
             </button>
           </div>
@@ -92,7 +101,10 @@ onMounted(load);
         <div class="card-body p-3">
           <div v-if="error" class="alert alert-danger mb-2">{{ error }}</div>
           <div v-if="loading" class="text-center my-4">
-            <span class="spinner-border spinner-brand" aria-hidden="true"></span>
+            <span
+              class="spinner-border spinner-brand"
+              aria-hidden="true"
+            ></span>
           </div>
           <div v-else>
             <div v-if="filtered.length" class="table-responsive">
@@ -109,14 +121,22 @@ onMounted(load);
                 </tbody>
               </table>
             </div>
-            <div v-else class="alert alert-warning mb-0">Клубов не найдено.</div>
+            <div v-else class="alert alert-warning mb-0">
+              Клубов не найдено.
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div ref="toastRef" class="toast text-bg-secondary" role="status" aria-live="polite" aria-atomic="true">
+      <div
+        ref="toastRef"
+        class="toast text-bg-secondary"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>

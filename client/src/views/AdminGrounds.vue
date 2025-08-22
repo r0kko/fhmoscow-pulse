@@ -95,7 +95,7 @@ function openEdit(s) {
   form.value = {
     name: s.name,
     address: { result: s.address?.result || '' },
-  yandex_url: s.yandex_url || '',
+    yandex_url: s.yandex_url || '',
   };
   formError.value = '';
   errors.value = {};
@@ -108,7 +108,7 @@ function isValidUrl(value) {
   try {
     // prepend scheme if missing for validation purposes
     const test = value.match(/^https?:\/\//i) ? value : `https://${value}`;
-    // eslint-disable-next-line no-new
+
     new URL(test);
     return true;
   } catch {
@@ -194,7 +194,12 @@ async function syncGrounds() {
   try {
     syncLoading.value = true;
     const res = await apiFetch('/grounds/sync', { method: 'POST' });
-    const { upserts, softDeletedTotal, softDeletedArchived, softDeletedMissing } = res;
+    const {
+      upserts,
+      softDeletedTotal,
+      softDeletedArchived,
+      softDeletedMissing,
+    } = res;
     showToast(
       `Синхронизировано: добавлено/обновлено ${upserts}, удалено ${softDeletedTotal} (архив: ${softDeletedArchived}, отсутствуют: ${softDeletedMissing})`
     );
@@ -250,12 +255,19 @@ async function load() {
         >
           <h2 class="h5 mb-0">Площадки</h2>
           <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" @click="syncGrounds" :disabled="syncLoading">
-              <span v-if="syncLoading" class="spinner-border spinner-border-sm me-2"></span>
+            <button
+              class="btn btn-outline-secondary"
+              :disabled="syncLoading"
+              @click="syncGrounds"
+            >
+              <span
+                v-if="syncLoading"
+                class="spinner-border spinner-border-sm me-2"
+              ></span>
               Синхронизировать
             </button>
             <button class="btn btn-brand" @click="openCreate">
-            <i class="bi bi-plus-lg me-1"></i>Добавить
+              <i class="bi bi-plus-lg me-1"></i>Добавить
             </button>
           </div>
         </div>
@@ -285,15 +297,30 @@ async function load() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="st in grounds.filter(g => !onlyWithoutAddress || !g.address)" :key="st.id">
+                <tr
+                  v-for="st in grounds.filter(
+                    (g) => !onlyWithoutAddress || !g.address
+                  )"
+                  :key="st.id"
+                >
                   <td>{{ st.name }}</td>
                   <td>
-                    <span v-if="st.address?.result">{{ st.address.result }}</span>
+                    <span v-if="st.address?.result">{{
+                      st.address.result
+                    }}</span>
                     <span v-else class="badge text-bg-warning">Нет адреса</span>
-                    <span v-if="st.external_id" class="badge text-bg-info ms-2">Импортирован</span>
+                    <span v-if="st.external_id" class="badge text-bg-info ms-2"
+                      >Импортирован</span
+                    >
                   </td>
                   <td class="d-none d-md-table-cell">
-                    <a v-if="st.yandex_url" :href="st.yandex_url" target="_blank" rel="noopener">Яндекс.Карты</a>
+                    <a
+                      v-if="st.yandex_url"
+                      :href="st.yandex_url"
+                      target="_blank"
+                      rel="noopener"
+                      >Яндекс.Карты</a
+                    >
                   </td>
                   <td class="text-end">
                     <button
@@ -317,18 +344,24 @@ async function load() {
           </div>
           <div v-if="grounds.length" class="d-block d-sm-none">
             <div
-              v-for="st in grounds.filter(g => !onlyWithoutAddress || !g.address)"
+              v-for="st in grounds.filter(
+                (g) => !onlyWithoutAddress || !g.address
+              )"
               :key="st.id"
               class="card training-card mb-2"
             >
               <div class="card-body p-2">
                 <h3 class="h6 mb-1">
                   {{ st.name }}
-                  <span v-if="st.external_id" class="badge text-bg-info ms-2">Импортирован</span>
+                  <span v-if="st.external_id" class="badge text-bg-info ms-2"
+                    >Импортирован</span
+                  >
                 </h3>
                 <p class="mb-1">{{ st.address?.result }}</p>
                 <p v-if="st.yandex_url" class="mb-1">
-                  <a :href="st.yandex_url" target="_blank" rel="noopener">Яндекс.Карты</a>
+                  <a :href="st.yandex_url" target="_blank" rel="noopener"
+                    >Яндекс.Карты</a
+                  >
                 </p>
                 <div class="text-end">
                   <button
@@ -391,7 +424,9 @@ async function load() {
                   required
                 />
                 <label for="stadName">Наименование</label>
-                <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
+                <div v-if="errors.name" class="invalid-feedback">
+                  {{ errors.name }}
+                </div>
               </div>
               <div class="form-floating mb-3 position-relative">
                 <textarea
@@ -429,9 +464,10 @@ async function load() {
                   :class="{ 'is-invalid': !!errors.yandex_url }"
                 />
                 <label for="stadYandex">URL в Яндекс.Картах</label>
-                <div v-if="errors.yandex_url" class="invalid-feedback">{{ errors.yandex_url }}</div>
+                <div v-if="errors.yandex_url" class="invalid-feedback">
+                  {{ errors.yandex_url }}
+                </div>
               </div>
-              
             </div>
             <div class="modal-footer">
               <button
@@ -459,7 +495,13 @@ async function load() {
     </div>
   </div>
   <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div ref="toastRef" class="toast text-bg-secondary" role="status" aria-live="polite" aria-atomic="true">
+    <div
+      ref="toastRef"
+      class="toast text-bg-secondary"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <div class="toast-body">{{ toastMessage }}</div>
     </div>
   </div>
