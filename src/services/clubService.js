@@ -20,6 +20,8 @@ async function syncExternal(actorId = null) {
   const archivedIds = extArchived.map((c) => c.id);
 
   let upserts = 0;
+  let affectedArchived = 0;
+  let affectedMissing = 0;
 
   await sequelize.transaction(async (tx) => {
     for (const c of extClubs) {
@@ -37,29 +39,39 @@ async function syncExternal(actorId = null) {
     }
 
     // Soft-delete clubs explicitly archived externally
-    const [affectedArchived] = await Club.update(
+    const [archCnt] = await Club.update(
       { deleted_at: new Date(), updated_by: actorId },
       {
         where: { external_id: { [Op.in]: archivedIds } },
         transaction: tx,
       }
     );
+    affectedArchived = archCnt;
 
     // Soft-delete any club previously synced but now missing externally
-    const [affectedMissing] = await Club.update(
+    const [missCnt] = await Club.update(
       { deleted_at: new Date(), updated_by: actorId },
       {
         where: { external_id: { [Op.notIn]: activeIds, [Op.ne]: null } },
         transaction: tx,
       }
     );
-
-    logger.info(
-      'Club sync: upserted=%d, softDeleted=%d',
-      upserts,
-      affectedArchived + affectedMissing
-    );
+    affectedMissing = missCnt;
   });
+  const softDeletedTotal = affectedArchived + affectedMissing;
+  logger.info(
+    'Club sync: upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    upserts,
+    softDeletedTotal,
+    affectedArchived,
+    affectedMissing
+  );
+  return {
+    upserts,
+    softDeletedTotal,
+    softDeletedArchived: affectedArchived,
+    softDeletedMissing: affectedMissing,
+  };
 }
 
 async function listAll() {

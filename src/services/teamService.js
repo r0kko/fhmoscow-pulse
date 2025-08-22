@@ -21,6 +21,8 @@ async function syncExternal(actorId = null) {
   const archivedIds = extArchived.map((t) => t.id);
 
   let upserts = 0;
+  let affectedMissing = 0;
+  let affectedArchived = 0;
 
   await sequelize.transaction(async (tx) => {
     // Preload mapping of external club_id -> local club UUID
@@ -57,7 +59,7 @@ async function syncExternal(actorId = null) {
     // but is no longer present among ACTIVE external teams (not found or archived externally).
     // Soft-delete (paranoid) any local team that was previously synced (has external_id)
     // but is no longer present among ACTIVE external teams (not found or archived externally).
-    const [affectedMissing] = await Team.update(
+    const [missCnt] = await Team.update(
       { deleted_at: new Date(), updated_by: actorId },
       {
         where: {
@@ -66,22 +68,32 @@ async function syncExternal(actorId = null) {
         transaction: tx,
       }
     );
+    affectedMissing = missCnt;
 
     // Additionally, explicitly soft-delete teams marked ARCHIVE externally.
-    const [affectedArchived] = await Team.update(
+    const [archCnt] = await Team.update(
       { deleted_at: new Date(), updated_by: actorId },
       {
         where: { external_id: { [Op.in]: archivedIds } },
         transaction: tx,
       }
     );
-
-    logger.info(
-      'Team sync: upserted=%d, softDeleted=%d',
-      upserts,
-      affectedMissing + affectedArchived
-    );
+    affectedArchived = archCnt;
   });
+  const softDeletedTotal = affectedMissing + affectedArchived;
+  logger.info(
+    'Team sync: upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    upserts,
+    softDeletedTotal,
+    affectedArchived,
+    affectedMissing
+  );
+  return {
+    upserts,
+    softDeletedTotal,
+    softDeletedArchived: affectedArchived,
+    softDeletedMissing: affectedMissing,
+  };
 }
 
 async function listAll() {

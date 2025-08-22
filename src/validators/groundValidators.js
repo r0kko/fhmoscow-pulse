@@ -2,27 +2,11 @@ import { body } from 'express-validator';
 
 export const groundCreateRules = [
   body('name').isString().notEmpty().withMessage('invalid_name'),
-  body('address.result').notEmpty().withMessage('invalid_address'),
+  body('address.result').optional().notEmpty().withMessage('invalid_address'),
   body('yandex_url')
     .optional()
     .isURL({ require_protocol: false })
     .withMessage('invalid_url')
-    .customSanitizer((v) => {
-      if (v && !/^https?:\/\//i.test(v)) {
-        return `http://${v}`;
-      }
-      return v;
-    }),
-  body('capacity').optional().isInt({ min: 0 }).withMessage('invalid_capacity'),
-  body('phone')
-    .optional()
-    .customSanitizer((v) => v.replace(/\D/g, ''))
-    .isMobilePhone('ru-RU')
-    .withMessage('invalid_phone'),
-  body('website')
-    .optional()
-    .isURL({ require_protocol: false })
-    .withMessage('invalid_website')
     .customSanitizer((v) => {
       if (v && !/^https?:\/\//i.test(v)) {
         return `http://${v}`;
@@ -38,22 +22,6 @@ export const groundUpdateRules = [
     .optional()
     .isURL({ require_protocol: false })
     .withMessage('invalid_url')
-    .customSanitizer((v) => {
-      if (v && !/^https?:\/\//i.test(v)) {
-        return `http://${v}`;
-      }
-      return v;
-    }),
-  body('capacity').optional().isInt({ min: 0 }).withMessage('invalid_capacity'),
-  body('phone')
-    .optional()
-    .customSanitizer((v) => v.replace(/\D/g, ''))
-    .isMobilePhone('ru-RU')
-    .withMessage('invalid_phone'),
-  body('website')
-    .optional()
-    .isURL({ require_protocol: false })
-    .withMessage('invalid_website')
     .customSanitizer((v) => {
       if (v && !/^https?:\/\//i.test(v)) {
         return `http://${v}`;

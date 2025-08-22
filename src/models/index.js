@@ -139,7 +139,11 @@ AddressType.hasMany(UserAddress, { foreignKey: 'address_type_id' });
 UserAddress.belongsTo(AddressType, { foreignKey: 'address_type_id' });
 
 /* grounds */
-Ground.belongsTo(Address, { foreignKey: 'address_id' });
+Ground.belongsTo(Address, {
+  foreignKey: 'address_id',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});
 Address.hasMany(Ground, { foreignKey: 'address_id' });
 
 /* trainings */

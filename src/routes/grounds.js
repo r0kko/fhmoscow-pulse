@@ -3,6 +3,7 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/groundAdminController.js';
+import groundSyncController from '../controllers/groundSyncController.js';
 import {
   groundCreateRules,
   groundUpdateRules,
@@ -27,5 +28,8 @@ router.put(
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
+
+// manual external sync
+router.post('/sync', auth, authorize('ADMIN'), groundSyncController.sync);
 
 export default router;

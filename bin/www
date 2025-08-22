@@ -19,6 +19,7 @@ import validateEnv from '../src/config/validateEnv.js';
 import startTaxationCron from '../src/jobs/taxationCron.js';
 import startTeamSyncCron, { runTeamSync } from '../src/jobs/teamSyncCron.js';
 import startClubSyncCron, { runClubSync } from '../src/jobs/clubSyncCron.js';
+import startGroundSyncCron, { runGroundSync } from '../src/jobs/groundSyncCron.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -73,8 +74,11 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
     await setupExternalAssociations();
     // Ensure clubs are up-to-date before teams to maintain relations
     await runClubSync();
+    // Sync stadiums (grounds) before teams, too
+    await runGroundSync();
     await runTeamSync();
     startClubSyncCron();
+    startGroundSyncCron();
     startTeamSyncCron();
   }
   startTaxationCron();

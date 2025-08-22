@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
+import Toast from 'bootstrap/js/dist/toast';
 import { apiFetch } from '../api.js';
 
 const users = ref([]);
@@ -16,6 +17,9 @@ const listError = ref('');
 const modalError = ref('');
 const modalRef = ref(null);
 let modal;
+const toastRef = ref(null);
+const toastMessage = ref('');
+let toast;
 
 onMounted(async () => {
   modal = new Modal(modalRef.value);
@@ -101,8 +105,12 @@ async function sync() {
   syncing.value = true;
   listError.value = '';
   try {
-    await apiFetch('/teams/sync', { method: 'POST' });
+    const res = await apiFetch('/teams/sync', { method: 'POST' });
     await load();
+    const s = res.stats?.teams || {};
+    if (!toast) toast = new Toast(toastRef.value);
+    toastMessage.value = `Синхронизировано команд: добавлено/обновлено ${s.upserts ?? 0}, удалено ${s.softDeletedTotal ?? 0} (архив: ${s.softDeletedArchived ?? 0}, отсутствуют: ${s.softDeletedMissing ?? 0})`;
+    toast.show();
   } catch (e) {
     listError.value = e.message;
   } finally {
@@ -235,6 +243,11 @@ function name(u) {
           </div>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div ref="toastRef" class="toast text-bg-secondary" role="status" aria-live="polite" aria-atomic="true">
+      <div class="toast-body">{{ toastMessage }}</div>
     </div>
   </div>
 </template>

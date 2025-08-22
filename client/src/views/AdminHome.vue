@@ -26,6 +26,7 @@ const systemSections = computed(() => {
   if (auth.roles.includes('ADMIN')) {
     items.push({ title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' });
     items.push({ title: 'Команды', icon: 'bi-people', to: '/admin/teams' });
+    items.push({ title: 'Клубы', icon: 'bi-shield', to: '/admin/clubs' });
   }
   return items;
 });

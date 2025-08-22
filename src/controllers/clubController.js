@@ -14,9 +14,9 @@ export default {
 
   async sync(req, res) {
     try {
-      await clubService.syncExternal(req.user?.id);
+      const stats = await clubService.syncExternal(req.user?.id);
       const clubs = await clubService.listAll();
-      return res.json({ clubs: clubs.map(clubMapper.toPublic) });
+      return res.json({ stats, clubs: clubs.map(clubMapper.toPublic) });
     } catch (err) {
       return sendError(res, err);
     }

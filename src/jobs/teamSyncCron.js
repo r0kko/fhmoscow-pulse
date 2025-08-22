@@ -11,9 +11,15 @@ export async function runTeamSync() {
   running = true;
   try {
     // Keep clubs up-to-date first to preserve relations
-    await clubService.syncExternal();
-    await teamService.syncExternal();
-    logger.info('Team sync completed');
+    const clubStats = await clubService.syncExternal();
+    const stats = await teamService.syncExternal();
+    logger.info(
+      'Team sync completed: clubs(upserted=%d, softDeleted=%d); teams(upserted=%d, softDeleted=%d)',
+      clubStats.upserts,
+      clubStats.softDeletedTotal,
+      stats.upserts,
+      stats.softDeletedTotal
+    );
   } catch (err) {
     logger.error('Team sync failed: %s', err.stack || err);
   } finally {
@@ -22,6 +28,7 @@ export async function runTeamSync() {
 }
 
 export default function startTeamSyncCron() {
-  const schedule = process.env.TEAM_SYNC_CRON || '*/10 * * * *'; // every 10 minutes by default
+  // Default: every 6 hours at minute 20 (after clubs and grounds)
+  const schedule = process.env.TEAM_SYNC_CRON || '20 */6 * * *';
   cron.schedule(schedule, runTeamSync, { timezone: 'Etc/GMT-3' });
 }

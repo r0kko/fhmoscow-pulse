@@ -16,10 +16,10 @@ export default {
   async sync(req, res) {
     try {
       // Keep clubs in sync first to maintain relations and accurate soft-deletes
-      await clubService.syncExternal(req.user?.id);
-      await teamService.syncExternal(req.user?.id);
+      const clubStats = await clubService.syncExternal(req.user?.id);
+      const stats = await teamService.syncExternal(req.user?.id);
       const teams = await teamService.listAll();
-      return res.json({ teams: teams.map(teamMapper.toPublic) });
+      return res.json({ stats: { clubs: clubStats, teams: stats }, teams: teams.map(teamMapper.toPublic) });
     } catch (err) {
       return sendError(res, err);
     }

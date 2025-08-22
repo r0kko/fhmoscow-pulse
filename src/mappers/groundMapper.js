@@ -1,13 +1,12 @@
 function sanitize(obj) {
-  const { id, name, yandex_url, capacity, phone, website, Address, ...rest } =
-    obj;
+  const { id, external_id, name, yandex_url, Address, ...rest } = obj;
   void rest.createdAt;
   void rest.updatedAt;
   void rest.deletedAt;
   void rest.created_at;
   void rest.updated_at;
   void rest.deleted_at;
-  const res = { id, name, yandex_url, capacity, phone, website };
+  const res = { id, external_id, name, yandex_url };
   if (Address) {
     res.address = {
       id: Address.id,

@@ -19,6 +19,7 @@ import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminGrounds from './views/AdminGrounds.vue';
 import AdminTeams from './views/AdminTeams.vue';
+import AdminClubs from './views/AdminClubs.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
@@ -229,6 +230,11 @@ const routes = [
     path: '/admin/teams',
     component: AdminTeams,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Команды' },
+  },
+  {
+    path: '/admin/clubs',
+    component: AdminClubs,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Клубы' },
   },
   {
     path: '/school-matches',

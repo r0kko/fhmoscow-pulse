@@ -2,41 +2,14 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
+import Toast from 'bootstrap/js/dist/toast';
 import { apiFetch } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import PageNav from '../components/PageNav.vue';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
-const phoneInput = ref('');
-
-function formatPhone(digits) {
-  if (!digits) return '';
-  let out = '+7';
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
-  if (digits.length >= 4) out += ') ';
-  if (digits.length >= 4) out += digits.slice(4, 7);
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
-  return out;
-}
-
-function onPhoneInput(e) {
-  let digits = e.target.value.replace(/\D/g, '');
-  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '');
-  digits = digits.slice(0, 11);
-  form.value.phone = digits;
-  phoneInput.value = formatPhone(digits);
-}
-
-function onPhoneKeydown(e) {
-  if (e.key === 'Backspace' || e.key === 'Delete') {
-    e.preventDefault();
-    form.value.phone = form.value.phone.slice(0, -1);
-    phoneInput.value = formatPhone(form.value.phone);
-  }
-}
-
 const grounds = ref([]);
+const onlyWithoutAddress = ref(false);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(loadPageSize('adminGroundsPageSize', 8));
@@ -47,17 +20,19 @@ const form = ref({
   name: '',
   address: { result: '' },
   yandex_url: '',
-  capacity: '',
-  phone: '',
-  website: '',
 });
 const editing = ref(null);
 const modalRef = ref(null);
 let modal;
 const formError = ref('');
+const errors = ref({});
 const addressSuggestions = ref([]);
 let addrTimeout;
 const saveLoading = ref(false);
+const syncLoading = ref(false);
+const toastRef = ref(null);
+const toastMessage = ref('');
+let toast;
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
@@ -109,8 +84,8 @@ function openCreate() {
     phone: '',
     website: '',
   };
-  phoneInput.value = '';
   formError.value = '';
+  errors.value = {};
   addressSuggestions.value = [];
   modal.show();
 }
@@ -120,25 +95,53 @@ function openEdit(s) {
   form.value = {
     name: s.name,
     address: { result: s.address?.result || '' },
-    yandex_url: s.yandex_url || '',
-    capacity: s.capacity || '',
-    phone: s.phone || '',
-    website: s.website || '',
+  yandex_url: s.yandex_url || '',
   };
-  phoneInput.value = formatPhone(form.value.phone);
   formError.value = '';
+  errors.value = {};
   addressSuggestions.value = [];
   modal.show();
 }
 
+function isValidUrl(value) {
+  if (!value) return true;
+  try {
+    // prepend scheme if missing for validation purposes
+    const test = value.match(/^https?:\/\//i) ? value : `https://${value}`;
+    // eslint-disable-next-line no-new
+    new URL(test);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validateForm() {
+  const e = {};
+  if (!form.value.name || !form.value.name.trim()) {
+    e.name = 'Укажите наименование';
+  } else if (form.value.name.length > 255) {
+    e.name = 'Макс. длина — 255 символов';
+  }
+  if (form.value.yandex_url && !isValidUrl(form.value.yandex_url)) {
+    e.yandex_url = 'Некорректный URL';
+  }
+  errors.value = e;
+  return Object.keys(e).length === 0;
+}
+
 async function save() {
+  formError.value = '';
+  if (!validateForm()) {
+    formError.value = 'Исправьте ошибки в форме';
+    return;
+  }
   const payload = {
     name: form.value.name,
-    address: { result: form.value.address.result },
+    address: form.value.address?.result
+      ? { result: form.value.address.result }
+      : undefined,
     yandex_url: form.value.yandex_url || undefined,
-    capacity: form.value.capacity || undefined,
-    phone: form.value.phone || undefined,
-    website: form.value.website || undefined,
   };
   try {
     saveLoading.value = true;
@@ -179,6 +182,28 @@ async function onAddressBlur() {
     form.value.address.result = cleaned.result;
   }
   addressSuggestions.value = [];
+}
+
+function showToast(message) {
+  toastMessage.value = message;
+  if (!toast) toast = new Toast(toastRef.value);
+  toast.show();
+}
+
+async function syncGrounds() {
+  try {
+    syncLoading.value = true;
+    const res = await apiFetch('/grounds/sync', { method: 'POST' });
+    const { upserts, softDeletedTotal, softDeletedArchived, softDeletedMissing } = res;
+    showToast(
+      `Синхронизировано: добавлено/обновлено ${upserts}, удалено ${softDeletedTotal} (архив: ${softDeletedArchived}, отсутствуют: ${softDeletedMissing})`
+    );
+    await load();
+  } catch (e) {
+    showToast(e.message || 'Ошибка синхронизации');
+  } finally {
+    syncLoading.value = false;
+  }
 }
 
 async function load() {
@@ -224,37 +249,51 @@ async function load() {
           class="card-header d-flex justify-content-between align-items-center"
         >
           <h2 class="h5 mb-0">Площадки</h2>
-          <button class="btn btn-brand" @click="openCreate">
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" @click="syncGrounds" :disabled="syncLoading">
+              <span v-if="syncLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Синхронизировать
+            </button>
+            <button class="btn btn-brand" @click="openCreate">
             <i class="bi bi-plus-lg me-1"></i>Добавить
-          </button>
+            </button>
+          </div>
         </div>
         <div class="card-body p-3">
+          <div class="d-flex justify-content-end mb-2">
+            <div class="form-check form-switch">
+              <input
+                id="filterWithoutAddress"
+                v-model="onlyWithoutAddress"
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+              />
+              <label class="form-check-label" for="filterWithoutAddress"
+                >Без адреса</label
+              >
+            </div>
+          </div>
           <div v-if="grounds.length" class="table-responsive d-none d-sm-block">
             <table class="table admin-table table-striped align-middle mb-0">
               <thead>
                 <tr>
                   <th>Название</th>
                   <th>Адрес</th>
-                  <th class="text-center">Вместимость</th>
-                  <th>Телефон</th>
-                  <th class="d-none d-md-table-cell">Сайт</th>
+                  <th>Ссылка</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="st in grounds" :key="st.id">
+                <tr v-for="st in grounds.filter(g => !onlyWithoutAddress || !g.address)" :key="st.id">
                   <td>{{ st.name }}</td>
-                  <td>{{ st.address?.result }}</td>
-                  <td class="text-center">{{ st.capacity }}</td>
-                  <td>{{ formatPhone(st.phone) }}</td>
+                  <td>
+                    <span v-if="st.address?.result">{{ st.address.result }}</span>
+                    <span v-else class="badge text-bg-warning">Нет адреса</span>
+                    <span v-if="st.external_id" class="badge text-bg-info ms-2">Импортирован</span>
+                  </td>
                   <td class="d-none d-md-table-cell">
-                    <a
-                      v-if="st.website"
-                      :href="st.website"
-                      target="_blank"
-                      rel="noopener"
-                      >{{ st.website }}</a
-                    >
+                    <a v-if="st.yandex_url" :href="st.yandex_url" target="_blank" rel="noopener">Яндекс.Карты</a>
                   </td>
                   <td class="text-end">
                     <button
@@ -278,19 +317,18 @@ async function load() {
           </div>
           <div v-if="grounds.length" class="d-block d-sm-none">
             <div
-              v-for="st in grounds"
+              v-for="st in grounds.filter(g => !onlyWithoutAddress || !g.address)"
               :key="st.id"
               class="card training-card mb-2"
             >
               <div class="card-body p-2">
-                <h3 class="h6 mb-1">{{ st.name }}</h3>
+                <h3 class="h6 mb-1">
+                  {{ st.name }}
+                  <span v-if="st.external_id" class="badge text-bg-info ms-2">Импортирован</span>
+                </h3>
                 <p class="mb-1">{{ st.address?.result }}</p>
-                <p class="mb-1">Вместимость: {{ st.capacity }}</p>
-                <p class="mb-1">Телефон: {{ formatPhone(st.phone) }}</p>
-                <p v-if="st.website" class="mb-1">
-                  <a :href="st.website" target="_blank" rel="noopener">{{
-                    st.website
-                  }}</a>
+                <p v-if="st.yandex_url" class="mb-1">
+                  <a :href="st.yandex_url" target="_blank" rel="noopener">Яндекс.Карты</a>
                 </p>
                 <div class="text-end">
                   <button
@@ -349,9 +387,11 @@ async function load() {
                   v-model="form.name"
                   class="form-control"
                   placeholder="Название"
+                  :class="{ 'is-invalid': !!errors.name }"
                   required
                 />
                 <label for="stadName">Наименование</label>
+                <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
               </div>
               <div class="form-floating mb-3 position-relative">
                 <textarea
@@ -386,44 +426,12 @@ async function load() {
                   type="url"
                   class="form-control"
                   placeholder="URL в Яндекс.Картах"
+                  :class="{ 'is-invalid': !!errors.yandex_url }"
                 />
                 <label for="stadYandex">URL в Яндекс.Картах</label>
+                <div v-if="errors.yandex_url" class="invalid-feedback">{{ errors.yandex_url }}</div>
               </div>
-              <div class="form-floating mb-3">
-                <input
-                  id="stadCapacity"
-                  v-model="form.capacity"
-                  type="number"
-                  min="0"
-                  class="form-control"
-                  placeholder="Вместимость"
-                />
-                <label for="stadCapacity">Вместимость</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input
-                  id="stadPhone"
-                  v-model="phoneInput"
-                  type="tel"
-                  class="form-control"
-                  placeholder="+7 (___) ___-__-__"
-                  inputmode="tel"
-                  autocomplete="tel"
-                  @input="onPhoneInput"
-                  @keydown="onPhoneKeydown"
-                />
-                <label for="stadPhone">Телефон</label>
-              </div>
-              <div class="form-floating mb-3">
-                <input
-                  id="stadWebsite"
-                  v-model="form.website"
-                  type="url"
-                  class="form-control"
-                  placeholder="Сайт"
-                />
-                <label for="stadWebsite">Сайт</label>
-              </div>
+              
             </div>
             <div class="modal-footer">
               <button
@@ -448,6 +456,11 @@ async function load() {
           </form>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div ref="toastRef" class="toast text-bg-secondary" role="status" aria-live="polite" aria-atomic="true">
+      <div class="toast-body">{{ toastMessage }}</div>
     </div>
   </div>
 </template>

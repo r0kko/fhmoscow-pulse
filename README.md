@@ -211,6 +211,16 @@ Endpoints:
 - `GET /api/clubs` — list clubs (ADMIN, SPORT_SCHOOL_STAFF)
 - `POST /api/clubs/sync` — trigger manual sync (ADMIN)
 
+### External data synchronization (Stadiums/Grounds)
+
+Grounds are synced from external Stadiums. Only minimal fields are imported for
+new entries: `external_id` and `name`. Address can be added later by admins.
+
+- Active only: pulls `object_status = 'active'` and restores soft-deleted.
+- Archived/missing: marks local records as soft-deleted.
+- Cron schedule can be tuned via `GROUND_SYNC_CRON` (default every 6 hours, minute 10).
+- Manual sync: `POST /api/grounds/sync` (ADMIN).
+
 ## Local development
 
 Install dependencies and run the server:
