@@ -100,6 +100,56 @@ async function listAll() {
   return Team.findAll({ order: [['name', 'ASC']] });
 }
 
+/**
+ * Paginated teams with optional search/filters and Club include.
+ * @param {Object} options
+ * @param {number} [options.page]
+ * @param {number} [options.limit]
+ * @param {string} [options.search]
+ * @param {string} [options.club_id] - UUID or 'none' for teams without club
+ * @param {number|string} [options.birth_year]
+ * @param {string} [options.status] - 'ACTIVE' (default), 'ARCHIVED', 'ALL'
+ */
+async function list(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const { Op } = await import('sequelize');
+  const where = {};
+
+  // Text search by team name
+  if (options.search) {
+    const term = `%${options.search}%`;
+    where.name = { [Op.iLike]: term };
+  }
+  // Club filter: explicit 'none' maps to NULL
+  if (typeof options.club_id !== 'undefined' && options.club_id !== '') {
+    where.club_id = options.club_id === 'none' ? null : options.club_id;
+  }
+  // Birth year exact match
+  if (options.birth_year) where.birth_year = parseInt(options.birth_year, 10);
+
+  // Status filter via paranoid/where on deleted_at
+  const status = String(options.status || 'ACTIVE').toUpperCase();
+  const paranoid = !(status === 'ARCHIVED' || status === 'ALL');
+  if (status === 'ARCHIVED') {
+    // Include only soft-deleted
+    where.deleted_at = { [Op.ne]: null };
+  }
+
+  return Team.findAndCountAll({
+    include: [Club],
+    where,
+    paranoid,
+    order: [
+      ['name', 'ASC'],
+      ['birth_year', 'ASC'],
+    ],
+    limit,
+    offset,
+  });
+}
+
 async function listUserTeams(userId) {
   const user = await User.findByPk(userId, { include: [Team] });
   if (!user) throw new ServiceError('user_not_found', 404);
@@ -137,6 +187,7 @@ async function removeUserTeam(userId, teamId, actorId = null) {
 export default {
   syncExternal,
   listAll,
+  list,
   listUserTeams,
   addUserTeam,
   removeUserTeam,

@@ -78,4 +78,36 @@ async function listAll() {
   return Club.findAll({ order: [['name', 'ASC']] });
 }
 
-export default { syncExternal, listAll };
+/**
+ * Paginated list with optional search and eager-loaded teams.
+ * @param {Object} options
+ * @param {number} [options.page]
+ * @param {number} [options.limit]
+ * @param {string} [options.search]
+ * @param {boolean} [options.includeTeams]
+ */
+async function list(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, parseInt(options.limit || 20, 10));
+  const offset = (page - 1) * limit;
+  const where = {};
+  if (options.search) {
+    const term = `%${options.search}%`;
+    where.name = { [Op.iLike]: term };
+  }
+  const include = [];
+  if (options.includeTeams) {
+    const { Team } = await import('../models/index.js');
+    include.push({ model: Team, required: false });
+  }
+  return Club.findAndCountAll({
+    where,
+    include,
+    order: [['name', 'ASC']],
+    limit,
+    offset,
+    distinct: true,
+  });
+}
+
+export default { syncExternal, listAll, list };

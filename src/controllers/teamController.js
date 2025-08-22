@@ -6,8 +6,24 @@ import { sendError } from '../utils/api.js';
 export default {
   async list(req, res) {
     try {
-      const teams = await teamService.listAll();
-      return res.json({ teams: teams.map(teamMapper.toPublic) });
+      const {
+        page = '1',
+        limit = '20',
+        search,
+        q,
+        club_id,
+        birth_year,
+        status,
+      } = req.query;
+      const { rows, count } = await teamService.list({
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search: search || q || undefined,
+        club_id,
+        birth_year,
+        status,
+      });
+      return res.json({ teams: rows.map(teamMapper.toPublic), total: count });
     } catch (err) {
       return sendError(res, err);
     }

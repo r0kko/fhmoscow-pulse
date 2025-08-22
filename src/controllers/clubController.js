@@ -5,8 +5,25 @@ import { sendError } from '../utils/api.js';
 export default {
   async list(req, res) {
     try {
-      const clubs = await clubService.listAll();
-      return res.json({ clubs: clubs.map(clubMapper.toPublic) });
+      const {
+        page = '1',
+        limit = '20',
+        search,
+        q,
+        include,
+        withTeams,
+      } = req.query;
+      const includeTeams =
+        withTeams === 'true' ||
+        include === 'teams' ||
+        (Array.isArray(include) && include.includes('teams'));
+      const { rows, count } = await clubService.list({
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search: search || q || undefined,
+        includeTeams,
+      });
+      return res.json({ clubs: rows.map(clubMapper.toPublic), total: count });
     } catch (err) {
       return sendError(res, err);
     }
@@ -15,8 +32,12 @@ export default {
   async sync(req, res) {
     try {
       const stats = await clubService.syncExternal(req.user?.id);
-      const clubs = await clubService.listAll();
-      return res.json({ stats, clubs: clubs.map(clubMapper.toPublic) });
+      const { rows, count } = await clubService.list({ page: 1, limit: 100 });
+      return res.json({
+        stats,
+        clubs: rows.map(clubMapper.toPublic),
+        total: count,
+      });
     } catch (err) {
       return sendError(res, err);
     }
