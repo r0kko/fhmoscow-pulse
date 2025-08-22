@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 
 import teamService from '../services/teamService.js';
+import clubService from '../services/clubService.js';
 import logger from '../../logger.js';
 
 let running = false;
@@ -9,6 +10,8 @@ export async function runTeamSync() {
   if (running) return;
   running = true;
   try {
+    // Keep clubs up-to-date first to preserve relations
+    await clubService.syncExternal();
     await teamService.syncExternal();
     logger.info('Team sync completed');
   } catch (err) {
@@ -19,6 +22,6 @@ export async function runTeamSync() {
 }
 
 export default function startTeamSyncCron() {
-  // run daily at midnight UTC+3
-  cron.schedule('0 0 * * *', runTeamSync, { timezone: 'Etc/GMT-3' });
+  const schedule = process.env.TEAM_SYNC_CRON || '*/10 * * * *'; // every 10 minutes by default
+  cron.schedule(schedule, runTeamSync, { timezone: 'Etc/GMT-3' });
 }

@@ -50,6 +50,7 @@ import courseTrainingTypesRouter from './courseTrainingTypes.js';
 import courseTrainingsRouter from './courseTrainings.js';
 import vehiclesRouter from './vehicles.js';
 import teamsRouter from './teams.js';
+import clubsRouter from './clubs.js';
 import matchesRouter from './matches.js';
 
 const router = express.Router();
@@ -100,6 +101,7 @@ router.use('/availabilities', availabilitiesRouter);
 router.use('/tickets', ticketsRouter);
 router.use('/vehicles', vehiclesRouter);
 router.use('/teams', teamsRouter);
+router.use('/clubs', clubsRouter);
 router.use('/matches', matchesRouter);
 
 /**

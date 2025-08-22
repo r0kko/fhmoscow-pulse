@@ -18,6 +18,7 @@ import { connectRedis } from '../src/config/redis.js';
 import validateEnv from '../src/config/validateEnv.js';
 import startTaxationCron from '../src/jobs/taxationCron.js';
 import startTeamSyncCron, { runTeamSync } from '../src/jobs/teamSyncCron.js';
+import startClubSyncCron, { runClubSync } from '../src/jobs/clubSyncCron.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -70,7 +71,10 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   await connectExternalMariaDb(); // optional external MariaDB
   if (isExternalDbAvailable()) {
     await setupExternalAssociations();
+    // Ensure clubs are up-to-date before teams to maintain relations
+    await runClubSync();
     await runTeamSync();
+    startClubSyncCron();
     startTeamSyncCron();
   }
   startTaxationCron();

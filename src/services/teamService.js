@@ -1,22 +1,41 @@
-import { Op } from 'sequelize';
+import { Op, fn, col, where } from 'sequelize';
 
-import { Team, User, UserTeam } from '../models/index.js';
+import { Team, User, UserTeam, Club } from '../models/index.js';
 import { Team as ExtTeam } from '../externalModels/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
 import logger from '../../logger.js';
 
 async function syncExternal(actorId = null) {
-  // Pull only ACTIVE teams from the external DB. Records with object_status = 'archive'
-  // are intentionally excluded and treated as removed for our side.
-  const extTeams = await ExtTeam.findAll({
-    where: { object_status: 'active' },
-  });
+  // Pull ACTIVE and ARCHIVE sets explicitly; be tolerant to case/whitespace.
+  const ACTIVE = where(fn('LOWER', fn('TRIM', col('object_status'))), 'active');
+  const ARCHIVE = where(
+    fn('LOWER', fn('TRIM', col('object_status'))),
+    'archive'
+  );
+  const [extTeams, extArchived] = await Promise.all([
+    ExtTeam.findAll({ where: ACTIVE }),
+    ExtTeam.findAll({ where: ARCHIVE }),
+  ]);
   const activeIds = extTeams.map((t) => t.id);
+  const archivedIds = extArchived.map((t) => t.id);
 
   let upserts = 0;
 
   await sequelize.transaction(async (tx) => {
+    // Preload mapping of external club_id -> local club UUID
+    const extClubIds = Array.from(
+      new Set(extTeams.map((t) => t.club_id).filter(Boolean))
+    );
+    const clubs = extClubIds.length
+      ? await Club.findAll({
+          where: { external_id: { [Op.in]: extClubIds } },
+          transaction: tx,
+          paranoid: false,
+        })
+      : [];
+    const clubIdByExtId = new Map(clubs.map((c) => [c.external_id, c.id]));
+
     // Upsert all active external teams into local DB; ensure un-delete if previously deleted
     for (const t of extTeams) {
       await Team.upsert(
@@ -24,6 +43,7 @@ async function syncExternal(actorId = null) {
           external_id: t.id,
           name: t.short_name,
           birth_year: t.year,
+          club_id: clubIdByExtId.get(t.club_id) || null,
           deleted_at: null, // restore if was soft-deleted
           created_by: actorId,
           updated_by: actorId,
@@ -35,7 +55,9 @@ async function syncExternal(actorId = null) {
 
     // Soft-delete (paranoid) any local team that was previously synced (has external_id)
     // but is no longer present among ACTIVE external teams (not found or archived externally).
-    const [affected] = await Team.update(
+    // Soft-delete (paranoid) any local team that was previously synced (has external_id)
+    // but is no longer present among ACTIVE external teams (not found or archived externally).
+    const [affectedMissing] = await Team.update(
       { deleted_at: new Date(), updated_by: actorId },
       {
         where: {
@@ -45,7 +67,20 @@ async function syncExternal(actorId = null) {
       }
     );
 
-    logger.info('Team sync: upserted=%d, softDeleted=%d', upserts, affected);
+    // Additionally, explicitly soft-delete teams marked ARCHIVE externally.
+    const [affectedArchived] = await Team.update(
+      { deleted_at: new Date(), updated_by: actorId },
+      {
+        where: { external_id: { [Op.in]: archivedIds } },
+        transaction: tx,
+      }
+    );
+
+    logger.info(
+      'Team sync: upserted=%d, softDeleted=%d',
+      upserts,
+      affectedMissing + affectedArchived
+    );
   });
 }
 

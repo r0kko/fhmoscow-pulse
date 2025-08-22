@@ -68,6 +68,7 @@ import Team from './team.js';
 import UserTeam from './userTeam.js';
 import AvailabilityType from './availabilityType.js';
 import UserAvailability from './userAvailability.js';
+import Club from './club.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -84,6 +85,10 @@ Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id' });
 /* many-to-many: user ↔ teams */
 User.belongsToMany(Team, { through: UserTeam, foreignKey: 'user_id' });
 Team.belongsToMany(User, { through: UserTeam, foreignKey: 'team_id' });
+
+/* clubs ↔ teams */
+Club.hasMany(Team, { foreignKey: 'club_id' });
+Team.belongsTo(Club, { foreignKey: 'club_id' });
 
 /* лог ↔ пользователь (опциональная связь) */
 User.hasMany(Log, { foreignKey: 'user_id' });
@@ -421,6 +426,7 @@ export {
   TicketFile,
   Team,
   UserTeam,
+  Club,
   Course,
   UserCourse,
   AvailabilityType,

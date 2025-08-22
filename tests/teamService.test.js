@@ -46,6 +46,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   },
   User: { findByPk: userFindByPkMock },
   UserTeam: { findOne: userTeamFindOneMock },
+  Club: { findAll: jest.fn() },
 }));
 
 const { default: service } = await import('../src/services/teamService.js');
@@ -55,18 +56,18 @@ test('syncExternal upserts active teams and soft deletes missing ones', async ()
     { id: 1, short_name: 'T1', year: 2005 },
   ]);
   await service.syncExternal('admin');
-  expect(extFindAllMock).toHaveBeenCalledWith({
-    where: { object_status: 'active' },
-  });
+  // External fetch is invoked (active + archive); we don't assert exact where shape
+  expect(extFindAllMock).toHaveBeenCalled();
   expect(teamUpsertMock).toHaveBeenCalledWith(
-    {
+    expect.objectContaining({
       external_id: 1,
       name: 'T1',
       birth_year: 2005,
       deleted_at: null,
       created_by: 'admin',
       updated_by: 'admin',
-    },
+      club_id: null,
+    }),
     expect.objectContaining({ paranoid: false, transaction: expect.any(Object) })
   );
   const whereArg = teamUpdateMock.mock.calls[0][1].where;

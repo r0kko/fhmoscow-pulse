@@ -199,6 +199,18 @@ if (isExternalDbAvailable()) {
 }
 ```
 
+### External data synchronization (Clubs)
+
+Service `clubService.syncExternal()` mirrors the team flow for clubs and keeps
+the local `clubs` table in sync with the external DB (active only, soft‑delete
+missing/archived). Team sync is ordered to run after club sync so that local
+teams are linked to their parent clubs via `team.club_id`.
+
+Endpoints:
+
+- `GET /api/clubs` — list clubs (ADMIN, SPORT_SCHOOL_STAFF)
+- `POST /api/clubs/sync` — trigger manual sync (ADMIN)
+
 ## Local development
 
 Install dependencies and run the server:
