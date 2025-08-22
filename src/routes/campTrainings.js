@@ -31,9 +31,19 @@ router.post(
   trainingCreateRules,
   controller.create
 );
-router.get('/available', auth, authorize('REFEREE'), selfController.available);
-router.get('/me/upcoming', auth, authorize('REFEREE'), selfController.upcoming);
-router.get('/me/past', auth, authorize('REFEREE'), selfController.past);
+router.get(
+  '/available',
+  auth,
+  authorize('FIELD_REFEREE'),
+  selfController.available
+);
+router.get(
+  '/me/upcoming',
+  auth,
+  authorize('FIELD_REFEREE'),
+  selfController.upcoming
+);
+router.get('/me/past', auth, authorize('FIELD_REFEREE'), selfController.past);
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
 router.put(
   '/:id',
@@ -87,13 +97,13 @@ router.delete(
 router.post(
   '/:id/register',
   auth,
-  authorize('REFEREE'),
+  authorize('FIELD_REFEREE'),
   selfController.register
 );
 router.delete(
   '/:id/register',
   auth,
-  authorize('REFEREE'),
+  authorize('FIELD_REFEREE'),
   selfController.unregister
 );
 

@@ -91,9 +91,14 @@ const isReferee = computed(() =>
   auth.roles.some((r) => refereeRoles.includes(r))
 );
 const isStaff = computed(() => auth.roles.some((r) => staffRoles.includes(r)));
-const preparationSections = computed(() =>
-  basePreparationSections.filter((s) => !s.referee || isReferee.value)
+const isBrigadeOnly = computed(
+  () =>
+    auth.roles.includes('BRIGADE_REFEREE') && !auth.roles.includes('REFEREE')
 );
+const preparationSections = computed(() => {
+  if (isBrigadeOnly.value) return [];
+  return basePreparationSections.filter((s) => !s.referee || isReferee.value);
+});
 
 const shortName = computed(() => {
   if (!auth.user) return '';
@@ -119,13 +124,27 @@ onMounted(loadUpcoming);
 async function loadUpcoming() {
   loadingUpcoming.value = true;
   try {
-    const [trainingData, examData, eventData] = await Promise.all([
-      apiFetch('/camp-trainings/me/upcoming?limit=100'),
-      apiFetch('/medical-exams/me/upcoming?limit=100'),
+    const fetches = [];
+    if (!isBrigadeOnly.value) {
+      fetches.push(apiFetch('/camp-trainings/me/upcoming?limit=100'));
+      fetches.push(apiFetch('/medical-exams/me/upcoming?limit=100'));
+    }
+    fetches.push(
       apiFetch('/course-trainings/me/upcoming?limit=100').catch(() => ({
         trainings: [],
-      })),
-    ]);
+      }))
+    );
+    const results = await Promise.all(fetches);
+    const [
+      trainingData = { trainings: [] },
+      examData = { exams: [] },
+      eventData = { trainings: [] },
+    ] =
+      results.length === 3
+        ? results
+        : results.length === 2
+          ? [results[0], { exams: [] }, results[1]]
+          : [{ trainings: [] }, { exams: [] }, { trainings: [] }];
     const trainings = (trainingData.trainings || []).map((t) => ({
       ...t,
       kind: 'training',
@@ -202,7 +221,7 @@ async function loadUpcoming() {
           </div>
         </div>
       </div>
-      <div class="card section-card mb-2">
+      <div v-if="preparationSections.length > 0" class="card section-card mb-2">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Подготовка к сезону</h2>
           <div v-edge-fade class="scroll-container">

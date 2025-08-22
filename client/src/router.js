@@ -70,12 +70,22 @@ const routes = [
   {
     path: '/medical',
     component: Medical,
-    meta: { requiresAuth: true, requiresReferee: true, title: 'Медосмотр' },
+    meta: {
+      requiresAuth: true,
+      requiresReferee: true,
+      forbidBrigade: true,
+      title: 'Медосмотр',
+    },
   },
   {
     path: '/camps',
     component: Camps,
-    meta: { requiresAuth: true, requiresReferee: true, title: 'Сборы' },
+    meta: {
+      requiresAuth: true,
+      requiresReferee: true,
+      forbidBrigade: true,
+      title: 'Сборы',
+    },
   },
   {
     path: '/tickets',
@@ -95,7 +105,12 @@ const routes = [
   {
     path: '/normatives',
     component: Normatives,
-    meta: { requiresAuth: true, requiresReferee: true, title: 'Нормативы' },
+    meta: {
+      requiresAuth: true,
+      requiresReferee: true,
+      forbidBrigade: true,
+      title: 'Нормативы',
+    },
   },
   {
     path: '/qualification',
@@ -284,6 +299,8 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const isAuthenticated = !!auth.token;
   const roles = auth.roles;
+  const isBrigadeOnly =
+    roles.includes('BRIGADE_REFEREE') && !roles.includes('REFEREE');
   if (isAuthenticated && !auth.user) {
     try {
       await fetchCurrentUser();
@@ -303,6 +320,8 @@ router.beforeEach(async (to, _from, next) => {
     to.meta.requiresReferee &&
     !roles.some((r) => refereeRoles.includes(r))
   ) {
+    next('/forbidden');
+  } else if (to.meta.forbidBrigade && isBrigadeOnly) {
     next('/forbidden');
   } else if (
     to.meta.requiresStaff &&
