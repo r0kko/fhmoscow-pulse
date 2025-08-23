@@ -66,6 +66,11 @@ import Ticket from './ticket.js';
 import TicketFile from './ticketFile.js';
 import Team from './team.js';
 import UserTeam from './userTeam.js';
+import UserClub from './userClub.js';
+import Player from './player.js';
+import PlayerRole from './playerRole.js';
+import ClubPlayer from './clubPlayer.js';
+import TeamPlayer from './teamPlayer.js';
 import AvailabilityType from './availabilityType.js';
 import UserAvailability from './userAvailability.js';
 import Club from './club.js';
@@ -86,9 +91,33 @@ Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id' });
 User.belongsToMany(Team, { through: UserTeam, foreignKey: 'user_id' });
 Team.belongsToMany(User, { through: UserTeam, foreignKey: 'team_id' });
 
+/* many-to-many: user ↔ clubs */
+User.belongsToMany(Club, { through: UserClub, foreignKey: 'user_id' });
+Club.belongsToMany(User, { through: UserClub, foreignKey: 'club_id' });
+
 /* clubs ↔ teams */
 Club.hasMany(Team, { foreignKey: 'club_id' });
 Team.belongsTo(Club, { foreignKey: 'club_id' });
+
+/* players and memberships */
+Player.belongsToMany(Team, { through: TeamPlayer, foreignKey: 'player_id' });
+Team.belongsToMany(Player, { through: TeamPlayer, foreignKey: 'team_id' });
+Team.hasMany(TeamPlayer, { foreignKey: 'team_id' });
+TeamPlayer.belongsTo(Team, { foreignKey: 'team_id' });
+Player.hasMany(TeamPlayer, { foreignKey: 'player_id' });
+TeamPlayer.belongsTo(Player, { foreignKey: 'player_id' });
+Club.hasMany(ClubPlayer, { foreignKey: 'club_id' });
+ClubPlayer.belongsTo(Club, { foreignKey: 'club_id' });
+Player.belongsToMany(Club, { through: ClubPlayer, foreignKey: 'player_id' });
+Club.belongsToMany(Player, { through: ClubPlayer, foreignKey: 'club_id' });
+Player.hasMany(ClubPlayer, { foreignKey: 'player_id' });
+ClubPlayer.belongsTo(Player, { foreignKey: 'player_id' });
+PlayerRole.hasMany(ClubPlayer, { foreignKey: 'role_id' });
+ClubPlayer.belongsTo(PlayerRole, { foreignKey: 'role_id' });
+ClubPlayer.hasMany(TeamPlayer, { foreignKey: 'club_player_id' });
+TeamPlayer.belongsTo(ClubPlayer, { foreignKey: 'club_player_id' });
+Season.hasMany(ClubPlayer, { foreignKey: 'season_id' });
+ClubPlayer.belongsTo(Season, { foreignKey: 'season_id' });
 
 /* лог ↔ пользователь (опциональная связь) */
 User.hasMany(Log, { foreignKey: 'user_id' });
@@ -430,7 +459,12 @@ export {
   TicketFile,
   Team,
   UserTeam,
+  UserClub,
   Club,
+  Player,
+  PlayerRole,
+  ClubPlayer,
+  TeamPlayer,
   Course,
   UserCourse,
   AvailabilityType,

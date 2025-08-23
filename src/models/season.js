@@ -11,6 +11,7 @@ Season.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    external_id: { type: DataTypes.INTEGER },
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     alias: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     active: {

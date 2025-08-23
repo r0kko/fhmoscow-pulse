@@ -27,6 +27,11 @@ const systemSections = computed(() => {
     items.push({ title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' });
     items.push({ title: 'Команды', icon: 'bi-people', to: '/admin/teams' });
     items.push({ title: 'Клубы', icon: 'bi-shield', to: '/admin/clubs' });
+    items.push({
+      title: 'Управление спортивными школами',
+      icon: 'bi-building',
+      to: '/admin/sport-schools',
+    });
   }
   return items;
 });

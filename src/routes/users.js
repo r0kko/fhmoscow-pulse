@@ -15,6 +15,8 @@ import medicalCertificateAdmin from '../controllers/medicalCertificateAdminContr
 import taskAdmin from '../controllers/taskAdminController.js';
 import ticketAdmin from '../controllers/ticketAdminController.js';
 import userTeamController from '../controllers/userTeamController.js';
+import userClubController from '../controllers/userClubController.js';
+import sportSchoolAdminController from '../controllers/sportSchoolAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -34,6 +36,7 @@ import {
   updateTicketRules,
 } from '../validators/ticketValidators.js';
 import { addTeamRules } from '../validators/userTeamValidators.js';
+import { addClubRules } from '../validators/userClubValidators.js';
 
 const router = express.Router();
 
@@ -362,6 +365,108 @@ router.delete(
   auth,
   authorize('ADMIN'),
   userTeamController.removeForUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/clubs:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: List clubs for user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Array of clubs
+ */
+router.get(
+  '/:id/clubs',
+  auth,
+  authorize('ADMIN'),
+  userClubController.listByUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/clubs:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Add club to user (sport school staff)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Club added
+ */
+router.post(
+  '/:id/clubs',
+  auth,
+  authorize('ADMIN'),
+  addClubRules,
+  userClubController.addForUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/clubs/{clubId}:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Remove club from user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: clubId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Club removed
+ */
+router.delete(
+  '/:id/clubs/:clubId',
+  auth,
+  authorize('ADMIN'),
+  userClubController.removeForUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/sport-schools:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Get user's sport school links overview
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Links summary
+ */
+router.get(
+  '/:id/sport-schools',
+  auth,
+  authorize('ADMIN'),
+  sportSchoolAdminController.getLinks
 );
 
 /**

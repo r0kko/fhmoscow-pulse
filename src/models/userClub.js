@@ -1,0 +1,25 @@
+import { DataTypes, Model } from 'sequelize';
+
+import sequelize from '../config/database.js';
+
+class UserClub extends Model {}
+
+UserClub.init(
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'UserClub',
+    tableName: 'user_clubs',
+    paranoid: true,
+    underscored: true,
+    indexes: [{ unique: true, fields: ['user_id', 'club_id'] }],
+  }
+);
+
+export default UserClub;

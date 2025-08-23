@@ -1,9 +1,10 @@
-import { Op, fn, col, where } from 'sequelize';
+import { Op } from 'sequelize';
 
 import { Ground, Address } from '../models/index.js';
 import { Stadium as ExtStadium } from '../externalModels/index.js';
 import logger from '../../logger.js';
 import ServiceError from '../errors/ServiceError.js';
+import { statusFilters } from '../utils/sync.js';
 
 import * as dadataService from './dadataService.js';
 
@@ -136,14 +137,7 @@ export default {
     }
 
     // ACTIVE and ARCHIVE, tolerant to case/whitespace in external DB
-    const ACTIVE = where(
-      fn('LOWER', fn('TRIM', col('object_status'))),
-      'active'
-    );
-    const ARCHIVE = where(
-      fn('LOWER', fn('TRIM', col('object_status'))),
-      'archive'
-    );
+    const { ACTIVE, ARCHIVE } = statusFilters('object_status');
 
     const [extActive, extArchived] = await Promise.all([
       ExtStadium.findAll({ where: ACTIVE }),
@@ -151,25 +145,26 @@ export default {
     ]);
     const activeIds = extActive.map((s) => s.id);
     const archivedIds = extArchived.map((s) => s.id);
+    const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
 
     let upserts = 0;
     let affectedArchived = 0;
     let affectedMissing = 0;
 
     await Ground.sequelize.transaction(async (tx) => {
+      // Load existing grounds for known external IDs
+      const locals = knownIds.length
+        ? await Ground.findAll({
+            where: { external_id: { [Op.in]: knownIds } },
+            paranoid: false,
+            transaction: tx,
+          })
+        : [];
+      const localByExt = new Map(locals.map((g) => [g.external_id, g]));
+
       for (const s of extActive) {
-        const existing = await Ground.findOne({
-          where: { external_id: s.id },
-          paranoid: false,
-          transaction: tx,
-        });
-        if (existing) {
-          await existing.update(
-            { name: s.name, deleted_at: null, updated_by: actorId },
-            { transaction: tx }
-          );
-        } else {
-          // Minimal import: external_id + name, address left empty for manual fill
+        const existing = localByExt.get(s.id);
+        if (!existing) {
           await Ground.create(
             {
               external_id: s.id,
@@ -179,23 +174,45 @@ export default {
             },
             { transaction: tx }
           );
+          upserts += 1;
+          continue;
         }
-        upserts += 1;
+        let changed = false;
+        if (existing.deletedAt) {
+          await existing.restore({ transaction: tx });
+          changed = true;
+        }
+        const updates = {};
+        if (existing.name !== s.name) updates.name = s.name;
+        if (Object.keys(updates).length) {
+          updates.updated_by = actorId;
+          await existing.update(updates, { transaction: tx });
+          changed = true;
+        }
+        if (changed) upserts += 1;
       }
 
       // Soft-delete explicitly archived
       const [archCnt] = await Ground.update(
-        { deleted_at: new Date(), updated_by: actorId },
-        { where: { external_id: { [Op.in]: archivedIds } }, transaction: tx }
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
+          transaction: tx,
+          paranoid: false,
+        }
       );
       affectedArchived = archCnt;
 
-      // Soft-delete missing among active (previously synced only)
+      // Soft-delete missing among known (not ACTIVE and not ARCHIVE)
       const [missCnt] = await Ground.update(
-        { deleted_at: new Date(), updated_by: actorId },
+        { deletedAt: new Date(), updated_by: actorId },
         {
-          where: { external_id: { [Op.notIn]: activeIds, [Op.ne]: null } },
+          where: {
+            external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
+            deletedAt: null,
+          },
           transaction: tx,
+          paranoid: false,
         }
       );
       affectedMissing = missCnt;

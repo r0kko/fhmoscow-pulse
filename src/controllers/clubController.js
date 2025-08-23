@@ -1,4 +1,5 @@
 import clubService from '../services/clubService.js';
+import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import clubMapper from '../mappers/clubMapper.js';
 import { sendError } from '../utils/api.js';
 
@@ -31,6 +32,9 @@ export default {
 
   async sync(req, res) {
     try {
+      if (!isExternalDbAvailable()) {
+        return res.status(503).json({ error: 'external_unavailable' });
+      }
       const stats = await clubService.syncExternal(req.user?.id);
       const { rows, count } = await clubService.list({ page: 1, limit: 100 });
       return res.json({

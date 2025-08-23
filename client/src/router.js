@@ -20,6 +20,7 @@ import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminGrounds from './views/AdminGrounds.vue';
 import AdminTeams from './views/AdminTeams.vue';
 import AdminClubs from './views/AdminClubs.vue';
+import AdminSportSchools from './views/AdminSportSchools.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
@@ -237,6 +238,16 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Клубы' },
   },
   {
+    path: '/admin/sport-schools',
+    component: AdminSportSchools,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      requiresAdministrator: true,
+      title: 'Управление спортивными школами',
+    },
+  },
+  {
     path: '/school-matches',
     component: SchoolMatches,
     meta: {
@@ -321,6 +332,8 @@ router.beforeEach(async (to, _from, next) => {
     to.meta.requiresAdmin &&
     !roles.some((r) => adminRoles.includes(r))
   ) {
+    next('/forbidden');
+  } else if (to.meta.requiresAdministrator && !roles.includes('ADMIN')) {
     next('/forbidden');
   } else if (
     to.meta.requiresReferee &&

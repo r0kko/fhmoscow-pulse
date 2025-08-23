@@ -20,6 +20,7 @@ import startTaxationCron from '../src/jobs/taxationCron.js';
 import startTeamSyncCron, { runTeamSync } from '../src/jobs/teamSyncCron.js';
 import startClubSyncCron, { runClubSync } from '../src/jobs/clubSyncCron.js';
 import startGroundSyncCron, { runGroundSync } from '../src/jobs/groundSyncCron.js';
+import startPlayerSyncCron, { runPlayerSync } from '../src/jobs/playerSyncCron.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -77,9 +78,11 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
     // Sync stadiums (grounds) before teams, too
     await runGroundSync();
     await runTeamSync();
+    await runPlayerSync();
     startClubSyncCron();
     startGroundSyncCron();
     startTeamSyncCron();
+    startPlayerSyncCron();
   }
   startTaxationCron();
   server.listen(port);
