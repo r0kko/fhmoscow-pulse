@@ -1,15 +1,23 @@
-import {Op} from 'sequelize';
+import { Op } from 'sequelize';
 
-import {Club, ClubPlayer, Player, PlayerRole, Season, Team, TeamPlayer,} from '../models/index.js';
 import {
-    ClubPlayer as ExtClubPlayer,
-    Player as ExtPlayer,
-    TeamPlayer as ExtTeamPlayer,
-    TeamPlayerRole as ExtTeamPlayerRole,
+  Club,
+  ClubPlayer,
+  Player,
+  PlayerRole,
+  Season,
+  Team,
+  TeamPlayer,
+} from '../models/index.js';
+import {
+  ClubPlayer as ExtClubPlayer,
+  Player as ExtPlayer,
+  TeamPlayer as ExtTeamPlayer,
+  TeamPlayerRole as ExtTeamPlayerRole,
 } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
 import logger from '../../logger.js';
-import {ensureArchivedImported, statusFilters} from '../utils/sync.js';
+import { ensureArchivedImported, statusFilters } from '../utils/sync.js';
 
 async function syncExternal(actorId = null) {
   // 1) Roles (no object_status on external)
@@ -198,11 +206,11 @@ async function syncExternal(actorId = null) {
   // Fallback: if the external table has no object_status column/data,
   // treat all rows as ACTIVE to avoid accidental mass soft-delete.
   if (clubPlayers.length === 0 && clubPlayersArchived.length === 0) {
-      clubPlayers = await ExtClubPlayer.findAll();
+    clubPlayers = await ExtClubPlayer.findAll();
     clubPlayersArchived = [];
   }
   if (teamPlayers.length === 0 && teamPlayersArchived.length === 0) {
-      teamPlayers = await ExtTeamPlayer.findAll();
+    teamPlayers = await ExtTeamPlayer.findAll();
     teamPlayersArchived = [];
   }
 
