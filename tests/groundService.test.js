@@ -2,16 +2,17 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { Op } from 'sequelize';
 
 const extFindAllMock = jest.fn();
-const groundFindOneMock = jest.fn();
+const groundFindAllMock = jest.fn();
 const groundCreateMock = jest.fn();
 const groundUpdateMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
-  groundFindOneMock.mockReset();
+  groundFindAllMock.mockReset();
   groundCreateMock.mockReset();
   groundUpdateMock.mockReset();
   groundUpdateMock.mockResolvedValue([0]);
+  groundFindAllMock.mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
@@ -26,7 +27,7 @@ const transactionMock = jest.fn(async (cb) => cb(txMock));
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Ground: {
-    findOne: groundFindOneMock,
+    findAll: groundFindAllMock,
     create: groundCreateMock,
     update: groundUpdateMock,
     sequelize: { transaction: transactionMock },
@@ -41,7 +42,6 @@ test('syncExternal upserts active stadiums and soft deletes archived/missing', a
   extFindAllMock
     .mockResolvedValueOnce([{ id: 100, name: 'Main Arena' }])
     .mockResolvedValueOnce([{ id: 200, name: 'Old Arena' }]);
-  groundFindOneMock.mockResolvedValueOnce(null);
   groundCreateMock.mockResolvedValueOnce({ id: 'g1' });
   await groundService.syncExternal('admin');
   expect(groundCreateMock).toHaveBeenCalledWith(
@@ -53,7 +53,7 @@ test('syncExternal upserts active stadiums and soft deletes archived/missing', a
   const calls = groundUpdateMock.mock.calls;
   const missingCall = calls.find((c) => c?.[1]?.where?.external_id?.[Op.notIn]);
   expect(missingCall).toBeTruthy();
-  expect(missingCall[1].where.external_id[Op.notIn]).toEqual([100]);
+  expect(missingCall[1].where.external_id[Op.notIn]).toEqual([100, 200]);
   expect(missingCall[1].where.external_id[Op.ne]).toBeNull();
 
   // And archived call (IN archived)

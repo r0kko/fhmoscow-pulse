@@ -3,7 +3,7 @@ import { Op } from 'sequelize';
 import { Club } from '../models/index.js';
 import { Club as ExtClub } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
-import { statusFilters } from '../utils/sync.js';
+import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
 import logger from '../../logger.js';
 
 async function syncExternal(actorId = null) {
@@ -61,6 +61,15 @@ async function syncExternal(actorId = null) {
       }
       if (changed) upserts += 1;
     }
+
+    // Ensure archived external clubs exist locally (soft-deleted) to stabilize IDs
+    await ensureArchivedImported(
+      Club,
+      extArchived,
+      (c) => ({ name: c.short_name }),
+      actorId,
+      tx
+    );
 
     // Handle ARCHIVE: soft-delete if currently active
     const [archCnt] = await Club.update(

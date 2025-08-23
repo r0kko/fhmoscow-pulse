@@ -2,8 +2,9 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { Op } from 'sequelize';
 
 const extFindAllMock = jest.fn();
-const teamUpsertMock = jest.fn();
+const teamCreateMock = jest.fn();
 const teamUpdateMock = jest.fn();
+const teamFindAllMock = jest.fn();
 const userFindByPkMock = jest.fn();
 const teamFindByPkMock = jest.fn();
 const userAddTeamMock = jest.fn();
@@ -13,9 +14,11 @@ const userTeamUpdateMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
-  teamUpsertMock.mockReset();
+  teamCreateMock.mockReset();
   teamUpdateMock.mockReset();
+  teamFindAllMock.mockReset();
   teamUpdateMock.mockResolvedValue([0]);
+  teamFindAllMock.mockResolvedValue([]);
   userFindByPkMock.mockReset();
   teamFindByPkMock.mockReset();
   userAddTeamMock.mockReset();
@@ -40,13 +43,14 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Team: {
-    upsert: teamUpsertMock,
+    create: teamCreateMock,
     update: teamUpdateMock,
+    findAll: teamFindAllMock,
     findByPk: teamFindByPkMock,
   },
   User: { findByPk: userFindByPkMock },
   UserTeam: { findOne: userTeamFindOneMock },
-  Club: { findAll: jest.fn() },
+  Club: { findAll: jest.fn().mockResolvedValue([]) },
 }));
 
 const { default: service } = await import('../src/services/teamService.js');
@@ -58,24 +62,24 @@ test('syncExternal upserts active teams and soft deletes missing ones', async ()
   await service.syncExternal('admin');
   // External fetch is invoked (active + archive); we don't assert exact where shape
   expect(extFindAllMock).toHaveBeenCalled();
-  expect(teamUpsertMock).toHaveBeenCalledWith(
+  expect(teamCreateMock).toHaveBeenCalledWith(
     expect.objectContaining({
       external_id: 1,
       name: 'T1',
       birth_year: 2005,
-      deleted_at: null,
       created_by: 'admin',
       updated_by: 'admin',
       club_id: null,
     }),
-    expect.objectContaining({ paranoid: false, transaction: expect.any(Object) })
+    expect.objectContaining({ transaction: expect.any(Object) })
   );
-  const whereArg = teamUpdateMock.mock.calls[0][1].where;
+  const calls = teamUpdateMock.mock.calls;
+  const missingCall = calls.find((c) => c?.[1]?.where?.external_id?.[Op.notIn]);
+  expect(missingCall).toBeTruthy();
+  const whereArg = missingCall[1].where;
   expect(whereArg.external_id[Op.notIn]).toEqual([1]);
   expect(whereArg.external_id[Op.ne]).toBeNull();
-  expect(teamUpdateMock.mock.calls[0][0]).toMatchObject({
-    updated_by: 'admin',
-  });
+  expect(missingCall[0]).toMatchObject({ updated_by: 'admin' });
 });
 
 test('addUserTeam uses association with audit fields', async () => {

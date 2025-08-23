@@ -65,6 +65,11 @@ import TicketStatus from './ticketStatus.js';
 import Ticket from './ticket.js';
 import TicketFile from './ticketFile.js';
 import Team from './team.js';
+import TournamentType from './tournamentType.js';
+import Tournament from './tournament.js';
+import Stage from './stage.js';
+import TournamentGroup from './tournamentGroup.js';
+import TournamentTeam from './tournamentTeam.js';
 import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
 import Player from './player.js';
@@ -237,6 +242,29 @@ Training.hasMany(TrainingCourse, { foreignKey: 'training_id' });
 TrainingCourse.belongsTo(Training, { foreignKey: 'training_id' });
 Course.hasMany(TrainingCourse, { foreignKey: 'course_id' });
 TrainingCourse.belongsTo(Course, { foreignKey: 'course_id' });
+
+/* tournaments */
+TournamentType.hasMany(Tournament, { foreignKey: 'type_id' });
+Tournament.belongsTo(TournamentType, { foreignKey: 'type_id' });
+Season.hasMany(Tournament, { foreignKey: 'season_id' });
+Tournament.belongsTo(Season, { foreignKey: 'season_id' });
+
+Tournament.hasMany(Stage, { foreignKey: 'tournament_id' });
+Stage.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+
+Tournament.hasMany(TournamentGroup, { foreignKey: 'tournament_id' });
+TournamentGroup.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+Stage.hasMany(TournamentGroup, { foreignKey: 'stage_id' });
+TournamentGroup.belongsTo(Stage, { foreignKey: 'stage_id' });
+
+Tournament.hasMany(TournamentTeam, { foreignKey: 'tournament_id' });
+TournamentTeam.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+TournamentGroup.hasMany(TournamentTeam, { foreignKey: 'tournament_group_id' });
+TournamentTeam.belongsTo(TournamentGroup, {
+  foreignKey: 'tournament_group_id',
+});
+Team.hasMany(TournamentTeam, { foreignKey: 'team_id' });
+TournamentTeam.belongsTo(Team, { foreignKey: 'team_id' });
 
 /* courses */
 Course.belongsTo(User, { foreignKey: 'responsible_id', as: 'Responsible' });
@@ -458,6 +486,11 @@ export {
   TicketStatus,
   TicketFile,
   Team,
+  Tournament,
+  TournamentType,
+  Stage,
+  TournamentGroup,
+  TournamentTeam,
   UserTeam,
   UserClub,
   Club,

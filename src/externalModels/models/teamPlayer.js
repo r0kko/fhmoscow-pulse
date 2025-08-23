@@ -10,6 +10,7 @@ TeamPlayer.init(
     player_id: { type: DataTypes.INTEGER },
     team_id: { type: DataTypes.INTEGER },
     contract_id: { type: DataTypes.INTEGER },
+    object_status: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

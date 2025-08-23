@@ -4,7 +4,7 @@ import { Team, User, UserTeam, Club } from '../models/index.js';
 import { Team as ExtTeam } from '../externalModels/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
-import { statusFilters } from '../utils/sync.js';
+import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
 import logger from '../../logger.js';
 
 async function syncExternal(actorId = null) {
@@ -25,7 +25,12 @@ async function syncExternal(actorId = null) {
   await sequelize.transaction(async (tx) => {
     // Preload mapping of external club_id -> local club UUID
     const extClubIds = Array.from(
-      new Set(extActive.map((t) => t.club_id).filter(Boolean))
+      new Set(
+        [
+          ...extActive.map((t) => t.club_id),
+          ...extArchived.map((t) => t.club_id),
+        ].filter(Boolean)
+      )
     );
     const clubs = extClubIds.length
       ? await Club.findAll({
@@ -82,6 +87,19 @@ async function syncExternal(actorId = null) {
       }
       if (changed) upserts += 1;
     }
+
+    // Ensure archived external teams exist locally (soft-deleted) to stabilize IDs
+    await ensureArchivedImported(
+      Team,
+      extArchived,
+      (t) => ({
+        name: t.short_name,
+        birth_year: t.year,
+        club_id: clubIdByExtId.get(t.club_id) || null,
+      }),
+      actorId,
+      tx
+    );
 
     // Soft-delete explicitly archived
     const [archCnt] = await Team.update(

@@ -2,14 +2,17 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { Op } from 'sequelize';
 
 const extFindAllMock = jest.fn();
-const clubUpsertMock = jest.fn();
+const clubCreateMock = jest.fn();
 const clubUpdateMock = jest.fn();
+const clubFindAllMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
-  clubUpsertMock.mockReset();
+  clubCreateMock.mockReset();
   clubUpdateMock.mockReset();
+  clubFindAllMock.mockReset();
   clubUpdateMock.mockResolvedValue([0]);
+  clubFindAllMock.mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
@@ -28,8 +31,9 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Club: {
-    upsert: clubUpsertMock,
+    create: clubCreateMock,
     update: clubUpdateMock,
+    findAll: clubFindAllMock,
   },
 }));
 
@@ -40,15 +44,14 @@ test('syncExternal upserts active clubs and soft deletes missing ones', async ()
   await service.syncExternal('admin');
   // External fetch is invoked (active + archive); we don't assert exact where shape
   expect(extFindAllMock).toHaveBeenCalled();
-  expect(clubUpsertMock).toHaveBeenCalledWith(
+  expect(clubCreateMock).toHaveBeenCalledWith(
     {
       external_id: 11,
       name: 'HC Spartak',
-      deleted_at: null,
       created_by: 'admin',
       updated_by: 'admin',
     },
-    expect.objectContaining({ paranoid: false, transaction: expect.any(Object) })
+    expect.objectContaining({ transaction: expect.any(Object) })
   );
   const calls = clubUpdateMock.mock.calls;
   // Find the call that handles soft-deleting missing (NOT IN active)

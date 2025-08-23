@@ -4,7 +4,7 @@ import { Ground, Address } from '../models/index.js';
 import { Stadium as ExtStadium } from '../externalModels/index.js';
 import logger from '../../logger.js';
 import ServiceError from '../errors/ServiceError.js';
-import { statusFilters } from '../utils/sync.js';
+import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
 
 import * as dadataService from './dadataService.js';
 
@@ -191,6 +191,15 @@ export default {
         }
         if (changed) upserts += 1;
       }
+
+      // Ensure archived external grounds exist locally (soft-deleted) to stabilize IDs
+      await ensureArchivedImported(
+        Ground,
+        extArchived,
+        (s) => ({ name: s.name }),
+        actorId,
+        tx
+      );
 
       // Soft-delete explicitly archived
       const [archCnt] = await Ground.update(

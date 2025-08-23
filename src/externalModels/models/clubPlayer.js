@@ -12,6 +12,7 @@ ClubPlayer.init(
     role_id: { type: DataTypes.INTEGER },
     photo_id: { type: DataTypes.INTEGER },
     season_id: { type: DataTypes.INTEGER },
+    object_status: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

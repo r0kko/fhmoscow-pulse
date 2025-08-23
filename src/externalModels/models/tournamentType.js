@@ -7,8 +7,13 @@ class TournamentType extends Model {}
 TournamentType.init(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true },
+    // Some columns may be nullable in legacy DB; we map minimally
     logo_id: { type: DataTypes.INTEGER },
     tags_id: { type: DataTypes.INTEGER },
+    // Extended fields used by sync
+    full_name: { type: DataTypes.STRING(255) },
+    double_protocol: { type: DataTypes.BOOLEAN },
+    object_status: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

@@ -1,23 +1,15 @@
-import { Op } from 'sequelize';
+import {Op} from 'sequelize';
 
+import {Club, ClubPlayer, Player, PlayerRole, Season, Team, TeamPlayer,} from '../models/index.js';
 import {
-  Player,
-  PlayerRole,
-  ClubPlayer,
-  TeamPlayer,
-  Team,
-  Club,
-  Season,
-} from '../models/index.js';
-import {
-  Player as ExtPlayer,
-  ClubPlayer as ExtClubPlayer,
-  TeamPlayer as ExtTeamPlayer,
-  TeamPlayerRole as ExtTeamPlayerRole,
+    ClubPlayer as ExtClubPlayer,
+    Player as ExtPlayer,
+    TeamPlayer as ExtTeamPlayer,
+    TeamPlayerRole as ExtTeamPlayerRole,
 } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
 import logger from '../../logger.js';
-import { statusFilters } from '../utils/sync.js';
+import {ensureArchivedImported, statusFilters} from '../utils/sync.js';
 
 async function syncExternal(actorId = null) {
   // 1) Roles (no object_status on external)
@@ -145,6 +137,23 @@ async function syncExternal(actorId = null) {
       if (changed) playerUpserts += 1;
     }
 
+    // Ensure archived external players exist locally (soft-deleted) to stabilize IDs
+    await ensureArchivedImported(
+      Player,
+      extArchived,
+      (p) => ({
+        surname: p.surname,
+        name: p.name,
+        patronymic: p.patronymic,
+        date_of_birth: p.date_of_birth,
+        grip: p.grip,
+        height: p.height,
+        weight: p.weight,
+      }),
+      actorId,
+      tx
+    );
+
     // Soft-delete ARCHIVE
     const [archCnt] = await Player.update(
       { deletedAt: new Date(), updated_by: actorId },
@@ -173,28 +182,67 @@ async function syncExternal(actorId = null) {
     }
   });
 
-  // Prepare lookup maps for joins
-  const clubPlayers = await ExtClubPlayer.findAll();
-  const teamPlayers = await ExtTeamPlayer.findAll();
+  // Prepare lookup maps for joins (use ACTIVE + ARCHIVE for membership tables)
+  const { ACTIVE: CP_ACTIVE, ARCHIVE: CP_ARCHIVE } =
+    statusFilters('object_status');
+  const { ACTIVE: TP_ACTIVE, ARCHIVE: TP_ARCHIVE } =
+    statusFilters('object_status');
+  let [clubPlayers, clubPlayersArchived, teamPlayers, teamPlayersArchived] =
+    await Promise.all([
+      ExtClubPlayer.findAll({ where: CP_ACTIVE }),
+      ExtClubPlayer.findAll({ where: CP_ARCHIVE }),
+      ExtTeamPlayer.findAll({ where: TP_ACTIVE }),
+      ExtTeamPlayer.findAll({ where: TP_ARCHIVE }),
+    ]);
+
+  // Fallback: if the external table has no object_status column/data,
+  // treat all rows as ACTIVE to avoid accidental mass soft-delete.
+  if (clubPlayers.length === 0 && clubPlayersArchived.length === 0) {
+      clubPlayers = await ExtClubPlayer.findAll();
+    clubPlayersArchived = [];
+  }
+  if (teamPlayers.length === 0 && teamPlayersArchived.length === 0) {
+      teamPlayers = await ExtTeamPlayer.findAll();
+    teamPlayersArchived = [];
+  }
+
   const extClubIds = Array.from(
-    new Set(clubPlayers.map((cp) => cp.club_id).filter(Boolean))
+    new Set(
+      [...clubPlayers, ...clubPlayersArchived]
+        .map((cp) => cp.club_id)
+        .filter(Boolean)
+    )
   );
   const extTeamIds = Array.from(
-    new Set(teamPlayers.map((tp) => tp.team_id).filter(Boolean))
+    new Set(
+      [...teamPlayers, ...teamPlayersArchived]
+        .map((tp) => tp.team_id)
+        .filter(Boolean)
+    )
   );
   const extPlayerIds = Array.from(
     new Set(
       [
         ...clubPlayers.map((cp) => cp.player_id),
+        ...clubPlayersArchived.map((cp) => cp.player_id),
         ...teamPlayers.map((tp) => tp.player_id),
+        ...teamPlayersArchived.map((tp) => tp.player_id),
       ].filter(Boolean)
     )
   );
   const extRoleIds = Array.from(
-    new Set(clubPlayers.map((cp) => cp.role_id).filter(Boolean))
+    new Set(
+      [...clubPlayers, ...clubPlayersArchived]
+        .map((cp) => cp.role_id)
+        .filter(Boolean)
+    )
   );
   const extSeasonIds = Array.from(
-    new Set(clubPlayers.map((cp) => cp.season_id).filter(Boolean))
+    new Set(
+      [...clubPlayers, ...clubPlayersArchived]
+        .map((cp) => cp.season_id)
+        .filter(Boolean)
+    )
   );
 
   const [clubs, teams, players, roles, seasons] = await Promise.all([
@@ -237,11 +285,16 @@ async function syncExternal(actorId = null) {
 
   // 3) ClubPlayers
   let clubPlayerUpserts = 0;
-  let clubPlayerSoftDeleted = 0;
-  const clubPlayerExtIds = clubPlayers.map((cp) => cp.id);
-  const clubPlayerLocals = clubPlayerExtIds.length
+  let clubPlayerSoftDeletedMissing = 0;
+  let clubPlayerSoftDeletedArchived = 0;
+  const clubPlayerActiveIds = clubPlayers.map((cp) => cp.id);
+  const clubPlayerArchivedIds = clubPlayersArchived.map((cp) => cp.id);
+  const clubPlayerKnownIds = Array.from(
+    new Set([...clubPlayerActiveIds, ...clubPlayerArchivedIds])
+  );
+  const clubPlayerLocals = clubPlayerKnownIds.length
     ? await ClubPlayer.findAll({
-        where: { external_id: { [Op.in]: clubPlayerExtIds } },
+        where: { external_id: { [Op.in]: clubPlayerKnownIds } },
         paranoid: false,
       })
     : [];
@@ -302,27 +355,64 @@ async function syncExternal(actorId = null) {
       }
       if (changed) clubPlayerUpserts += 1;
     }
-    const [softCnt] = await ClubPlayer.update(
+    // Ensure archived membership rows exist as soft-deleted
+    const createdArchivedCp = await ensureArchivedImported(
+      ClubPlayer,
+      clubPlayersArchived,
+      (cp) => ({
+        club_id: clubIdByExt.get(cp.club_id) || null,
+        player_id: playerIdByExt.get(cp.player_id) || null,
+        role_id: roleIdByExt.get(cp.role_id) || null,
+        season_id: seasonIdByExt.get(cp.season_id) || null,
+      }),
+      actorId,
+      tx
+    );
+    clubPlayerUpserts += createdArchivedCp;
+
+    // Soft-delete archived
+    const [archCpCnt] = await ClubPlayer.update(
       { deletedAt: new Date(), updated_by: actorId },
       {
         where: {
-          external_id: { [Op.notIn]: clubPlayerExtIds, [Op.ne]: null },
+          external_id: { [Op.in]: clubPlayerArchivedIds },
           deletedAt: null,
         },
         transaction: tx,
         paranoid: false,
       }
     );
-    clubPlayerSoftDeleted = softCnt;
+    clubPlayerSoftDeletedArchived = archCpCnt;
+
+    // Soft-delete missing
+    if (clubPlayerKnownIds.length) {
+      const [missCpCnt] = await ClubPlayer.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.notIn]: clubPlayerKnownIds, [Op.ne]: null },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      clubPlayerSoftDeletedMissing = missCpCnt;
+    }
   });
 
   // 4) TeamPlayers
   let teamPlayerUpserts = 0;
-  let teamPlayerSoftDeleted = 0;
-  const teamPlayerExtIds = teamPlayers.map((tp) => tp.id);
-  const teamPlayerLocals = teamPlayerExtIds.length
+  let teamPlayerSoftDeletedMissing = 0;
+  let teamPlayerSoftDeletedArchived = 0;
+  const teamPlayerActiveIds = teamPlayers.map((tp) => tp.id);
+  const teamPlayerArchivedIds = teamPlayersArchived.map((tp) => tp.id);
+  const teamPlayerKnownIds = Array.from(
+    new Set([...teamPlayerActiveIds, ...teamPlayerArchivedIds])
+  );
+  const teamPlayerLocals = teamPlayerKnownIds.length
     ? await TeamPlayer.findAll({
-        where: { external_id: { [Op.in]: teamPlayerExtIds } },
+        where: { external_id: { [Op.in]: teamPlayerKnownIds } },
         paranoid: false,
       })
     : [];
@@ -379,22 +469,53 @@ async function syncExternal(actorId = null) {
       }
       if (changed) teamPlayerUpserts += 1;
     }
-    const [softCnt] = await TeamPlayer.update(
+    // Ensure archived membership rows exist as soft-deleted
+    const createdArchivedTp = await ensureArchivedImported(
+      TeamPlayer,
+      teamPlayersArchived,
+      (tp) => ({
+        team_id: teamIdByExt.get(tp.team_id) || null,
+        player_id: playerIdByExt.get(tp.player_id) || null,
+        club_player_id: clubPlayerIdByExt.get(tp.contract_id) || null,
+      }),
+      actorId,
+      tx
+    );
+    teamPlayerUpserts += createdArchivedTp;
+
+    // Soft-delete archived
+    const [archTpCnt] = await TeamPlayer.update(
       { deletedAt: new Date(), updated_by: actorId },
       {
         where: {
-          external_id: { [Op.notIn]: teamPlayerExtIds, [Op.ne]: null },
+          external_id: { [Op.in]: teamPlayerArchivedIds },
           deletedAt: null,
         },
         transaction: tx,
         paranoid: false,
       }
     );
-    teamPlayerSoftDeleted = softCnt;
+    teamPlayerSoftDeletedArchived = archTpCnt;
+
+    // Soft-delete missing
+    if (teamPlayerKnownIds.length) {
+      const [missTpCnt] = await TeamPlayer.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.notIn]: teamPlayerKnownIds, [Op.ne]: null },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      teamPlayerSoftDeletedMissing = missTpCnt;
+    }
   });
 
   logger.info(
-    'Player sync: players upserted=%d, softDeleted=%d (archived=%d, missing=%d); roles upserted=%d, softDeleted=%d; clubPlayers upserted=%d, softDeleted=%d; teamPlayers upserted=%d, softDeleted=%d',
+    'Player sync: players upserted=%d, softDeleted=%d (archived=%d, missing=%d); roles upserted=%d, softDeleted=%d; clubPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
     playerUpserts,
     playerSoftDeletedMissing + playerSoftDeletedArchived,
     playerSoftDeletedArchived,
@@ -402,9 +523,13 @@ async function syncExternal(actorId = null) {
     roleUpserts,
     roleSoftDeleted,
     clubPlayerUpserts,
-    clubPlayerSoftDeleted,
+    clubPlayerSoftDeletedMissing + clubPlayerSoftDeletedArchived,
+    clubPlayerSoftDeletedArchived,
+    clubPlayerSoftDeletedMissing,
     teamPlayerUpserts,
-    teamPlayerSoftDeleted
+    teamPlayerSoftDeletedMissing + teamPlayerSoftDeletedArchived,
+    teamPlayerSoftDeletedArchived,
+    teamPlayerSoftDeletedMissing
   );
 
   return {
@@ -417,11 +542,17 @@ async function syncExternal(actorId = null) {
     player_roles: { upserts: roleUpserts, softDeletedTotal: roleSoftDeleted },
     club_players: {
       upserts: clubPlayerUpserts,
-      softDeletedTotal: clubPlayerSoftDeleted,
+      softDeletedTotal:
+        clubPlayerSoftDeletedMissing + clubPlayerSoftDeletedArchived,
+      softDeletedArchived: clubPlayerSoftDeletedArchived,
+      softDeletedMissing: clubPlayerSoftDeletedMissing,
     },
     team_players: {
       upserts: teamPlayerUpserts,
-      softDeletedTotal: teamPlayerSoftDeleted,
+      softDeletedTotal:
+        teamPlayerSoftDeletedMissing + teamPlayerSoftDeletedArchived,
+      softDeletedArchived: teamPlayerSoftDeletedArchived,
+      softDeletedMissing: teamPlayerSoftDeletedMissing,
     },
   };
 }
