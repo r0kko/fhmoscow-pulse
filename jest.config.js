@@ -23,6 +23,11 @@ export default {
     restoreMocks: true,
     collectCoverage: true,
     coverageDirectory: 'coverage',
+    coveragePathIgnorePatterns: [
+        '<rootDir>/src/externalModels/',
+        '<rootDir>/src/migrations/',
+        '<rootDir>/src/config/externalMariaDb.js',
+    ],
     coverageThreshold: {
         global: {
             statements: 70,

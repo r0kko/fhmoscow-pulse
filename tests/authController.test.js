@@ -147,6 +147,7 @@ test('login returns next_step when registration not complete', async () => {
     access_token: 'access',
     user: { id: '1', status: 'REGISTRATION_STEP_3' },
     roles: ['USER'],
+    capabilities: { is_staff_only: false },
     next_step: 3,
   });
 });
@@ -173,6 +174,7 @@ test('login returns awaiting_confirmation flag', async () => {
     access_token: 'access',
     user: { id: '2', status: 'AWAITING_CONFIRMATION' },
     roles: ['USER'],
+    capabilities: { is_staff_only: false },
     awaiting_confirmation: true,
   });
 });
@@ -220,6 +222,7 @@ test('me returns sanitized user with status', async () => {
   expect(res.json).toHaveBeenCalledWith({
     user: { id: '1', status: 'AWAITING_CONFIRMATION' },
     roles: ['ADMIN'],
+    capabilities: { is_staff_only: false },
   });
 });
 
@@ -242,6 +245,7 @@ test('refresh returns new tokens when valid', async () => {
     access_token: 'a',
     user: { id: '1' },
     roles: ['ADMIN'],
+    capabilities: { is_staff_only: false },
   });
 });
 
