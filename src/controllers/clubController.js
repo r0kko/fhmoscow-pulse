@@ -25,7 +25,10 @@ export default {
         include === 'teams' ||
         (Array.isArray(include) && include.includes('teams'));
       if (mine === 'true') {
-        const clubs = await clubUserService.listUserClubs(req.user.id, includeTeams);
+        const clubs = await clubUserService.listUserClubs(
+          req.user.id,
+          includeTeams
+        );
         const filtered =
           search || q
             ? clubs.filter((c) =>

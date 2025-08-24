@@ -42,24 +42,28 @@ export default {
         if (!allowedClubIds.length && !allowedTeamIds.length)
           return res.status(403).json({ error: 'Доступ запрещён' });
         if (club_id) {
-          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          if (!allowedClubIds.includes(club_id))
+            return res.status(403).json({ error: 'Доступ запрещён' });
           clubIds = [club_id];
         } else {
           clubIds = allowedClubIds;
         }
-        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+        if (team_id && !allowedTeamIds.includes(team_id))
+          return res.status(403).json({ error: 'Доступ запрещён' });
       } else if (isAdmin) {
         if (club_id) clubIds = [club_id];
       } else {
         if (!allowedClubIds.length && !allowedTeamIds.length)
           return res.status(403).json({ error: 'Доступ запрещён' });
         if (club_id) {
-          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          if (!allowedClubIds.includes(club_id))
+            return res.status(403).json({ error: 'Доступ запрещён' });
           clubIds = [club_id];
         } else {
           clubIds = allowedClubIds;
         }
-        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+        if (team_id && !allowedTeamIds.includes(team_id))
+          return res.status(403).json({ error: 'Доступ запрещён' });
       }
 
       const { rows, count } = await staffService.list({

@@ -12,7 +12,13 @@ const router = express.Router();
 
 router.get('/me', auth, denyStaffOnly, controller.me);
 router.post('/', auth, denyStaffOnly, vehicleCreateRules, controller.create);
-router.patch('/:id', auth, denyStaffOnly, vehicleUpdateRules, controller.update);
+router.patch(
+  '/:id',
+  auth,
+  denyStaffOnly,
+  vehicleUpdateRules,
+  controller.update
+);
 router.delete('/:id', auth, denyStaffOnly, controller.remove);
 
 export default router;
