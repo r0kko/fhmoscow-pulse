@@ -16,16 +16,16 @@ export default {
         withTeams,
         mine,
       } = req.query;
-      // If "mine=true" and user is SPORT_SCHOOL_STAFF, return only user's clubs
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+
+      // If mine=true, always return user's clubs (even for admins with staff role)
+      const includeTeams =
+        withTeams === 'true' ||
+        include === 'teams' ||
+        (Array.isArray(include) && include.includes('teams'));
       if (mine === 'true') {
-        const includeTeams =
-          withTeams === 'true' ||
-          include === 'teams' ||
-          (Array.isArray(include) && include.includes('teams'));
-        const clubs = await clubUserService.listUserClubs(
-          req.user.id,
-          includeTeams
-        );
+        const clubs = await clubUserService.listUserClubs(req.user.id, includeTeams);
         const filtered =
           search || q
             ? clubs.filter((c) =>
@@ -37,10 +37,12 @@ export default {
           total: filtered.length,
         });
       }
-      const includeTeams =
-        withTeams === 'true' ||
-        include === 'teams' ||
-        (Array.isArray(include) && include.includes('teams'));
+
+      // Staff without mine=true — forbid; Admin without mine — full list
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+      }
+
       const { rows, count } = await clubService.list({
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),

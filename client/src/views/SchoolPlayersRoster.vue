@@ -9,13 +9,20 @@ const error = ref('');
 const season = ref({ id: route.params.seasonId, name: '' });
 const year = computed(() => Number(route.params.year));
 const players = ref([]);
+const staff = ref([]);
 const clubName = ref('');
 const q = ref('');
+const activeTab = ref('players'); // 'players' | 'staff'
 const teamId = computed(() => route.query.team_id || '');
 const clubId = computed(() => route.query.club_id || '');
 
 onMounted(async () => {
-  await Promise.all([loadSeasonName(), loadRoster(), loadClubName()]);
+  await Promise.all([
+    loadSeasonName(),
+    loadRoster(),
+    loadStaff(),
+    loadClubName(),
+  ]);
 });
 
 async function loadSeasonName() {
@@ -63,6 +70,29 @@ async function loadRoster() {
   }
 }
 
+async function loadStaff() {
+  loading.value = true;
+  error.value = '';
+  try {
+    const params = new URLSearchParams();
+    params.set('page', '1');
+    params.set('limit', '500');
+    params.set('mine', 'true');
+    params.set('season', season.value.id);
+    if (clubId.value) params.set('club_id', clubId.value);
+    if (teamId.value) params.set('team_id', teamId.value);
+    params.append('include', 'teams');
+    const res = await apiFetch(`/staff?${params.toString()}`);
+    staff.value = res.staff || [];
+  } catch (e) {
+    // staff fetch errors should not break the page
+    console.warn('Staff load failed', e);
+    staff.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
 function formatDate(val) {
   return val ? new Date(val).toLocaleDateString('ru-RU') : '-';
 }
@@ -96,6 +126,14 @@ const filteredPlayers = computed(() => {
         : '';
     return name.includes(term) || jersey.includes(term);
   });
+});
+
+const filteredStaff = computed(() => {
+  const term = (q.value || '').toString().trim().toLowerCase();
+  if (!term) return staff.value;
+  return staff.value.filter((s) =>
+    (s.full_name || '').toLowerCase().includes(term)
+  );
 });
 
 const goalies = computed(() =>
@@ -135,7 +173,7 @@ const forwards = computed(() =>
           <form class="search-form" @submit.prevent>
             <div class="search-control">
               <label for="rosterSearch" class="form-label small text-muted mb-1"
-                >Поиск по ФИО или номеру</label
+                >Поиск по ФИО (игроки и тренеры) или номеру</label
               >
               <div class="input-group">
                 <span class="input-group-text" aria-hidden="true">
@@ -161,7 +199,7 @@ const forwards = computed(() =>
                 </button>
               </div>
               <div id="rosterSearchHelp" class="form-text">
-                Найдите игрока по фамилии или номеру
+                Глобальный поиск по составу команды: фамилия/имя, номер
               </div>
             </div>
           </form>
@@ -198,7 +236,39 @@ const forwards = computed(() =>
         </div>
       </div>
 
-      <div class="stacked-roles">
+      <!-- Tabs: Игроки / Тренерский штаб -->
+      <ul class="nav nav-pills tab-selector mb-3" role="tablist">
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            :class="{ active: activeTab === 'players' }"
+            role="tab"
+            :aria-selected="activeTab === 'players'"
+            aria-controls="players-tab"
+            @click="activeTab = 'players'"
+          >
+            Игроки ({{ filteredPlayers.length }})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            :class="{ active: activeTab === 'staff' }"
+            role="tab"
+            :aria-selected="activeTab === 'staff'"
+            aria-controls="staff-tab"
+            @click="activeTab = 'staff'"
+          >
+            Тренерский штаб ({{ filteredStaff.length }})
+          </button>
+        </li>
+      </ul>
+
+      <div
+        v-show="activeTab === 'players'"
+        id="players-tab"
+        class="stacked-roles"
+      >
         <!-- Вратари -->
         <div class="card section-card tile fade-in shadow-sm mb-3">
           <div class="card-body">
@@ -340,6 +410,44 @@ const forwards = computed(() =>
           </div>
         </div>
       </div>
+
+      <!-- Staff tab content -->
+      <div
+        v-show="activeTab === 'staff'"
+        id="staff-tab"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
+        <div class="card-body">
+          <h3 class="h5 mb-3">Тренерский штаб ({{ filteredStaff.length }})</h3>
+          <div v-if="error" class="alert alert-danger">{{ error }}</div>
+          <div v-else-if="loading" class="text-center py-3">
+            <div class="spinner-border spinner-brand" role="status"></div>
+          </div>
+          <ul v-else class="list-group list-group-flush">
+            <li
+              v-for="s in filteredStaff"
+              :key="s.id"
+              class="list-group-item d-flex align-items-start gap-3"
+            >
+              <div
+                class="avatar badge bg-secondary-subtle text-dark fw-semibold"
+                aria-hidden="true"
+              >
+                <i class="bi bi-person-workspace"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold">{{ s.full_name || '—' }}</div>
+                <div class="text-muted small">
+                  {{ formatDate(s.date_of_birth) || '—' }}
+                </div>
+              </div>
+            </li>
+            <li v-if="!filteredStaff.length" class="list-group-item text-muted">
+              Нет тренеров.
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -398,5 +506,18 @@ export default { name: 'SchoolPlayersRosterView' };
 }
 .search-form .input-group {
   width: 100%;
+}
+
+.tab-selector .nav-link {
+  border-radius: 0.75rem;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
 }
 </style>

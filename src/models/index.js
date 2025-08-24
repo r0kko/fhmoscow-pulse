@@ -79,6 +79,10 @@ import TeamPlayer from './teamPlayer.js';
 import AvailabilityType from './availabilityType.js';
 import UserAvailability from './userAvailability.js';
 import Club from './club.js';
+import Staff from './staff.js';
+import StaffCategory from './staffCategory.js';
+import ClubStaff from './clubStaff.js';
+import TeamStaff from './teamStaff.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -125,6 +129,28 @@ Season.hasMany(ClubPlayer, { foreignKey: 'season_id' });
 ClubPlayer.belongsTo(Season, { foreignKey: 'season_id' });
 Season.hasMany(TeamPlayer, { foreignKey: 'season_id' });
 TeamPlayer.belongsTo(Season, { foreignKey: 'season_id' });
+
+/* staff and memberships (mirror players) */
+Staff.belongsToMany(Team, { through: TeamStaff, foreignKey: 'staff_id' });
+Team.belongsToMany(Staff, { through: TeamStaff, foreignKey: 'team_id' });
+Team.hasMany(TeamStaff, { foreignKey: 'team_id' });
+TeamStaff.belongsTo(Team, { foreignKey: 'team_id' });
+Staff.hasMany(TeamStaff, { foreignKey: 'staff_id' });
+TeamStaff.belongsTo(Staff, { foreignKey: 'staff_id' });
+Club.hasMany(ClubStaff, { foreignKey: 'club_id' });
+ClubStaff.belongsTo(Club, { foreignKey: 'club_id' });
+Staff.belongsToMany(Club, { through: ClubStaff, foreignKey: 'staff_id' });
+Club.belongsToMany(Staff, { through: ClubStaff, foreignKey: 'club_id' });
+Staff.hasMany(ClubStaff, { foreignKey: 'staff_id' });
+ClubStaff.belongsTo(Staff, { foreignKey: 'staff_id' });
+StaffCategory.hasMany(ClubStaff, { foreignKey: 'category_id' });
+ClubStaff.belongsTo(StaffCategory, { foreignKey: 'category_id' });
+ClubStaff.hasMany(TeamStaff, { foreignKey: 'club_staff_id' });
+TeamStaff.belongsTo(ClubStaff, { foreignKey: 'club_staff_id' });
+Season.hasMany(ClubStaff, { foreignKey: 'season_id' });
+ClubStaff.belongsTo(Season, { foreignKey: 'season_id' });
+Season.hasMany(TeamStaff, { foreignKey: 'season_id' });
+TeamStaff.belongsTo(Season, { foreignKey: 'season_id' });
 
 /* лог ↔ пользователь (опциональная связь) */
 User.hasMany(Log, { foreignKey: 'user_id' });
@@ -500,6 +526,10 @@ export {
   PlayerRole,
   ClubPlayer,
   TeamPlayer,
+  Staff,
+  StaffCategory,
+  ClubStaff,
+  TeamStaff,
   Course,
   UserCourse,
   AvailabilityType,

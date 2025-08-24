@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import bankAccountController from '../controllers/bankAccountController.js';
 import selfController from '../controllers/bankAccountSelfController.js';
 import { bankAccountRules } from '../validators/bankAccountValidators.js';
+import denyStaffOnly from '../middlewares/denyStaffOnly.js';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const router = express.Router();
  *       200:
  *         description: Bank account info
  */
-router.get('/me', auth, bankAccountController.me);
+router.get('/me', auth, denyStaffOnly, bankAccountController.me);
 
 /**
  * @swagger
@@ -31,7 +32,7 @@ router.get('/me', auth, bankAccountController.me);
  *       201:
  *         description: Created
  */
-router.post('/', auth, bankAccountRules, selfController.create);
+router.post('/', auth, denyStaffOnly, bankAccountRules, selfController.create);
 
 /**
  * @swagger
@@ -44,6 +45,6 @@ router.post('/', auth, bankAccountRules, selfController.create);
  *       204:
  *         description: Removed
  */
-router.delete('/', auth, selfController.remove);
+router.delete('/', auth, denyStaffOnly, selfController.remove);
 
 export default router;

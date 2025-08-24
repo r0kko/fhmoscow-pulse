@@ -72,12 +72,13 @@ async function checkSchoolLinks() {
   }
 }
 
-const workSections = computed(() =>
-  (hasCourse.value
+const workSections = computed(() => {
+  const base = hasCourse.value
     ? [qualificationSection, ...baseWorkSections]
-    : baseWorkSections
-  ).filter((s) => !s.referee || isReferee.value)
-);
+    : baseWorkSections;
+  const filtered = base.filter((s) => !s.referee || isReferee.value);
+  return isStaffOnly.value ? filtered.filter((s) => Boolean(s.to)) : filtered;
+});
 
 // Раздел управления спортивной школой — формируется только для роли сотрудника СШ
 const schoolSections = computed(() =>
@@ -101,11 +102,16 @@ const schoolSections = computed(() =>
     : []
 );
 
-const docsSections = [
-  { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
-  { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
-  { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' },
-];
+const docsSections = computed(() => {
+  const list = [
+    { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
+    { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
+    { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' },
+  ];
+  return isStaffOnly.value
+    ? list.filter((i) => !['Документы', 'Обращения'].includes(i.title))
+    : list;
+});
 
 const adminRoles = [
   'ADMIN',
@@ -120,6 +126,12 @@ const isReferee = computed(() =>
   auth.roles.some((r) => refereeRoles.includes(r))
 );
 const isStaff = computed(() => auth.roles.some((r) => staffRoles.includes(r)));
+const isStaffOnly = computed(() => {
+  const roles = auth.roles || [];
+  const hasStaff = roles.includes('SPORT_SCHOOL_STAFF');
+  if (!hasStaff) return false;
+  return roles.every((r) => r === 'SPORT_SCHOOL_STAFF');
+});
 const isBrigadeOnly = computed(
   () =>
     auth.roles.includes('BRIGADE_REFEREE') && !auth.roles.includes('REFEREE')
@@ -275,7 +287,7 @@ async function loadUpcoming() {
         </div>
       </div>
 
-      <div class="card section-card mb-2">
+      <div v-if="!isStaffOnly" class="card section-card mb-2">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
           <div v-edge-fade class="scroll-container">

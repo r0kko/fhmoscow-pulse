@@ -1,6 +1,7 @@
 import express from 'express';
 
 import auth from '../middlewares/auth.js';
+import denyStaffOnly from '../middlewares/denyStaffOnly.js';
 import controller from '../controllers/vehicleController.js';
 import {
   vehicleCreateRules,
@@ -9,9 +10,9 @@ import {
 
 const router = express.Router();
 
-router.get('/me', auth, controller.me);
-router.post('/', auth, vehicleCreateRules, controller.create);
-router.patch('/:id', auth, vehicleUpdateRules, controller.update);
-router.delete('/:id', auth, controller.remove);
+router.get('/me', auth, denyStaffOnly, controller.me);
+router.post('/', auth, denyStaffOnly, vehicleCreateRules, controller.create);
+router.patch('/:id', auth, denyStaffOnly, vehicleUpdateRules, controller.update);
+router.delete('/:id', auth, denyStaffOnly, controller.remove);
 
 export default router;

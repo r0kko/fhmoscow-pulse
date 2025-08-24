@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import InfoField from '../components/InfoField.vue';
 import AddVehicleModal from '../components/AddVehicleModal.vue';
+import { auth } from '../auth.js';
 
 const noDataPlaceholder = '—';
 
@@ -28,6 +29,13 @@ const maskedAccountNumber = computed(() => {
   return '···· ' + (num.length > 4 ? num.slice(-4) : num);
 });
 const innDisplay = computed(() => inn.value?.number || 'Отсутствует');
+const isStaffOnly = computed(() => {
+  const roles = auth.roles || [];
+  const hasStaff = roles.includes('SPORT_SCHOOL_STAFF');
+  if (!hasStaff) return false;
+  return roles.every((r) => r === 'SPORT_SCHOOL_STAFF');
+});
+
 const sectionNav = computed(() =>
   [
     { id: 'documents', label: 'Документы', show: true },
@@ -36,23 +44,21 @@ const sectionNav = computed(() =>
       id: 'bank',
       label: 'Банк',
       show:
-        bankAccount.value !== undefined ||
-        bankAccountError.value ||
-        loading.bankAccount,
+        !isStaffOnly.value &&
+        (bankAccount.value !== undefined ||
+          bankAccountError.value ||
+          loading.bankAccount),
     },
     {
       id: 'addresses',
       label: 'Адреса',
       show:
-        registrationAddress.value !== undefined ||
-        residenceAddress.value !== undefined ||
-        loading.addresses,
+        !isStaffOnly.value &&
+        (registrationAddress.value !== undefined ||
+          residenceAddress.value !== undefined ||
+          loading.addresses),
     },
-    {
-      id: 'vehicles',
-      label: 'Транспорт',
-      show: true,
-    },
+    { id: 'vehicles', label: 'Транспорт', show: !isStaffOnly.value },
   ].filter((s) => s.show)
 );
 const loading = reactive({
@@ -251,9 +257,13 @@ onMounted(() => {
   fetchInn();
   fetchTaxation();
   fetchSnils();
-  fetchBankAccount();
-  fetchAddresses();
-  fetchVehicles();
+  if (!isStaffOnly.value) {
+    fetchBankAccount();
+    fetchAddresses();
+  }
+  if (!isStaffOnly.value) {
+    fetchVehicles();
+  }
 });
 </script>
 
@@ -415,9 +425,10 @@ onMounted(() => {
             </section>
             <section
               v-if="
-                bankAccount !== undefined ||
-                bankAccountError ||
-                loading.bankAccount
+                !isStaffOnly &&
+                (bankAccount !== undefined ||
+                  bankAccountError ||
+                  loading.bankAccount)
               "
               id="bank"
               class="mb-4"
@@ -462,9 +473,10 @@ onMounted(() => {
             </section>
             <section
               v-if="
-                registrationAddress !== undefined ||
-                residenceAddress !== undefined ||
-                loading.addresses
+                !isStaffOnly &&
+                (registrationAddress !== undefined ||
+                  residenceAddress !== undefined ||
+                  loading.addresses)
               "
               id="addresses"
               class="mb-4"
@@ -512,7 +524,7 @@ onMounted(() => {
                 </div>
               </div>
             </section>
-            <section id="vehicles" class="mb-4">
+            <section v-if="!isStaffOnly" id="vehicles" class="mb-4">
               <div class="card section-card tile fade-in shadow-sm">
                 <div class="card-body">
                   <div class="d-flex align-items-center mb-3">
@@ -590,7 +602,7 @@ onMounted(() => {
                 </div>
               </div>
             </section>
-            <section class="mb-4">
+            <section v-if="!isStaffOnly" class="mb-4">
               <div class="section-card p-3 fade-in">
                 <div class="d-flex align-items-start">
                   <i class="bi bi-globe fs-4 me-3"></i>

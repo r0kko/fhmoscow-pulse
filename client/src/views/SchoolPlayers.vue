@@ -12,6 +12,7 @@ const summary = ref([]); // single club: [{ id, name, years: [...] }]
 const selectedSeasonId = ref('');
 const summariesByClub = ref([]); // multi-club: [{ club: {id,name}, seasons: [...] }]
 const selectedSeasonByClub = ref({}); // { [clubId]: seasonId }
+const canSee = ref(true);
 
 const hasMultipleClubs = computed(() => clubs.value.length > 1);
 const seasons = computed(() => summary.value);
@@ -20,6 +21,8 @@ const activeSeason = computed(
 );
 
 onMounted(async () => {
+  await checkAccess();
+  if (!canSee.value) return;
   await loadClubs();
   await loadSummary();
 });
@@ -60,6 +63,10 @@ async function loadSummary() {
   loading.value = true;
   error.value = '';
   try {
+    if (!canSee.value) {
+      summariesByClub.value = [];
+      return;
+    }
     if ((clubs.value || []).length) {
       const results = await Promise.all(
         clubs.value.map(async (c) => {
@@ -82,7 +89,7 @@ async function loadSummary() {
       // clear single
       summary.value = [];
     } else {
-      // No clubs assigned: fallback to user's teams overview
+      // No clubs: require team assignment; otherwise stop early
       const p = new URLSearchParams();
       p.set('mine', 'true');
       const r = await apiFetch(`/players/season-teams?${p.toString()}`);
@@ -96,9 +103,24 @@ async function loadSummary() {
       selectedSeasonByClub.value = { mine: (active || seasons[0])?.id || '' };
     }
   } catch (e) {
-    error.value = e.message || 'Не удалось загрузить данные по сезонам';
+    if (String(e?.message || '').includes('403')) {
+      // Friendly message for forbidden
+      error.value =
+        'Вам пока не назначены клубы или команды. Обратитесь к администратору спортивной школы.';
+    } else {
+      error.value = e.message || 'Не удалось загрузить данные по сезонам';
+    }
   } finally {
     loading.value = false;
+  }
+}
+
+async function checkAccess() {
+  try {
+    const data = await apiFetch('/users/me/sport-schools');
+    canSee.value = Boolean(data?.has_club || data?.has_team);
+  } catch (_e) {
+    canSee.value = false;
   }
 }
 </script>

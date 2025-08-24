@@ -7,6 +7,7 @@ import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
 import { COOKIE_NAME } from '../config/auth.js';
 import { UserStatus } from '../models/index.js';
 import { sendError } from '../utils/api.js';
+import { isStaffOnly } from '../utils/roles.js';
 
 /* ---------- controller ---------------------------------------------------- */
 export default {
@@ -28,6 +29,7 @@ export default {
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias
       );
+      const staffOnly = isStaffOnly(roles);
 
       setRefreshCookie(res, refreshToken);
 
@@ -43,6 +45,9 @@ export default {
         access_token: accessToken,
         user: userMapper.toPublic(updated),
         roles,
+        capabilities: {
+          is_staff_only: staffOnly,
+        },
         ...extra,
       });
     } catch (err) {
@@ -73,7 +78,14 @@ export default {
     const roles = (await user.getRoles({ attributes: ['alias'] })).map(
       (r) => r.alias
     );
-    return res.json({ user: userMapper.toPublic(user), roles });
+    const staffOnly = isStaffOnly(roles);
+    return res.json({
+      user: userMapper.toPublic(user),
+      roles,
+      capabilities: {
+        is_staff_only: staffOnly,
+      },
+    });
   },
 
   /* POST /auth/refresh */
@@ -95,6 +107,7 @@ export default {
       const roles = (await user.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias
       );
+      const staffOnly = isStaffOnly(roles);
 
       setRefreshCookie(res, refreshToken);
 
@@ -102,6 +115,9 @@ export default {
         access_token: accessToken,
         user: userMapper.toPublic(user),
         roles,
+        capabilities: {
+          is_staff_only: staffOnly,
+        },
       });
     } catch (err) {
       return sendError(res, err, 401);

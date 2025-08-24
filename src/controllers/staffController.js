@@ -1,0 +1,100 @@
+import staffService from '../services/staffService.js';
+import clubService from '../services/clubService.js';
+import teamService from '../services/teamService.js';
+import staffMapper from '../mappers/staffMapper.js';
+import { isExternalDbAvailable } from '../config/externalMariaDb.js';
+import { sendError } from '../utils/api.js';
+
+export default {
+  async list(req, res) {
+    try {
+      const {
+        page = '1',
+        limit = '20',
+        search,
+        q,
+        status,
+        include,
+        withTeams,
+        withClubs,
+        season,
+        club_id,
+        team_id,
+        mine,
+      } = req.query;
+
+      const includeTeams =
+        withTeams === 'true' ||
+        include === 'teams' ||
+        (Array.isArray(include) && include.includes('teams'));
+      const includeClubs =
+        withClubs === 'true' ||
+        include === 'clubs' ||
+        (Array.isArray(include) && include.includes('clubs'));
+
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = scope.allowedClubIds || [];
+      const allowedTeamIds = scope.allowedTeamIds || [];
+      let clubIds = [];
+
+      if (mine === 'true') {
+        if (!allowedClubIds.length && !allowedTeamIds.length)
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+      } else if (isAdmin) {
+        if (club_id) clubIds = [club_id];
+      } else {
+        if (!allowedClubIds.length && !allowedTeamIds.length)
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+      }
+
+      const { rows, count } = await staffService.list({
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search: search || q || undefined,
+        status,
+        includeTeams,
+        includeClubs,
+        clubIds,
+        seasonId: season || undefined,
+        teamId: team_id || undefined,
+      });
+      return res.json({ staff: staffMapper.toPublicArray(rows), total: count });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async sync(req, res) {
+    try {
+      if (!isExternalDbAvailable()) {
+        return res.status(503).json({ error: 'external_unavailable' });
+      }
+      // Keep related entities in sync first
+      const clubStats = await clubService.syncExternal(req.user?.id);
+      const teamStats = await teamService.syncExternal(req.user?.id);
+      const stats = await staffService.syncExternal(req.user?.id);
+      const { rows, count } = await staffService.list({ page: 1, limit: 100 });
+      return res.json({
+        stats: { clubs: clubStats, teams: teamStats, ...stats },
+        staff: staffMapper.toPublicArray(rows),
+        total: count,
+      });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+};

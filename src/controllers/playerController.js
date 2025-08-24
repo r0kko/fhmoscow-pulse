@@ -3,7 +3,6 @@ import playerService, {
   seasonTeamSummaries,
 } from '../services/playerService.js';
 import { PlayerRole, ClubPlayer } from '../models/index.js';
-import clubUserService from '../services/clubUserService.js';
 import teamService from '../services/teamService.js';
 import clubService from '../services/clubService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
@@ -14,25 +13,42 @@ export default {
   async seasonSummary(req, res) {
     try {
       const { mine, club_id } = req.query;
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = scope.allowedClubIds || [];
+      const allowedTeamIds = scope.allowedTeamIds || [];
       let clubIds = [];
-      const roles = req.user?.Roles?.map((r) => r.alias) || [];
-      const isAdmin = roles.includes('ADMIN');
-      if (
-        mine === 'true' ||
-        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
-      ) {
-        const clubs = await clubUserService.listUserClubs(req.user.id);
-        clubIds = clubs.map((c) => c.id);
-      }
-      if (club_id) clubIds = [club_id];
-
-      // Restrict by teams the user is explicitly assigned to (if any)
       let teamIds = [];
-      if (!isAdmin) {
-        const teams = await teamService
-          .listUserTeams(req.user.id)
-          .catch(() => []);
-        teamIds = (teams || []).map((t) => t.id);
+
+      if (mine === 'true') {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        // If club filter is provided, ensure it's within personal scope
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) {
+            return res.status(403).json({ error: 'Доступ запрещён' });
+          }
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        teamIds = allowedTeamIds;
+      } else if (isAdmin) {
+        if (club_id) clubIds = [club_id];
+      } else {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) {
+            return res.status(403).json({ error: 'Доступ запрещён' });
+          }
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        teamIds = allowedTeamIds;
       }
 
       const rows = await seasonBirthYearCounts({ clubIds, teamIds });
@@ -59,19 +75,38 @@ export default {
   },
   async facets(req, res) {
     try {
-      const { search, q, season, club_id, team_id, birth_year, mine } =
-        req.query;
+      const { search, q, season, club_id, team_id, birth_year, mine } = req.query;
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = scope.allowedClubIds || [];
+      const allowedTeamIds = scope.allowedTeamIds || [];
       let clubIds = [];
-      const roles = req.user?.Roles?.map((r) => r.alias) || [];
-      const isAdmin = roles.includes('ADMIN');
-      if (
-        mine === 'true' ||
-        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
-      ) {
-        const clubs = await clubUserService.listUserClubs(req.user.id);
-        clubIds = clubs.map((c) => c.id);
+
+      if (mine === 'true') {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+      } else if (isAdmin) {
+        if (club_id) clubIds = [club_id];
+      } else {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
       }
-      if (club_id) clubIds = [club_id];
 
       const facets = await playerService.facets({
         search: search || q || undefined,
@@ -88,25 +123,37 @@ export default {
   async seasonTeamSummary(req, res) {
     try {
       const { mine, club_id } = req.query;
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = scope.allowedClubIds || [];
+      const allowedTeamIds = scope.allowedTeamIds || [];
       let clubIds = [];
-      const roles = req.user?.Roles?.map((r) => r.alias) || [];
-      const isAdmin = roles.includes('ADMIN');
-      if (
-        mine === 'true' ||
-        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
-      ) {
-        const clubs = await clubUserService.listUserClubs(req.user.id);
-        clubIds = clubs.map((c) => c.id);
-      }
-      if (club_id) clubIds = [club_id];
-
-      // Restrict by teams the user is explicitly assigned to (if any)
       let teamIds = [];
-      if (!isAdmin) {
-        const teams = await teamService
-          .listUserTeams(req.user.id)
-          .catch(() => []);
-        teamIds = (teams || []).map((t) => t.id);
+
+      if (mine === 'true') {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        teamIds = allowedTeamIds;
+      } else if (isAdmin) {
+        if (club_id) clubIds = [club_id];
+      } else {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        teamIds = allowedTeamIds;
       }
 
       const rows = await seasonTeamSummaries({ clubIds, teamIds });
@@ -170,26 +217,32 @@ export default {
         include === 'clubs' ||
         (Array.isArray(include) && include.includes('clubs'));
 
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = scope.allowedClubIds || [];
+      const allowedTeamIds = scope.allowedTeamIds || [];
       let clubIds = [];
-      // If mine=true or user is SPORT_SCHOOL_STAFF (non-admin) with no club filter, limit to user's clubs
-      const roles = req.user?.Roles?.map((r) => r.alias) || [];
-      const isAdmin = roles.includes('ADMIN');
-      if (
-        mine === 'true' ||
-        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
-      ) {
-        const clubs = await clubUserService.listUserClubs(req.user.id);
-        clubIds = clubs.map((c) => c.id);
-      }
-      if (club_id) clubIds = [club_id];
 
-      // Restrict to teams explicitly assigned to the user (if any)
-      let allowedTeamIds = [];
-      if (!isAdmin) {
-        const teams = await teamService
-          .listUserTeams(req.user.id)
-          .catch(() => []);
-        allowedTeamIds = (teams || []).map((t) => t.id);
+      if (mine === 'true') {
+        if (!allowedClubIds.length && !allowedTeamIds.length) return res.status(403).json({ error: 'Доступ запрещён' });
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+      } else if (isAdmin) {
+        if (club_id) clubIds = [club_id];
+      } else {
+        if (!allowedClubIds.length && !allowedTeamIds.length) return res.status(403).json({ error: 'Доступ запрещён' });
+        if (club_id) {
+          if (!allowedClubIds.includes(club_id)) return res.status(403).json({ error: 'Доступ запрещён' });
+          clubIds = [club_id];
+        } else {
+          clubIds = allowedClubIds;
+        }
+        if (team_id && !allowedTeamIds.includes(team_id)) return res.status(403).json({ error: 'Доступ запрещён' });
       }
 
       const { rows, count } = await playerService.list({

@@ -2,6 +2,7 @@ import express from 'express';
 
 import auth from '../middlewares/auth.js';
 import taxationController from '../controllers/taxationController.js';
+import denyStaffOnly from '../middlewares/denyStaffOnly.js';
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ const router = express.Router();
  *       200:
  *         description: Taxation details
  */
-router.get('/me', auth, taxationController.me);
+router.get('/me', auth, denyStaffOnly, taxationController.me);
 
 /**
  * @swagger
@@ -29,7 +30,7 @@ router.get('/me', auth, taxationController.me);
  *       200:
  *         description: Validation result
  */
-router.post('/me/check', auth, taxationController.check);
+router.post('/me/check', auth, denyStaffOnly, taxationController.check);
 
 /**
  * @swagger
@@ -42,6 +43,6 @@ router.post('/me/check', auth, taxationController.check);
  *       200:
  *         description: Updated taxation
  */
-router.post('/me', auth, taxationController.update);
+router.post('/me', auth, denyStaffOnly, taxationController.update);
 
 export default router;

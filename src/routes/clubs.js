@@ -3,6 +3,7 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/clubController.js';
+import accessScope from '../middlewares/accessScope.js';
 import clubStaffController from '../controllers/clubStaffController.js';
 import { addClubStaffRules } from '../validators/clubStaffValidators.js';
 
@@ -20,6 +21,7 @@ router.get(
   '/',
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
   controller.list
 );
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);

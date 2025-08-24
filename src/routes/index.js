@@ -53,6 +53,7 @@ import teamsRouter from './teams.js';
 import clubsRouter from './clubs.js';
 import matchesRouter from './matches.js';
 import playersRouter from './players.js';
+import staffRouter from './staff.js';
 import sportSchoolsRouter from './sportSchools.js';
 
 const router = express.Router();
@@ -106,6 +107,7 @@ router.use('/teams', teamsRouter);
 router.use('/clubs', clubsRouter);
 router.use('/matches', matchesRouter);
 router.use('/players', playersRouter);
+router.use('/staff', staffRouter);
 router.use('/sport-schools', sportSchoolsRouter);
 
 /**

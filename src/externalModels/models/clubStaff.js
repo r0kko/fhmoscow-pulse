@@ -12,6 +12,7 @@ ClubStaff.init(
     photo_id: { type: DataTypes.INTEGER },
     category_id: { type: DataTypes.INTEGER },
     season_id: { type: DataTypes.INTEGER },
+    object_status: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,
