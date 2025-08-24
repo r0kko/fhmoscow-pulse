@@ -101,6 +101,11 @@ const schoolSections = computed(() =>
                 icon: 'bi-people',
                 to: '/school-players',
               },
+              {
+                title: 'Стадионы',
+                icon: 'bi-geo-alt',
+                to: '/school-grounds',
+              },
             ]
           : []),
       ]
@@ -270,7 +275,10 @@ async function loadUpcoming() {
           </div>
         </div>
       </div>
-      <div v-if="preparationSections.length > 0" class="card section-card mb-2">
+      <div
+        v-if="preparationSections.length > 0"
+        class="card section-card mb-2 menu-section"
+      >
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Подготовка к сезону</h2>
           <div v-edge-fade class="scroll-container">
@@ -292,7 +300,7 @@ async function loadUpcoming() {
         </div>
       </div>
 
-      <div v-if="!isStaffOnly" class="card section-card mb-2">
+      <div v-if="!isStaffOnly" class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
           <div v-edge-fade class="scroll-container">
@@ -314,7 +322,7 @@ async function loadUpcoming() {
         </div>
       </div>
 
-      <div v-if="isStaff" class="card section-card mb-2">
+      <div v-if="isStaff" class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Управление спортивной школой</h2>
           <div v-edge-fade class="scroll-container">
@@ -336,7 +344,7 @@ async function loadUpcoming() {
         </div>
       </div>
 
-      <div class="card section-card mb-2">
+      <div class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Документы и формальности</h2>
           <div v-edge-fade class="scroll-container">
@@ -434,5 +442,15 @@ async function loadUpcoming() {
     'Apple Color Emoji',
     'Segoe UI Emoji',
     'Noto Color Emoji';
+}
+</style>
+<style scoped>
+/* Mobile: make tile groups full-bleed only on Home */
+@media (max-width: 575.98px) {
+  .menu-section {
+    margin-left: calc(var(--bs-gutter-x) * -0.5);
+    margin-right: calc(var(--bs-gutter-x) * -0.5);
+    border-radius: 0; /* flush to screen edges */
+  }
 }
 </style>

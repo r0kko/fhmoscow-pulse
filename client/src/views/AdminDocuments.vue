@@ -266,6 +266,13 @@ function openCreate() {
   createModal.value.open();
 }
 
+function downloadName(d) {
+  const fio = `${d.recipient.lastName} ${d.recipient.firstName}${
+    d.recipient.patronymic ? ` ${d.recipient.patronymic}` : ''
+  }`.trim();
+  return `${d.documentType?.name || 'Документ'} · ${fio}`;
+}
+
 async function updateSignType(doc) {
   try {
     await apiFetch(`/documents/${doc.id}`, {
@@ -419,6 +426,8 @@ function onCreated() {
                           class="btn btn-sm btn-outline-secondary"
                           target="_blank"
                           rel="noopener"
+                          :download="downloadName(d)"
+                          :aria-label="`Скачать документ ${downloadName(d)}`"
                           title="Скачать"
                         >
                           <i class="bi bi-download" aria-hidden="true"></i>
@@ -532,6 +541,8 @@ function onCreated() {
                       class="btn btn-sm btn-outline-secondary"
                       target="_blank"
                       rel="noopener"
+                      :download="downloadName(d)"
+                      :aria-label="`Скачать документ ${downloadName(d)}`"
                       title="Скачать"
                     >
                       <i class="bi bi-download" aria-hidden="true"></i>

@@ -85,6 +85,8 @@ import Staff from './staff.js';
 import StaffCategory from './staffCategory.js';
 import ClubStaff from './clubStaff.js';
 import TeamStaff from './teamStaff.js';
+import GroundClub from './groundClub.js';
+import GroundTeam from './groundTeam.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -109,6 +111,12 @@ Club.belongsToMany(User, { through: UserClub, foreignKey: 'club_id' });
 /* clubs ↔ teams */
 Club.hasMany(Team, { foreignKey: 'club_id' });
 Team.belongsTo(Club, { foreignKey: 'club_id' });
+
+/* grounds ↔ clubs/teams */
+Ground.belongsToMany(Club, { through: GroundClub, foreignKey: 'ground_id' });
+Club.belongsToMany(Ground, { through: GroundClub, foreignKey: 'club_id' });
+Ground.belongsToMany(Team, { through: GroundTeam, foreignKey: 'ground_id' });
+Team.belongsToMany(Ground, { through: GroundTeam, foreignKey: 'team_id' });
 
 /* players and memberships */
 Player.belongsToMany(Team, { through: TeamPlayer, foreignKey: 'player_id' });
@@ -560,6 +568,8 @@ export {
   StaffCategory,
   ClubStaff,
   TeamStaff,
+  GroundClub,
+  GroundTeam,
   Course,
   UserCourse,
   AvailabilityType,

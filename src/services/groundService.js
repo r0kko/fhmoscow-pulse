@@ -1,6 +1,6 @@
-import { Op } from 'sequelize';
+import { Op, col, where as sqlWhere } from 'sequelize';
 
-import { Ground, Address } from '../models/index.js';
+import * as models from '../models/index.js';
 import { Stadium as ExtStadium } from '../externalModels/index.js';
 import logger from '../../logger.js';
 import ServiceError from '../errors/ServiceError.js';
@@ -8,21 +8,80 @@ import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
 
 import * as dadataService from './dadataService.js';
 
+// Local aliases for models to satisfy linter and ease usage
+const { Ground, Address, Club, Team } = models;
+
 async function listAll(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
   const limit = Math.max(1, parseInt(options.limit || 20, 10));
   const offset = (page - 1) * limit;
+
+  const where = {};
+  const include = [];
+
+  // Always include related entities for UI display
+  include.push({ model: Address, required: false });
+  if (Club)
+    include.push({
+      model: Club,
+      attributes: ['id', 'name'],
+      through: { attributes: [] },
+      required: options.withClubs === true,
+    });
+  if (Team)
+    include.push({
+      model: Team,
+      attributes: ['id', 'name', 'birth_year', 'club_id'],
+      through: { attributes: [] },
+      required: options.withTeams === true,
+    });
+
+  // Search by name and/or address.result
+  const term = (options.search || '').trim();
+  if (term) {
+    where[Op.or] = [{ name: { [Op.iLike]: `%${term}%` } }];
+    where[Op.or].push(
+      sqlWhere(col('Address.result'), { [Op.iLike]: `%${term}%` })
+    );
+  }
+
+  // Address presence filters
+  if (options.hasAddress === true) where.address_id = { [Op.ne]: null };
+  if (options.withoutAddress === true) where.address_id = null;
+
+  // Imported (from external system)
+  if (options.imported === true) where.external_id = { [Op.ne]: null };
+
+  // Yandex Maps URL present
+  if (options.withYandex === true) where.yandex_url = { [Op.ne]: null };
+
+  // Sorting
+  const orderBy = options.orderBy === 'created_at' ? 'createdAt' : 'name';
+  const orderDir =
+    String(options.order || 'ASC').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
   return Ground.findAndCountAll({
-    include: [{ model: Address }],
+    where,
+    include,
+    distinct: true,
     limit,
     offset,
-    order: [['name', 'ASC']],
+    order: [[orderBy, orderDir]],
+    subQuery: false,
   });
 }
 
 async function getById(id) {
   const ground = await Ground.findByPk(id, {
-    include: [{ model: Address }],
+    include: [
+      { model: Address },
+      { model: Club, attributes: ['id', 'name'], through: { attributes: [] } },
+      {
+        model: Team,
+        attributes: ['id', 'name', 'birth_year', 'club_id'],
+        through: { attributes: [] },
+      },
+    ],
   });
   if (!ground) throw new ServiceError('ground_not_found', 404);
   return ground;
@@ -213,18 +272,21 @@ export default {
       affectedArchived = archCnt;
 
       // Soft-delete missing among known (not ACTIVE and not ARCHIVE)
-      const [missCnt] = await Ground.update(
-        { deletedAt: new Date(), updated_by: actorId },
-        {
-          where: {
-            external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
-            deletedAt: null,
-          },
-          transaction: tx,
-          paranoid: false,
-        }
-      );
-      affectedMissing = missCnt;
+      // Guard against empty knownIds to avoid mass soft-delete if external returns nothing
+      if (knownIds.length) {
+        const [missCnt] = await Ground.update(
+          { deletedAt: new Date(), updated_by: actorId },
+          {
+            where: {
+              external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
+              deletedAt: null,
+            },
+            transaction: tx,
+            paranoid: false,
+          }
+        );
+        affectedMissing = missCnt;
+      }
     });
 
     const softDeletedTotal = affectedArchived + affectedMissing;

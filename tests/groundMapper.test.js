@@ -59,5 +59,28 @@ describe('groundMapper', () => {
       yandex_url: null,
     });
   });
-});
 
+  test('toPublic maps attached clubs and teams', () => {
+    const ground = {
+      id: 'g3',
+      name: 'Arena C',
+      Clubs: [
+        { id: 'c1', name: 'Клуб 1' },
+        { id: 'c2', name: 'Клуб 2' },
+      ],
+      Teams: [
+        { id: 't1', name: 'Команда 1', birth_year: 2010, club_id: 'c1' },
+        { id: 't2', name: 'Команда 2', birth_year: 2011, club_id: 'c2' },
+      ],
+    };
+    const out = mapper.toPublic(ground);
+    expect(out.clubs).toEqual([
+      { id: 'c1', name: 'Клуб 1' },
+      { id: 'c2', name: 'Клуб 2' },
+    ]);
+    expect(out.teams).toEqual([
+      { id: 't1', name: 'Команда 1', birth_year: 2010, club_id: 'c1' },
+      { id: 't2', name: 'Команда 2', birth_year: 2011, club_id: 'c2' },
+    ]);
+  });
+});

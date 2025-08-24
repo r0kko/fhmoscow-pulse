@@ -17,12 +17,8 @@ import { setupExternalAssociations } from '../src/externalModels/index.js';
 import { connectRedis } from '../src/config/redis.js';
 import validateEnv from '../src/config/validateEnv.js';
 import startTaxationCron from '../src/jobs/taxationCron.js';
-import startTeamSyncCron, { runTeamSync } from '../src/jobs/teamSyncCron.js';
-import startClubSyncCron, { runClubSync } from '../src/jobs/clubSyncCron.js';
-import startGroundSyncCron, { runGroundSync } from '../src/jobs/groundSyncCron.js';
-import startPlayerSyncCron, { runPlayerSync } from '../src/jobs/playerSyncCron.js';
-import startStaffSyncCron, { runStaffSync } from '../src/jobs/staffSyncCron.js';
-import startTournamentSyncCron, { runTournamentSync } from '../src/jobs/tournamentSyncCron.js';
+import startSyncAllCron, { runSyncAll } from '../src/jobs/syncAllCron.js';
+import { setReady, setSyncing } from '../src/config/readiness.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -67,31 +63,38 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
  * Listen on provided port, on all network interfaces.
  */
 
-// Wait for a successful DB connection before accepting traffic
+// Wait for a successful DB connection, then start listening immediately; run initial sync in background
 (async () => {
   await connectToDatabase();
   await connectRedis();
   await connectLegacyDatabase(); // continue even if legacy DB is unreachable
   await connectExternalMariaDb(); // optional external MariaDB
+
+  // Start server and periodic jobs ASAP; protect jobs with distributed locks
+  server.listen(port);
+  startTaxationCron();
+
   if (isExternalDbAvailable()) {
     await setupExternalAssociations();
-    // Ensure clubs are up-to-date before teams to maintain relations
-    await runClubSync();
-    // Sync stadiums (grounds) before teams, too
-    await runGroundSync();
-    await runTeamSync();
-    await runStaffSync();
-    await runPlayerSync();
-    await runTournamentSync();
-    startClubSyncCron();
-    startGroundSyncCron();
-    startTeamSyncCron();
-    startStaffSyncCron();
-    startPlayerSyncCron();
-    startTournamentSyncCron();
+    startSyncAllCron();
+
+    // Run first full sync in background via orchestrator
+    setSyncing(true);
+    setReady(false);
+    (async () => {
+      try {
+        await runSyncAll();
+      } catch (err) {
+        console.error('Initial sync failed:', err);
+      } finally {
+        setSyncing(false);
+        setReady(true);
+      }
+    })();
+  } else {
+    // No external DB — app is ready once core services are up
+    setReady(true);
   }
-  startTaxationCron();
-  server.listen(port);
 })();
 
 server.on('error', onError);

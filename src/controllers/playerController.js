@@ -8,6 +8,8 @@ import clubService from '../services/clubService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import playerMapper from '../mappers/playerMapper.js';
 import { sendError } from '../utils/api.js';
+import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
+import { withJobMetrics } from '../config/metrics.js';
 
 export default {
   async seasonSummary(req, res) {
@@ -362,15 +364,30 @@ export default {
         return res.status(503).json({ error: 'external_unavailable' });
       }
       // keep related entities in sync first
-      const clubStats = await clubService.syncExternal(req.user?.id);
-      const teamStats = await teamService.syncExternal(req.user?.id);
-      const stats = await playerService.syncExternal(req.user?.id);
-      const { rows, count } = await playerService.list({ page: 1, limit: 100 });
-      return res.json({
-        stats: { clubs: clubStats, teams: teamStats, ...stats },
-        players: rows.map(playerMapper.toPublic),
-        total: count,
-      });
+      let payload = null;
+      await withRedisLock(
+        buildJobLockKey('playerSync'),
+        60 * 60_000,
+        async () => {
+          await withJobMetrics('playerSync_manual', async () => {
+            const clubStats = await clubService.syncExternal(req.user?.id);
+            const teamStats = await teamService.syncExternal(req.user?.id);
+            const stats = await playerService.syncExternal(req.user?.id);
+            const { rows, count } = await playerService.list({
+              page: 1,
+              limit: 100,
+            });
+            payload = {
+              stats: { clubs: clubStats, teams: teamStats, ...stats },
+              players: rows.map(playerMapper.toPublic),
+              total: count,
+            };
+          });
+        },
+        { onBusy: () => null }
+      );
+      if (payload) return res.json(payload);
+      return res.status(409).json({ error: 'sync_in_progress' });
     } catch (err) {
       return sendError(res, err);
     }

@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
+import PageNav from '../components/PageNav.vue';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const route = useRoute();
 const training = ref(null);
@@ -54,6 +56,17 @@ function fullName(u) {
   return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
 }
 
+function formatPhone(digits) {
+  if (!digits) return '';
+  let out = '+7';
+  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
+  if (digits.length >= 4) out += ') ';
+  if (digits.length >= 4) out += digits.slice(4, 7);
+  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
+  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
+  return out;
+}
+
 async function loadTraining() {
   loadingTraining.value = true;
   try {
@@ -99,6 +112,9 @@ async function loadRegistrations() {
 async function loadJudges() {
   try {
     const params = new URLSearchParams({ limit: 1000 });
+    // Limit to referee roles only
+    params.append('role', 'REFEREE');
+    params.append('role', 'BRIGADE_REFEREE');
     const data = await apiFetch(`/course-users?${params.toString()}`);
     judges.value = data.users;
   } catch (_) {
@@ -186,6 +202,57 @@ async function finish() {
     finishLoading.value = false;
   }
 }
+
+// Eligible but not registered (course-matched referees who haven't registered)
+const eligibleNotRegistered = computed(() => {
+  const registeredIds = new Set(list.value.map((r) => r.user.id));
+  const courseIds = training.value?.courses?.map((c) => c.id) || [];
+  const items = judges.value
+    .filter((j) => j.course && courseIds.includes(j.course.id))
+    .filter((j) => !registeredIds.has(j.user.id))
+    .map((j) => j.user)
+    .slice()
+    .sort((a, b) => fullName(a).localeCompare(fullName(b), 'ru'));
+  return items;
+});
+
+// Pagination for eligible list
+const eligiblePage = ref(1);
+const eligiblePageSize = ref(loadPageSize('adminCourseEligiblePageSize', 8));
+const eligibleTotalPages = computed(() =>
+  Math.max(
+    1,
+    Math.ceil(eligibleNotRegistered.value.length / eligiblePageSize.value)
+  )
+);
+const visibleEligible = computed(() => {
+  const start = (eligiblePage.value - 1) * eligiblePageSize.value;
+  return eligibleNotRegistered.value.slice(
+    start,
+    start + eligiblePageSize.value
+  );
+});
+
+// Reset page to 1 when dataset changes
+watch(
+  () => eligibleNotRegistered.value.length,
+  () => {
+    eligiblePage.value = 1;
+  }
+);
+
+// Keep page in bounds
+watch(
+  () => [eligibleTotalPages.value, eligiblePageSize.value],
+  () => {
+    if (eligiblePage.value > eligibleTotalPages.value)
+      eligiblePage.value = eligibleTotalPages.value;
+  }
+);
+watch(
+  () => eligiblePageSize.value,
+  (val) => savePageSize('adminCourseEligiblePageSize', val)
+);
 </script>
 
 <template>
@@ -238,7 +305,7 @@ async function finish() {
         <div class="col-12 col-sm-auto d-grid d-sm-block">
           <button
             class="btn btn-brand"
-            :disabled="addLoading"
+            :disabled="addLoading || !addForm.user_id"
             @click="addRegistration"
           >
             <span
@@ -414,6 +481,53 @@ async function finish() {
         </div>
       </template>
       <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
+
+      <!-- Eligible but not registered list -->
+      <div
+        v-if="eligibleNotRegistered.length"
+        class="card section-card tile fade-in shadow-sm mt-3"
+      >
+        <div class="card-body p-3">
+          <h2 class="h6 mb-3">Доступно к регистрации, но не записаны</h2>
+          <div class="table-responsive d-none d-sm-block">
+            <table class="table admin-table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th class="d-none d-md-table-cell">Телефон</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="u in visibleEligible" :key="u.id">
+                  <td>{{ fullName(u) }}</td>
+                  <td class="d-none d-md-table-cell">
+                    {{ u.phone ? formatPhone(u.phone) : '' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="d-sm-none">
+            <div v-for="u in visibleEligible" :key="u.id" class="mb-2">
+              <div class="card registration-card">
+                <div class="card-body p-2">
+                  <div class="fw-medium">{{ fullName(u) }}</div>
+                  <div class="small text-muted">
+                    {{ u.phone ? formatPhone(u.phone) : '' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <PageNav
+            v-if="eligibleTotalPages > 1"
+            v-model:page="eligiblePage"
+            v-model:page-size="eligiblePageSize"
+            :total-pages="eligibleTotalPages"
+            :sizes="[5, 8, 10, 20]"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>

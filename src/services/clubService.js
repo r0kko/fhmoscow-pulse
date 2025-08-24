@@ -125,6 +125,7 @@ async function listAll() {
  * @param {number} [options.limit]
  * @param {string} [options.search]
  * @param {boolean} [options.includeTeams]
+ * @param {boolean} [options.includeGrounds]
  */
 async function list(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -139,6 +140,10 @@ async function list(options = {}) {
   if (options.includeTeams) {
     const { Team } = await import('../models/index.js');
     include.push({ model: Team, required: false });
+  }
+  if (options.includeGrounds) {
+    const { Ground } = await import('../models/index.js');
+    include.push({ model: Ground, required: false });
   }
   return Club.findAndCountAll({
     where,

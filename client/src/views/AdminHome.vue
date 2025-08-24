@@ -25,8 +25,11 @@ const systemSections = computed(() => {
   const items = [];
   if (auth.roles.includes('ADMIN')) {
     items.push({ title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' });
-    items.push({ title: 'Команды', icon: 'bi-people', to: '/admin/teams' });
-    items.push({ title: 'Клубы', icon: 'bi-shield', to: '/admin/clubs' });
+    items.push({
+      title: 'Команды и клубы',
+      icon: 'bi-shield',
+      to: '/admin/clubs-teams',
+    });
     items.push({
       title: 'Управление спортивными школами',
       icon: 'bi-building',
@@ -40,9 +43,10 @@ const systemSections = computed(() => {
 <template>
   <div class="py-4">
     <div class="container">
-      <h1 class="mb-3 text-start">Администрирование</h1>
+      <!-- Keep semantic h1 for accessibility; style to match Home greeting size -->
+      <h1 class="h3 mb-3 text-start">Администрирование</h1>
 
-      <div class="card section-card mb-2">
+      <div class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-people text-brand me-2" aria-hidden="true"></i>
@@ -65,7 +69,7 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div class="card section-card mb-2">
+      <div class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-trophy text-brand me-2" aria-hidden="true"></i>
@@ -88,7 +92,7 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div class="card section-card mb-2">
+      <div class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-gear text-brand me-2" aria-hidden="true"></i>
@@ -116,4 +120,12 @@ const systemSections = computed(() => {
 
 <style scoped>
 /* Component-specific styles are centralized in brand.css. */
+/* Mobile: make tile groups full-bleed only on Admin Home */
+@media (max-width: 575.98px) {
+  .menu-section {
+    margin-left: calc(var(--bs-gutter-x) * -0.5);
+    margin-right: calc(var(--bs-gutter-x) * -0.5);
+    border-radius: 0;
+  }
+}
 </style>

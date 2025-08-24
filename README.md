@@ -218,8 +218,15 @@ new entries: `external_id` and `name`. Address can be added later by admins.
 
 - Active only: pulls `object_status = 'active'` and restores soft-deleted.
 - Archived/missing: marks local records as soft-deleted.
-- Cron schedule can be tuned via `GROUND_SYNC_CRON` (default every 6 hours, minute 10).
+- Cron schedule is controlled by a single orchestrator (see below). Legacy env `GROUND_SYNC_CRON` is deprecated.
 - Manual sync: `POST /api/grounds/sync` (ADMIN).
+
+### Sync orchestrator and metrics
+
+- A single orchestrator runs the pipeline: Clubs → Grounds → Teams → Staff → Players → Tournaments.
+- Default schedule: every 6 hours (`SYNC_ALL_CRON`), timezone `Europe/Moscow`.
+- All jobs are protected by a Redis-based distributed lock to avoid overlaps across instances.
+- Prometheus metrics are exposed at `/metrics` (text format), including job run counts, durations and last run timestamps.
 
 ## Local development
 

@@ -1,5 +1,6 @@
 import express from 'express';
 
+import { isReady, isSyncing } from '../config/readiness.js';
 import auth from '../middlewares/auth.js';
 import requireActive from '../middlewares/requireActive.js';
 import csrf from '../config/csrf.js';
@@ -55,6 +56,7 @@ import matchesRouter from './matches.js';
 import playersRouter from './players.js';
 import staffRouter from './staff.js';
 import sportSchoolsRouter from './sportSchools.js';
+import metricsRouter from './metrics.js';
 
 const router = express.Router();
 
@@ -109,6 +111,7 @@ router.use('/matches', matchesRouter);
 router.use('/players', playersRouter);
 router.use('/staff', staffRouter);
 router.use('/sport-schools', sportSchoolsRouter);
+router.use('/metrics', metricsRouter);
 
 /**
  * @swagger
@@ -120,7 +123,7 @@ router.use('/sport-schools', sportSchoolsRouter);
  *         description: Service status
  */
 router.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', ready: isReady(), syncing: isSyncing() });
 });
 
 /**

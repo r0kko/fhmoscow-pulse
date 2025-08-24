@@ -4,6 +4,7 @@ import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 
 const route = useRoute();
+const isAdminView = computed(() => (route.path || '').startsWith('/admin'));
 const loading = ref(false);
 const error = ref('');
 const season = ref({ id: route.params.seasonId, name: '' });
@@ -27,7 +28,7 @@ async function loadSeasonName() {
   try {
     // Reuse summary to resolve season name with minimal overhead
     const params = new URLSearchParams();
-    params.set('mine', 'true');
+    if (!isAdminView.value) params.set('mine', 'true');
     if (clubId.value) params.set('club_id', clubId.value);
     const data = await apiFetch(`/players/season-summary?${params.toString()}`);
     const s = (data.seasons || []).find((x) => x.id === season.value.id);
@@ -38,10 +39,17 @@ async function loadSeasonName() {
 async function loadClubName() {
   try {
     if (!clubId.value) return;
-    const data = await apiFetch('/clubs?mine=true');
-    const clubs = Array.isArray(data.clubs) ? data.clubs : [];
-    const found = clubs.find((c) => String(c.id) === String(clubId.value));
-    if (found) clubName.value = found.name || '';
+    if (isAdminView.value) {
+      const data = await apiFetch('/clubs?limit=1000');
+      const clubs = Array.isArray(data.clubs) ? data.clubs : [];
+      const found = clubs.find((c) => String(c.id) === String(clubId.value));
+      if (found) clubName.value = found.name || '';
+    } else {
+      const data = await apiFetch('/clubs?mine=true');
+      const clubs = Array.isArray(data.clubs) ? data.clubs : [];
+      const found = clubs.find((c) => String(c.id) === String(clubId.value));
+      if (found) clubName.value = found.name || '';
+    }
   } catch (_) {}
 }
 
@@ -56,13 +64,13 @@ async function loadRoster() {
     const params = new URLSearchParams();
     params.set('page', '1');
     params.set('limit', '500');
-    params.set('mine', 'true');
     params.set('season', season.value.id);
     params.set('team_birth_year', String(year.value));
     params.append('include', 'clubs');
     params.append('include', 'teams');
     if (clubId.value) params.set('club_id', clubId.value);
     if (teamId.value) params.set('team_id', teamId.value);
+    if (!isAdminView.value) params.set('mine', 'true');
     const res = await apiFetch(`/players?${params.toString()}`);
     players.value = res.players || [];
   } catch (e) {
@@ -83,11 +91,11 @@ async function loadStaff() {
     const params = new URLSearchParams();
     params.set('page', '1');
     params.set('limit', '500');
-    params.set('mine', 'true');
     params.set('season', season.value.id);
     if (clubId.value) params.set('club_id', clubId.value);
     if (teamId.value) params.set('team_id', teamId.value);
     params.append('include', 'teams');
+    if (!isAdminView.value) params.set('mine', 'true');
     const res = await apiFetch(`/staff?${params.toString()}`);
     staff.value = res.staff || [];
   } catch (e) {
@@ -158,13 +166,23 @@ const forwards = computed(() =>
     <div class="container">
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Управление спортивной школой</li>
-          <li class="breadcrumb-item">
-            <RouterLink to="/school-players">Команды и составы</RouterLink>
-          </li>
+          <template v-if="isAdminView">
+            <li class="breadcrumb-item">
+              <RouterLink to="/admin">Администрирование</RouterLink>
+            </li>
+            <li class="breadcrumb-item">
+              <RouterLink to="/admin/clubs-teams">Команды и клубы</RouterLink>
+            </li>
+          </template>
+          <template v-else>
+            <li class="breadcrumb-item">
+              <RouterLink to="/">Главная</RouterLink>
+            </li>
+            <li class="breadcrumb-item">Управление спортивной школой</li>
+            <li class="breadcrumb-item">
+              <RouterLink to="/school-players">Команды и составы</RouterLink>
+            </li>
+          </template>
           <li class="breadcrumb-item active" aria-current="page">
             Состав — {{ clubName || 'Клуб' }} / {{ year || '' }} г.р.
           </li>
@@ -217,8 +235,11 @@ const forwards = computed(() =>
         </div>
       </div>
 
-      <!-- Плитка-предупреждение -->
-      <div class="card section-card tile fade-in shadow-sm mb-3">
+      <!-- Плитка-предупреждение (только для режима школы) -->
+      <div
+        v-if="!isAdminView"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
         <div class="card-body py-3">
           <div class="alert alert-warning small mb-0" role="alert">
             <div class="d-flex align-items-start">

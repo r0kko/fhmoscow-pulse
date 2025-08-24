@@ -11,6 +11,9 @@ export default {
     if (club.Teams) {
       out.teams = club.Teams.map((t) => teamMapper.toPublic(t));
     }
+    if (club.Grounds) {
+      out.grounds = club.Grounds.map((g) => ({ id: g.id, name: g.name }));
+    }
     return out;
   },
 };

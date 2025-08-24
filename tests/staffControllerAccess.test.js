@@ -62,6 +62,16 @@ describe('staffController access', () => {
     expect(res.status).toHaveBeenCalledWith(403);
   });
 
+  test('forbidden when staff team_id not in scope', async () => {
+    const req = {
+      query: { team_id: 'tx' },
+      access: { isAdmin: false, allowedClubIds: ['c1'], allowedTeamIds: [] },
+    };
+    const res = resMock();
+    await controller.list(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   test('admin without mine=true uses full list', async () => {
     listStaffMock.mockClear();
     const req = { query: {}, access: { isAdmin: true } };

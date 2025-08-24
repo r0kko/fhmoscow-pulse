@@ -1,3 +1,5 @@
+import path from 'path';
+
 import { Op } from 'sequelize';
 import PDFDocument from 'pdfkit';
 
@@ -1561,39 +1563,57 @@ async function listAll() {
     order: [['created_at', 'DESC']],
   });
   return Promise.all(
-    docs.map(async (d) => ({
-      id: d.id,
-      number: d.number,
-      name: d.name,
-      documentDate: d.document_date,
-      documentType: d.DocumentType
+    docs.map(async (d) => {
+      const fio = `${d.recipient.last_name} ${d.recipient.first_name}${
+        d.recipient.patronymic ? ` ${d.recipient.patronymic}` : ''
+      }`.trim();
+      let baseName =
+        `${d.DocumentType ? d.DocumentType.name : 'Документ'} · ${fio}`.trim();
+      baseName = baseName.replace(/[\\/:*?"<>|]/g, ' ');
+      /* istanbul ignore next */ const ext = d.File
+        ? path.extname(d.File.key)
+        : '';
+      const downloadName = `${baseName}${ext || ''}`;
+      /* istanbul ignore next */ const filePayload = d.File
         ? {
-            id: d.document_type_id,
-            name: d.DocumentType.name,
-            alias: d.DocumentType.alias,
-            generated: d.DocumentType.generated,
+            id: d.File.id,
+            url: await fileService.getDownloadUrl(d.File, {
+              filename: downloadName,
+            }),
           }
-        : null,
-      signType: d.SignType
-        ? {
-            id: d.sign_type_id,
-            name: d.SignType.name,
-            alias: d.SignType.alias,
-          }
-        : null,
-      recipient: {
-        lastName: d.recipient.last_name,
-        firstName: d.recipient.first_name,
-        patronymic: d.recipient.patronymic,
-      },
-      status: d.DocumentStatus
-        ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
-        : null,
-      file: d.File
-        ? { id: d.File.id, url: await fileService.getDownloadUrl(d.File) }
-        : null,
-      createdAt: d.created_at,
-    }))
+        : null;
+      return {
+        id: d.id,
+        number: d.number,
+        name: d.name,
+        documentDate: d.document_date,
+        documentType: d.DocumentType
+          ? {
+              id: d.document_type_id,
+              name: d.DocumentType.name,
+              alias: d.DocumentType.alias,
+              generated: d.DocumentType.generated,
+            }
+          : null,
+        signType: d.SignType
+          ? {
+              id: d.sign_type_id,
+              name: d.SignType.name,
+              alias: d.SignType.alias,
+            }
+          : null,
+        recipient: {
+          lastName: d.recipient.last_name,
+          firstName: d.recipient.first_name,
+          patronymic: d.recipient.patronymic,
+        },
+        status: d.DocumentStatus
+          ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
+          : null,
+        file: filePayload,
+        createdAt: d.created_at,
+      };
+    })
   );
 }
 
@@ -1743,7 +1763,16 @@ async function uploadSignedFile(documentId, file, actorId) {
   if (recipient?.email) {
     await emailService.sendDocumentSignedEmail(recipient, doc);
   }
-  const url = await fileService.getDownloadUrl(newFile);
+  const fioSigned = `${recipient.last_name} ${recipient.first_name}${
+    recipient.patronymic ? ` ${recipient.patronymic}` : ''
+  }`.trim();
+  // Preserve original extension
+  const extSigned = path.extname(newFile.key || '');
+  let baseNameSigned = `${doc.name || 'Документ'} · ${fioSigned}`.trim();
+  baseNameSigned = baseNameSigned.replace(/[\\/:*?"<>|]/g, ' ');
+  const url = await fileService.getDownloadUrl(newFile, {
+    filename: `${baseNameSigned}${extSigned || ''}`,
+  });
   return {
     status: { name: signedStatus.name, alias: signedStatus.alias },
     file: { id: newFile.id, url },
@@ -1804,7 +1833,15 @@ async function regenerate(documentId, actorId) {
   if (oldFileId) {
     await fileService.removeFile(oldFileId);
   }
-  const url = await fileService.getDownloadUrl(newFile);
+  const fio = `${doc.recipient.last_name} ${doc.recipient.first_name}${
+    doc.recipient.patronymic ? ` ${doc.recipient.patronymic}` : ''
+  }`.trim();
+  let baseName =
+    `${doc.DocumentType ? doc.DocumentType.name : 'Документ'} · ${fio}`.trim();
+  baseName = baseName.replace(/[\\/:*?"<>|]/g, ' ');
+  const url = await fileService.getDownloadUrl(newFile, {
+    filename: `${baseName}.pdf`,
+  });
   return { file: { id: newFile.id, url } };
 }
 

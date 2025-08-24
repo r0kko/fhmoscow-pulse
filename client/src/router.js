@@ -18,8 +18,8 @@ import AdminHome from './views/AdminHome.vue';
 import AdminUserEdit from './views/AdminUserEdit.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminGrounds from './views/AdminGrounds.vue';
-import AdminTeams from './views/AdminTeams.vue';
-import AdminClubs from './views/AdminClubs.vue';
+import SchoolGrounds from './views/SchoolGrounds.vue';
+import AdminClubsTeams from './views/AdminClubsTeams.vue';
 import AdminSportSchools from './views/AdminSportSchools.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import SchoolPastMatches from './views/SchoolPastMatches.vue';
@@ -232,13 +232,18 @@ const routes = [
   },
   {
     path: '/admin/teams',
-    component: AdminTeams,
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Команды' },
+    redirect: { path: '/admin/clubs-teams' },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/admin/clubs',
-    component: AdminClubs,
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Клубы' },
+    redirect: { path: '/admin/clubs-teams' },
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/admin/clubs-teams',
+    component: AdminClubsTeams,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Команды и клубы' },
   },
   {
     path: '/admin/sport-schools',
@@ -278,11 +283,29 @@ const routes = [
     },
   },
   {
+    path: '/school-grounds',
+    component: SchoolGrounds,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Стадионы',
+    },
+  },
+  {
     path: '/school-players/season/:seasonId/year/:year',
     component: SchoolPlayersRoster,
     meta: {
       requiresAuth: true,
       requiresStaff: true,
+      title: 'Состав команды',
+    },
+  },
+  {
+    path: '/admin/clubs-teams/season/:seasonId/year/:year',
+    component: SchoolPlayersRoster,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
       title: 'Состав команды',
     },
   },

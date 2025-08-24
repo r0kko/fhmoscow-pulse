@@ -124,6 +124,37 @@ const weekGroups = computed(() => {
   return arr.sort((a, b) => (a.start < b.start ? -1 : 1));
 });
 
+// Keep at most two weeks visible following the product policy:
+// - Until the next week is present, show previous + current
+// - Once next week is available, hide the past week and show current + next
+const visibleWeekGroups = computed(() => {
+  const all = weekGroups.value;
+  if (all.length <= 2) return all;
+
+  // Determine the current ISO week key in Moscow time
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const msk = new Date(`${todayKey}T00:00:00+03:00`);
+  const curWeek = isoWeek(msk);
+  const curKey = `${msk.getUTCFullYear()}-${curWeek}`;
+
+  const idx = all.findIndex((g) => g.key === curKey);
+  if (idx === -1) {
+    // Fallback to the last two groups if current is not found
+    return all.slice(-2);
+  }
+  // If there is a next week in data, show current + next
+  if (idx + 1 < all.length) {
+    return all.slice(idx, idx + 2);
+  }
+  // Otherwise, show previous + current (guard idx > 0)
+  if (idx > 0) {
+    return all.slice(idx - 1, idx + 1);
+  }
+  // As a final fallback, clamp to the first two
+  return all.slice(0, 2);
+});
+
 function isActive(d, status) {
   const eff = effectiveStatus(d);
   if (eff == null) return false;
@@ -423,7 +454,7 @@ onBeforeUnmount(() => {});
         <!-- Week tiles (each week as separate card) -->
         <div class="week-grid">
           <div
-            v-for="group in weekGroups"
+            v-for="group in visibleWeekGroups"
             :key="group.key"
             class="card week-card section-card tile fade-in shadow-sm"
           >

@@ -1,5 +1,12 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
+import {
+  ref,
+  reactive,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  computed,
+} from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import Toast from 'bootstrap/js/dist/toast';
@@ -7,14 +14,29 @@ import { apiFetch } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import PageNav from '../components/PageNav.vue';
 import { suggestAddress, cleanAddress } from '../dadata.js';
+import BrandSpinner from '../components/BrandSpinner.vue';
+import GroundFiltersModal from '../components/GroundFiltersModal.vue';
+import { withHttp } from '../utils/url.js';
+import metroIcon from '../assets/metro.svg';
+import yandexLogo from '../assets/yandex-maps.svg';
 
 const grounds = ref([]);
-const onlyWithoutAddress = ref(false);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(loadPageSize('adminGroundsPageSize', 8));
 const isLoading = ref(false);
 const error = ref('');
+
+// Search and filters
+const q = ref('');
+const filters = reactive({
+  withoutAddress: false,
+  withYandex: false,
+  imported: false,
+  withClubs: false,
+  withTeams: false,
+});
+const filtersModal = ref(null);
 
 const form = ref({
   name: '',
@@ -34,12 +56,46 @@ const toastRef = ref(null);
 const toastMessage = ref('');
 let toast;
 
+function topChips(items, max = 3) {
+  const list = Array.isArray(items) ? items : [];
+  return {
+    visible: list.slice(0, max),
+    hidden: Math.max(0, list.length - max),
+  };
+}
+
+// Links management
+const linksModalRef = ref(null);
+let linksModal;
+const linksLoading = ref(false);
+const selectedGround = ref(null);
+const links = ref({ clubs: [], teams: [] });
+const attachClub = ref({ q: '', options: [], selected: '', loading: false });
+const attachTeam = ref({ q: '', options: [], selected: '', loading: false });
+let linkSearchTimeout;
+
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
+function metroNames(address) {
+  if (!address || !Array.isArray(address.metro) || !address.metro.length) {
+    return '';
+  }
+  return address.metro
+    .slice(0, 2)
+    .map((m) => m.name)
+    .join(', ');
+}
+
 onMounted(() => {
   modal = new Modal(modalRef.value);
+  if (linksModalRef.value) linksModal = new Modal(linksModalRef.value);
+  // restore saved filters
+  try {
+    const saved = localStorage.getItem('adminGroundsFilters');
+    if (saved) Object.assign(filters, JSON.parse(saved));
+  } catch {}
   load();
 });
 
@@ -51,6 +107,10 @@ onBeforeUnmount(() => {
     modal?.hide?.();
     modal?.dispose?.();
   } catch {}
+  try {
+    linksModal?.hide?.();
+    linksModal?.dispose?.();
+  } catch {}
 });
 
 watch(currentPage, load);
@@ -59,6 +119,26 @@ watch(pageSize, (val) => {
   savePageSize('adminGroundsPageSize', val);
   load();
 });
+let searchTimeout;
+watch(q, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1;
+    load();
+  }, 300);
+});
+
+watch(
+  () => ({ ...filters }),
+  () => {
+    try {
+      localStorage.setItem('adminGroundsFilters', JSON.stringify(filters));
+    } catch {}
+    currentPage.value = 1;
+    load();
+  },
+  { deep: true }
+);
 watch(
   () => form.value.address.result,
   (val) => {
@@ -190,6 +270,156 @@ function showToast(message) {
   toast.show();
 }
 
+async function openLinks(s) {
+  selectedGround.value = s;
+  links.value = { clubs: [], teams: [] };
+  attachClub.value = { q: '', options: [], selected: '', loading: false };
+  attachTeam.value = { q: '', options: [], selected: '', loading: false };
+  await loadLinks();
+  linksModal?.show?.();
+}
+
+async function loadLinks() {
+  if (!selectedGround.value) return;
+  linksLoading.value = true;
+  try {
+    const [c, t] = await Promise.all([
+      apiFetch(`/grounds/${selectedGround.value.id}/clubs`),
+      apiFetch(`/grounds/${selectedGround.value.id}/teams`),
+    ]);
+    links.value = { clubs: c.clubs || [], teams: t.teams || [] };
+  } catch (e) {
+    showToast(e.message || 'Не удалось загрузить связи');
+  } finally {
+    linksLoading.value = false;
+  }
+}
+
+async function refreshGroundRow() {
+  if (!selectedGround.value) return;
+  try {
+    const data = await apiFetch(`/grounds/${selectedGround.value.id}`);
+    const idx = grounds.value.findIndex(
+      (g) => g.id === selectedGround.value.id
+    );
+    if (idx !== -1) grounds.value[idx] = data.ground;
+    selectedGround.value = data.ground;
+  } catch (_) {}
+}
+
+async function searchClubOptions() {
+  attachClub.value.loading = true;
+  try {
+    const q = attachClub.value.q?.trim();
+    const data = await apiFetch(
+      `/clubs?limit=50${q ? `&search=${encodeURIComponent(q)}` : ''}`
+    );
+    attachClub.value.options = (data.clubs || []).map((c) => ({
+      id: c.id,
+      label: c.name,
+    }));
+  } catch (_) {
+    attachClub.value.options = [];
+  } finally {
+    attachClub.value.loading = false;
+  }
+}
+
+async function searchTeamOptions() {
+  attachTeam.value.loading = true;
+  try {
+    const q = attachTeam.value.q?.trim();
+    const data = await apiFetch(
+      `/teams?limit=50${q ? `&search=${encodeURIComponent(q)}` : ''}`
+    );
+    attachTeam.value.options = (data.teams || []).map((t) => ({
+      id: t.id,
+      label: `${t.name}${t.birth_year ? ` (${t.birth_year})` : ''}`,
+    }));
+  } catch (_) {
+    attachTeam.value.options = [];
+  } finally {
+    attachTeam.value.loading = false;
+  }
+}
+
+watch(
+  () => attachClub.value.q,
+  () => {
+    clearTimeout(linkSearchTimeout);
+    linkSearchTimeout = setTimeout(searchClubOptions, 250);
+  }
+);
+watch(
+  () => attachTeam.value.q,
+  () => {
+    clearTimeout(linkSearchTimeout);
+    linkSearchTimeout = setTimeout(searchTeamOptions, 250);
+  }
+);
+
+async function attachClubToGround() {
+  if (!selectedGround.value || !attachClub.value.selected) return;
+  try {
+    await apiFetch(`/grounds/${selectedGround.value.id}/clubs`, {
+      method: 'POST',
+      body: JSON.stringify({ club_id: attachClub.value.selected }),
+    });
+    await loadLinks();
+    await refreshGroundRow();
+    attachClub.value = { q: '', options: [], selected: '', loading: false };
+    showToast('Клуб прикреплён');
+  } catch (e) {
+    showToast(e.message || 'Ошибка прикрепления клуба');
+  }
+}
+
+async function detachClubFromGround(clubId) {
+  if (!selectedGround.value || !clubId) return;
+  if (!confirm('Открепить клуб от площадки?')) return;
+  try {
+    await apiFetch(`/grounds/${selectedGround.value.id}/clubs/${clubId}`, {
+      method: 'DELETE',
+    });
+    await loadLinks();
+    await refreshGroundRow();
+    showToast('Клуб откреплён');
+  } catch (e) {
+    showToast(e.message || 'Ошибка открепления клуба');
+  }
+}
+
+async function attachTeamToGround() {
+  if (!selectedGround.value || !attachTeam.value.selected) return;
+  try {
+    await apiFetch(`/grounds/${selectedGround.value.id}/teams`, {
+      method: 'POST',
+      body: JSON.stringify({ team_id: attachTeam.value.selected }),
+    });
+    await loadLinks();
+    await refreshGroundRow();
+    attachTeam.value = { q: '', options: [], selected: '', loading: false };
+    showToast('Команда прикреплена');
+  } catch (e) {
+    showToast(e.message || 'Ошибка прикрепления команды');
+  }
+}
+
+async function detachTeamFromGround(teamId) {
+  if (!selectedGround.value || !teamId) return;
+  if (!confirm('Открепить команду от площадки?')) return;
+  try {
+    await apiFetch(`/grounds/${selectedGround.value.id}/teams/${teamId}`, {
+      method: 'DELETE',
+    });
+    await loadLinks();
+    await refreshGroundRow();
+    showToast('Команда откреплена');
+  } catch (e) {
+    showToast(e.message || 'Ошибка открепления команды');
+  }
+}
+
 async function syncGrounds() {
   try {
     syncLoading.value = true;
@@ -211,13 +441,30 @@ async function syncGrounds() {
   }
 }
 
+const activeFiltersCount = computed(() => {
+  return [
+    filters.withoutAddress,
+    filters.withYandex,
+    filters.imported,
+    filters.withClubs,
+    filters.withTeams,
+  ].filter(Boolean).length;
+});
+
 async function load() {
   try {
     isLoading.value = true;
     const params = new URLSearchParams({
-      page: currentPage.value,
-      limit: pageSize.value,
+      page: String(currentPage.value),
+      limit: String(pageSize.value),
     });
+    const term = q.value.trim();
+    if (term) params.set('search', term);
+    if (filters.withoutAddress) params.set('without_address', 'true');
+    if (filters.withYandex) params.set('with_yandex', 'true');
+    if (filters.imported) params.set('imported', 'true');
+    if (filters.withClubs) params.set('with_clubs', 'true');
+    if (filters.withTeams) params.set('with_teams', 'true');
     const data = await apiFetch(`/grounds?${params}`);
     grounds.value = data.grounds;
     total.value = data.total;
@@ -242,128 +489,115 @@ async function load() {
       </nav>
       <h1 class="mb-3">Площадки</h1>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
-      <div v-if="isLoading" class="text-center my-3">
-        <div
-          class="spinner-border spinner-brand"
-          role="status"
-          aria-label="Загрузка"
-        ></div>
-      </div>
+      <BrandSpinner v-if="isLoading" label="Загрузка" />
       <div class="card section-card tile fade-in shadow-sm">
-        <div
-          class="card-header d-flex justify-content-between align-items-center"
-        >
-          <h2 class="h5 mb-0">Площадки</h2>
-          <div class="d-flex gap-2">
-            <button
-              class="btn btn-outline-secondary"
-              :disabled="syncLoading"
-              @click="syncGrounds"
-            >
-              <span
-                v-if="syncLoading"
-                class="spinner-border spinner-border-sm me-2"
-              ></span>
-              Синхронизировать
-            </button>
-            <button class="btn btn-brand" @click="openCreate">
-              <i class="bi bi-plus-lg me-1"></i>Добавить
-            </button>
-          </div>
-        </div>
         <div class="card-body p-3">
-          <div class="d-flex justify-content-end mb-2">
-            <div class="form-check form-switch">
-              <input
-                id="filterWithoutAddress"
-                v-model="onlyWithoutAddress"
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-              />
-              <label class="form-check-label" for="filterWithoutAddress"
-                >Без адреса</label
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-12 col-sm">
+              <div class="input-group">
+                <span class="input-group-text" aria-hidden="true">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  v-model="q"
+                  type="search"
+                  class="form-control"
+                  placeholder="Поиск по названию или адресу"
+                  aria-label="Поиск площадок"
+                />
+              </div>
+            </div>
+            <div class="col-6 col-sm-auto">
+              <button
+                class="btn btn-outline-secondary w-100"
+                type="button"
+                @click="filtersModal.open()"
               >
+                <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+                Фильтры
+                <span
+                  v-if="activeFiltersCount"
+                  class="badge text-bg-secondary ms-2"
+                  >{{ activeFiltersCount }}</span
+                >
+              </button>
+            </div>
+            <!-- Removed standalone 'Без адреса' switch. Use Filters modal instead. -->
+            <div class="col-12 col-sm-auto d-flex gap-2 justify-content-end">
+              <button
+                class="btn btn-outline-secondary"
+                :disabled="syncLoading"
+                @click="syncGrounds"
+              >
+                <span
+                  v-if="syncLoading"
+                  class="spinner-border spinner-border-sm me-2"
+                ></span>
+                Синхронизировать
+              </button>
+              <button class="btn btn-brand" @click="openCreate">
+                <i class="bi bi-plus-lg me-1"></i>Добавить
+              </button>
             </div>
           </div>
-          <div v-if="grounds.length" class="table-responsive d-none d-sm-block">
-            <table class="table admin-table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Название</th>
-                  <th>Адрес</th>
-                  <th>Ссылка</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="st in grounds.filter(
-                    (g) => !onlyWithoutAddress || !g.address
-                  )"
-                  :key="st.id"
-                >
-                  <td>{{ st.name }}</td>
-                  <td>
-                    <span v-if="st.address?.result">{{
-                      st.address.result
-                    }}</span>
-                    <span v-else class="badge text-bg-warning">Нет адреса</span>
-                    <span v-if="st.external_id" class="badge text-bg-info ms-2"
+          <!-- Single-column list with dividers (best-practice list-group inside card) -->
+          <ul v-if="grounds.length" class="list-group list-group-flush">
+            <li v-for="st in grounds" :key="st.id" class="list-group-item py-3">
+              <div class="d-flex align-items-start justify-content-between">
+                <div class="me-3 flex-grow-1">
+                  <div class="d-flex align-items-start gap-2 mb-1">
+                    <h3 class="h6 mb-0">{{ st.name }}</h3>
+                    <span
+                      v-if="st.external_id"
+                      class="badge badge-brand"
+                      title="Импортировано из внешней системы"
                       >Импортирован</span
                     >
-                  </td>
-                  <td class="d-none d-md-table-cell">
+                  </div>
+                  <div class="text-muted small d-flex align-items-center mt-1">
                     <a
                       v-if="st.yandex_url"
-                      :href="st.yandex_url"
+                      :href="withHttp(st.yandex_url)"
                       target="_blank"
-                      rel="noopener"
-                      >Яндекс.Карты</a
+                      rel="noopener noreferrer"
+                      aria-label="Открыть в Яндекс.Картах"
+                      class="me-1 flex-shrink-0"
                     >
-                  </td>
-                  <td class="text-end">
-                    <button
-                      class="btn btn-sm btn-secondary me-2"
-                      aria-label="Редактировать площадку"
-                      @click="openEdit(st)"
-                    >
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button
-                      class="btn btn-sm btn-danger"
-                      aria-label="Удалить площадку"
-                      @click="removeGround(st)"
-                    >
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-if="grounds.length" class="d-block d-sm-none">
-            <div
-              v-for="st in grounds.filter(
-                (g) => !onlyWithoutAddress || !g.address
-              )"
-              :key="st.id"
-              class="card training-card mb-2"
-            >
-              <div class="card-body p-2">
-                <h3 class="h6 mb-1">
-                  {{ st.name }}
-                  <span v-if="st.external_id" class="badge text-bg-info ms-2"
-                    >Импортирован</span
+                      <img :src="yandexLogo" alt="Яндекс.Карты" height="20" />
+                    </a>
+                    <span class="flex-grow-1">
+                      {{ st.address?.result || '—' }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="metroNames(st.address)"
+                    class="text-muted small d-flex align-items-center mt-1"
                   >
-                </h3>
-                <p class="mb-1">{{ st.address?.result }}</p>
-                <p v-if="st.yandex_url" class="mb-1">
-                  <a :href="st.yandex_url" target="_blank" rel="noopener"
-                    >Яндекс.Карты</a
+                    <img
+                      :src="metroIcon"
+                      alt="Метро"
+                      height="14"
+                      class="me-1"
+                    />
+                    <span>{{ metroNames(st.address) }}</span>
+                  </div>
+                  <div class="d-flex gap-2 small mt-2">
+                    <span class="badge text-bg-light border"
+                      >Клубы: {{ st.clubs?.length || 0 }}</span
+                    >
+                    <span class="badge text-bg-light border"
+                      >Команды: {{ st.teams?.length || 0 }}</span
+                    >
+                  </div>
+                </div>
+                <div class="text-nowrap">
+                  <button
+                    class="btn btn-sm btn-outline-secondary me-2"
+                    aria-label="Связи площадки"
+                    @click="openLinks(st)"
                   >
-                </p>
-                <div class="text-end">
+                    <i class="bi bi-link-45deg"></i>
+                  </button>
                   <button
                     class="btn btn-sm btn-secondary me-2"
                     aria-label="Редактировать площадку"
@@ -380,8 +614,8 @@ async function load() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+            </li>
+          </ul>
           <div v-else-if="!isLoading" class="alert alert-warning mb-0">
             Площадок нет.
           </div>
@@ -396,13 +630,199 @@ async function load() {
       />
     </div>
 
+    <!-- Ground links modal -->
+    <div ref="linksModalRef" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Связи: {{ selectedGround?.name }}</h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="linksModal.hide()"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="linksLoading" class="text-center my-2">
+              <div
+                class="spinner-border spinner-brand"
+                role="status"
+                aria-label="Загрузка"
+              ></div>
+            </div>
+            <div v-else class="row g-3">
+              <div class="col-12 col-md-6">
+                <div class="card h-100">
+                  <div class="card-body p-2">
+                    <h3 class="h6">Клубы</h3>
+                    <div class="mb-2">
+                      <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text"
+                          ><i class="bi bi-search"></i
+                        ></span>
+                        <input
+                          v-model="attachClub.q"
+                          type="search"
+                          class="form-control"
+                          placeholder="Поиск клуба"
+                          aria-label="Поиск клуба"
+                        />
+                      </div>
+                      <div class="input-group input-group-sm">
+                        <select
+                          v-model="attachClub.selected"
+                          class="form-select"
+                          :disabled="attachClub.loading"
+                        >
+                          <option value="">Выберите клуб</option>
+                          <option
+                            v-for="c in attachClub.options"
+                            :key="c.id"
+                            :value="c.id"
+                          >
+                            {{ c.label }}
+                          </option>
+                        </select>
+                        <button
+                          class="btn btn-outline-secondary"
+                          :disabled="!attachClub.selected"
+                          @click="attachClubToGround"
+                        >
+                          Добавить
+                        </button>
+                      </div>
+                    </div>
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Клуб</th>
+                            <th class="text-end"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="c in links.clubs" :key="c.id">
+                            <td>{{ c.name }}</td>
+                            <td class="text-end">
+                              <button
+                                class="btn btn-sm btn-link text-danger p-0"
+                                @click="detachClubFromGround(c.id)"
+                              >
+                                <i class="bi bi-x-lg"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          <tr v-if="!links.clubs.length">
+                            <td colspan="2" class="text-muted">
+                              Клубы не прикреплены
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="card h-100">
+                  <div class="card-body p-2">
+                    <h3 class="h6">Команды</h3>
+                    <div class="mb-2">
+                      <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text"
+                          ><i class="bi bi-search"></i
+                        ></span>
+                        <input
+                          v-model="attachTeam.q"
+                          type="search"
+                          class="form-control"
+                          placeholder="Поиск команды"
+                          aria-label="Поиск команды"
+                        />
+                      </div>
+                      <div class="input-group input-group-sm">
+                        <select
+                          v-model="attachTeam.selected"
+                          class="form-select"
+                          :disabled="attachTeam.loading"
+                        >
+                          <option value="">Выберите команду</option>
+                          <option
+                            v-for="t in attachTeam.options"
+                            :key="t.id"
+                            :value="t.id"
+                          >
+                            {{ t.label }}
+                          </option>
+                        </select>
+                        <button
+                          class="btn btn-outline-secondary"
+                          :disabled="!attachTeam.selected"
+                          @click="attachTeamToGround"
+                        >
+                          Добавить
+                        </button>
+                      </div>
+                    </div>
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Команда</th>
+                            <th class="text-end"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="t in links.teams" :key="t.id">
+                            <td>
+                              {{ t.name
+                              }}<span v-if="t.birth_year" class="text-muted">
+                                ({{ t.birth_year }})</span
+                              >
+                            </td>
+                            <td class="text-end">
+                              <button
+                                class="btn btn-sm btn-link text-danger p-0"
+                                @click="detachTeamFromGround(t.id)"
+                              >
+                                <i class="bi bi-x-lg"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          <tr v-if="!links.teams.length">
+                            <td colspan="2" class="text-muted">
+                              Команды не прикреплены
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="linksModal.hide()"
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div ref="modalRef" class="modal fade" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form @submit.prevent="save">
             <div class="modal-header">
               <h5 class="modal-title">
-                {{ editing ? 'Изменить стадион' : 'Добавить стадион' }}
+                {{ editing ? 'Изменить площадку' : 'Добавить площадку' }}
               </h5>
               <button
                 type="button"
@@ -493,6 +913,21 @@ async function load() {
         </div>
       </div>
     </div>
+    <GroundFiltersModal
+      ref="filtersModal"
+      :filters="filters"
+      @apply="(f) => Object.assign(filters, f)"
+      @reset="
+        () =>
+          Object.assign(filters, {
+            withoutAddress: false,
+            withYandex: false,
+            imported: false,
+            withClubs: false,
+            withTeams: false,
+          })
+      "
+    />
   </div>
   <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <div
@@ -508,20 +943,16 @@ async function load() {
 </template>
 
 <style scoped>
-.list-group {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
 .section-card {
   border-radius: 1rem;
   overflow: hidden;
   border: 0;
 }
 
-.training-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+.ground-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 0;
 }
 
 .fade-in {

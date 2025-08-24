@@ -44,6 +44,7 @@ async function loadTeams() {
     if (filters.clubId) params.set('club_id', filters.clubId);
     if (filters.birthYear) params.set('birth_year', filters.birthYear);
     if (filters.status) params.set('status', filters.status);
+    params.set('include', 'grounds');
     const res = await apiFetch(`/teams?${params}`);
     teams.value = res.teams || [];
     total.value = res.total || 0;
@@ -195,6 +196,7 @@ const activeFiltersCount = computed(() => {
                     <th>Команда</th>
                     <th>Год</th>
                     <th>Клуб</th>
+                    <th class="d-none d-lg-table-cell">Площадки</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -202,6 +204,28 @@ const activeFiltersCount = computed(() => {
                     <td>{{ t.name }}</td>
                     <td>{{ t.birth_year || '' }}</td>
                     <td>{{ t.club?.name || '—' }}</td>
+                    <td class="d-none d-lg-table-cell">
+                      <div
+                        v-if="t.grounds?.length"
+                        class="d-flex flex-wrap gap-1"
+                      >
+                        <span
+                          v-for="g in t.grounds"
+                          :key="g.id"
+                          class="badge text-bg-light border"
+                          >{{ g.name }}</span
+                        >
+                      </div>
+                      <span v-else class="text-muted">—</span>
+                      <div class="mt-1">
+                        <RouterLink
+                          to="/admin/grounds"
+                          class="small link-secondary text-decoration-none"
+                        >
+                          Управлять
+                        </RouterLink>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -221,6 +245,25 @@ const activeFiltersCount = computed(() => {
                     Год: {{ t.birth_year }}
                   </p>
                   <p class="mb-0 small">Клуб: {{ t.club?.name || '—' }}</p>
+                  <div
+                    class="d-flex align-items-start gap-1 flex-wrap small mt-1"
+                  >
+                    <span class="text-muted">Площадки:</span>
+                    <template v-if="t.grounds?.length">
+                      <span
+                        v-for="g in t.grounds"
+                        :key="g.id"
+                        class="badge text-bg-light border"
+                        >{{ g.name }}</span
+                      >
+                    </template>
+                    <span v-else class="text-muted">—</span>
+                    <RouterLink
+                      to="/admin/grounds"
+                      class="ms-2 link-secondary text-decoration-none"
+                      >Управлять</RouterLink
+                    >
+                  </div>
                 </div>
               </div>
               <PageNav

@@ -4,6 +4,8 @@ import teamService from '../services/teamService.js';
 import staffMapper from '../mappers/staffMapper.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import { sendError } from '../utils/api.js';
+import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
+import { withJobMetrics } from '../config/metrics.js';
 
 export default {
   async list(req, res) {
@@ -88,15 +90,30 @@ export default {
         return res.status(503).json({ error: 'external_unavailable' });
       }
       // Keep related entities in sync first
-      const clubStats = await clubService.syncExternal(req.user?.id);
-      const teamStats = await teamService.syncExternal(req.user?.id);
-      const stats = await staffService.syncExternal(req.user?.id);
-      const { rows, count } = await staffService.list({ page: 1, limit: 100 });
-      return res.json({
-        stats: { clubs: clubStats, teams: teamStats, ...stats },
-        staff: staffMapper.toPublicArray(rows),
-        total: count,
-      });
+      let payload = null;
+      await withRedisLock(
+        buildJobLockKey('staffSync'),
+        45 * 60_000,
+        async () => {
+          await withJobMetrics('staffSync_manual', async () => {
+            const clubStats = await clubService.syncExternal(req.user?.id);
+            const teamStats = await teamService.syncExternal(req.user?.id);
+            const stats = await staffService.syncExternal(req.user?.id);
+            const { rows, count } = await staffService.list({
+              page: 1,
+              limit: 100,
+            });
+            payload = {
+              stats: { clubs: clubStats, teams: teamStats, ...stats },
+              staff: staffMapper.toPublicArray(rows),
+              total: count,
+            };
+          });
+        },
+        { onBusy: () => null }
+      );
+      if (payload) return res.json(payload);
+      return res.status(409).json({ error: 'sync_in_progress' });
     } catch (err) {
       return sendError(res, err);
     }

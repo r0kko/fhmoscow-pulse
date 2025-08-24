@@ -36,8 +36,10 @@ async function load() {
     const params = new URLSearchParams({
       page: String(page.value),
       limit: String(pageSize.value),
-      include: 'teams',
     });
+    // Request both teams and grounds using repeated include params
+    params.append('include', 'teams');
+    params.append('include', 'grounds');
     const term = q.value.trim();
     if (term) params.set('search', term);
     const res = await apiFetch(`/clubs?${params}`);
@@ -141,6 +143,7 @@ watch(q, () => {
                   <tr>
                     <th>Название</th>
                     <th>Команды</th>
+                    <th class="d-none d-lg-table-cell">Площадки</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,6 +166,28 @@ watch(q, () => {
                         </span>
                       </div>
                       <span v-else class="text-muted">—</span>
+                    </td>
+                    <td class="d-none d-lg-table-cell">
+                      <div
+                        v-if="c.grounds?.length"
+                        class="d-flex flex-wrap gap-1"
+                      >
+                        <span
+                          v-for="g in c.grounds"
+                          :key="g.id"
+                          class="badge text-bg-light border"
+                          >{{ g.name }}</span
+                        >
+                      </div>
+                      <span v-else class="text-muted">—</span>
+                      <div class="mt-1">
+                        <RouterLink
+                          to="/admin/grounds"
+                          class="small link-secondary text-decoration-none"
+                        >
+                          Управлять
+                        </RouterLink>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -193,6 +218,25 @@ watch(q, () => {
                     </span>
                   </div>
                   <p v-else class="mb-0 small text-muted">Команд нет</p>
+                  <div
+                    class="d-flex align-items-start gap-1 flex-wrap small mt-1"
+                  >
+                    <span class="text-muted">Площадки:</span>
+                    <template v-if="c.grounds?.length">
+                      <span
+                        v-for="g in c.grounds"
+                        :key="g.id"
+                        class="badge text-bg-light border"
+                        >{{ g.name }}</span
+                      >
+                    </template>
+                    <span v-else class="text-muted">—</span>
+                    <RouterLink
+                      to="/admin/grounds"
+                      class="ms-2 link-secondary text-decoration-none"
+                      >Управлять</RouterLink
+                    >
+                  </div>
                 </div>
               </div>
               <PageNav

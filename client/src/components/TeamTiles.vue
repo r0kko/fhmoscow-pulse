@@ -5,7 +5,30 @@ import { RouterLink as Link } from 'vue-router';
 const props = defineProps({
   season: { type: Object, required: true },
   clubId: { type: String, required: true },
+  // When true, tiles link to team roster page; when false, tiles are static
+  linkToRoster: { type: Boolean, default: true },
+  // Base path for roster route (default: staff view)
+  rosterBasePath: { type: String, default: '/school-players/season' },
+  // Optional map: { [teamId]: number } — grounds count to display
+  groundsCountByTeamId: { type: Object, default: null },
+  // Intercept click and emit 'open' while keeping active styling
+  intercept: { type: Boolean, default: false },
+  // Optional set/map/array of teamIds to render as disabled (light)
+  disabledTeamIds: { type: [Object, Array], default: null },
 });
+const emit = defineEmits(['open']);
+
+function onOpen(team) {
+  if (props.linkToRoster) return;
+  if (!team?.team_id) return;
+  emit('open', {
+    teamId: team.team_id,
+    teamName: team.team_name || '',
+    teamYear: team.birth_year,
+    seasonId: props.season.id,
+    clubId: props.clubId,
+  });
+}
 
 const labeledTeams = computed(() => {
   // Keep only teams with a valid birth year
@@ -29,6 +52,15 @@ const labeledTeams = computed(() => {
 
   return result;
 });
+
+function isDisabled(team) {
+  if (!props.disabledTeamIds) return false;
+  const key = String(team.team_id);
+  const src = props.disabledTeamIds;
+  if (Array.isArray(src)) return src.map(String).includes(key);
+  if (src instanceof Set) return src.has(key) || src.has(Number(key));
+  return Boolean(src[key]);
+}
 </script>
 
 <template>
@@ -39,19 +71,30 @@ const labeledTeams = computed(() => {
       class="col-12 col-md-6 col-lg-3 team-tile-col"
     >
       <component
-        :is="(t.player_count || 0) > 0 ? Link : 'div'"
+        :is="props.linkToRoster ? Link : 'div'"
         :to="
-          (t.player_count || 0) > 0
+          props.linkToRoster
             ? {
-                path: `/school-players/season/${season.id}/year/${t.birth_year}`,
+                path: `${props.rosterBasePath}/${season.id}/year/${t.birth_year}`,
                 query: { club_id: clubId, team_id: t.team_id },
               }
             : null
         "
         class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
-        :class="{ 'text-muted disabled-card': !(t.player_count || 0) > 0 }"
+        :class="{
+          'text-muted disabled-card':
+            (!props.linkToRoster && !props.intercept) || isDisabled(t),
+        }"
         :aria-label="`${t.display_label}, ${t.team_name || ''}, заявлено: ${t.player_count || 0}`"
-        :aria-disabled="!(t.player_count || 0) > 0 ? 'true' : null"
+        :aria-disabled="
+          (!props.linkToRoster && !props.intercept) || isDisabled(t)
+            ? 'true'
+            : null
+        "
+        role="button"
+        tabindex="0"
+        @click="onOpen(t)"
+        @keydown.enter="onOpen(t)"
       >
         <div class="card-body">
           <div class="card-title mb-1 fw-semibold">{{ t.display_label }}</div>
@@ -68,6 +111,16 @@ const labeledTeams = computed(() => {
             <span class="d-inline-flex align-items-center gap-1">
               <i class="bi bi-trophy text-brand" aria-hidden="true"></i>
               Турниров: {{ (t.tournaments || []).length }}
+            </span>
+            <span
+              v-if="
+                props.groundsCountByTeamId &&
+                props.groundsCountByTeamId[String(t.team_id)] != null
+              "
+              class="d-inline-flex align-items-center gap-1"
+            >
+              <i class="bi bi-geo-alt text-brand" aria-hidden="true"></i>
+              Площадки: {{ props.groundsCountByTeamId[String(t.team_id)] }}
             </span>
           </div>
           <div v-if="(t.tournaments || []).length" class="tournaments-list">

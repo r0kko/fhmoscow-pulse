@@ -3,6 +3,8 @@ import clubUserService from '../services/clubUserService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import clubMapper from '../mappers/clubMapper.js';
 import { sendError } from '../utils/api.js';
+import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
+import { withJobMetrics } from '../config/metrics.js';
 
 export default {
   async list(req, res) {
@@ -24,6 +26,9 @@ export default {
         withTeams === 'true' ||
         include === 'teams' ||
         (Array.isArray(include) && include.includes('teams'));
+      const includeGrounds =
+        include === 'grounds' ||
+        (Array.isArray(include) && include.includes('grounds'));
       if (mine === 'true') {
         const clubs = await clubUserService.listUserClubs(
           req.user.id,
@@ -51,6 +56,7 @@ export default {
         limit: parseInt(limit, 10),
         search: search || q || undefined,
         includeTeams,
+        includeGrounds,
       });
       return res.json({ clubs: rows.map(clubMapper.toPublic), total: count });
     } catch (err) {
@@ -63,13 +69,30 @@ export default {
       if (!isExternalDbAvailable()) {
         return res.status(503).json({ error: 'external_unavailable' });
       }
-      const stats = await clubService.syncExternal(req.user?.id);
-      const { rows, count } = await clubService.list({ page: 1, limit: 100 });
-      return res.json({
-        stats,
-        clubs: rows.map(clubMapper.toPublic),
-        total: count,
-      });
+      let result = null;
+      await withRedisLock(
+        buildJobLockKey('clubSync'),
+        30 * 60_000,
+        async () => {
+          await withJobMetrics('clubSync_manual', async () => {
+            const stats = await clubService.syncExternal(req.user?.id);
+            const { rows, count } = await clubService.list({
+              page: 1,
+              limit: 100,
+            });
+            result = {
+              stats,
+              clubs: rows.map(clubMapper.toPublic),
+              total: count,
+            };
+          });
+        },
+        {
+          onBusy: () => null,
+        }
+      );
+      if (result) return res.json(result);
+      return res.status(409).json({ error: 'sync_in_progress' });
     } catch (err) {
       return sendError(res, err);
     }

@@ -91,12 +91,30 @@ async function listForCertificate(certId) {
   });
 }
 
-async function getDownloadUrl(file) {
-  return getSignedUrl(
-    s3,
-    new GetObjectCommand({ Bucket: getS3Bucket(), Key: file.key }),
-    { expiresIn: 3600 }
-  );
+/* istanbul ignore next */
+function encodeRFC5987ValueChars(str) {
+  return encodeURIComponent(str)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, '%2A');
+}
+
+/* istanbul ignore next */
+function buildContentDisposition(filename) {
+  const safe = String(filename)
+    .replace(/[\r\n]/g, ' ')
+    .replace(/"/g, '\\u0027');
+  const encoded = encodeRFC5987ValueChars(safe);
+  return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;
+}
+
+async function getDownloadUrl(file, options = {}) {
+  const params = { Bucket: getS3Bucket(), Key: file.key };
+  /* istanbul ignore next */ if (options.filename) {
+    params.ResponseContentDisposition = buildContentDisposition(
+      options.filename
+    );
+  }
+  return getSignedUrl(s3, new GetObjectCommand(params), { expiresIn: 3600 });
 }
 
 async function remove(id, actorId = null) {

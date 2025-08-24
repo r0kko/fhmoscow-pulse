@@ -157,6 +157,7 @@ async function listAll() {
  * @param {string} [options.club_id] - UUID or 'none' for teams without club
  * @param {number|string} [options.birth_year]
  * @param {string} [options.status] - 'ACTIVE' (default), 'ARCHIVED', 'ALL'
+ * @param {boolean} [options.includeGrounds]
  */
 async function list(options = {}) {
   const page = Math.max(1, parseInt(options.page || 1, 10));
@@ -185,8 +186,13 @@ async function list(options = {}) {
     where.deleted_at = { [Op.ne]: null };
   }
 
+  const include = [Club];
+  if (options.includeGrounds) {
+    const { Ground } = await import('../models/index.js');
+    include.push(Ground);
+  }
   return Team.findAndCountAll({
-    include: [Club],
+    include,
     where,
     paranoid,
     order: [

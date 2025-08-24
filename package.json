@@ -41,6 +41,7 @@
     "multer": "^2.0.2",
     "mysql2": "^3.14.3",
     "node-cron": "^4.2.1",
+    "prom-client": "^15.1.3",
     "nodemailer": "^7.0.5",
     "on-finished": "^2.4.1",
     "pdfkit": "^0.17.1",
@@ -58,8 +59,8 @@
     "bwip-js": "^4.5.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
-    "eslint": "^9.33.0",
+    "@eslint/js": "^9.34.0",
+    "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",

@@ -11,6 +11,9 @@ export default {
     if (team.Club) {
       out.club = { id: team.Club.id, name: team.Club.name };
     }
+    if (team.Grounds) {
+      out.grounds = team.Grounds.map((g) => ({ id: g.id, name: g.name }));
+    }
     return out;
   },
 };

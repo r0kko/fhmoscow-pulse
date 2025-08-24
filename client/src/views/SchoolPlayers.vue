@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TeamTiles from '../components/TeamTiles.vue';
 
@@ -13,8 +13,10 @@ const selectedSeasonId = ref('');
 const summariesByClub = ref([]); // multi-club: [{ club: {id,name}, seasons: [...] }]
 const selectedSeasonByClub = ref({}); // { [clubId]: seasonId }
 const canSee = ref(true);
+const disabledByKey = ref({}); // { `${clubId}__${seasonId}`: Set(teamId) }
 
 const hasMultipleClubs = computed(() => clubs.value.length > 1);
+const router = useRouter();
 const seasons = computed(() => summary.value);
 const activeSeason = computed(
   () => seasons.value.find((s) => s.id === selectedSeasonId.value) || null
@@ -30,6 +32,21 @@ onMounted(async () => {
 watch(activeClubId, async () => {
   await loadSummary();
 });
+
+// When season tab changes for a club, ensure disabled tiles computed
+watch(
+  selectedSeasonByClub,
+  async (val, old) => {
+    try {
+      for (const group of summariesByClub.value || []) {
+        const sid = val[group.club.id];
+        const season = (group.seasons || []).find((s) => s.id === sid);
+        if (season) await ensureDisabledComputed(group.club.id, season);
+      }
+    } catch (_) {}
+  },
+  { deep: true }
+);
 
 async function loadClubs() {
   try {
@@ -86,6 +103,14 @@ async function loadSummary() {
         map[item.club.id] = (active || item.seasons[0])?.id || '';
       }
       selectedSeasonByClub.value = map;
+      // Precompute disabled tiles for active seasons
+      await Promise.all(
+        results.map(async (item) => {
+          const sid = selectedSeasonByClub.value[item.club.id];
+          const season = item.seasons.find((s) => s.id === sid);
+          if (season) await ensureDisabledComputed(item.club.id, season);
+        })
+      );
       // clear single
       summary.value = [];
     } else {
@@ -101,6 +126,10 @@ async function loadSummary() {
       ];
       const active = seasons.find((s) => s.active);
       selectedSeasonByClub.value = { mine: (active || seasons[0])?.id || '' };
+      // Precompute disabled for single-context
+      const sid = selectedSeasonByClub.value.mine;
+      const season = seasons.find((s) => s.id === sid);
+      if (season) await ensureDisabledComputed('mine', season);
     }
   } catch (e) {
     if (String(e?.message || '').includes('403')) {
@@ -122,6 +151,100 @@ async function checkAccess() {
   } catch (_e) {
     canSee.value = false;
   }
+}
+
+async function openRosterIfEligible(payload) {
+  try {
+    const paramsCommon = {
+      season: payload.seasonId,
+      club_id: payload.clubId,
+      team_id: payload.teamId,
+    };
+    const qPlayers = new URLSearchParams({
+      page: '1',
+      limit: '1',
+      mine: 'true',
+      season: paramsCommon.season,
+      club_id: paramsCommon.club_id,
+      team_id: paramsCommon.team_id,
+      team_birth_year: String(payload.teamYear),
+    });
+    qPlayers.append('include', 'clubs');
+    qPlayers.append('include', 'teams');
+    const qStaff = new URLSearchParams({
+      page: '1',
+      limit: '1',
+      mine: 'true',
+      season: paramsCommon.season,
+      club_id: paramsCommon.club_id,
+      team_id: paramsCommon.team_id,
+    });
+    qStaff.append('include', 'teams');
+
+    const [playersRes, staffRes] = await Promise.all([
+      apiFetch(`/players?${qPlayers.toString()}`),
+      apiFetch(`/staff?${qStaff.toString()}`),
+    ]);
+    const playersTotal = Number(playersRes?.total || 0);
+    const staffTotal = Number(staffRes?.total || 0);
+    if (playersTotal === 0 && staffTotal === 0) return; // block navigation
+
+    router.push({
+      path: `/school-players/season/${payload.seasonId}/year/${payload.teamYear}`,
+      query: { club_id: payload.clubId, team_id: payload.teamId },
+    });
+  } catch (_) {
+    // Silently ignore navigation if check fails
+  }
+}
+
+function keyFor(clubId, seasonId) {
+  return `${clubId}__${seasonId}`;
+}
+
+async function ensureDisabledComputed(clubId, season) {
+  const key = keyFor(clubId, season.id);
+  if (disabledByKey.value[key]) return;
+  // Candidates: teams with player_count == 0 and valid birth_year
+  const candidates = (season.teams || [])
+    .filter((t) => Number.isFinite(t.birth_year))
+    .filter((t) => (t.player_count || 0) === 0);
+  if (!candidates.length) {
+    disabledByKey.value[key] = new Set();
+    return;
+  }
+  // Check staff presence per candidate; limit concurrency to 4
+  const hasStaff = new Set();
+  const chunk = 4;
+  for (let i = 0; i < candidates.length; i += chunk) {
+    const part = candidates.slice(i, i + chunk);
+    const res = await Promise.all(
+      part.map(async (t) => {
+        try {
+          const params = new URLSearchParams({
+            page: '1',
+            limit: '1',
+            mine: 'true',
+            season: season.id,
+            team_id: String(t.team_id),
+            club_id: clubId === 'mine' ? '' : String(clubId),
+          });
+          params.append('include', 'teams');
+          const r = await apiFetch(`/staff?${params.toString()}`);
+          return { id: String(t.team_id), total: Number(r?.total || 0) };
+        } catch (_e) {
+          return { id: String(t.team_id), total: 0 };
+        }
+      })
+    );
+    for (const r of res) if (r.total > 0) hasStaff.add(r.id);
+  }
+  // Disabled = candidates with no staff
+  disabledByKey.value[key] = new Set(
+    candidates
+      .filter((t) => !hasStaff.has(String(t.team_id)))
+      .map((t) => String(t.team_id))
+  );
 }
 </script>
 
@@ -182,7 +305,16 @@ async function checkAccess() {
             <div>
               <template v-for="s in group.seasons" :key="s.id">
                 <template v-if="selectedSeasonByClub[group.club.id] === s.id">
-                  <TeamTiles :season="s" :club-id="group.club.id" />
+                  <TeamTiles
+                    :season="s"
+                    :club-id="group.club.id"
+                    :link-to-roster="false"
+                    :disabled-team-ids="
+                      disabledByKey[keyFor(group.club.id, s.id)] || new Set()
+                    "
+                    intercept
+                    @open="openRosterIfEligible"
+                  />
                   <div v-if="!s.teams?.length" class="text-muted">
                     Нет данных.
                   </div>

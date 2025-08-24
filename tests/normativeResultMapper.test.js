@@ -55,4 +55,23 @@ describe('normativeResultMapper', () => {
   test('toPublic returns null for null', () => {
     expect(mapper.toPublic(null)).toBeNull();
   });
+
+  test('toPublic uses NormativeZone when zone is absent', () => {
+    const res = mapper.toPublic({
+      id: 'r2',
+      user_id: 'u2',
+      season_id: 's2',
+      training_id: null,
+      type_id: 'n2',
+      value_type_id: 'v2',
+      unit_id: 'u2',
+      online: true,
+      retake: true,
+      value: 5,
+      NormativeZone: zone,
+    });
+    expect(res.zone).toEqual(zoneMapper.default.toPublic(zone));
+    expect(res.user).toBeUndefined();
+    expect(res.training).toBeUndefined();
+  });
 });
