@@ -8,30 +8,25 @@ const props = defineProps({
 });
 
 const labeledTeams = computed(() => {
+  // Keep only teams with a valid birth year
   const list = (props.season.teams || []).filter((t) =>
     Number.isFinite(t.birth_year)
   );
-  const byYear = new Map();
-  for (const t of list) {
-    if (!byYear.has(t.birth_year)) byYear.set(t.birth_year, []);
-    byYear.get(t.birth_year).push(t);
-  }
-  const result = [];
-  for (const [year, arr] of byYear.entries()) {
-    arr.sort((a, b) =>
-      (a.team_name || '').localeCompare(b.team_name || '', 'ru')
-    );
-    arr.forEach((t, idx) => {
-      const label = idx === 0 ? String(year) : `${year} - ${idx + 1}`;
-      result.push({ ...t, display_label: label });
-    });
-  }
-  // Sort final tiles by birth_year desc then label (младшие → старшие)
+
+  // For UX: show only the year as the main label without "-2/-3" suffixes.
+  // Disambiguation between multiple teams is provided by the team name below.
+  const result = list.map((t) => ({
+    ...t,
+    display_label: String(t.birth_year),
+  }));
+
+  // Sort tiles by birth_year desc, then by team_name for stable order
   result.sort((a, b) => {
     if (a.birth_year !== b.birth_year)
       return (b.birth_year || 0) - (a.birth_year || 0);
-    return (a.display_label || '').localeCompare(b.display_label || '', 'ru');
+    return (a.team_name || '').localeCompare(b.team_name || '', 'ru');
   });
+
   return result;
 });
 </script>
@@ -55,11 +50,14 @@ const labeledTeams = computed(() => {
         "
         class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
         :class="{ 'text-muted disabled-card': !(t.player_count || 0) > 0 }"
-        :aria-label="`${t.display_label}, заявлено: ${t.player_count || 0}`"
+        :aria-label="`${t.display_label}, ${t.team_name || ''}, заявлено: ${t.player_count || 0}`"
         :aria-disabled="!(t.player_count || 0) > 0 ? 'true' : null"
       >
         <div class="card-body">
           <div class="card-title mb-1 fw-semibold">{{ t.display_label }}</div>
+          <div v-if="t.team_name" class="card-subtitle text-muted small mb-2">
+            {{ t.team_name }}
+          </div>
           <div
             class="card-text text-muted small mb-2 d-flex align-items-center flex-wrap gap-3"
           >

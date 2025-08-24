@@ -9,30 +9,48 @@ import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 const matches = ref([]);
 const loading = ref(false);
 const error = ref('');
-const extUnavailable = ref(false);
-const activeTab = ref('home'); // 'home' | 'away'
+const activeTab = ref('home');
 const search = ref('');
 const selectedTournament = ref('');
 const selectedGroup = ref('');
 const selectedTour = ref('');
+const seasons = ref([]);
+const selectedSeason = ref('');
 
 // Pagination state
 const homePage = ref(1);
 const awayPage = ref(1);
-const pageSize = ref(loadPageSize('schoolMatchesPageSize', 20));
+const pageSize = ref(loadPageSize('schoolPastMatchesPageSize', 20));
 
-onMounted(load);
+onMounted(init);
+
+async function init() {
+  try {
+    const [activeRes, listRes] = await Promise.all([
+      apiFetch('/seasons/active'),
+      apiFetch('/seasons?limit=1000&page=1'),
+    ]);
+    seasons.value = Array.isArray(listRes.seasons) ? listRes.seasons : [];
+    const activeSeason = activeRes?.season || null;
+    if (activeSeason?.id) selectedSeason.value = activeSeason.id;
+  } catch (_e) {
+    seasons.value = [];
+  } finally {
+    await load();
+  }
+}
 
 async function load() {
   loading.value = true;
   error.value = '';
   try {
+    const params = selectedSeason.value
+      ? `&season_id=${encodeURIComponent(selectedSeason.value)}`
+      : '';
     const [homeRes, awayRes] = await Promise.all([
-      apiFetch('/matches/upcoming?source=local&type=home&all=true'),
-      apiFetch('/matches/upcoming?source=local&type=away&all=true'),
+      apiFetch(`/matches/past?source=local&type=home&all=true${params}`),
+      apiFetch(`/matches/past?source=local&type=away&all=true${params}`),
     ]);
-    // When we explicitly force local source, do not surface external availability banner
-    extUnavailable.value = false;
     const home = Array.isArray(homeRes.matches) ? homeRes.matches : [];
     const away = Array.isArray(awayRes.matches) ? awayRes.matches : [];
     matches.value = [...home, ...away];
@@ -44,7 +62,6 @@ async function load() {
   }
 }
 
-// Fallback: if server doesn't provide is_home, show all in 'Домашние'
 const homeMatches = computed(() =>
   matches.value.filter((m) => m.is_home !== false)
 );
@@ -71,8 +88,6 @@ const paginatedAway = computed(() => {
   return filteredAway.value.slice(start, start + pageSize.value);
 });
 
-// Entire list is shown; pagination removed in favor of grouped tiles
-
 function filterByQuery(list) {
   const q = search.value.trim().toLowerCase();
   let res = list;
@@ -92,19 +107,15 @@ function filterByQuery(list) {
       );
     });
   }
-  if (selectedTournament.value) {
+  if (selectedTournament.value)
     res = res.filter((m) => (m.tournament || '') === selectedTournament.value);
-  }
-  if (selectedGroup.value) {
+  if (selectedGroup.value)
     res = res.filter((m) => (m.group || '') === selectedGroup.value);
-  }
-  if (selectedTour.value) {
+  if (selectedTour.value)
     res = res.filter((m) => (m.tour || '') === selectedTour.value);
-  }
   return res;
 }
 
-// Reset dependent state
 function resetFilters() {
   selectedTournament.value = '';
   selectedGroup.value = '';
@@ -170,45 +181,28 @@ const tourOptions = computed(() => {
   });
 });
 
-// Keep dependent filter values valid when higher-level filter or tab changes
 watch([activeTab, selectedTournament], () => {
-  if (
-    selectedGroup.value &&
-    !groupOptions.value.includes(selectedGroup.value)
-  ) {
+  if (selectedGroup.value && !groupOptions.value.includes(selectedGroup.value))
     selectedGroup.value = '';
-  }
-  if (selectedTour.value && !tourOptions.value.includes(selectedTour.value)) {
+  if (selectedTour.value && !tourOptions.value.includes(selectedTour.value))
     selectedTour.value = '';
-  }
 });
 watch([activeTab, selectedGroup], () => {
-  if (selectedTour.value && !tourOptions.value.includes(selectedTour.value)) {
+  if (selectedTour.value && !tourOptions.value.includes(selectedTour.value))
     selectedTour.value = '';
+});
+
+watch(
+  [search, selectedTournament, selectedGroup, selectedTour, selectedSeason],
+  () => {
+    homePage.value = 1;
+    awayPage.value = 1;
   }
-});
-
-// Reset page on filters/search change
-watch([search, selectedTournament, selectedGroup, selectedTour], () => {
-  homePage.value = 1;
-  awayPage.value = 1;
-});
-
-// Clamp pages when filtered count or page size changes
-watch([filteredHome, pageSize], () => {
-  const total = totalHomePages.value;
-  if (homePage.value > total) homePage.value = total;
-  if (homePage.value < 1) homePage.value = 1;
-});
-watch([filteredAway, pageSize], () => {
-  const total = totalAwayPages.value;
-  if (awayPage.value > total) awayPage.value = total;
-  if (awayPage.value < 1) awayPage.value = 1;
-});
+);
 
 function onChangePageSize(val) {
   pageSize.value = val;
-  savePageSize('schoolMatchesPageSize', val);
+  savePageSize('schoolPastMatchesPageSize', val);
   homePage.value = 1;
   awayPage.value = 1;
 }
@@ -224,13 +218,11 @@ function onChangePageSize(val) {
           </li>
           <li class="breadcrumb-item">Управление спортивной школой</li>
           <li class="breadcrumb-item active" aria-current="page">
-            Ближайшие матчи
+            Прошедшие матчи
           </li>
         </ol>
       </nav>
-      <h1 class="mb-3">Ближайшие матчи</h1>
-
-      <!-- External DB banner hidden: we use local schedule as the source of truth -->
+      <h1 class="mb-3">Прошедшие матчи</h1>
 
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body p-2">
@@ -264,7 +256,20 @@ function onChangePageSize(val) {
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
           <div class="row g-2 align-items-end mb-3">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
+              <select
+                v-model="selectedSeason"
+                class="form-select form-select-sm"
+                aria-label="Фильтр по сезону"
+                @change="load"
+              >
+                <option value="">Все сезоны</option>
+                <option v-for="s in seasons" :key="s.id" :value="s.id">
+                  {{ s.name }}<span v-if="s.active"> (текущий)</span>
+                </option>
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
               <input
                 v-model="search"
                 type="text"
@@ -297,7 +302,7 @@ function onChangePageSize(val) {
                 </option>
               </select>
             </div>
-            <div class="col-12 col-md-2">
+            <div class="col-12 col-md-1">
               <select
                 v-model="selectedTour"
                 class="form-select form-select-sm"
@@ -309,12 +314,12 @@ function onChangePageSize(val) {
                 </option>
               </select>
             </div>
-            <div class="col-12 col-md-1">
+            <div class="col-12 col-md-12 text-end">
               <button
-                class="btn btn-outline-secondary btn-sm w-100"
+                class="btn btn-outline-secondary btn-sm"
                 @click="resetFilters"
               >
-                Сбросить
+                Сбросить фильтры
               </button>
             </div>
           </div>
@@ -359,7 +364,7 @@ function onChangePageSize(val) {
 </template>
 
 <script>
-export default { name: 'SchoolMatchesView' };
+export default { name: 'SchoolPastMatchesView' };
 </script>
 
 <style scoped>
@@ -369,7 +374,7 @@ export default { name: 'SchoolMatchesView' };
   border: 0;
 }
 
-/* Mobile full-bleed gutters like in "Сборы" */
+/* Mobile full-bleed gutters */
 @media (max-width: 575.98px) {
   .school-matches-page {
     padding-top: 0.5rem !important;

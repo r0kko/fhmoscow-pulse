@@ -54,5 +54,33 @@ describe('accessScope middleware', () => {
     expect(req.access.allowedClubIds).toEqual([]);
     expect(req.access.allowedTeamIds).toEqual([]);
   });
-});
 
+  test('returns 401 when user missing', async () => {
+    const req = { user: null };
+    const status = jest.fn().mockReturnThis();
+    const json = jest.fn();
+    const res = { status, json };
+    const next = jest.fn();
+    const { default: accessScope } = await import(
+      '../src/middlewares/accessScope.js'
+    );
+    await accessScope(req, res, next);
+    expect(status).toHaveBeenCalledWith(401);
+    expect(json).toHaveBeenCalledWith({ error: 'Не авторизовано' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('returns 500 on unexpected error', async () => {
+    const req = { user: { getRoles: jest.fn(() => { throw new Error('x'); }) } };
+    const status = jest.fn().mockReturnThis();
+    const json = jest.fn();
+    const res = { status, json };
+    const next = jest.fn();
+    const { default: accessScope } = await import(
+      '../src/middlewares/accessScope.js'
+    );
+    await accessScope(req, res, next);
+    expect(status).toHaveBeenCalledWith(500);
+    expect(next).not.toHaveBeenCalled();
+  });
+});

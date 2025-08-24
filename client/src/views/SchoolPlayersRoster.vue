@@ -17,12 +17,10 @@ const teamId = computed(() => route.query.team_id || '');
 const clubId = computed(() => route.query.club_id || '');
 
 onMounted(async () => {
-  await Promise.all([
-    loadSeasonName(),
-    loadRoster(),
-    loadStaff(),
-    loadClubName(),
-  ]);
+  // Always resolve labels; only fetch roster/staff when a specific team is provided
+  await Promise.all([loadSeasonName(), loadClubName()]);
+  await loadRoster();
+  await loadStaff();
 });
 
 async function loadSeasonName() {
@@ -51,6 +49,10 @@ async function loadRoster() {
   loading.value = true;
   error.value = '';
   try {
+    if (!teamId.value) {
+      players.value = [];
+      return;
+    }
     const params = new URLSearchParams();
     params.set('page', '1');
     params.set('limit', '500');
@@ -74,6 +76,10 @@ async function loadStaff() {
   loading.value = true;
   error.value = '';
   try {
+    if (!teamId.value) {
+      staff.value = [];
+      return;
+    }
     const params = new URLSearchParams();
     params.set('page', '1');
     params.set('limit', '500');
@@ -167,6 +173,11 @@ const forwards = computed(() =>
       <h1 class="mb-3">
         Состав — {{ clubName || 'Клуб' }} / {{ year || '' }} г.р.
       </h1>
+      <div v-if="!teamId" class="alert alert-info mb-3" role="alert">
+        Для просмотра состава выберите конкретную команду на странице
+        <RouterLink to="/school-players">«Команды и составы»</RouterLink>.
+      </div>
+
       <!-- Плитка поиска -->
       <div class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body py-3">

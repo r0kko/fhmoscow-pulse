@@ -57,3 +57,20 @@ test('does nothing when no user found', async () => {
   expect(fetchByInnMock).not.toHaveBeenCalled();
   expect(updateByInnMock).not.toHaveBeenCalled();
 });
+
+test('second invocation returns immediately when already running', async () => {
+  // First call will await a promise to simulate long run
+  let resolveFirst;
+  const firstPromise = new Promise((resolve) => {
+    resolveFirst = resolve;
+  });
+  findOneMock.mockResolvedValue({ id: 'u1', Inn: { number: '123' } });
+  fetchByInnMock.mockReturnValueOnce(firstPromise);
+  // Start first run (not awaited yet)
+  const p1 = runTaxationCheck();
+  // Immediately trigger second call; should return fast without calling services again
+  const p2 = runTaxationCheck();
+  resolveFirst({ statuses: { dadata: 200, fns: 200 } });
+  await Promise.all([p1, p2]);
+  expect(fetchByInnMock).toHaveBeenCalledTimes(1);
+});

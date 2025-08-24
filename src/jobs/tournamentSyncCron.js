@@ -16,7 +16,7 @@ export async function runTournamentSync() {
     const teamStats = await teamService.syncExternal();
     const stats = await tournamentService.syncExternal();
     logger.info(
-      'Tournament sync completed: clubs(upserted=%d, softDeleted=%d); teams(upserted=%d, softDeleted=%d); types(upserted=%d, softDeleted=%d); tournaments(upserted=%d, softDeleted=%d); stages(upserted=%d, softDeleted=%d); groups(upserted=%d, softDeleted=%d); tournamentTeams(upserted=%d, softDeleted=%d)',
+      'Tournament sync completed: clubs(upserted=%d, softDeleted=%d); teams(upserted=%d, softDeleted=%d); types(upserted=%d, softDeleted=%d); tournaments(upserted=%d, softDeleted=%d); stages(upserted=%d, softDeleted=%d); groups(upserted=%d, softDeleted=%d); tournamentTeams(upserted=%d, softDeleted=%d); tours(upserted=%d, softDeleted=%d); games(upserted=%d, softDeleted=%d)',
       clubStats.upserts,
       clubStats.softDeletedTotal,
       teamStats.upserts,
@@ -30,7 +30,11 @@ export async function runTournamentSync() {
       stats.groups.upserts,
       stats.groups.softDeletedTotal,
       stats.tournament_teams.upserts,
-      stats.tournament_teams.softDeletedTotal
+      stats.tournament_teams.softDeletedTotal,
+      stats.tours.upserts,
+      stats.tours.softDeletedTotal,
+      stats.games.upserts,
+      stats.games.softDeletedTotal
     );
   } catch (err) {
     logger.error('Tournament sync failed: %s', err.stack || err);

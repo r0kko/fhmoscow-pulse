@@ -45,3 +45,26 @@ test('session cookie lax in development', async () => {
   );
   expect(typeof session).toBe('function');
 });
+
+test('uses MemoryStore when redis not writable', async () => {
+  process.env.NODE_ENV = 'development';
+  jest.resetModules();
+  const middleware = jest.fn();
+  const sessionMock = jest.fn(() => middleware);
+  const memoryStoreCtor = jest.fn();
+  jest.unstable_mockModule('express-session', () => ({
+    __esModule: true,
+    default: Object.assign(sessionMock, { MemoryStore: memoryStoreCtor }),
+  }));
+  jest.unstable_mockModule('connect-redis', () => ({
+    __esModule: true,
+    RedisStore: jest.fn(() => jest.fn()),
+  }));
+  jest.unstable_mockModule('../src/config/redis.js', () => ({
+    __esModule: true,
+    default: {},
+    isRedisWritable: () => false,
+  }));
+  await import('../src/config/session.js');
+  expect(memoryStoreCtor).toHaveBeenCalled();
+});

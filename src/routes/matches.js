@@ -13,4 +13,11 @@ router.get(
   controller.listUpcoming
 );
 
+router.get(
+  '/past',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  controller.listPast
+);
+
 export default router;

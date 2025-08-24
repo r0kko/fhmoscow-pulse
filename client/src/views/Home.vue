@@ -92,6 +92,11 @@ const schoolSections = computed(() =>
         ...(canSeePlayers.value
           ? [
               {
+                title: 'Прошедшие матчи',
+                icon: 'bi-clock-history',
+                to: '/school-matches/past',
+              },
+              {
                 title: 'Команды и составы',
                 icon: 'bi-people',
                 to: '/school-players',

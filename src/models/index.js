@@ -70,6 +70,8 @@ import Tournament from './tournament.js';
 import Stage from './stage.js';
 import TournamentGroup from './tournamentGroup.js';
 import TournamentTeam from './tournamentTeam.js';
+import Tour from './tour.js';
+import Match from './match.js';
 import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
 import Player from './player.js';
@@ -285,6 +287,14 @@ TournamentGroup.belongsTo(Tournament, { foreignKey: 'tournament_id' });
 Stage.hasMany(TournamentGroup, { foreignKey: 'stage_id' });
 TournamentGroup.belongsTo(Stage, { foreignKey: 'stage_id' });
 
+/* tours */
+Tournament.hasMany(Tour, { foreignKey: 'tournament_id' });
+Tour.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+Stage.hasMany(Tour, { foreignKey: 'stage_id' });
+Tour.belongsTo(Stage, { foreignKey: 'stage_id' });
+TournamentGroup.hasMany(Tour, { foreignKey: 'tournament_group_id' });
+Tour.belongsTo(TournamentGroup, { foreignKey: 'tournament_group_id' });
+
 Tournament.hasMany(TournamentTeam, { foreignKey: 'tournament_id' });
 TournamentTeam.belongsTo(Tournament, { foreignKey: 'tournament_id' });
 TournamentGroup.hasMany(TournamentTeam, { foreignKey: 'tournament_group_id' });
@@ -293,6 +303,24 @@ TournamentTeam.belongsTo(TournamentGroup, {
 });
 Team.hasMany(TournamentTeam, { foreignKey: 'team_id' });
 TournamentTeam.belongsTo(Team, { foreignKey: 'team_id' });
+
+/* matches */
+Tour.hasMany(Match, { foreignKey: 'tour_id' });
+Match.belongsTo(Tour, { foreignKey: 'tour_id' });
+Tournament.hasMany(Match, { foreignKey: 'tournament_id' });
+Match.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+Stage.hasMany(Match, { foreignKey: 'stage_id' });
+Match.belongsTo(Stage, { foreignKey: 'stage_id' });
+TournamentGroup.hasMany(Match, { foreignKey: 'tournament_group_id' });
+Match.belongsTo(TournamentGroup, { foreignKey: 'tournament_group_id' });
+Ground.hasMany(Match, { foreignKey: 'ground_id' });
+Match.belongsTo(Ground, { foreignKey: 'ground_id' });
+Team.hasMany(Match, { foreignKey: 'team1_id', as: 'HomeMatches' });
+Team.hasMany(Match, { foreignKey: 'team2_id', as: 'AwayMatches' });
+Match.belongsTo(Team, { foreignKey: 'team1_id', as: 'HomeTeam' });
+Match.belongsTo(Team, { foreignKey: 'team2_id', as: 'AwayTeam' });
+Season.hasMany(Match, { foreignKey: 'season_id' });
+Match.belongsTo(Season, { foreignKey: 'season_id' });
 
 /* courses */
 Course.belongsTo(User, { foreignKey: 'responsible_id', as: 'Responsible' });
@@ -513,6 +541,8 @@ export {
   TicketType,
   TicketStatus,
   TicketFile,
+  Tour,
+  Match,
   Team,
   Tournament,
   TournamentType,

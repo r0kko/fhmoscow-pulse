@@ -22,6 +22,7 @@ import AdminTeams from './views/AdminTeams.vue';
 import AdminClubs from './views/AdminClubs.vue';
 import AdminSportSchools from './views/AdminSportSchools.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
+import SchoolPastMatches from './views/SchoolPastMatches.vue';
 import SchoolPlayers from './views/SchoolPlayers.vue';
 import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
 import AdminCamps from './views/AdminCamps.vue';
@@ -256,6 +257,15 @@ const routes = [
       requiresAuth: true,
       requiresStaff: true,
       title: 'Управление матчами школы',
+    },
+  },
+  {
+    path: '/school-matches/past',
+    component: SchoolPastMatches,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Прошедшие матчи школы',
     },
   },
   {

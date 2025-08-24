@@ -44,3 +44,13 @@ test('returns 401 when user missing', async () => {
   expect(res.status).toHaveBeenCalledWith(401);
   expect(next).not.toHaveBeenCalled();
 });
+
+test('returns 500 on unexpected error', async () => {
+  const req = { user: { getRoles: jest.fn(() => { throw new Error('x'); }) } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  const next = jest.fn();
+  const mw = authorize('ADMIN');
+  await mw(req, res, next);
+  expect(res.status).toHaveBeenCalledWith(500);
+  expect(next).not.toHaveBeenCalled();
+});
