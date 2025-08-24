@@ -1,7 +1,7 @@
 <script setup>
 import { auth } from '../auth.js';
 import { computed, ref, onMounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
 import UpcomingEventCard from '../components/UpcomingEventCard.vue';
 
@@ -37,8 +37,12 @@ const qualificationSection = {
 };
 
 const hasCourse = ref(false);
+const canSeePlayers = ref(false);
+const route = useRoute();
+const noticeMessage = computed(() => String(route.query.notice || ''));
 
 onMounted(checkCourse);
+onMounted(checkSchoolLinks);
 
 async function checkCourse() {
   try {
@@ -49,6 +53,22 @@ async function checkCourse() {
     hasCourse.value = !!(data && data.course);
   } catch (_err) {
     hasCourse.value = false;
+  }
+}
+
+async function checkSchoolLinks() {
+  // Show players tile only for staff with at least one club/team
+  if (!isStaff.value) {
+    canSeePlayers.value = false;
+    return;
+  }
+  try {
+    const data = await apiFetch('/users/me/sport-schools');
+    // Allow entry if user has clubs or teams assigned
+    canSeePlayers.value = Boolean(data?.has_club || data?.has_team);
+  } catch (_err) {
+    // Fail closed to avoid exposing empty section
+    canSeePlayers.value = false;
   }
 }
 
@@ -68,6 +88,15 @@ const schoolSections = computed(() =>
           icon: 'bi-calendar-event',
           to: '/school-matches',
         },
+        ...(canSeePlayers.value
+          ? [
+              {
+                title: 'Команды и составы',
+                icon: 'bi-people',
+                to: '/school-players',
+              },
+            ]
+          : []),
       ]
     : []
 );
@@ -182,6 +211,9 @@ async function loadUpcoming() {
 <template>
   <div class="py-4">
     <div class="container">
+      <div v-if="noticeMessage" class="alert alert-info" role="status">
+        {{ noticeMessage }}
+      </div>
       <h3 class="mb-3 text-start">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>

@@ -15,6 +15,7 @@ TeamPlayer.init(
     team_id: { type: DataTypes.UUID, allowNull: false },
     player_id: { type: DataTypes.UUID, allowNull: false },
     club_player_id: { type: DataTypes.UUID, allowNull: true },
+    season_id: { type: DataTypes.UUID, allowNull: true },
   },
   {
     sequelize,
@@ -22,7 +23,11 @@ TeamPlayer.init(
     tableName: 'team_players',
     paranoid: true,
     underscored: true,
-    indexes: [{ fields: ['team_id'] }, { fields: ['player_id'] }],
+    indexes: [
+      { fields: ['team_id'] },
+      { fields: ['player_id'] },
+      { fields: ['season_id'] },
+    ],
   }
 );
 

@@ -15,6 +15,7 @@ ClubPlayer.init(
     club_id: { type: DataTypes.UUID, allowNull: true },
     player_id: { type: DataTypes.UUID, allowNull: false },
     role_id: { type: DataTypes.UUID, allowNull: true },
+    number: { type: DataTypes.INTEGER, allowNull: true },
     season_id: { type: DataTypes.UUID, allowNull: true },
   },
   {

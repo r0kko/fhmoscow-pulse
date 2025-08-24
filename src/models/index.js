@@ -123,6 +123,8 @@ ClubPlayer.hasMany(TeamPlayer, { foreignKey: 'club_player_id' });
 TeamPlayer.belongsTo(ClubPlayer, { foreignKey: 'club_player_id' });
 Season.hasMany(ClubPlayer, { foreignKey: 'season_id' });
 ClubPlayer.belongsTo(Season, { foreignKey: 'season_id' });
+Season.hasMany(TeamPlayer, { foreignKey: 'season_id' });
+TeamPlayer.belongsTo(Season, { foreignKey: 'season_id' });
 
 /* лог ↔ пользователь (опциональная связь) */
 User.hasMany(Log, { foreignKey: 'user_id' });

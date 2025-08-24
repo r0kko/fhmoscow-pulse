@@ -22,6 +22,8 @@ import AdminTeams from './views/AdminTeams.vue';
 import AdminClubs from './views/AdminClubs.vue';
 import AdminSportSchools from './views/AdminSportSchools.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
+import SchoolPlayers from './views/SchoolPlayers.vue';
+import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
@@ -254,6 +256,24 @@ const routes = [
       requiresAuth: true,
       requiresStaff: true,
       title: 'Управление матчами школы',
+    },
+  },
+  {
+    path: '/school-players',
+    component: SchoolPlayers,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Команды и составы',
+    },
+  },
+  {
+    path: '/school-players/season/:seasonId/year/:year',
+    component: SchoolPlayersRoster,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Состав команды',
     },
   },
   {

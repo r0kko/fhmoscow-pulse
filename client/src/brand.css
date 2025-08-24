@@ -322,10 +322,11 @@ body {
   overflow: hidden;
   border: 0;
 }
+/* On small screens keep gentle gutters instead of full-bleed cards */
 @media (max-width: 575.98px) {
   .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 

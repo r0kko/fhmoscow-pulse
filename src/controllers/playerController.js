@@ -1,4 +1,9 @@
-import playerService from '../services/playerService.js';
+import playerService, {
+  seasonBirthYearCounts,
+  seasonTeamSummaries,
+} from '../services/playerService.js';
+import { PlayerRole, ClubPlayer } from '../models/index.js';
+import clubUserService from '../services/clubUserService.js';
 import teamService from '../services/teamService.js';
 import clubService from '../services/clubService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
@@ -6,6 +11,138 @@ import playerMapper from '../mappers/playerMapper.js';
 import { sendError } from '../utils/api.js';
 
 export default {
+  async seasonSummary(req, res) {
+    try {
+      const { mine, club_id } = req.query;
+      let clubIds = [];
+      const roles = req.user?.Roles?.map((r) => r.alias) || [];
+      const isAdmin = roles.includes('ADMIN');
+      if (
+        mine === 'true' ||
+        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
+      ) {
+        const clubs = await clubUserService.listUserClubs(req.user.id);
+        clubIds = clubs.map((c) => c.id);
+      }
+      if (club_id) clubIds = [club_id];
+
+      // Restrict by teams the user is explicitly assigned to (if any)
+      let teamIds = [];
+      if (!isAdmin) {
+        const teams = await teamService
+          .listUserTeams(req.user.id)
+          .catch(() => []);
+        teamIds = (teams || []).map((t) => t.id);
+      }
+
+      const rows = await seasonBirthYearCounts({ clubIds, teamIds });
+      // Group by season
+      const bySeason = new Map();
+      for (const r of rows) {
+        if (!bySeason.has(r.season_id)) {
+          bySeason.set(r.season_id, {
+            id: r.season_id,
+            name: r.season_name,
+            active: Boolean(r.season_active),
+            years: [],
+          });
+        }
+        bySeason
+          .get(r.season_id)
+          .years.push({ year: r.birth_year, count: Number(r.player_count) });
+      }
+      const seasons = Array.from(bySeason.values());
+      return res.json({ seasons });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async facets(req, res) {
+    try {
+      const { search, q, season, club_id, team_id, birth_year, mine } =
+        req.query;
+      let clubIds = [];
+      const roles = req.user?.Roles?.map((r) => r.alias) || [];
+      const isAdmin = roles.includes('ADMIN');
+      if (
+        mine === 'true' ||
+        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
+      ) {
+        const clubs = await clubUserService.listUserClubs(req.user.id);
+        clubIds = clubs.map((c) => c.id);
+      }
+      if (club_id) clubIds = [club_id];
+
+      const facets = await playerService.facets({
+        search: search || q || undefined,
+        seasonId: season || undefined,
+        teamId: team_id || undefined,
+        birthYear: birth_year ? parseInt(birth_year, 10) : undefined,
+        clubIds,
+      });
+      return res.json(facets);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async seasonTeamSummary(req, res) {
+    try {
+      const { mine, club_id } = req.query;
+      let clubIds = [];
+      const roles = req.user?.Roles?.map((r) => r.alias) || [];
+      const isAdmin = roles.includes('ADMIN');
+      if (
+        mine === 'true' ||
+        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
+      ) {
+        const clubs = await clubUserService.listUserClubs(req.user.id);
+        clubIds = clubs.map((c) => c.id);
+      }
+      if (club_id) clubIds = [club_id];
+
+      // Restrict by teams the user is explicitly assigned to (if any)
+      let teamIds = [];
+      if (!isAdmin) {
+        const teams = await teamService
+          .listUserTeams(req.user.id)
+          .catch(() => []);
+        teamIds = (teams || []).map((t) => t.id);
+      }
+
+      const rows = await seasonTeamSummaries({ clubIds, teamIds });
+      // Group by season
+      const bySeason = new Map();
+      for (const r of rows) {
+        if (!bySeason.has(r.season_id)) {
+          bySeason.set(r.season_id, {
+            id: r.season_id,
+            name: r.season_name,
+            active: Boolean(r.season_active),
+            teams: [],
+          });
+        }
+        bySeason.get(r.season_id).teams.push({
+          team_id: r.team_id,
+          team_name: r.team_name,
+          birth_year: r.birth_year,
+          player_count: Number(r.player_count) || 0,
+          tournaments: r.tournaments || [],
+        });
+      }
+      const seasons = Array.from(bySeason.values());
+      // Sort inner teams by birth_year desc then team_name
+      for (const s of seasons) {
+        s.teams.sort((a, b) => {
+          if (a.birth_year !== b.birth_year)
+            return (b.birth_year || 0) - (a.birth_year || 0);
+          return (a.team_name || '').localeCompare(b.team_name || '', 'ru');
+        });
+      }
+      return res.json({ seasons });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async list(req, res) {
     try {
       const {
@@ -17,6 +154,11 @@ export default {
         include,
         withTeams,
         withClubs,
+        season,
+        club_id,
+        team_id,
+        birth_year,
+        mine,
       } = req.query;
 
       const includeTeams =
@@ -28,6 +170,28 @@ export default {
         include === 'clubs' ||
         (Array.isArray(include) && include.includes('clubs'));
 
+      let clubIds = [];
+      // If mine=true or user is SPORT_SCHOOL_STAFF (non-admin) with no club filter, limit to user's clubs
+      const roles = req.user?.Roles?.map((r) => r.alias) || [];
+      const isAdmin = roles.includes('ADMIN');
+      if (
+        mine === 'true' ||
+        (!isAdmin && roles.includes('SPORT_SCHOOL_STAFF'))
+      ) {
+        const clubs = await clubUserService.listUserClubs(req.user.id);
+        clubIds = clubs.map((c) => c.id);
+      }
+      if (club_id) clubIds = [club_id];
+
+      // Restrict to teams explicitly assigned to the user (if any)
+      let allowedTeamIds = [];
+      if (!isAdmin) {
+        const teams = await teamService
+          .listUserTeams(req.user.id)
+          .catch(() => []);
+        allowedTeamIds = (teams || []).map((t) => t.id);
+      }
+
       const { rows, count } = await playerService.list({
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
@@ -35,11 +199,92 @@ export default {
         status,
         includeTeams,
         includeClubs,
+        clubIds,
+        seasonId: season || undefined,
+        teamId: team_id || undefined,
+        birthYear: birth_year ? parseInt(birth_year, 10) : undefined,
+        allowedTeamIds,
+        teamBirthYear: req.query.team_birth_year
+          ? parseInt(req.query.team_birth_year, 10)
+          : undefined,
+        requireTeamWithinClub: clubIds.length > 0,
       });
-      return res.json({
-        players: rows.map(playerMapper.toPublic),
-        total: count,
+      const isRosterContext = Boolean(season && req.query.team_birth_year);
+
+      // Option A: single club — preload role names
+      let roleNameById = new Map();
+      if (clubIds.length === 1) {
+        const roleIds = new Set();
+        for (const p of rows) {
+          if (p.Clubs) {
+            const club = p.Clubs.find(
+              (c) => String(c.id) === String(clubIds[0])
+            );
+            const roleId = club?.ClubPlayer?.role_id || null;
+            if (roleId) roleIds.add(roleId);
+          }
+        }
+        if (roleIds.size) {
+          const roles = await PlayerRole.findAll({
+            where: { id: Array.from(roleIds) },
+          });
+          roleNameById = new Map(roles.map((r) => [r.id, r.name || null]));
+        }
+      }
+
+      // Option B: roster context — enrich via TeamPlayer.club_player_id
+      let clubPlayerMetaById = new Map();
+      if (isRosterContext) {
+        const cpIds = new Set();
+        for (const p of rows) {
+          if (p.Teams) {
+            for (const t of p.Teams) {
+              const cpId = t?.TeamPlayer?.club_player_id || null;
+              if (cpId) cpIds.add(cpId);
+            }
+          }
+        }
+        if (cpIds.size) {
+          const cps = await ClubPlayer.findAll({
+            where: { id: Array.from(cpIds) },
+            include: [{ model: PlayerRole, required: false }],
+          });
+          clubPlayerMetaById = new Map(
+            cps.map((x) => [
+              x.id,
+              {
+                number: x.number ?? null,
+                roleName: x.PlayerRole?.name || null,
+              },
+            ])
+          );
+        }
+      }
+
+      // Map to public and inject jersey_number, role_name
+      const mapped = rows.map((p) => {
+        const pub = playerMapper.toPublic(p);
+        if (clubIds.length === 1 && p.Clubs) {
+          const club = p.Clubs.find((c) => String(c.id) === String(clubIds[0]));
+          const jersey = club?.ClubPlayer?.number ?? null;
+          if (jersey != null) pub.jersey_number = jersey;
+          const roleId = club?.ClubPlayer?.role_id || null;
+          if (roleId && roleNameById.has(roleId))
+            pub.role_name = roleNameById.get(roleId);
+        }
+        if (isRosterContext && p.Teams) {
+          const tp = p.Teams.find((t) => t?.TeamPlayer)?.TeamPlayer || null;
+          const meta = tp?.club_player_id
+            ? clubPlayerMetaById.get(tp.club_player_id)
+            : null;
+          if (meta) {
+            if (meta.number != null) pub.jersey_number = meta.number;
+            if (meta.roleName) pub.role_name = meta.roleName;
+          }
+        }
+        return pub;
       });
+      return res.json({ players: mapped, total: count });
     } catch (err) {
       return sendError(res, err);
     }

@@ -211,6 +211,16 @@ async function addUserTeam(userId, teamId, actorId) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!team) throw new ServiceError('team_not_found', 404);
+  // Handle soft-deleted link: restore instead of creating duplicate
+  const existing = await UserTeam.findOne({
+    where: { user_id: userId, team_id: teamId },
+    paranoid: false,
+  });
+  if (existing) {
+    if (existing.deletedAt) await existing.restore();
+    await existing.update({ updated_by: actorId });
+    return;
+  }
   await user.addTeam(team, {
     through: { created_by: actorId, updated_by: actorId },
   });
@@ -240,3 +250,20 @@ export default {
   addUserTeam,
   removeUserTeam,
 };
+
+// New helper for team-centric staff listing
+async function listTeamUsers(teamId) {
+  const team = await Team.findByPk(teamId, {
+    include: [
+      {
+        model: User,
+        through: { attributes: [] },
+        required: false,
+      },
+    ],
+  });
+  if (!team) throw new ServiceError('team_not_found', 404);
+  return team.Users || [];
+}
+
+export { listTeamUsers };

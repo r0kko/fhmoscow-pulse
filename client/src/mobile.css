@@ -43,6 +43,12 @@ canvas {
     );
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
   }
+
+  /* Ensure main fluid pages also respect safe areas when using px-0 */
+  main.container-fluid.px-0 {
+    padding-left: calc(env(safe-area-inset-left) + 0.75rem);
+    padding-right: calc(env(safe-area-inset-right) + 0.75rem);
+  }
 }
 
 /* Prevent iOS zoom on small text inputs */

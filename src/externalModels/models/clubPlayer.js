@@ -10,6 +10,7 @@ ClubPlayer.init(
     club_id: { type: DataTypes.INTEGER },
     player_id: { type: DataTypes.INTEGER },
     role_id: { type: DataTypes.INTEGER },
+    number: { type: DataTypes.INTEGER },
     photo_id: { type: DataTypes.INTEGER },
     season_id: { type: DataTypes.INTEGER },
     object_status: { type: DataTypes.STRING(255) },

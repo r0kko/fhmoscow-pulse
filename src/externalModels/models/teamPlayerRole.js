@@ -5,7 +5,10 @@ import sequelize from '../../config/externalMariaDb.js';
 class TeamPlayerRole extends Model {}
 
 TeamPlayerRole.init(
-  { id: { type: DataTypes.INTEGER, primaryKey: true } },
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true },
+    name: { type: DataTypes.STRING(255) },
+  },
   {
     sequelize,
     modelName: 'TeamPlayerRole',

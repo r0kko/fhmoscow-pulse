@@ -17,6 +17,7 @@ import ticketAdmin from '../controllers/ticketAdminController.js';
 import userTeamController from '../controllers/userTeamController.js';
 import userClubController from '../controllers/userClubController.js';
 import sportSchoolAdminController from '../controllers/sportSchoolAdminController.js';
+import sportSchoolSelfController from '../controllers/sportSchoolSelfController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -56,6 +57,24 @@ router.get('/me', auth, (req, res) => {
   res.locals.body = response;
   res.json(response);
 });
+
+/**
+ * @swagger
+ * /users/me/sport-schools:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Get current user's sport school links overview (clubs/teams)
+ *     responses:
+ *       200:
+ *         description: Links summary
+ */
+router.get(
+  '/me/sport-schools',
+  auth,
+  authorize('SPORT_SCHOOL_STAFF'),
+  sportSchoolSelfController.getLinks
+);
 
 /**
  * @swagger
