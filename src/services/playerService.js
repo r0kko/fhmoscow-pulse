@@ -657,7 +657,6 @@ async function list(options = {}) {
           (options.allowedTeamIds && options.allowedTeamIds.length)
       ),
     };
-    if (options.teamId) teamInclude.where = { id: options.teamId };
     if (
       options.requireTeamWithinClub &&
       options.clubIds &&
@@ -674,11 +673,17 @@ async function list(options = {}) {
         birth_year: options.teamBirthYear,
       };
     }
+    // Scope by allowed teams without overriding explicit team_id filter.
+    // If a specific team_id is requested, keep it; otherwise apply allowedTeamIds.
     if (options.allowedTeamIds && options.allowedTeamIds.length) {
       teamInclude.where = {
         ...(teamInclude.where || {}),
         id: { [Op.in]: options.allowedTeamIds },
       };
+    }
+    // Apply explicit team filter last so it cannot be overridden by scope
+    if (options.teamId) {
+      teamInclude.where = { ...(teamInclude.where || {}), id: options.teamId };
     }
     if (options.seasonId)
       teamInclude.through = { where: { season_id: options.seasonId } };
