@@ -1,6 +1,7 @@
-import { Op, col, where as sqlWhere } from 'sequelize';
+import { Op, literal } from 'sequelize';
 
 import * as models from '../models/index.js';
+import sequelize from '../config/database.js';
 import { Stadium as ExtStadium } from '../externalModels/index.js';
 import logger from '../../logger.js';
 import ServiceError from '../errors/ServiceError.js';
@@ -39,10 +40,16 @@ async function listAll(options = {}) {
   // Search by name and/or address.result
   const term = (options.search || '').trim();
   if (term) {
-    where[Op.or] = [{ name: { [Op.iLike]: `%${term}%` } }];
-    where[Op.or].push(
-      sqlWhere(col('Address.result'), { [Op.iLike]: `%${term}%` })
-    );
+    const like = `%${term}%`;
+    const escLike = sequelize.escape(like);
+    where[Op.or] = [
+      { name: { [Op.iLike]: like } },
+      // Correlated EXISTS keeps search on Address in outer query context,
+      // avoiding subquery alias issues while preserving correct pagination.
+      literal(
+        `EXISTS (SELECT 1 FROM "addresses" AS "A" WHERE "A"."id" = "Ground"."address_id" AND "A"."deleted_at" IS NULL AND "A"."result" ILIKE ${escLike})`
+      ),
+    ];
   }
 
   // Address presence filters
