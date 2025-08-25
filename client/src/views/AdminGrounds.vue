@@ -466,8 +466,14 @@ async function load() {
     if (filters.withClubs) params.set('with_clubs', 'true');
     if (filters.withTeams) params.set('with_teams', 'true');
     const data = await apiFetch(`/grounds?${params}`);
-    grounds.value = data.grounds;
     total.value = data.total;
+    // Snap current page to bounds after total changes to avoid empty pages
+    const pages = Math.max(1, Math.ceil(total.value / pageSize.value));
+    if (currentPage.value > pages) {
+      currentPage.value = pages;
+      return; // watcher will trigger reload
+    }
+    grounds.value = data.grounds;
   } catch (e) {
     error.value = e.message;
   } finally {

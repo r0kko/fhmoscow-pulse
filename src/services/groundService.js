@@ -67,7 +67,6 @@ async function listAll(options = {}) {
     limit,
     offset,
     order: [[orderBy, orderDir]],
-    subQuery: false,
   });
 }
 

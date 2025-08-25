@@ -91,11 +91,17 @@ async function listUsers(options = {}) {
     (Array.isArray(options.role) ? options.role.length : true)
   ) {
     const aliases = Array.isArray(options.role) ? options.role : [options.role];
-    include.push({
-      model: Role,
-      where: { alias: aliases },
-      required: true,
-    });
+    if (aliases.length === 1 && aliases[0] === 'NO_ROLE') {
+      // Users without any roles: left join roles and filter where role is null
+      include.push({ model: Role, required: false });
+      where['$Roles.id$'] = null;
+    } else {
+      include.push({
+        model: Role,
+        where: { alias: aliases },
+        required: true,
+      });
+    }
   } else {
     include.push(Role);
   }

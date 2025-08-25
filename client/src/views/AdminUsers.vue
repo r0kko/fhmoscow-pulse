@@ -47,9 +47,9 @@ let confirmAction = null;
 // Filters modal state
 const filtersOpen = ref(false);
 
+// Count only actual filters (exclude search, which is a separate control)
 const activeFiltersCount = computed(() => {
   let c = 0;
-  if (search.value) c++;
   if (statusFilter.value) c++;
   if (roleFilter.value) c++;
   return c;
@@ -200,9 +200,8 @@ function applyTooltips() {
 function openFilters() {
   filtersOpen.value = true;
 }
-function onFiltersApply({ search: s, status: st, role: rl }) {
+function onFiltersApply({ status: st, role: rl }) {
   filtersOpen.value = false;
-  search.value = s;
   statusFilter.value = st;
   roleFilter.value = rl;
   currentPage.value = 1;
@@ -465,19 +464,6 @@ async function bulk(action) {
         >
           <h2 class="h5 mb-0">Пользователи</h2>
           <div class="d-flex gap-2 align-items-center">
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              @click="openFilters"
-            >
-              <i class="bi bi-funnel me-1"></i>
-              Фильтры
-              <span
-                v-if="activeFiltersCount"
-                class="badge text-bg-secondary ms-2"
-                >{{ activeFiltersCount }}</span
-              >
-            </button>
             <div class="btn-group" role="group" aria-label="Групповые действия">
               <button
                 type="button"
@@ -519,6 +505,44 @@ async function bulk(action) {
           </div>
         </div>
         <div class="card-body p-3">
+          <!-- Toolbar: search + filters -->
+          <div class="toolbar mb-3 d-flex align-items-center gap-2">
+            <div
+              class="input-group input-group-sm flex-grow-1"
+              style="min-width: 16rem"
+            >
+              <span id="users-search-addon" class="input-group-text">
+                <i class="bi bi-search" aria-hidden="true"></i>
+              </span>
+              <input
+                v-model.trim="search"
+                type="search"
+                class="form-control"
+                placeholder="Поиск по ФИО, телефону, email"
+                aria-label="Поиск по ФИО, телефону, email"
+                aria-describedby="users-search-addon"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary d-inline-flex align-items-center"
+                :title="
+                  activeFiltersCount
+                    ? `Активные фильтры: ${activeFiltersCount}`
+                    : 'Фильтры'
+                "
+                @click="openFilters"
+              >
+                <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+                <span>Фильтры</span>
+                <span
+                  v-if="activeFiltersCount"
+                  class="badge bg-secondary ms-2"
+                  >{{ activeFiltersCount }}</span
+                >
+              </button>
+            </div>
+          </div>
+
           <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
           <div
             v-if="users.length || isLoading"
@@ -1080,7 +1104,6 @@ async function bulk(action) {
   </ConfirmModal>
   <UsersFilterModal
     v-model="filtersOpen"
-    :search="search"
     :status="statusFilter"
     :role="roleFilter"
     :roles="roles"

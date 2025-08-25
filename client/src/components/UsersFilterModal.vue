@@ -4,7 +4,6 @@ import Modal from 'bootstrap/js/dist/modal';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  search: { type: String, default: '' },
   status: { type: String, default: '' },
   role: { type: String, default: '' },
   roles: { type: Array, default: () => [] },
@@ -14,12 +13,10 @@ const emit = defineEmits(['update:modelValue', 'apply', 'reset']);
 const el = ref(null);
 let instance;
 
-const s = ref(props.search);
 const st = ref(props.status);
 const r = ref(props.role);
 
 function open() {
-  s.value = props.search;
   st.value = props.status;
   r.value = props.role;
   instance?.show();
@@ -29,11 +26,10 @@ function close() {
   emit('update:modelValue', false);
 }
 function apply() {
-  emit('apply', { search: s.value, status: st.value, role: r.value });
+  emit('apply', { status: st.value, role: r.value });
   close();
 }
 function reset() {
-  s.value = '';
   st.value = '';
   r.value = '';
   emit('reset');
@@ -79,17 +75,6 @@ defineExpose({ open, close });
           ></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="fltSearch" class="form-label">Поиск</label>
-            <input
-              id="fltSearch"
-              v-model.trim="s"
-              type="search"
-              class="form-control"
-              placeholder="ФИО, телефон, email"
-              aria-label="Поиск по ФИО, телефону, email"
-            />
-          </div>
           <div class="row g-2">
             <div class="col-12 col-sm-6">
               <label for="fltStatus" class="form-label">Статус</label>
@@ -106,6 +91,7 @@ defineExpose({ open, close });
               <label for="fltRole" class="form-label">Роль</label>
               <select id="fltRole" v-model="r" class="form-select">
                 <option value="">Все роли</option>
+                <option value="NO_ROLE">Без роли</option>
                 <option
                   v-for="roleOpt in roles"
                   :key="roleOpt.id"
