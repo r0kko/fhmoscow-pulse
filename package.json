@@ -21,7 +21,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.872.0",
     "@aws-sdk/s3-request-presigner": "^3.872.0",
-    "@jest/globals": "^30.0.5",
+    "@jest/globals": "^30.1.1",
     "bcryptjs": "^3.0.2",
     "connect-redis": "^9.0.0",
     "cookie-parser": "~1.4.4",
