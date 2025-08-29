@@ -121,10 +121,46 @@ test('listUsers applies role filter', async () => {
           model: expect.anything(),
           where: { alias: ['ADMIN', 'REFEREE'] },
           required: true,
+          through: { attributes: [] },
         }),
       ]),
+      distinct: true,
+      subQuery: false,
     })
   );
+});
+
+test('listUsers applies NO_ROLE filter with NOT EXISTS', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({ role: 'NO_ROLE' });
+  expect(findAndCountAllMock).toHaveBeenCalled();
+  const args = findAndCountAllMock.mock.calls[0][0];
+  // include contains Role with required: false
+  expect(args.include).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        model: expect.anything(),
+        required: false,
+        through: { attributes: [] },
+      }),
+    ])
+  );
+  // where contains a NOT EXISTS literal against user_roles
+  const symKeys = Object.getOwnPropertySymbols(args.where);
+  const andSym = symKeys.find((s) => s.toString().includes('and'));
+  expect(andSym).toBeDefined();
+  const andArr = args.where[andSym];
+  expect(Array.isArray(andArr)).toBe(true);
+  expect(andArr).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        val: expect.stringContaining('NOT EXISTS (SELECT 1 FROM "user_roles"'),
+      }),
+    ])
+  );
+  // pagination options include distinct/subQuery for stable results
+  expect(args.distinct).toBe(true);
+  expect(args.subQuery).toBe(false);
 });
 
 test('getUser throws on missing user', async () => {

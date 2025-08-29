@@ -140,7 +140,7 @@ const activeFiltersCount = computed(() => {
       <h1 class="mb-3 text-start">Команды</h1>
 
       <div class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3">
+        <div class="card-body">
           <div class="row g-2 align-items-end mb-3">
             <div class="col-12 col-sm">
               <div class="input-group">
@@ -239,7 +239,7 @@ const activeFiltersCount = computed(() => {
             </div>
             <div v-if="teams.length" class="d-block d-sm-none">
               <div v-for="t in teams" :key="t.id" class="card mb-2">
-                <div class="card-body p-2">
+                <div class="card-body">
                   <h3 class="h6 mb-1">{{ t.name }}</h3>
                   <p v-if="t.birth_year" class="mb-1 small">
                     Год: {{ t.birth_year }}
@@ -303,9 +303,5 @@ const activeFiltersCount = computed(() => {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 </style>

@@ -138,8 +138,8 @@ function applySuggestion(sug) {
 
 <template>
   <div>
-    <div class="card mt-4">
-      <div class="card-body">
+    <div class="card section-card tile fade-in shadow-sm mt-4">
+      <div class="card-body p-2">
         <h2 class="card-title h5 mb-3">Адреса</h2>
         <div v-for="type in addressTypes" :key="type.alias" class="mb-4">
           <div class="d-flex justify-content-between align-items-center mb-2">

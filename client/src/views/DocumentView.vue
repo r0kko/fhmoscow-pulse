@@ -245,12 +245,6 @@ onMounted(async () => {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 @media (max-width: 575.98px) {
   .section-card {
     margin-left: -1rem;

@@ -8,6 +8,7 @@ import selfController from '../controllers/medicalCertificateSelfController.js';
 import adminController from '../controllers/medicalCertificateAdminController.js';
 import fileController from '../controllers/medicalCertificateFileController.js';
 import { medicalCertificateRules } from '../validators/medicalCertificateValidators.js';
+import validate from '../middlewares/validate.js';
 
 const upload = multer();
 
@@ -25,6 +26,7 @@ router.post(
   auth,
   authorize('REFEREE'),
   medicalCertificateRules,
+  validate,
   selfController.create
 );
 router.delete('/', auth, authorize('REFEREE'), selfController.remove);
@@ -44,6 +46,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   medicalCertificateRules,
+  validate,
   adminController.updateById
 );
 router.delete('/:id', auth, authorize('ADMIN'), adminController.remove);

@@ -555,12 +555,6 @@ function openNormatives(reg) {
 .highlight {
   animation: highlightBg 2s ease-out;
 }
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .presence-group .presence-btn {
   width: 2.5rem;
   display: flex;
@@ -578,13 +572,13 @@ function openNormatives(reg) {
 }
 
 .registration-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 .group-heading {
   background-color: #f8f9fa;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-xs);
   font-weight: 600;
 }
 

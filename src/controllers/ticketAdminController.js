@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import ticketService from '../services/ticketService.js';
 import ticketMapper from '../mappers/ticketMapper.js';
 import fileService from '../services/fileService.js';
@@ -53,10 +51,6 @@ export default {
   },
 
   async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const ticket = await ticketService.createForUser(
         req.params.id,
@@ -70,10 +64,6 @@ export default {
   },
 
   async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const ticket = await ticketService.updateForUser(
         req.params.id,
@@ -88,10 +78,6 @@ export default {
   },
 
   async updateById(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const ticket = await ticketService.update(
         req.params.id,

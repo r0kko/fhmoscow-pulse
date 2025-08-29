@@ -22,3 +22,24 @@ test('sendError uses internal_error when no details provided', () => {
   expect(res.json).toHaveBeenCalledWith({ error: 'internal_error' });
 });
 
+test('sendError sets Retry-After header when provided', () => {
+  const res = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn(),
+    set: jest.fn(),
+  };
+  sendError(res, { status: 401, code: 'account_locked', retryAfter: 123 });
+  expect(res.set).toHaveBeenCalledWith('Retry-After', '123');
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({ error: 'account_locked' });
+});
+
+test('sendError rounds Retry-After to at least 1 second', () => {
+  const res = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn(),
+    set: jest.fn(),
+  };
+  sendError(res, { status: 401, code: 'account_locked', retryAfter: 0.2 });
+  expect(res.set).toHaveBeenCalledWith('Retry-After', '1');
+});

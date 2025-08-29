@@ -257,7 +257,7 @@ async function submit() {
                     </div>
                     <div v-if="documents.length" class="d-block d-sm-none">
                       <div v-for="d in documents" :key="d.id" class="card mb-2">
-                        <div class="card-body p-2">
+                        <div class="card-body">
                           <h3 class="h6 mb-1">{{ d.name }}</h3>
                           <p class="mb-1 small">№ {{ d.number }}</p>
                           <p class="mb-1 small">
@@ -397,12 +397,6 @@ async function submit() {
 <style scoped>
 .fade-in {
   animation: fadeIn 0.4s ease-out;
-}
-
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
 }
 
 @media (max-width: 575.98px) {

@@ -3,7 +3,12 @@ export default async function requireActive(req, res, next) {
   if (!status) return res.status(403).json({ error: 'status_unknown' });
 
   const alias = status.alias;
-  if (alias === 'ACTIVE') return next();
+  if (alias === 'ACTIVE') {
+    if (req.user.password_change_required) {
+      return res.status(403).json({ error: 'password_change_required' });
+    }
+    return next();
+  }
 
   if (alias.startsWith('REGISTRATION_STEP_')) {
     const step = parseInt(alias.split('_').pop(), 10);

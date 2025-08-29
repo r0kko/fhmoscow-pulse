@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
@@ -205,7 +206,7 @@ async function removeCenter(center) {
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-3">
+      <div class="card-body">
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div
@@ -425,12 +426,6 @@ async function removeCenter(center) {
 
 .fade-in {
   animation: fadeIn 0.4s ease-out;
-}
-
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
 }
 
 @media (max-width: 575.98px) {

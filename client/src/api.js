@@ -126,12 +126,16 @@ export async function apiFetch(path, options = {}) {
     }
     const message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.code = data.error || null;
+    throw err;
   }
   if (!res.ok) {
     const message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.code = data.error || null;
+    throw err;
   }
   return data;
 }
@@ -172,12 +176,16 @@ export async function apiFetchForm(path, form, options = {}) {
     }
     const message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.code = data.error || null;
+    throw err;
   }
   if (!res.ok) {
     const message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.code = data.error || null;
+    throw err;
   }
   return data;
 }
@@ -244,7 +252,9 @@ export function apiUpload(path, form, { onProgress } = {}) {
       } else {
         const message =
           translateError(data.error) || `Ошибка запроса, код ${xhr.status}`;
-        reject(new Error(message));
+        const err = new Error(message);
+        err.code = data.error || null;
+        reject(err);
       }
     };
     xhr.onerror = () => reject(new Error('Сетевая ошибка'));

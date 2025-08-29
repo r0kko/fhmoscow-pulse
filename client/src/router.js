@@ -23,6 +23,7 @@ import AdminClubsTeams from './views/AdminClubsTeams.vue';
 import AdminSportSchools from './views/AdminSportSchools.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import SchoolPastMatches from './views/SchoolPastMatches.vue';
+import SchoolMatchAgreements from './views/SchoolMatchAgreements.vue';
 import SchoolPlayers from './views/SchoolPlayers.vue';
 import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
 import AdminCamps from './views/AdminCamps.vue';
@@ -39,17 +40,16 @@ import AdminCourses from './views/AdminCourses.vue';
 import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
 import Qualification from './views/Qualification.vue';
 import PasswordReset from './views/PasswordReset.vue';
+import ChangePassword from './views/ChangePassword.vue';
 import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
 import ServerError from './views/ServerError.vue';
 
-const adminRoles = [
-  'ADMIN',
-  'FIELD_REFEREE_SPECIALIST',
-  'BRIGADE_REFEREE_SPECIALIST',
-];
-const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
-const staffRoles = ['SPORT_SCHOOL_STAFF'];
+import {
+  ADMIN_ROLES as adminRoles,
+  REFEREE_ROLES as refereeRoles,
+  STAFF_ROLES as staffRoles,
+} from './utils/roles.js';
 
 const routes = [
   {
@@ -265,6 +265,15 @@ const routes = [
     },
   },
   {
+    path: '/school-matches/:id/agreements',
+    component: SchoolMatchAgreements,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Согласования матча',
+    },
+  },
+  {
     path: '/school-matches/past',
     component: SchoolPastMatches,
     meta: {
@@ -325,6 +334,11 @@ const routes = [
     meta: { hideLayout: true },
   },
   {
+    path: '/change-password',
+    component: ChangePassword,
+    meta: { requiresAuth: true, hideLayout: true, title: 'Смена пароля' },
+  },
+  {
     path: '/login',
     component: Login,
     meta: { hideLayout: true, title: 'Вход' },
@@ -381,6 +395,12 @@ router.beforeEach(async (to, _from, next) => {
   }
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');
+  } else if (
+    isAuthenticated &&
+    auth.mustChangePassword &&
+    to.path !== '/change-password'
+  ) {
+    next('/change-password');
   } else if (
     to.meta.requiresAdmin &&
     !roles.some((r) => adminRoles.includes(r))

@@ -193,12 +193,13 @@ const forwards = computed(() =>
       </h1>
       <div v-if="!teamId" class="alert alert-info mb-3" role="alert">
         Для просмотра состава выберите конкретную команду на странице
-        <RouterLink to="/school-players">«Команды и составы»</RouterLink>.
+        <RouterLink to="/school-players">«Команды и составы»</RouterLink>
+        .
       </div>
 
       <!-- Плитка поиска -->
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body py-3">
+        <div class="card-body">
           <form class="search-form" @submit.prevent>
             <div class="search-control">
               <label for="rosterSearch" class="form-label small text-muted mb-1"
@@ -240,7 +241,7 @@ const forwards = computed(() =>
         v-if="!isAdminView"
         class="card section-card tile fade-in shadow-sm mb-3"
       >
-        <div class="card-body py-3">
+        <div class="card-body">
           <div class="alert alert-warning small mb-0" role="alert">
             <div class="d-flex align-items-start">
               <i
@@ -307,34 +308,34 @@ const forwards = computed(() =>
               <div class="spinner-border spinner-brand" role="status"></div>
             </div>
             <ul v-else class="list-group list-group-flush">
-              <li
-                v-for="p in goalies"
-                :key="p.id"
-                class="list-group-item d-flex align-items-start gap-3 clickable-row"
-                role="button"
-                tabindex="0"
-                @click="openPlayer(p)"
-                @keydown.enter="openPlayer(p)"
-              >
+              <li v-for="p in goalies" :key="p.id" class="list-group-item">
                 <div
-                  class="jersey badge bg-secondary-subtle text-dark fw-semibold"
+                  class="d-flex align-items-start gap-3 clickable-row"
+                  role="button"
+                  tabindex="0"
+                  @click="openPlayer(p)"
+                  @keydown.enter="openPlayer(p)"
                 >
-                  {{ p.jersey_number ?? '—' }}
-                </div>
-                <div class="flex-grow-1">
-                  <div class="fw-semibold">{{ p.full_name || '—' }}</div>
-                  <div class="text-muted small">
-                    {{ formatDate(p.date_of_birth) || '—' }}
-                  </div>
                   <div
-                    v-if="p.height || p.weight || p.grip"
-                    class="text-muted small mt-1"
+                    class="jersey badge bg-secondary-subtle text-dark fw-semibold"
                   >
-                    <span v-if="p.height">{{ p.height }} см</span>
-                    <span v-if="p.height && (p.weight || p.grip)"> · </span>
-                    <span v-if="p.weight">{{ p.weight }} кг</span>
-                    <span v-if="p.weight && p.grip"> · </span>
-                    <span v-if="p.grip">Хват: {{ p.grip }}</span>
+                    {{ p.jersey_number ?? '—' }}
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ p.full_name || '—' }}</div>
+                    <div class="text-muted small">
+                      {{ formatDate(p.date_of_birth) || '—' }}
+                    </div>
+                    <div
+                      v-if="p.height || p.weight || p.grip"
+                      class="text-muted small mt-1"
+                    >
+                      <span v-if="p.height">{{ p.height }} см</span>
+                      <span v-if="p.height && (p.weight || p.grip)"> · </span>
+                      <span v-if="p.weight">{{ p.weight }} кг</span>
+                      <span v-if="p.weight && p.grip"> · </span>
+                      <span v-if="p.grip">Хват: {{ p.grip }}</span>
+                    </div>
                   </div>
                 </div>
               </li>
@@ -354,34 +355,34 @@ const forwards = computed(() =>
               <div class="spinner-border spinner-brand" role="status"></div>
             </div>
             <ul v-else class="list-group list-group-flush">
-              <li
-                v-for="p in defenders"
-                :key="p.id"
-                class="list-group-item d-flex align-items-start gap-3 clickable-row"
-                role="button"
-                tabindex="0"
-                @click="openPlayer(p)"
-                @keydown.enter="openPlayer(p)"
-              >
+              <li v-for="p in defenders" :key="p.id" class="list-group-item">
                 <div
-                  class="jersey badge bg-secondary-subtle text-dark fw-semibold"
+                  class="d-flex align-items-start gap-3 clickable-row"
+                  role="button"
+                  tabindex="0"
+                  @click="openPlayer(p)"
+                  @keydown.enter="openPlayer(p)"
                 >
-                  {{ p.jersey_number ?? '—' }}
-                </div>
-                <div class="flex-grow-1">
-                  <div class="fw-semibold">{{ p.full_name || '—' }}</div>
-                  <div class="text-muted small">
-                    {{ formatDate(p.date_of_birth) || '—' }}
-                  </div>
                   <div
-                    v-if="p.height || p.weight || p.grip"
-                    class="text-muted small mt-1"
+                    class="jersey badge bg-secondary-subtle text-dark fw-semibold"
                   >
-                    <span v-if="p.height">{{ p.height }} см</span>
-                    <span v-if="p.height && (p.weight || p.grip)"> · </span>
-                    <span v-if="p.weight">{{ p.weight }} кг</span>
-                    <span v-if="p.weight && p.grip"> · </span>
-                    <span v-if="p.grip">Хват: {{ p.grip }}</span>
+                    {{ p.jersey_number ?? '—' }}
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ p.full_name || '—' }}</div>
+                    <div class="text-muted small">
+                      {{ formatDate(p.date_of_birth) || '—' }}
+                    </div>
+                    <div
+                      v-if="p.height || p.weight || p.grip"
+                      class="text-muted small mt-1"
+                    >
+                      <span v-if="p.height">{{ p.height }} см</span>
+                      <span v-if="p.height && (p.weight || p.grip)"> · </span>
+                      <span v-if="p.weight">{{ p.weight }} кг</span>
+                      <span v-if="p.weight && p.grip"> · </span>
+                      <span v-if="p.grip">Хват: {{ p.grip }}</span>
+                    </div>
                   </div>
                 </div>
               </li>
@@ -401,34 +402,34 @@ const forwards = computed(() =>
               <div class="spinner-border spinner-brand" role="status"></div>
             </div>
             <ul v-else class="list-group list-group-flush">
-              <li
-                v-for="p in forwards"
-                :key="p.id"
-                class="list-group-item d-flex align-items-start gap-3 clickable-row"
-                role="button"
-                tabindex="0"
-                @click="openPlayer(p)"
-                @keydown.enter="openPlayer(p)"
-              >
+              <li v-for="p in forwards" :key="p.id" class="list-group-item">
                 <div
-                  class="jersey badge bg-secondary-subtle text-dark fw-semibold"
+                  class="d-flex align-items-start gap-3 clickable-row"
+                  role="button"
+                  tabindex="0"
+                  @click="openPlayer(p)"
+                  @keydown.enter="openPlayer(p)"
                 >
-                  {{ p.jersey_number ?? '—' }}
-                </div>
-                <div class="flex-grow-1">
-                  <div class="fw-semibold">{{ p.full_name || '—' }}</div>
-                  <div class="text-muted small">
-                    {{ formatDate(p.date_of_birth) || '—' }}
-                  </div>
                   <div
-                    v-if="p.height || p.weight || p.grip"
-                    class="text-muted small mt-1"
+                    class="jersey badge bg-secondary-subtle text-dark fw-semibold"
                   >
-                    <span v-if="p.height">{{ p.height }} см</span>
-                    <span v-if="p.height && (p.weight || p.grip)"> · </span>
-                    <span v-if="p.weight">{{ p.weight }} кг</span>
-                    <span v-if="p.weight && p.grip"> · </span>
-                    <span v-if="p.grip">Хват: {{ p.grip }}</span>
+                    {{ p.jersey_number ?? '—' }}
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ p.full_name || '—' }}</div>
+                    <div class="text-muted small">
+                      {{ formatDate(p.date_of_birth) || '—' }}
+                    </div>
+                    <div
+                      v-if="p.height || p.weight || p.grip"
+                      class="text-muted small mt-1"
+                    >
+                      <span v-if="p.height">{{ p.height }} см</span>
+                      <span v-if="p.height && (p.weight || p.grip)"> · </span>
+                      <span v-if="p.weight">{{ p.weight }} кг</span>
+                      <span v-if="p.weight && p.grip"> · </span>
+                      <span v-if="p.grip">Хват: {{ p.grip }}</span>
+                    </div>
                   </div>
                 </div>
               </li>
@@ -486,11 +487,6 @@ export default { name: 'SchoolPlayersRosterView' };
 </script>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-}
-
 .jersey {
   display: inline-flex;
   align-items: center;
@@ -516,6 +512,7 @@ export default { name: 'SchoolPlayersRosterView' };
 .clickable-row {
   cursor: pointer;
 }
+
 .clickable-row:hover {
   background-color: #f8f9fa;
 }
@@ -527,12 +524,14 @@ export default { name: 'SchoolPlayersRosterView' };
   gap: 0.75rem;
   align-items: flex-end;
 }
+
 .search-form .search-control {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0%;
+  flex: 1 1 0;
   min-width: 280px;
 }
+
 .search-form .input-group {
   width: 100%;
 }

@@ -12,6 +12,7 @@ import TaxationInfo from '../components/TaxationInfo.vue';
 import UserAddressForm from '../components/UserAddressForm.vue';
 import UserRolesForm from '../components/UserRolesForm.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
+import UserClubsTeamsManager from '../components/UserClubsTeamsManager.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -47,6 +48,11 @@ const tabs = computed(() => [
 ]);
 
 const canManageRoles = computed(() => auth.roles.includes('ADMIN'));
+const isSportSchoolStaff = computed(() =>
+  Array.isArray(user.value?.roles)
+    ? user.value.roles.includes('SPORT_SCHOOL_STAFF')
+    : false
+);
 
 const editing = ref(false);
 let originalUser = null;
@@ -191,6 +197,7 @@ async function save() {
       v-edge-fade
       class="nav nav-pills nav-fill justify-content-between mb-4 tab-selector"
       role="tablist"
+      aria-label="Разделы карточки пользователя"
     >
       <li v-for="tab in tabs" :key="tab.id" class="nav-item">
         <button
@@ -208,28 +215,46 @@ async function save() {
     <BrandSpinner v-else-if="isLoading" label="Загрузка" />
 
     <div v-show="activeTab === 'info'">
-      <form v-if="user" @submit.prevent="save">
-        <UserForm
-          ref="formRef"
-          v-model="user"
-          :locked="true"
-          :sexes="sexes"
-          @editing-changed="onEditingChanged"
-        >
-          <template #actions>
-            <button type="submit" class="btn btn-brand me-2">Сохранить</button>
-            <button type="button" class="btn btn-secondary" @click="cancelEdit">
-              Отмена
-            </button>
-          </template>
-        </UserForm>
-      </form>
-      <UserRolesForm
-        v-if="user && canManageRoles"
-        :user-id="route.params.id"
-        :user-roles="user.roles"
-        @updated="(roles) => (user.roles = roles)"
-      />
+      <div class="card section-card tile fade-in shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">Основные данные и контакты</h2>
+          <form v-if="user" @submit.prevent="save">
+            <UserForm
+              ref="formRef"
+              v-model="user"
+              :locked="true"
+              :frame="false"
+              :sexes="sexes"
+              @editing-changed="onEditingChanged"
+            >
+              <template #actions>
+                <button type="submit" class="btn btn-brand me-2">
+                  Сохранить
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="cancelEdit"
+                >
+                  Отмена
+                </button>
+              </template>
+            </UserForm>
+          </form>
+        </div>
+      </div>
+      <div v-if="user && canManageRoles" class="row g-3 mt-3">
+        <div v-if="canManageRoles" class="col-12 col-xl-6">
+          <UserRolesForm
+            :user-id="route.params.id"
+            :user-roles="user.roles"
+            @updated="(roles) => (user.roles = roles)"
+          />
+        </div>
+        <div v-if="isSportSchoolStaff" class="col-12 col-xl-6">
+          <UserClubsTeamsManager :user-id="route.params.id" />
+        </div>
+      </div>
     </div>
 
     <div
@@ -237,7 +262,7 @@ async function save() {
       v-if="passport !== undefined"
       class="mt-4"
     >
-      <div v-if="passport" class="card">
+      <div v-if="passport" class="card section-card tile fade-in shadow-sm">
         <div class="card-body position-relative">
           <div class="d-flex justify-content-between mb-3">
             <h2 class="card-title h5 mb-0">Основной документ</h2>
@@ -435,5 +460,19 @@ async function save() {
 <style scoped>
 .placeholder-card {
   opacity: 0.6;
+}
+/* Uses global .section-card and .tab-selector from brand.css */
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

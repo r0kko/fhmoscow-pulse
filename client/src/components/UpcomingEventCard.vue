@@ -125,13 +125,13 @@ function formatStart(date) {
   margin: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: var(--radius-tile);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-tile);
 }
 
 .upcoming-card .card-body {
-  padding: 0.75rem;
+  padding: var(--tile-padding);
 }
 
 .content-col {
@@ -160,7 +160,7 @@ function formatStart(date) {
   width: 2.5rem;
   min-width: 2.5rem;
   height: 3rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background: #f4f6f8;
   display: flex;
   flex-direction: column;
@@ -187,7 +187,5 @@ function formatStart(date) {
   border: 1px solid rgba(17, 56, 103, 0.2);
 }
 
-.text-brand {
-  color: var(--brand-color) !important;
-}
+/* text-brand is defined globally in brand.css */
 </style>

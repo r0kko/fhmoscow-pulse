@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import TrainingCalendar from '../components/TrainingCalendar.vue';
 import { toDayKey } from '../utils/time.js';
+import ContactModal from '../components/ContactModal.vue';
 
 const course = ref(null);
 const error = ref('');
@@ -14,7 +14,6 @@ const trainingsError = ref('');
 const trainingsLoading = ref(false);
 const actionPendingId = ref(null);
 const contactModalRef = ref(null);
-let contactModal;
 
 const pastTrainings = ref([]);
 const eventsView = ref('future');
@@ -27,8 +26,6 @@ const olenin = {
   phone: '79257033737',
   email: 'kkolenin@fhmoscow.com',
 };
-
-const activeContact = ref(null);
 
 const responsibleContact = computed(() => {
   const r = course.value?.responsible;
@@ -120,7 +117,6 @@ async function unregister(id) {
 }
 
 onMounted(async () => {
-  contactModal = new Modal(contactModalRef.value);
   try {
     const data = await apiFetch('/courses/me').catch((e) => {
       if (e.message === 'Курс не назначен') return null;
@@ -177,17 +173,9 @@ function attendanceStatus(t) {
   };
 }
 
-function openContactModal(contact) {
-  activeContact.value = contact;
-  contactModal?.show();
+function openContactModal(c) {
+  contactModalRef.value?.open(c);
 }
-
-onBeforeUnmount(() => {
-  try {
-    contactModal?.hide?.();
-    contactModal?.dispose?.();
-  } catch {}
-});
 </script>
 
 <template>
@@ -415,49 +403,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <div ref="contactModalRef" class="modal fade" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 overflow-hidden">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ activeContact?.name }}</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
-          </div>
-          <div class="modal-body p-0">
-            <div class="text-center p-3">
-              <div
-                class="mx-auto mb-2 rounded-circle bg-light d-flex align-items-center justify-content-center"
-                style="width: 4rem; height: 4rem"
-              >
-                <i class="bi bi-person-fill text-muted fs-2"></i>
-              </div>
-              <div>{{ activeContact?.name }}</div>
-              <div class="text-muted small">{{ activeContact?.title }}</div>
-            </div>
-            <hr class="my-0" />
-            <div class="list-group list-group-flush">
-              <a
-                v-if="activeContact?.phone"
-                :href="`tel:+${activeContact.phone}`"
-                class="list-group-item list-group-item-action"
-              >
-                <i class="bi bi-telephone me-2"></i>Позвонить
-              </a>
-              <a
-                v-if="activeContact?.email"
-                :href="`mailto:${activeContact.email}`"
-                class="list-group-item list-group-item-action"
-              >
-                <i class="bi bi-envelope me-2"></i>Написать на email
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ContactModal ref="contactModalRef" />
   </div>
 </template>
 

@@ -4,6 +4,7 @@ import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue';
+import PasswordInput from '../components/PasswordInput.vue';
 import CookieNotice from '../components/CookieNotice.vue';
 
 const router = useRouter();
@@ -203,41 +204,37 @@ async function resend() {
           />
           <label for="code">Код из письма</label>
         </div>
-        <div class="form-floating mb-2">
-          <input
+        <div class="mb-2">
+          <PasswordInput
             id="password"
             v-model="password"
-            type="password"
-            class="form-control"
+            label="Пароль"
             placeholder="Пароль"
             autocomplete="new-password"
-            required
+            :required="true"
             :aria-invalid="
               !passwordMeetsMin && password.length > 0 ? 'true' : 'false'
             "
             aria-describedby="passwordHelp"
           />
-          <label for="password">Пароль</label>
         </div>
         <PasswordStrengthMeter class="mb-3" :password="password" />
         <small id="passwordHelp" class="text-muted d-block mb-3"
           >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
           символы.</small
         >
-        <div class="form-floating mb-3">
-          <input
+        <div class="mb-3">
+          <PasswordInput
             id="confirm"
             v-model="confirm"
-            type="password"
-            class="form-control"
+            label="Повторите пароль"
             placeholder="Повторите пароль"
             autocomplete="new-password"
-            required
+            :required="true"
             :aria-invalid="
               !passwordsMatch && confirm.length > 0 ? 'true' : 'false'
             "
           />
-          <label for="confirm">Повторите пароль</label>
         </div>
         <button
           type="submit"

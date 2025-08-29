@@ -9,6 +9,7 @@ import TaxationInfo from '../components/TaxationInfo.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import UsersFilterModal from '../components/UsersFilterModal.vue';
 import Tooltip from 'bootstrap/js/dist/tooltip';
+import TabSelector from '../components/TabSelector.vue';
 
 const users = ref([]);
 const total = ref(0);
@@ -424,35 +425,14 @@ async function bulk(action) {
       </nav>
       <h1 class="mb-3">Пользователи</h1>
       <div class="card tile mb-3">
-        <div class="card-body p-2">
-          <ul
-            v-edge-fade
-            class="nav nav-pills nav-fill mb-0 tab-selector"
-            role="tablist"
-          >
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'users' }"
-                role="tab"
-                :aria-selected="activeTab === 'users'"
-                @click="activeTab = 'users'"
-              >
-                Пользователи
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'profiles' }"
-                role="tab"
-                :aria-selected="activeTab === 'profiles'"
-                @click="activeTab = 'profiles'"
-              >
-                Заполнение профиля
-              </button>
-            </li>
-          </ul>
+        <div class="card-body">
+          <TabSelector
+            v-model="activeTab"
+            :tabs="[
+              { key: 'users', label: 'Пользователи' },
+              { key: 'profiles', label: 'Заполнение профиля' },
+            ]"
+          />
         </div>
       </div>
       <div
@@ -504,7 +484,7 @@ async function bulk(action) {
             </button>
           </div>
         </div>
-        <div class="card-body p-3">
+        <div class="card-body">
           <!-- Toolbar: search + filters -->
           <div class="toolbar mb-3 d-flex align-items-center gap-2">
             <div
@@ -562,7 +542,13 @@ async function bulk(action) {
                       class="form-check-input brand-check"
                       type="checkbox"
                       :checked="allSelectedOnPage"
-                      :indeterminate="anySelected && !allSelectedOnPage"
+                      :aria-checked="
+                        anySelected && !allSelectedOnPage
+                          ? 'mixed'
+                          : allSelectedOnPage
+                            ? 'true'
+                            : 'false'
+                      "
                       aria-label="Выбрать все на странице"
                       @change="allSelectedOnPage = !allSelectedOnPage"
                     />
@@ -1122,21 +1108,10 @@ async function bulk(action) {
 .sortable i {
   margin-left: 4px;
 }
-.tab-selector {
-  gap: 0.5rem;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
-}
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 .profile-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 575.98px) {
@@ -1192,7 +1167,7 @@ td .cell-text {
   width: 4.5rem;
   background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
   background-size: 400% 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   animation: skeleton-loading 1.2s ease-in-out infinite;
 }
 .skeleton-icon {
@@ -1201,7 +1176,7 @@ td .cell-text {
   height: 1.5rem;
   background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
   background-size: 400% 100%;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-xs);
   animation: skeleton-loading 1.2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {

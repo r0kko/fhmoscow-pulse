@@ -1,6 +1,5 @@
 <script setup>
 import { RouterLink } from 'vue-router';
-import { defineProps } from 'vue';
 import logo from '../assets/fhm-logo.svg';
 
 defineProps({

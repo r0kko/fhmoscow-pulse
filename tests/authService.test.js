@@ -10,6 +10,9 @@ jest.unstable_mockModule('../src/config/redis.js', () => ({
     async set(k, v) {
       store.set(k, v);
     },
+    async pTTL(k) {
+      return store.has(k) ? 60000 : -2; // 60s TTL for test purposes
+    },
     async del(keys) {
       if (Array.isArray(keys)) {
         keys.forEach((x) => store.delete(x));
@@ -77,6 +80,8 @@ beforeEach(async () => {
   await attemptStore._reset();
   user.status_id = undefined;
   user.token_version = 0;
+  // clear mocked redis storage (attempts + lockout keys)
+  store.clear();
 });
 
 test('verifyCredentials returns user when valid', async () => {
@@ -97,19 +102,20 @@ test('verifyCredentials throws for bad password', async () => {
   await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
 });
 
-test('verifyCredentials increments attempts and locks account', async () => {
+test('verifyCredentials increments attempts and applies temporary lockout', async () => {
   const inactive = { id: 'i' };
   findStatusMock.mockResolvedValue(inactive);
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(false);
   user.status_id = undefined;
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 9; i++) {
     await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
   }
 
   await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('account_locked');
-  expect(updateMock).toHaveBeenCalledWith({ status_id: 'i' });
+  // Temporary lockout should not change persistent user status
+  expect(updateMock).not.toHaveBeenCalled();
 });
 
 test('verifyCredentials resets attempts on success', async () => {

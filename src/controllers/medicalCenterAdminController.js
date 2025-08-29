@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import medicalCenterService from '../services/medicalCenterService.js';
 import mapper from '../mappers/medicalCenterMapper.js';
 import { sendError } from '../utils/api.js';
@@ -24,10 +22,6 @@ export default {
   },
 
   async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const center = await medicalCenterService.create(req.body, req.user.id);
       return res.status(201).json({ center: mapper.toPublic(center) });
@@ -37,10 +31,6 @@ export default {
   },
 
   async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const center = await medicalCenterService.update(
         req.params.id,

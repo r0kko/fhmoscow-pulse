@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { RouterLink as Link } from 'vue-router';
+import BaseTile from './BaseTile.vue';
 
 const props = defineProps({
   season: { type: Object, required: true },
@@ -70,8 +70,7 @@ function isDisabled(team) {
       :key="t.team_id + '-' + t.display_label"
       class="col-12 col-md-6 col-lg-3 team-tile-col"
     >
-      <component
-        :is="props.linkToRoster ? Link : 'div'"
+      <BaseTile
         :to="
           props.linkToRoster
             ? {
@@ -80,19 +79,18 @@ function isDisabled(team) {
               }
             : null
         "
-        class="card section-card tile h-100 fade-in shadow-sm text-decoration-none text-body"
-        :class="{
-          'text-muted disabled-card':
-            (!props.linkToRoster && !props.intercept) || isDisabled(t),
-        }"
+        :section="true"
+        :disabled="(!props.linkToRoster && !props.intercept) || isDisabled(t)"
         :aria-label="`${t.display_label}, ${t.team_name || ''}, заявлено: ${t.player_count || 0}`"
-        :aria-disabled="
-          (!props.linkToRoster && !props.intercept) || isDisabled(t)
-            ? 'true'
-            : null
-        "
-        role="button"
-        tabindex="0"
+        :extra-class="[
+          'h-100',
+          'fade-in',
+          {
+            'text-muted disabled-card':
+              (!props.linkToRoster && !props.intercept) || isDisabled(t),
+          },
+        ]"
+        :role="props.linkToRoster ? 'group' : 'button'"
         @click="onOpen(t)"
         @keydown.enter="onOpen(t)"
       >
@@ -142,7 +140,7 @@ function isDisabled(team) {
           </div>
           <div v-else class="text-muted small">Нет турниров</div>
         </div>
-      </component>
+      </BaseTile>
     </div>
   </div>
 </template>

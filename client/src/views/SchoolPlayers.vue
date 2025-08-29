@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TeamTiles from '../components/TeamTiles.vue';
+import TabSelector from '../components/TabSelector.vue';
 
 const loading = ref(false);
 const error = ref('');
@@ -36,7 +37,7 @@ watch(activeClubId, async () => {
 // When season tab changes for a club, ensure disabled tiles computed
 watch(
   selectedSeasonByClub,
-  async (val, old) => {
+  async (val) => {
     try {
       for (const group of summariesByClub.value || []) {
         const sid = val[group.club.id];
@@ -280,22 +281,17 @@ async function ensureDisabledComputed(clubId, season) {
         >
           <div class="card-body">
             <h2 class="h5 mb-2">{{ group.club.name }}</h2>
-            <ul class="nav nav-pills tab-selector mb-3" role="tablist">
-              <li v-for="s in group.seasons" :key="s.id" class="nav-item">
-                <button
-                  class="nav-link"
-                  :class="{
-                    active: selectedSeasonByClub[group.club.id] === s.id,
-                  }"
-                  role="tab"
-                  :aria-selected="selectedSeasonByClub[group.club.id] === s.id"
-                  :aria-label="`Сезон ${s.name}`"
-                  @click="selectedSeasonByClub[group.club.id] = s.id"
-                >
-                  {{ s.name }}
-                </button>
-              </li>
-            </ul>
+            <div class="mb-3">
+              <TabSelector
+                :tabs="group.seasons.map((s) => ({ key: s.id, label: s.name }))"
+                :model-value="selectedSeasonByClub[group.club.id]"
+                :nav-fill="true"
+                justify="start"
+                @update:model-value="
+                  (v) => (selectedSeasonByClub[group.club.id] = v)
+                "
+              />
+            </div>
             <div
               v-if="!(group.seasons && group.seasons.length)"
               class="text-muted"
@@ -333,14 +329,7 @@ export default { name: 'SchoolPlayersView' };
 </script>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.75rem;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 </style>
 
 <!-- removed duplicate script setup block -->

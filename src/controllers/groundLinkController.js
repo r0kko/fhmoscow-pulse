@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import groundLinkService from '../services/groundLinkService.js';
 import clubMapper from '../mappers/clubMapper.js';
 import teamMapper from '../mappers/teamMapper.js';
@@ -16,10 +14,6 @@ export default {
   },
 
   async addClub(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       await groundLinkService.addGroundClub(
         req.params.id,
@@ -57,10 +51,6 @@ export default {
   },
 
   async addTeam(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       await groundLinkService.addGroundTeam(
         req.params.id,

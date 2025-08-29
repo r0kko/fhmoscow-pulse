@@ -110,7 +110,7 @@ async function loadVisibleTeamCounts() {
           const p = new URLSearchParams({ club_id: String(c.id) });
           const r = await apiFetch(`/players/season-teams?${p.toString()}`);
           const seasons = Array.isArray(r.seasons) ? r.seasons : [];
-          let season = null;
+          let season;
           if (activeSeasonId.value) {
             season = seasons.find(
               (s) => String(s.id) === String(activeSeasonId.value)
@@ -298,7 +298,7 @@ async function loadTeamGroundCounts() {
 
       <!-- List view: clubs as tiles -->
       <div v-if="!inDetail" class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3">
+        <div class="card-body">
           <div class="row g-2 align-items-end mb-3">
             <div class="col-12 col-sm">
               <div class="input-group">
@@ -338,11 +338,14 @@ async function loadTeamGroundCounts() {
                 :key="c.id"
                 class="col-12 col-md-6 col-lg-3 club-tile-col"
               >
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabindex="0"
                   class="card section-card tile h-100 fade-in shadow-sm text-start w-100 btn-unstyled"
                   :aria-label="`Открыть клуб ${c.name}`"
                   @click="openClub(c)"
+                  @keydown.enter.prevent="openClub(c)"
+                  @keydown.space.prevent="openClub(c)"
                 >
                   <div class="card-body">
                     <div class="card-title mb-1 fw-semibold">{{ c.name }}</div>
@@ -368,7 +371,7 @@ async function loadTeamGroundCounts() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </div>
               </div>
               <PageNav
                 v-if="clubs.length"
@@ -385,7 +388,7 @@ async function loadTeamGroundCounts() {
 
       <!-- Detail view: selected club with season tabs and team tiles -->
       <div v-else class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3">
+        <div class="card-body">
           <div
             class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3"
           >
@@ -484,11 +487,7 @@ async function loadTeamGroundCounts() {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 .club-tile-col {
   min-width: 0;
   width: 100%;
@@ -512,7 +511,7 @@ async function loadTeamGroundCounts() {
   width: 4rem;
   background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
   background-size: 400% 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   animation: skeleton-loading 1.2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,11 +1,12 @@
 import { expect, jest, test } from '@jest/globals';
 
 let validationOk = true;
+let validationErrors = [{ msg: 'bad' }];
 
 jest.unstable_mockModule('express-validator', () => ({
   validationResult: jest.fn(() => ({
     isEmpty: () => validationOk,
-    array: () => [{ msg: 'bad' }],
+    array: () => validationErrors,
   })),
 }));
 
@@ -162,6 +163,16 @@ test('start returns 400 on validation errors', async () => {
   validationOk = true;
 });
 
+test('start returns user_exists when email already used', async () => {
+  // existing user with the same email
+  findUserMock.mockResolvedValueOnce({ id: 'existing' });
+  const req = { body: { email: 't@example.com' } };
+  const res = createRes();
+  await controller.start(req, res);
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(res.json).toHaveBeenCalledWith({ error: 'user_exists' });
+});
+
 test('finish issues tokens after valid code', async () => {
   const user = { id: 'u1', reload: jest.fn(), increment: jest.fn() };
   const updated = {
@@ -195,6 +206,21 @@ test('finish issues tokens after valid code', async () => {
     user: { id: 'u1' },
     roles: ['USER'],
   });
+});
+
+test('finish returns weak_password when password invalid', async () => {
+  // Simulate validator reporting weak password error
+  validationOk = false;
+  validationErrors = [{ path: 'password', msg: 'weak_password' }];
+  const req = {
+    body: { email: 't@example.com', code: '123', password: 'weak' },
+  };
+  const res = createRes();
+  await controller.finish(req, res);
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(res.json).toHaveBeenCalledWith({ error: 'weak_password' });
+  validationOk = true;
+  validationErrors = [{ msg: 'bad' }];
 });
 
 test('finish returns error when code invalid or expired', async () => {

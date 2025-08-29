@@ -6,6 +6,7 @@ import controller from '../controllers/clubController.js';
 import accessScope from '../middlewares/accessScope.js';
 import clubStaffController from '../controllers/clubStaffController.js';
 import { addClubStaffRules } from '../validators/clubStaffValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -48,6 +49,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addClubStaffRules,
+  validate,
   clubStaffController.add
 );
 /**

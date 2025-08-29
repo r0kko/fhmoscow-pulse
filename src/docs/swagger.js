@@ -7,7 +7,7 @@ const options = {
       title: 'АСОУ ПД Пульс API',
       version: '1.0.0',
       description:
-        'REST API for the АСОУ ПД Пульс application providing user management and authentication.',
+        'REST API for the АСОУ ПД Пульс application providing user management and authentication.\n\nError contract: most failures return { error: <code> }. Validation errors return { error: "validation_error", details: [{ field, code }] }.',
       contact: {
         email: 'support@example.com',
       },
@@ -29,6 +29,38 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
+        },
+      },
+      schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            error: { type: 'string', description: 'Error code' },
+          },
+          required: ['error'],
+        },
+        ValidationErrorDetail: {
+          type: 'object',
+          properties: {
+            field: { type: 'string' },
+            code: { type: 'string' },
+          },
+          required: ['field', 'code'],
+        },
+        ValidationErrorResponse: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'string',
+              enum: ['validation_error'],
+              description: 'Validation error code',
+            },
+            details: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/ValidationErrorDetail' },
+            },
+          },
+          required: ['error', 'details'],
         },
       },
     },

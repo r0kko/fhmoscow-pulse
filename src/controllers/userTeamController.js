@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import teamService from '../services/teamService.js';
 import teamMapper from '../mappers/teamMapper.js';
 import { sendError } from '../utils/api.js';
@@ -14,10 +12,6 @@ export default {
     }
   },
   async addForUser(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       await teamService.addUserTeam(
         req.params.id,

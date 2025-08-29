@@ -34,3 +34,10 @@ export const COOKIE_OPTIONS = {
   path: '/',
   ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
 };
+
+// Login security policy (hardcoded for consistency across environments)
+// - Up to 10 invalid password attempts within 15 minutes
+// - Then temporary lockout for 30 minutes
+export const LOGIN_MAX_ATTEMPTS = 10;
+export const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+export const LOGIN_LOCKOUT_MS = 30 * 60 * 1000; // 30 minutes

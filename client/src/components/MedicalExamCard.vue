@@ -169,7 +169,7 @@ const disabled = computed(
   font-size: var(--fs-base);
 }
 .exam-card .card-body {
-  padding: 0.75rem;
+  padding: var(--tile-padding);
 }
 .seat-status {
   font-size: 0.75rem;

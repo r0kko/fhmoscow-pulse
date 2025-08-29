@@ -170,10 +170,6 @@ export default { name: 'SchoolGroundsView' };
 </script>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-}
 .address-link:hover {
   text-decoration: underline !important;
 }

@@ -15,6 +15,7 @@ import {
   updateRegistrationRules,
   updatePresenceRules,
 } from '../validators/trainingRegistrationValidators.js';
+import validate from '../middlewares/validate.js';
 
 const controller = createAdminController(false);
 const selfController = createSelfController(false);
@@ -29,6 +30,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   trainingCreateRules,
+  validate,
   controller.create
 );
 router.get('/available', auth, authorize('REFEREE'), selfController.available);
@@ -40,6 +42,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   trainingUpdateRules,
+  validate,
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
@@ -55,6 +58,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   createRegistrationRules,
+  validate,
   registrationsController.create
 );
 router.put(
@@ -62,12 +66,14 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateRegistrationRules,
+  validate,
   registrationsController.update
 );
 router.put(
   '/:id/registrations/:userId/presence',
   auth,
   updatePresenceRules,
+  validate,
   registrationsController.updatePresence
 );
 router.get('/:id/attendance', auth, registrationsController.listForAttendance);
@@ -75,6 +81,7 @@ router.put(
   '/:id/attendance',
   auth,
   updateAttendanceRules,
+  validate,
   controller.setAttendance
 );
 router.delete(

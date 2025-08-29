@@ -1,12 +1,19 @@
 <script setup>
 import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
+import TabSelector from '../components/TabSelector.vue';
 import AdminNormativeGroups from '../components/AdminNormativeGroups.vue';
 import AdminNormativeTypes from '../components/AdminNormativeTypes.vue';
 import AdminNormativeResults from '../components/AdminNormativeResults.vue';
 import AdminNormativeLedger from '../components/AdminNormativeLedger.vue';
 
 const activeTab = ref('results');
+const tabs = [
+  { key: 'results', label: 'Результаты' },
+  { key: 'ledger', label: 'Ведомость' },
+  { key: 'types', label: 'Типы' },
+  { key: 'groups', label: 'Группы' },
+];
 </script>
 
 <template>
@@ -22,47 +29,8 @@ const activeTab = ref('results');
       </nav>
       <h1 class="mb-3">Нормативы</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body p-2">
-          <ul
-            class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
-          >
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'results' }"
-                @click="activeTab = 'results'"
-              >
-                Результаты
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'ledger' }"
-                @click="activeTab = 'ledger'"
-              >
-                Ведомость
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'types' }"
-                @click="activeTab = 'types'"
-              >
-                Типы
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'groups' }"
-                @click="activeTab = 'groups'"
-              >
-                Группы
-              </button>
-            </li>
-          </ul>
+        <div class="card-body">
+          <TabSelector v-model="activeTab" :tabs="tabs" justify="between" />
         </div>
       </div>
       <div v-if="activeTab === 'results'">
@@ -82,23 +50,11 @@ const activeTab = ref('results');
 </template>
 
 <style scoped>
-.tab-selector {
-  gap: 0.5rem;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
-}
-
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 
 @media (max-width: 575.98px) {
   .admin-normatives-page {

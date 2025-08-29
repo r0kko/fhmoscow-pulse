@@ -140,22 +140,34 @@ function openEdit(exam) {
 }
 
 async function save() {
+  formError.value = '';
+  const body = {
+    medical_center_id: form.value.medical_center_id,
+    start_at: fromDateTimeLocal(form.value.start_at),
+    end_at: fromDateTimeLocal(form.value.end_at),
+    capacity: form.value.capacity,
+  };
+  if (!body.medical_center_id) {
+    formError.value = 'Выберите медицинский центр';
+    return;
+  }
+  if (!body.start_at) {
+    formError.value = 'Укажите дату и время начала';
+    return;
+  }
+  if (!body.end_at) {
+    formError.value = 'Укажите дату и время окончания';
+    return;
+  }
+  if (new Date(body.end_at) < new Date(body.start_at)) {
+    formError.value = 'Время окончания должно быть позже начала';
+    return;
+  }
+  if (isCapacityInvalid.value) {
+    formError.value = 'Вместимость должна быть неотрицательным числом';
+    return;
+  }
   try {
-    formError.value = '';
-    const body = {
-      medical_center_id: form.value.medical_center_id,
-      start_at: fromDateTimeLocal(form.value.start_at),
-      end_at: fromDateTimeLocal(form.value.end_at),
-      capacity: form.value.capacity,
-    };
-    if (!body.medical_center_id) throw new Error('Выберите медицинский центр');
-    if (!body.start_at) throw new Error('Укажите дату и время начала');
-    if (!body.end_at) throw new Error('Укажите дату и время окончания');
-    if (new Date(body.end_at) < new Date(body.start_at)) {
-      throw new Error('Время окончания должно быть позже начала');
-    }
-    if (isCapacityInvalid.value)
-      throw new Error('Вместимость должна быть неотрицательным числом');
     if (editing.value) {
       await apiFetch(`/medical-exams/${editing.value.id}`, {
         method: 'PUT',
@@ -170,7 +182,7 @@ async function save() {
     modal.hide();
     await load();
   } catch (e) {
-    formError.value = e.message;
+    formError.value = e.message || 'Не удалось сохранить';
   }
 }
 
@@ -202,7 +214,7 @@ function openRegistrations(exam) {
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-3">
+      <div class="card-body">
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div
@@ -416,12 +428,6 @@ function openRegistrations(exam) {
 <style scoped>
 .fade-in {
   animation: fadeIn 0.4s ease-out;
-}
-
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
 }
 
 @media (max-width: 575.98px) {

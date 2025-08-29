@@ -10,6 +10,7 @@ import Tooltip from 'bootstrap/js/dist/tooltip';
 import { withHttp } from '../utils/url.js';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import TabSelector from '../components/TabSelector.vue';
 
 const selectedDates = ref({});
 
@@ -22,6 +23,10 @@ const pageSize = ref(loadPageSize('clientCampsPageSize', 50));
 const loading = ref(true);
 const error = ref('');
 const activeTab = ref('mine');
+const mainTabs = [
+  { key: 'mine', label: 'Мои тренировки' },
+  { key: 'register', label: 'Запись на тренировки' },
+];
 const registering = ref(null);
 const toastRef = ref(null);
 const toastMessage = ref('');
@@ -407,27 +412,8 @@ function attendanceStatus(t) {
       </nav>
       <h1 class="mb-3">Сборы</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
-        <div class="card-body p-2">
-          <ul class="nav nav-pills nav-fill mb-0 tab-selector">
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'mine' }"
-                @click="activeTab = 'mine'"
-              >
-                Мои тренировки
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'register' }"
-                @click="activeTab = 'register'"
-              >
-                Запись на тренировки
-              </button>
-            </li>
-          </ul>
+        <div class="card-body">
+          <TabSelector v-model="activeTab" :tabs="mainTabs" />
         </div>
       </div>
 
@@ -440,26 +426,17 @@ function attendanceStatus(t) {
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
         <div v-show="activeTab === 'mine'">
-          <ul class="nav nav-pills nav-fill mb-3 tab-selector">
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: mineView === 'upcoming' }"
-                @click="mineView = 'upcoming'"
-              >
-                Будущие
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: mineView === 'past' }"
-                @click="mineView = 'past'"
-              >
-                Прошедшие
-              </button>
-            </li>
-          </ul>
+          <div class="mb-3">
+            <TabSelector
+              v-model="mineView"
+              :tabs="[
+                { key: 'upcoming', label: 'Будущие' },
+                { key: 'past', label: 'Прошедшие' },
+              ]"
+              :nav-fill="true"
+              justify="start"
+            />
+          </div>
           <p
             v-if="mineView === 'past' && pastSeason && pastSeasons.length === 1"
             class="text-muted small mb-3"
@@ -924,23 +901,11 @@ function attendanceStatus(t) {
   margin-top: 0.5rem;
 }
 
-.tab-selector {
-  gap: 0.5rem;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
-}
-
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 
 /* tighter layout on small screens */
 @media (max-width: 575.98px) {

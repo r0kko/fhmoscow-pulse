@@ -46,6 +46,11 @@ User.init(
       allowNull: false,
       defaultValue: 0,
     },
+    password_change_required: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

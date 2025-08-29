@@ -1,7 +1,7 @@
 <script setup>
-import { RouterLink } from 'vue-router';
 import { computed } from 'vue';
 import { auth } from '../auth.js';
+import MenuTile from '../components/MenuTile.vue';
 
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
@@ -53,18 +53,13 @@ const systemSections = computed(() => {
             Пользователи системы
           </h2>
           <div v-edge-fade class="scroll-container">
-            <RouterLink
+            <MenuTile
               v-for="item in userSections"
               :key="item.to"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :aria-label="item.title"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </RouterLink>
+              :title="item.title"
+              :icon="item.icon"
+            />
           </div>
         </div>
       </div>
@@ -76,18 +71,13 @@ const systemSections = computed(() => {
             Управление судейским корпусом
           </h2>
           <div v-edge-fade class="scroll-container">
-            <RouterLink
+            <MenuTile
               v-for="item in refereeSections"
               :key="item.to"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :aria-label="item.title"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </RouterLink>
+              :title="item.title"
+              :icon="item.icon"
+            />
           </div>
         </div>
       </div>
@@ -99,18 +89,13 @@ const systemSections = computed(() => {
             Управление сущностями системы
           </h2>
           <div v-edge-fade class="scroll-container">
-            <RouterLink
+            <MenuTile
               v-for="item in systemSections"
               :key="item.to"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :aria-label="item.title"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </RouterLink>
+              :title="item.title"
+              :icon="item.icon"
+            />
           </div>
         </div>
       </div>

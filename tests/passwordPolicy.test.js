@@ -32,5 +32,10 @@ describe('passwordPolicy', () => {
     expect(validatePassword('Abcdef12')).toBe(true);
     expect(() => assertPassword('Abcdef12')).not.toThrow();
   });
-});
 
+  test('rejects non-string inputs', () => {
+    expect(validatePassword(null)).toBe(false);
+    expect(validatePassword(undefined)).toBe(false);
+    expect(validatePassword(12345)).toBe(false);
+  });
+});

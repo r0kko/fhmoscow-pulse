@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/courseUserAdminController.js';
 import { setCourseRules } from '../validators/courseUserValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   setCourseRules,
+  validate,
   controller.setCourse
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.clearCourse);

@@ -711,11 +711,7 @@ defineExpose({ refresh });
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 
 @media (max-width: 575.98px) {
   .section-card {

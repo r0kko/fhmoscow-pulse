@@ -72,7 +72,7 @@ watch(search, () => {
 
 <template>
   <div class="card section-card tile fade-in shadow-sm mb-3">
-    <div class="card-body p-2">
+    <div class="card-body">
       <div class="row g-2 align-items-end mb-3">
         <div class="col">
           <input
@@ -139,7 +139,7 @@ watch(search, () => {
             :key="j.user.id"
             class="card training-card mb-2"
           >
-            <div class="card-body p-2">
+            <div class="card-body">
               <h6 class="mb-2">
                 {{ j.user.last_name }} {{ j.user.first_name }}
                 {{ j.user.patronymic || '' }}
@@ -196,11 +196,7 @@ watch(search, () => {
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 @keyframes fadeIn {
   from {
     opacity: 0;

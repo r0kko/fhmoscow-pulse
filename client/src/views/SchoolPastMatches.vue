@@ -225,7 +225,7 @@ function onChangePageSize(val) {
       <h1 class="mb-3">Прошедшие матчи</h1>
 
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body p-2">
+        <div class="card-body">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector" role="tablist">
             <li class="nav-item">
               <button
@@ -265,7 +265,7 @@ function onChangePageSize(val) {
               >
                 <option value="">Все сезоны</option>
                 <option v-for="s in seasons" :key="s.id" :value="s.id">
-                  {{ s.name }}<span v-if="s.active"> (текущий)</span>
+                  {{ s.active ? `${s.name} (текущий)` : s.name }}
                 </option>
               </select>
             </div>
@@ -368,12 +368,6 @@ export default { name: 'SchoolPastMatchesView' };
 </script>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 /* Mobile full-bleed gutters */
 @media (max-width: 575.98px) {
   .school-matches-page {

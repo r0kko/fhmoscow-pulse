@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 
 import {
   Role,
@@ -92,18 +92,28 @@ async function listUsers(options = {}) {
   ) {
     const aliases = Array.isArray(options.role) ? options.role : [options.role];
     if (aliases.length === 1 && aliases[0] === 'NO_ROLE') {
-      // Users without any roles: left join roles and filter where role is null
-      include.push({ model: Role, required: false });
-      where['$Roles.id$'] = null;
+      // Users without any roles:
+      // Use NOT EXISTS against the join table to avoid alias issues
+      include.push({
+        model: Role,
+        required: false,
+        through: { attributes: [] },
+      });
+      const noRoleCondition = literal(
+        'NOT EXISTS (SELECT 1 FROM "user_roles" ur WHERE ur.user_id = "User"."id" AND ur.deleted_at IS NULL)'
+      );
+      if (!where[Op.and]) where[Op.and] = [];
+      where[Op.and].push(noRoleCondition);
     } else {
       include.push({
         model: Role,
         where: { alias: aliases },
         required: true,
+        through: { attributes: [] },
       });
     }
   } else {
-    include.push(Role);
+    include.push({ model: Role, through: { attributes: [] } });
   }
   if (options.status) {
     include.push({
@@ -123,6 +133,8 @@ async function listUsers(options = {}) {
     include,
     where,
     order: [[sortField, sortOrder]],
+    distinct: true,
+    subQuery: false,
     limit,
     offset,
   });

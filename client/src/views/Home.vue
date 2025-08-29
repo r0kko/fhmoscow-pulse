@@ -1,9 +1,18 @@
 <script setup>
 import { auth } from '../auth.js';
 import { computed, ref, onMounted } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
 import UpcomingEventCard from '../components/UpcomingEventCard.vue';
+import MenuTile from '../components/MenuTile.vue';
+import {
+  ADMIN_ROLES,
+  REFEREE_ROLES,
+  STAFF_ROLES,
+  isBrigadeRefereeOnly,
+  isStaffOnly as isStaffOnlyHelper,
+  hasRole,
+} from '../utils/roles.js';
 
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
@@ -123,29 +132,11 @@ const docsSections = computed(() => {
     : list;
 });
 
-const adminRoles = [
-  'ADMIN',
-  'FIELD_REFEREE_SPECIALIST',
-  'BRIGADE_REFEREE_SPECIALIST',
-];
-const refereeRoles = ['REFEREE', 'BRIGADE_REFEREE'];
-const staffRoles = ['SPORT_SCHOOL_STAFF'];
-
-const isAdmin = computed(() => auth.roles.some((r) => adminRoles.includes(r)));
-const isReferee = computed(() =>
-  auth.roles.some((r) => refereeRoles.includes(r))
-);
-const isStaff = computed(() => auth.roles.some((r) => staffRoles.includes(r)));
-const isStaffOnly = computed(() => {
-  const roles = auth.roles || [];
-  const hasStaff = roles.includes('SPORT_SCHOOL_STAFF');
-  if (!hasStaff) return false;
-  return roles.every((r) => r === 'SPORT_SCHOOL_STAFF');
-});
-const isBrigadeOnly = computed(
-  () =>
-    auth.roles.includes('BRIGADE_REFEREE') && !auth.roles.includes('REFEREE')
-);
+const isAdmin = computed(() => hasRole(auth.roles, ADMIN_ROLES));
+const isReferee = computed(() => hasRole(auth.roles, REFEREE_ROLES));
+const isStaff = computed(() => hasRole(auth.roles, STAFF_ROLES));
+const isStaffOnly = computed(() => isStaffOnlyHelper(auth.roles));
+const isBrigadeOnly = computed(() => isBrigadeRefereeOnly(auth.roles));
 const preparationSections = computed(() => {
   if (isBrigadeOnly.value) return [];
   return basePreparationSections.filter((s) => !s.referee || isReferee.value);
@@ -231,7 +222,7 @@ async function loadUpcoming() {
 </script>
 
 <template>
-  <div class="py-4">
+  <div class="py-4 home-page">
     <div class="container">
       <div v-if="noticeMessage" class="alert alert-info" role="status">
         {{ noticeMessage }}
@@ -282,20 +273,14 @@ async function loadUpcoming() {
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Подготовка к сезону</h2>
           <div v-edge-fade class="scroll-container">
-            <component
-              :is="item.to ? RouterLink : 'div'"
+            <MenuTile
               v-for="item in preparationSections"
               :key="item.title"
+              :title="item.title"
+              :icon="item.icon"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :class="{ 'placeholder-card': !item.to }"
-              :aria-label="item.to ? item.title : null"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </component>
+              :placeholder="!item.to"
+            />
           </div>
         </div>
       </div>
@@ -304,20 +289,14 @@ async function loadUpcoming() {
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
           <div v-edge-fade class="scroll-container">
-            <component
-              :is="item.to ? RouterLink : 'div'"
+            <MenuTile
               v-for="item in workSections"
               :key="item.title"
+              :title="item.title"
+              :icon="item.icon"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :class="{ 'placeholder-card': !item.to }"
-              :aria-label="item.to ? item.title : null"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </component>
+              :placeholder="!item.to"
+            />
           </div>
         </div>
       </div>
@@ -326,20 +305,14 @@ async function loadUpcoming() {
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Управление спортивной школой</h2>
           <div v-edge-fade class="scroll-container">
-            <component
-              :is="item.to ? RouterLink : 'div'"
+            <MenuTile
               v-for="item in schoolSections"
               :key="item.title"
+              :title="item.title"
+              :icon="item.icon"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :class="{ 'placeholder-card': !item.to }"
-              :aria-label="item.to ? item.title : null"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </component>
+              :placeholder="!item.to"
+            />
           </div>
         </div>
       </div>
@@ -348,50 +321,37 @@ async function loadUpcoming() {
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Документы и формальности</h2>
           <div v-edge-fade class="scroll-container">
-            <component
-              :is="item.to ? RouterLink : 'div'"
+            <MenuTile
               v-for="item in docsSections"
               :key="item.title"
+              :title="item.title"
+              :icon="item.icon"
               :to="item.to"
-              class="menu-card card text-decoration-none text-body tile fade-in"
-              :class="{ 'placeholder-card': !item.to }"
-              :aria-label="item.to ? item.title : null"
-            >
-              <div class="card-body">
-                <p class="card-title small mb-2">{{ item.title }}</p>
-                <i :class="item.icon + ' icon fs-3'" aria-hidden="true"></i>
-              </div>
-            </component>
+              :placeholder="!item.to"
+            />
           </div>
         </div>
       </div>
 
       <div v-if="isAdmin" class="mt-2">
-        <RouterLink
+        <MenuTile
+          title="Администрирование"
+          icon="bi bi-shield-lock"
           to="/admin"
-          class="menu-card card text-decoration-none text-body tile fade-in d-inline-block"
-          aria-label="Администрирование"
-        >
-          <div class="card-body">
-            <span class="card-title small">Администрирование</span>
-            <i class="bi bi-shield-lock icon fs-3" aria-hidden="true"></i>
-          </div>
-        </RouterLink>
+        />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.placeholder-card {
-  background-color: #f8f9fa;
-  opacity: 0.6;
-  cursor: default;
+.home-page {
+  /* Reduced elevation and slightly stronger border for clearer structure */
+  --shadow-tile:
+    0 1px 2px rgba(17, 56, 103, 0.03), 0 2px 4px rgba(17, 56, 103, 0.05);
+  --border-subtle: #dfe5ec;
 }
-.placeholder-card:hover {
-  transform: none;
-  box-shadow: none;
-}
+
 .upcoming-scroll {
   gap: 0.75rem;
 }
@@ -400,12 +360,13 @@ async function loadUpcoming() {
 .skeleton-card {
   width: clamp(14rem, 70vw, 18rem);
   height: 5.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-tile);
   background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
   background-size: 400% 100%;
   animation: skeleton-loading 1.2s ease-in-out infinite;
   flex: 0 0 auto;
   scroll-snap-align: start;
+  border: 1px solid var(--border-subtle);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -423,26 +384,7 @@ async function loadUpcoming() {
   }
 }
 
-/* Текстовый fallback-значок рубля для стабильного отображения */
-.ruble-icon::before {
-  content: '₽';
-  display: inline-block;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 1;
-  vertical-align: -0.125em;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    'Noto Sans',
-    'Helvetica Neue',
-    Arial,
-    'Apple Color Emoji',
-    'Segoe UI Emoji',
-    'Noto Color Emoji';
-}
+/* ruble-icon moved to brand.css for reuse */
 </style>
 <style scoped>
 /* Mobile: make tile groups full-bleed only on Home */

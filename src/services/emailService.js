@@ -10,6 +10,7 @@ import {
 } from '../config/email.js';
 import { renderVerificationEmail } from '../templates/verificationEmail.js';
 import { renderPasswordResetEmail } from '../templates/passwordResetEmail.js';
+import { renderUserCreatedByAdminEmail } from '../templates/userCreatedByAdminEmail.js';
 import { renderMedicalCertificateAddedEmail } from '../templates/medicalCertificateAddedEmail.js';
 import { renderAccountActivatedEmail } from '../templates/accountActivatedEmail.js';
 import { renderTrainingRegistrationEmail } from '../templates/trainingRegistrationEmail.js';
@@ -85,6 +86,14 @@ export async function sendSignTypeSelectionEmail(user, code) {
 
 export async function sendPasswordResetEmail(user, code) {
   const { subject, text, html } = renderPasswordResetEmail(code);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendUserCreatedByAdminEmail(user, tempPassword) {
+  const { subject, text, html } = renderUserCreatedByAdminEmail(
+    user,
+    tempPassword
+  );
   await sendMail(user.email, subject, text, html);
 }
 
@@ -236,6 +245,7 @@ export default {
   sendVerificationEmail,
   sendSignTypeSelectionEmail,
   sendPasswordResetEmail,
+  sendUserCreatedByAdminEmail,
   sendMedicalCertificateAddedEmail,
   sendAccountActivatedEmail,
   sendTrainingRegistrationEmail,

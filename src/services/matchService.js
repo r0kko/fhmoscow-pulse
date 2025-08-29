@@ -119,7 +119,15 @@ export default { listUpcoming, listUpcomingLocal, listPast, listPastLocal };
 // Local fallback: use imported matches when external DB is unavailable
 async function listUpcomingLocal(userId, options) {
   // Lazy-load to keep tests (which mock models/index.js) happy without exporting Ground/Match
-  const { Match, Ground, Tournament, TournamentGroup, Tour } = await import(
+  const {
+    Match,
+    Ground,
+    Tournament,
+    TournamentGroup,
+    Tour,
+    MatchAgreement,
+    MatchAgreementStatus,
+  } = await import(
     '../models/index.js'
   );
   const compatArrayReturn = typeof options !== 'object' || options === null;
@@ -191,6 +199,32 @@ async function listUpcomingLocal(userId, options) {
 
   const rowsRaw = await Match.findAll(findOptions);
 
+  // Enrich with agreement status flags in a single query for all matches in page
+  const matchIds = rowsRaw.map((m) => m.id);
+  const flagsByMatch = new Map();
+  if (matchIds.length) {
+    const agrs = await MatchAgreement.findAll({
+      attributes: ['match_id'],
+      where: { match_id: { [Op.in]: matchIds } },
+      include: [
+        {
+          model: MatchAgreementStatus,
+          attributes: ['alias'],
+          required: true,
+          where: { alias: { [Op.in]: ['ACCEPTED', 'PENDING'] } },
+        },
+      ],
+    });
+    for (const a of agrs) {
+      const id = a.match_id;
+      const alias = a.MatchAgreementStatus?.alias;
+      if (!flagsByMatch.has(id)) flagsByMatch.set(id, { accepted: false, pending: false });
+      const flags = flagsByMatch.get(id);
+      if (alias === 'ACCEPTED') flags.accepted = true;
+      if (alias === 'PENDING') flags.pending = true;
+    }
+  }
+
   if (compatArrayReturn) {
     return rowsRaw.map((m) => ({
       id: m.id,
@@ -219,17 +253,30 @@ async function listUpcomingLocal(userId, options) {
   }
 
   return {
-    rows: rowsRaw.map((m) => ({
-      id: m.id,
-      date: m.date_start,
-      stadium: m.Ground?.name || null,
-      team1: m.HomeTeam?.name || null,
-      team2: m.AwayTeam?.name || null,
-      is_home: teamIds.includes(m.team1_id),
-      tournament: m.Tournament?.name || null,
-      group: m.TournamentGroup?.name || null,
-      tour: m.Tour?.name || null,
-    })),
+    rows: rowsRaw.map((m) => {
+      const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
+      // Urgency: less than 7 days to kickoff in Moscow time and not accepted
+      const now = new Date();
+      const mskNow = utcToMoscow(now) || now;
+      const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
+      const diffMs = mskKickoff.getTime() - mskNow.getTime();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      const isUrgent = !flags.accepted && diffMs >= 0 && diffMs < sevenDaysMs;
+      return {
+        id: m.id,
+        date: m.date_start,
+        stadium: m.Ground?.name || null,
+        team1: m.HomeTeam?.name || null,
+        team2: m.AwayTeam?.name || null,
+        is_home: teamIds.includes(m.team1_id),
+        tournament: m.Tournament?.name || null,
+        group: m.TournamentGroup?.name || null,
+        tour: m.Tour?.name || null,
+        agreement_accepted: !!flags.accepted,
+        agreement_pending: !!flags.pending && !flags.accepted,
+        urgent_unagreed: isUrgent,
+      };
+    }),
     count: total,
   };
 }

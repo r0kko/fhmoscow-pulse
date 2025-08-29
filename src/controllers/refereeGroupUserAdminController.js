@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import refereeGroupService from '../services/refereeGroupService.js';
 import userMapper from '../mappers/userMapper.js';
 import groupMapper from '../mappers/refereeGroupMapper.js';
@@ -39,10 +37,6 @@ export default {
   },
 
   async setGroup(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       await refereeGroupService.setUserGroup(
         req.params.id,

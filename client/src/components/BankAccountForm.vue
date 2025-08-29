@@ -111,8 +111,8 @@ async function removeAccount() {
 </script>
 
 <template>
-  <div class="card mt-4">
-    <div class="card-body">
+  <div class="card section-card tile fade-in shadow-sm mt-4">
+    <div class="card-body p-2">
       <div class="d-flex justify-content-between mb-3">
         <h5 class="card-title mb-0">Банковский счёт</h5>
         <button

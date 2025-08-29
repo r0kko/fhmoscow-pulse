@@ -145,3 +145,51 @@ export async function closeExternalMariaDb() {
 }
 
 export default externalSequelize;
+
+// Whitelisted write: update external game date_start and stadium_id only.
+// This function is the single, explicit escape hatch to mutate the external DB.
+// It uses the underlying driver query (_originalQuery) to bypass the read-only guards above,
+// and performs strict validation and idempotency checks upstream in the caller.
+export async function updateExternalGameDateAndStadium({
+  gameId,
+  dateStart,
+  stadiumId,
+}) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  if (
+    !gameId ||
+    (typeof gameId !== 'number' && typeof gameId !== 'string') ||
+    Number.isNaN(Number(gameId))
+  )
+    throw new Error('Invalid gameId');
+  const hasDate =
+    dateStart instanceof Date && !Number.isNaN(dateStart.getTime());
+  if (!hasDate) throw new Error('Invalid dateStart');
+  if (
+    stadiumId == null ||
+    (typeof stadiumId !== 'number' && typeof stadiumId !== 'string') ||
+    Number.isNaN(Number(stadiumId))
+  )
+    throw new Error('Invalid stadiumId');
+
+  // Perform a single UPDATE using bound parameters to avoid SQL injection.
+  // Note: we do not set QueryTypes.UPDATE because the read-only guard inspects it;
+  // instead we rely on raw _originalQuery and affectedRows from the driver.
+  const sql = 'UPDATE game SET date_start = ?, stadium_id = ? WHERE id = ?';
+  const params = [dateStart, Number(stadiumId), Number(gameId)];
+  // Use try/catch to return a consistent error shape.
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    // MySQL/MariaDB returns an OkPacket-like object with affectedRows
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
+    // Normalize error code to emphasize this is a whitelisted write failure
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}

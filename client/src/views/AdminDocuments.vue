@@ -6,6 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
+import TabSelector from '../components/TabSelector.vue';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
 import DocumentCreateModal from '../components/DocumentCreateModal.vue';
@@ -313,36 +314,16 @@ function onCreated() {
     </nav>
     <h1 class="mb-3">Документы</h1>
 
-    <ul
-      v-edge-fade
-      class="nav nav-pills nav-fill justify-content-between mb-4 tab-selector"
-      role="tablist"
-    >
-      <li class="nav-item">
-        <button
-          type="button"
-          class="nav-link"
-          :class="{ active: tab === 'documents' }"
-          role="tab"
-          :aria-selected="tab === 'documents'"
-          @click="setTab('documents')"
-        >
-          Документы
-        </button>
-      </li>
-      <li class="nav-item">
-        <button
-          type="button"
-          class="nav-link"
-          :class="{ active: tab === 'signatures' }"
-          role="tab"
-          :aria-selected="tab === 'signatures'"
-          @click="setTab('signatures')"
-        >
-          Типы подписей
-        </button>
-      </li>
-    </ul>
+    <div class="mb-4">
+      <TabSelector
+        v-model="tab"
+        :tabs="[
+          { key: 'documents', label: 'Документы' },
+          { key: 'signatures', label: 'Типы подписей' },
+        ]"
+        justify="between"
+      />
+    </div>
 
     <div v-if="tab === 'documents'">
       <div v-if="documentsError" class="alert alert-danger" role="alert">
@@ -508,7 +489,7 @@ function onCreated() {
             </div>
             <div v-if="filteredDocuments.length" class="d-block d-sm-none">
               <div v-for="d in pagedDocuments" :key="d.id" class="card mb-2">
-                <div class="card-body p-2">
+                <div class="card-body">
                   <h3 class="h6 mb-1">{{ d.name }}</h3>
                   <p class="mb-1 small">№ {{ d.number }}</p>
                   <p class="mb-1 small">
@@ -651,7 +632,7 @@ function onCreated() {
           </div>
           <div v-if="users.length" class="d-block d-sm-none">
             <div v-for="u in pagedUsers" :key="u.id" class="card mb-2">
-              <div class="card-body p-2">
+              <div class="card-body">
                 <h3 class="h6 mb-1">
                   {{ u.lastName }} {{ u.firstName }} {{ u.patronymic }}
                 </h3>

@@ -233,7 +233,7 @@ function onChangePageSize(val) {
       <!-- External DB banner hidden: we use local schedule as the source of truth -->
 
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body p-2">
+        <div class="card-body">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector" role="tablist">
             <li class="nav-item">
               <button
@@ -319,6 +319,21 @@ function onChangePageSize(val) {
             </div>
           </div>
 
+          <div class="legend small text-muted mb-3" aria-label="Обозначения">
+            <span class="legend-item">
+              <span class="legend-dot bg-success-subtle border"></span>
+              Согласован
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot bg-warning-subtle border"></span>
+              Ожидает согласования
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot bg-danger-subtle border"></span>
+              Менее 7 суток до начала матча
+            </span>
+          </div>
+
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
           <div v-if="loading" class="text-center py-3">
             <div class="spinner-border spinner-brand" role="status"></div>
@@ -363,12 +378,6 @@ export default { name: 'SchoolMatchesView' };
 </script>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 /* Mobile full-bleed gutters like in "Сборы" */
 @media (max-width: 575.98px) {
   .school-matches-page {
@@ -379,5 +388,23 @@ export default { name: 'SchoolMatchesView' };
     margin-left: -1rem;
     margin-right: -1rem;
   }
+}
+
+.legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.legend-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  display: inline-block;
+  border-radius: 3px;
+  border-color: var(--border-subtle) !important;
 }
 </style>

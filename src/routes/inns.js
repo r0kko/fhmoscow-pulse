@@ -3,6 +3,7 @@ import express from 'express';
 import innController from '../controllers/innController.js';
 import { innRules } from '../validators/personalValidators.js';
 import auth from '../middlewares/auth.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -30,6 +31,6 @@ router.get('/me', auth, innController.me);
  *       201:
  *         description: Created
  */
-router.post('/', auth, innRules, innController.create);
+router.post('/', auth, innRules, validate, innController.create);
 
 export default router;

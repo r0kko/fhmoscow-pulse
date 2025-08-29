@@ -511,12 +511,6 @@ function onFileChange(e) {
   background-color: #f8f9fa;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .exam-scroll {
   display: flex;
   flex-wrap: nowrap;

@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/refereeGroupUserAdminController.js';
 import { setGroupRules } from '../validators/refereeGroupUserValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   setGroupRules,
+  validate,
   controller.setGroup
 );
 

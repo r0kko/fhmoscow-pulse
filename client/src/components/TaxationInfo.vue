@@ -125,7 +125,7 @@ defineExpose({ openModal });
     v-if="!props.modalOnly"
     class="card section-card tile fade-in shadow-sm mt-4"
   >
-    <div class="card-body">
+    <div class="card-body p-2">
       <div class="d-flex justify-content-between mb-3">
         <h2 class="card-title h5 mb-0">Налоговый статус</h2>
         <button
@@ -368,11 +368,7 @@ defineExpose({ openModal });
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 
 @media (max-width: 575.98px) {
   .section-card {

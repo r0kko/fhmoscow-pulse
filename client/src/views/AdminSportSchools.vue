@@ -436,7 +436,7 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
       <h1 class="mb-3 text-start">Управление спортивными школами</h1>
 
       <div class="card tile mb-3">
-        <div class="card-body p-2">
+        <div class="card-body">
           <ul
             v-edge-fade
             class="nav nav-pills nav-fill mb-0 tab-selector"
@@ -471,7 +471,7 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
       <div v-show="activeTab === 'overview'" class="row g-3">
         <div class="col-12">
           <div class="card section-card tile fade-in shadow-sm h-100">
-            <div class="card-body p-2">
+            <div class="card-body">
               <h2 class="card-title h5 mb-3">Клубы, команды и сотрудники</h2>
               <div class="row g-2 align-items-end mb-3">
                 <div class="col-12 col-md">
@@ -596,7 +596,7 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
       <div v-show="activeTab === 'staff'" class="row g-3">
         <div class="col-12 col-lg-5">
           <div class="card section-card tile fade-in shadow-sm h-100">
-            <div class="card-body p-2">
+            <div class="card-body">
               <h2 class="card-title h5 mb-3">Сотрудники спортивных школ</h2>
               <div class="input-group mb-3">
                 <span id="staff-search2" class="input-group-text"
@@ -659,7 +659,7 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
 
         <div class="col-12 col-lg-7">
           <div class="card section-card tile fade-in shadow-sm h-100">
-            <div class="card-body p-2">
+            <div class="card-body">
               <h2 class="card-title h5 mb-3">Назначения сотрудника</h2>
               <div v-if="!selectedUser" class="text-muted">
                 Выберите сотрудника слева
@@ -667,7 +667,7 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
               <div v-else class="row g-3">
                 <div class="col-12 col-xl-6">
                   <div class="card section-card tile fade-in shadow-sm h-100">
-                    <div class="card-body p-2">
+                    <div class="card-body">
                       <div
                         class="d-flex justify-content-between align-items-center mb-2"
                       >
@@ -716,7 +716,7 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
                 </div>
                 <div class="col-12 col-xl-6">
                   <div class="card section-card tile fade-in shadow-sm h-100">
-                    <div class="card-body p-2">
+                    <div class="card-body">
                       <div
                         class="d-flex justify-content-between align-items-center mb-2"
                       >

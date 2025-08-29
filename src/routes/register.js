@@ -6,6 +6,7 @@ import {
   finishRegistrationRules,
 } from '../validators/registrationValidators.js';
 import registrationRateLimiter from '../middlewares/registrationRateLimiter.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.post(
   '/start',
   registrationRateLimiter,
   startRegistrationRules,
+  validate,
   controller.start
 );
 
@@ -66,6 +68,7 @@ router.post(
   '/finish',
   registrationRateLimiter,
   finishRegistrationRules,
+  validate,
   controller.finish
 );
 

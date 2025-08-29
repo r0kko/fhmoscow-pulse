@@ -10,6 +10,7 @@ import {
   medicalExamUpdateRules,
 } from '../validators/medicalExamValidators.js';
 import { updateRegistrationRules } from '../validators/medicalExamRegistrationValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   medicalExamCreateRules,
+  validate,
   controller.create
 );
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
@@ -39,6 +41,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   medicalExamUpdateRules,
+  validate,
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
@@ -60,6 +63,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateRegistrationRules,
+  validate,
   registrationsController.update
 );
 router.delete(

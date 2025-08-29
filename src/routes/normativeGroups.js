@@ -7,6 +7,7 @@ import {
   normativeGroupCreateRules,
   normativeGroupUpdateRules,
 } from '../validators/normativeGroupValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   normativeGroupCreateRules,
+  validate,
   controller.create
 );
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
@@ -24,6 +26,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   normativeGroupUpdateRules,
+  validate,
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);

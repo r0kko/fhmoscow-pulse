@@ -26,6 +26,22 @@ export default {
       return sendError(res, err);
     }
   },
+  async listForStaff(req, res) {
+    try {
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      if (!isAdmin) {
+        const allowedTeamIds = new Set(scope.allowedTeamIds || []);
+        if (!allowedTeamIds.has(req.params.id)) {
+          return res.status(403).json({ error: 'forbidden' });
+        }
+      }
+      const users = await listTeamUsers(req.params.id);
+      return res.json({ users: userMapper.toPublicArray(users) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
 
   async add(req, res) {
     const errors = validationResult(req);

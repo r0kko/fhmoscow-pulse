@@ -18,6 +18,12 @@ export const ERROR_MESSAGES = {
   invalid_token_type: 'Некорректный тип токена',
   invalid_type_id: 'Некорректный тип нормативного упражнения',
   invalid_value: 'Некорректное значение',
+  weak_password:
+    'Пароль слишком простой. Минимум 8 символов, латинские буквы и цифры. Рекомендуем добавить заглавные буквы и спецсимволы.',
+  invalid_email: 'Неверный формат email',
+  invalid_phone: 'Неверный номер телефона',
+  sex_required: 'Укажите пол',
+  invalid_birth_date: 'Введите корректную дату рождения',
   missing_token: 'Отсутствует токен авторизации',
   passport_exists: 'Паспорт уже добавлен',
   passport_not_found: 'Паспорт не найден',
@@ -48,6 +54,9 @@ export const ERROR_MESSAGES = {
   address_not_found: 'Адрес не найден',
   awaiting_confirmation: 'Ожидается подтверждение',
   email_unconfirmed: 'Электронная почта не подтверждена',
+  password_change_required:
+    'Необходимо сменить пароль перед продолжением работы',
+  invalid_current_password: 'Неверный текущий пароль',
   file_required: 'Не выбран файл',
   active_ticket_exists: 'Есть активное обращение данного типа',
   registration_incomplete: 'Регистрация не завершена',
@@ -66,6 +75,10 @@ export const ERROR_MESSAGES = {
     'За 96 часов до дня изменения ограничены: доступен только «Свободен»',
   invalid_partial_time: 'Укажите корректное время для частичной доступности',
   invalid_status: 'Некорректный статус',
+  // External sync / integrations
+  external_db_unavailable: 'Внешняя система недоступна. Попробуйте позже.',
+  external_sync_failed:
+    'Не удалось сохранить изменения во внешней системе. Попробуйте позже.',
 };
 
 export function translateError(code) {

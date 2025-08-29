@@ -3,6 +3,7 @@ import express from 'express';
 import snilsController from '../controllers/snilsController.js';
 import { snilsRules } from '../validators/personalValidators.js';
 import auth from '../middlewares/auth.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -30,6 +31,6 @@ router.get('/me', auth, snilsController.me);
  *       201:
  *         description: Created
  */
-router.post('/', auth, snilsRules, snilsController.create);
+router.post('/', auth, snilsRules, validate, snilsController.create);
 
 export default router;

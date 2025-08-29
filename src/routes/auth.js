@@ -3,6 +3,9 @@ import express from 'express';
 import authController from '../controllers/authController.js';
 import auth from '../middlewares/auth.js';
 import { loginRules, refreshRules } from '../validators/authValidators.js';
+import validate from '../middlewares/validate.js';
+import passwordChangeController from '../controllers/passwordChangeController.js';
+import { passwordChangeRules } from '../validators/passwordChangeValidators.js';
 import loginRateLimiter from '../middlewares/loginRateLimiter.js';
 
 const router = express.Router();
@@ -30,7 +33,13 @@ const router = express.Router();
  *       200:
  *         description: Successful login
  */
-router.post('/login', loginRateLimiter, loginRules, authController.login);
+router.post(
+  '/login',
+  loginRateLimiter,
+  loginRules,
+  validate,
+  authController.login
+);
 
 /**
  * @swagger
@@ -78,6 +87,39 @@ router.get('/me', auth, authController.me);
  *       200:
  *         description: New access token
  */
-router.post('/refresh', refreshRules, authController.refresh);
+router.post('/refresh', refreshRules, validate, authController.refresh);
+
+/**
+ * @swagger
+ * /auth/change-password:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Change current user's password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - current_password
+ *               - new_password
+ *             properties:
+ *               current_password:
+ *                 type: string
+ *               new_password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password changed and new tokens issued
+ */
+router.post(
+  '/change-password',
+  auth,
+  passwordChangeRules,
+  validate,
+  passwordChangeController.changeSelf
+);
 
 export default router;

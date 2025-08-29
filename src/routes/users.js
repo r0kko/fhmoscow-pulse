@@ -38,6 +38,7 @@ import {
 } from '../validators/ticketValidators.js';
 import { addTeamRules } from '../validators/userTeamValidators.js';
 import { addClubRules } from '../validators/userClubValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -87,7 +88,7 @@ router.get(
  *       200:
  *         description: Updated user
  */
-router.put('/me', auth, updateUserRules, selfController.update);
+router.put('/me', auth, updateUserRules, validate, selfController.update);
 
 /**
  * @swagger
@@ -150,7 +151,14 @@ router.get('/:id', auth, authorize('ADMIN'), admin.get);
  *       201:
  *         description: Created user
  */
-router.post('/', auth, authorize('ADMIN'), createUserRules, admin.create);
+router.post(
+  '/',
+  auth,
+  authorize('ADMIN'),
+  createUserRules,
+  validate,
+  admin.create
+);
 
 /**
  * @swagger
@@ -169,7 +177,14 @@ router.post('/', auth, authorize('ADMIN'), createUserRules, admin.create);
  *       200:
  *         description: Updated user
  */
-router.put('/:id', auth, authorize('ADMIN'), updateUserRules, admin.update);
+router.put(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  updateUserRules,
+  validate,
+  admin.update
+);
 
 /**
  * @swagger
@@ -249,6 +264,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   resetPasswordRules,
+  validate,
   admin.resetPassword
 );
 /**
@@ -354,6 +370,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addTeamRules,
+  validate,
   userTeamController.addForUser
 );
 
@@ -432,6 +449,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addClubRules,
+  validate,
   userClubController.addForUser
 );
 
@@ -818,6 +836,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   createPassportRules,
+  validate,
   admin.addPassport
 );
 /**
@@ -884,6 +903,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addressRules,
+  validate,
   addressAdmin.create
 );
 /**
@@ -913,6 +933,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   addressRules,
+  validate,
   addressAdmin.update
 );
 /**
@@ -989,6 +1010,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   medicalCertificateRules,
+  validate,
   medicalCertificateAdmin.create
 );
 /**
@@ -1013,6 +1035,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   medicalCertificateRules,
+  validate,
   medicalCertificateAdmin.update
 );
 /**
@@ -1104,6 +1127,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   createTaskRules,
+  validate,
   taskAdmin.create
 );
 
@@ -1112,6 +1136,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateTaskRules,
+  validate,
   taskAdmin.update
 );
 
@@ -1124,6 +1149,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   createTicketRules,
+  validate,
   ticketAdmin.create
 );
 
@@ -1132,6 +1158,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateTicketRules,
+  validate,
   ticketAdmin.update
 );
 

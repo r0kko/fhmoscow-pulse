@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/signTypeController.js';
 import { selectSignTypeRules } from '../validators/signTypeValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -70,6 +71,6 @@ router.get('/users', auth, authorize('ADMIN'), controller.listUsers);
  *       200:
  *         description: Selected sign type
  */
-router.post('/select', auth, selectSignTypeRules, controller.select);
+router.post('/select', auth, selectSignTypeRules, validate, controller.select);
 
 export default router;

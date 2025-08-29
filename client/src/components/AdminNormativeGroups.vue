@@ -310,19 +310,15 @@ defineExpose({ refresh });
 
 <style scoped>
 .training-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 
 @media (max-width: 575.98px) {
   .section-card {

@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import normativeGroupService from '../services/normativeGroupService.js';
 import mapper from '../mappers/normativeGroupMapper.js';
 import { sendError } from '../utils/api.js';
@@ -25,10 +23,6 @@ export default {
   },
 
   async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const group = await normativeGroupService.create(req.body, req.user.id);
       return res.status(201).json({ group: mapper.toPublic(group) });
@@ -38,10 +32,6 @@ export default {
   },
 
   async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const group = await normativeGroupService.update(
         req.params.id,

@@ -31,7 +31,7 @@ const router = express.Router();
  *       - in: query
  *         name: has_staff
  *         schema: { type: string, enum: ["true", "false", ""] }
- *         description: Filter by presence of staff on a team/club
+ *         description: Filter by presence of staff on a team
  *       - in: query
  *         name: staff
  *         schema: { type: string }

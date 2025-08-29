@@ -22,12 +22,6 @@ import { RouterLink } from 'vue-router';
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }

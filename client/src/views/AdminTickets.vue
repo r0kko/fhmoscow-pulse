@@ -190,7 +190,7 @@ async function changeStatus(ticket, alias) {
         </div>
         <div v-if="tickets.length" class="d-block d-sm-none">
           <div v-for="t in tickets" :key="t.id" class="card ticket-card mb-2">
-            <div class="card-body p-2">
+            <div class="card-body">
               <p class="mb-1 fw-semibold">
                 {{ t.user.last_name }} {{ t.user.first_name }}
               </p>
@@ -247,12 +247,6 @@ async function changeStatus(ticket, alias) {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
@@ -262,8 +256,8 @@ async function changeStatus(ticket, alias) {
 }
 
 .ticket-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 575.98px) {

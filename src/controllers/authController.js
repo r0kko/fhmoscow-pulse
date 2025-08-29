@@ -39,6 +39,8 @@ export default {
         extra.next_step = parseInt(alias.split('_').pop(), 10);
       } else if (alias === 'AWAITING_CONFIRMATION') {
         extra.awaiting_confirmation = true;
+      } else if (updated.password_change_required) {
+        extra.must_change_password = true;
       }
 
       return res.json({
@@ -79,12 +81,17 @@ export default {
       (r) => r.alias
     );
     const staffOnly = isStaffOnly(roles);
+    const extra = {};
+    if (user.password_change_required) {
+      extra.must_change_password = true;
+    }
     return res.json({
       user: userMapper.toPublic(user),
       roles,
       capabilities: {
         is_staff_only: staffOnly,
       },
+      ...extra,
     });
   },
 

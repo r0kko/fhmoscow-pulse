@@ -38,6 +38,13 @@ function formatTime(dateStr) {
     timeZone: MOSCOW_TZ,
   });
 }
+
+function rowClass(m) {
+  if (m?.agreement_accepted) return 'state-accepted';
+  if (m?.urgent_unagreed) return 'state-urgent';
+  if (m?.agreement_pending) return 'state-pending';
+  return '';
+}
 </script>
 
 <template>
@@ -58,16 +65,25 @@ function formatTime(dateStr) {
               <th scope="col">Тур</th>
               <th scope="col">Время</th>
               <th scope="col">Стадион</th>
+              <th scope="col" class="text-end">Действия</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="m in group.list" :key="m.id">
+            <tr v-for="m in group.list" :key="m.id" :class="rowClass(m)">
               <td class="fw-semibold">{{ m.team1 }} — {{ m.team2 }}</td>
               <td>{{ m.tournament || '—' }}</td>
               <td>{{ m.group || '—' }}</td>
               <td>{{ m.tour || '—' }}</td>
               <td>{{ formatTime(m.date) }}</td>
               <td>{{ m.stadium || '—' }}</td>
+              <td class="text-end">
+                <RouterLink
+                  :to="`/school-matches/${m.id}/agreements`"
+                  class="btn btn-sm btn-outline-primary"
+                >
+                  Согласование
+                </RouterLink>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -96,5 +112,16 @@ th {
 td:nth-child(1),
 td:nth-child(2) {
   white-space: normal;
+}
+
+/* Apply subtle backgrounds across table row cells */
+tbody tr.state-accepted > * {
+  background-color: var(--bs-success-bg-subtle, #d1e7dd) !important;
+}
+tbody tr.state-pending > * {
+  background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
+}
+tbody tr.state-urgent > * {
+  background-color: var(--bs-danger-bg-subtle, #f8d7da) !important;
 }
 </style>

@@ -140,7 +140,7 @@ function showToast(message) {
           v-if="visibleRegistrations.length"
           class="card section-card tile fade-in shadow-sm"
         >
-          <div class="card-body p-3">
+          <div class="card-body">
             <div class="table-responsive d-none d-sm-block">
               <table class="table table-striped align-middle mb-0">
                 <thead>
@@ -206,7 +206,7 @@ function showToast(message) {
                 class="card mb-2"
               >
                 <div
-                  class="card-body p-2 d-flex justify-content-between align-items-center"
+                  class="card-body d-flex justify-content-between align-items-center"
                 >
                   <div>
                     <div class="fw-semibold">{{ formatName(r.user) }}</div>
@@ -282,12 +282,6 @@ function showToast(message) {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .presence-group .presence-btn {
   width: 2.5rem;
   display: flex;

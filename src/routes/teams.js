@@ -2,9 +2,11 @@ import express from 'express';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
+import accessScope from '../middlewares/accessScope.js';
 import controller from '../controllers/teamController.js';
 import teamStaffController from '../controllers/teamStaffController.js';
 import { addTeamStaffRules } from '../validators/teamStaffValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -32,7 +34,13 @@ router.post('/sync', auth, authorize('ADMIN'), controller.sync);
  *       - bearerAuth: []
  *     summary: List staff assigned to a team
  */
-router.get('/:id/staff', auth, authorize('ADMIN'), teamStaffController.list);
+router.get(
+  '/:id/staff',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  teamStaffController.listForStaff
+);
 /**
  * @swagger
  * /teams/{id}/staff:
@@ -46,6 +54,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addTeamStaffRules,
+  validate,
   teamStaffController.add
 );
 /**

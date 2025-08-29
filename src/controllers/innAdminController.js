@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import innService from '../services/innService.js';
 import innMapper from '../mappers/innMapper.js';
 import { sendError } from '../utils/api.js';
@@ -17,10 +15,6 @@ export default {
     }
   },
   async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const inn = await innService.create(
         req.params.id,
@@ -34,10 +28,6 @@ export default {
   },
 
   async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const inn = await innService.update(
         req.params.id,

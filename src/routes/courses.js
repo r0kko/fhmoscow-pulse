@@ -8,6 +8,7 @@ import {
   courseCreateRules,
   courseUpdateRules,
 } from '../validators/courseValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   courseCreateRules,
+  validate,
   controller.create
 );
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
@@ -26,6 +28,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   courseUpdateRules,
+  validate,
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);

@@ -259,7 +259,7 @@ function thresholdText(t, zone) {
         <div class="card-header">
           <h2 class="h6 mb-0">{{ g.name }}</h2>
         </div>
-        <div class="card-body p-3">
+        <div class="card-body">
           <div
             v-if="g.types && g.types.length"
             class="table-responsive d-none d-sm-block"
@@ -615,15 +615,9 @@ function thresholdText(t, zone) {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .training-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 .fade-in {

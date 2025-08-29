@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import normativeResultService from '../services/normativeResultService.js';
 import mapper from '../mappers/normativeResultMapper.js';
 import { sendError } from '../utils/api.js';
@@ -39,10 +37,6 @@ export default {
   },
 
   async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const result = await normativeResultService.create(req.body, req.user.id);
       return res.status(201).json({ result: mapper.toPublic(result) });
@@ -52,10 +46,6 @@ export default {
   },
 
   async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const result = await normativeResultService.update(
         req.params.id,

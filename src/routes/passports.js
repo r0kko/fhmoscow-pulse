@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import passportController from '../controllers/passportController.js';
 import selfController from '../controllers/passportSelfController.js';
 import { createPassportRules } from '../validators/passportValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.get('/me', auth, passportController.me);
  *       201:
  *         description: Created
  */
-router.post('/', auth, createPassportRules, selfController.create);
+router.post('/', auth, createPassportRules, validate, selfController.create);
 
 /**
  * @swagger

@@ -8,8 +8,10 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from '../utils/jwt.js';
+import { LOGIN_MAX_ATTEMPTS } from '../config/auth.js';
 
 import * as attempts from './loginAttempts.js';
+import * as lockout from './accountLockout.js';
 
 /* ------------------- service implementation ------------------------------ */
 async function verifyCredentials(phone, password) {
@@ -21,13 +23,26 @@ async function verifyCredentials(phone, password) {
     throw new ServiceError('account_locked', 401);
   }
 
+  // Temporary lockout check
+  if (await lockout.isLocked(user.id)) {
+    const ttlMs = await lockout.getTtlMs(user.id);
+    const err = new ServiceError('account_locked', 401);
+    if (ttlMs > 0) err.retryAfter = Math.ceil(ttlMs / 1000);
+    throw err;
+  }
+
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) {
     const count = await attempts.markFailed(user.id);
-    if (count >= 5 && inactive) {
-      await user.update({ status_id: inactive.id });
+    if (count >= LOGIN_MAX_ATTEMPTS) {
+      // Enforce temporary lockout via Redis; do not change persistent status
+      await lockout.lock(user.id);
       await attempts.clear(user.id);
-      throw new ServiceError('account_locked', 401);
+      const err = new ServiceError('account_locked', 401);
+      // best-effort TTL for Retry-After header
+      const ttlMs = await lockout.getTtlMs(user.id);
+      if (ttlMs > 0) err.retryAfter = Math.ceil(ttlMs / 1000);
+      throw err;
     }
     throw new ServiceError('invalid_credentials', 401);
   }

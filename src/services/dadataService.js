@@ -61,7 +61,8 @@ export async function suggestFio(query, parts) {
 
 export async function cleanFio(fio) {
   if (!fio) return null;
-  const data = await request('/clean/name', [fio]);
+  // Use Cleaner API with secret per DaData requirements; Suggestions base does not support /clean/name
+  const data = await request('/clean/name', [fio], true, CLEANER_BASE);
   return Array.isArray(data) ? data[0] : null;
 }
 

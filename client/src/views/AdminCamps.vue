@@ -6,14 +6,11 @@ import { apiFetch } from '../api.js';
 import PageNav from '../components/PageNav.vue';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
-import {
-  endAfterStart,
-  required,
-  nonNegativeNumber,
-} from '../utils/validation.js';
+import { endAfterStart, required } from '../utils/validation.js';
 
 import RefereeGroups from '../components/RefereeGroups.vue';
 import InlineError from '../components/InlineError.vue';
+import TabSelector from '../components/TabSelector.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -404,45 +401,15 @@ async function toggleTrainingGroup(training, groupId, checked) {
       <h1 class="mb-3">Сборы</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3 ground-card">
         <div class="card-body p-2">
-          <ul
-            v-edge-fade
-            class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
-            role="tablist"
-          >
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'trainings' }"
-                role="tab"
-                :aria-selected="activeTab === 'trainings'"
-                @click="activeTab = 'trainings'"
-              >
-                Тренировки
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'judges' }"
-                role="tab"
-                :aria-selected="activeTab === 'judges'"
-                @click="activeTab = 'judges'"
-              >
-                Судьи
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'groups' }"
-                role="tab"
-                :aria-selected="activeTab === 'groups'"
-                @click="activeTab = 'groups'"
-              >
-                Группы
-              </button>
-            </li>
-          </ul>
+          <TabSelector
+            v-model="activeTab"
+            :tabs="[
+              { key: 'trainings', label: 'Тренировки' },
+              { key: 'judges', label: 'Судьи' },
+              { key: 'groups', label: 'Группы' },
+            ]"
+            justify="between"
+          />
         </div>
       </div>
 
@@ -477,34 +444,17 @@ async function toggleTrainingGroup(training, groupId, checked) {
             </div>
           </div>
           <div class="card-body p-3">
-            <ul
-              v-edge-fade
-              class="nav nav-pills nav-fill mb-3 tab-selector"
-              role="tablist"
-            >
-              <li class="nav-item">
-                <button
-                  class="nav-link"
-                  :class="{ active: trainingsView === 'upcoming' }"
-                  role="tab"
-                  :aria-selected="trainingsView === 'upcoming'"
-                  @click="trainingsView = 'upcoming'"
-                >
-                  Ближайшие
-                </button>
-              </li>
-              <li class="nav-item">
-                <button
-                  class="nav-link"
-                  :class="{ active: trainingsView === 'past' }"
-                  role="tab"
-                  :aria-selected="trainingsView === 'past'"
-                  @click="trainingsView = 'past'"
-                >
-                  Прошедшие
-                </button>
-              </li>
-            </ul>
+            <div class="mb-3">
+              <TabSelector
+                v-model="trainingsView"
+                :tabs="[
+                  { key: 'upcoming', label: 'Ближайшие' },
+                  { key: 'past', label: 'Прошедшие' },
+                ]"
+                :nav-fill="true"
+                justify="start"
+              />
+            </div>
             <div
               v-if="trainings.length"
               class="table-responsive d-none d-sm-block"
@@ -927,43 +877,25 @@ async function toggleTrainingGroup(training, groupId, checked) {
 </template>
 
 <style scoped>
-.list-group {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
 .group-col {
   width: 2.5rem;
   white-space: nowrap;
 }
 
 .ground-card {
-  border-radius: 0.75rem;
+  border-radius: var(--radius-tile);
   overflow: hidden;
-  border: 0;
-}
-
-.tab-selector {
-  gap: 0.5rem;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
 }
 
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 
 .training-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 575.98px) {

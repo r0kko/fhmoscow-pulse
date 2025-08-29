@@ -3,6 +3,7 @@ import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch, apiFetchBlob } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import PageNav from '../components/PageNav.vue';
 
 const route = useRoute();
 const exam = ref(null);
@@ -216,7 +217,7 @@ async function exportPdf() {
         ></div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3">
+        <div class="card-body">
           <div class="table-responsive d-none d-sm-block">
             <table class="table table-striped align-middle mb-0">
               <thead>
@@ -393,12 +394,6 @@ async function exportPdf() {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 @media (max-width: 575.98px) {
   .admin-exam-registrations-page {
     padding-top: 0.5rem !important;

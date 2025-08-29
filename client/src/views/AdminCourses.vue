@@ -6,6 +6,7 @@ import { apiFetch } from '../api.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import InlineError from '../components/InlineError.vue';
+import TabSelector from '../components/TabSelector.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
 import { endAfterStart, required } from '../utils/validation.js';
 
@@ -613,46 +614,16 @@ onBeforeUnmount(() => {
       </nav>
       <h1 class="mb-3">Мероприятия</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body p-2">
-          <ul
-            v-edge-fade
-            class="nav nav-pills nav-fill justify-content-between mb-0 tab-selector"
-            role="tablist"
-          >
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'assign' }"
-                role="tab"
-                :aria-selected="activeTab === 'assign'"
-                @click="activeTab = 'assign'"
-              >
-                Список судей
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'courses' }"
-                role="tab"
-                :aria-selected="activeTab === 'courses'"
-                @click="activeTab = 'courses'"
-              >
-                Курсы
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'trainings' }"
-                role="tab"
-                :aria-selected="activeTab === 'trainings'"
-                @click="activeTab = 'trainings'"
-              >
-                Мероприятия
-              </button>
-            </li>
-          </ul>
+        <div class="card-body">
+          <TabSelector
+            v-model="activeTab"
+            :tabs="[
+              { key: 'assign', label: 'Список судей' },
+              { key: 'courses', label: 'Курсы' },
+              { key: 'trainings', label: 'Мероприятия' },
+            ]"
+            justify="between"
+          />
         </div>
       </div>
 
@@ -725,7 +696,7 @@ onBeforeUnmount(() => {
                     :key="t.id"
                     class="card training-card mb-2"
                   >
-                    <div class="card-body p-2">
+                    <div class="card-body">
                       <p class="mb-1 fw-semibold">
                         {{ formatDateTimeRange(t.start_at, t.end_at) }}
                       </p>
@@ -1601,15 +1572,5 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-.tab-selector {
-  gap: 0.5rem;
-}
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 </style>

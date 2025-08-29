@@ -533,7 +533,7 @@ function applyFilters() {
   left: 0;
   background: #fff;
   z-index: 2;
-  box-shadow: 2px 0 0 rgba(0, 0, 0, 0.05);
+  border-right: 2px solid var(--border-subtle);
 }
 .partial-cell {
   /* keep subtle highlight without overpowering */

@@ -10,6 +10,8 @@ const props = defineProps({
   showSex: { type: Boolean, default: true },
   requireSex: { type: Boolean, default: true },
   frame: { type: Boolean, default: true },
+  // When true, replace separate last/first/patronymic inputs with a single FIO field.
+  singleFio: { type: Boolean, default: false },
 });
 const emit = defineEmits(['update:modelValue', 'editing-changed']);
 
@@ -30,6 +32,9 @@ const suggestions = reactive({
   first_name: [],
   patronymic: [],
 });
+// Single FIO mode state
+const fioInput = ref('');
+const fioQc = ref(null); // 0 = confident, 1 = needs manual check, null = unknown
 const timeouts = {
   last_name: null,
   first_name: null,
@@ -41,6 +46,12 @@ watch(
   (val) => {
     Object.assign(form, val || {});
     phoneInput.value = formatPhone(form.phone || '');
+    if (props.singleFio) {
+      fioInput.value = [form.last_name, form.first_name, form.patronymic]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+    }
   },
   { immediate: true }
 );
@@ -141,6 +152,58 @@ async function onFioBlur() {
   suggestions.patronymic = [];
 }
 
+async function onFioSingleBlur() {
+  const query = (fioInput.value || '').trim();
+  if (!query) {
+    form.last_name = '';
+    form.first_name = '';
+    form.patronymic = '';
+    fioQc.value = null;
+    return;
+  }
+  const cleaned = await cleanFio(query);
+  if (cleaned) {
+    if (cleaned.surname) form.last_name = cleaned.surname;
+    if (cleaned.name) form.first_name = cleaned.name;
+    if (cleaned.patronymic) form.patronymic = cleaned.patronymic;
+    fioInput.value =
+      cleaned.result ||
+      `${form.last_name} ${form.first_name} ${form.patronymic}`.trim();
+    fioQc.value = typeof cleaned.qc === 'number' ? cleaned.qc : null;
+    if (cleaned.gender && cleaned.qc === 0 && Array.isArray(props.sexes)) {
+      const g = String(cleaned.gender).toUpperCase();
+      let desiredCode = '';
+      if (g === 'М') desiredCode = 'MALE';
+      else if (g === 'Ж') desiredCode = 'FEMALE';
+      if (desiredCode && !form.sex_id) {
+        const norm = (v) => (v || '').toString().trim().toLowerCase();
+        let pick = props.sexes.find(
+          (s) => norm(s.code) === desiredCode.toLowerCase()
+        );
+        if (!pick) {
+          pick = props.sexes.find((s) => {
+            const nm = norm(s.name);
+            return (
+              (desiredCode === 'MALE' &&
+                (nm.includes('муж') || nm.includes('male'))) ||
+              (desiredCode === 'FEMALE' &&
+                (nm.includes('жен') || nm.includes('female')))
+            );
+          });
+        }
+        if (pick) form.sex_id = pick.id;
+      }
+    }
+  } else {
+    // Fallback: split by space
+    const parts = query.split(/\s+/).filter(Boolean);
+    form.last_name = parts[0] || '';
+    form.first_name = parts[1] || '';
+    form.patronymic = parts.slice(2).join(' ');
+    fioQc.value = 1;
+  }
+}
+
 function applySuggestion(sug) {
   if (sug.data.surname) form.last_name = sug.data.surname;
   if (sug.data.name) form.first_name = sug.data.name;
@@ -151,8 +214,23 @@ function applySuggestion(sug) {
 }
 
 function validate() {
-  errors.last_name = form.last_name ? '' : 'Введите фамилию';
-  errors.first_name = form.first_name ? '' : 'Введите имя';
+  if (props.singleFio) {
+    const ok =
+      Boolean((form.last_name || '').trim()) &&
+      Boolean((form.first_name || '').trim()) &&
+      Boolean((form.patronymic || '').trim());
+    errors.fio = ok ? '' : 'Введите ФИО полностью (фамилия, имя, отчество)';
+    // Ensure part-specific errors do not block validation in single field mode
+    errors.last_name = '';
+    errors.first_name = '';
+    errors.patronymic = '';
+  } else {
+    errors.last_name = form.last_name ? '' : 'Введите фамилию';
+    errors.first_name = form.first_name ? '' : 'Введите имя';
+    if (props.isNew) {
+      errors.patronymic = form.patronymic ? '' : 'Введите отчество';
+    }
+  }
   errors.sex_id =
     props.showSex && props.requireSex && !form.sex_id ? 'Выберите пол' : '';
   if (!form.birth_date) {
@@ -180,7 +258,13 @@ function lock() {
   editing.value = false;
 }
 
-defineExpose({ validate, unlock, lock, editing });
+function setFieldError(field, message) {
+  if (field && Object.prototype.hasOwnProperty.call(errors, field)) {
+    errors[field] = message || '';
+  }
+}
+
+defineExpose({ validate, unlock, lock, editing, setFieldError });
 
 const selectedSexName = computed(() => {
   if (!form.sex_id || !Array.isArray(props.sexes)) return '';
@@ -207,90 +291,112 @@ const selectedSexName = computed(() => {
         </div>
         <fieldset :disabled="!editing">
           <div class="row row-cols-1 row-cols-sm-2 g-3">
-            <div class="col position-relative">
-              <div class="form-floating">
-                <input
-                  id="lastName"
-                  v-model="form.last_name"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.last_name }"
-                  placeholder="Фамилия"
-                  required
-                  @blur="onFioBlur"
-                />
-                <label for="lastName">Фамилия</label>
-                <div class="invalid-feedback">{{ errors.last_name }}</div>
-              </div>
-              <ul
-                v-if="suggestions.last_name.length"
-                class="list-group position-absolute w-100"
-                style="z-index: 1050"
-              >
-                <li
-                  v-for="s in suggestions.last_name"
-                  :key="s.value"
-                  class="list-group-item list-group-item-action"
-                  @mousedown.prevent="applySuggestion(s)"
+            <template v-if="props.singleFio">
+              <div class="col">
+                <div class="form-floating">
+                  <input
+                    id="fio"
+                    v-model="fioInput"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.fio }"
+                    placeholder="Фамилия Имя Отчество"
+                    required
+                    @blur="onFioSingleBlur"
+                  />
+                  <label for="fio">ФИО</label>
+                  <div class="invalid-feedback">{{ errors.fio }}</div>
+                </div>
+                <small v-if="fioQc === 1" class="text-warning d-block mt-1"
+                  >Проверьте результат: распознано с допущениями</small
                 >
-                  {{ s.data.surname }}
-                </li>
-              </ul>
-            </div>
-            <div class="col position-relative">
-              <div class="form-floating">
-                <input
-                  id="firstName"
-                  v-model="form.first_name"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.first_name }"
-                  placeholder="Имя"
-                  required
-                  @blur="onFioBlur"
-                />
-                <label for="firstName">Имя</label>
-                <div class="invalid-feedback">{{ errors.first_name }}</div>
               </div>
-              <ul
-                v-if="suggestions.first_name.length"
-                class="list-group position-absolute w-100"
-                style="z-index: 1050"
-              >
-                <li
-                  v-for="s in suggestions.first_name"
-                  :key="s.value"
-                  class="list-group-item list-group-item-action"
-                  @mousedown.prevent="applySuggestion(s)"
+            </template>
+            <template v-else>
+              <div class="col position-relative">
+                <div class="form-floating">
+                  <input
+                    id="lastName"
+                    v-model="form.last_name"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.last_name }"
+                    placeholder="Фамилия"
+                    required
+                    @blur="onFioBlur"
+                  />
+                  <label for="lastName">Фамилия</label>
+                  <div class="invalid-feedback">{{ errors.last_name }}</div>
+                </div>
+                <ul
+                  v-if="suggestions.last_name.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
                 >
-                  {{ s.data.name }}
-                </li>
-              </ul>
-            </div>
-            <div class="col position-relative">
-              <div class="form-floating">
-                <input
-                  id="patronymic"
-                  v-model="form.patronymic"
-                  class="form-control"
-                  placeholder="Отчество"
-                  @blur="onFioBlur"
-                />
-                <label for="patronymic">Отчество</label>
+                  <li
+                    v-for="s in suggestions.last_name"
+                    :key="s.value"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.data.surname }}
+                  </li>
+                </ul>
               </div>
-              <ul
-                v-if="suggestions.patronymic.length"
-                class="list-group position-absolute w-100"
-                style="z-index: 1050"
-              >
-                <li
-                  v-for="s in suggestions.patronymic"
-                  :key="s.value"
-                  class="list-group-item list-group-item-action"
-                  @mousedown.prevent="applySuggestion(s)"
+              <div class="col position-relative">
+                <div class="form-floating">
+                  <input
+                    id="firstName"
+                    v-model="form.first_name"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.first_name }"
+                    placeholder="Имя"
+                    required
+                    @blur="onFioBlur"
+                  />
+                  <label for="firstName">Имя</label>
+                  <div class="invalid-feedback">{{ errors.first_name }}</div>
+                </div>
+                <ul
+                  v-if="suggestions.first_name.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
                 >
-                  {{ s.data.patronymic }}
-                </li>
-              </ul>
-            </div>
+                  <li
+                    v-for="s in suggestions.first_name"
+                    :key="s.value"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.data.name }}
+                  </li>
+                </ul>
+              </div>
+              <div class="col position-relative">
+                <div class="form-floating">
+                  <input
+                    id="patronymic"
+                    v-model="form.patronymic"
+                    class="form-control"
+                    placeholder="Отчество"
+                    @blur="onFioBlur"
+                  />
+                  <label for="patronymic">Отчество</label>
+                </div>
+                <ul
+                  v-if="suggestions.patronymic.length"
+                  class="list-group position-absolute w-100"
+                  style="z-index: 1050"
+                >
+                  <li
+                    v-for="s in suggestions.patronymic"
+                    :key="s.value"
+                    class="list-group-item list-group-item-action"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.data.patronymic }}
+                  </li>
+                </ul>
+              </div>
+            </template>
             <div class="col">
               <div class="form-floating">
                 <input
@@ -314,7 +420,7 @@ const selectedSexName = computed(() => {
                 v-model="form.sex_id"
                 class="form-select"
                 :class="{ 'is-invalid': errors.sex_id }"
-                :required="props.requireSex"
+                :required="props.requireSex && props.showSex"
               >
                 <option value="" disabled>Выберите...</option>
                 <option v-for="s in props.sexes" :key="s.id" :value="s.id">
@@ -324,21 +430,7 @@ const selectedSexName = computed(() => {
               <div class="invalid-feedback">{{ errors.sex_id }}</div>
             </div>
           </div>
-          <div v-else-if="selectedSexName" class="row g-3 mt-3">
-            <div class="col">
-              <div class="form-floating">
-                <input
-                  id="sex"
-                  class="form-control"
-                  :value="selectedSexName"
-                  readonly
-                  placeholder="Пол"
-                />
-                <label for="sex">Пол</label>
-              </div>
-              <small class="text-muted">Определено автоматически из ФИО</small>
-            </div>
-          </div>
+
           <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">
             <div class="col">
               <div class="form-floating">
@@ -381,90 +473,112 @@ const selectedSexName = computed(() => {
     <div v-else>
       <fieldset :disabled="!editing">
         <div class="row row-cols-1 row-cols-sm-2 g-3">
-          <div class="col position-relative">
-            <div class="form-floating">
-              <input
-                id="lastName"
-                v-model="form.last_name"
-                class="form-control"
-                :class="{ 'is-invalid': errors.last_name }"
-                placeholder="Фамилия"
-                required
-                @blur="onFioBlur"
-              />
-              <label for="lastName">Фамилия</label>
-              <div class="invalid-feedback">{{ errors.last_name }}</div>
-            </div>
-            <ul
-              v-if="suggestions.last_name.length"
-              class="list-group position-absolute w-100"
-              style="z-index: 1050"
-            >
-              <li
-                v-for="s in suggestions.last_name"
-                :key="s.value"
-                class="list-group-item list-group-item-action"
-                @mousedown.prevent="applySuggestion(s)"
+          <template v-if="props.singleFio">
+            <div class="col">
+              <div class="form-floating">
+                <input
+                  id="fio2"
+                  v-model="fioInput"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.fio }"
+                  placeholder="Фамилия Имя Отчество"
+                  required
+                  @blur="onFioSingleBlur"
+                />
+                <label for="fio2">ФИО</label>
+                <div class="invalid-feedback">{{ errors.fio }}</div>
+              </div>
+              <small v-if="fioQc === 1" class="text-warning d-block mt-1"
+                >Проверьте результат: распознано с допущениями</small
               >
-                {{ s.data.surname }}
-              </li>
-            </ul>
-          </div>
-          <div class="col position-relative">
-            <div class="form-floating">
-              <input
-                id="firstName"
-                v-model="form.first_name"
-                class="form-control"
-                :class="{ 'is-invalid': errors.first_name }"
-                placeholder="Имя"
-                required
-                @blur="onFioBlur"
-              />
-              <label for="firstName">Имя</label>
-              <div class="invalid-feedback">{{ errors.first_name }}</div>
             </div>
-            <ul
-              v-if="suggestions.first_name.length"
-              class="list-group position-absolute w-100"
-              style="z-index: 1050"
-            >
-              <li
-                v-for="s in suggestions.first_name"
-                :key="s.value"
-                class="list-group-item list-group-item-action"
-                @mousedown.prevent="applySuggestion(s)"
+          </template>
+          <template v-else>
+            <div class="col position-relative">
+              <div class="form-floating">
+                <input
+                  id="lastName2"
+                  v-model="form.last_name"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.last_name }"
+                  placeholder="Фамилия"
+                  required
+                  @blur="onFioBlur"
+                />
+                <label for="lastName2">Фамилия</label>
+                <div class="invalid-feedback">{{ errors.last_name }}</div>
+              </div>
+              <ul
+                v-if="suggestions.last_name.length"
+                class="list-group position-absolute w-100"
+                style="z-index: 1050"
               >
-                {{ s.data.name }}
-              </li>
-            </ul>
-          </div>
-          <div class="col position-relative">
-            <div class="form-floating">
-              <input
-                id="patronymic"
-                v-model="form.patronymic"
-                class="form-control"
-                placeholder="Отчество"
-                @blur="onFioBlur"
-              />
-              <label for="patronymic">Отчество</label>
+                <li
+                  v-for="s in suggestions.last_name"
+                  :key="s.value"
+                  class="list-group-item list-group-item-action"
+                  @mousedown.prevent="applySuggestion(s)"
+                >
+                  {{ s.data.surname }}
+                </li>
+              </ul>
             </div>
-            <ul
-              v-if="suggestions.patronymic.length"
-              class="list-group position-absolute w-100"
-              style="z-index: 1050"
-            >
-              <li
-                v-for="s in suggestions.patronymic"
-                :key="s.value"
-                class="list-group-item list-group-item-action"
-                @mousedown.prevent="applySuggestion(s)"
+            <div class="col position-relative">
+              <div class="form-floating">
+                <input
+                  id="firstName2"
+                  v-model="form.first_name"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.first_name }"
+                  placeholder="Имя"
+                  required
+                  @blur="onFioBlur"
+                />
+                <label for="firstName2">Имя</label>
+                <div class="invalid-feedback">{{ errors.first_name }}</div>
+              </div>
+              <ul
+                v-if="suggestions.first_name.length"
+                class="list-group position-absolute w-100"
+                style="z-index: 1050"
               >
-                {{ s.data.patronymic }}
-              </li>
-            </ul>
-          </div>
+                <li
+                  v-for="s in suggestions.first_name"
+                  :key="s.value"
+                  class="list-group-item list-group-item-action"
+                  @mousedown.prevent="applySuggestion(s)"
+                >
+                  {{ s.data.name }}
+                </li>
+              </ul>
+            </div>
+            <div class="col position-relative">
+              <div class="form-floating">
+                <input
+                  id="patronymic2"
+                  v-model="form.patronymic"
+                  class="form-control"
+                  placeholder="Отчество"
+                  @blur="onFioBlur"
+                />
+                <label for="patronymic2">Отчество</label>
+              </div>
+              <ul
+                v-if="suggestions.patronymic.length"
+                class="list-group position-absolute w-100"
+                style="z-index: 1050"
+              >
+                <li
+                  v-for="s in suggestions.patronymic"
+                  :key="s.value"
+                  class="list-group-item list-group-item-action"
+                  @mousedown.prevent="applySuggestion(s)"
+                >
+                  {{ s.data.patronymic }}
+                </li>
+              </ul>
+            </div>
+          </template>
           <div class="col">
             <div class="form-floating">
               <input
@@ -488,7 +602,7 @@ const selectedSexName = computed(() => {
               v-model="form.sex_id"
               class="form-select"
               :class="{ 'is-invalid': errors.sex_id }"
-              :required="props.requireSex"
+              :required="props.requireSex && props.showSex"
             >
               <option value="" disabled>Выберите...</option>
               <option v-for="s in props.sexes" :key="s.id" :value="s.id">
@@ -498,21 +612,7 @@ const selectedSexName = computed(() => {
             <div class="invalid-feedback">{{ errors.sex_id }}</div>
           </div>
         </div>
-        <div v-else-if="selectedSexName" class="row g-3 mt-3">
-          <div class="col">
-            <div class="form-floating">
-              <input
-                id="sex"
-                class="form-control"
-                :value="selectedSexName"
-                readonly
-                placeholder="Пол"
-              />
-              <label for="sex">Пол</label>
-            </div>
-            <small class="text-muted">Определено автоматически из ФИО</small>
-          </div>
-        </div>
+
         <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">
           <div class="col">
             <div class="form-floating">
@@ -550,7 +650,7 @@ const selectedSexName = computed(() => {
     </div>
 
     <p v-if="isNew" class="text-muted">
-      Пароль будет сгенерирован автоматически
+      Данные для входа будут отправлены на email пользователя
     </p>
   </div>
 </template>

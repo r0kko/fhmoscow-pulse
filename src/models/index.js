@@ -87,6 +87,9 @@ import ClubStaff from './clubStaff.js';
 import TeamStaff from './teamStaff.js';
 import GroundClub from './groundClub.js';
 import GroundTeam from './groundTeam.js';
+import MatchAgreementType from './matchAgreementType.js';
+import MatchAgreementStatus from './matchAgreementStatus.js';
+import MatchAgreement from './matchAgreement.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -330,6 +333,22 @@ Match.belongsTo(Team, { foreignKey: 'team2_id', as: 'AwayTeam' });
 Season.hasMany(Match, { foreignKey: 'season_id' });
 Match.belongsTo(Season, { foreignKey: 'season_id' });
 
+/* match agreements */
+Match.hasMany(MatchAgreement, { foreignKey: 'match_id' });
+MatchAgreement.belongsTo(Match, { foreignKey: 'match_id' });
+MatchAgreementType.hasMany(MatchAgreement, { foreignKey: 'type_id' });
+MatchAgreement.belongsTo(MatchAgreementType, { foreignKey: 'type_id' });
+MatchAgreementStatus.hasMany(MatchAgreement, { foreignKey: 'status_id' });
+MatchAgreement.belongsTo(MatchAgreementStatus, { foreignKey: 'status_id' });
+User.hasMany(MatchAgreement, { foreignKey: 'author_user_id' });
+MatchAgreement.belongsTo(User, { foreignKey: 'author_user_id', as: 'Author' });
+Ground.hasMany(MatchAgreement, { foreignKey: 'ground_id' });
+MatchAgreement.belongsTo(Ground, { foreignKey: 'ground_id' });
+MatchAgreement.belongsTo(MatchAgreement, {
+  foreignKey: 'parent_id',
+  as: 'Parent',
+});
+
 /* courses */
 Course.belongsTo(User, { foreignKey: 'responsible_id', as: 'Responsible' });
 User.hasMany(Course, {
@@ -551,6 +570,9 @@ export {
   TicketFile,
   Tour,
   Match,
+  MatchAgreement,
+  MatchAgreementType,
+  MatchAgreementStatus,
   Team,
   Tournament,
   TournamentType,

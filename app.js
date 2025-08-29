@@ -52,7 +52,13 @@ app.use((req, res) => {
 
 // Centralized error handler
 app.use((err, _req, res, _next) => {
-  logger.error('Unhandled error processing request: %s', err.stack || err);
+  const status = err?.status || 500;
+  if (status >= 500) {
+    logger.error('Unhandled server error: %s', err.stack || err);
+  } else {
+    const code = err?.code || err?.message || 'error';
+    logger.warn('Request failed: %s (%s)', code, status);
+  }
   sendError(res, err, 500);
 });
 

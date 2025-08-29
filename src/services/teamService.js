@@ -273,3 +273,26 @@ async function listTeamUsers(teamId) {
 }
 
 export { listTeamUsers };
+
+// Batched helper: get users for multiple teams to avoid N+1 queries
+async function listUsersForTeams(teamIds = []) {
+  if (!teamIds || teamIds.length === 0) return new Map();
+  const teams = await Team.findAll({
+    where: { id: { [Op.in]: teamIds } },
+    include: [
+      {
+        model: User,
+        through: { attributes: [] },
+        required: false,
+      },
+    ],
+  });
+  const map = new Map();
+  for (const t of teams) {
+    const plain = typeof t.get === 'function' ? t.get({ plain: true }) : t;
+    map.set(plain.id, plain.Users || []);
+  }
+  return map;
+}
+
+export { listUsersForTeams };

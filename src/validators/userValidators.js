@@ -1,10 +1,6 @@
 import { body } from 'express-validator';
 
-import {
-  PASSWORD_MIN_LENGTH,
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_PATTERN,
-} from '../config/auth.js';
+import { assertPassword } from '../utils/passwordPolicy.js';
 
 export const createUserRules = [
   body('first_name').isString().notEmpty(),
@@ -17,12 +13,20 @@ export const createUserRules = [
       return !Number.isNaN(d.getTime()) && d >= new Date('1945-01-01');
     })
     .withMessage('invalid_birth_date'),
-  body('phone').isMobilePhone(),
-  body('email').isEmail(),
+  body('phone').isMobilePhone().withMessage('invalid_phone'),
+  body('email').isEmail().withMessage('invalid_email'),
+  // Password is generated server-side for admin-created users
   body('password')
+    .optional()
     .isString()
-    .isLength({ min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH })
-    .matches(PASSWORD_PATTERN),
+    .custom((val) => {
+      try {
+        assertPassword(val);
+        return true;
+      } catch {
+        throw new Error('weak_password');
+      }
+    }),
 ];
 
 export const updateUserRules = [
@@ -38,13 +42,19 @@ export const updateUserRules = [
       return !Number.isNaN(d.getTime()) && d >= new Date('1945-01-01');
     })
     .withMessage('invalid_birth_date'),
-  body('phone').optional().isMobilePhone(),
-  body('email').optional().isEmail(),
+  body('phone').optional().isMobilePhone().withMessage('invalid_phone'),
+  body('email').optional().isEmail().withMessage('invalid_email'),
 ];
 
 export const resetPasswordRules = [
   body('password')
     .isString()
-    .isLength({ min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH })
-    .matches(PASSWORD_PATTERN),
+    .custom((val) => {
+      try {
+        assertPassword(val);
+        return true;
+      } catch {
+        throw new Error('weak_password');
+      }
+    }),
 ];

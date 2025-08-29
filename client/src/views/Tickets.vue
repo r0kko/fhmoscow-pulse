@@ -110,7 +110,7 @@ async function deleteTicket(ticket) {
       </nav>
       <h1 class="mb-3">Мои обращения</h1>
       <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body p-2">
+        <div class="card-body">
           <ul class="nav nav-pills nav-fill mb-0 tab-selector">
             <li class="nav-item">
               <button
@@ -208,23 +208,11 @@ async function deleteTicket(ticket) {
 </template>
 
 <style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
-.tab-selector {
-  gap: 0.5rem;
-}
-
-.tab-selector .nav-link {
-  border-radius: 0.5rem;
-}
+/* Uses global .section-card and .tab-selector from brand.css */
 
 @media (max-width: 575.98px) {
   .tickets-page {

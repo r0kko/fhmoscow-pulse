@@ -274,7 +274,7 @@ async function loadJudges() {
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-3">
+      <div class="card-body">
         <div v-if="judgesError" class="alert alert-danger mb-3">
           {{ judgesError }}
         </div>
@@ -579,12 +579,6 @@ async function loadJudges() {
 <style scoped>
 .fade-in {
   animation: fadeIn 0.4s ease-out;
-}
-
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
 }
 
 @media (max-width: 575.98px) {

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import CookieNotice from '../components/CookieNotice.vue';
+import PasswordInput from '../components/PasswordInput.vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch, initCsrf } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
@@ -33,7 +34,13 @@ function formatPhone(digits) {
 
 function onPhoneInput(e) {
   let digits = e.target.value.replace(/\D/g, '');
-  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '');
+  // Normalize Russian numbers: accept leading 7 or 8, store as 7XXXXXXXXXX
+  if (digits.length > 0) {
+    // remove a single leading 7 or 8, then re-add 7
+    digits = '7' + digits.replace(/^[78]/, '');
+  } else {
+    digits = '7';
+  }
   digits = digits.slice(0, 11);
   phone.value = digits;
   phoneInput.value = formatPhone(digits);
@@ -64,7 +71,10 @@ async function login() {
     setAuthToken(data.access_token);
     auth.user = data.user;
     auth.roles = data.roles || [];
-    if (
+    auth.mustChangePassword = !!data.must_change_password;
+    if (auth.mustChangePassword) {
+      router.push('/change-password');
+    } else if (
       data.awaiting_confirmation ||
       auth.user.status === 'AWAITING_CONFIRMATION'
     ) {
@@ -98,7 +108,14 @@ async function login() {
       />
       <h2 class="mb-3 text-center">Авторизация</h2>
       <transition name="fade">
-        <div v-if="error" class="alert alert-danger">{{ error }}</div>
+        <div
+          v-if="error"
+          class="alert alert-danger"
+          role="alert"
+          aria-live="polite"
+        >
+          {{ error }}
+        </div>
       </transition>
       <form @submit.prevent="login">
         <div class="form-floating mb-3">
@@ -116,18 +133,15 @@ async function login() {
           />
           <label for="phone">Телефон</label>
         </div>
-        <div class="form-floating mb-3">
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            class="form-control"
-            placeholder="Пароль"
-            autocomplete="current-password"
-            required
-          />
-          <label for="password">Пароль</label>
-        </div>
+        <PasswordInput
+          id="password"
+          v-model="password"
+          class="mb-3"
+          label="Пароль"
+          placeholder="Пароль"
+          autocomplete="current-password"
+          :required="true"
+        />
         <button type="submit" class="btn btn-brand w-100" :disabled="loading">
           <span
             v-if="loading"

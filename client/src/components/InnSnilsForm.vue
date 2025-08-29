@@ -128,8 +128,8 @@ async function removeItem() {
 </script>
 
 <template>
-  <div class="card mt-4">
-    <div class="card-body">
+  <div class="card section-card tile fade-in shadow-sm mt-4">
+    <div class="card-body p-2">
       <h5 class="card-title mb-3">Данные социального и налогового учёта</h5>
       <div v-if="!inn || !snils" class="alert alert-warning mb-3" role="alert">
         Некоторые данные отсутствуют. Используйте кнопки

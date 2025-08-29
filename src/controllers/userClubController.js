@@ -1,5 +1,3 @@
-import { validationResult } from 'express-validator';
-
 import clubUserService from '../services/clubUserService.js';
 import clubMapper from '../mappers/clubMapper.js';
 import userService from '../services/userService.js';
@@ -28,10 +26,6 @@ export default {
   },
 
   async addForUser(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       await assertSportSchoolStaff(req.params.id);
       await clubUserService.addUserClub(

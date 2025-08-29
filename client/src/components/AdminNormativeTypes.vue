@@ -304,7 +304,7 @@ defineExpose({ refresh });
           <i class="bi bi-plus-lg me-1"></i>Добавить
         </button>
       </div>
-      <div class="card-body p-3">
+      <div class="card-body">
         <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
         <div v-if="isLoading" class="text-center my-3">
           <div class="spinner-border" role="status"></div>
@@ -362,7 +362,7 @@ defineExpose({ refresh });
         </div>
         <div v-if="types.length" class="d-block d-sm-none">
           <div v-for="t in types" :key="t.id" class="card training-card mb-2">
-            <div class="card-body p-2 d-flex justify-content-between">
+            <div class="card-body d-flex justify-content-between">
               <div>
                 <h6 class="mb-1">{{ t.name }}</h6>
                 <p class="mb-1">
@@ -585,19 +585,15 @@ defineExpose({ refresh });
 
 <style scoped>
 .training-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
+/* Uses global .section-card from brand.css */
 
 @media (max-width: 575.98px) {
   .section-card {

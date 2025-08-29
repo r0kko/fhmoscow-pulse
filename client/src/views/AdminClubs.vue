@@ -269,10 +269,4 @@ watch(q, () => {
   </div>
 </template>
 
-<style scoped>
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-</style>
+<style scoped></style>

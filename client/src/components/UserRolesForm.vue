@@ -73,8 +73,8 @@ async function save() {
 </script>
 
 <template>
-  <div class="card mt-4">
-    <div class="card-body">
+  <div class="card section-card tile fade-in shadow-sm mt-4">
+    <div class="card-body p-2">
       <h2 class="card-title h5 mb-3">Роли</h2>
       <div v-if="roles.length">
         <div v-for="role in roles" :key="role.id" class="form-check">

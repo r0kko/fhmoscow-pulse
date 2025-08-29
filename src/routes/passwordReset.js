@@ -6,6 +6,7 @@ import {
   passwordResetFinishRules,
 } from '../validators/passwordResetValidators.js';
 import passwordResetRateLimiter from '../middlewares/passwordResetRateLimiter.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.post(
   '/start',
   passwordResetRateLimiter,
   passwordResetStartRules,
+  validate,
   controller.start
 );
 
@@ -66,6 +68,7 @@ router.post(
   '/finish',
   passwordResetRateLimiter,
   passwordResetFinishRules,
+  validate,
   controller.finish
 );
 

@@ -207,13 +207,12 @@ async function finish() {
 const eligibleNotRegistered = computed(() => {
   const registeredIds = new Set(list.value.map((r) => r.user.id));
   const courseIds = training.value?.courses?.map((c) => c.id) || [];
-  const items = judges.value
+  return judges.value
     .filter((j) => j.course && courseIds.includes(j.course.id))
     .filter((j) => !registeredIds.has(j.user.id))
     .map((j) => j.user)
     .slice()
     .sort((a, b) => fullName(a).localeCompare(fullName(b), 'ru'));
-  return items;
 });
 
 // Pagination for eligible list
@@ -317,7 +316,7 @@ watch(
         </div>
       </div>
       <div v-if="list.length" class="card section-card tile fade-in shadow-sm">
-        <div class="card-body p-3">
+        <div class="card-body">
           <div class="table-responsive d-none d-sm-block">
             <table class="table admin-table table-striped align-middle mb-0">
               <thead>
@@ -402,7 +401,7 @@ watch(
                 { highlight: r.highlight },
               ]"
             >
-              <div class="card-body p-2">
+              <div class="card-body">
                 <div class="fw-medium mb-1">
                   {{ r.user.last_name }} {{ r.user.first_name }}
                   {{ r.user.patronymic }}
@@ -487,7 +486,7 @@ watch(
         v-if="eligibleNotRegistered.length"
         class="card section-card tile fade-in shadow-sm mt-3"
       >
-        <div class="card-body p-3">
+        <div class="card-body">
           <h2 class="h6 mb-3">Доступно к регистрации, но не записаны</h2>
           <div class="table-responsive d-none d-sm-block">
             <table class="table admin-table table-striped align-middle mb-0">
@@ -510,7 +509,7 @@ watch(
           <div class="d-sm-none">
             <div v-for="u in visibleEligible" :key="u.id" class="mb-2">
               <div class="card registration-card">
-                <div class="card-body p-2">
+                <div class="card-body">
                   <div class="fw-medium">{{ fullName(u) }}</div>
                   <div class="small text-muted">
                     {{ u.phone ? formatPhone(u.phone) : '' }}
@@ -536,12 +535,6 @@ watch(
 .highlight {
   animation: highlightBg 2s ease-out;
 }
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .presence-group .presence-btn {
   width: 2.5rem;
   display: flex;
@@ -559,8 +552,8 @@ watch(
 }
 
 .registration-card {
-  border-radius: 0.5rem;
-  border: 1px solid #dee2e6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 575.98px) {

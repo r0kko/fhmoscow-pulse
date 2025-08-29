@@ -10,6 +10,7 @@ import {
   createTicketRules,
   updateTicketRules,
 } from '../validators/ticketValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 const upload = multer();
@@ -59,6 +60,7 @@ router.post(
   authorize('REFEREE'),
   upload.single('file'),
   createTicketRules,
+  validate,
   selfController.create
 );
 
@@ -67,6 +69,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateTicketRules,
+  validate,
   adminController.updateById
 );
 

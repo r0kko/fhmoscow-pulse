@@ -1,6 +1,7 @@
 import redis from '../config/redis.js';
+import { LOGIN_ATTEMPT_WINDOW_MS } from '../config/auth.js';
 
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const WINDOW_MS = LOGIN_ATTEMPT_WINDOW_MS; // attempt window
 const PREFIX = 'login_attempts:';
 
 function key(id) {

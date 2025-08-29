@@ -5,6 +5,7 @@ import bankAccountController from '../controllers/bankAccountController.js';
 import selfController from '../controllers/bankAccountSelfController.js';
 import { bankAccountRules } from '../validators/bankAccountValidators.js';
 import denyStaffOnly from '../middlewares/denyStaffOnly.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -32,7 +33,14 @@ router.get('/me', auth, denyStaffOnly, bankAccountController.me);
  *       201:
  *         description: Created
  */
-router.post('/', auth, denyStaffOnly, bankAccountRules, selfController.create);
+router.post(
+  '/',
+  auth,
+  denyStaffOnly,
+  bankAccountRules,
+  validate,
+  selfController.create
+);
 
 /**
  * @swagger

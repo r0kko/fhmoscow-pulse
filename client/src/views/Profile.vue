@@ -650,12 +650,6 @@ onMounted(() => {
   animation: fadeIn 0.4s ease-out;
 }
 
-.section-card {
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 0;
-}
-
 .tiles-row {
   display: flex;
   flex-wrap: nowrap;

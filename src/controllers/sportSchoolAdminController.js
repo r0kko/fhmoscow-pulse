@@ -1,5 +1,5 @@
-import clubUserService, { listClubUsers } from '../services/clubUserService.js';
-import teamService, { listTeamUsers } from '../services/teamService.js';
+import clubUserService from '../services/clubUserService.js';
+import teamService, { listUsersForTeams } from '../services/teamService.js';
 import userService from '../services/userService.js';
 import clubMapper from '../mappers/clubMapper.js';
 import teamMapper from '../mappers/teamMapper.js';
@@ -52,51 +52,32 @@ export default {
       };
       const { rows } = await teamService.list(baseQuery);
 
-      // Prefetch unique club users
-      const clubsSet = new Set(
-        rows
-          .map((t) =>
-            typeof t.get === 'function' ? t.get({ plain: true }) : t
-          )
-          .map((t) => t.club_id || t.Club?.id)
-          .filter(Boolean)
+      const plainTeams = rows.map((t) =>
+        typeof t.get === 'function' ? t.get({ plain: true }) : t
       );
-      const clubUsersMap = new Map();
-      await Promise.all(
-        Array.from(clubsSet).map(async (cid) => {
-          const users = await listClubUsers(cid);
-          clubUsersMap.set(cid, users || []);
-        })
-      );
+      const teamIds = plainTeams.map((t) => t.id);
+      const usersByTeam = await listUsersForTeams(teamIds);
 
-      let items = await Promise.all(
-        rows.map(async (t) => {
-          const team = typeof t.get === 'function' ? t.get({ plain: true }) : t;
-          const clubId = team.club_id || team.Club?.id;
-          const clubUsers = clubId ? clubUsersMap.get(clubId) || [] : [];
-          const teamUsers = await listTeamUsers(team.id);
-          const clubPublic = team.Club ? clubMapper.toPublic(team.Club) : null;
-          const teamPublic = teamMapper.toPublic(team);
-          const staffCombined = new Map();
-          for (const u of clubUsers) staffCombined.set(u.id, u);
-          for (const u of teamUsers || []) staffCombined.set(u.id, u);
-          const users = userMapper
-            .toPublicArray(Array.from(staffCombined.values()))
-            .map((u) => ({
-              id: u.id,
-              last_name: u.last_name,
-              first_name: u.first_name,
-              patronymic: u.patronymic,
-              phone: u.phone,
-            }));
-          return { club: clubPublic, team: teamPublic, users };
-        })
-      );
+      let result = plainTeams.map((team) => {
+        const teamUsers = usersByTeam.get(team.id) || [];
+        const clubPublic = team.Club ? clubMapper.toPublic(team.Club) : null;
+        const teamPublic = teamMapper.toPublic(team);
+        // Only staff explicitly assigned to the team
+        const users = userMapper.toPublicArray(teamUsers).map((u) => ({
+          id: u.id,
+          last_name: u.last_name,
+          first_name: u.first_name,
+          patronymic: u.patronymic,
+          phone: u.phone,
+        }));
+        return { club: clubPublic, team: teamPublic, users };
+      });
 
       // Post filters
+      // apply post-filters to the mapped list
       if (search || q) {
         const term = String(search || q).toLowerCase();
-        items = items.filter(
+        result = result.filter(
           (it) =>
             (it.club?.name || '').toLowerCase().includes(term) ||
             (it.team?.name || '').toLowerCase().includes(term)
@@ -105,18 +86,18 @@ export default {
       if (typeof birth_year !== 'undefined' && birth_year !== '') {
         const y = parseInt(String(birth_year), 10);
         if (!Number.isNaN(y))
-          items = items.filter((it) => it.team?.birth_year === y);
+          result = result.filter((it) => it.team?.birth_year === y);
       }
       if (typeof has_staff !== 'undefined' && has_staff !== '') {
         const want = String(has_staff).toLowerCase();
         if (want === 'true')
-          items = items.filter((it) => (it.users || []).length > 0);
+          result = result.filter((it) => (it.users || []).length > 0);
         else if (want === 'false')
-          items = items.filter((it) => (it.users || []).length === 0);
+          result = result.filter((it) => (it.users || []).length === 0);
       }
       if (typeof staff !== 'undefined' && staff) {
         const sterm = String(staff).toLowerCase();
-        items = items.filter((it) =>
+        result = result.filter((it) =>
           (it.users || []).some((u) =>
             `${u.last_name} ${u.first_name} ${u.patronymic || ''}`
               .trim()
@@ -127,9 +108,9 @@ export default {
       }
 
       // Adjust pagination after post-filtering to avoid empty pages
-      const filteredTotal = items.length;
+      const filteredTotal = result.length;
       const offset = (pageNum - 1) * pageLimit;
-      const paged = items.slice(
+      const paged = result.slice(
         Math.max(0, offset),
         Math.max(0, offset) + pageLimit
       );

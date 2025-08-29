@@ -15,6 +15,7 @@ import {
   addGroundClubRules,
   addGroundTeamRules,
 } from '../validators/groundLinkValidators.js';
+import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   groundCreateRules,
+  validate,
   controller.create
 );
 router.get('/:id', auth, authorize('ADMIN'), controller.get);
@@ -41,6 +43,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   groundUpdateRules,
+  validate,
   controller.update
 );
 router.delete('/:id', auth, authorize('ADMIN'), controller.remove);
@@ -55,6 +58,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addGroundClubRules,
+  validate,
   linkController.addClub
 );
 router.delete(
@@ -71,6 +75,7 @@ router.post(
   auth,
   authorize('ADMIN'),
   addGroundTeamRules,
+  validate,
   linkController.addTeam
 );
 router.delete(

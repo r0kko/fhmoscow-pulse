@@ -203,7 +203,7 @@ function canCancel() {
 }
 
 .training-card .card-body {
-  padding: 0.75rem;
+  padding: var(--tile-padding);
 }
 
 .seat-status {

@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import { validationResult } from 'express-validator';
 
 import userService from '../services/userService.js';
@@ -46,8 +48,26 @@ export default {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const user = await userService.createUser(req.body, req.user.id);
-    return res.status(201).json({ user: userMapper.toPublic(user) });
+    // Generate a strong temporary password server-side
+    const tempPassword = generateTempPassword();
+    const payload = {
+      ...req.body,
+      password: tempPassword,
+      password_change_required: true,
+    };
+    try {
+      const user = await userService.createUser(payload, req.user.id);
+      // Send credentials by email (do not expose password to the admin)
+      try {
+        await emailService.sendUserCreatedByAdminEmail(user, tempPassword);
+      } catch {
+        // Non-fatal: user is created even if email fails; logged inside emailService
+      }
+      return res.status(201).json({ user: userMapper.toPublic(user) });
+    } catch (err) {
+      // Typical cases: phone_exists, email_exists, user_exists, invalid_* (400)
+      return sendError(res, err, 400);
+    }
   },
 
   async update(req, res) {
@@ -190,3 +210,30 @@ export default {
     }
   },
 };
+
+// Local helper: generate password with letters, digits, and symbols
+function generateTempPassword(length = 12) {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnpqrstuvwxyz';
+  const digits = '23456789';
+  // Avoid HTML-problematic ampersand to ensure safe email rendering
+  const symbols = '!@#$%^*';
+  const all = upper + lower + digits + symbols;
+
+  // Ensure at least one from each required group (letter+digit min, symbols optional)
+  const picks = [
+    upper.charAt(crypto.randomInt(0, upper.length)),
+    lower.charAt(crypto.randomInt(0, lower.length)),
+    digits.charAt(crypto.randomInt(0, digits.length)),
+    symbols.charAt(crypto.randomInt(0, symbols.length)),
+  ];
+  for (let i = picks.length; i < length; i++) {
+    picks.push(all.charAt(crypto.randomInt(0, all.length)));
+  }
+  // Shuffle
+  for (let i = picks.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [picks[i], picks[j]] = [picks[j], picks[i]];
+  }
+  return picks.join('');
+}

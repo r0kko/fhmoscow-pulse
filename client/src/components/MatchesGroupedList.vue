@@ -38,6 +38,13 @@ function formatTime(dateStr) {
     timeZone: MOSCOW_TZ,
   });
 }
+
+function rowClass(m) {
+  if (m?.agreement_accepted) return 'state-accepted';
+  if (m?.urgent_unagreed) return 'state-urgent';
+  if (m?.agreement_pending) return 'state-pending';
+  return '';
+}
 </script>
 
 <template>
@@ -52,6 +59,7 @@ function formatTime(dateStr) {
         <li v-for="m in group.list" :key="m.id" class="schedule-item">
           <div
             class="d-flex justify-content-between align-items-start schedule-row"
+            :class="rowClass(m)"
           >
             <div class="me-3 flex-grow-1 schedule-details">
               <div
@@ -71,9 +79,24 @@ function formatTime(dateStr) {
                 <strong>{{ m.team1 }} — {{ m.team2 }}</strong>
               </div>
               <div class="text-muted small" aria-label="Время и место">
-                {{ formatTime(m.date)
-                }}<span class="ms-2">{{ m.stadium || '—' }}</span>
+                <i class="bi bi-clock me-1" aria-hidden="true"></i
+                >{{ formatTime(m.date) }}
+                <small class="text-muted ms-1">МСК</small>
+                <span class="ms-3">
+                  <i class="bi bi-geo-alt me-1" aria-hidden="true"></i
+                  >{{ m.stadium || '—' }}
+                </span>
               </div>
+            </div>
+            <div class="flex-shrink-0">
+              <RouterLink
+                :to="`/school-matches/${m.id}/agreements`"
+                class="btn btn-link p-0 text-primary"
+                aria-label="Открыть согласования матча"
+              >
+                <i class="bi bi-arrow-right-circle me-1" aria-hidden="true"></i>
+                Согласование
+              </RouterLink>
             </div>
           </div>
         </li>
@@ -116,6 +139,23 @@ function formatTime(dateStr) {
   color: var(--brand-color);
   background: rgba(17, 56, 103, 0.12);
   border: 1px solid rgba(17, 56, 103, 0.2);
+}
+
+/* Row state backgrounds */
+.schedule-row.state-accepted {
+  background: var(--bs-success-bg-subtle, #d1e7dd);
+  border-radius: var(--radius-sm);
+  padding: 0.375rem 0.5rem;
+}
+.schedule-row.state-pending {
+  background: var(--bs-warning-bg-subtle, #fff3cd);
+  border-radius: var(--radius-sm);
+  padding: 0.375rem 0.5rem;
+}
+.schedule-row.state-urgent {
+  background: var(--bs-danger-bg-subtle, #f8d7da);
+  border-radius: var(--radius-sm);
+  padding: 0.375rem 0.5rem;
 }
 
 @media (max-width: 575.98px) {

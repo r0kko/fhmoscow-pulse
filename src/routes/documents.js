@@ -9,6 +9,7 @@ import {
   createDocumentValidator,
   updateDocumentValidator,
 } from '../validators/documentValidators.js';
+import validate from '../middlewares/validate.js';
 
 const upload = multer();
 
@@ -30,6 +31,7 @@ router.post(
   authorize('ADMIN'),
   upload.single('file'),
   createDocumentValidator,
+  validate,
   documentController.create
 );
 router.post('/:id/sign', auth, documentController.sign);
@@ -45,6 +47,7 @@ router.put(
   auth,
   authorize('ADMIN'),
   updateDocumentValidator,
+  validate,
   documentController.update
 );
 

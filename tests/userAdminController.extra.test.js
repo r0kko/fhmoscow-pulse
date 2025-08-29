@@ -18,6 +18,7 @@ const removePassportMock = jest.fn();
 const passportToPublicMock = jest.fn((p) => p);
 
 const sendActivationEmailMock = jest.fn();
+const sendUserCreatedEmailMock = jest.fn();
 
 // Mock modules for this file
 jest.unstable_mockModule('../src/services/userService.js', () => ({
@@ -55,7 +56,10 @@ jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
 
 jest.unstable_mockModule('../src/services/emailService.js', () => ({
   __esModule: true,
-  default: { sendAccountActivatedEmail: sendActivationEmailMock },
+  default: {
+    sendAccountActivatedEmail: sendActivationEmailMock,
+    sendUserCreatedByAdminEmail: sendUserCreatedEmailMock,
+  },
 }));
 
 // By default, validation passes (no errors)
@@ -98,14 +102,33 @@ describe('userAdminController extra flows', () => {
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  test('create returns 201 and user', async () => {
+  test('create returns 201 and user, sends email and generates password', async () => {
     createUserMock.mockResolvedValue({ id: 'u3' });
     const req = { body: { email: 'a@b.c' }, user: { id: 'admin' } };
     const res = mockRes();
     await controller.create(req, res);
-    expect(createUserMock).toHaveBeenCalledWith({ email: 'a@b.c' }, 'admin');
+    expect(createUserMock).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'a@b.c', password: expect.any(String) }),
+      'admin'
+    );
+    expect(sendUserCreatedEmailMock).toHaveBeenCalledWith(
+      { id: 'u3' },
+      expect.any(String)
+    );
+    // Ensure password does not contain HTML-problematic ampersand
+    const [, generatedPassword] = sendUserCreatedEmailMock.mock.calls.at(-1);
+    expect(generatedPassword).not.toMatch(/&/);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({ user: { id: 'u3' } });
+  });
+
+  test('create returns 400 via sendError when email exists', async () => {
+    createUserMock.mockRejectedValue({ status: 400, message: 'email_exists' });
+    const req = { body: { email: 'dup@example.com' }, user: { id: 'admin' } };
+    const res = mockRes();
+    await controller.create(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'email_exists' });
   });
 
   test('update returns mapped user on success', async () => {
@@ -194,4 +217,3 @@ describe('userAdminController validation error flows', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 });
-
