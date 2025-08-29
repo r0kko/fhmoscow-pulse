@@ -5,7 +5,7 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [rows] = await queryInterface.sequelize.query(
-        // eslint-disable-next-line
+      // eslint-disable-next-line
       "SELECT id FROM match_agreement_statuses WHERE alias = 'WITHDRAWN'"
     );
     if (rows && rows.length) return;
