@@ -127,9 +127,7 @@ async function listUpcomingLocal(userId, options) {
     Tour,
     MatchAgreement,
     MatchAgreementStatus,
-  } = await import(
-    '../models/index.js'
-  );
+  } = await import('../models/index.js');
   const compatArrayReturn = typeof options !== 'object' || options === null;
   const opts = compatArrayReturn
     ? { limit: typeof options === 'number' ? options : undefined }
@@ -218,7 +216,8 @@ async function listUpcomingLocal(userId, options) {
     for (const a of agrs) {
       const id = a.match_id;
       const alias = a.MatchAgreementStatus?.alias;
-      if (!flagsByMatch.has(id)) flagsByMatch.set(id, { accepted: false, pending: false });
+      if (!flagsByMatch.has(id))
+        flagsByMatch.set(id, { accepted: false, pending: false });
       const flags = flagsByMatch.get(id);
       if (alias === 'ACCEPTED') flags.accepted = true;
       if (alias === 'PENDING') flags.pending = true;
@@ -254,7 +253,10 @@ async function listUpcomingLocal(userId, options) {
 
   return {
     rows: rowsRaw.map((m) => {
-      const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
+      const flags = flagsByMatch.get(m.id) || {
+        accepted: false,
+        pending: false,
+      };
       // Urgency: less than 7 days to kickoff in Moscow time and not accepted
       const now = new Date();
       const mskNow = utcToMoscow(now) || now;
