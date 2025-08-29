@@ -36,3 +36,23 @@ test('closeRedis calls client.quit()', async () => {
   await mod.closeRedis();
   expect(quit).toHaveBeenCalled();
 });
+
+test('non-READONLY errors do not flip writable flag', async () => {
+  jest.resetModules();
+  let errorHandler = () => {};
+  const fakeClient = {
+    on(event, cb) {
+      if (event === 'error') errorHandler = cb;
+    },
+    async connect() {},
+    async quit() {},
+  };
+  jest.unstable_mockModule('redis', () => ({
+    __esModule: true,
+    createClient: () => fakeClient,
+  }));
+  const mod = await import('../src/config/redis.js');
+  expect(mod.isRedisWritable()).toBe(true);
+  errorHandler(new Error('SOME OTHER ERROR'));
+  expect(mod.isRedisWritable()).toBe(true);
+});
