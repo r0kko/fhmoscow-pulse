@@ -77,11 +77,12 @@ test('approve locks only MatchAgreement (avoids outer join FOR UPDATE)', async (
   // User is AWAY side for a HOME_PROPOSAL
   userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
 
+  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   const match = {
     id: 'm1',
     team1_id: 't1',
     team2_id: 't2',
-    date_start: new Date().toISOString(),
+    date_start: future,
     update: jest.fn(),
   };
 
@@ -90,7 +91,7 @@ test('approve locks only MatchAgreement (avoids outer join FOR UPDATE)', async (
     id: 'a1',
     match_id: 'm1',
     ground_id: 'g1',
-    date_start: new Date().toISOString(),
+    date_start: future,
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
     MatchAgreementStatus: { alias: 'PENDING' },
     Match: match,
@@ -138,11 +139,13 @@ test('withdraw marks HOME proposal as WITHDRAWN by author side', async () => {
     team2_id: 't2',
   };
   const updateMock = jest.fn();
+  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   maFindByPk.mockResolvedValue({
     id: 'a1',
     Match: match,
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
     MatchAgreementStatus: { alias: 'PENDING' },
+    date_start: future,
     update: updateMock,
   });
 
@@ -187,13 +190,14 @@ test('decline sets status to DECLINED and records event', async () => {
   // User is AWAY side, agreement is HOME_PROPOSAL
   userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
   const updateMock = jest.fn();
+  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   maFindByPk.mockResolvedValue({
     id: 'a1',
     Match: { id: 'm1', team1_id: 't1', team2_id: 't2' },
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
     MatchAgreementStatus: { alias: 'PENDING' },
     ground_id: 'g1',
-    date_start: new Date().toISOString(),
+    date_start: future,
     update: updateMock,
   });
 
