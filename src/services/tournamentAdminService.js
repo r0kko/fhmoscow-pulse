@@ -46,7 +46,10 @@ async function listTournaments({
     include,
     where,
     paranoid,
-    order: [[{ model: Season }, 'name', 'ASC'], ['name', 'ASC']],
+    order: [
+      [{ model: Season }, 'name', 'ASC'],
+      ['name', 'ASC'],
+    ],
     limit: l,
     offset,
   });
@@ -113,7 +116,10 @@ async function listStages({ page = 1, limit = 20, tournament_id, status }) {
   if (onlyArchived) where.deleted_at = { [Op.ne]: null };
 
   const include = [
-    { model: Tournament, include: [{ model: Season }, { model: TournamentType }] },
+    {
+      model: Tournament,
+      include: [{ model: Season }, { model: TournamentType }],
+    },
   ];
   return Stage.findAndCountAll({
     include,
