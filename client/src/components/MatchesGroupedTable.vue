@@ -1,6 +1,10 @@
 <script setup>
 import { computed } from 'vue';
-import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
+import {
+  toDayKey,
+  formatMskDateLong,
+  formatMskTimeShort,
+} from '../utils/time.js';
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
@@ -22,21 +26,11 @@ const groups = computed(() => {
 });
 
 function formatDay(date) {
-  const text = date.toLocaleDateString('ru-RU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: MOSCOW_TZ,
-  });
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return formatMskDateLong(date.toISOString());
 }
 
 function formatTime(dateStr) {
-  return new Date(dateStr).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: MOSCOW_TZ,
-  });
+  return formatMskTimeShort(dateStr, { placeholder: '—:—' });
 }
 
 function rowClass(m) {
@@ -78,10 +72,10 @@ function rowClass(m) {
               <td>{{ m.stadium || '—' }}</td>
               <td class="text-end">
                 <RouterLink
-                  :to="`/school-matches/${m.id}/agreements`"
+                  :to="`/school-matches/${m.id}`"
                   class="btn btn-sm btn-outline-primary"
                 >
-                  Согласование
+                  Открыть
                 </RouterLink>
               </td>
             </tr>

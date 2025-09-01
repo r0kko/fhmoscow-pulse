@@ -1,13 +1,17 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, RouterLink } from 'vue-router';
 import ContactModal from '../components/ContactModal.vue';
 import { apiFetch } from '../api.js';
+import yandexLogo from '../assets/yandex-maps.svg';
 import {
   MOSCOW_TZ,
   toDateTimeLocal,
   fromDateTimeLocal,
+  formatKickoff,
+  isMskMidnight,
 } from '../utils/time.js';
+import InfoItem from '../components/InfoItem.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import AgreementTimeline from '../components/AgreementTimeline.vue';
 
@@ -37,12 +41,66 @@ const isPast = computed(() => {
   const t = new Date(iso).getTime();
   return !Number.isNaN(t) && t <= Date.now();
 });
+const pageTitle = computed(() => {
+  const a = match.value?.team1 || '';
+  const b = match.value?.team2 || '';
+  return [a, b].filter(Boolean).join(' — ');
+});
+const kickoffDate = computed(() => new Date(match.value?.date_start || 0));
+const kickoff = computed(() => formatKickoff(match.value?.date_start));
+const kickoffDateStr = computed(() => kickoff.value.date || '');
+const kickoffTimeStr = computed(() => kickoff.value.time || '');
+const kickoffHeader = computed(() => {
+  const iso = match.value?.date_start;
+  if (!iso) return '';
+  if (isMskMidnight(iso)) return kickoffDateStr.value;
+  return `${kickoffTimeStr.value || '—:—'} • ${kickoffDateStr.value}`;
+});
+const daysLeft = computed(() => {
+  if (!kickoffDate.value || Number.isNaN(+kickoffDate.value)) return null;
+  const now = new Date();
+  const ms = kickoffDate.value.getTime() - now.getTime();
+  const d = Math.floor(ms / (24 * 60 * 60 * 1000));
+  return d >= 0 ? d : null;
+});
 // Availability helpers
 const hasAvailableGrounds = computed(() =>
   (groups.value || []).some(
     (grp) => Array.isArray(grp.grounds) && grp.grounds.length > 0
   )
 );
+const statusChip = computed(() => {
+  if (acceptedExists.value)
+    return {
+      text: 'Согласовано',
+      cls: 'bg-success-subtle text-success border',
+    };
+  if (pending.value)
+    return {
+      text: 'Ожидает согласования',
+      cls: 'bg-warning-subtle text-warning border',
+    };
+  return {
+    text: 'Не согласовано',
+    cls: 'bg-secondary-subtle text-secondary border',
+  };
+});
+// Sticky compact header toggle
+const compactHeader = ref(false);
+function onScroll() {
+  try {
+    compactHeader.value =
+      (typeof window !== 'undefined' ? window.scrollY : 0) > 140;
+  } catch {
+    compactHeader.value = false;
+  }
+}
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+});
 const canShowHomeProposal = computed(
   () =>
     isHome.value &&
@@ -53,14 +111,37 @@ const canShowHomeProposal = computed(
     !isPast.value
 );
 
-function formatMoscowTime(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: MOSCOW_TZ,
-  });
-}
+const stadiumAddress = computed(
+  () => match.value?.ground_details?.address || ''
+);
+const stadiumName = computed(
+  () => match.value?.ground_details?.name || match.value?.ground || ''
+);
+const stadiumLink = computed(
+  () => match.value?.ground_details?.yandex_url || ''
+);
+const arenaMetro = computed(() => {
+  const meta = match.value?.ground_details?.address_metro;
+  if (!meta) return [];
+  try {
+    const arr = Array.isArray(meta) ? meta : [];
+    return arr
+      .map((m) => m?.name || m?.station || '')
+      .filter(Boolean)
+      .slice(0, 3);
+  } catch {
+    return [];
+  }
+});
+const arenaCoords = computed(() => {
+  const lat = match.value?.ground_details?.geo?.lat;
+  const lon = match.value?.ground_details?.geo?.lon;
+  return lat && lon ? `${lat}, ${lon}` : '';
+});
+const showArenaCard = computed(() => {
+  const name = (stadiumName.value || '').trim().toLowerCase();
+  return Boolean(stadiumName.value) && name !== 'согласовывается';
+});
 
 const clubOptions = computed(() => {
   const map = new Map();
@@ -228,7 +309,41 @@ async function loadContacts() {
 <template>
   <div class="py-3 school-match-agreements-page">
     <div class="container">
-      <!-- Breadcrumbs and page title intentionally removed per requirements -->
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
+          <li class="breadcrumb-item">Спортивная школа</li>
+          <li class="breadcrumb-item">
+            <RouterLink to="/school-matches">Матчи школы</RouterLink>
+          </li>
+          <li class="breadcrumb-item">
+            <RouterLink :to="`/school-matches/${route.params.id}`"
+              >Матч</RouterLink
+            >
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Время и место
+          </li>
+        </ol>
+      </nav>
+      <h1 class="mb-3">{{ pageTitle || 'Матч' }}</h1>
+
+      <!-- Sticky compact status bar -->
+      <div v-if="compactHeader" class="sticky-status shadow-sm">
+        <div
+          class="d-flex align-items-center justify-content-between gap-2 flex-wrap"
+        >
+          <div class="text-truncate">
+            <span class="me-2">{{ pageTitle || 'Матч' }}</span>
+            <span class="text-muted small me-2">{{ kickoffHeader }}</span>
+          </div>
+          <span class="badge" :class="statusChip.cls">{{
+            statusChip.text
+          }}</span>
+        </div>
+      </div>
 
       <div v-if="error" class="alert alert-danger" role="alert">
         {{ error }}
@@ -236,31 +351,14 @@ async function loadContacts() {
       <BrandSpinner v-else-if="loading" label="Загрузка" />
 
       <template v-else>
+        <!-- Header: Teams, datetime, meta, side marker -->
         <div class="card section-card tile fade-in shadow-sm mb-3">
           <div class="card-body">
             <div
               class="d-flex justify-content-between align-items-start flex-wrap gap-2"
             >
               <div>
-                <div class="h5 mb-1">
-                  {{ match?.team1 }} — {{ match?.team2 }}
-                </div>
-                <div class="text-muted small">
-                  {{
-                    new Date(match?.date_start).toLocaleDateString('ru-RU', {
-                      dateStyle: 'long',
-                      timeZone: MOSCOW_TZ,
-                    })
-                  }},
-                  {{
-                    new Date(match?.date_start).toLocaleTimeString('ru-RU', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone: MOSCOW_TZ,
-                    })
-                  }}
-                  <span class="ms-2">{{ match?.ground || '—' }}</span>
-                </div>
+                <div class="kickoff-display m-0 lh-1">{{ kickoffHeader }}</div>
               </div>
               <div class="d-flex align-items-center gap-2">
                 <span
@@ -273,109 +371,170 @@ async function loadContacts() {
                   class="badge bg-info-subtle text-info border"
                   >Вы — гости</span
                 >
+                <span class="badge" :class="statusChip.cls">{{
+                  statusChip.text
+                }}</span>
               </div>
             </div>
-            <div
-              v-if="acceptedExists"
-              class="alert alert-success d-flex align-items-center py-2 px-3 mt-3"
-              role="status"
-            >
-              <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
-              <div>Согласование завершено.</div>
-            </div>
-            <div
-              v-else-if="pending"
-              class="alert alert-warning d-flex align-items-center py-2 px-3 mt-3"
-              role="status"
-            >
-              <i class="bi bi-hourglass-split me-2" aria-hidden="true"></i>
-              <div>
-                Ожидает согласования
-                {{
-                  pending.MatchAgreementType?.alias === 'HOME_PROPOSAL'
-                    ? 'командой гостей'
-                    : 'командой хозяев'
-                }}.
+
+            <div class="mt-2">
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2">
+                <div v-if="match?.season" class="col">
+                  <InfoItem label="Сезон" :value="match.season" />
+                </div>
+                <div v-if="match?.tournament" class="col">
+                  <InfoItem label="Турнир" :value="match.tournament" />
+                </div>
+                <div v-if="match?.stage" class="col">
+                  <InfoItem label="Этап" :value="match.stage" />
+                </div>
+                <div v-if="match?.group" class="col">
+                  <InfoItem label="Группа" :value="match.group" />
+                </div>
+                <div v-if="match?.tour" class="col">
+                  <InfoItem label="Тур" :value="match.tour" />
+                </div>
               </div>
-            </div>
-            <div
-              v-if="isPast"
-              class="alert alert-secondary d-flex align-items-center py-2 px-3 mt-3"
-              role="status"
-            >
-              <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
-              <div>Матч уже прошёл. Действия по согласованию недоступны.</div>
             </div>
           </div>
         </div>
 
+        <!-- Stadium details merged into header to reduce duplication -->
+
+        <!-- Arena card (single source of truth for venue) -->
+        <div
+          v-if="showArenaCard"
+          class="card section-card tile fade-in shadow-sm mb-3 ground-card"
+          aria-label="Площадка проведения"
+        >
+          <div
+            class="card-body d-flex flex-column flex-sm-row gap-3 align-items-start"
+          >
+            <div class="icon-box" aria-hidden="true">
+              <i class="bi bi-geo-alt text-muted" aria-hidden="true"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="stadium-title mb-1">
+                {{ stadiumName || 'Стадион не указан' }}
+              </div>
+              <div v-if="stadiumAddress" class="text-muted small">
+                {{ stadiumAddress }}
+              </div>
+              <div
+                v-if="arenaMetro.length"
+                class="text-muted small d-inline-flex align-items-center gap-1 mt-2"
+              >
+                <i class="bi bi-subway" aria-hidden="true"></i>
+                <span>{{ arenaMetro.join(' • ') }}</span>
+              </div>
+              <div class="d-flex gap-3 flex-wrap mt-2 align-items-center">
+                <a
+                  v-if="stadiumLink"
+                  :href="stadiumLink"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn btn-sm btn-outline-brand d-inline-flex align-items-center gap-2"
+                  :aria-label="`Открыть локацию стадиона в Яндекс.Картах: ${stadiumName}`"
+                >
+                  <img :src="yandexLogo" alt="Яндекс.Карты" height="18" />
+                  Показать на карте
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-column layout: propose (left) and decision/history (right) -->
         <div class="row g-3">
-          <div v-if="canShowHomeProposal" class="col-12 col-lg-6">
+          <div v-if="canShowHomeProposal" class="col-12 col-xl-5">
             <div class="card section-card tile fade-in shadow-sm h-100">
               <div
                 class="card-header d-flex justify-content-between align-items-center"
               >
-                <span>Новое предложение</span>
-                <small class="text-muted"
-                  >Дата матча фиксирована; указывается время (МСК)</small
+                <span>Предложить время и площадку</span>
+                <small v-if="!isPast" class="text-muted"
+                  >Дата фиксирована</small
                 >
               </div>
               <div class="card-body">
+                <div
+                  v-if="isPast"
+                  class="alert alert-secondary d-flex align-items-center py-2 px-3 mb-3"
+                  role="status"
+                >
+                  <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+                  <div>
+                    Матч уже прошёл. Действия по согласованию недоступны.
+                  </div>
+                </div>
+
                 <div class="mb-3">
-                  <label class="form-label">Стадион</label>
-                  <select
-                    v-model="groundId"
-                    class="form-select"
-                    aria-label="Выбор стадиона"
-                  >
-                    <optgroup
-                      v-for="grp in clubOptions"
-                      :key="grp.club || '—'"
-                      :label="grp.club || '—'"
-                    >
-                      <option
-                        v-for="g in grp.grounds"
-                        :key="g.id"
-                        :value="g.id"
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label">Площадка</label>
+                      <select
+                        v-model="groundId"
+                        class="form-select"
+                        aria-label="Выбор стадиона"
                       >
-                        {{ g.name }}
-                      </option>
-                    </optgroup>
-                  </select>
+                        <optgroup
+                          v-for="grp in clubOptions"
+                          :key="grp.club || '—'"
+                          :label="grp.club || '—'"
+                        >
+                          <option
+                            v-for="g in grp.grounds"
+                            :key="g.id"
+                            :value="g.id"
+                          >
+                            {{ g.name }}
+                          </option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Время</label>
+                      <input
+                        v-model="timeStr"
+                        type="time"
+                        step="60"
+                        class="form-control"
+                      />
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button
+                      class="btn btn-brand"
+                      :disabled="submitting || !groundId || !timeStr"
+                      @click="submitProposal(null)"
+                    >
+                      <span
+                        v-if="submitting"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
+                      Предложить
+                    </button>
+                  </div>
+                  <p class="text-muted small mb-0 mt-2">
+                    Одновременно может быть только одно ожидающее предложение.
+                  </p>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Время (МСК)</label>
-                  <input
-                    v-model="timeStr"
-                    type="time"
-                    step="60"
-                    class="form-control"
-                  />
-                </div>
-                <div class="d-flex gap-2">
-                  <button
-                    class="btn btn-brand"
-                    :disabled="submitting || !groundId || !timeStr"
-                    @click="submitProposal(null)"
-                  >
-                    <span
-                      v-if="submitting"
-                      class="spinner-border spinner-border-sm me-2"
-                    ></span>
-                    Отправить предложение
-                  </button>
-                </div>
-                <p class="text-muted small mb-0 mt-2">
-                  Вы можете отправить одновремéнно только одно ожидающее
-                  предложение.
-                </p>
+
+                <!-- removed mini-timeline to avoid duplication -->
               </div>
             </div>
           </div>
 
-          <div class="col-12 col-lg-6">
+          <div :class="[canShowHomeProposal ? 'col-12 col-xl-7' : 'col-12']">
             <div class="card section-card tile fade-in shadow-sm h-100">
-              <div class="card-header">История согласований</div>
+              <div
+                class="card-header d-flex justify-content-between align-items-center"
+              >
+                <span>Принять решение</span>
+                <small class="text-muted"
+                  >Выберите один из предложенных вариантов</small
+                >
+              </div>
               <div class="card-body">
                 <AgreementTimeline
                   :items="agreements"
@@ -387,6 +546,7 @@ async function loadContacts() {
                   @decline="confirmDecline"
                   @withdraw="withdraw"
                 />
+                <!-- removed hint to reduce noise -->
               </div>
             </div>
           </div>
@@ -441,5 +601,41 @@ async function loadContacts() {
     margin-left: -1rem;
     margin-right: -1rem;
   }
+}
+</style>
+<style scoped>
+.kickoff-display {
+  /* Smaller, calmer typography under the page title */
+  font-size: clamp(1rem, 2.2vw, 1.25rem);
+  font-weight: 400;
+}
+.sticky-status {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  background: var(--bs-body-bg, #fff);
+  border: 1px solid var(--border-subtle, #dfe5ec);
+  border-radius: var(--radius-tile, 0.5rem);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+/* Стадион — оформление в стиле страницы "Сборы" */
+.ground-card {
+  border-radius: 0.75rem;
+  border: 0;
+  overflow: hidden;
+}
+.icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 0.5rem;
+  background: var(--bs-light, #f8f9fa);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+.stadium-title {
+  line-height: 1.2;
 }
 </style>

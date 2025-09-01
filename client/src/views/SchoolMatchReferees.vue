@@ -1,0 +1,56 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRoute, RouterLink } from 'vue-router';
+import { apiFetch } from '../api.js';
+
+const route = useRoute();
+const match = ref(null);
+const error = ref('');
+
+onMounted(async () => {
+  try {
+    const { match: m } = await apiFetch(`/matches/${route.params.id}`);
+    match.value = m || null;
+  } catch (e) {
+    error.value = e.message || 'Ошибка загрузки данных';
+  }
+});
+</script>
+
+<template>
+  <div class="py-3 school-match-referees-page">
+    <div class="container">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <RouterLink to="/">Главная</RouterLink>
+          </li>
+          <li class="breadcrumb-item">Управление спортивной школой</li>
+          <li class="breadcrumb-item">
+            <RouterLink to="/school-matches">Матчи</RouterLink>
+          </li>
+          <li class="breadcrumb-item">
+            <RouterLink :to="`/school-matches/${route.params.id}`"
+              >Матч</RouterLink
+            >
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">Судьи</li>
+        </ol>
+      </nav>
+      <h1 class="mb-3">Судьи матча</h1>
+
+      <div v-if="error" class="alert alert-danger" role="alert">
+        {{ error }}
+      </div>
+
+      <div class="card section-card tile fade-in shadow-sm">
+        <div
+          class="card-body d-flex align-items-center justify-content-center text-muted"
+          style="min-height: 160px"
+        >
+          Скоро
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

@@ -1,14 +1,17 @@
 <script setup>
+import { formatMskTimeShort, formatMskDateLong } from '../utils/time.js';
+
 const props = defineProps({
   items: { type: Array, default: () => [] },
 });
 
 function formatDate(d) {
-  return new Date(d).toLocaleString('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'Europe/Moscow',
-  });
+  // Compact date for table: DD.MM.YYYY, HH:mm
+  // Use long date then condense by removing weekday.
+  const long = formatMskDateLong(d); // e.g., Понедельник, 02 сентября
+  const date = long.replace(/^[^,]+,\s*/, '');
+  const time = formatMskTimeShort(d, { placeholder: '—:—' });
+  return `${date}, ${time}`;
 }
 </script>
 

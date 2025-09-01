@@ -6,6 +6,7 @@ const props = defineProps({
   icon: { type: String, default: '' },
   to: { type: [String, Object], default: null },
   placeholder: { type: Boolean, default: false },
+  note: { type: String, default: '' },
 });
 </script>
 
@@ -24,6 +25,9 @@ const props = defineProps({
     <div class="card-body">
       <p class="card-title small mb-2">{{ props.title }}</p>
       <i :class="props.icon + ' icon fs-3'" aria-hidden="true"></i>
+      <span v-if="props.note" class="tile-note text-muted small">{{
+        props.note
+      }}</span>
     </div>
   </BaseTile>
 </template>

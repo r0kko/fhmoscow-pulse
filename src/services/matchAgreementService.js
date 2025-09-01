@@ -9,6 +9,9 @@ import {
   Ground,
   GroundTeam,
   Club,
+  Tournament,
+  TournamentGroup,
+  Tour,
   MatchAgreement,
   MatchAgreementType,
   MatchAgreementStatus,
@@ -16,6 +19,26 @@ import {
 import { utcToMoscow } from '../utils/time.js';
 
 import externalSync from './externalMatchSyncService.js';
+import emailService from './emailService.js';
+import { listTeamUsers } from './teamService.js';
+
+function appUrl() {
+  return process.env.BASE_URL || 'https://lk.fhmoscow.com';
+}
+
+function buildEventContext(match, { groundName, kickoff }) {
+  return {
+    matchId: match.id,
+    team1: match.HomeTeam?.name || 'Команда 1',
+    team2: match.AwayTeam?.name || 'Команда 2',
+    tournament: match.Tournament?.name || '',
+    group: match.TournamentGroup?.name || '',
+    tour: match.Tour?.name || '',
+    ground: groundName || match.Ground?.name || '',
+    kickoff: kickoff || match.date_start,
+    url: `${appUrl()}/school-matches/${match.id}/agreements`,
+  };
+}
 
 function isPast(isoLike) {
   if (!isoLike) return false;
@@ -98,7 +121,16 @@ async function list(matchId) {
 }
 
 async function create(matchId, payload, actorId) {
-  const match = await Match.findByPk(matchId);
+  const match = await Match.findByPk(matchId, {
+    include: [
+      { model: Team, as: 'HomeTeam' },
+      { model: Team, as: 'AwayTeam' },
+      { model: Ground },
+      { model: Tournament },
+      { model: TournamentGroup },
+      { model: Tour },
+    ],
+  });
   if (!match) throw new ServiceError('match_not_found', 404);
   if (!match.date_start) throw new ServiceError('match_date_not_set', 400);
   if (isPast(match.date_start))
@@ -122,7 +154,7 @@ async function create(matchId, payload, actorId) {
 
   const parentId = payload.parent_id || null;
 
-  return sequelize.transaction(async (tx) => {
+  const created = await sequelize.transaction(async (tx) => {
     if (parentId) {
       // counter-proposal by AWAY to a HOME proposal
       const parent = await MatchAgreement.findByPk(parentId, {
@@ -140,7 +172,7 @@ async function create(matchId, payload, actorId) {
 
       if (!isAway) throw new ServiceError('only_away_can_counter', 403);
 
-      // Validate ground is linked to away team
+      // Validate ground is linked to HOME team (business rule)
       const link = await GroundTeam.findOne({
         where: { ground_id: ground.id, team_id: match.team1_id },
         transaction: tx,
@@ -218,6 +250,40 @@ async function create(matchId, payload, actorId) {
       { transaction: tx }
     );
   });
+
+  // Post-commit notifications
+  try {
+    const ground = await Ground.findByPk(created.ground_id);
+    const ctx = buildEventContext(match, {
+      groundName: ground?.name || '',
+      kickoff: created.date_start,
+    });
+    if (created.parent_id) {
+      // Counter by away -> notify home staff
+      ctx.by = 'away';
+      const homeUsers = await listTeamUsers(match.team1_id);
+      await Promise.all(
+        (homeUsers || [])
+          .filter((u) => u.email)
+          .map((u) =>
+            emailService.sendMatchAgreementCounterProposedEmail(u, ctx)
+          )
+      );
+    } else {
+      // Initial by home -> notify away staff
+      ctx.by = 'home';
+      const awayUsers = await listTeamUsers(match.team2_id);
+      await Promise.all(
+        (awayUsers || [])
+          .filter((u) => u.email)
+          .map((u) => emailService.sendMatchAgreementProposedEmail(u, ctx))
+      );
+    }
+  } catch {
+    // Non-fatal
+  }
+
+  return created;
 }
 
 async function approve(agreementId, actorId) {
@@ -266,7 +332,7 @@ async function approve(agreementId, actorId) {
   }
 
   // Phase 2: finalize acceptance inside a transaction.
-  return sequelize.transaction(async (tx) => {
+  const res = await sequelize.transaction(async (tx) => {
     const fresh = await MatchAgreement.findByPk(agreementId, {
       include: [MatchAgreementType, MatchAgreementStatus],
       transaction: tx,
@@ -309,10 +375,45 @@ async function approve(agreementId, actorId) {
 
     return { ok: true };
   });
+
+  // Post-commit notifications (both teams): Approved
+  try {
+    const withIncludes = await Match.findByPk(match.id, {
+      include: [
+        { model: Team, as: 'HomeTeam' },
+        { model: Team, as: 'AwayTeam' },
+        { model: Ground },
+        { model: Tournament },
+        { model: TournamentGroup },
+        { model: Tour },
+      ],
+    });
+    const ground = await Ground.findByPk(agr.ground_id);
+    const ctx = buildEventContext(withIncludes || match, {
+      groundName: ground?.name || '',
+      kickoff: agr.date_start,
+    });
+    const [homeUsers, awayUsers] = await Promise.all([
+      listTeamUsers(match.team1_id),
+      listTeamUsers(match.team2_id),
+    ]);
+    const recipients = [...(homeUsers || []), ...(awayUsers || [])].filter(
+      (u) => u.email
+    );
+    await Promise.all(
+      recipients.map((u) =>
+        emailService.sendMatchAgreementApprovedEmail(u, ctx)
+      )
+    );
+  } catch {
+    // ignore notification errors
+  }
+
+  return res;
 }
 
 async function decline(agreementId, actorId) {
-  return sequelize.transaction(async (tx) => {
+  const result = await sequelize.transaction(async (tx) => {
     const agr = await MatchAgreement.findByPk(agreementId, {
       include: [Match, MatchAgreementType, MatchAgreementStatus],
       transaction: tx,
@@ -363,6 +464,46 @@ async function decline(agreementId, actorId) {
 
     return { ok: true };
   });
+
+  // Post-commit notifications: Declined
+  try {
+    const agr = await MatchAgreement.findByPk(agreementId, {
+      include: [Match, MatchAgreementType],
+    });
+    if (agr?.Match) {
+      const match = await Match.findByPk(agr.match_id, {
+        include: [
+          { model: Team, as: 'HomeTeam' },
+          { model: Team, as: 'AwayTeam' },
+          { model: Ground },
+          { model: Tournament },
+          { model: TournamentGroup },
+          { model: Tour },
+        ],
+      });
+      const ground = await Ground.findByPk(agr.ground_id);
+      const ctx = buildEventContext(match, {
+        groundName: ground?.name || '',
+        kickoff: agr.date_start,
+      });
+      const [homeUsers, awayUsers] = await Promise.all([
+        listTeamUsers(match.team1_id),
+        listTeamUsers(match.team2_id),
+      ]);
+      const recipients = [...(homeUsers || []), ...(awayUsers || [])].filter(
+        (u) => u.email
+      );
+      await Promise.all(
+        recipients.map((u) =>
+          emailService.sendMatchAgreementDeclinedEmail(u, ctx)
+        )
+      );
+    }
+  } catch {
+    // ignore
+  }
+
+  return result;
 }
 
 export default { list, create, approve, decline, withdraw };
@@ -406,7 +547,7 @@ export { listAvailableGrounds };
 
 // Withdraw a pending proposal by its author side (home can withdraw HOME_PROPOSAL; away can withdraw AWAY_COUNTER)
 async function withdraw(agreementId, actorId) {
-  return sequelize.transaction(async (tx) => {
+  const result = await sequelize.transaction(async (tx) => {
     const agr = await MatchAgreement.findByPk(agreementId, {
       include: [Match, MatchAgreementType, MatchAgreementStatus],
       transaction: tx,
@@ -443,6 +584,44 @@ async function withdraw(agreementId, actorId) {
     );
     return { ok: true };
   });
+
+  // Post-commit notifications: Withdrawn -> notify opponent side
+  try {
+    const agr = await MatchAgreement.findByPk(agreementId, {
+      include: [Match, MatchAgreementType],
+    });
+    if (agr?.Match) {
+      const match = await Match.findByPk(agr.match_id, {
+        include: [
+          { model: Team, as: 'HomeTeam' },
+          { model: Team, as: 'AwayTeam' },
+          { model: Ground },
+          { model: Tournament },
+          { model: TournamentGroup },
+          { model: Tour },
+        ],
+      });
+      const ground = await Ground.findByPk(agr.ground_id);
+      const ctx = buildEventContext(match, {
+        groundName: ground?.name || '',
+        kickoff: agr.date_start,
+      });
+      const notifyTeamId =
+        agr.MatchAgreementType?.alias === 'HOME_PROPOSAL'
+          ? match.team2_id
+          : match.team1_id;
+      const users = await listTeamUsers(notifyTeamId);
+      await Promise.all(
+        (users || [])
+          .filter((u) => u.email)
+          .map((u) => emailService.sendMatchAgreementWithdrawnEmail(u, ctx))
+      );
+    }
+  } catch {
+    // ignore
+  }
+
+  return result;
 }
 
 export { withdraw };

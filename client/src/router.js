@@ -21,9 +21,14 @@ import AdminGrounds from './views/AdminGrounds.vue';
 import SchoolGrounds from './views/SchoolGrounds.vue';
 import AdminClubsTeams from './views/AdminClubsTeams.vue';
 import AdminSportSchools from './views/AdminSportSchools.vue';
+import AdminTournaments from './views/AdminTournaments.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import SchoolPastMatches from './views/SchoolPastMatches.vue';
 import SchoolMatchAgreements from './views/SchoolMatchAgreements.vue';
+import SchoolMatch from './views/SchoolMatch.vue';
+import SchoolMatchLineups from './views/SchoolMatchLineups.vue';
+import SchoolMatchReferees from './views/SchoolMatchReferees.vue';
+import SchoolMatchAppeals from './views/SchoolMatchAppeals.vue';
 import SchoolPlayers from './views/SchoolPlayers.vue';
 import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
 import AdminCamps from './views/AdminCamps.vue';
@@ -38,6 +43,7 @@ import AdminTickets from './views/AdminTickets.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
 import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
+import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
 import Qualification from './views/Qualification.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import ChangePassword from './views/ChangePassword.vue';
@@ -56,6 +62,11 @@ const routes = [
     path: '/',
     component: Home,
     meta: { requiresAuth: true, fluid: true, title: 'Главная' },
+  },
+  {
+    path: '/admin/sports-calendar',
+    component: AdminSportsCalendar,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Календарь игр' },
   },
   {
     path: '/profile',
@@ -246,6 +257,11 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Команды и клубы' },
   },
   {
+    path: '/admin/tournaments',
+    component: AdminTournaments,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Турниры' },
+  },
+  {
     path: '/admin/sport-schools',
     component: AdminSportSchools,
     meta: {
@@ -265,12 +281,48 @@ const routes = [
     },
   },
   {
+    path: '/school-matches/:id',
+    component: SchoolMatch,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Матч школы',
+    },
+  },
+  {
     path: '/school-matches/:id/agreements',
     component: SchoolMatchAgreements,
     meta: {
       requiresAuth: true,
       requiresStaff: true,
-      title: 'Согласования матча',
+      title: 'Время и место',
+    },
+  },
+  {
+    path: '/school-matches/:id/lineups',
+    component: SchoolMatchLineups,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Составы на матч',
+    },
+  },
+  {
+    path: '/school-matches/:id/referees',
+    component: SchoolMatchReferees,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Судьи матча',
+    },
+  },
+  {
+    path: '/school-matches/:id/appeals',
+    component: SchoolMatchAppeals,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Обращения по матчу',
     },
   },
   {

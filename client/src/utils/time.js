@@ -65,4 +65,63 @@ export function fromDateTimeLocal(value, offset = MOSCOW_OFFSET) {
   return new Date(`${value}:00${offset}`).toISOString();
 }
 
+// Helpers to unify kickoff formatting in MSK
+function formatParts(date, opts) {
+  try {
+    return new Intl.DateTimeFormat('ru-RU', opts)
+      .formatToParts(date)
+      .reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+  } catch {
+    return {};
+  }
+}
+
+export function isMskMidnight(iso, timeZone = MOSCOW_TZ) {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return false;
+  const parts = formatParts(d, {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return parts.hour === '00' && parts.minute === '00';
+}
+
+export function formatMskTimeShort(iso, { placeholder = '—:—' } = {}) {
+  if (!iso) return placeholder;
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return placeholder;
+  const parts = formatParts(d, {
+    timeZone: MOSCOW_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  if (parts.hour === '00' && parts.minute === '00') return placeholder;
+  return `${parts.hour}:${parts.minute}`;
+}
+
+export function formatMskDateLong(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return '';
+  // Weekday, DD month (no year to keep UI compact)
+  const text = d.toLocaleDateString('ru-RU', {
+    timeZone: MOSCOW_TZ,
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  });
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
+export function formatKickoff(iso) {
+  return {
+    time: formatMskTimeShort(iso),
+    date: formatMskDateLong(iso),
+  };
+}
+
 export { MOSCOW_TZ };

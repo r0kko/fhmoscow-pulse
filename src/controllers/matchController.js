@@ -8,6 +8,9 @@ import {
   TournamentGroup,
   Tour,
   User,
+  Season,
+  Stage,
+  Address,
 } from '../models/index.js';
 
 async function listUpcoming(req, res, next) {
@@ -111,14 +114,33 @@ export { listPast };
 export async function get(req, res, next) {
   try {
     const m = await Match.findByPk(req.params.id, {
-      attributes: ['id', 'date_start', 'ground_id', 'team1_id', 'team2_id'],
+      attributes: [
+        'id',
+        'date_start',
+        'ground_id',
+        'team1_id',
+        'team2_id',
+        'season_id',
+        'stage_id',
+      ],
       include: [
         { model: Team, as: 'HomeTeam', attributes: ['name'] },
         { model: Team, as: 'AwayTeam', attributes: ['name'] },
-        { model: Ground, attributes: ['name'] },
+        {
+          model: Ground,
+          attributes: ['id', 'name', 'yandex_url'],
+          include: [
+            {
+              model: Address,
+              attributes: ['result', 'metro', 'geo_lat', 'geo_lon'],
+            },
+          ],
+        },
         { model: Tournament, attributes: ['name'] },
+        { model: Stage, attributes: ['name'] },
         { model: TournamentGroup, attributes: ['name'] },
         { model: Tour, attributes: ['name'] },
+        { model: Season, attributes: ['name'] },
       ],
     });
     if (!m) return res.status(404).json({ error: 'match_not_found' });
@@ -140,11 +162,26 @@ export async function get(req, res, next) {
         team1_id: m.team1_id,
         team2_id: m.team2_id,
         ground: m.Ground?.name || null,
+        ground_details: m.Ground
+          ? {
+              id: m.Ground.id,
+              name: m.Ground.name,
+              address: m.Ground.Address?.result || null,
+              yandex_url: m.Ground.yandex_url || null,
+              address_metro: m.Ground.Address?.metro || null,
+              geo: {
+                lat: m.Ground.Address?.geo_lat || null,
+                lon: m.Ground.Address?.geo_lon || null,
+              },
+            }
+          : null,
         team1: m.HomeTeam?.name || null,
         team2: m.AwayTeam?.name || null,
         tournament: m.Tournament?.name || null,
+        stage: m.Stage?.name || null,
         group: m.TournamentGroup?.name || null,
         tour: m.Tour?.name || null,
+        season: m.Season?.name || null,
         is_home: isHome,
         is_away: isAway,
       },

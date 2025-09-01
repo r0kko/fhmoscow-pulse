@@ -12,6 +12,8 @@ const error = ref('');
 const extUnavailable = ref(false);
 const activeTab = ref('home'); // 'home' | 'away'
 const search = ref('');
+let searchTimer;
+const debouncedSearch = ref('');
 const selectedTournament = ref('');
 const selectedGroup = ref('');
 const selectedTour = ref('');
@@ -55,6 +57,26 @@ const awayMatches = computed(() =>
 const filteredHome = computed(() => filterByQuery(homeMatches.value));
 const filteredAway = computed(() => filterByQuery(awayMatches.value));
 
+// Attention indicators for tabs (pending or urgent agreements)
+const attentionCountHome = computed(() =>
+  homeMatches.value.reduce(
+    (acc, m) => acc + (m?.urgent_unagreed || m?.agreement_pending ? 1 : 0),
+    0
+  )
+);
+const attentionCountAway = computed(() =>
+  awayMatches.value.reduce(
+    (acc, m) => acc + (m?.urgent_unagreed || m?.agreement_pending ? 1 : 0),
+    0
+  )
+);
+const attentionBadgeHome = computed(() =>
+  attentionCountHome.value > 99 ? '99+' : String(attentionCountHome.value)
+);
+const attentionBadgeAway = computed(() =>
+  attentionCountAway.value > 99 ? '99+' : String(attentionCountAway.value)
+);
+
 const totalHomePages = computed(() =>
   Math.max(1, Math.ceil(filteredHome.value.length / pageSize.value))
 );
@@ -74,23 +96,55 @@ const paginatedAway = computed(() => {
 // Entire list is shown; pagination removed in favor of grouped tiles
 
 function filterByQuery(list) {
-  const q = search.value.trim().toLowerCase();
+  const q = (debouncedSearch.value || '').trim().toLowerCase();
   let res = list;
   if (q) {
-    res = res.filter((m) => {
-      const t1 = (m.team1 || '').toLowerCase();
-      const t2 = (m.team2 || '').toLowerCase();
-      const tourn = (m.tournament || '').toLowerCase();
-      const group = (m.group || '').toLowerCase();
-      const tour = (m.tour || '').toLowerCase();
-      return (
-        t1.includes(q) ||
-        t2.includes(q) ||
-        tourn.includes(q) ||
-        group.includes(q) ||
-        tour.includes(q)
-      );
-    });
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const norm = (s) => (s || '').toString().toLowerCase();
+    function lev(a, b) {
+      if (a === b) return 0;
+      const m = a.length;
+      const n = b.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1));
+      for (let i = 0; i <= m; i += 1) dp[i][0] = i;
+      for (let j = 0; j <= n; j += 1) dp[0][j] = j;
+      for (let i = 1; i <= m; i += 1) {
+        for (let j = 1; j <= n; j += 1) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+            dp[i - 1][j - 1] + cost
+          );
+        }
+      }
+      return dp[m][n];
+    }
+    function fuzzyIncludes(hay, needle) {
+      if (!needle) return true;
+      if (!hay) return false;
+      if (hay.includes(needle)) return true;
+      if (needle.length >= 4) {
+        for (let i = 0; i <= hay.length - needle.length; i += 1) {
+          const seg = hay.slice(i, i + needle.length);
+          if (lev(seg, needle) <= 1) return true;
+        }
+      }
+      return false;
+    }
+    function matchesItem(m) {
+      const fields = [
+        norm(m.team1),
+        norm(m.team2),
+        norm(m.tournament),
+        norm(m.group),
+        norm(m.tour),
+      ];
+      return tokens.every((t) => fields.some((f) => fuzzyIncludes(f, t)));
+    }
+    res = res.filter(matchesItem);
   }
   if (selectedTournament.value) {
     res = res.filter((m) => (m.tournament || '') === selectedTournament.value);
@@ -194,6 +248,22 @@ watch([search, selectedTournament, selectedGroup, selectedTour], () => {
   awayPage.value = 1;
 });
 
+// Debounce search input for smoother UX
+watch(
+  search,
+  (val) => {
+    if (searchTimer) clearTimeout(searchTimer);
+    const q = (val || '').toString();
+    searchTimer = setTimeout(
+      () => {
+        debouncedSearch.value = q;
+      },
+      q.trim() ? 200 : 0
+    );
+  },
+  { immediate: true }
+);
+
 // Clamp pages when filtered count or page size changes
 watch([filteredHome, pageSize], () => {
   const total = totalHomePages.value;
@@ -244,6 +314,17 @@ function onChangePageSize(val) {
                 @click="activeTab = 'home'"
               >
                 Домашние матчи
+                <span
+                  v-if="attentionCountHome"
+                  class="notif-badge"
+                  :title="attentionBadgeHome"
+                  aria-hidden="true"
+                >
+                  {{ attentionBadgeHome }}
+                </span>
+                <span v-if="attentionCountHome" class="visually-hidden">{{
+                  attentionBadgeHome
+                }}</span>
               </button>
             </li>
             <li class="nav-item">
@@ -255,6 +336,17 @@ function onChangePageSize(val) {
                 @click="activeTab = 'away'"
               >
                 Матчи на выезде
+                <span
+                  v-if="attentionCountAway"
+                  class="notif-badge"
+                  :title="attentionBadgeAway"
+                  aria-hidden="true"
+                >
+                  {{ attentionBadgeAway }}
+                </span>
+                <span v-if="attentionCountAway" class="visually-hidden">{{
+                  attentionBadgeAway
+                }}</span>
               </button>
             </li>
           </ul>

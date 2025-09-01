@@ -314,6 +314,7 @@ async function syncStages(actorId = null) {
 
     for (const s of extStages) {
       const desired = {
+        name: s.name || null,
         tournament_id: tourIdByExt.get(s.tournament_id) || null,
       };
       const local = localByExt.get(s.id);
@@ -335,11 +336,13 @@ async function syncStages(actorId = null) {
         await local.restore({ transaction: tx });
         changed = true;
       }
-      if (local.tournament_id !== desired.tournament_id) {
-        await local.update(
-          { tournament_id: desired.tournament_id, updated_by: actorId },
-          { transaction: tx }
-        );
+      const updates = {};
+      if (local.name !== desired.name) updates.name = desired.name;
+      if (local.tournament_id !== desired.tournament_id)
+        updates.tournament_id = desired.tournament_id;
+      if (Object.keys(updates).length) {
+        updates.updated_by = actorId;
+        await local.update(updates, { transaction: tx });
         changed = true;
       }
       if (changed) stats.upserts += 1;

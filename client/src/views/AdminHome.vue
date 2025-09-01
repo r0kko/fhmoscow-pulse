@@ -21,6 +21,14 @@ const refereeSections = [
   },
 ];
 
+const sportsSections = [
+  {
+    title: 'Календарь игр',
+    icon: 'bi-calendar-week',
+    to: '/admin/sports-calendar',
+  },
+];
+
 const systemSections = computed(() => {
   const items = [];
   if (auth.roles.includes('ADMIN')) {
@@ -29,6 +37,11 @@ const systemSections = computed(() => {
       title: 'Команды и клубы',
       icon: 'bi-shield',
       to: '/admin/clubs-teams',
+    });
+    items.push({
+      title: 'Турниры',
+      icon: 'bi-trophy',
+      to: '/admin/tournaments',
     });
     items.push({
       title: 'Управление спортивными школами',
@@ -73,6 +86,24 @@ const systemSections = computed(() => {
           <div v-edge-fade class="scroll-container">
             <MenuTile
               v-for="item in refereeSections"
+              :key="item.to"
+              :to="item.to"
+              :title="item.title"
+              :icon="item.icon"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="card section-card mb-2 menu-section">
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-flag text-brand me-2" aria-hidden="true"></i>
+            Управление спортивной частью
+          </h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="item in sportsSections"
               :key="item.to"
               :to="item.to"
               :title="item.title"

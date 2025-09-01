@@ -1,10 +1,17 @@
 <script setup>
 import { computed } from 'vue';
-import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
+import {
+  toDayKey,
+  formatMskDateLong,
+  formatMskTimeShort,
+} from '../utils/time.js';
 import BaseTile from './BaseTile.vue';
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
+  showActions: { type: Boolean, default: true },
+  showDayHeader: { type: Boolean, default: true },
+  noScroll: { type: Boolean, default: false },
 });
 
 const groups = computed(() => {
@@ -23,27 +30,12 @@ const groups = computed(() => {
 });
 
 function formatDay(date) {
-  const text = date.toLocaleDateString('ru-RU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: MOSCOW_TZ,
-  });
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  // Convert Date to ISO for unified helper
+  return formatMskDateLong(date.toISOString());
 }
 
 function formatTime(dateStr) {
-  const d = new Date(dateStr);
-  const parts = new Intl.DateTimeFormat('ru-RU', {
-    timeZone: MOSCOW_TZ,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-    .formatToParts(d)
-    .reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
-  if (parts.hour === '00' && parts.minute === '00') return '--:--';
-  return `${parts.hour}:${parts.minute}`;
+  return formatMskTimeShort(dateStr, { placeholder: '—:—' });
 }
 
 function rowClass(m) {
@@ -60,15 +52,24 @@ function rowClass(m) {
       v-for="group in groups"
       :key="group.date.getTime()"
       :section="true"
-      :extra-class="['day-tile', 'fade-in']"
+      class="day-tile"
+      :extra-class="['fade-in']"
     >
-      <div class="card-header bg-white border-0 py-2 px-3 sticky-top">
+      <div
+        v-if="props.showDayHeader"
+        class="card-header bg-white border-0 py-2 px-3 sticky-top"
+      >
         <h2 class="h6 mb-0 text-muted fw-semibold day-title">
           {{ formatDay(group.date) }}
         </h2>
       </div>
-      <div class="tile-body py-2 px-2">
-        <div class="grid-table" role="table" aria-label="Список матчей за день">
+      <div class="tile-body py-2 px-2" :class="{ 'no-scroll': props.noScroll }">
+        <div
+          class="grid-table"
+          :class="{ 'no-actions': !props.showActions }"
+          role="table"
+          aria-label="Список матчей за день"
+        >
           <div class="grid-header" role="row">
             <div class="cell col-teams" role="columnheader">Команды</div>
             <div class="cell col-tournament" role="columnheader">
@@ -80,7 +81,11 @@ function rowClass(m) {
             <div class="cell col-tour d-none-sm" role="columnheader">Тур</div>
             <div class="cell col-time" role="columnheader">Время</div>
             <div class="cell col-stadium" role="columnheader">Стадион</div>
-            <div class="cell col-actions text-end" role="columnheader">
+            <div
+              v-if="props.showActions"
+              class="cell col-actions text-end"
+              role="columnheader"
+            >
               Действия
             </div>
           </div>
@@ -127,15 +132,19 @@ function rowClass(m) {
               <i class="bi bi-geo-alt icon-muted me-1" aria-hidden="true"></i>
               {{ m.stadium || '—' }}
             </div>
-            <div class="cell col-actions text-end" role="cell">
+            <div
+              v-if="props.showActions"
+              class="cell col-actions text-end"
+              role="cell"
+            >
               <RouterLink
-                :to="`/school-matches/${m.id}/agreements`"
+                :to="`/school-matches/${m.id}`"
                 class="btn btn-link p-0 text-primary"
-                :title="`Открыть согласования матча`"
-                aria-label="Открыть согласования матча"
+                :title="`Открыть карточку матча`"
+                aria-label="Открыть карточку матча"
               >
                 <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
-                <span class="visually-hidden">Согласование</span>
+                <span class="visually-hidden">Открыть</span>
               </RouterLink>
             </div>
           </div>
@@ -165,12 +174,22 @@ function rowClass(m) {
   overflow: auto;
 }
 
+.tile-body.no-scroll {
+  max-height: none;
+  overflow: visible;
+}
+
 /* Grid table with synchronized columns across tiles via fixed template */
 .grid-table {
   display: grid;
   /* Desktop: шире Команды, меньше Время и Группа; actions is narrow */
   grid-template-columns: 2.4fr 1.4fr 0.8fr 0.8fr 0.7fr 1.2fr 0.9fr;
   row-gap: 0.25rem;
+}
+
+.grid-table.no-actions {
+  /* Without actions column, re-distribute space */
+  grid-template-columns: 2.6fr 1.5fr 0.9fr 0.9fr 0.8fr 1.6fr;
 }
 
 .grid-header {

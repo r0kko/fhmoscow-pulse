@@ -104,6 +104,38 @@
   border-radius: 0.5rem;
 }
 
+/* Small notification dot for tab/link labels (attention indicator) */
+.notif-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background-color: var(--bs-danger, #dc3545);
+  /* keep visible on colored pills */
+  box-shadow: 0 0 0 1.5px #fff;
+  vertical-align: middle;
+}
+
+/* Numeric notification badge for compact labels (tabs, tiles, menu) */
+.notif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  margin-left: 6px;
+  border-radius: 999px;
+  background-color: var(--bs-danger, #dc3545);
+  color: #fff;
+  font-size: 0.675rem;
+  line-height: 1;
+  font-weight: 700;
+  box-shadow: 0 0 0 1.5px #fff; /* ring for contrast on active pills */
+  vertical-align: middle;
+}
+
 /*
  * Consistent tile shape, shadow and hover behaviour across the application
  */
@@ -343,6 +375,15 @@ body {
   bottom: 0.75rem;
   right: 0.75rem;
   color: var(--brand-color);
+}
+
+/* Bottom-left anchored micro note inside menu tiles (e.g., "Скоро") */
+.menu-card .tile-note {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /* keyboard focus for tiles */

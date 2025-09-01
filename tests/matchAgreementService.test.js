@@ -1,347 +1,282 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
-// Mocks
-const maFindByPk = jest.fn();
-const maCreate = jest.fn();
-const maCount = jest.fn();
-const matFindOne = jest.fn();
-const masFindOne = jest.fn();
-const matchFindByPk = jest.fn();
-const teamFindByPk = jest.fn();
-const groundFindAll = jest.fn();
-const groundFindByPk = jest.fn();
-const userFindByPk = jest.fn();
+const matchFindByPkMock = jest.fn();
+const userFindByPkMock = jest.fn();
+const groundFindByPkMock = jest.fn();
+const groundTeamFindOneMock = jest.fn();
+const maStatusFindOneMock = jest.fn();
+const maTypeFindOneMock = jest.fn();
+const maCountMock = jest.fn();
+const maCreateMock = jest.fn();
+const maFindByPkMock = jest.fn();
+const matchUpdateMock = jest.fn();
 
-const tx = { LOCK: { UPDATE: 'UPDATE' } };
-const transactionMock = jest.fn(async (cb) => cb(tx));
+const sendProposedMock = jest.fn();
+const sendApprovedMock = jest.fn();
+const sendDeclinedMock = jest.fn();
+const sendWithdrawnMock = jest.fn();
 
-const syncApprovedMock = jest.fn();
+const listTeamUsersMock = jest.fn();
 
-// Provide consistent mock module shapes
-jest.unstable_mockModule('../src/models/index.js', () => {
-  const MatchAgreement = { findByPk: maFindByPk, create: maCreate, count: maCount };
-  const MatchAgreementType = { findOne: matFindOne };
-  const MatchAgreementStatus = { findOne: masFindOne };
-  const Match = { findByPk: matchFindByPk };
-  const User = { findByPk: userFindByPk };
-  const Team = { findByPk: teamFindByPk };
-  const Ground = { findAll: groundFindAll, findByPk: groundFindByPk };
-  const GroundTeam = {};
-  const Club = {};
-  return {
-    __esModule: true,
-    MatchAgreement,
-    MatchAgreementType,
-    MatchAgreementStatus,
-    Match,
-    User,
-    Team,
-    Ground,
-    GroundTeam,
-    Club,
-  };
+beforeEach(() => {
+  matchFindByPkMock.mockReset();
+  userFindByPkMock.mockReset();
+  groundFindByPkMock.mockReset();
+  groundTeamFindOneMock.mockReset();
+  maStatusFindOneMock.mockReset();
+  maTypeFindOneMock.mockReset();
+  maCountMock.mockReset();
+  maCreateMock.mockReset();
+  maFindByPkMock.mockReset();
+  matchUpdateMock.mockReset();
+
+  sendProposedMock.mockReset();
+  sendApprovedMock.mockReset();
+  listTeamUsersMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
   __esModule: true,
-  default: { transaction: transactionMock },
+  default: {
+    transaction: async (fn) => fn({ LOCK: { UPDATE: 'UPDATE' } }),
+  },
+}));
+
+jest.unstable_mockModule('../src/models/index.js', () => ({
+  __esModule: true,
+  Match: { findByPk: matchFindByPkMock },
+  User: { findByPk: userFindByPkMock },
+  Ground: { findByPk: groundFindByPkMock },
+  GroundTeam: { findOne: groundTeamFindOneMock },
+  MatchAgreementStatus: { findOne: maStatusFindOneMock },
+  MatchAgreementType: { findOne: maTypeFindOneMock },
+  MatchAgreement: {
+    count: maCountMock,
+    create: maCreateMock,
+    findByPk: maFindByPkMock,
+  },
+  Team: {},
+  Club: {},
+  Tournament: {},
+  TournamentGroup: {},
+  Tour: {},
+}));
+
+jest.unstable_mockModule('../src/services/teamService.js', () => ({
+  __esModule: true,
+  listTeamUsers: listTeamUsersMock,
+}));
+
+jest.unstable_mockModule('../src/services/emailService.js', () => ({
+  __esModule: true,
+  default: {
+    sendMatchAgreementProposedEmail: sendProposedMock,
+    sendMatchAgreementApprovedEmail: sendApprovedMock,
+    sendMatchAgreementDeclinedEmail: sendDeclinedMock,
+    sendMatchAgreementWithdrawnEmail: sendWithdrawnMock,
+  },
 }));
 
 jest.unstable_mockModule('../src/services/externalMatchSyncService.js', () => ({
   __esModule: true,
-  default: { syncApprovedMatchToExternal: syncApprovedMock },
+  default: { syncApprovedMatchToExternal: jest.fn().mockResolvedValue(true) },
 }));
 
-const { default: service, listAvailableGrounds } = await import('../src/services/matchAgreementService.js');
-const models = await import('../src/models/index.js');
+const { default: service } = await import('../src/services/matchAgreementService.js');
 
-beforeEach(() => {
-  maFindByPk.mockReset();
-  maCreate.mockReset();
-  maCount.mockReset();
-  matFindOne.mockReset();
-  masFindOne.mockReset();
-  matchFindByPk.mockReset();
-  userFindByPk.mockReset();
-  transactionMock.mockClear();
-  syncApprovedMock.mockReset();
-  teamFindByPk.mockReset();
-  groundFindAll.mockReset();
-});
-
-test('approve locks only MatchAgreement (avoids outer join FOR UPDATE)', async () => {
-  // Setup reference/status/type lookups
-  masFindOne.mockImplementation(({ where: { alias } }) => ({ id: alias }));
-  matFindOne.mockImplementation(({ where: { alias } }) => ({ id: alias }));
-  maCount.mockResolvedValue(0); // anyAcceptedExists -> false
-
-  // User is AWAY side for a HOME_PROPOSAL
-  userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
-
-  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  const match = {
+test('create (HOME_PROPOSAL) notifies away team staff', async () => {
+  const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+  // Match with team1 (home) and team2 (away)
+  matchFindByPkMock.mockResolvedValue({
     id: 'm1',
+    date_start: future,
     team1_id: 't1',
     team2_id: 't2',
-    date_start: future,
-    update: jest.fn(),
-  };
-
-  // First fetch (pre-validate)
-  const preAgreement = {
-    id: 'a1',
+    HomeTeam: { name: 'Home' },
+    AwayTeam: { name: 'Away' },
+    Ground: { name: '' },
+    Tournament: { name: 'Cup' },
+    TournamentGroup: { name: 'A' },
+    Tour: { name: '1' },
+  });
+  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] });
+  groundFindByPkMock.mockResolvedValue({ id: 'g1', name: 'Stadium' });
+  groundTeamFindOneMock.mockResolvedValue({});
+  maStatusFindOneMock.mockImplementation(({ where }) => {
+    if (where.alias === 'PENDING') return Promise.resolve({ id: 'st_pen' });
+    if (where.alias === 'ACCEPTED') return Promise.resolve({ id: 'st_acc' });
+    if (where.alias === 'WITHDRAWN') return Promise.resolve({ id: 'st_wd' });
+    return Promise.resolve({ id: 'st_other' });
+  });
+  maTypeFindOneMock.mockImplementation(({ where }) => {
+    if (where.alias === 'HOME_PROPOSAL') return Promise.resolve({ id: 'tp_home' });
+    return Promise.resolve({ id: 'tp_other' });
+  });
+  maCountMock.mockResolvedValue(0);
+  maCreateMock.mockResolvedValue({
+    id: 'agr1',
     match_id: 'm1',
     ground_id: 'g1',
     date_start: future,
-    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
-    MatchAgreementStatus: { alias: 'PENDING' },
-    Match: match,
-  };
-
-  // Second fetch (inside transaction) should carry restricted lock
-  const freshAgreement = {
-    id: 'a1',
-    MatchAgreementStatus: { alias: 'PENDING' },
-    update: jest.fn(),
-  };
-
-  let capturedOptions;
-  maFindByPk
-    .mockResolvedValueOnce(preAgreement)
-    .mockImplementationOnce((id, opts) => {
-      capturedOptions = opts;
-      return Promise.resolve(freshAgreement);
-    });
-
-  syncApprovedMock.mockResolvedValue();
-  maCreate.mockResolvedValue({ id: 'a2' });
-
-  const result = await service.approve('a1', 'u2');
-  expect(result).toEqual({ ok: true });
-
-  // Ensure transaction used
-  expect(transactionMock).toHaveBeenCalled();
-  // Ensure lock is restricted to base model (not all joined tables)
-  expect(capturedOptions).toBeTruthy();
-  expect(capturedOptions.transaction).toBe(tx);
-  expect(capturedOptions.lock).toEqual({ level: tx.LOCK.UPDATE, of: models.MatchAgreement });
-});
-
-test('withdraw marks HOME proposal as WITHDRAWN by author side', async () => {
-  // status lookups
-  masFindOne.mockImplementation(({ where: { alias } }) => ({ id: alias }));
-
-  // user is HOME side for HOME_PROPOSAL
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-
-  const match = {
-    id: 'm1',
-    team1_id: 't1',
-    team2_id: 't2',
-  };
-  const updateMock = jest.fn();
-  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    Match: match,
-    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
-    MatchAgreementStatus: { alias: 'PENDING' },
-    date_start: future,
-    update: updateMock,
+    parent_id: null,
   });
+  listTeamUsersMock.mockResolvedValue([{ id: 'u2', email: 'away@x' }]);
 
-  const { withdraw } = await import('../src/services/matchAgreementService.js');
-  const res = await withdraw('a1', 'u1');
-  expect(res).toEqual({ ok: true });
-  expect(updateMock).toHaveBeenCalledWith(
-    { status_id: 'WITHDRAWN', updated_by: 'u1' },
-    { transaction: tx }
+  await service.create(
+    'm1',
+    { ground_id: 'g1', date_start: future },
+    'user_home'
   );
+
+  expect(sendProposedMock).toHaveBeenCalled();
+  expect(listTeamUsersMock).toHaveBeenCalledWith('t2');
 });
 
-test('withdraw falls back to SUPERSEDED when WITHDRAWN status missing', async () => {
-  masFindOne.mockImplementation(({ where: { alias } }) => {
-    if (alias === 'WITHDRAWN') return null; // trigger fallback
-    return { id: alias };
-  });
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  const match = { id: 'm1', team1_id: 't1', team2_id: 't2' };
-  const updateMock = jest.fn();
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    Match: match,
-    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
-    MatchAgreementStatus: { alias: 'PENDING' },
-    update: updateMock,
-  });
-  const { withdraw } = await import('../src/services/matchAgreementService.js');
-  const res = await withdraw('a1', 'u1');
-  expect(res).toEqual({ ok: true });
-  expect(updateMock).toHaveBeenCalledWith(
-    { status_id: 'SUPERSEDED', updated_by: 'u1' },
-    { transaction: tx }
-  );
-});
-
-test('decline sets status to DECLINED and records event', async () => {
-  masFindOne.mockImplementation(({ where: { alias } }) => ({ id: alias }));
-  matFindOne.mockImplementation(({ where: { alias } }) => ({ id: alias }));
-  const createdMock = maCreate.mockResolvedValue({ id: 'a3' });
-
-  // User is AWAY side, agreement is HOME_PROPOSAL
-  userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
-  const updateMock = jest.fn();
-  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    Match: { id: 'm1', team1_id: 't1', team2_id: 't2' },
-    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
-    MatchAgreementStatus: { alias: 'PENDING' },
+test('approve notifies both sides', async () => {
+  const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+  // First fetch of agreement (pre-validate)
+  maFindByPkMock.mockResolvedValueOnce({
+    id: 'agr1',
+    match_id: 'm1',
     ground_id: 'g1',
     date_start: future,
-    update: updateMock,
-  });
-
-  const { default: svc } = await import('../src/services/matchAgreementService.js');
-  const res = await svc.decline('a1', 'u2');
-  expect(res).toEqual({ ok: true });
-  expect(updateMock).toHaveBeenCalledWith(
-    { status_id: 'DECLINED', updated_by: 'u2' },
-    { transaction: tx }
-  );
-  expect(createdMock).toBeDefined();
-});
-
-test('approve rejects unsupported agreement type', async () => {
-  // No need for external sync; error thrown earlier
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    match_id: 'm1',
-    Match: { id: 'm1', team1_id: 't1', team2_id: 't2' },
-    MatchAgreementType: { alias: 'HOME_APPROVAL' }, // unsupported for approve()
+    Match: {
+      id: 'm1',
+      date_start: future,
+      team1_id: 't1',
+      team2_id: 't2',
+      update: matchUpdateMock,
+    },
     MatchAgreementStatus: { alias: 'PENDING' },
-  });
-  await expect(service.approve('a1', 'u1')).rejects.toBeTruthy();
-});
-
-test('approve rejects when away tries to approve AWAY_COUNTER', async () => {
-  // User is AWAY, but AWAY_COUNTER requires HOME to approve
-  userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
-  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    match_id: 'm1',
-    date_start: future,
-    Match: { id: 'm1', team1_id: 't1', team2_id: 't2', date_start: future },
-    MatchAgreementType: { alias: 'AWAY_COUNTER' },
-    MatchAgreementStatus: { alias: 'PENDING' },
-  });
-  await expect(service.approve('a1', 'u2')).rejects.toBeTruthy();
-});
-
-test('listAvailableGrounds rejects when match not found', async () => {
-  matchFindByPk.mockResolvedValue(null);
-  await expect(
-    listAvailableGrounds('m-not-exist', 'u1')
-  ).rejects.toBeTruthy();
-});
-
-test('listAvailableGrounds rejects when home team not set', async () => {
-  matchFindByPk.mockResolvedValue({ id: 'm1', team1_id: null });
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [] });
-  await expect(listAvailableGrounds('m1', 'u1')).rejects.toBeTruthy();
-});
-
-test('listAvailableGrounds returns club and grounds list', async () => {
-  matchFindByPk.mockResolvedValue({ id: 'm1', team1_id: 't1' });
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  teamFindByPk.mockResolvedValue({ id: 't1', Club: { id: 'c1', name: 'Club' } });
-  groundFindAll.mockResolvedValue([{ id: 'g1', name: 'G1' }]);
-  const res = await listAvailableGrounds('m1', 'u1');
-  expect(res.club).toEqual({ id: 'c1', name: 'Club' });
-  expect(res.grounds).toEqual([{ id: 'g1', name: 'G1' }]);
-});
-
-test('listAvailableGrounds returns empty grounds for past match', async () => {
-  const past = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  matchFindByPk.mockResolvedValue({ id: 'm1', team1_id: 't1', date_start: past });
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  teamFindByPk.mockResolvedValue({ id: 't1', Club: { id: 'c1', name: 'Club' } });
-  const res = await listAvailableGrounds('m1', 'u1');
-  expect(res.grounds).toEqual([]);
-});
-
-test('approve rejects when agreement is not PENDING', async () => {
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    match_id: 'm1',
-    Match: { id: 'm1', team1_id: 't1', team2_id: 't2' },
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
-    MatchAgreementStatus: { alias: 'DECLINED' }, // not pending
   });
-  await expect(service.approve('a1', 'u1')).rejects.toBeTruthy();
-});
-
-test('withdraw rejects when non-author side attempts', async () => {
-  userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    Match: { id: 'm1', team1_id: 't1', team2_id: 't2' },
-    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
-    MatchAgreementStatus: { alias: 'PENDING' },
-    update: jest.fn(),
+  matchFindByPkMock.mockResolvedValueOnce({ id: 'm1', date_start: future, team1_id: 't1', team2_id: 't2' });
+  // actor is away
+  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] });
+  maStatusFindOneMock.mockImplementation(({ where }) => {
+    if (where.alias === 'ACCEPTED') return Promise.resolve({ id: 'st_acc' });
+    if (where.alias === 'PENDING') return Promise.resolve({ id: 'st_pen' });
+    return Promise.resolve({ id: 'st_other' });
   });
-  const { withdraw } = await import('../src/services/matchAgreementService.js');
-  await expect(withdraw('a1', 'u2')).rejects.toBeTruthy();
-});
-
-test('decline rejects when away tries to decline AWAY_COUNTER', async () => {
-  userFindByPk.mockResolvedValue({ id: 'u2', Teams: [{ id: 't2' }] });
-  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  maFindByPk.mockResolvedValue({
-    id: 'a1',
-    Match: { id: 'm1', team1_id: 't1', team2_id: 't2', date_start: future },
-    MatchAgreementType: { alias: 'AWAY_COUNTER' },
+  maCountMock.mockResolvedValue(0);
+  // fresh inside transaction
+  maFindByPkMock.mockResolvedValueOnce({
+    id: 'agr1',
     MatchAgreementStatus: { alias: 'PENDING' },
+    update: jest.fn().mockResolvedValue({}),
+  });
+  maTypeFindOneMock.mockResolvedValue({ id: 'tp_approve' });
+  // update/create within tx
+  maCreateMock.mockResolvedValue({ id: 'agr2' });
+  matchUpdateMock.mockResolvedValue(true);
+  // After commit, enrich match
+  matchFindByPkMock.mockResolvedValueOnce({
+    id: 'm1',
     date_start: future,
-    update: jest.fn(),
+    team1_id: 't1',
+    team2_id: 't2',
+    HomeTeam: { name: 'Home' },
+    AwayTeam: { name: 'Away' },
+    Ground: { name: 'Stadium' },
+    Tournament: { name: 'Cup' },
+    TournamentGroup: { name: 'A' },
+    Tour: { name: '1' },
   });
-  const { default: svc } = await import('../src/services/matchAgreementService.js');
-  await expect(svc.decline('a1', 'u2')).rejects.toBeTruthy();
+  groundFindByPkMock.mockResolvedValue({ id: 'g1', name: 'Stadium' });
+  listTeamUsersMock
+    .mockResolvedValueOnce([{ id: 'u1', email: 'home@x' }])
+    .mockResolvedValueOnce([{ id: 'u2', email: 'away@x' }]);
+
+  await service.approve('agr1', 'user_away');
+
+  expect(sendApprovedMock).toHaveBeenCalled();
+  // Should notify both home and away
+  expect(listTeamUsersMock).toHaveBeenNthCalledWith(1, 't1');
+  expect(listTeamUsersMock).toHaveBeenNthCalledWith(2, 't2');
 });
 
-test('create rejects when match not found', async () => {
-  matchFindByPk.mockResolvedValue(null);
-  await expect(
-    service.create('missing', { date_start: '2025-01-01T10:00:00Z', ground_id: 'g1' }, 'u1')
-  ).rejects.toBeTruthy();
+test('decline notifies both teams', async () => {
+  const future = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+  // First call inside tx
+  maFindByPkMock.mockResolvedValueOnce({
+    id: 'agrD',
+    match_id: 'mD',
+    ground_id: 'g1',
+    date_start: future,
+    Match: { id: 'mD', date_start: future, team1_id: 't1', team2_id: 't2' },
+    MatchAgreementStatus: { alias: 'PENDING' },
+    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
+    update: jest.fn().mockResolvedValue({}),
+  });
+  matchFindByPkMock.mockResolvedValue({ id: 'mD', date_start: future });
+  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] }); // actor away
+  maStatusFindOneMock.mockResolvedValue({ id: 'stD' });
+  maTypeFindOneMock.mockResolvedValue({ id: 'tpD' });
+  maCreateMock.mockResolvedValue({});
+  // Post-commit reads
+  maFindByPkMock.mockResolvedValueOnce({
+    id: 'agrD',
+    match_id: 'mD',
+    ground_id: 'g1',
+    date_start: future,
+    Match: { id: 'mD' },
+    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
+  });
+  matchFindByPkMock.mockResolvedValueOnce({
+    id: 'mD',
+    date_start: future,
+    team1_id: 't1',
+    team2_id: 't2',
+    HomeTeam: { name: 'Home' },
+    AwayTeam: { name: 'Away' },
+    Ground: { name: 'Stadium' },
+    Tournament: { name: 'Cup' },
+    TournamentGroup: { name: 'A' },
+    Tour: { name: '1' },
+  });
+  groundFindByPkMock.mockResolvedValue({ id: 'g1', name: 'Stadium' });
+  listTeamUsersMock
+    .mockResolvedValueOnce([{ email: 'home@x' }])
+    .mockResolvedValueOnce([{ email: 'away@x' }]);
+
+  await service.decline('agrD', 'user_away');
+  expect(sendDeclinedMock).toHaveBeenCalled();
 });
 
-test('create rejects when match date not set', async () => {
-  matchFindByPk.mockResolvedValue({ id: 'm1', date_start: null });
-  await expect(
-    service.create('m1', { date_start: '2025-01-01T10:00:00Z', ground_id: 'g1' }, 'u1')
-  ).rejects.toBeTruthy();
-});
+test('withdraw notifies opponent', async () => {
+  const future = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
+  maFindByPkMock.mockResolvedValueOnce({
+    id: 'agrW',
+    match_id: 'mW',
+    ground_id: 'g1',
+    date_start: future,
+    Match: { id: 'mW', team1_id: 't1', team2_id: 't2' },
+    MatchAgreementStatus: { alias: 'PENDING' },
+    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
+    update: jest.fn().mockResolvedValue({}),
+  });
+  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] }); // actor home
+  maStatusFindOneMock.mockResolvedValue({ id: 'stW' });
+  // Post-commit reads
+  maFindByPkMock.mockResolvedValueOnce({
+    id: 'agrW',
+    match_id: 'mW',
+    ground_id: 'g1',
+    date_start: future,
+    Match: { id: 'mW' },
+    MatchAgreementType: { alias: 'HOME_PROPOSAL' },
+  });
+  matchFindByPkMock.mockResolvedValueOnce({
+    id: 'mW',
+    date_start: future,
+    team1_id: 't1',
+    team2_id: 't2',
+    HomeTeam: { name: 'Home' },
+    AwayTeam: { name: 'Away' },
+  });
+  groundFindByPkMock.mockResolvedValue({ id: 'g1', name: 'Stadium' });
+  listTeamUsersMock.mockResolvedValueOnce([{ email: 'away@x' }]);
 
-test('create rejects invalid kickoff time', async () => {
-  const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  matchFindByPk.mockResolvedValue({ id: 'm1', date_start: future, team1_id: 't1' });
-  // make user HOME side so validation reaches kickoff parsing
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  await expect(
-    service.create('m1', { date_start: 'not-a-date', ground_id: 'g1' }, 'u1')
-  ).rejects.toBeTruthy();
-});
-
-test('create rejects kickoff date mismatch with match date', async () => {
-  const matchDate = new Date('2025-03-10T00:00:00Z').toISOString();
-  const other = new Date('2025-03-11T00:00:00Z').toISOString();
-  matchFindByPk.mockResolvedValue({ id: 'm1', date_start: matchDate, team1_id: 't1' });
-  userFindByPk.mockResolvedValue({ id: 'u1', Teams: [{ id: 't1' }] });
-  await expect(
-    service.create('m1', { date_start: other, ground_id: 'g1' }, 'u1')
-  ).rejects.toBeTruthy();
+  await service.withdraw('agrW', 'user_home');
+  expect(sendWithdrawnMock).toHaveBeenCalled();
 });

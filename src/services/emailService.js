@@ -33,6 +33,12 @@ import { renderDocumentAwaitingSignatureEmail } from '../templates/documentAwait
 import { renderDocumentCreatedEmail } from '../templates/documentCreatedEmail.js';
 import { renderDocumentSignedEmail } from '../templates/documentSignedEmail.js';
 import { renderDocumentRejectedEmail } from '../templates/documentRejectedEmail.js';
+import { renderMatchAgreementProposedEmail } from '../templates/matchAgreementProposedEmail.js';
+import { renderMatchAgreementCounterProposedEmail } from '../templates/matchAgreementCounterProposedEmail.js';
+import { renderMatchAgreementApprovedEmail } from '../templates/matchAgreementApprovedEmail.js';
+import { renderMatchAgreementDeclinedEmail } from '../templates/matchAgreementDeclinedEmail.js';
+import { renderMatchAgreementWithdrawnEmail } from '../templates/matchAgreementWithdrawnEmail.js';
+import { renderMatchAgreementReminderEmail } from '../templates/matchAgreementReminderEmail.js';
 
 export const isEmailConfigured = Boolean(SMTP_HOST);
 
@@ -239,6 +245,37 @@ export async function sendDocumentAwaitingSignatureEmail(user, document) {
     renderDocumentAwaitingSignatureEmail(document);
   await sendMail(user.email, subject, text, html);
 }
+
+export async function sendMatchAgreementProposedEmail(user, event) {
+  const { subject, text, html } = renderMatchAgreementProposedEmail(event);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendMatchAgreementCounterProposedEmail(user, event) {
+  const { subject, text, html } =
+    renderMatchAgreementCounterProposedEmail(event);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendMatchAgreementApprovedEmail(user, event) {
+  const { subject, text, html } = renderMatchAgreementApprovedEmail(event);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendMatchAgreementDeclinedEmail(user, event) {
+  const { subject, text, html } = renderMatchAgreementDeclinedEmail(event);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendMatchAgreementWithdrawnEmail(user, event) {
+  const { subject, text, html } = renderMatchAgreementWithdrawnEmail(event);
+  await sendMail(user.email, subject, text, html);
+}
+
+export async function sendMatchAgreementReminderEmail(user, event) {
+  const { subject, text, html } = renderMatchAgreementReminderEmail(event);
+  await sendMail(user.email, subject, text, html);
+}
 export default {
   isEmailConfigured,
   sendMail,
@@ -267,4 +304,10 @@ export default {
   sendDocumentSignedEmail,
   sendDocumentRejectedEmail,
   sendDocumentAwaitingSignatureEmail,
+  sendMatchAgreementProposedEmail,
+  sendMatchAgreementCounterProposedEmail,
+  sendMatchAgreementApprovedEmail,
+  sendMatchAgreementDeclinedEmail,
+  sendMatchAgreementWithdrawnEmail,
+  sendMatchAgreementReminderEmail,
 };

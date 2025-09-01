@@ -3,6 +3,7 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller, { get as getMatch } from '../controllers/matchController.js';
+import adminController from '../controllers/matchAdminController.js';
 import agreementController, {
   availableGrounds as availableAgreementGrounds,
   opponentContacts as agreementOpponentContacts,
@@ -80,6 +81,14 @@ router.get(
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
   agreementOpponentContacts
+);
+
+// Admin: calendar for the next N days (default 10), global scope
+router.get(
+  '/admin/calendar',
+  auth,
+  authorize('ADMIN'),
+  adminController.calendar
 );
 
 export default router;

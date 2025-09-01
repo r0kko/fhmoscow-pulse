@@ -8,6 +8,7 @@ Stage.init(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true },
     tournament_id: { type: DataTypes.INTEGER },
+    name: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,
