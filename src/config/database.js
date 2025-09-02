@@ -9,6 +9,14 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'postgres',
+    dialectOptions: {
+      application_name: 'fhmoscow-pulse',
+      statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS || 60_000),
+      idle_in_transaction_session_timeout: Number(
+        process.env.DB_IDLE_TX_TIMEOUT_MS || 60_000
+      ),
+      query_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS || 60_000),
+    },
     pool: {
       max: 10,
       min: 0,

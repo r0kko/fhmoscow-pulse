@@ -1,4 +1,9 @@
-import matchAdminService from '../services/matchAdminService.js';
+import { validationResult } from 'express-validator';
+
+import matchAdminService, {
+  updateScheduleAndLock,
+} from '../services/matchAdminService.js';
+import { sendError } from '../utils/api.js';
 
 async function calendar(req, res, next) {
   try {
@@ -52,3 +57,22 @@ async function calendar(req, res, next) {
 }
 
 export default { calendar };
+
+export async function setSchedule(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  try {
+    const { date_start: dateStart, ground_id: groundId } = req.body || {};
+    await updateScheduleAndLock({
+      matchId: req.params.id,
+      dateStart,
+      groundId,
+      actorId: req.user.id,
+    });
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendError(res, err);
+  }
+}

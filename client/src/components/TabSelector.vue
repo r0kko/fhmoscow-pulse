@@ -45,7 +45,20 @@ function selectTab(key, disabled) {
         @click="selectTab(t.key, t.disabled)"
         @keydown.enter="selectTab(t.key, t.disabled)"
       >
-        <span class="d-block lh-1 fw-semibold">{{ t.label }}</span>
+        <span class="d-block lh-1 fw-semibold">
+          {{ t.label }}
+          <span
+            v-if="t.badge && Number(t.badge) > 0"
+            class="notif-badge ms-1"
+            :title="String(t.badge)"
+            aria-hidden="true"
+          >
+            {{ Number(t.badge) > 99 ? '99+' : String(t.badge) }}
+          </span>
+          <span v-if="t.badge && Number(t.badge) > 0" class="visually-hidden">{{
+            String(t.badge)
+          }}</span>
+        </span>
         <small v-if="t.subLabel" class="d-block text-muted lh-1">{{
           t.subLabel
         }}</small>

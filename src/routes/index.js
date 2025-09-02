@@ -58,6 +58,7 @@ import playersRouter from './players.js';
 import staffRouter from './staff.js';
 import sportSchoolsRouter from './sportSchools.js';
 import metricsRouter from './metrics.js';
+import adminOpsRouter from './adminOps.js';
 
 const router = express.Router();
 
@@ -114,6 +115,7 @@ router.use('/players', playersRouter);
 router.use('/staff', staffRouter);
 router.use('/sport-schools', sportSchoolsRouter);
 router.use('/metrics', metricsRouter);
+router.use('/admin-ops', adminOpsRouter);
 
 /**
  * @swagger

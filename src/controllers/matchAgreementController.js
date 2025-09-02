@@ -73,6 +73,8 @@ export async function opponentContacts(req, res, next) {
     const teamIds = new Set((user.Teams || []).map((t) => t.id));
     const isHome = match.team1_id && teamIds.has(match.team1_id);
     const isAway = match.team2_id && teamIds.has(match.team2_id);
+    if (!match.team1_id && !match.team2_id)
+      return res.status(409).json({ error: 'match_teams_not_set' });
     if (!isHome && !isAway)
       return res.status(403).json({ error: 'forbidden_not_match_member' });
     const opponentTeamId = isHome ? match.team2_id : match.team1_id;

@@ -15,6 +15,7 @@ import {
   MatchAgreement,
   MatchAgreementType,
   MatchAgreementStatus,
+  GameStatus,
 } from '../models/index.js';
 import { utcToMoscow } from '../utils/time.js';
 
@@ -69,14 +70,66 @@ function sameMoscowDate(a, b) {
   );
 }
 
+// Access only if the user is directly linked to the team (UserTeam)
 async function ensureUserSide(userId, match) {
   const user = await User.findByPk(userId, { include: [Team] });
   if (!user) throw new ServiceError('user_not_found', 404);
   const teamIds = new Set((user.Teams || []).map((t) => t.id));
-  const isHome = match.team1_id && teamIds.has(match.team1_id);
-  const isAway = match.team2_id && teamIds.has(match.team2_id);
-  if (!isHome && !isAway)
+
+  // Ensure we have team ids on the match object; reload minimally if missing
+  let mTeam1 = match?.team1_id;
+  let mTeam2 = match?.team2_id;
+  if (!mTeam1 || !mTeam2) {
+    try {
+      const id = typeof match === 'object' ? match?.id : match;
+      if (id) {
+        const fresh = await Match.findByPk(id, {
+          attributes: ['id', 'team1_id', 'team2_id'],
+        });
+        if (fresh) {
+          mTeam1 = fresh.team1_id ?? mTeam1 ?? null;
+          mTeam2 = fresh.team2_id ?? mTeam2 ?? null;
+        }
+      }
+    } catch {
+      /* noop */
+    }
+  }
+
+  // If teams are not set on match, surface a clear error
+  if (!mTeam1 && !mTeam2) {
+    try {
+      const { default: logger } = await import('../../logger.js');
+      logger.warn(
+        'match_teams_not_set: user=%s teams=%j, match=[id=%s] ',
+        userId,
+        Array.from(teamIds),
+        typeof match === 'object' ? match?.id : match
+      );
+    } catch {
+      /* noop */
+    }
+    throw new ServiceError('match_teams_not_set', 409);
+  }
+
+  const isHome = mTeam1 && teamIds.has(mTeam1);
+  const isAway = mTeam2 && teamIds.has(mTeam2);
+  if (!isHome && !isAway) {
+    // Add context to server logs for diagnostics (do not expose to clients)
+    try {
+      const { default: logger } = await import('../../logger.js');
+      logger.warn(
+        'forbidden_not_match_member: user=%s teams=%j, match=[home=%s, away=%s] ',
+        userId,
+        Array.from(teamIds),
+        mTeam1,
+        mTeam2
+      );
+    } catch {
+      /* noop */
+    }
     throw new ServiceError('forbidden_not_match_member', 403);
+  }
   return { isHome, isAway };
 }
 
@@ -120,6 +173,50 @@ async function list(matchId) {
   });
 }
 
+function ensureNotLocked(match) {
+  if (match?.schedule_locked_by_admin) {
+    throw new ServiceError('schedule_locked_by_admin', 409);
+  }
+}
+
+function ensureNotCancelled(match) {
+  const alias = (match?.GameStatus?.alias || '').toUpperCase();
+  if (alias === 'CANCELLED') {
+    throw new ServiceError('match_cancelled', 409);
+  }
+}
+
+async function ensureMatchWithStatus(matchOrId) {
+  // Ensure we have a Match instance with GameStatus loaded, preserving the original instance when provided
+  if (!matchOrId) return null;
+  if (typeof matchOrId === 'object') {
+    if (matchOrId.GameStatus) return matchOrId;
+    const reloaded = await Match.findByPk(matchOrId.id, {
+      include: [GameStatus],
+    });
+    if (reloaded?.GameStatus) {
+      try {
+        // Preserve instance methods by attaching the relation to the original object
+        matchOrId.GameStatus = reloaded.GameStatus;
+      } catch {
+        // Fallback define in case of sealed objects
+        try {
+          Object.defineProperty(matchOrId, 'GameStatus', {
+            value: reloaded.GameStatus,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    return matchOrId;
+  }
+  return Match.findByPk(matchOrId, { include: [GameStatus] });
+}
+
 async function create(matchId, payload, actorId) {
   const match = await Match.findByPk(matchId, {
     include: [
@@ -129,10 +226,13 @@ async function create(matchId, payload, actorId) {
       { model: Tournament },
       { model: TournamentGroup },
       { model: Tour },
+      { model: GameStatus },
     ],
   });
   if (!match) throw new ServiceError('match_not_found', 404);
   if (!match.date_start) throw new ServiceError('match_date_not_set', 400);
+  ensureNotLocked(match);
+  ensureNotCancelled(match);
   if (isPast(match.date_start))
     throw new ServiceError('match_already_past', 409);
 
@@ -292,8 +392,10 @@ async function approve(agreementId, actorId) {
     include: [Match, MatchAgreementType, MatchAgreementStatus],
   });
   if (!agr) throw new ServiceError('agreement_not_found', 404);
-  const match = agr.Match || (await Match.findByPk(agr.match_id));
+  const match = await ensureMatchWithStatus(agr.Match || agr.match_id);
   if (!match) throw new ServiceError('match_not_found', 404);
+  ensureNotLocked(match);
+  ensureNotCancelled(match);
   if (isPast(match.date_start) || isPast(agr.date_start))
     throw new ServiceError('match_already_past', 409);
 
@@ -364,14 +466,16 @@ async function approve(agreementId, actorId) {
       { transaction: tx }
     );
 
-    await match.update(
-      {
-        ground_id: agr.ground_id,
-        date_start: agr.date_start,
-        updated_by: actorId,
-      },
-      { transaction: tx }
-    );
+    const patch = {
+      ground_id: agr.ground_id,
+      date_start: agr.date_start,
+      updated_by: actorId,
+    };
+    if (typeof match.update === 'function') {
+      await match.update(patch, { transaction: tx });
+    } else if (typeof Match.update === 'function') {
+      await Match.update(patch, { where: { id: match.id }, transaction: tx });
+    }
 
     return { ok: true };
   });
@@ -419,9 +523,11 @@ async function decline(agreementId, actorId) {
       transaction: tx,
     });
     if (!agr) throw new ServiceError('agreement_not_found', 404);
-    const match =
-      agr.Match || (await Match.findByPk(agr.match_id, { transaction: tx }));
+    const match = await ensureMatchWithStatus(
+      agr.Match || (await Match.findByPk(agr.match_id, { transaction: tx }))
+    );
     if (!match) throw new ServiceError('match_not_found', 404);
+    ensureNotLocked(match);
     if (isPast(match.date_start) || isPast(agr.date_start))
       throw new ServiceError('match_already_past', 409);
 
@@ -511,7 +617,7 @@ export default { list, create, approve, decline, withdraw };
 // List available grounds for proposals/counters.
 // As per business rule, grounds must belong to HOME team for both initial and counter proposals.
 async function listAvailableGrounds(matchId, actorId) {
-  const match = await Match.findByPk(matchId);
+  const match = await Match.findByPk(matchId, { include: [GameStatus] });
   if (!match) throw new ServiceError('match_not_found', 404);
   await ensureUserSide(actorId, match); // ensure participant
 
@@ -521,21 +627,24 @@ async function listAvailableGrounds(matchId, actorId) {
   // Fetch home team with its club for label
   const team = await Team.findByPk(homeTeamId, { include: [Club] });
 
-  const grounds = isPast(match.date_start)
-    ? []
-    : await Ground.findAll({
-        include: [
-          {
-            model: Team,
-            where: { id: homeTeamId },
-            attributes: [],
-            through: { attributes: [] },
-            required: true,
-          },
-        ],
-        includeIgnoreAttributes: false,
-        order: [['name', 'ASC']],
-      });
+  const isCancelled =
+    (match.GameStatus?.alias || '').toUpperCase() === 'CANCELLED';
+  const grounds =
+    isPast(match.date_start) || isCancelled
+      ? []
+      : await Ground.findAll({
+          include: [
+            {
+              model: Team,
+              where: { id: homeTeamId },
+              attributes: [],
+              through: { attributes: [] },
+              required: true,
+            },
+          ],
+          includeIgnoreAttributes: false,
+          order: [['name', 'ASC']],
+        });
 
   return {
     club: team?.Club ? { id: team.Club.id, name: team.Club.name } : null,
@@ -558,6 +667,7 @@ async function withdraw(agreementId, actorId) {
 
     const match =
       agr.Match || (await Match.findByPk(agr.match_id, { transaction: tx }));
+    ensureNotLocked(match);
     const { isHome, isAway } = await ensureUserSide(actorId, match);
 
     // Only the initiator side may withdraw

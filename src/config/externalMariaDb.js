@@ -1,4 +1,6 @@
 import { Sequelize, QueryTypes } from 'sequelize';
+
+import { utcToMoscow } from '../utils/time.js';
 import './env.js';
 
 const externalSequelize = new Sequelize(
@@ -9,6 +11,21 @@ const externalSequelize = new Sequelize(
     host: process.env.EXT_DB_HOST,
     port: process.env.EXT_DB_PORT || 3306,
     dialect: 'mysql',
+    retry: {
+      // Retry transient network and connection errors automatically for individual queries
+      match: [
+        /ETIMEDOUT/i,
+        /ECONNRESET/i,
+        /EHOSTUNREACH/i,
+        /SequelizeConnectionError/i,
+        /SequelizeConnectionRefusedError/i,
+        /SequelizeHostNotFoundError/i,
+        /SequelizeHostNotReachableError/i,
+        /SequelizeInvalidConnectionError/i,
+        /SequelizeConnectionTimedOutError/i,
+      ],
+      max: Number(process.env.EXT_DB_RETRY_MAX || 3),
+    },
     dialectOptions: {
       // Allow optional SSL for production-like deployments
       ssl:
@@ -20,12 +37,19 @@ const externalSequelize = new Sequelize(
                 ).toLowerCase() === 'true',
             }
           : undefined,
+      // Improve socket resilience and timeouts (mysql2)
+      enableKeepAlive: true,
+      keepAliveInitialDelay: Number(
+        process.env.EXT_DB_KEEPALIVE_DELAY_MS || 10_000
+      ),
+      connectTimeout: Number(process.env.EXT_DB_CONNECT_TIMEOUT_MS || 10_000),
     },
     pool: {
-      max: 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
+      max: Number(process.env.EXT_DB_POOL_MAX || 10),
+      min: Number(process.env.EXT_DB_POOL_MIN || 1),
+      acquire: Number(process.env.EXT_DB_POOL_ACQUIRE_MS || 60_000),
+      idle: Number(process.env.EXT_DB_POOL_IDLE_MS || 300_000), // keep connections around for 5m
+      evict: Number(process.env.EXT_DB_POOL_EVICT_MS || 60_000),
     },
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
   }
@@ -130,6 +154,25 @@ export async function connectExternalMariaDb() {
     await externalSequelize.authenticate();
     externalDbAvailable = true;
     logger.info('✅ External MariaDB connection established');
+    // Set conservative per-statement execution caps to avoid hanging jobs.
+    const maxExecMs = Number(process.env.EXT_DB_MAX_EXECUTION_MS || 60_000);
+    const maxStmtSec = Math.max(1, Math.floor(maxExecMs / 1000));
+    try {
+      // MySQL 5.7+/8.0
+      await externalSequelize.query(
+        `SET SESSION max_execution_time = ${maxExecMs}`
+      );
+    } catch {
+      /* empty */
+    }
+    try {
+      // MariaDB
+      await externalSequelize.query(
+        `SET SESSION max_statement_time = ${maxStmtSec}`
+      );
+    } catch {
+      /* empty */
+    }
   } catch (err) {
     externalDbAvailable = false;
     logger.warn('⚠️ Unable to connect to external MariaDB: %s', err.message);
@@ -152,7 +195,7 @@ export default externalSequelize;
 // and performs strict validation and idempotency checks upstream in the caller.
 export async function updateExternalGameDateAndStadium({
   gameId,
-  dateStart,
+  dateStart, // UTC Date representing desired MSK time
   stadiumId,
 }) {
   if (!externalDbAvailable)
@@ -178,8 +221,16 @@ export async function updateExternalGameDateAndStadium({
   // Perform a single UPDATE using bound parameters to avoid SQL injection.
   // Note: we do not set QueryTypes.UPDATE because the read-only guard inspects it;
   // instead we rely on raw _originalQuery and affectedRows from the driver.
+  const msk = utcToMoscow(dateStart);
+  const y = msk.getUTCFullYear();
+  const mo = String(msk.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(msk.getUTCDate()).padStart(2, '0');
+  const hh = String(msk.getUTCHours()).padStart(2, '0');
+  const mm = String(msk.getUTCMinutes()).padStart(2, '0');
+  const ss = String(msk.getUTCSeconds()).padStart(2, '0');
+  const mskStr = `${y}-${mo}-${d} ${hh}:${mm}:${ss}`;
   const sql = 'UPDATE game SET date_start = ?, stadium_id = ? WHERE id = ?';
-  const params = [dateStart, Number(stadiumId), Number(gameId)];
+  const params = [mskStr, Number(stadiumId), Number(gameId)];
   // Use try/catch to return a consistent error shape.
   try {
     const [result] = await _originalQuery(sql, { replacements: params });
@@ -189,6 +240,46 @@ export async function updateExternalGameDateAndStadium({
     return { ok: true, affected: Number(affected) || 0 };
   } catch (err) {
     // Normalize error code to emphasize this is a whitelisted write failure
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}
+
+// Whitelisted write: reschedule external game by setting date_start and clearing cancel_status
+export async function updateExternalGameDateAndClearCancelStatus({
+  gameId,
+  dateStart,
+}) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  if (
+    !gameId ||
+    (typeof gameId !== 'number' && typeof gameId !== 'string') ||
+    Number.isNaN(Number(gameId))
+  )
+    throw new Error('Invalid gameId');
+  const hasDate =
+    dateStart instanceof Date && !Number.isNaN(dateStart.getTime());
+  if (!hasDate) throw new Error('Invalid dateStart');
+  const msk = utcToMoscow(dateStart);
+  const y = msk.getUTCFullYear();
+  const mo = String(msk.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(msk.getUTCDate()).padStart(2, '0');
+  const hh = String(msk.getUTCHours()).padStart(2, '0');
+  const mm = String(msk.getUTCMinutes()).padStart(2, '0');
+  const ss = String(msk.getUTCSeconds()).padStart(2, '0');
+  const mskStr = `${y}-${mo}-${d} ${hh}:${mm}:${ss}`;
+  const sql =
+    'UPDATE game SET date_start = ?, cancel_status = NULL WHERE id = ?';
+  const params = [mskStr, Number(gameId)];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
     err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
     throw err;
   }

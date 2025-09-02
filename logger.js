@@ -87,14 +87,8 @@ const logger = createLogger({
       }),
     }),
 
-    // Console output only in non‑production for developer convenience
-    ...(!isProd
-      ? [
-          new transports.Console({
-            format: combine(colorize({ all: true }), prettyFormat),
-          }),
-        ]
-      : []),
+    // Always write to container logs (stdout/stderr)
+    new transports.Console(),
   ],
 });
 

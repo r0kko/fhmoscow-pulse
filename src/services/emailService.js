@@ -39,6 +39,7 @@ import { renderMatchAgreementApprovedEmail } from '../templates/matchAgreementAp
 import { renderMatchAgreementDeclinedEmail } from '../templates/matchAgreementDeclinedEmail.js';
 import { renderMatchAgreementWithdrawnEmail } from '../templates/matchAgreementWithdrawnEmail.js';
 import { renderMatchAgreementReminderEmail } from '../templates/matchAgreementReminderEmail.js';
+import { renderMatchAgreementDailyDigestEmail } from '../templates/matchAgreementDailyDigestEmail.js';
 
 export const isEmailConfigured = Boolean(SMTP_HOST);
 
@@ -276,6 +277,11 @@ export async function sendMatchAgreementReminderEmail(user, event) {
   const { subject, text, html } = renderMatchAgreementReminderEmail(event);
   await sendMail(user.email, subject, text, html);
 }
+
+export async function sendMatchAgreementDailyDigestEmail(user, digest) {
+  const { subject, text, html } = renderMatchAgreementDailyDigestEmail(digest);
+  await sendMail(user.email, subject, text, html);
+}
 export default {
   isEmailConfigured,
   sendMail,
@@ -310,4 +316,5 @@ export default {
   sendMatchAgreementDeclinedEmail,
   sendMatchAgreementWithdrawnEmail,
   sendMatchAgreementReminderEmail,
+  sendMatchAgreementDailyDigestEmail,
 };

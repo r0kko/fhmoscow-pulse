@@ -39,6 +39,23 @@ function rowClass(m) {
   if (m?.agreement_pending) return 'state-pending';
   return '';
 }
+
+function statusClass(m) {
+  const alias = m?.status?.alias;
+  switch (alias) {
+    case 'LIVE':
+      return 'text-bg-success';
+    case 'POSTPONED':
+      return 'text-bg-warning';
+    case 'CANCELLED':
+      return 'text-bg-danger';
+    case 'FINISHED':
+      return 'text-bg-secondary';
+    case 'SCHEDULED':
+    default:
+      return 'text-bg-info';
+  }
+}
 </script>
 
 <template>
@@ -68,7 +85,16 @@ function rowClass(m) {
               <td>{{ m.tournament || '—' }}</td>
               <td>{{ m.group || '—' }}</td>
               <td>{{ m.tour || '—' }}</td>
-              <td>{{ formatTime(m.date) }}</td>
+              <td>
+                <span>{{ formatTime(m.date) }}</span>
+                <span
+                  v-if="m.status?.name"
+                  class="badge align-middle ms-2"
+                  :class="statusClass(m)"
+                >
+                  {{ m.status.name }}
+                </span>
+              </td>
               <td>{{ m.stadium || '—' }}</td>
               <td class="text-end">
                 <RouterLink

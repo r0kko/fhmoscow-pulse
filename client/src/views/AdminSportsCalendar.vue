@@ -1,5 +1,12 @@
 <script setup>
-import { ref, onMounted, computed, watchEffect, reactive } from 'vue';
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  computed,
+  watchEffect,
+  reactive,
+} from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
 import TabSelector from '../components/TabSelector.vue';
@@ -209,6 +216,25 @@ function initFromQuery() {
 onMounted(() => {
   initFromQuery();
   loadMatches();
+  if (typeof document !== 'undefined') {
+    const handler = () => {
+      if (document.visibilityState === 'visible') loadMatches();
+    };
+    document.addEventListener('visibilitychange', handler);
+    // Save for removal on unmount
+    window.__adminCalVisHandler = handler;
+  }
+});
+onUnmounted(() => {
+  try {
+    if (window.__adminCalVisHandler) {
+      document.removeEventListener(
+        'visibilitychange',
+        window.__adminCalVisHandler
+      );
+      delete window.__adminCalVisHandler;
+    }
+  } catch (_) {}
 });
 
 const filteredAll = computed(() => {
@@ -330,9 +356,20 @@ function removeHeaderChip(chip) {
 // Build tabs only for days that have matches after filters (up to daysCount)
 const dayTabs = computed(() => {
   const counts = new Map();
+  const attention = new Map();
   (filteredAll.value || []).forEach((m) => {
     const k = toDayKey(m.date, MOSCOW_TZ);
     counts.set(k, (counts.get(k) || 0) + 1);
+    // Frontend attention: not agreed AND (pending OR < 10 дней)
+    const alias = (m?.status?.alias || '').toUpperCase();
+    const schedulable = !['CANCELLED', 'FINISHED', 'LIVE'].includes(alias);
+    const agreed = Boolean(m?.agreement_accepted);
+    const pending = Boolean(m?.agreement_pending);
+    const diffMs = new Date(m?.date || '').getTime() - Date.now();
+    const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+    const soon = isFinite(diffMs) && diffMs >= 0 && diffMs < tenDaysMs;
+    const needsAttention = schedulable && !agreed && (pending || soon);
+    if (needsAttention) attention.set(k, (attention.get(k) || 0) + 1);
   });
   const keys = [...counts.keys()].sort((a, b) => a - b).slice(0, daysCount);
   const todayKey = toDayKey(new Date(), MOSCOW_TZ);
@@ -340,8 +377,9 @@ const dayTabs = computed(() => {
     const offset = (k - todayKey) / (24 * 60 * 60 * 1000);
     const d = new Date(k);
     const c = counts.get(k) || 0;
+    const badge = attention.get(k) || 0;
     const { line1, line2 } = formatTabLines(d, offset, c);
-    return { key: k, label: line1, subLabel: line2 };
+    return { key: k, label: line1, subLabel: line2, badge };
   });
 });
 
@@ -550,9 +588,10 @@ function formatTabLines(date, offset, _count) {
             </div>
             <MatchesDayTiles
               :items="filteredDayItems"
-              :show-actions="false"
+              :show-actions="true"
               :show-day-header="false"
               :no-scroll="true"
+              :details-base="'/admin/matches'"
             />
             <p v-if="!filteredDayItems.length" class="mb-0">
               На выбранный день матчей нет.

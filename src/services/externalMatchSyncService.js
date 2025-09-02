@@ -44,7 +44,7 @@ export async function syncApprovedMatchToExternal({
   }
 
   // Internal dateStart is stored in UTC. External system stores Moscow time (UTC+3).
-  // Convert UTC -> MSK for external write and comparison.
+  // Convert UTC -> MSK for comparison; external write converts UTC to MSK string inside the writer.
   const targetUtc = dateStart instanceof Date ? dateStart : new Date(dateStart);
   if (Number.isNaN(targetUtc.getTime())) {
     const err = new Error('Invalid dateStart');
@@ -64,11 +64,11 @@ export async function syncApprovedMatchToExternal({
 
   const result = await updateExternalGameDateAndStadium({
     gameId: Number(extGameId),
-    dateStart: targetMsk,
+    dateStart: targetUtc,
     stadiumId: Number(extStadiumId),
   });
   logger.info(
-    'External sync applied: game %s -> date_start=%s, stadium_id=%s (affected=%s)',
+    'External sync applied: game %s -> date_start=%s (MSK), stadium_id=%s (affected=%s)',
     extGameId,
     targetMsk.toISOString(),
     extStadiumId,

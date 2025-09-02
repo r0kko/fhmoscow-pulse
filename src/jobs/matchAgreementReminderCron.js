@@ -14,6 +14,7 @@ import {
   Tournament,
   TournamentGroup,
   Tour,
+  GameStatus,
 } from '../models/index.js';
 import emailService from '../services/emailService.js';
 import { listTeamUsers } from '../services/teamService.js';
@@ -26,14 +27,6 @@ function daysLeftMsk(dateUtc) {
   return Math.floor(diff / (24 * 60 * 60 * 1000));
 }
 
-function shouldRemind(days) {
-  // Daily reminders when < 7 days left (0..6),
-  // plus early pings at 14 and 7 days to start coordination sooner.
-  if (days < 0) return false; // already started/past
-  if (days < 7) return true; // daily window
-  return days === 7 || days === 14;
-}
-
 export async function runMatchAgreementReminders() {
   await withRedisLock(
     buildJobLockKey('matchAgreementReminders'),
@@ -41,15 +34,16 @@ export async function runMatchAgreementReminders() {
     async () =>
       withJobMetrics('matchAgreementReminders', async () => {
         try {
+          const now = new Date();
           const horizonDays = Math.max(
-            1,
+            7,
             parseInt(process.env.MATCH_REMINDER_HORIZON_DAYS || '14', 10)
           );
-          const now = new Date();
           const horizon = new Date(
             now.getTime() + horizonDays * 24 * 60 * 60 * 1000
           );
 
+          // Load upcoming matches
           const matches = await Match.findAll({
             where: { date_start: { [Op.gt]: now, [Op.lte]: horizon } },
             attributes: [
@@ -69,11 +63,12 @@ export async function runMatchAgreementReminders() {
               { model: Tournament, attributes: ['name'] },
               { model: TournamentGroup, attributes: ['name'] },
               { model: Tour, attributes: ['name'] },
+              { model: GameStatus, attributes: ['alias'] },
             ],
             order: [['date_start', 'ASC']],
           });
-          if (!matches.length) return;
 
+          if (!matches.length) return;
           const ids = matches.map((m) => m.id);
 
           const [pendingStatus, acceptedStatus] = await Promise.all([
@@ -99,6 +94,8 @@ export async function runMatchAgreementReminders() {
                     'type_id',
                     'ground_id',
                     'date_start',
+                    'created_at',
+                    'decision_reminded_at',
                   ],
                 })
               : [],
@@ -115,86 +112,118 @@ export async function runMatchAgreementReminders() {
 
           const acceptedSet = new Set(accepted.map((a) => a.match_id));
           const pendingByMatch = new Map();
-          for (const p of pendings) {
+          for (const p of pendings)
             if (!pendingByMatch.has(p.match_id))
               pendingByMatch.set(p.match_id, p);
+
+          // Build digests per team: { teamId: { assign: [], decide: [], recipients: [] } }
+          const digests = new Map();
+
+          function addDigest(teamId, kind, item) {
+            if (!teamId) return;
+            if (!digests.has(teamId))
+              digests.set(teamId, { assign: [], decide: [], recipients: null });
+            digests.get(teamId)[kind].push(item);
           }
 
-          // Preload ground names for pending agreements to improve email clarity
-          const pendingGroundIds = Array.from(
-            new Set(pendings.map((p) => p.ground_id).filter(Boolean))
-          );
-          const groundById = new Map();
-          if (pendingGroundIds.length) {
-            const grounds = await Ground.findAll({
-              where: { id: { [Op.in]: pendingGroundIds } },
-              attributes: ['id', 'name'],
-            });
-            for (const g of grounds) groundById.set(g.id, g.name);
-          }
-
-          // Cache team users within one run to reduce duplicate lookups
-          const usersCache = new Map();
-          async function getUsers(teamId) {
-            if (!teamId) return [];
-            if (usersCache.has(teamId)) return usersCache.get(teamId);
-            try {
-              const list = (await listTeamUsers(teamId)) || [];
-              const withEmail = list.filter((u) => u.email);
-              usersCache.set(teamId, withEmail);
-              return withEmail;
-            } catch {
-              usersCache.set(teamId, []);
-              return [];
-            }
-          }
-
+          // Section A: Assign time (no proposal) — only when < 7 days left, daily at 09:00
           for (const m of matches) {
-            if (acceptedSet.has(m.id)) continue; // already agreed
+            const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
+            if (
+              statusAlias === 'CANCELLED' ||
+              statusAlias === 'POSTPONED' ||
+              statusAlias === 'FINISHED' ||
+              statusAlias === 'LIVE'
+            )
+              continue;
+            if (acceptedSet.has(m.id)) continue;
             const d = daysLeftMsk(m.date_start);
-            if (!shouldRemind(d)) continue;
-
+            if (d < 0 || d >= 7) continue; // strictly less than 7 days
             const pending = pendingByMatch.get(m.id) || null;
-            let status = 'no_proposal';
-            let recipients = [];
-            if (pending) {
-              const typeAlias = typeById.get(pending.type_id);
-              if (typeAlias === 'HOME_PROPOSAL') {
-                status = 'pending_you'; // away should act
-                recipients = await getUsers(m.team2_id);
-              } else if (typeAlias === 'AWAY_COUNTER') {
-                status = 'pending_you'; // home should act
-                recipients = await getUsers(m.team1_id);
-              } else {
-                // unknown type — skip
-                continue;
-              }
-            } else {
-              // No pending — ask home side to propose
-              recipients = await getUsers(m.team1_id);
-            }
-
-            const ctx = {
+            if (pending) continue; // there is a proposal — skip assign bucket
+            addDigest(m.team1_id, 'assign', {
               matchId: m.id,
               team1: m.HomeTeam?.name || 'Команда 1',
               team2: m.AwayTeam?.name || 'Команда 2',
               tournament: m.Tournament?.name || '',
               group: m.TournamentGroup?.name || '',
               tour: m.Tour?.name || '',
-              ground: pending
-                ? groundById.get(pending.ground_id) || ''
-                : m.Ground?.name || '',
-              kickoff: pending ? pending.date_start : m.date_start,
-              status,
+              ground: m.Ground?.name || '',
+              kickoff: m.date_start,
               daysLeft: d,
-            };
+            });
+          }
 
-            const users = recipients || [];
-            if (users.length === 0) continue;
+          // Section B: Decide (pending > 24h, remind next morning only once)
+          const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          for (const p of pendings) {
+            if (!p.created_at || p.created_at > dayAgo) continue;
+            if (p.decision_reminded_at) continue; // already reminded once
+            const m = matches.find((mm) => mm.id === p.match_id);
+            if (!m) continue;
+            const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
+            if (
+              statusAlias === 'CANCELLED' ||
+              statusAlias === 'POSTPONED' ||
+              statusAlias === 'FINISHED' ||
+              statusAlias === 'LIVE'
+            )
+              continue;
+            const d = daysLeftMsk(m.date_start);
+            const typeAlias = typeById.get(p.type_id);
+            const targetTeamId =
+              typeAlias === 'HOME_PROPOSAL'
+                ? m.team2_id
+                : typeAlias === 'AWAY_COUNTER'
+                  ? m.team1_id
+                  : null;
+            addDigest(targetTeamId, 'decide', {
+              matchId: m.id,
+              team1: m.HomeTeam?.name || 'Команда 1',
+              team2: m.AwayTeam?.name || 'Команда 2',
+              tournament: m.Tournament?.name || '',
+              group: m.TournamentGroup?.name || '',
+              tour: m.Tour?.name || '',
+              ground: p.ground_id ? m.Ground?.name || '' : m.Ground?.name || '',
+              kickoff: p.date_start || m.date_start,
+              daysLeft: d,
+              agreementId: p.id,
+            });
+          }
+
+          // Resolve recipients per team and send one digest per user
+          for (const [teamId, data] of digests.entries()) {
+            if (!data.assign.length && !data.decide.length) continue;
+            if (!data.recipients) {
+              try {
+                const users = (await listTeamUsers(teamId)) || [];
+                data.recipients = users.filter((u) => u.email);
+              } catch {
+                data.recipients = [];
+              }
+            }
+            if (!data.recipients.length) continue;
             await Promise.all(
-              users.map((u) =>
-                emailService.sendMatchAgreementReminderEmail(u, ctx)
+              data.recipients.map((u) =>
+                emailService.sendMatchAgreementDailyDigestEmail(u, {
+                  assign: data.assign,
+                  decide: data.decide,
+                })
               )
+            );
+          }
+
+          // Mark decision reminders as sent when at least one email has been issued for that team
+          const remindedSet = new Set();
+          for (const data of digests.values()) {
+            if (!data.decide.length) continue;
+            if (!data.recipients || !data.recipients.length) continue; // no recipients => try next day
+            for (const item of data.decide) remindedSet.add(item.agreementId);
+          }
+          if (remindedSet.size) {
+            await MatchAgreement.update(
+              { decision_reminded_at: new Date() },
+              { where: { id: { [Op.in]: Array.from(remindedSet) } } }
             );
           }
         } catch (err) {

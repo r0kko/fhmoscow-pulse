@@ -78,6 +78,56 @@ const pendingAgreement = computed(() =>
 const acceptedExists = computed(() =>
   agreements.value.some((a) => a.MatchAgreementStatus?.alias === 'ACCEPTED')
 );
+const statusAlias = computed(() =>
+  (match.value?.status?.alias || '').toUpperCase()
+);
+const isCancelled = computed(() => statusAlias.value === 'CANCELLED');
+const isPostponed = computed(() => statusAlias.value === 'POSTPONED');
+const isParticipant = computed(
+  () => Boolean(match.value?.is_home) || Boolean(match.value?.is_away)
+);
+
+// Reschedule date flow (for postponed)
+const reschedDate = ref('');
+const reschedError = ref('');
+const reschedLoading = ref(false);
+const minDate = computed(() => {
+  try {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  } catch {
+    return '';
+  }
+});
+
+async function submitReschedule() {
+  reschedError.value = '';
+  if (!reschedDate.value) {
+    reschedError.value = 'Выберите дату';
+    return;
+  }
+  reschedLoading.value = true;
+  try {
+    await apiFetch(`/matches/${route.params.id}/reschedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: reschedDate.value }),
+    });
+    const [mres, ares] = await Promise.all([
+      apiFetch(`/matches/${route.params.id}`),
+      apiFetch(`/matches/${route.params.id}/agreements`),
+    ]);
+    match.value = mres.match || null;
+    agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
+  } catch (e) {
+    reschedError.value = e.message || 'Не удалось обновить дату';
+  } finally {
+    reschedLoading.value = false;
+  }
+}
 const statusChip = computed(() => {
   if (acceptedExists.value)
     return {
@@ -112,6 +162,17 @@ const statusChip = computed(() => {
         </ol>
       </nav>
       <h1 class="mb-3">{{ match?.team1 }} — {{ match?.team2 }}</h1>
+      <div
+        v-if="!loading && match && !isParticipant"
+        class="alert alert-warning d-flex align-items-center"
+        role="alert"
+      >
+        <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+        <div>
+          Недоступно: вы не участник этого матча. Для действий по согласованию
+          требуется привязка к команде.
+        </div>
+      </div>
 
       <div v-if="error" class="alert alert-danger" role="alert">
         {{ error }}
@@ -119,6 +180,15 @@ const statusChip = computed(() => {
 
       <div v-else class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
+          <div v-if="isCancelled" class="alert alert-warning" role="alert">
+            Матч отменен. Для уточнения всех сведений, касающихся проведения
+            встречи, просьба обращаться в отдел проведения соревнований ФХМ.
+          </div>
+          <div v-else-if="isPostponed" class="alert alert-info" role="alert">
+            Матч перенесен. Команда имеет право выбрать новую дату проведения
+            (прошедшие дни недоступны). После выбора даты процесс согласования
+            времени будет доступен в обычном порядке.
+          </div>
           <div
             class="d-flex justify-content-between align-items-start flex-wrap gap-2"
           >
@@ -160,6 +230,50 @@ const statusChip = computed(() => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div
+        v-if="isPostponed"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
+        <div class="card-body">
+          <h2 class="h5 mb-3">Выбор новой даты</h2>
+          <div v-if="reschedError" class="alert alert-danger" role="alert">
+            {{ reschedError }}
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+              <label for="resched-date" class="form-label small text-muted"
+                >Дата (МСК)</label
+              >
+              <input
+                id="resched-date"
+                v-model="reschedDate"
+                type="date"
+                class="form-control"
+                :min="minDate"
+                :disabled="reschedLoading"
+              />
+            </div>
+            <div class="col-12 col-md-3">
+              <button
+                class="btn btn-brand"
+                :disabled="reschedLoading || !reschedDate"
+                @click="submitReschedule"
+              >
+                <span
+                  v-if="reschedLoading"
+                  class="spinner-border spinner-border-sm me-1"
+                ></span>
+                Подтвердить дату
+              </button>
+            </div>
+          </div>
+          <p class="text-muted small mt-2 mb-0">
+            Новая дата будет записана во внешнюю систему (время 00:00 МСК),
+            после чего можно приступить к согласованию точного времени.
+          </p>
         </div>
       </div>
 
@@ -211,7 +325,15 @@ const statusChip = computed(() => {
             <MenuTile
               title="Согласование времени"
               icon="bi-calendar-check"
-              :to="`/school-matches/${route.params.id}/agreements`"
+              :to="
+                isCancelled || !isParticipant
+                  ? null
+                  : `/school-matches/${route.params.id}/agreements`
+              "
+              :placeholder="isCancelled || !isParticipant"
+              :note="
+                isCancelled ? 'Отмена' : !isParticipant ? 'Недоступно' : ''
+              "
             />
             <MenuTile
               title="Составы на матч"

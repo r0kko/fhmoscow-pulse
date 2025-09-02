@@ -21,6 +21,16 @@ Match.init(
     season_id: { type: DataTypes.UUID },
     team1_id: { type: DataTypes.UUID },
     team2_id: { type: DataTypes.UUID },
+    schedule_locked_by_admin: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    // Admin lock switch; event log captures author and timestamp
+    // Moscow date-only snapshot of the first known kickoff date
+    scheduled_date: { type: DataTypes.DATEONLY, allowNull: true },
+    // Local game status reference (SCHEDULED, POSTPONED, CANCELLED, LIVE, FINISHED)
+    game_status_id: { type: DataTypes.UUID, allowNull: true },
   },
   {
     sequelize,

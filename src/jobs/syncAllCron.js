@@ -2,7 +2,10 @@ import cron from 'node-cron';
 
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
-import { isExternalDbAvailable } from '../config/externalMariaDb.js';
+import {
+  isExternalDbAvailable,
+  connectExternalMariaDb,
+} from '../config/externalMariaDb.js';
 import logger from '../../logger.js';
 
 import { runClubSync } from './clubSyncCron.js';
@@ -13,6 +16,8 @@ import { runPlayerSync } from './playerSyncCron.js';
 import { runTournamentSync } from './tournamentSyncCron.js';
 
 let running = false;
+let scheduled = false;
+let task = null;
 
 export async function runSyncAll() {
   if (running) return;
@@ -23,6 +28,14 @@ export async function runSyncAll() {
       running = true;
       await withJobMetrics('syncAll', async () => {
         try {
+          logger.info('syncAll starting');
+          if (!isExternalDbAvailable()) {
+            try {
+              await connectExternalMariaDb();
+            } catch {
+              /* empty */
+            }
+          }
           if (!isExternalDbAvailable()) {
             logger.warn('syncAll skipped: external DB unavailable');
             return;
@@ -45,7 +58,37 @@ export async function runSyncAll() {
   );
 }
 
+export function isSyncAllRunning() {
+  return running;
+}
+
 export default function startSyncAllCron() {
-  const schedule = process.env.SYNC_ALL_CRON || '0 */6 * * *';
-  cron.schedule(schedule, runSyncAll, { timezone: 'Europe/Moscow' });
+  // Hard-coded: run every 30 minutes, MSK timezone
+  if (scheduled) return;
+  task = cron.schedule('*/30 * * * *', runSyncAll, {
+    timezone: 'Europe/Moscow',
+  });
+  scheduled = true;
+}
+
+export function _getSyncAllCronTask() {
+  return task;
+}
+
+export function stopSyncAllCron() {
+  try {
+    if (task) task.stop();
+  } catch {
+    /* noop */
+  }
+}
+
+export function restartSyncAllCron() {
+  stopSyncAllCron();
+  scheduled = false;
+  startSyncAllCron();
+}
+
+export function resetSyncAllState() {
+  running = false;
 }

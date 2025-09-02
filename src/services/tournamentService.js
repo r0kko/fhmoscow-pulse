@@ -12,6 +12,7 @@ import {
   Team,
   Ground,
 } from '../models/index.js';
+import { MatchAgreement } from '../models/index.js';
 import {
   Tournament as ExtTournament,
   TournamentType as ExtTournamentType,
@@ -23,9 +24,10 @@ import {
   Tags as ExtTags,
 } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
-import { moscowToUtc } from '../utils/time.js';
+import { moscowToUtc, utcToMoscow } from '../utils/time.js';
 import logger from '../../logger.js';
 import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
+import { GameStatus } from '../models/index.js';
 
 function emptyStats() {
   return {
@@ -861,6 +863,35 @@ async function syncGames(actorId = null) {
   const teamIdByExt = new Map(teams.map((t) => [t.external_id, t.id]));
   const groundIdByExt = new Map(grounds.map((g) => [g.external_id, g.id]));
 
+  // Load local game statuses mapping (alias -> id)
+  const gameStatuses = await GameStatus.findAll({
+    attributes: ['id', 'alias'],
+  });
+  const statusIdByAlias = new Map(gameStatuses.map((s) => [s.alias, s.id]));
+  const aliasByStatusId = new Map(gameStatuses.map((s) => [s.id, s.alias]));
+
+  function mapGameStatusAlias(g) {
+    // cancel_status dominates: 1 -> POSTPONED, 2 -> CANCELLED
+    if (g.cancel_status != null) {
+      const cs = Number(g.cancel_status);
+      if (cs === 1) return 'POSTPONED';
+      if (cs === 2) return 'CANCELLED';
+    }
+    // Otherwise: status 0 -> SCHEDULED, 1 -> LIVE, 2 -> FINISHED
+    const s = Number(g.status);
+    if (s === 1) return 'LIVE';
+    if (s === 2) return 'FINISHED';
+    return 'SCHEDULED';
+  }
+
+  function toMoscowDateOnlyString(utcDate) {
+    const msk = utcToMoscow(utcDate) || utcDate;
+    const y = msk.getUTCFullYear();
+    const m = String(msk.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(msk.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   // Preload tournaments to derive season_id for matches via tour.tournament_id
   const tournamentIds = Array.from(
     new Set(tours.map((t) => t.tournament_id).filter(Boolean))
@@ -900,12 +931,18 @@ async function syncGames(actorId = null) {
         team1_id: teamIdByExt.get(g.team1_id) || null,
         team2_id: teamIdByExt.get(g.team2_id) || null,
       };
+      const statusAlias = mapGameStatusAlias(g);
+      const statusId = statusIdByAlias.get(statusAlias) || null;
       const local = localByExt.get(g.id);
       if (!local) {
         await Match.create(
           {
             external_id: g.id,
             ...desired,
+            game_status_id: statusId,
+            scheduled_date: desired.date_start
+              ? toMoscowDateOnlyString(desired.date_start)
+              : null,
             created_by: actorId,
             updated_by: actorId,
           },
@@ -931,16 +968,38 @@ async function syncGames(actorId = null) {
         updates.stage_id = desired.stage_id;
       if (local.tournament_group_id !== desired.tournament_group_id)
         updates.tournament_group_id = desired.tournament_group_id;
+      if (local.season_id !== desired.season_id)
+        updates.season_id = desired.season_id;
       if (local.ground_id !== desired.ground_id)
         updates.ground_id = desired.ground_id;
       if (local.team1_id !== desired.team1_id)
         updates.team1_id = desired.team1_id;
       if (local.team2_id !== desired.team2_id)
         updates.team2_id = desired.team2_id;
+      const prevStatusId = local.game_status_id || null;
+      if (prevStatusId !== statusId) updates.game_status_id = statusId;
+      if (!local.scheduled_date && desired.date_start)
+        updates.scheduled_date = toMoscowDateOnlyString(desired.date_start);
       if (Object.keys(updates).length) {
         updates.updated_by = actorId;
         await local.update(updates, { transaction: tx });
         changed = true;
+      }
+      // If the status changed to CANCELLED or POSTPONED, soft-delete agreement history for this match
+      const prevAlias = (aliasByStatusId.get(prevStatusId) || '').toUpperCase();
+      const newAlias = statusAlias.toUpperCase();
+      if (
+        (newAlias === 'CANCELLED' || newAlias === 'POSTPONED') &&
+        prevAlias !== newAlias
+      ) {
+        await MatchAgreement.update(
+          { deletedAt: new Date(), updated_by: actorId },
+          {
+            where: { match_id: local.id, deletedAt: null },
+            paranoid: false,
+            transaction: tx,
+          }
+        );
       }
       if (changed) stats.upserts += 1;
     }
@@ -963,6 +1022,10 @@ async function syncGames(actorId = null) {
           ground_id: groundIdByExt.get(g.stadium_id) || null,
           team1_id: teamIdByExt.get(g.team1_id) || null,
           team2_id: teamIdByExt.get(g.team2_id) || null,
+          game_status_id: statusIdByAlias.get(mapGameStatusAlias(g)) || null,
+          scheduled_date: g.date_start
+            ? toMoscowDateOnlyString(moscowToUtc(g.date_start))
+            : null,
         };
       },
       actorId,

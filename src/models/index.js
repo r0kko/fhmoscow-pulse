@@ -72,6 +72,7 @@ import TournamentGroup from './tournamentGroup.js';
 import TournamentTeam from './tournamentTeam.js';
 import Tour from './tour.js';
 import Match from './match.js';
+import GameStatus from './gameStatus.js';
 import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
 import Player from './player.js';
@@ -90,6 +91,7 @@ import GroundTeam from './groundTeam.js';
 import MatchAgreementType from './matchAgreementType.js';
 import MatchAgreementStatus from './matchAgreementStatus.js';
 import MatchAgreement from './matchAgreement.js';
+import JobLog from './jobLog.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -332,6 +334,8 @@ Match.belongsTo(Team, { foreignKey: 'team1_id', as: 'HomeTeam' });
 Match.belongsTo(Team, { foreignKey: 'team2_id', as: 'AwayTeam' });
 Season.hasMany(Match, { foreignKey: 'season_id' });
 Match.belongsTo(Season, { foreignKey: 'season_id' });
+GameStatus.hasMany(Match, { foreignKey: 'game_status_id' });
+Match.belongsTo(GameStatus, { foreignKey: 'game_status_id' });
 
 /* match agreements */
 Match.hasMany(MatchAgreement, { foreignKey: 'match_id' });
@@ -570,7 +574,9 @@ export {
   TicketFile,
   Tour,
   Match,
+  GameStatus,
   MatchAgreement,
+  JobLog,
   MatchAgreementType,
   MatchAgreementStatus,
   Team,

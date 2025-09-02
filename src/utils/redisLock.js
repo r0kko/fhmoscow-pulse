@@ -63,4 +63,14 @@ export function buildJobLockKey(name) {
   return `lock:job:${name}`;
 }
 
+// ADMIN: force delete a lock regardless of holder value (unsafe; for manual recovery)
+export async function forceDeleteLock(key) {
+  try {
+    await redisClient.del(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default { withRedisLock, tryAcquireLock, releaseLock, buildJobLockKey };

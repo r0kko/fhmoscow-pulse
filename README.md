@@ -242,6 +242,12 @@ new entries: `external_id` and `name`. Address can be added later by admins.
 - All jobs are protected by a Redis-based distributed lock to avoid overlaps across instances.
 - Prometheus metrics are exposed at `/metrics` (text format), including job run counts, durations and last run timestamps.
 
+### External DB watcher and taxation check
+
+- External DB watcher: a lightweight cron monitors the external MariaDB availability and immediately triggers a full sync once a connection is established after startup. Configure via `EXT_DB_WATCH_CRON` (default every minute).
+- Taxation check cron: periodically validates and updates users’ taxation status by INN in small batches. Configure `TAXATION_CRON` and `TAXATION_CRON_BATCH_SIZE` (default 1).
+- Admin panel: System Operations now includes controls to trigger a full sync and a taxation check on demand. API endpoints: `GET/POST /admin-ops/sync/*` and `GET/POST /admin-ops/taxation/*` (ADMIN only).
+
 ## Local development
 
 Install dependencies and run the server:

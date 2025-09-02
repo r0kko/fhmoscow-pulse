@@ -1,0 +1,185 @@
+import express from 'express';
+
+import auth from '../middlewares/auth.js';
+import authorize from '../middlewares/authorize.js';
+import { getJobStats } from '../config/metrics.js';
+// Lazy-load job modules inside handlers to avoid heavy imports during test bootstrap
+import JobLog from '../models/jobLog.js';
+import { buildJobLockKey, forceDeleteLock } from '../utils/redisLock.js';
+
+const router = express.Router();
+
+// GET /admin-ops/sync/status — summary of sync-related jobs
+router.get('/sync/status', auth, authorize('ADMIN'), async (_req, res) => {
+  try {
+    const jobs = [
+      'syncAll',
+      'clubSync',
+      'groundSync',
+      'teamSync',
+      'staffSync',
+      'playerSync',
+      'tournamentSync',
+    ];
+    const stats = await getJobStats(jobs);
+    // Return latest job logs (per job) for context
+    let logs = [];
+    try {
+      logs = await JobLog.findAll({
+        attributes: [
+          'id',
+          'job',
+          'status',
+          'started_at',
+          'finished_at',
+          'duration_ms',
+          'message',
+          'error_message',
+        ],
+        order: [['started_at', 'DESC']],
+        limit: 50,
+      });
+    } catch {
+      /* ignore */
+    }
+    let running = false;
+    try {
+      const mod = await import('../jobs/syncAllCron.js');
+      running = mod.isSyncAllRunning?.() || false;
+    } catch {
+      /* empty */
+    }
+    return res.json({ jobs: stats, running: { syncAll: running }, logs });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: 'metrics_error', detail: err?.message });
+  }
+});
+
+// POST /admin-ops/sync/run — trigger orchestrator; fire-and-forget
+router.post('/sync/run', auth, authorize('ADMIN'), async (_req, res) => {
+  try {
+    const mod = await import('../jobs/syncAllCron.js');
+    try {
+      mod.default?.();
+    } catch {
+      /* empty */
+    }
+    const already = mod.isSyncAllRunning?.() || false;
+    mod.runSyncAll?.().catch(() => {});
+    return res.status(202).json({ queued: true, already_running: already });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: 'sync_trigger_failed', detail: err?.message });
+  }
+});
+
+// Taxation ops
+router.get('/taxation/status', auth, authorize('ADMIN'), async (_req, res) => {
+  try {
+    const stats = await getJobStats(['taxation']);
+    let running = false;
+    try {
+      const mod = await import('../jobs/taxationCron.js');
+      running = mod.isTaxationRunning?.() || false;
+    } catch {
+      /* empty */
+    }
+    return res.json({ jobs: stats, running: { taxation: running } });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: 'metrics_error', detail: err?.message });
+  }
+});
+
+export default router;
+
+router.post('/taxation/run', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const mod = await import('../jobs/taxationCron.js');
+    const already = mod.isTaxationRunning?.() || false;
+    const batch = Number(req.body?.batch) || undefined;
+    mod.runTaxationCheck?.({ batch }).catch(() => {});
+    return res.status(202).json({ queued: true, already_running: already });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: 'taxation_trigger_failed', detail: err?.message });
+  }
+});
+
+// POST /admin-ops/jobs/reset — force-release lock and reset running state (admin recovery)
+router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
+  const job = String(req.body?.job || '').trim();
+  const allowed = new Set([
+    'syncAll',
+    'taxation',
+    'clubSync',
+    'groundSync',
+    'teamSync',
+    'staffSync',
+    'playerSync',
+    'tournamentSync',
+  ]);
+  if (!allowed.has(job)) return res.status(400).json({ error: 'invalid_job' });
+  try {
+    // Reset internal flags if applicable (dynamic import to tolerate test mocks)
+    if (job === 'syncAll') {
+      try {
+        const mod = await import('../jobs/syncAllCron.js');
+        mod.resetSyncAllState?.();
+      } catch {
+        /* empty */
+      }
+    }
+    if (job === 'taxation') {
+      try {
+        const mod = await import('../jobs/taxationCron.js');
+        mod.resetTaxationState?.();
+      } catch {
+        /* empty */
+      }
+    }
+    // Force delete Redis lock key
+    const key = buildJobLockKey(job);
+    const ok = await forceDeleteLock(key);
+    return res.json({ ok, job });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: 'reset_failed', detail: err?.message });
+  }
+});
+
+// POST /admin-ops/jobs/restart — restart cron task (only for schedulers)
+router.post('/jobs/restart', auth, authorize('ADMIN'), async (req, res) => {
+  const job = String(req.body?.job || '').trim();
+  try {
+    if (job === 'syncAll') {
+      try {
+        const mod = await import('../jobs/syncAllCron.js');
+        mod.restartSyncAllCron?.();
+        return res.json({ ok: true, job });
+      } catch {
+        /* empty */
+      }
+    }
+    if (job === 'taxation') {
+      try {
+        const mod = await import('../jobs/taxationCron.js');
+        mod.restartTaxationCron?.();
+        return res.json({ ok: true, job });
+      } catch {
+        /* empty */
+      }
+    }
+    return res.status(400).json({ error: 'job_not_restartable' });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: 'restart_failed', detail: err?.message });
+  }
+});

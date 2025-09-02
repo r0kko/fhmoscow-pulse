@@ -1,5 +1,7 @@
 import { Op } from 'sequelize';
 
+import sequelize from '../config/database.js';
+import ServiceError from '../errors/ServiceError.js';
 import { utcToMoscow, moscowToUtc } from '../utils/time.js';
 import {
   Match,
@@ -11,7 +13,11 @@ import {
   Tour,
   MatchAgreement,
   MatchAgreementStatus,
+  MatchAgreementType,
+  GameStatus,
 } from '../models/index.js';
+
+import externalSync from './externalMatchSyncService.js';
 
 /**
  * List matches for the next N days (Moscow time), enriched with agreement flags.
@@ -62,6 +68,7 @@ export async function listNextDays({
       'tournament_id',
       'tournament_group_id',
       'tour_id',
+      'scheduled_date',
     ],
     where,
     include: [
@@ -81,6 +88,7 @@ export async function listNextDays({
       { model: Tournament, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
+      { model: GameStatus, attributes: ['name', 'alias'] },
     ],
     order: [['date_start', 'ASC']],
     distinct: true,
@@ -160,8 +168,14 @@ export async function listNextDays({
   const matches = rowsRaw.map((m) => {
     const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
     const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
+    const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
+    const isSchedulable =
+      statusAlias !== 'CANCELLED' &&
+      statusAlias !== 'FINISHED' &&
+      statusAlias !== 'LIVE';
     const isUrgent =
       !flags.accepted &&
+      isSchedulable &&
       mskKickoff.getTime() >= nowMskTs &&
       mskKickoff.getTime() - nowMskTs < sevenDaysMs;
     return {
@@ -175,6 +189,10 @@ export async function listNextDays({
       tournament: m.Tournament?.name || null,
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
+      scheduled_date: m.scheduled_date || null,
+      status: m.GameStatus
+        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+        : null,
       agreement_accepted: !!flags.accepted,
       agreement_pending: !!flags.pending && !flags.accepted,
       urgent_unagreed: isUrgent,
@@ -254,6 +272,7 @@ export async function listNextGameDays({
       { model: Tournament, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
+      { model: GameStatus, attributes: ['name', 'alias'] },
     ],
     order: [['date_start', 'ASC']],
     distinct: true,
@@ -350,8 +369,14 @@ export async function listNextGameDays({
   const matches = selected.map((m) => {
     const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
     const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
+    const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
+    const isSchedulable =
+      statusAlias !== 'CANCELLED' &&
+      statusAlias !== 'FINISHED' &&
+      statusAlias !== 'LIVE';
     const isUrgent =
       !flags.accepted &&
+      isSchedulable &&
       mskKickoff.getTime() >= nowMskTs &&
       mskKickoff.getTime() - nowMskTs < sevenDaysMs;
     return {
@@ -365,6 +390,9 @@ export async function listNextGameDays({
       tournament: m.Tournament?.name || null,
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
+      status: m.GameStatus
+        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+        : null,
       agreement_accepted: !!flags.accepted,
       agreement_pending: !!flags.pending && !flags.accepted,
       urgent_unagreed: isUrgent,
@@ -382,3 +410,152 @@ export async function listNextGameDays({
 }
 
 export default { listNextDays, listNextGameDays };
+
+/**
+ * Admin: set match kickoff (UTC ISO) and ground, lock schedule against club changes, and sync to external DB.
+ * @param {Object} params
+ * @param {string} params.matchId
+ * @param {string|Date} params.dateStart - ISO string (UTC) or Date
+ * @param {string} params.groundId - UUID
+ * @param {string} params.actorId - admin user ID
+ */
+export async function updateScheduleAndLock({
+  matchId,
+  dateStart,
+  groundId,
+  actorId,
+}) {
+  const match = await Match.findByPk(matchId);
+  if (!match) throw new ServiceError('match_not_found', 404);
+  const ground = await Ground.findByPk(groundId);
+  if (!ground) throw new ServiceError('ground_not_found', 404);
+
+  const kickoff = dateStart instanceof Date ? dateStart : new Date(dateStart);
+  if (!kickoff || Number.isNaN(kickoff.getTime()))
+    throw new ServiceError('invalid_kickoff_time', 400);
+
+  // Prevent scheduling in the past
+  if (kickoff.getTime() <= Date.now())
+    throw new ServiceError('kickoff_must_be_in_future', 400);
+
+  // Pre-validate external sync before committing local changes
+  try {
+    await externalSync.syncApprovedMatchToExternal({
+      matchId,
+      groundId,
+      dateStart: kickoff,
+    });
+  } catch (err) {
+    const code =
+      err?.code === 'EXTERNAL_DB_UNAVAILABLE'
+        ? 'external_db_unavailable'
+        : 'external_sync_failed';
+    throw new ServiceError(code, 502);
+  }
+
+  // Local transaction: update match and supersede any pending agreements
+  await sequelize.transaction(async (tx) => {
+    // Ensure game status is SCHEDULED after admin assignment
+    let scheduledStatusId = null;
+    try {
+      const scheduled = await GameStatus.findOne({
+        where: { alias: 'SCHEDULED' },
+        attributes: ['id'],
+        transaction: tx,
+      });
+      scheduledStatusId = scheduled?.id || null;
+    } catch {
+      scheduledStatusId = null;
+    }
+
+    // Do not override a definitive external status (CANCELLED/POSTPONED/LIVE/FINISHED)
+    const keepStatusId = match.game_status_id || null;
+    try {
+      if (match.game_status_id) {
+        const current = await GameStatus.findByPk(match.game_status_id, {
+          attributes: ['alias'],
+          transaction: tx,
+        });
+        const alias = (current?.alias || '').toUpperCase();
+        const isDefinitive =
+          alias === 'CANCELLED' ||
+          alias === 'POSTPONED' ||
+          alias === 'FINISHED' ||
+          alias === 'LIVE';
+        if (isDefinitive) scheduledStatusId = null; // keep external-driven status
+      }
+    } catch {
+      /* ignore */
+    }
+    await match.update(
+      {
+        date_start: kickoff,
+        ground_id: groundId,
+        schedule_locked_by_admin: true,
+        game_status_id: scheduledStatusId ?? keepStatusId ?? null,
+        // snapshot Moscow date-only if not set yet
+        scheduled_date:
+          match.scheduled_date ||
+          (kickoff
+            ? (() => {
+                const msk = utcToMoscow(kickoff) || kickoff;
+                const y = msk.getUTCFullYear();
+                const m = String(msk.getUTCMonth() + 1).padStart(2, '0');
+                const d = String(msk.getUTCDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+              })()
+            : null),
+        updated_by: actorId,
+      },
+      { transaction: tx }
+    );
+
+    // Mark all pending agreements as SUPERSEDED to reflect admin override
+    const pending = await MatchAgreementStatus.findOne({
+      where: { alias: 'PENDING' },
+      attributes: ['id'],
+      transaction: tx,
+    });
+    const superseded = await MatchAgreementStatus.findOne({
+      where: { alias: 'SUPERSEDED' },
+      attributes: ['id'],
+      transaction: tx,
+    });
+    if (pending && superseded) {
+      await MatchAgreement.update(
+        { status_id: superseded.id, updated_by: actorId },
+        { where: { match_id: matchId, status_id: pending.id }, transaction: tx }
+      );
+    }
+
+    // Append explicit timeline event: admin override (use ACCEPTED status for parity)
+    const adminType = await MatchAgreementType.findOne({
+      where: { alias: 'ADMIN_OVERRIDE' },
+      attributes: ['id'],
+      transaction: tx,
+    });
+    const accepted = await MatchAgreementStatus.findOne({
+      where: { alias: 'ACCEPTED' },
+      attributes: ['id'],
+      transaction: tx,
+    });
+    if (adminType && accepted) {
+      await MatchAgreement.create(
+        {
+          match_id: matchId,
+          type_id: adminType.id,
+          status_id: accepted.id,
+          author_user_id: actorId,
+          ground_id: groundId,
+          date_start: kickoff,
+          parent_id: null,
+          created_by: actorId,
+          updated_by: actorId,
+        },
+        { transaction: tx }
+      );
+    }
+  });
+
+  return { ok: true };
+}

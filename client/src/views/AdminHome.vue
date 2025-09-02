@@ -48,6 +48,11 @@ const systemSections = computed(() => {
       icon: 'bi-building',
       to: '/admin/sport-schools',
     });
+    items.push({
+      title: 'Синхронизация',
+      icon: 'bi-arrow-repeat',
+      to: '/admin/system-ops',
+    });
   }
   return items;
 });

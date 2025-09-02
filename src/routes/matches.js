@@ -3,12 +3,17 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller, { get as getMatch } from '../controllers/matchController.js';
-import adminController from '../controllers/matchAdminController.js';
+import adminController, {
+  setSchedule as setAdminSchedule,
+} from '../controllers/matchAdminController.js';
+import { adminSetScheduleRules } from '../validators/matchAdminValidators.js';
+import validate from '../middlewares/validate.js';
 import agreementController, {
   availableGrounds as availableAgreementGrounds,
   opponentContacts as agreementOpponentContacts,
 } from '../controllers/matchAgreementController.js';
-import validate from '../middlewares/validate.js';
+import { rescheduleRules } from '../validators/matchRescheduleValidators.js';
+import rescheduleController from '../controllers/matchRescheduleController.js';
 import { createAgreementRules } from '../validators/matchAgreementValidators.js';
 
 const router = express.Router();
@@ -83,12 +88,32 @@ router.get(
   agreementOpponentContacts
 );
 
+// Reschedule postponed match: set new date (MSK 00:00), clear external cancel_status
+router.post(
+  '/:id/reschedule',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  rescheduleRules,
+  validate,
+  rescheduleController.reschedule
+);
+
 // Admin: calendar for the next N days (default 10), global scope
 router.get(
   '/admin/calendar',
   auth,
   authorize('ADMIN'),
   adminController.calendar
+);
+
+// Admin: set schedule (kickoff + ground) and lock further changes by clubs
+router.post(
+  '/admin/:id/schedule',
+  auth,
+  authorize('ADMIN'),
+  adminSetScheduleRules,
+  validate,
+  setAdminSchedule
 );
 
 export default router;

@@ -113,6 +113,8 @@ export { listPast };
 
 export async function get(req, res, next) {
   try {
+    // Lazy import Club to avoid strict module mocks in tests failing on named exports
+    const { Club, GameStatus } = await import('../models/index.js');
     const m = await Match.findByPk(req.params.id, {
       attributes: [
         'id',
@@ -122,10 +124,22 @@ export async function get(req, res, next) {
         'team2_id',
         'season_id',
         'stage_id',
+        'schedule_locked_by_admin',
+        'scheduled_date',
       ],
       include: [
-        { model: Team, as: 'HomeTeam', attributes: ['name'] },
-        { model: Team, as: 'AwayTeam', attributes: ['name'] },
+        {
+          model: Team,
+          as: 'HomeTeam',
+          attributes: ['name'],
+          include: [{ model: Club, attributes: ['name'] }],
+        },
+        {
+          model: Team,
+          as: 'AwayTeam',
+          attributes: ['name'],
+          include: [{ model: Club, attributes: ['name'] }],
+        },
         {
           model: Ground,
           attributes: ['id', 'name', 'yandex_url'],
@@ -141,6 +155,7 @@ export async function get(req, res, next) {
         { model: TournamentGroup, attributes: ['name'] },
         { model: Tour, attributes: ['name'] },
         { model: Season, attributes: ['name'] },
+        { model: GameStatus, attributes: ['name', 'alias'] },
       ],
     });
     if (!m) return res.status(404).json({ error: 'match_not_found' });
@@ -159,6 +174,7 @@ export async function get(req, res, next) {
       match: {
         id: m.id,
         date_start: m.date_start,
+        scheduled_date: m.scheduled_date || null,
         team1_id: m.team1_id,
         team2_id: m.team2_id,
         ground: m.Ground?.name || null,
@@ -177,6 +193,8 @@ export async function get(req, res, next) {
           : null,
         team1: m.HomeTeam?.name || null,
         team2: m.AwayTeam?.name || null,
+        home_club: m.HomeTeam?.Club?.name || null,
+        away_club: m.AwayTeam?.Club?.name || null,
         tournament: m.Tournament?.name || null,
         stage: m.Stage?.name || null,
         group: m.TournamentGroup?.name || null,
@@ -184,6 +202,10 @@ export async function get(req, res, next) {
         season: m.Season?.name || null,
         is_home: isHome,
         is_away: isAway,
+        schedule_locked_by_admin: !!m.schedule_locked_by_admin,
+        status: m.GameStatus
+          ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+          : null,
       },
     });
   } catch (e) {

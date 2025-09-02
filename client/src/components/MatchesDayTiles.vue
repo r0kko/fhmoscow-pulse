@@ -12,6 +12,8 @@ const props = defineProps({
   showActions: { type: Boolean, default: true },
   showDayHeader: { type: Boolean, default: true },
   noScroll: { type: Boolean, default: false },
+  // Base path for details links, e.g., '/school-matches' or '/admin/matches'
+  detailsBase: { type: String, default: '/school-matches' },
 });
 
 const groups = computed(() => {
@@ -39,10 +41,69 @@ function formatTime(dateStr) {
 }
 
 function rowClass(m) {
-  if (m?.agreement_accepted) return 'state-accepted';
-  if (m?.urgent_unagreed) return 'state-urgent';
-  if (m?.agreement_pending) return 'state-pending';
+  // Row background states removed per new UX (use status pill instead)
   return '';
+}
+
+// Compute UI-facing status combining schedule state and time proximity
+function computeUiStatus(m) {
+  const alias = (m?.status?.alias || '').toUpperCase();
+  // Non-schedulable statuses always prevail over frontend states
+  const schedulable = !['CANCELLED', 'FINISHED', 'LIVE', 'POSTPONED'].includes(
+    alias
+  );
+  // Past matches: always show backend-provided status
+  const ts = new Date(m?.date || '').getTime();
+  const isPast = isFinite(ts) && ts < Date.now();
+  if (isPast)
+    return { text: m?.status?.name || '—', cls: statusPillClassByAlias(alias) };
+  const agreed = Boolean(m?.agreement_accepted);
+  const pending = Boolean(m?.agreement_pending);
+  if (!schedulable) {
+    // Keep backend statuses like POSTPONED/CANCELLED/LIVE/FINISHED as-is
+    return { text: m?.status?.name || '—', cls: statusPillClassByAlias(alias) };
+  }
+  if (agreed) {
+    // Only when time is agreed
+    return { text: 'По расписанию', cls: 'pill pill-success' };
+  }
+  const diffMs = new Date(m?.date || '').getTime() - Date.now();
+  const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+  const soon = isFinite(diffMs) && diffMs >= 0 && diffMs < tenDaysMs;
+  if (pending || soon) {
+    // Call-to-action either due to pending request or proximity
+    return { text: 'Согласуйте время', cls: 'pill pill-warning' };
+  }
+  // Far away and not yet agreed
+  return { text: 'Согласование времени', cls: 'pill pill-muted' };
+}
+
+function gameMetaLine(m) {
+  const parts = [m.tournament, m.group, m.tour]
+    .map((s) => (s || '').toString().trim())
+    .filter(Boolean);
+  return parts.join(' · ');
+}
+
+function isStatusReplacingSchedule(m) {
+  const alias = (m?.status?.alias || '').toUpperCase();
+  return alias === 'POSTPONED' || alias === 'CANCELLED';
+}
+
+function statusPillClassByAlias(alias) {
+  switch (alias) {
+    case 'POSTPONED':
+      return 'pill pill-warning';
+    case 'CANCELLED':
+      return 'pill pill-danger';
+    case 'LIVE':
+      return 'pill pill-info';
+    case 'FINISHED':
+      return 'pill pill-success';
+    case 'SCHEDULED':
+    default:
+      return 'pill pill-muted';
+  }
 }
 </script>
 
@@ -71,14 +132,8 @@ function rowClass(m) {
           aria-label="Список матчей за день"
         >
           <div class="grid-header" role="row">
-            <div class="cell col-teams" role="columnheader">Команды</div>
-            <div class="cell col-tournament" role="columnheader">
-              Соревнование
-            </div>
-            <div class="cell col-group d-none-sm" role="columnheader">
-              Группа
-            </div>
-            <div class="cell col-tour d-none-sm" role="columnheader">Тур</div>
+            <div class="cell col-teams" role="columnheader">Матч</div>
+            <div class="cell col-status" role="columnheader">Статус</div>
             <div class="cell col-time" role="columnheader">Время</div>
             <div class="cell col-stadium" role="columnheader">Стадион</div>
             <div
@@ -89,48 +144,68 @@ function rowClass(m) {
               Действия
             </div>
           </div>
-          <div
-            v-for="m in group.list"
-            :key="m.id"
-            class="grid-row"
-            :class="rowClass(m)"
-            role="row"
-          >
-            <div
-              class="cell col-teams fw-semibold"
-              role="cell"
-              :title="`${m.team1} — ${m.team2}`"
-            >
-              {{ m.team1 }} — {{ m.team2 }}
+          <div v-for="m in group.list" :key="m.id" class="grid-row" role="row">
+            <div class="cell col-teams" role="cell">
+              <div class="teams-line" :title="`${m.team1} — ${m.team2}`">
+                {{ m.team1 }} — {{ m.team2 }}
+              </div>
+              <div
+                v-if="gameMetaLine(m)"
+                class="meta-line"
+                :title="gameMetaLine(m)"
+              >
+                {{ gameMetaLine(m) }}
+              </div>
             </div>
-            <div
-              class="cell col-tournament"
-              role="cell"
-              :title="m.tournament || ''"
-            >
-              {{ m.tournament || '—' }}
-            </div>
-            <div
-              class="cell col-group d-none-sm"
-              role="cell"
-              :title="m.group || ''"
-            >
-              {{ m.group || '—' }}
-            </div>
-            <div
-              class="cell col-tour d-none-sm"
-              role="cell"
-              :title="m.tour || ''"
-            >
-              {{ m.tour || '—' }}
+            <div class="cell col-status" role="cell">
+              <span
+                class="status-pill"
+                :class="computeUiStatus(m).cls"
+                :title="m.status?.name || computeUiStatus(m).text"
+              >
+                <i
+                  v-if="(m.status?.alias || '').toUpperCase() === 'POSTPONED'"
+                  class="bi bi-arrow-repeat icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="
+                    (m.status?.alias || '').toUpperCase() === 'CANCELLED'
+                  "
+                  class="bi bi-x-octagon icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'По расписанию'"
+                  class="bi bi-check2-circle icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'Согласуйте время'"
+                  class="bi bi-exclamation-circle icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'Согласование времени'"
+                  class="bi bi-hourglass-split icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                {{ computeUiStatus(m).text }}
+              </span>
             </div>
             <div class="cell col-time" role="cell">
-              <i class="bi bi-clock icon-muted me-1" aria-hidden="true"></i>
-              {{ formatTime(m.date) }}
+              <template v-if="isStatusReplacingSchedule(m)">—</template>
+              <template v-else>
+                <i class="bi bi-clock icon-muted me-1" aria-hidden="true"></i>
+                {{ formatTime(m.date) }}
+              </template>
             </div>
             <div class="cell col-stadium" role="cell" :title="m.stadium || ''">
-              <i class="bi bi-geo-alt icon-muted me-1" aria-hidden="true"></i>
-              {{ m.stadium || '—' }}
+              <template v-if="!isStatusReplacingSchedule(m)">
+                <i class="bi bi-geo-alt icon-muted me-1" aria-hidden="true"></i>
+                {{ m.stadium || '—' }}
+              </template>
+              <template v-else>—</template>
             </div>
             <div
               v-if="props.showActions"
@@ -138,7 +213,7 @@ function rowClass(m) {
               role="cell"
             >
               <RouterLink
-                :to="`/school-matches/${m.id}`"
+                :to="`${props.detailsBase}/${m.id}`"
                 class="btn btn-link p-0 text-primary"
                 :title="`Открыть карточку матча`"
                 aria-label="Открыть карточку матча"
@@ -182,14 +257,23 @@ function rowClass(m) {
 /* Grid table with synchronized columns across tiles via fixed template */
 .grid-table {
   display: grid;
-  /* Desktop: шире Команды, меньше Время и Группа; actions is narrow */
-  grid-template-columns: 2.4fr 1.4fr 0.8fr 0.8fr 0.7fr 1.2fr 0.9fr;
+  /* Columns: Match | Status | Time | Stadium | Actions */
+  grid-template-columns:
+    minmax(0, 2.6fr)
+    minmax(0, 1.5fr)
+    minmax(0, 1.1fr)
+    minmax(0, 1.6fr)
+    minmax(0, 0.9fr);
   row-gap: 0.25rem;
 }
 
 .grid-table.no-actions {
   /* Without actions column, re-distribute space */
-  grid-template-columns: 2.6fr 1.5fr 0.9fr 0.9fr 0.8fr 1.6fr;
+  grid-template-columns:
+    minmax(0, 2.8fr)
+    minmax(0, 1.5fr)
+    minmax(0, 1.1fr)
+    minmax(0, 2fr);
 }
 
 .grid-header {
@@ -206,9 +290,26 @@ function rowClass(m) {
 .cell {
   padding: 0.375rem 0.25rem;
   border-bottom: 1px solid #f0f2f4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+/* Vertically center status pin, time and stadium within the row */
+.col-status,
+.col-time,
+.col-stadium {
+  display: flex;
+  align-items: center;
+  /* ensure a comfortable touch target without affecting row auto-height */
+  min-height: 2rem;
+}
+
+/* Allow grid children to shrink so ellipsis works */
+.col-teams,
+.col-status,
+.col-time,
+.col-stadium,
+.col-actions {
+  min-width: 0;
 }
 
 .grid-header .cell {
@@ -221,25 +322,73 @@ function rowClass(m) {
   color: #6c757d;
 }
 
-/* Row state backgrounds (use Bootstrap 5.3 subtle palette) */
-.grid-row.state-accepted {
-  --row-bg: var(--bs-success-bg-subtle, #d1e7dd);
-}
-.grid-row.state-pending {
-  --row-bg: var(--bs-warning-bg-subtle, #fff3cd);
-}
-.grid-row.state-urgent {
-  --row-bg: var(--bs-danger-bg-subtle, #f8d7da);
-}
-.grid-row.state-accepted .cell,
-.grid-row.state-pending .cell,
-.grid-row.state-urgent .cell {
-  background: var(--row-bg);
-}
+/* Row background highlighting removed per new UX */
 
 .col-teams {
   white-space: normal;
 }
+.teams-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.meta-line {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  min-height: 1.5rem;
+}
+.status-pill {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill .icon-pin {
+  font-size: 0.9em;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+.pill .icon-pin {
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+.status-pill.pill-warning {
+  background: var(--bs-warning-bg-subtle, #fff3cd);
+  color: var(--bs-warning-text, #664d03);
+  border-color: rgba(255, 193, 7, 0.35);
+}
+.status-pill.pill-danger {
+  background: var(--bs-danger-bg-subtle, #f8d7da);
+  color: var(--bs-danger-text, #842029);
+  border-color: rgba(220, 53, 69, 0.35);
+}
+.status-pill.pill-info {
+  background: var(--bs-info-bg-subtle, #cff4fc);
+  color: var(--bs-info-text, #055160);
+  border-color: rgba(13, 202, 240, 0.35);
+}
+.status-pill.pill-success {
+  background: var(--bs-success-bg-subtle, #d1e7dd);
+  color: var(--bs-success-text, #0f5132);
+  border-color: rgba(25, 135, 84, 0.35);
+}
+.status-pill.pill-muted {
+  background: #f1f3f5;
+  color: #495057;
+}
+/* time displayed inline without pill */
 
 /* Responsive: карточный подход на мобильных */
 @media (max-width: 575.98px) {
@@ -266,12 +415,7 @@ function rowClass(m) {
     box-shadow: var(--shadow-tile);
     background: #fff;
   }
-  .grid-row.state-accepted,
-  .grid-row.state-pending,
-  .grid-row.state-urgent {
-    background: var(--row-bg);
-    border-color: rgba(0, 0, 0, 0.05);
-  }
+  /* No special state background on mobile either */
   .cell {
     border-bottom: 0;
     padding: 0.125rem 0;
@@ -281,28 +425,18 @@ function rowClass(m) {
     margin-bottom: 0.125rem;
     white-space: normal;
   }
-  /* Бейджи: турнир, группа, тур в одну линию */
-  .col-tournament,
-  .col-group,
-  .col-tour {
-    display: inline-block;
+  .meta-line {
     font-size: 0.8125rem;
-    color: var(--brand-color);
-    background: rgba(17, 56, 103, 0.12);
-    border: 1px solid rgba(17, 56, 103, 0.2);
-    border-radius: var(--radius-xs);
-    padding: 0.125rem 0.375rem;
-    margin-right: 0.25rem;
   }
+  .col-status,
   .col-time,
   .col-stadium {
     display: inline-block;
     color: #6c757d;
     font-size: 0.875rem;
   }
-  .col-time::after {
-    content: ' · ';
-    color: #adb5bd;
+  .col-status {
+    margin-right: 0.5rem;
   }
   .d-none-sm {
     display: none;

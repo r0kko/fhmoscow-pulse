@@ -44,6 +44,8 @@ import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
 import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
 import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
+import AdminMatch from './views/AdminMatch.vue';
+import AdminSystemOps from './views/AdminSystemOps.vue';
 import Qualification from './views/Qualification.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import ChangePassword from './views/ChangePassword.vue';
@@ -67,6 +69,11 @@ const routes = [
     path: '/admin/sports-calendar',
     component: AdminSportsCalendar,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Календарь игр' },
+  },
+  {
+    path: '/admin/matches/:id',
+    component: AdminMatch,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Матч' },
   },
   {
     path: '/profile',
@@ -146,6 +153,11 @@ const routes = [
       requiresAdmin: true,
       title: 'Администрирование',
     },
+  },
+  {
+    path: '/admin/system-ops',
+    component: AdminSystemOps,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Синхронизация' },
   },
   {
     path: '/admin/referee-availability',

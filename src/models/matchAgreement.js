@@ -18,6 +18,7 @@ MatchAgreement.init(
     ground_id: { type: DataTypes.UUID, allowNull: false },
     date_start: { type: DataTypes.DATE, allowNull: false },
     parent_id: { type: DataTypes.UUID, allowNull: true },
+    decision_reminded_at: { type: DataTypes.DATE, allowNull: true },
   },
   {
     sequelize,

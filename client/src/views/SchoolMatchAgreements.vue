@@ -35,12 +35,18 @@ const acceptedExists = computed(() =>
 );
 const isHome = computed(() => Boolean(match.value?.is_home));
 const isAway = computed(() => Boolean(match.value?.is_away));
+const isParticipant = computed(() => isHome.value || isAway.value);
 const isPast = computed(() => {
   const iso = match.value?.date_start;
   if (!iso) return false;
   const t = new Date(iso).getTime();
   return !Number.isNaN(t) && t <= Date.now();
 });
+const isLocked = computed(() => Boolean(match.value?.schedule_locked_by_admin));
+const statusAlias = computed(() =>
+  (match.value?.status?.alias || '').toUpperCase()
+);
+const isCancelled = computed(() => statusAlias.value === 'CANCELLED');
 const pageTitle = computed(() => {
   const a = match.value?.team1 || '';
   const b = match.value?.team2 || '';
@@ -108,7 +114,9 @@ const canShowHomeProposal = computed(
     !pending.value &&
     hasAvailableGrounds.value &&
     Boolean(match.value?.date_start) &&
-    !isPast.value
+    !isPast.value &&
+    !isLocked.value &&
+    !isCancelled.value
 );
 
 const stadiumAddress = computed(
@@ -173,24 +181,42 @@ async function loadAll() {
   loading.value = true;
   error.value = '';
   try {
-    const [mres, ares, gres] = await Promise.all([
-      apiFetch(`/matches/${route.params.id}`),
-      apiFetch(`/matches/${route.params.id}/agreements`),
-      apiFetch(`/matches/${route.params.id}/available-grounds`),
-    ]);
+    const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
+    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
     agreements.value = (ares.agreements || []).map((a) => a);
-    const gg = Array.isArray(gres.grounds) ? gres.grounds : [];
-    const clubName = gres.club?.name || '';
-    groups.value = gg.length ? [{ club: { name: clubName }, grounds: gg }] : [];
-    groundId.value = gg[0]?.id || '';
+    // Fetch available grounds only for participants (to avoid 403 and noisy UX)
+    if (isParticipant.value) {
+      try {
+        const gres = await apiFetch(
+          `/matches/${route.params.id}/available-grounds`
+        );
+        const gg = Array.isArray(gres.grounds) ? gres.grounds : [];
+        const clubName = gres.club?.name || '';
+        groups.value = gg.length
+          ? [{ club: { name: clubName }, grounds: gg }]
+          : [];
+        groundId.value = gg[0]?.id || '';
+      } catch (e) {
+        // Do not surface error to user; keep grounds empty if forbidden
+        groups.value = [];
+        groundId.value = '';
+      }
+    } else {
+      groups.value = [];
+      groundId.value = '';
+    }
     if (match.value?.date_start) {
       const local = toDateTimeLocal(match.value.date_start, MOSCOW_TZ);
       timeStr.value = local?.slice(11, 16) || '';
     }
     await loadContacts();
   } catch (e) {
-    error.value = e.message || 'Ошибка загрузки данных';
+    // Show friendly error; mask low-level forbidden
+    const msg = String(e?.message || 'Ошибка загрузки данных');
+    error.value = /forbidden/i.test(msg)
+      ? 'Недоступно: вы не участник этого матча'
+      : msg;
   } finally {
     loading.value = false;
   }
@@ -200,6 +226,9 @@ async function submitProposal(parentId = null) {
   submitting.value = true;
   error.value = '';
   try {
+    if (!isParticipant.value) {
+      throw new Error('Недоступно: вы не участник этого матча');
+    }
     const body = {
       ground_id: groundId.value,
       date_start: buildDateStartUtc(),
@@ -221,6 +250,9 @@ async function approve(agreementId) {
   submitting.value = true;
   error.value = '';
   try {
+    if (!isParticipant.value) {
+      throw new Error('Недоступно: вы не участник этого матча');
+    }
     await apiFetch(
       `/matches/${route.params.id}/agreements/${agreementId}/approve`,
       { method: 'POST' }
@@ -245,6 +277,9 @@ async function decline(agreementId) {
   submitting.value = true;
   error.value = '';
   try {
+    if (!isParticipant.value) {
+      throw new Error('Недоступно: вы не участник этого матча');
+    }
     await apiFetch(
       `/matches/${route.params.id}/agreements/${agreementId}/decline`,
       { method: 'POST' }
@@ -261,6 +296,9 @@ async function withdraw(agreementId) {
   submitting.value = true;
   error.value = '';
   try {
+    if (!isParticipant.value) {
+      throw new Error('Недоступно: вы не участник этого матча');
+    }
     await apiFetch(
       `/matches/${route.params.id}/agreements/${agreementId}/withdraw`,
       { method: 'POST' }
@@ -329,6 +367,17 @@ async function loadContacts() {
         </ol>
       </nav>
       <h1 class="mb-3">{{ pageTitle || 'Матч' }}</h1>
+      <div
+        v-if="!loading && match && !isParticipant"
+        class="alert alert-warning d-flex align-items-center"
+        role="alert"
+      >
+        <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+        <div>
+          Недоступно: вы не участник этого матча. Для действий по согласованию
+          требуется привязка к команде.
+        </div>
+      </div>
 
       <!-- Sticky compact status bar -->
       <div v-if="compactHeader" class="sticky-status shadow-sm">
@@ -354,6 +403,9 @@ async function loadContacts() {
         <!-- Header: Teams, datetime, meta, side marker -->
         <div class="card section-card tile fade-in shadow-sm mb-3">
           <div class="card-body">
+            <div v-if="isCancelled" class="alert alert-warning" role="alert">
+              Матч отменён. Действия по согласованию недоступны.
+            </div>
             <div
               class="d-flex justify-content-between align-items-start flex-wrap gap-2"
             >
@@ -445,7 +497,7 @@ async function loadContacts() {
         </div>
 
         <!-- Two-column layout: propose (left) and decision/history (right) -->
-        <div class="row g-3">
+        <div class="row g-3" :aria-disabled="!isParticipant">
           <div v-if="canShowHomeProposal" class="col-12 col-xl-5">
             <div class="card section-card tile fade-in shadow-sm h-100">
               <div
@@ -536,12 +588,36 @@ async function loadContacts() {
                 >
               </div>
               <div class="card-body">
+                <div
+                  v-if="isLocked"
+                  class="alert alert-secondary d-flex align-items-center py-2 px-3 mb-3"
+                  role="status"
+                >
+                  <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
+                  <div>
+                    Расписание утверждено администратором. Действия по
+                    согласованию недоступны.
+                  </div>
+                </div>
+                <div
+                  v-else-if="!isParticipant"
+                  class="alert alert-warning d-flex align-items-center py-2 px-3 mb-3"
+                  role="status"
+                >
+                  <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+                  <div>
+                    Недоступно: вы не участник этого матча. Действия по
+                    согласованию скрыты.
+                  </div>
+                </div>
                 <AgreementTimeline
                   :items="agreements"
                   :is-home="isHome"
                   :is-away="isAway"
                   :submitting="submitting"
-                  :actions-disabled="isPast"
+                  :actions-disabled="
+                    !isParticipant || isPast || isLocked || isCancelled
+                  "
                   @approve="approve"
                   @decline="confirmDecline"
                   @withdraw="withdraw"

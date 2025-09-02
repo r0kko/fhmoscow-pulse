@@ -19,7 +19,9 @@ import validateEnv from '../src/config/validateEnv.js';
 import startTaxationCron from '../src/jobs/taxationCron.js';
 import startSyncAllCron, { runSyncAll } from '../src/jobs/syncAllCron.js';
 import startMatchAgreementReminderCron from '../src/jobs/matchAgreementReminderCron.js';
+import startExternalDbWatchCron from '../src/jobs/externalDbWatchCron.js';
 import { setReady, setSyncing } from '../src/config/readiness.js';
+import { seedJobMetrics } from '../src/config/metrics.js';
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -75,28 +77,64 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   server.listen(port);
   startTaxationCron();
   startMatchAgreementReminderCron();
+  // Watch for external DB availability transitions and trigger sync immediately
+  startExternalDbWatchCron();
 
+  // Start orchestrator cron regardless of external DB availability —
+  // the job itself checks availability and uses a distributed lock.
+  startSyncAllCron();
+
+  // Seed metrics series for known jobs so gauges appear at startup
+  try {
+    await seedJobMetrics([
+      'syncAll',
+      'clubSync',
+      'groundSync',
+      'teamSync',
+      'staffSync',
+      'playerSync',
+      'tournamentSync',
+      'matchAgreementReminders',
+      'taxation',
+    ]);
+  } catch {}
+
+  // Prepare external associations if possible (non-fatal if unavailable now)
   if (isExternalDbAvailable()) {
     await setupExternalAssociations();
-    startSyncAllCron();
+  }
 
-    // Run first full sync in background via orchestrator
-    setSyncing(true);
-    setReady(false);
-    (async () => {
+  // Kick initial full sync with retry/backoff so container restarts don't miss it
+  setReady(true); // API becomes ready as soon as core services are up
+  (async () => {
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+    // Fixed policy: attempt for ~10 minutes with exponential backoff
+    const maxAttempts = 12;
+    let attempt = 0;
+    let backoff = 5_000; // 5s, doubles to a reasonable cap
+    while (attempt < maxAttempts) {
+      attempt += 1;
       try {
+        // Attempt reconnect and association prep best-effort; runSyncAll records metrics even if it skips
+        try { await connectExternalMariaDb(); } catch {}
+        if (isExternalDbAvailable()) { try { await setupExternalAssociations(); } catch {} }
+        setSyncing(true);
         await runSyncAll();
+        console.log('Initial sync completed on attempt', attempt);
+        break;
       } catch (err) {
-        console.error('Initial sync failed:', err);
+        console.warn(
+          `Initial sync attempt #${attempt} failed: ${err?.message || err}. Retrying in ${Math.round(
+            backoff / 1000
+          )}s`
+        );
+        await delay(backoff);
+        backoff = Math.min(backoff * 2, 120_000); // cap at 2 minutes
       } finally {
         setSyncing(false);
-        setReady(true);
       }
-    })();
-  } else {
-    // No external DB — app is ready once core services are up
-    setReady(true);
-  }
+    }
+  })();
 })();
 
 server.on('error', onError);

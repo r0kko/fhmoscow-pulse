@@ -79,6 +79,11 @@ export const ERROR_MESSAGES = {
   external_db_unavailable: 'Внешняя система недоступна. Попробуйте позже.',
   external_sync_failed:
     'Не удалось сохранить изменения во внешней системе. Попробуйте позже.',
+  // Match agreements / participation
+  forbidden_not_match_member:
+    'Недоступно: вы не участник этого матча. Требуется привязка к команде.',
+  match_teams_not_set:
+    'Данные о командах для этого матча ещё не установлены. Обратитесь к администратору лиги.',
 };
 
 export function translateError(code) {

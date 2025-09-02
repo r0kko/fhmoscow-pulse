@@ -603,7 +603,7 @@ onMounted(() => {
               </div>
             </section>
             <section v-if="!isStaffOnly" class="mb-4">
-              <div class="section-card p-3 fade-in">
+              <div class="section-card p-3 fade-in no-shadow">
                 <div class="d-flex align-items-start">
                   <i class="bi bi-globe fs-4 me-3"></i>
                   <div>
@@ -739,6 +739,12 @@ onMounted(() => {
   .profile-page section {
     margin-bottom: 1rem !important;
   }
+}
+
+/* Remove elevation and border specifically for the taxation/delete block */
+.section-card.no-shadow {
+  box-shadow: none !important;
+  border: none !important;
 }
 
 @keyframes fadeIn {

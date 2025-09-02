@@ -58,17 +58,23 @@ const filteredHome = computed(() => filterByQuery(homeMatches.value));
 const filteredAway = computed(() => filterByQuery(awayMatches.value));
 
 // Attention indicators for tabs (pending or urgent agreements)
+function needsAttention(m) {
+  const alias = (m?.status?.alias || '').toUpperCase();
+  const schedulable = !['CANCELLED', 'FINISHED', 'LIVE'].includes(alias);
+  const agreed = Boolean(m?.agreement_accepted);
+  if (!schedulable || agreed) return false;
+  const diffMs = new Date(m?.date || '').getTime() - Date.now();
+  const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+  const urgent = isFinite(diffMs) && diffMs >= 0 && diffMs < tenDaysMs;
+  const pending = Boolean(m?.agreement_pending);
+  return urgent || pending;
+}
+
 const attentionCountHome = computed(() =>
-  homeMatches.value.reduce(
-    (acc, m) => acc + (m?.urgent_unagreed || m?.agreement_pending ? 1 : 0),
-    0
-  )
+  homeMatches.value.reduce((acc, m) => acc + (needsAttention(m) ? 1 : 0), 0)
 );
 const attentionCountAway = computed(() =>
-  awayMatches.value.reduce(
-    (acc, m) => acc + (m?.urgent_unagreed || m?.agreement_pending ? 1 : 0),
-    0
-  )
+  awayMatches.value.reduce((acc, m) => acc + (needsAttention(m) ? 1 : 0), 0)
 );
 const attentionBadgeHome = computed(() =>
   attentionCountHome.value > 99 ? '99+' : String(attentionCountHome.value)
@@ -413,16 +419,18 @@ function onChangePageSize(val) {
 
           <div class="legend small text-muted mb-3" aria-label="Обозначения">
             <span class="legend-item">
-              <span class="legend-dot bg-success-subtle border"></span>
-              Согласован
+              <span class="pill status-pill pill-success">По расписанию</span>
             </span>
             <span class="legend-item">
-              <span class="legend-dot bg-warning-subtle border"></span>
-              Ожидает согласования
+              <span class="pill status-pill pill-muted"
+                >Согласование времени</span
+              >
             </span>
             <span class="legend-item">
-              <span class="legend-dot bg-danger-subtle border"></span>
-              Менее 7 суток до начала матча
+              <span class="pill status-pill pill-warning"
+                >Согласуйте время</span
+              >
+              <span class="ms-1">(до матча &lt; 10 дней или есть заявка)</span>
             </span>
           </div>
 
@@ -498,5 +506,30 @@ export default { name: 'SchoolMatchesView' };
   display: inline-block;
   border-radius: 3px;
   border-color: var(--border-subtle) !important;
+}
+
+/* Local pill samples for legend (scoped) */
+.legend .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.875rem;
+}
+.legend .status-pill.pill-success {
+  background: var(--bs-success-bg-subtle, #d1e7dd);
+  color: var(--bs-success-text, #0f5132);
+  border-color: rgba(25, 135, 84, 0.35);
+}
+.legend .status-pill.pill-muted {
+  background: #f1f3f5;
+  color: #495057;
+}
+.legend .status-pill.pill-warning {
+  background: var(--bs-warning-bg-subtle, #fff3cd);
+  color: var(--bs-warning-text, #664d03);
+  border-color: rgba(255, 193, 7, 0.35);
 }
 </style>

@@ -127,6 +127,7 @@ async function listUpcomingLocal(userId, options) {
     Tour,
     MatchAgreement,
     MatchAgreementStatus,
+    GameStatus,
   } = await import('../models/index.js');
   const compatArrayReturn = typeof options !== 'object' || options === null;
   const opts = compatArrayReturn
@@ -156,12 +157,20 @@ async function listUpcomingLocal(userId, options) {
     ];
 
   const findOptions = {
-    attributes: ['id', 'date_start', 'team1_id', 'team2_id', 'ground_id'],
+    attributes: [
+      'id',
+      'date_start',
+      'team1_id',
+      'team2_id',
+      'ground_id',
+      'scheduled_date',
+    ],
     where,
     include: [
       { model: Team, as: 'HomeTeam', attributes: ['name'] },
       { model: Team, as: 'AwayTeam', attributes: ['name'] },
       { model: Ground, attributes: ['name'] },
+      { model: GameStatus, attributes: ['name', 'alias'] },
       // enrich with competition meta
       { model: Tournament, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
@@ -228,9 +237,13 @@ async function listUpcomingLocal(userId, options) {
     return rowsRaw.map((m) => ({
       id: m.id,
       date: m.date_start,
+      scheduled_date: m.scheduled_date || null,
       stadium: m.Ground?.name || null,
       team1: m.HomeTeam?.name || null,
       team2: m.AwayTeam?.name || null,
+      status: m.GameStatus
+        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+        : null,
       tournament: m.Tournament?.name || null,
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
@@ -257,13 +270,19 @@ async function listUpcomingLocal(userId, options) {
         accepted: false,
         pending: false,
       };
-      // Urgency: less than 7 days to kickoff in Moscow time and not accepted
+      // Urgency: less than 7 days to kickoff in MSK, not accepted, and schedulable status
       const now = new Date();
       const mskNow = utcToMoscow(now) || now;
       const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
       const diffMs = mskKickoff.getTime() - mskNow.getTime();
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-      const isUrgent = !flags.accepted && diffMs >= 0 && diffMs < sevenDaysMs;
+      const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
+      const isSchedulable =
+        statusAlias !== 'CANCELLED' &&
+        statusAlias !== 'FINISHED' &&
+        statusAlias !== 'LIVE';
+      const isUrgent =
+        !flags.accepted && isSchedulable && diffMs >= 0 && diffMs < sevenDaysMs;
       return {
         id: m.id,
         date: m.date_start,
@@ -274,6 +293,10 @@ async function listUpcomingLocal(userId, options) {
         tournament: m.Tournament?.name || null,
         group: m.TournamentGroup?.name || null,
         tour: m.Tour?.name || null,
+        scheduled_date: m.scheduled_date || null,
+        status: m.GameStatus
+          ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+          : null,
         agreement_accepted: !!flags.accepted,
         agreement_pending: !!flags.pending && !flags.accepted,
         urgent_unagreed: isUrgent,
@@ -386,9 +409,8 @@ async function listPast(userId, options) {
 }
 
 async function listPastLocal(userId, options) {
-  const { Match, Ground, Tournament, TournamentGroup, Tour } = await import(
-    '../models/index.js'
-  );
+  const { Match, Ground, Tournament, TournamentGroup, Tour, GameStatus } =
+    await import('../models/index.js');
   const compatArrayReturn = typeof options !== 'object' || options === null;
   const opts = compatArrayReturn
     ? { limit: typeof options === 'number' ? options : undefined }
@@ -430,12 +452,14 @@ async function listPastLocal(userId, options) {
       'team2_id',
       'ground_id',
       'season_id',
+      'scheduled_date',
     ],
     where,
     include: [
       { model: Team, as: 'HomeTeam', attributes: ['name'] },
       { model: Team, as: 'AwayTeam', attributes: ['name'] },
       { model: Ground, attributes: ['name'] },
+      { model: GameStatus, attributes: ['name', 'alias'] },
       { model: Tournament, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
@@ -471,9 +495,13 @@ async function listPastLocal(userId, options) {
     return rowsRaw.map((m) => ({
       id: m.id,
       date: m.date_start,
+      scheduled_date: m.scheduled_date || null,
       stadium: m.Ground?.name || null,
       team1: m.HomeTeam?.name || null,
       team2: m.AwayTeam?.name || null,
+      status: m.GameStatus
+        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+        : null,
       tournament: m.Tournament?.name || null,
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
@@ -506,6 +534,10 @@ async function listPastLocal(userId, options) {
       tour: m.Tour?.name || null,
       season_id: m.season_id || null,
       is_home: teamIds.includes(m.team1_id),
+      scheduled_date: m.scheduled_date || null,
+      status: m.GameStatus
+        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+        : null,
     })),
     count: total,
   };
