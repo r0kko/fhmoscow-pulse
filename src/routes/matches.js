@@ -15,6 +15,11 @@ import agreementController, {
 import { rescheduleRules } from '../validators/matchRescheduleValidators.js';
 import rescheduleController from '../controllers/matchRescheduleController.js';
 import { createAgreementRules } from '../validators/matchAgreementValidators.js';
+import lineupController from '../controllers/matchLineupController.js';
+import { setLineupRules } from '../validators/matchLineupValidators.js';
+import lineupExportController from '../controllers/matchLineupExportController.js';
+import matchStaffController from '../controllers/matchStaffController.js';
+import { setMatchStaffRules } from '../validators/matchStaffValidators.js';
 
 const router = express.Router();
 
@@ -40,6 +45,52 @@ router.get(
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
   agreementController.list
+);
+
+// Lineups
+router.get(
+  '/:id/lineups',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  lineupController.list
+);
+router.post(
+  '/:id/lineups',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  setLineupRules,
+  validate,
+  lineupController.set
+);
+
+// Lineups export (PDF)
+router.get(
+  '/:id/lineups/export.pdf',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  lineupExportController.exportPlayers
+);
+router.get(
+  '/:id/representatives/export.pdf',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  lineupExportController.exportRepresentatives
+);
+
+// Staff selection
+router.get(
+  '/:id/staff',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  matchStaffController.list
+);
+router.post(
+  '/:id/staff',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  setMatchStaffRules,
+  validate,
+  matchStaffController.set
 );
 
 router.post(

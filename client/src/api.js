@@ -223,10 +223,29 @@ export async function apiFetchBlob(path, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    throw new Error(`Ошибка запроса, код ${res.status}`);
+    // Try to extract API error code for friendly message
+    try {
+      const data = await res.clone().json();
+      const message =
+        translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+      const err = new Error(message);
+      err.code = data.error || null;
+      throw err;
+    } catch (_) {
+      throw new Error(`Ошибка запроса, код ${res.status}`);
+    }
   }
   if (!res.ok) {
-    throw new Error(`Ошибка запроса, код ${res.status}`);
+    try {
+      const data = await res.clone().json();
+      const message =
+        translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+      const err = new Error(message);
+      err.code = data.error || null;
+      throw err;
+    } catch (_) {
+      throw new Error(`Ошибка запроса, код ${res.status}`);
+    }
   }
   return res.blob();
 }

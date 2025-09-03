@@ -84,6 +84,37 @@ export const ERROR_MESSAGES = {
     'Недоступно: вы не участник этого матча. Требуется привязка к команде.',
   match_teams_not_set:
     'Данные о командах для этого матча ещё не установлены. Обратитесь к администратору лиги.',
+  match_not_found: 'Матч не найден',
+  team_not_in_match: 'Команда не относится к этому матчу',
+  player_not_in_team: 'Некорректный список игроков для этой команды',
+  team_id_required: 'Не указана команда',
+  player_ids_must_be_array: 'Некорректный формат списка игроков',
+  player_ids_must_be_array_of_strings: 'Некорректные идентификаторы игроков',
+  forbidden_not_team_member:
+    'Недостаточно прав для редактирования состава команды',
+  too_many_goalkeepers: 'В составе на матч не может быть более двух вратарей',
+  too_many_field_players: 'Нельзя выбрать более 20 полевых игроков',
+  too_few_goalkeepers: 'Минимум 1 вратарь в заявке',
+  too_few_field_players: 'Минимум 5 полевых игроков в заявке',
+  too_few_coaches: 'Минимум 1 тренер в заявке',
+  too_many_officials: 'Нельзя выбрать более 8 официальных представителей',
+  head_coach_required: 'Необходимо назначить главного тренера команды',
+  // Leadership
+  captain_required: 'Необходимо указать капитана команды',
+  too_many_captains: 'Можно выбрать только одного капитана',
+  too_many_assistants: 'Можно выбрать не более двух ассистентов капитана',
+  captain_must_be_field_player: 'Капитаном может быть только полевой игрок',
+  assistant_must_be_field_player: 'Ассистентом может быть только полевой игрок',
+  captain_cannot_be_assistant: 'Капитан не может быть ассистентом одновременно',
+  too_many_head_coaches: 'Можно выбрать только одного главного тренера',
+  staff_role_required: 'Выберите должность для всех выбранных представителей',
+  staff_ids_must_be_array: 'Некорректный формат списка представителей',
+  staff_ids_must_be_array_of_strings:
+    'Некорректные идентификаторы представителей',
+  staff_not_in_team: 'Некорректный представитель команды',
+  match_role_required: 'Выберите амплуа для всех выбранных игроков',
+  match_number_required: 'Укажите номер для всех выбранных игроков',
+  duplicate_match_numbers: 'Игровые номера в матче должны быть уникальными',
 };
 
 export function translateError(code) {

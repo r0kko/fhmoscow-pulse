@@ -338,9 +338,15 @@ const statusChip = computed(() => {
             <MenuTile
               title="Составы на матч"
               icon="bi-people"
-              :to="null"
-              :placeholder="true"
-              note="Скоро"
+              :to="
+                isCancelled || !isParticipant
+                  ? null
+                  : `/school-matches/${route.params.id}/lineups`
+              "
+              :placeholder="isCancelled || !isParticipant"
+              :note="
+                isCancelled ? 'Отмена' : !isParticipant ? 'Недоступно' : ''
+              "
             />
             <MenuTile
               title="Судьи матча"

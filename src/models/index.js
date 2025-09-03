@@ -92,6 +92,8 @@ import MatchAgreementType from './matchAgreementType.js';
 import MatchAgreementStatus from './matchAgreementStatus.js';
 import MatchAgreement from './matchAgreement.js';
 import JobLog from './jobLog.js';
+import MatchPlayer from './matchPlayer.js';
+import MatchStaff from './matchStaff.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -336,6 +338,24 @@ Season.hasMany(Match, { foreignKey: 'season_id' });
 Match.belongsTo(Season, { foreignKey: 'season_id' });
 GameStatus.hasMany(Match, { foreignKey: 'game_status_id' });
 Match.belongsTo(GameStatus, { foreignKey: 'game_status_id' });
+
+/* match players (lineups) */
+Match.hasMany(MatchPlayer, { foreignKey: 'match_id' });
+MatchPlayer.belongsTo(Match, { foreignKey: 'match_id' });
+Team.hasMany(MatchPlayer, { foreignKey: 'team_id' });
+MatchPlayer.belongsTo(Team, { foreignKey: 'team_id' });
+TeamPlayer.hasMany(MatchPlayer, { foreignKey: 'team_player_id' });
+MatchPlayer.belongsTo(TeamPlayer, { foreignKey: 'team_player_id' });
+PlayerRole.hasMany(MatchPlayer, { foreignKey: 'role_id' });
+MatchPlayer.belongsTo(PlayerRole, { foreignKey: 'role_id' });
+
+/* match staff (representatives) */
+Match.hasMany(MatchStaff, { foreignKey: 'match_id' });
+MatchStaff.belongsTo(Match, { foreignKey: 'match_id' });
+Team.hasMany(MatchStaff, { foreignKey: 'team_id' });
+MatchStaff.belongsTo(Team, { foreignKey: 'team_id' });
+TeamStaff.hasMany(MatchStaff, { foreignKey: 'team_staff_id' });
+MatchStaff.belongsTo(TeamStaff, { foreignKey: 'team_staff_id' });
 
 /* match agreements */
 Match.hasMany(MatchAgreement, { foreignKey: 'match_id' });
@@ -592,6 +612,8 @@ export {
   PlayerRole,
   ClubPlayer,
   TeamPlayer,
+  MatchPlayer,
+  MatchStaff,
   Staff,
   StaffCategory,
   ClubStaff,

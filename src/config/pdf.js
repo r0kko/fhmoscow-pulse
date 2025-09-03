@@ -75,3 +75,31 @@ export const PDF_META = {
     ? Number(process.env.PDF_BARCODE_OPACITY)
     : undefined,
 };
+
+// Visual style for PDF elements (info boxes etc.)
+const STYLE_VARIANT = (process.env.PDF_STYLE_VARIANT || 'brand').toLowerCase();
+const VARIANTS = {
+  compact: { borderWidth: 0.6, radius: 4, padX: 8, padY: 6 },
+  brand: { borderWidth: 0.8, radius: 6, padX: 10, padY: 8 },
+  cozy: { borderWidth: 1.0, radius: 8, padX: 12, padY: 10 },
+};
+const chosen = VARIANTS[STYLE_VARIANT] || VARIANTS.brand;
+
+export const PDF_STYLE = {
+  infoBox: {
+    borderWidth: chosen.borderWidth,
+    borderColor: '#D0D5DD',
+    radius: chosen.radius,
+    padX: chosen.padX,
+    padY: chosen.padY,
+    background: '#FAFAFA',
+    primaryColor: '#000000',
+    secondaryColor: '#666666',
+    primarySize: 11,
+    secondarySize: 10,
+  },
+  caption: {
+    color: '#666666',
+    size: 9,
+  },
+};
