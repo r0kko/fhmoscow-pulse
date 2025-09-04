@@ -1,0 +1,38 @@
+{
+  "title": "DB & Cache",
+  "uid": "pulse-db-cache",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "db", "redis"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"type": "stat", "title": "Postgres up", "gridPos": {"x":0,"y":0,"w":6,"h":4},
+      "targets": [{"expr": "pg_up", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "stat", "title": "Redis up", "gridPos": {"x":6,"y":0,"w":6,"h":4},
+      "targets": [{"expr": "redis_up", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "timeseries", "title": "DB queries p95 (app)", "gridPos": {"x":12,"y":0,"w":12,"h":8},
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(db_query_duration_seconds_bucket[5m])))",
+        "legendFormat": "{{operation}}",
+        "datasource": {"type":"prometheus","uid":"Prometheus"}
+      }]
+    },
+    {"type":"timeseries", "title":"PG connections", "gridPos":{"x":0,"y":4,"w":12,"h":8},
+      "targets":[{"expr":"sum(pg_stat_activity_count) by (datname)","legendFormat":"{{datname}}","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries", "title":"Redis ops/sec", "gridPos":{"x":12,"y":8,"w":12,"h":8},
+      "targets":[{"expr":"rate(redis_commands_processed_total[5m])","legendFormat":"ops","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries", "title":"Sequelize pool size/free/pending", "gridPos":{"x":0,"y":12,"w":24,"h":8},
+      "targets":[
+        {"expr":"db_pool_size","legendFormat":"size","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"db_pool_free","legendFormat":"free","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"db_pool_pending","legendFormat":"pending","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    }
+  ]
+}
+

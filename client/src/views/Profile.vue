@@ -695,49 +695,14 @@ onMounted(() => {
 }
 
 @media (max-width: 575.98px) {
-  .profile-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .profile-page h1 {
-    margin-bottom: 1rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-
-  .tiles-row .section-card {
-    margin-left: 0;
-    margin-right: 0;
-  }
-
-  .tiles-row {
-    margin-left: -1rem;
-    margin-right: -1rem;
-    padding-right: 1rem;
-  }
-
-  .tiles-row .card-body {
-    padding: 0.75rem;
-  }
-
   .tiles-row .card-title {
     font-size: 1rem;
   }
-
   .tiles-row .card-text {
     font-size: 0.875rem;
   }
-
   .tiles-row .icon-brand {
     font-size: 1.5rem;
-  }
-
-  .profile-page section {
-    margin-bottom: 1rem !important;
   }
 }
 

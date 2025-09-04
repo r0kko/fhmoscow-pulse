@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch, API_BASE } from '../api.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
 
 const loading = ref(true);
@@ -18,6 +18,15 @@ const taxRunning = ref({ taxation: false });
 const taxTriggering = ref(false);
 const taxNotice = ref('');
 let refreshTimer = null;
+
+const reports = {
+  jobRuns(days = 30) {
+    return `${API_BASE}/reports/job-runs.csv?days=${days}`;
+  },
+  httpErrors(days = 7) {
+    return `${API_BASE}/reports/http-errors.csv?days=${days}`;
+  },
+};
 
 async function load() {
   loading.value = true;
@@ -244,7 +253,30 @@ onUnmounted(() => {
         <div class="col-12 col-lg-8">
           <div class="card h-100">
             <div class="card-body">
-              <h2 class="h6 mb-3">Состояние джоб</h2>
+              <div
+                class="d-flex justify-content-between align-items-center mb-2"
+              >
+                <h2 class="h6 mb-0">Состояние джоб</h2>
+                <div class="btn-group">
+                  <a
+                    class="btn btn-sm btn-outline-secondary"
+                    :href="reports.jobRuns(30)"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Экспорт запусков (30 дн)
+                  </a>
+                  <a
+                    class="btn btn-sm btn-outline-secondary"
+                    :href="reports.httpErrors(7)"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Экспорт ошибок (7 дн)
+                  </a>
+                </div>
+              </div>
+
               <div class="table-responsive">
                 <table
                   class="table table-striped align-middle mb-0 admin-table"

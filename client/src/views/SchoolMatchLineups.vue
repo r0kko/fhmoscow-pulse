@@ -2370,7 +2370,7 @@ watch(activeTeam, async () => {
 }
 
 /* Mobile fine-tuning */
-@media (max-width: 576px) {
+@media (max-width: 575.98px) {
   .school-match-lineups-page .btn {
     white-space: nowrap;
   }

@@ -1,0 +1,33 @@
+{
+  "title": "Runtime (Node.js)",
+  "uid": "pulse-runtime-node",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "node"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"type":"timeseries","title":"Event loop lag (ms)","gridPos":{"x":0,"y":0,"w":12,"h":8},
+      "targets":[{"expr":"nodejs_eventloop_lag_seconds*1000","legendFormat":"lag","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries","title":"RSS/Heap used (MB)","gridPos":{"x":12,"y":0,"w":12,"h":8},
+      "targets":[
+        {"expr":"process_resident_memory_bytes/1024/1024","legendFormat":"rss","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"nodejs_heap_space_size_used_bytes/1024/1024","legendFormat":"heap_used","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    },
+    {"type":"timeseries","title":"GC duration (ms)","gridPos":{"x":0,"y":8,"w":24,"h":8},
+      "targets":[{"expr":"rate(nodejs_gc_duration_seconds_sum[5m]) / rate(nodejs_gc_duration_seconds_count[5m]) * 1000","legendFormat":"avg gc","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries","title":"Open file descriptors","gridPos":{"x":0,"y":16,"w":12,"h":8},
+      "targets":[{"expr":"process_open_fds","legendFormat":"fds","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries","title":"App ready/syncing","gridPos":{"x":12,"y":16,"w":12,"h":8},
+      "targets":[
+        {"expr":"app_ready","legendFormat":"ready","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"app_syncing","legendFormat":"syncing","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    }
+  ]
+}
+

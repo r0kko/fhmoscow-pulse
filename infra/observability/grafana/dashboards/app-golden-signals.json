@@ -1,0 +1,129 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "App Golden Signals",
+  "uid": "app-golden-signals",
+  "version": 1,
+  "schemaVersion": 38,
+  "tags": ["pulse", "golden", "app"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"] },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "route",
+        "label": "Route",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(http_requests_total, route)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1
+      },
+      {
+        "name": "status",
+        "label": "Status",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(http_requests_total, status)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "RPS (1m)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{route=~\"$route\"}[1m]))",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error rate (5xx %)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{route=~\"$route\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{route=~\"$route\"}[5m]))",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Inflight requests",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(http_server_in_flight_requests{route=~\"$route\"})",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Latency p50/p95/p99 (s)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
+          "legendFormat": "p50",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
+          "legendFormat": "p99",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "bar-gauge",
+      "title": "Top routes by p95 latency",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "options": { "displayMode": "gradient", "min": 0 },
+      "targets": [
+        {
+          "expr": "topk(5, histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m]))))",
+          "legendFormat": "{{route}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Traffic by status",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(http_requests_total{route=~\"$route\",status=~\"$status\"}[5m]))",
+          "legendFormat": "{{status}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Errors (Loki)",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "options": { "showTime": true, "dedupStrategy": "none" },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        { "expr": "{service=\"api\",level=\"error\"}", "refId": "A" }
+      ]
+    }
+  ]
+}
+

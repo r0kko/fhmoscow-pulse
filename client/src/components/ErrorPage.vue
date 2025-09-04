@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink } from 'vue-router';
-import logo from '../assets/fhm-logo.svg';
+const logo = '/vite.svg';
 
 defineProps({
   code: { type: String, required: true },

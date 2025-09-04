@@ -686,18 +686,6 @@ function thresholdText(t, zone) {
   }
 }
 
-@media (max-width: 575.98px) {
-  .normatives-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;

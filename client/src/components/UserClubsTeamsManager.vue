@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import { apiFetch } from '../api.js';
 import ConfirmModal from './ConfirmModal.vue';
 
@@ -13,16 +13,7 @@ const props = defineProps({
 const links = reactive({ clubs: [], teams: [], loading: false, error: '' });
 
 // Toast
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast && toastRef.value) toast = new Toast(toastRef.value);
-  try {
-    toast?.show?.();
-  } catch (_) {}
-}
+const { showToast } = useToast();
 
 // Attach Club modal
 const clubModalRef = ref(null);
@@ -433,19 +424,6 @@ function onConfirm() {
     >
       <p class="mb-0">{{ confirmMessage }}</p>
     </ConfirmModal>
-
-    <!-- Toast container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
-      </div>
-    </div>
   </div>
 </template>
 

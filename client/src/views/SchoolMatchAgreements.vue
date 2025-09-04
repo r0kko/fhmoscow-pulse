@@ -667,17 +667,7 @@ async function loadContacts() {
 </template>
 
 <style scoped>
-/* Mobile full-bleed like Home/Camps */
-@media (max-width: 575.98px) {
-  .school-match-agreements-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 </style>
 <style scoped>
 .kickoff-display {

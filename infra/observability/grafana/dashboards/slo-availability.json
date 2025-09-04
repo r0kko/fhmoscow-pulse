@@ -1,0 +1,77 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "SLO: Availability (99%)",
+  "uid": "slo-availability",
+  "version": 1,
+  "schemaVersion": 38,
+  "tags": ["pulse", "slo"],
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": { "refresh_intervals": ["1m", "5m"] },
+  "refresh": "5m",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Error ratio (5m)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        { "expr": "slo:availability:error_ratio:5m", "datasource": { "type": "prometheus", "uid": "Prometheus" } }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Burn rate (5m)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        { "expr": "slo:availability:burnrate:5m", "datasource": { "type": "prometheus", "uid": "Prometheus" } }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Burn rate (1h)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        { "expr": "slo:availability:burnrate:1h", "datasource": { "type": "prometheus", "uid": "Prometheus" } }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Error ratio windows",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "slo:availability:error_ratio:5m",
+          "legendFormat": "5m",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "slo:availability:error_ratio:30m",
+          "legendFormat": "30m",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "slo:availability:error_ratio:1h",
+          "legendFormat": "1h",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "slo:availability:error_ratio:6h",
+          "legendFormat": "6h",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Burn rate windows",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "slo:availability:burnrate:5m", "legendFormat": "5m", "datasource": { "type": "prometheus", "uid": "Prometheus" } },
+        { "expr": "slo:availability:burnrate:30m", "legendFormat": "30m", "datasource": { "type": "prometheus", "uid": "Prometheus" } },
+        { "expr": "slo:availability:burnrate:1h", "legendFormat": "1h", "datasource": { "type": "prometheus", "uid": "Prometheus" } },
+        { "expr": "slo:availability:burnrate:6h", "legendFormat": "6h", "datasource": { "type": "prometheus", "uid": "Prometheus" } }
+      ]
+    }
+  ]
+}
+

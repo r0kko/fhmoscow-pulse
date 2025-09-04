@@ -245,31 +245,8 @@ onMounted(async () => {
   animation: fadeIn 0.4s ease-out;
 }
 
-@media (max-width: 575.98px) {
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-
-  .section-card .card-body {
-    padding: 0.75rem;
-    font-size: 0.875rem;
-  }
-
-  .py-3 {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  h1 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem !important;
-  }
-
-  .row.g-3 {
-    --bs-gutter-y: 0.5rem;
-  }
-}
+/* Mobile adjustments for headings and spacing now handled globally in mobile.css
+   and brand.css (.section-card). View-specific overrides removed. */
 
 @keyframes fadeIn {
   from {

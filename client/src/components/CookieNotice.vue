@@ -40,7 +40,7 @@ onMounted(() => {
   z-index: 1080;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 575.98px) {
   .cookie-notice {
     position: static !important;
     transform: none !important;

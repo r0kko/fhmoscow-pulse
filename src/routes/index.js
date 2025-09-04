@@ -4,6 +4,7 @@ import { isReady, isSyncing } from '../config/readiness.js';
 import auth from '../middlewares/auth.js';
 import requireActive from '../middlewares/requireActive.js';
 import csrf from '../config/csrf.js';
+import { getRuntimeStates } from '../config/metrics.js';
 
 import authRouter from './auth.js';
 import usersRouter from './users.js';
@@ -59,6 +60,7 @@ import staffRouter from './staff.js';
 import sportSchoolsRouter from './sportSchools.js';
 import metricsRouter from './metrics.js';
 import adminOpsRouter from './adminOps.js';
+import reportsRouter from './reports.js';
 
 const router = express.Router();
 
@@ -116,6 +118,7 @@ router.use('/staff', staffRouter);
 router.use('/sport-schools', sportSchoolsRouter);
 router.use('/metrics', metricsRouter);
 router.use('/admin-ops', adminOpsRouter);
+router.use('/reports', reportsRouter);
 
 /**
  * @swagger
@@ -127,7 +130,22 @@ router.use('/admin-ops', adminOpsRouter);
  *         description: Service status
  */
 router.get('/health', (_req, res) => {
-  res.json({ status: 'ok', ready: isReady(), syncing: isSyncing() });
+  const runtime = getRuntimeStates();
+  res.json({
+    status: 'ok',
+    ready: isReady(),
+    syncing: isSyncing(),
+    db_up: runtime.dbUp,
+    cache_up: runtime.cacheUp,
+  });
+});
+
+// Liveness and readiness probes
+router.get('/live', (_req, res) => {
+  res.status(200).json({ status: 'live' });
+});
+router.get('/ready', (_req, res) => {
+  res.status(isReady() ? 200 : 503).json({ ready: isReady() });
 });
 
 /**

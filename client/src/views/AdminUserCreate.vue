@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import UserForm from '../components/UserForm.vue';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 
 const sexes = ref([]);
 
@@ -20,9 +20,7 @@ const user = ref({
 });
 const formRef = ref(null);
 const loading = ref(false);
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 onMounted(() => {
   loadSexes();
@@ -76,13 +74,7 @@ function close() {
   router.push('/admin/users');
 }
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) {
-    toast = new Toast(toastRef.value);
-  }
-  toast.show();
-}
+// global toast via useToast()
 
 async function copyToClipboard(text) {
   try {
@@ -139,18 +131,6 @@ async function copyToClipboard(text) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        data-bs-delay="1500"
-        data-bs-autohide="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
   </div>

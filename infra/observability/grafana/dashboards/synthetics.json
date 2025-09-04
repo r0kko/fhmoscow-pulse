@@ -1,0 +1,18 @@
+{
+  "title": "Synthetics",
+  "uid": "pulse-synthetics",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "synthetics"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"type":"stat","title":"Health probe success","gridPos":{"x":0,"y":0,"w":6,"h":4},
+      "targets":[{"expr":"probe_success{instance=\"http://app:3000/health\"}","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries","title":"HTTP probe latency (ms)","gridPos":{"x":6,"y":0,"w":18,"h":8},
+      "targets":[{"expr":"avg_over_time(probe_duration_seconds[5m])*1000","legendFormat":"probe","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    }
+  ]
+}
+

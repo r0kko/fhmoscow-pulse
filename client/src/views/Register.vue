@@ -134,132 +134,137 @@ async function resend() {
   <div
     class="d-flex flex-column align-items-center justify-content-center min-vh-100"
   >
-    <div class="card p-4 shadow login-card w-100" style="max-width: 400px">
-      <h1 class="mb-3 text-center">Регистрация</h1>
-      <p class="text-center mb-3">
-        с использованием существующей учетной записи в личном кабинете судьи
-      </p>
-      <transition name="fade">
-        <div
-          v-if="error"
-          class="alert alert-danger"
-          role="alert"
-          aria-live="polite"
-        >
-          {{ error }}
-        </div>
-      </transition>
-      <form v-if="step === 1" novalidate @submit.prevent="start">
-        <div class="form-floating mb-3">
-          <input
-            id="email"
-            ref="emailInput"
-            v-model="email"
-            type="email"
-            class="form-control"
-            placeholder="Email"
-            autocomplete="email"
-            required
-            :aria-invalid="!isEmailValid && email.length > 0 ? 'true' : 'false'"
-            @input="onEmailInput"
-          />
-          <label for="email">Email</label>
-        </div>
-        <button
-          type="submit"
-          class="btn btn-brand w-100"
-          :disabled="!canSubmitStart"
-        >
-          <span
-            v-if="loading"
-            class="spinner-border spinner-border-sm me-2"
-          ></span>
-          Отправить код
-        </button>
-        <div class="text-center mt-3">
-          <RouterLink to="/login" class="link-secondary"
-            >Назад ко входу</RouterLink
-          >
-        </div>
-      </form>
-
-      <form v-else novalidate @submit.prevent="finish">
-        <p class="mb-3">
-          На <strong>{{ normalizedEmail }}</strong> отправлен код подтверждения.
-          <br />
-          Если письмо не пришло, проверьте папку «Спам» или отправьте код
-          повторно.
+    <div class="card section-card login-card w-100" style="max-width: 400px">
+      <div class="card-body">
+        <h1 class="mb-3 text-center">Регистрация</h1>
+        <p class="text-center mb-3">
+          с использованием существующей учетной записи в личном кабинете судьи
         </p>
-        <div class="form-floating mb-3">
-          <input
-            id="code"
-            ref="codeInput"
-            v-model="code"
-            class="form-control"
-            placeholder="Код"
-            required
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            @input="onCodeInput"
-          />
-          <label for="code">Код из письма</label>
-        </div>
-        <div class="mb-2">
-          <PasswordInput
-            id="password"
-            v-model="password"
-            label="Пароль"
-            placeholder="Пароль"
-            autocomplete="new-password"
-            :required="true"
-            :aria-invalid="
-              !passwordMeetsMin && password.length > 0 ? 'true' : 'false'
-            "
-            aria-describedby="passwordHelp"
-          />
-        </div>
-        <PasswordStrengthMeter class="mb-3" :password="password" />
-        <small id="passwordHelp" class="text-muted d-block mb-3"
-          >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
-          символы.</small
-        >
-        <div class="mb-3">
-          <PasswordInput
-            id="confirm"
-            v-model="confirm"
-            label="Повторите пароль"
-            placeholder="Повторите пароль"
-            autocomplete="new-password"
-            :required="true"
-            :aria-invalid="
-              !passwordsMatch && confirm.length > 0 ? 'true' : 'false'
-            "
-          />
-        </div>
-        <button
-          type="submit"
-          class="btn btn-brand w-100"
-          :disabled="!canSubmitFinish"
-        >
-          <span
-            v-if="loading"
-            class="spinner-border spinner-border-sm me-2"
-          ></span>
-          Завершить регистрацию
-        </button>
-        <div class="d-flex justify-content-end align-items-center mt-3">
-          <button
-            type="button"
-            class="btn btn-link p-0"
-            :disabled="secondsUntilResend > 0 || loading"
-            @click="resend"
+        <transition name="fade">
+          <div
+            v-if="error"
+            class="alert alert-danger"
+            role="alert"
+            aria-live="polite"
           >
-            Отправить код повторно<span v-if="secondsUntilResend > 0">
-              ({{ secondsUntilResend }}с)</span
-            >
+            {{ error }}
+          </div>
+        </transition>
+        <form v-if="step === 1" novalidate @submit.prevent="start">
+          <div class="form-floating mb-3">
+            <input
+              id="email"
+              ref="emailInput"
+              v-model="email"
+              type="email"
+              class="form-control"
+              placeholder="Email"
+              autocomplete="email"
+              required
+              :aria-invalid="
+                !isEmailValid && email.length > 0 ? 'true' : 'false'
+              "
+              @input="onEmailInput"
+            />
+            <label for="email">Email</label>
+          </div>
+          <button
+            type="submit"
+            class="btn btn-brand w-100"
+            :disabled="!canSubmitStart"
+          >
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            Отправить код
           </button>
-        </div>
-      </form>
+          <div class="text-center mt-3">
+            <RouterLink to="/login" class="link-secondary"
+              >Назад ко входу</RouterLink
+            >
+          </div>
+        </form>
+
+        <form v-else novalidate @submit.prevent="finish">
+          <p class="mb-3">
+            На <strong>{{ normalizedEmail }}</strong> отправлен код
+            подтверждения.
+            <br />
+            Если письмо не пришло, проверьте папку «Спам» или отправьте код
+            повторно.
+          </p>
+          <div class="form-floating mb-3">
+            <input
+              id="code"
+              ref="codeInput"
+              v-model="code"
+              class="form-control"
+              placeholder="Код"
+              required
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              @input="onCodeInput"
+            />
+            <label for="code">Код из письма</label>
+          </div>
+          <div class="mb-2">
+            <PasswordInput
+              id="password"
+              v-model="password"
+              label="Пароль"
+              placeholder="Пароль"
+              autocomplete="new-password"
+              :required="true"
+              :aria-invalid="
+                !passwordMeetsMin && password.length > 0 ? 'true' : 'false'
+              "
+              aria-describedby="passwordHelp"
+            />
+          </div>
+          <PasswordStrengthMeter class="mb-3" :password="password" />
+          <small id="passwordHelp" class="text-muted d-block mb-3"
+            >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
+            символы.</small
+          >
+          <div class="mb-3">
+            <PasswordInput
+              id="confirm"
+              v-model="confirm"
+              label="Повторите пароль"
+              placeholder="Повторите пароль"
+              autocomplete="new-password"
+              :required="true"
+              :aria-invalid="
+                !passwordsMatch && confirm.length > 0 ? 'true' : 'false'
+              "
+            />
+          </div>
+          <button
+            type="submit"
+            class="btn btn-brand w-100"
+            :disabled="!canSubmitFinish"
+          >
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            Завершить регистрацию
+          </button>
+          <div class="d-flex justify-content-end align-items-center mt-3">
+            <button
+              type="button"
+              class="btn btn-link p-0"
+              :disabled="secondsUntilResend > 0 || loading"
+              @click="resend"
+            >
+              Отправить код повторно<span v-if="secondsUntilResend > 0">
+                ({{ secondsUntilResend }}с)</span
+              >
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
     <CookieNotice />
   </div>

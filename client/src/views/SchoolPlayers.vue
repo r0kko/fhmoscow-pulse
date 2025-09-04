@@ -335,11 +335,5 @@ export default { name: 'SchoolPlayersView' };
 <!-- removed duplicate script setup block -->
 
 <style scoped>
-@media (max-width: 575.98px) {
-  /* Match Camps page: slight full-bleed for large cards within container */
-  .school-players-page .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 </style>

@@ -1,0 +1,65 @@
+{
+  "title": "PostgreSQL Overview (Exporter)",
+  "uid": "pulse-postgres-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "postgres"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "db",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "Prometheus"},
+        "query": "label_values(pg_stat_activity_count, datname)",
+        "hide": 0,
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {"type": "stat", "title": "pg_up", "gridPos": {"x":0,"y":0,"w":4,"h":4},
+      "targets": [{"expr": "pg_up", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "stat", "title": "Connections (sum)", "gridPos": {"x":4,"y":0,"w":6,"h":4},
+      "targets": [{"expr": "sum(pg_stat_activity_count)", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "stat", "title": "Cache hit ratio (global)", "gridPos": {"x":10,"y":0,"w":6,"h":4},
+      "targets": [{"expr": "sum(pg_stat_database_blks_hit) / (sum(pg_stat_database_blks_hit) + sum(pg_stat_database_blks_read))", "datasource": {"type":"prometheus","uid":"Prometheus"}}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation":"auto", "colorMode":"value", "graphMode":"none", "justifyMode":"auto"}
+    },
+    {"type": "timeseries", "title": "TPS (commit+rollback)", "gridPos": {"x":0,"y":4,"w":12,"h":8},
+      "targets": [{
+        "expr": "sum by (datname) (rate(pg_stat_database_xact_commit[$__rate_interval]) + rate(pg_stat_database_xact_rollback[$__rate_interval]))",
+        "legendFormat": "{{datname}}",
+        "datasource": {"type":"prometheus","uid":"Prometheus"}
+      }]
+    },
+    {"type": "timeseries", "title": "Connections per DB", "gridPos": {"x":12,"y":4,"w":12,"h":8},
+      "targets": [{
+        "expr": "sum by (datname) (pg_stat_activity_count)",
+        "legendFormat": "{{datname}}",
+        "datasource": {"type":"prometheus","uid":"Prometheus"}
+      }]
+    },
+    {"type": "timeseries", "title": "Cache hit ratio per DB", "gridPos": {"x":0,"y":12,"w":24,"h":8},
+      "targets": [{
+        "expr": "(sum by (datname) (pg_stat_database_blks_hit)) / (sum by (datname) (pg_stat_database_blks_hit) + sum by (datname) (pg_stat_database_blks_read))",
+        "legendFormat": "{{datname}}",
+        "datasource": {"type":"prometheus","uid":"Prometheus"}
+      }]
+    },
+    {"type": "timeseries", "title": "Tuples (ret/ins/upd/del) rate", "gridPos": {"x":0,"y":20,"w":24,"h":8},
+      "targets": [
+        {"expr":"sum(rate(pg_stat_database_tup_returned[$__rate_interval]))","legendFormat":"returned","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"sum(rate(pg_stat_database_tup_inserted[$__rate_interval]))","legendFormat":"inserted","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"sum(rate(pg_stat_database_tup_updated[$__rate_interval]))","legendFormat":"updated","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"sum(rate(pg_stat_database_tup_deleted[$__rate_interval]))","legendFormat":"deleted","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    }
+  ]
+}
+

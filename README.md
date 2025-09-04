@@ -10,6 +10,7 @@
 - Access token kept only in memory and refreshed on startup when a refresh cookie is present
 - Security headers using `helmet`
 - Request/response logging persisted to the `logs` table
+- Structured JSON access logs (stdout) with correlation id
 - Swagger documentation available at `/api-docs`
 - Docker and docker-compose setup for local development
 - CI builds and publishes Docker images to GitHub Container Registry
@@ -165,6 +166,31 @@ Cyrillic characters incorrectly.
 
 Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application
 starts in HTTP mode and relies on nginx for TLS termination.
+
+## Observability (Grafana + Loki + Prometheus)
+
+For a simple but powerful local stack with dashboards, log search, and metrics:
+
+- Quick start: `npm run obs:up` → Grafana at `http://localhost:3001`.
+- Details and setup (including Loki logging driver override): see `README_observability.md`.
+- Probes and metrics:
+  - Liveness: `GET /live`
+  - Readiness: `GET /ready`
+  - Health summary: `GET /health`
+  - Prometheus metrics: `GET /metrics` (optional Basic Auth via `METRICS_USER`/`METRICS_PASS`).
+
+## Production Nginx
+
+- The production Nginx site config is stored in-repo at `infra/nginx/conf.d/pulse.conf` and is mounted into the `nginx` container in `docker-compose.prod.yml`.
+- Provide TLS certificates on the host under `/etc/nginx/certs/{fullchain.pem,privkey.pem}` (mounted read‑only into the container).
+- Default routing: `/api/*` → `app:3000`; everything else → `client:4173`.
+- Security: HSTS + secure headers + deny `/metrics` from the Internet (Prometheus scrapes internally).
+- Grafana is exposed on port `3001` directly (not via Nginx). Restrict access with your firewall.
+
+### Operational reports (admin-only)
+
+- CSV export of job runs: `GET /reports/job-runs.csv?days=30`
+- CSV aggregate of HTTP errors by path/status: `GET /reports/http-errors.csv?days=7`
 
 ## External MariaDB models
 

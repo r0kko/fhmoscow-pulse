@@ -9,6 +9,25 @@ let jobDuration = null;
 let jobLastRun = null;
 let jobLastSuccess = null;
 let jobInProgress = null;
+let httpRequestDuration = null;
+let httpRequestsTotal = null;
+let httpRequestsInflight = null;
+let httpRequestSize = null;
+let httpResponseSize = null;
+let httpRequests5xx = null;
+let appBuildInfo = null;
+let appReadyGauge = null;
+let appSyncingGauge = null;
+let dbUpGauge = null;
+let cacheUpGauge = null;
+let _appReadyState = false;
+let _appSyncingState = false;
+let _dbUpState = false;
+let _cacheUpState = false;
+let dbQueryDuration = null;
+let dbPoolSize = null;
+let dbPoolFree = null;
+let dbPoolPending = null;
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -17,7 +36,10 @@ async function ensureInit() {
     client = mod;
     register = new client.Registry();
     // Default metrics
-    client.collectDefaultMetrics({ register });
+    client.collectDefaultMetrics({
+      register,
+      eventLoopMonitoringPrecision: 10,
+    });
 
     jobRuns = new client.Counter({
       name: 'job_runs_total',
@@ -50,6 +72,106 @@ async function ensureInit() {
       labelNames: ['job'],
       registers: [register],
     });
+    // HTTP request metrics (labels kept small for cardinality)
+    httpRequestDuration = new client.Histogram({
+      name: 'http_request_duration_seconds',
+      help: 'HTTP request duration in seconds',
+      labelNames: ['method', 'route', 'status'],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+      registers: [register],
+    });
+    httpRequestsTotal = new client.Counter({
+      name: 'http_requests_total',
+      help: 'Total HTTP requests',
+      labelNames: ['method', 'route', 'status'],
+      registers: [register],
+    });
+
+    httpRequestsInflight = new client.Gauge({
+      name: 'http_server_in_flight_requests',
+      help: 'Current number of in-flight HTTP requests',
+      labelNames: ['method', 'route'],
+      registers: [register],
+    });
+    httpRequestSize = new client.Histogram({
+      name: 'http_request_size_bytes',
+      help: 'Size of HTTP requests in bytes',
+      labelNames: ['method', 'route'],
+      buckets: [
+        128, 512, 1024, 2048, 4096, 8192, 16384, 65536, 262144, 1048576,
+        4194304,
+      ],
+      registers: [register],
+    });
+    httpResponseSize = new client.Histogram({
+      name: 'http_response_size_bytes',
+      help: 'Size of HTTP responses in bytes (Content-Length)',
+      labelNames: ['method', 'route', 'status'],
+      buckets: [
+        128, 512, 1024, 2048, 4096, 8192, 16384, 65536, 262144, 1048576,
+        4194304,
+      ],
+      registers: [register],
+    });
+    httpRequests5xx = new client.Counter({
+      name: 'http_requests_5xx_total',
+      help: 'HTTP 5xx responses total',
+      labelNames: ['route'],
+      registers: [register],
+    });
+
+    // App build info and liveness state
+    appBuildInfo = new client.Gauge({
+      name: 'app_build_info',
+      help: 'Application build information',
+      labelNames: ['service', 'version', 'env', 'commit'],
+      registers: [register],
+    });
+    appReadyGauge = new client.Gauge({
+      name: 'app_ready',
+      help: 'Whether app is ready (0/1)',
+      registers: [register],
+    });
+    appSyncingGauge = new client.Gauge({
+      name: 'app_syncing',
+      help: 'Whether app is currently syncing (0/1)',
+      registers: [register],
+    });
+    dbUpGauge = new client.Gauge({
+      name: 'db_up',
+      help: 'Database connectivity status (0/1)',
+      registers: [register],
+    });
+    cacheUpGauge = new client.Gauge({
+      name: 'cache_up',
+      help: 'Cache (Redis) connectivity status (0/1)',
+      registers: [register],
+    });
+
+    // DB metrics (application-level)
+    dbQueryDuration = new client.Histogram({
+      name: 'db_query_duration_seconds',
+      help: 'Database query duration seconds',
+      labelNames: ['operation'],
+      buckets: [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+      registers: [register],
+    });
+    dbPoolSize = new client.Gauge({
+      name: 'db_pool_size',
+      help: 'Sequelize pool total size',
+      registers: [register],
+    });
+    dbPoolFree = new client.Gauge({
+      name: 'db_pool_free',
+      help: 'Sequelize pool free (available) resources',
+      registers: [register],
+    });
+    dbPoolPending = new client.Gauge({
+      name: 'db_pool_pending',
+      help: 'Sequelize pool pending (waiting) requests',
+      registers: [register],
+    });
+
     metricsAvailable = true;
   } catch {
     // prom-client not available; metrics disabled
@@ -57,6 +179,58 @@ async function ensureInit() {
     register = null;
     metricsAvailable = false;
   }
+}
+
+// Express middleware to record per-request metrics
+export function httpMetricsMiddleware() {
+  return (req, res, next) => {
+    const start = process.hrtime.bigint();
+    // Route will be computed on finish using req.route when available
+
+    // In-flight start
+    try {
+      if (metricsAvailable) {
+        const method = (req.method || 'GET').toUpperCase();
+        const route = req.route?.path || req.path || 'unmatched';
+        httpRequestsInflight.inc({ method, route });
+      }
+    } catch {
+      /* ignore metric errors */
+    }
+
+    res.once('finish', () => {
+      if (!metricsAvailable) return;
+      try {
+        // Avoid self-scrape noise
+        if (req.path === '/metrics') return;
+        const method = (req.method || 'GET').toUpperCase();
+        const route = req.route?.path || req.path || 'unmatched';
+        const status = String(res.statusCode || 0);
+        const durSec =
+          Number((process.hrtime.bigint() - start) / 1_000_000n) / 1000;
+        httpRequestDuration.observe({ method, route, status }, durSec);
+        httpRequestsTotal.inc({ method, route, status });
+        if (status.startsWith('5')) {
+          httpRequests5xx.inc({ route });
+        }
+        // Request/response sizes from headers if present
+        const reqLen = Number(req.get('content-length') || 0);
+        if (reqLen > 0) httpRequestSize.observe({ method, route }, reqLen);
+        const resLen = Number(res.getHeader('content-length') || 0);
+        if (resLen > 0)
+          httpResponseSize.observe({ method, route, status }, resLen);
+        // Decrement inflight
+        try {
+          httpRequestsInflight.dec({ method, route });
+        } catch {
+          /* ignore */
+        }
+      } catch {
+        /* ignore metric errors */
+      }
+    });
+    next();
+  };
 }
 
 export async function withJobMetrics(job, fn) {
@@ -68,7 +242,7 @@ export async function withJobMetrics(job, fn) {
   try {
     jobLogSvc = (await import('../services/jobLogService.js')).default;
     if (jobLogSvc?.createJobRun) runId = await jobLogSvc.createJobRun(job);
-  } catch {
+  } catch (_e) {
     /* ignore */
   }
   if (metricsAvailable) {
@@ -90,7 +264,7 @@ export async function withJobMetrics(job, fn) {
           status: 'SUCCESS',
           durationMs: Date.now() - start,
         });
-    } catch {
+    } catch (_e) {
       /* ignore */
     }
     return result;
@@ -108,7 +282,7 @@ export async function withJobMetrics(job, fn) {
           durationMs: Date.now() - start,
           error: err?.stack || err?.message || String(err),
         });
-    } catch {
+    } catch (_e) {
       /* ignore */
     }
     throw err;
@@ -190,4 +364,102 @@ export async function getJobStats(jobs = []) {
   return result;
 }
 
+export function setBuildInfo({
+  service = 'api',
+  version = '0.0.0',
+  env = 'dev',
+  commit = 'unknown',
+} = {}) {
+  if (!metricsAvailable) return;
+  try {
+    appBuildInfo.set({ service, version, env, commit }, 1);
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+export function setAppReady(val) {
+  if (!metricsAvailable) return;
+  try {
+    _appReadyState = !!val;
+    appReadyGauge.set(val ? 1 : 0);
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+export function setAppSyncing(val) {
+  if (!metricsAvailable) return;
+  try {
+    _appSyncingState = !!val;
+    appSyncingGauge.set(val ? 1 : 0);
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+export function setDbUp(val) {
+  if (!metricsAvailable) return;
+  try {
+    _dbUpState = !!val;
+    dbUpGauge.set(val ? 1 : 0);
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+export function setCacheUp(val) {
+  if (!metricsAvailable) return;
+  try {
+    _cacheUpState = !!val;
+    cacheUpGauge.set(val ? 1 : 0);
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+export function observeDbQuery(operation, ms) {
+  if (!metricsAvailable) return;
+  try {
+    dbQueryDuration.observe({ operation }, ms / 1000);
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+export function startSequelizePoolCollector(sequelize) {
+  if (!metricsAvailable || !sequelize?.connectionManager?.pool) return;
+  const pool = sequelize.connectionManager.pool;
+  const collect = () => {
+    try {
+      const size = typeof pool.size === 'function' ? pool.size : pool.size || 0;
+      const avail =
+        typeof pool.available === 'function'
+          ? pool.available
+          : pool.available || 0;
+      const pending =
+        typeof pool.pending === 'function'
+          ? pool.pending
+          : pool.pending || pool.waitingCount || 0;
+      dbPoolSize.set(Number(size));
+      dbPoolFree.set(Number(avail));
+      dbPoolPending.set(Number(pending));
+    } catch (_e) {
+      /* ignore */
+    }
+  };
+  collect();
+  const interval = setInterval(collect, 5000);
+  if (interval?.unref) interval.unref();
+}
+
 export default { withJobMetrics, metricsText, seedJobMetrics, getJobStats };
+
+export function getRuntimeStates() {
+  return {
+    appReady: _appReadyState,
+    appSyncing: _appSyncingState,
+    dbUp: _dbUpState,
+    cacheUp: _cacheUpState,
+  };
+}

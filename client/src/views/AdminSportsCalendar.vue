@@ -839,12 +839,7 @@ function formatTabLines(date, offset, _count) {
 </template>
 
 <style scoped>
-/* Mobile full-bleed gutters */
 @media (max-width: 575.98px) {
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
   .header-row {
     flex-direction: column;
     align-items: stretch;

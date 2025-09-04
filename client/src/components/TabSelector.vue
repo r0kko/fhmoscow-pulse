@@ -67,30 +67,4 @@ function selectTab(key, disabled) {
   </ul>
 </template>
 
-<style scoped>
-/* Compact, scrollable tabs on small screens with snap */
-.tab-selector {
-  gap: 0.25rem;
-}
-@media (max-width: 575.98px) {
-  .tab-selector {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    white-space: nowrap;
-    flex-wrap: nowrap;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 0.25rem;
-  }
-  .tab-selector::-webkit-scrollbar {
-    display: none;
-  }
-  .tab-selector .nav-item {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-  }
-  .tab-selector .nav-link {
-    margin-right: 0.25rem;
-  }
-}
-</style>
+<style scoped></style>

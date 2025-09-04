@@ -501,13 +501,7 @@ export default { name: 'SchoolPlayersRosterView' };
   padding-right: 1rem;
 }
 
-/* Match mobile gutters and full-bleed treatment like on the “Команды и составы” page */
-@media (max-width: 575.98px) {
-  .school-roster-page .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 
 .clickable-row {
   cursor: pointer;

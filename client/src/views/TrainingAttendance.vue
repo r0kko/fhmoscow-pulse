@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -25,9 +25,7 @@ const allMarked = computed(() =>
 const attendanceMarked = computed(() => training.value?.attendance_marked);
 const loading = ref(false);
 const error = ref('');
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 function formatName(u) {
   return `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.trim();
@@ -95,13 +93,7 @@ async function finish() {
   }
 }
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) {
-    toast = new Toast(toastRef.value);
-  }
-  toast.show();
-}
+// global toast via useToast()
 </script>
 
 <template>
@@ -266,17 +258,6 @@ function showToast(message) {
         </button>
         <p v-else class="alert alert-success mt-3">Посещаемость отмечена</p>
       </div>
-      <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div
-          ref="toastRef"
-          class="toast text-bg-secondary"
-          role="status"
-          data-bs-delay="1500"
-          data-bs-autohide="true"
-        >
-          <div class="toast-body">{{ toastMessage }}</div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -290,15 +271,5 @@ function showToast(message) {
   padding: 0.25rem 0;
 }
 
-@media (max-width: 575.98px) {
-  .training-attendance-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 </style>

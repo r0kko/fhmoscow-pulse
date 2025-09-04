@@ -5,7 +5,7 @@ import { apiFetch } from '../api.js';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import { withHttp } from '../utils/url.js';
 import PageNav from '../components/PageNav.vue';
@@ -28,9 +28,7 @@ const mainTabs = [
   { key: 'register', label: 'Запись на тренировки' },
 ];
 const registering = ref(null);
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]
@@ -309,13 +307,7 @@ function formatTime(date) {
   });
 }
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) {
-    toast = new Toast(toastRef.value);
-  }
-  toast.show();
-}
+// global toast via useToast()
 
 function applyTooltips() {
   nextTick(() => {
@@ -821,17 +813,6 @@ function attendanceStatus(t) {
             :sizes="[10, 20, 50]"
           />
         </div>
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-          <div
-            ref="toastRef"
-            class="toast text-bg-secondary"
-            role="status"
-            data-bs-delay="1500"
-            data-bs-autohide="true"
-          >
-            <div class="toast-body">{{ toastMessage }}</div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -907,23 +888,9 @@ function attendanceStatus(t) {
 
 /* Uses global .section-card and .tab-selector from brand.css */
 
-/* tighter layout on small screens */
+/* tighter layout on small screens (ground cards may go edge-to-edge) */
 @media (max-width: 575.98px) {
-  .camps-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .camps-page h1 {
-    margin-bottom: 1rem !important;
-  }
-
   .ground-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-
-  .section-card {
     margin-left: -1rem;
     margin-right: -1rem;
   }

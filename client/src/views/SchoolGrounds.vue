@@ -196,11 +196,5 @@ export default { name: 'SchoolGroundsView' };
     font-size: 0.75rem;
   }
 }
-@media (max-width: 575.98px) {
-  /* Match other school pages full-bleed treatment on mobile */
-  .school-grounds-page .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 </style>

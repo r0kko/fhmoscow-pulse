@@ -1,0 +1,37 @@
+{
+  "title": "Node Exporter Overview",
+  "uid": "pulse-node-exporter-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "node-exporter"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"type":"timeseries","title":"CPU usage (non-idle)","gridPos":{"x":0,"y":0,"w":24,"h":8},
+      "targets":[{"expr":"1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval]))","legendFormat":"usage","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries","title":"Load average","gridPos":{"x":0,"y":8,"w":12,"h":8},
+      "targets":[
+        {"expr":"node_load1","legendFormat":"load1","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"node_load5","legendFormat":"load5","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"node_load15","legendFormat":"load15","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    },
+    {"type":"timeseries","title":"Memory used (MB)","gridPos":{"x":12,"y":8,"w":12,"h":8},
+      "targets":[{"expr":"(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)/1024/1024","legendFormat":"used","datasource":{"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type":"timeseries","title":"Disk IO (read/write bytes/s)","gridPos":{"x":0,"y":16,"w":12,"h":8},
+      "targets":[
+        {"expr":"sum(rate(node_disk_read_bytes_total[$__rate_interval]))","legendFormat":"read","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"sum(rate(node_disk_written_bytes_total[$__rate_interval]))","legendFormat":"write","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    },
+    {"type":"timeseries","title":"Network (rx/tx bytes/s)","gridPos":{"x":12,"y":16,"w":12,"h":8},
+      "targets":[
+        {"expr":"sum(rate(node_network_receive_bytes_total{device!~\"lo|docker.*\"}[$__rate_interval]))","legendFormat":"rx","datasource":{"type":"prometheus","uid":"Prometheus"}},
+        {"expr":"sum(rate(node_network_transmit_bytes_total{device!~\"lo|docker.*\"}[$__rate_interval]))","legendFormat":"tx","datasource":{"type":"prometheus","uid":"Prometheus"}}
+      ]
+    }
+  ]
+}
+

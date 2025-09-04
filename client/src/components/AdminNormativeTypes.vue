@@ -595,13 +595,6 @@ defineExpose({ refresh });
 
 /* Uses global .section-card from brand.css */
 
-@media (max-width: 575.98px) {
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;

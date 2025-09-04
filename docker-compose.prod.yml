@@ -1,36 +1,49 @@
+networks:
+  frontend:
+  backend:
+    driver: bridge
+
+volumes:
+  db-data:
+  grafana-data:
+
 services:
   nginx:
     image: nginx:alpine
-    container_name: nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./infra/nginx/certs:/etc/nginx/certs:ro
+      - /etc/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - client
       - app
+    networks:
+      - backend
+      - frontend
   app:
     image: ${APP_IMAGE}
-    container_name: app
     env_file:
       - .env
     expose:
       - "3000"
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - db
+      - redis
     networks:
       - backend
     restart: unless-stopped
-
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 120s
+      retries: 5
+    labels:
+      service: "api"
+      env: "prod"
   client:
     image: ${CLIENT_IMAGE}
-    container_name: client
     depends_on:
       - app
     expose:
@@ -38,9 +51,12 @@ services:
     networks:
       - backend
     restart: unless-stopped
+    labels:
+      service: "client"
+      env: "prod"
 
   db:
-    image: postgres:17.5
+    image: postgres:17.6
     container_name: db
     ports:
       - "5432:5432"
@@ -61,26 +77,179 @@ services:
   redis:
     image: redis:8.0.2
     container_name: redis
-    ports:
-      - "6379:6379"
     networks:
       - backend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
 
   dozzle:
     image: amir20/dozzle:latest
     container_name: dozzle
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - backend
     restart: unless-stopped
 
-volumes:
-  db-data:
+  # Observability stack (production)
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks:
+      - backend
+    restart: unless-stopped
 
-networks:
-  backend:
-    driver: bridge
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/observability/promtail-config.yml:/etc/promtail/config.yml:ro
+    depends_on:
+      - loki
+    networks:
+      - backend
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./infra/observability/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+    secrets:
+      - source: prometheus_metrics_pass
+        target: /etc/prometheus/secrets/metrics_pass
+    networks:
+      - backend
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.6
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/pulse-app-overview.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki
+      - prometheus
+      - alertmanager
+      - tempo
+    networks:
+      - backend
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "127.0.0.1:3200:3200" # HTTP API (Grafana queries)
+    volumes:
+      - ./infra/observability/tempo.yaml:/etc/tempo.yaml:ro
+    networks:
+      - backend
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.0
+    container_name: cadvisor
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - backend
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    pid: "host"
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($|/)'
+    networks:
+      - backend
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?sslmode=disable
+    ports:
+      - "127.0.0.1:9187:9187"
+    networks:
+      - backend
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - "127.0.0.1:9121:9121"
+    networks:
+      - backend
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: blackbox-exporter
+    ports:
+      - "127.0.0.1:9115:9115"
+    volumes:
+      - ./infra/observability/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    networks:
+      - backend
+    restart: unless-stopped
+
+secrets:
+  prometheus_metrics_pass:
+    file: ./infra/observability/secrets/prometheus_metrics_pass

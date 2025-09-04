@@ -442,6 +442,11 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    // Restore saved position (back/forward) or scroll to top
+    if (savedPosition) return savedPosition;
+    return { top: 0 };
+  },
 });
 
 router.beforeEach(async (to, _from, next) => {
@@ -507,6 +512,12 @@ router.afterEach((to) => {
     const base = 'Пульс';
     document.title =
       to.meta && to.meta.title ? `${to.meta.title} — ${base}` : base;
+    // Move focus to <main> for screen reader users after route change
+    // Use rAF to ensure the view is rendered
+    requestAnimationFrame(() => {
+      const el = document.getElementById('main');
+      if (el && typeof el.focus === 'function') el.focus();
+    });
   }
 });
 

@@ -4,7 +4,7 @@ import { useRouter, RouterLink } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import UsersFilterModal from '../components/UsersFilterModal.vue';
@@ -32,9 +32,7 @@ const sortField = ref('last_name');
 const sortOrder = ref('asc');
 const selected = ref(new Set());
 
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 const taxModal = ref(null);
 const taxUserId = ref('');
@@ -317,13 +315,7 @@ function formatDate(str) {
   return `${day}.${month}.${year}`;
 }
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) {
-    toast = new Toast(toastRef.value);
-  }
-  toast.show();
-}
+// global toast via useToast()
 
 async function copy(text) {
   try {
@@ -872,17 +864,7 @@ async function bulk(action) {
         v-model:page-size="pageSize"
         :total-pages="totalPages"
       />
-      <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div
-          ref="toastRef"
-          class="toast text-bg-secondary"
-          role="status"
-          data-bs-delay="1500"
-          data-bs-autohide="true"
-        >
-          <div class="toast-body">{{ toastMessage }}</div>
-        </div>
-      </div>
+
       <div
         v-show="activeTab === 'profiles'"
         class="card section-card tile fade-in shadow-sm mt-3"
@@ -1114,17 +1096,7 @@ async function bulk(action) {
   border: 1px solid var(--border-subtle);
 }
 
-@media (max-width: 575.98px) {
-  .admin-users-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 
 /* Column widths for better scanability */
 .fio-col {
@@ -1154,44 +1126,5 @@ td .cell-text {
   text-overflow: ellipsis;
 }
 
-/* Skeleton styles */
-.skeleton-line {
-  height: 0.875rem;
-  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
-  background-size: 400% 100%;
-  border-radius: 4px;
-  animation: skeleton-loading 1.2s ease-in-out infinite;
-}
-.skeleton-badge {
-  height: 1.25rem;
-  width: 4.5rem;
-  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
-  background-size: 400% 100%;
-  border-radius: var(--radius-pill);
-  animation: skeleton-loading 1.2s ease-in-out infinite;
-}
-.skeleton-icon {
-  display: inline-block;
-  width: 1.75rem;
-  height: 1.5rem;
-  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
-  background-size: 400% 100%;
-  border-radius: var(--radius-xs);
-  animation: skeleton-loading 1.2s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-line,
-  .skeleton-badge,
-  .skeleton-icon {
-    animation: none;
-  }
-}
-@keyframes skeleton-loading {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: 0 0;
-  }
-}
+/* Uses global skeleton utilities in brand.css */
 </style>

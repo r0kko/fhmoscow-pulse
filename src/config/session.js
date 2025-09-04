@@ -1,7 +1,8 @@
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
-import './env.js';
 
+import './env.js';
+import { isSecureEnv, cookieSameSite, cookieDomain } from './security.js';
 import redisClient, { isRedisWritable } from './redis.js';
 
 let store;
@@ -19,7 +20,8 @@ export default session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: isSecureEnv(),
+    sameSite: cookieSameSite(),
+    domain: cookieDomain(),
   },
 });

@@ -1,0 +1,17 @@
+{
+  "name": "АСОУ ПД «Пульс»",
+  "short_name": "Пульс",
+  "lang": "ru",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#113867",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

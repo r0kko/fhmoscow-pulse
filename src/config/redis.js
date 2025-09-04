@@ -12,6 +12,7 @@ client.on('error', (err) => {
   if (err?.message?.includes('READONLY')) {
     redisWritable = false;
   }
+  import('./metrics.js').then((m) => m.setCacheUp?.(false)).catch(() => {});
 });
 
 export async function connectRedis() {
@@ -19,8 +20,10 @@ export async function connectRedis() {
   try {
     await client.connect();
     logger.info('✅ Redis connection established');
+    import('./metrics.js').then((m) => m.setCacheUp?.(true)).catch(() => {});
   } catch (err) {
     logger.error('❌ Unable to connect to Redis:', err);
+    import('./metrics.js').then((m) => m.setCacheUp?.(false)).catch(() => {});
     process.exit(1);
   }
 }

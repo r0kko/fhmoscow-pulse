@@ -1,0 +1,19 @@
+{
+  "title": "Tracing Overview",
+  "uid": "tracing-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "tracing"],
+  "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {
+      "type": "traces",
+      "title": "Recent Traces",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 12},
+      "targets": [
+        {"datasource": {"type": "tempo", "uid": "Tempo"}, "query": "{}", "refId": "A"}
+      ]
+    }
+  ]
+}
+

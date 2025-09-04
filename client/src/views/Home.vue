@@ -4,6 +4,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
 import UpcomingEventCard from '../components/UpcomingEventCard.vue';
+import SkeletonBlock from '../components/SkeletonBlock.vue';
 import MenuTile from '../components/MenuTile.vue';
 import {
   ADMIN_ROLES,
@@ -227,7 +228,7 @@ async function loadUpcoming() {
       <div v-if="noticeMessage" class="alert alert-info" role="status">
         {{ noticeMessage }}
       </div>
-      <h3 class="mb-3 text-start">
+      <h3 class="mb-3 text-start greeting-title">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>
       <div v-if="showUpcoming" class="card section-card mb-2 text-start">
@@ -245,12 +246,7 @@ async function loadUpcoming() {
             class="upcoming-scroll scroll-container"
             aria-label="Загрузка ближайших событий"
           >
-            <div
-              v-for="i in 3"
-              :key="i"
-              class="skeleton-card"
-              aria-hidden="true"
-            ></div>
+            <SkeletonBlock v-for="i in 3" :key="i" />
           </div>
           <div
             v-else
@@ -356,31 +352,12 @@ async function loadUpcoming() {
   gap: 0.75rem;
 }
 
-/* Skeleton placeholders for upcoming cards */
-.skeleton-card {
-  width: clamp(14rem, 70vw, 18rem);
-  height: 5.5rem;
-  border-radius: var(--radius-tile);
-  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
-  background-size: 400% 100%;
-  animation: skeleton-loading 1.2s ease-in-out infinite;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  border: 1px solid var(--border-subtle);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-card {
-    animation: none;
-  }
-}
-
-@keyframes skeleton-loading {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: 0 0;
+/* Greeting size on mobile: slightly larger for quick scanability */
+@media (max-width: 575.98px) {
+  .greeting-title {
+    font-size: clamp(1.125rem, 5vw, 1.375rem);
+    line-height: 1.25;
+    letter-spacing: 0.1px;
   }
 }
 

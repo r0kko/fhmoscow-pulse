@@ -1,0 +1,40 @@
+{
+  "title": "Infra Overview",
+  "uid": "pulse-infra-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "infra"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"type": "timeseries", "title": "CPU by container (cores)", "gridPos": {"x":0,"y":0,"w":24,"h":8},
+      "targets": [{
+        "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total[5m]))",
+        "legendFormat": "{{container_label_com_docker_compose_service}}",
+        "datasource": {"type":"prometheus", "uid":"Prometheus"}
+      }]
+    },
+    {"type": "timeseries", "title": "Memory working set by container (MB)", "gridPos": {"x":0,"y":8,"w":24,"h":8},
+      "targets": [{
+        "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes) / 1024 / 1024",
+        "legendFormat": "{{container_label_com_docker_compose_service}}",
+        "datasource": {"type":"prometheus", "uid":"Prometheus"}
+      }]
+    },
+    {"type": "timeseries", "title": "Node CPU load (1m)", "gridPos": {"x":0,"y":16,"w":12,"h":8},
+      "targets": [{
+        "expr": "node_load1",
+        "legendFormat": "load1",
+        "datasource": {"type":"prometheus", "uid":"Prometheus"}
+      }]
+    },
+    {"type": "timeseries", "title": "Node memory (used MB)", "gridPos": {"x":12,"y":16,"w":12,"h":8},
+      "targets": [{
+        "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / 1024 / 1024",
+        "legendFormat": "used",
+        "datasource": {"type":"prometheus", "uid":"Prometheus"}
+      }]
+    }
+  ]
+}
+

@@ -74,6 +74,17 @@ Example:
 - Prefer composition of small components (e.g., `MenuTile.vue`) for repeated patterns.
 - Keep view-level CSS minimal and scoped to true view-specific needs.
 
+## Typography
+
+- Base stack uses system fonts (Bootstrap default) for performance and consistency across platforms.
+- PDF/print flows may rely on embedded fonts independently; не меняйте их в рамках клиентской типографики.
+
+## Skeletons and Feedback
+
+- Use the shared `components/SkeletonBlock.vue` for card-like placeholders in horizontal scrollers and lists.
+- For table/list placeholders use global utilities from `brand.css`: `.skeleton-line`, `.skeleton-badge`, `.skeleton-icon` — do not redefine per view.
+- Toast notifications: trigger via `useToast()` composable and rely on the global `<GlobalToast />` container mounted in `App.vue`. Не используйте `bootstrap/js/dist/toast` напрямую.
+
 ## Edge Scrolling
 
 - Horizontal scrollers: use `.scroll-container` and `v-edge-fade` to expose overflow affordances.

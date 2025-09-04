@@ -5,7 +5,7 @@ import PasswordInput from '../components/PasswordInput.vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch, initCsrf } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
-import logo from '../assets/fhm-logo.svg';
+const logo = '/vite.svg';
 
 const router = useRouter();
 const phone = ref('');
@@ -99,65 +99,67 @@ async function login() {
   <div
     class="d-flex flex-column align-items-center justify-content-center min-vh-100"
   >
-    <div class="card p-4 shadow login-card w-100" style="max-width: 400px">
-      <img
-        :src="logo"
-        alt="FHM"
-        class="mx-auto d-block mb-3"
-        style="max-height: 80px"
-      />
-      <h2 class="mb-3 text-center">Авторизация</h2>
-      <transition name="fade">
-        <div
-          v-if="error"
-          class="alert alert-danger"
-          role="alert"
-          aria-live="polite"
-        >
-          {{ error }}
-        </div>
-      </transition>
-      <form @submit.prevent="login">
-        <div class="form-floating mb-3">
-          <input
-            id="phone"
-            v-model="phoneInput"
-            type="tel"
-            class="form-control"
-            placeholder="+7 (___) ___-__-__"
-            autocomplete="tel"
-            autofocus
-            required
-            @input="onPhoneInput"
-            @keydown="onPhoneKeydown"
-          />
-          <label for="phone">Телефон</label>
-        </div>
-        <PasswordInput
-          id="password"
-          v-model="password"
-          class="mb-3"
-          label="Пароль"
-          placeholder="Пароль"
-          autocomplete="current-password"
-          :required="true"
+    <div class="card section-card login-card w-100" style="max-width: 400px">
+      <div class="card-body">
+        <img
+          :src="logo"
+          alt="FHM"
+          class="mx-auto d-block mb-3"
+          style="max-height: 80px"
         />
-        <button type="submit" class="btn btn-brand w-100" :disabled="loading">
-          <span
-            v-if="loading"
-            class="spinner-border spinner-border-sm me-2"
-          ></span>
-          Войти
-        </button>
-        <div class="text-center mt-3">
-          <RouterLink to="/register" class="link-secondary me-3"
-            >Регистрация</RouterLink
+        <h2 class="mb-3 text-center">Авторизация</h2>
+        <transition name="fade">
+          <div
+            v-if="error"
+            class="alert alert-danger"
+            role="alert"
+            aria-live="polite"
           >
-          <RouterLink to="/password-reset" class="link-secondary"
-            >Забыли пароль?</RouterLink
-          >
-        </div>
-      </form>
+            {{ error }}
+          </div>
+        </transition>
+        <form @submit.prevent="login">
+          <div class="form-floating mb-3">
+            <input
+              id="phone"
+              v-model="phoneInput"
+              type="tel"
+              class="form-control"
+              placeholder="+7 (___) ___-__-__"
+              autocomplete="tel"
+              autofocus
+              required
+              @input="onPhoneInput"
+              @keydown="onPhoneKeydown"
+            />
+            <label for="phone">Телефон</label>
+          </div>
+          <PasswordInput
+            id="password"
+            v-model="password"
+            class="mb-3"
+            label="Пароль"
+            placeholder="Пароль"
+            autocomplete="current-password"
+            :required="true"
+          />
+          <button type="submit" class="btn btn-brand w-100" :disabled="loading">
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            Войти
+          </button>
+          <div class="text-center mt-3">
+            <RouterLink to="/register" class="link-secondary me-3"
+              >Регистрация</RouterLink
+            >
+            <RouterLink to="/password-reset" class="link-secondary"
+              >Забыли пароль?</RouterLink
+            >
+          </div>
+        </form>
+      </div>
     </div>
     <CookieNotice />
   </div>

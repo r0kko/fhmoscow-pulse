@@ -9,7 +9,7 @@ import {
 } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import { apiFetch } from '../api.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import PageNav from '../components/PageNav.vue';
@@ -52,9 +52,7 @@ const addressSuggestions = ref([]);
 let addrTimeout;
 const saveLoading = ref(false);
 const syncLoading = ref(false);
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 function topChips(items, max = 3) {
   const list = Array.isArray(items) ? items : [];
@@ -264,11 +262,7 @@ async function onAddressBlur() {
   addressSuggestions.value = [];
 }
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) toast = new Toast(toastRef.value);
-  toast.show();
-}
+// global toast via useToast()
 
 async function openLinks(s) {
   selectedGround.value = s;
@@ -935,17 +929,6 @@ async function load() {
       "
     />
   </div>
-  <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div
-      ref="toastRef"
-      class="toast text-bg-secondary"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      <div class="toast-body">{{ toastMessage }}</div>
-    </div>
-  </div>
 </template>
 
 <style scoped>
@@ -953,17 +936,7 @@ async function load() {
   animation: fadeIn 0.4s ease-out;
 }
 
-@media (max-width: 575.98px) {
-  .admin-grounds-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile spacing handled globally */
 
 @keyframes fadeIn {
   from {

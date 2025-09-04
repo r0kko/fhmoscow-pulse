@@ -428,12 +428,7 @@ async function removeCenter(center) {
   animation: fadeIn 0.4s ease-out;
 }
 
-@media (max-width: 575.98px) {
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Use global section-card mobile gutters */
 
 @keyframes fadeIn {
   from {

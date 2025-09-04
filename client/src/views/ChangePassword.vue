@@ -48,43 +48,47 @@ async function submit() {
       Для продолжения работы необходимо задать новый пароль.
     </p>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    <form class="card p-3 shadow-sm" @submit.prevent="submit">
-      <PasswordInput
-        id="current"
-        v-model="current"
-        class="mb-3"
-        label="Текущий пароль"
-        placeholder="Текущий пароль"
-        autocomplete="current-password"
-        :required="true"
-      />
-      <PasswordInput
-        id="password"
-        v-model="password"
-        class="mb-3"
-        label="Новый пароль"
-        placeholder="Новый пароль"
-        autocomplete="new-password"
-        :required="true"
-      />
-      <PasswordStrengthMeter class="mb-3" :password="password" />
-      <PasswordInput
-        id="confirm"
-        v-model="confirm"
-        class="mb-3"
-        label="Подтвердите пароль"
-        placeholder="Подтверждение пароля"
-        autocomplete="new-password"
-        :required="true"
-      />
-      <button type="submit" class="btn btn-brand" :disabled="loading">
-        <span
-          v-if="loading"
-          class="spinner-border spinner-border-sm me-2"
-        ></span>
-        Сохранить пароль
-      </button>
-      <RouterLink to="/logout" class="btn btn-link ms-2">Выйти</RouterLink>
-    </form>
+    <div class="card section-card">
+      <div class="card-body">
+        <form @submit.prevent="submit">
+          <PasswordInput
+            id="current"
+            v-model="current"
+            class="mb-3"
+            label="Текущий пароль"
+            placeholder="Текущий пароль"
+            autocomplete="current-password"
+            :required="true"
+          />
+          <PasswordInput
+            id="password"
+            v-model="password"
+            class="mb-3"
+            label="Новый пароль"
+            placeholder="Новый пароль"
+            autocomplete="new-password"
+            :required="true"
+          />
+          <PasswordStrengthMeter class="mb-3" :password="password" />
+          <PasswordInput
+            id="confirm"
+            v-model="confirm"
+            class="mb-3"
+            label="Подтвердите пароль"
+            placeholder="Подтверждение пароля"
+            autocomplete="new-password"
+            :required="true"
+          />
+          <button type="submit" class="btn btn-brand" :disabled="loading">
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            Сохранить пароль
+          </button>
+          <RouterLink to="/logout" class="btn btn-link ms-2">Выйти</RouterLink>
+        </form>
+      </div>
+    </div>
   </div>
 </template>

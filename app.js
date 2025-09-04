@@ -10,10 +10,12 @@ import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
 import requestId from './src/middlewares/requestId.js';
 import rateLimiter from './src/middlewares/rateLimiter.js';
+import accessLog from './src/middlewares/accessLog.js';
 import swaggerSpec from './src/docs/swagger.js';
 import { ALLOWED_ORIGINS } from './src/config/cors.js';
 import { sendError } from './src/utils/api.js';
 import logger from './logger.js';
+import { httpMetricsMiddleware } from './src/config/metrics.js';
 
 const app = express();
 app.set('trust proxy', 2);
@@ -37,10 +39,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(helmet());
 app.use(requestId);
+// Lightweight structured HTTP access logs to stdout (Loki/Promtail friendly)
+app.use(accessLog());
 app.use(rateLimiter);
 app.use(session);
 // Expose CSRF token in a cookie so the Vue client can read it
 app.use(csrfMiddleware);
+// Record per-request metrics (latency and totals)
+app.use(httpMetricsMiddleware());
 app.use(requestLogger);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

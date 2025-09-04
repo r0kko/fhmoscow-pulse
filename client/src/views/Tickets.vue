@@ -214,17 +214,7 @@ async function deleteTicket(ticket) {
 
 /* Uses global .section-card and .tab-selector from brand.css */
 
-@media (max-width: 575.98px) {
-  .tickets-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-}
+/* Mobile paddings and section card gutters are handled globally */
 
 @keyframes fadeIn {
   from {

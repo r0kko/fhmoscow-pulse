@@ -104,6 +104,27 @@
   border-radius: 0.5rem;
 }
 
+/* Small-screen behavior for tab selector */
+@media (max-width: 575.98px) {
+  .tab-selector {
+    scrollbar-width: none;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.25rem;
+  }
+  .tab-selector::-webkit-scrollbar {
+    display: none;
+  }
+  .tab-selector .nav-item {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+  .tab-selector .nav-link {
+    margin-right: 0.25rem;
+  }
+}
+
 /* Small notification dot for tab/link labels (attention indicator) */
 .notif-dot {
   display: inline-block;
@@ -194,37 +215,41 @@
   text-decoration: underline;
 }
 
-/* standardized heading sizes */
+/* standardized, responsive heading sizes */
 h1,
 .h1 {
-  font-size: 1.75rem;
+  /* desktop up to ~1.75rem, scale down on small screens */
+  font-size: clamp(1.5rem, 1.3rem + 0.9vw, 1.75rem);
   margin-bottom: 1rem;
 }
 
 h2,
 .h2 {
-  font-size: 1.5rem;
+  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
   margin-bottom: 0.75rem;
 }
 
 h3,
 .h3 {
-  font-size: 1.25rem;
+  font-size: clamp(1.125rem, 1rem + 0.5vw, 1.25rem);
   margin-bottom: 0.5rem;
 }
 
 /* standardized breadcrumb spacing */
 nav[aria-label='breadcrumb'] {
-  margin-bottom: 1rem;
+  margin-bottom: 1rem; /* unified space before page title */
 }
 
 .breadcrumb {
   font-size: 0.875rem;
+  margin-bottom: 0 !important; /* neutralize per-view mb-* on <ol> */
+  flex-wrap: wrap; /* allow wrapping on narrow screens */
+  row-gap: 0.25rem; /* comfortable wrap spacing */
 }
 
 @media (max-width: 575.98px) {
   nav[aria-label='breadcrumb'] {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem; /* slightly larger for readability on phones */
   }
 }
 
@@ -286,7 +311,7 @@ body {
   background-color: rgba(255, 0, 0, 0.15) !important;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 575.98px) {
   .admin-table.auto-cols th,
   .admin-table.auto-cols td {
     padding: 0.25rem;
@@ -410,7 +435,7 @@ body {
     margin-right: 0;
   }
   .section-card .card-body {
-    padding: 0.75rem; /* compact on phones for readability */
+    padding: 0.5rem; /* tighter on phones per mobile UX */
   }
 }
 
@@ -439,6 +464,54 @@ body {
   background: #fff;
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-tile);
+}
+
+/* Global skeleton utilities (tables, lists, icons) */
+.skeleton-line {
+  height: 0.875rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  border-radius: 4px;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+.skeleton-badge {
+  height: 1.25rem;
+  width: 4.5rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  border-radius: var(--radius-pill);
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+.skeleton-icon {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1.5rem;
+  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
+  background-size: 400% 100%;
+  border-radius: var(--radius-xs);
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line,
+  .skeleton-badge,
+  .skeleton-icon {
+    animation: none;
+  }
+}
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+/* Tablet comfort spacing for horizontal scrollers */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .scroll-container {
+    gap: 0.875rem;
+  }
 }
 .file-tile:hover {
   transform: none;

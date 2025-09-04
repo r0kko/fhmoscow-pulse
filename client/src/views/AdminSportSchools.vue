@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import PageNav from '../components/PageNav.vue';
@@ -26,10 +26,8 @@ const overviewFilters = reactive({ year: '', hasStaff: '', staffSearch: '' });
 const clubStaff = ref([]);
 const clubLoading = ref(false);
 
-// Toast and modals
-const toastRef = ref(null);
-let toast;
-const toastMessage = ref('');
+// Toast
+const { showToast } = useToast();
 
 // Attach staff to club modal
 const clubStaffModalRef = ref(null);
@@ -57,7 +55,7 @@ let detachModal;
 const confirmDetach = reactive({ scope: '', id: '', name: '', loading: false });
 
 onMounted(() => {
-  if (!toast && toastRef.value) toast = new Toast(toastRef.value);
+  // toast handled globally
   fetchAssignments();
   if (clubStaffModalRef.value)
     clubStaffModal = new Modal(clubStaffModalRef.value);
@@ -278,11 +276,7 @@ async function confirmDetachLink() {
   }
 }
 
-function showToast(msg) {
-  if (!toast && toastRef.value) toast = new Toast(toastRef.value);
-  toastMessage.value = msg;
-  toast.show();
-}
+// global toast via useToast()
 
 // Staff tab (user-centric): list staff and manage their clubs/teams
 const staffSearch = ref('');
@@ -1071,19 +1065,6 @@ const canManage = computed(() => !!selectedClub.value || !!selectedUser.value);
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Toasts -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
   </div>

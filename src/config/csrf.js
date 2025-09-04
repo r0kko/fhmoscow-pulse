@@ -1,11 +1,14 @@
 import lusca from 'lusca';
 
+import { isSecureEnv, cookieSameSite, cookieDomain } from './security.js';
+
 const csrfOptions = {
   angular: true,
   cookie: {
     options: {
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: cookieSameSite(),
+      secure: isSecureEnv(),
+      domain: cookieDomain(),
     },
   },
 };

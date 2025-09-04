@@ -1,0 +1,48 @@
+{
+  "title": "Pulse App HTTP",
+  "uid": "pulse-app-http",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "http"],
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Latency p95 by route",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "5xx rate by route (5m)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total{status=~\"5..\"}[5m]))",
+          "legendFormat": "{{route}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "RPS by route (5m)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total[5m]))",
+          "legendFormat": "{{route}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    }
+  ]
+}
+

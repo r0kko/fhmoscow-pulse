@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import PageNav from '../components/PageNav.vue';
 import TeamTiles from '../components/TeamTiles.vue';
@@ -30,9 +30,7 @@ const activeSeasonId = ref('');
 const countsLoading = ref(false);
 
 // Toast
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
@@ -45,11 +43,7 @@ const selectedClub = computed(() => {
 });
 const inDetail = computed(() => Boolean(selectedClubId.value));
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) toast = new Toast(toastRef.value);
-  toast.show();
-}
+// global toast via useToast()
 
 async function loadClubs() {
   loading.value = true;
@@ -471,18 +465,6 @@ async function loadTeamGroundCounts() {
         </div>
       </div>
     </div>
-
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -505,26 +487,5 @@ async function loadTeamGroundCounts() {
 }
 
 /* Skeleton placeholder for smooth counter appearance */
-.skeleton-badge {
-  display: inline-block;
-  height: 1.1rem;
-  width: 4rem;
-  background: linear-gradient(90deg, #f1f3f5 25%, #eceff3 37%, #f1f3f5 63%);
-  background-size: 400% 100%;
-  border-radius: var(--radius-pill);
-  animation: skeleton-loading 1.2s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-badge {
-    animation: none;
-  }
-}
-@keyframes skeleton-loading {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: 0 0;
-  }
-}
+/* Uses global skeleton utilities in brand.css */
 </style>

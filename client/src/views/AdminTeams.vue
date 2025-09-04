@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import TeamFiltersModal from '../components/TeamFiltersModal.vue';
@@ -18,9 +18,7 @@ const clubs = ref([]);
 const loading = ref(false);
 const syncing = ref(false);
 const error = ref('');
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
@@ -65,9 +63,9 @@ async function sync() {
     const res = await apiFetch('/teams/sync', { method: 'POST' });
     await loadTeams();
     const s = res.stats?.teams || {};
-    if (!toast) toast = new Toast(toastRef.value);
-    toastMessage.value = `Синхронизировано команд: добавлено/обновлено ${s.upserts ?? 0}, удалено ${s.softDeletedTotal ?? 0} (архив: ${s.softDeletedArchived ?? 0}, отсутствуют: ${s.softDeletedMissing ?? 0})`;
-    toast.show();
+    showToast(
+      `Синхронизировано команд: добавлено/обновлено ${s.upserts ?? 0}, удалено ${s.softDeletedTotal ?? 0} (архив: ${s.softDeletedArchived ?? 0}, отсутствуют: ${s.softDeletedMissing ?? 0})`
+    );
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -288,17 +286,6 @@ const activeFiltersCount = computed(() => {
       @apply="applyFilters"
       @reset="resetFilters"
     />
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
-      </div>
-    </div>
   </div>
 </template>
 

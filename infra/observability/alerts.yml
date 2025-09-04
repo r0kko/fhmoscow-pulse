@@ -1,0 +1,127 @@
+groups:
+  - name: app-slo
+    rules:
+      # SLO: availability 99% (1% error budget). Burn-rate style alerts.
+      - record: slo:availability:error_ratio:5m
+        expr: |
+          sum(rate(http_requests_total{route!="/metrics",status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{route!="/metrics"}[5m]))
+      - record: slo:availability:error_ratio:30m
+        expr: |
+          sum(rate(http_requests_total{route!="/metrics",status=~"5.."}[30m]))
+          /
+          sum(rate(http_requests_total{route!="/metrics"}[30m]))
+      - record: slo:availability:error_ratio:1h
+        expr: |
+          sum(rate(http_requests_total{route!="/metrics",status=~"5.."}[1h]))
+          /
+          sum(rate(http_requests_total{route!="/metrics"}[1h]))
+      - record: slo:availability:error_ratio:6h
+        expr: |
+          sum(rate(http_requests_total{route!="/metrics",status=~"5.."}[6h]))
+          /
+          sum(rate(http_requests_total{route!="/metrics"}[6h]))
+
+      # Burn rate = error_ratio / (1 - SLO). SLO = 0.99 → error budget 0.01
+      - record: slo:availability:burnrate:5m
+        expr: slo:availability:error_ratio:5m / 0.01
+      - record: slo:availability:burnrate:30m
+        expr: slo:availability:error_ratio:30m / 0.01
+      - record: slo:availability:burnrate:1h
+        expr: slo:availability:error_ratio:1h / 0.01
+      - record: slo:availability:burnrate:6h
+        expr: slo:availability:error_ratio:6h / 0.01
+
+      # Fast burn (page): 5m and 1h burn > 14.4 (Google SRE rec.)
+      - alert: SLOErrorBudgetBurnFast
+        expr: slo:availability:burnrate:5m > 14.4 and slo:availability:burnrate:1h > 14.4
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "High error-budget burn (fast)"
+          description: |
+            Error budget burning fast (>14.4x) over 5m and 1h.
+            Current burn rate (5m window) shown as alert value.
+
+      # Slow burn (ticket): 30m and 6h windows
+      - alert: SLOErrorBudgetBurnSlow
+        expr: slo:availability:burnrate:30m > 6 and slo:availability:burnrate:6h > 1
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Error-budget burn (slow)"
+          description: |
+            Error budget burning over 30m and 6h windows.
+            Check dashboard for detailed ratios and routes.
+
+      # Simple 5xx spike
+      - alert: Http5xxSpike
+        expr: |
+          sum(rate(http_requests_total{route!="/metrics",status=~"5.."}[5m]))
+          >
+          0
+          and
+          sum(rate(http_requests_total{route!="/metrics"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "HTTP 5xx rate detected"
+          description: |
+            5xx requests present over the last 5 minutes.
+
+  - name: runtime-health
+    rules:
+      # Event loop lag (average > 250ms for 5m)
+      - alert: NodeEventLoopLagHigh
+        expr: avg_over_time(nodejs_eventloop_lag_seconds[5m]) > 0.25
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "High Node.js event loop lag"
+          description: "Average event loop lag > 250ms"
+
+      # Process RSS > 700MB for 10m (adjust to your container limits)
+      - alert: AppProcessMemoryHigh
+        expr: avg_over_time(process_resident_memory_bytes[10m]) > 7e8
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "App memory usage is high"
+          description: "process_resident_memory_bytes > 700MB for 10m"
+
+      # Container memory near limit (requires cAdvisor)
+      - alert: ContainerMemoryPressure
+        expr: |
+          (container_memory_working_set_bytes{container_label_com_docker_compose_service="app"}
+            / ignoring (id)
+           container_spec_memory_limit_bytes{container_label_com_docker_compose_service="app"})
+          > 0.9
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Container memory > 90% of limit"
+          description: "App container working set exceeds 90% of memory limit"
+
+      # Container CPU usage near quota (if set)
+      - alert: ContainerCpuHigh
+        expr: |
+          sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service="app"}[5m]))
+          /
+          clamp_min(
+            sum by (container_label_com_docker_compose_service) (container_spec_cpu_quota{container_label_com_docker_compose_service="app"}
+              / container_spec_cpu_period{container_label_com_docker_compose_service="app"}),
+            1)
+          > 0.8
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "High CPU usage vs quota"
+          description: "App CPU usage > 80% of CPU limit for 10m"

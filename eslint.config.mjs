@@ -29,7 +29,14 @@ export default [
       'prettier/prettier': 'off',
       semi: ['error', 'always'],
       quotes: ['error', 'single'],
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
       'no-var': 'error',
       'prefer-const': 'error',

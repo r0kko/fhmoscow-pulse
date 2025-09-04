@@ -1,31 +1,45 @@
 #!/usr/bin/env node
 
 /**
- * Module dependencies.
+ * Production bootstrap with early tracing init
  */
-import http from 'http';
-import https from 'https';
 import fs from 'fs';
-
 import debugLib from 'debug';
 
-import app from '../app.js';
-import { connectToDatabase } from '../src/config/database.js';
-import { connectLegacyDatabase } from '../src/config/legacyDatabase.js';
-import { connectExternalMariaDb, isExternalDbAvailable } from '../src/config/externalMariaDb.js';
-import { setupExternalAssociations } from '../src/externalModels/index.js';
-import { connectRedis } from '../src/config/redis.js';
-import validateEnv from '../src/config/validateEnv.js';
-import startTaxationCron from '../src/jobs/taxationCron.js';
-import startSyncAllCron, { runSyncAll } from '../src/jobs/syncAllCron.js';
-import startMatchAgreementReminderCron from '../src/jobs/matchAgreementReminderCron.js';
-import startExternalDbWatchCron from '../src/jobs/externalDbWatchCron.js';
-import { setReady, setSyncing } from '../src/config/readiness.js';
-import { seedJobMetrics } from '../src/config/metrics.js';
+// Initialize tracing as early as possible (optional)
+await (await import('../src/telemetry/tracing.js')).initTracing();
+
+// Lazy-load other modules after tracing to maximize coverage
+const http = await import('http');
+const https = await import('https');
+const { default: app } = await import('../app.js');
+const { connectToDatabase, closeDatabase } = await import('../src/config/database.js');
+const { connectLegacyDatabase } = await import('../src/config/legacyDatabase.js');
+const { connectExternalMariaDb, isExternalDbAvailable } = await import('../src/config/externalMariaDb.js');
+const { setupExternalAssociations } = await import('../src/externalModels/index.js');
+const { connectRedis, closeRedis } = await import('../src/config/redis.js');
+const { default: validateEnv } = await import('../src/config/validateEnv.js');
+const { default: startTaxationCron } = await import('../src/jobs/taxationCron.js');
+const { default: startSyncAllCron, runSyncAll } = await import('../src/jobs/syncAllCron.js');
+const { default: startMatchAgreementReminderCron } = await import('../src/jobs/matchAgreementReminderCron.js');
+const { default: startExternalDbWatchCron } = await import('../src/jobs/externalDbWatchCron.js');
+const { setReady, setSyncing } = await import('../src/config/readiness.js');
+const { seedJobMetrics } = await import('../src/config/metrics.js');
 
 const debug = debugLib('fhmoscow-pulse:server');
 
 validateEnv();
+
+// Set build info metric once at startup
+(async () => {
+  try {
+    const pkg = JSON.parse(await fs.promises.readFile(new URL('../package.json', import.meta.url)));
+    const version = process.env.VERSION || pkg.version || '0.0.0';
+    const commit = process.env.GIT_COMMIT || process.env.SOURCE_COMMIT || 'unknown';
+    const { setBuildInfo } = await import('../src/config/metrics.js');
+    setBuildInfo?.({ service: 'api', version, env: process.env.NODE_ENV || 'development', commit });
+  } catch {}
+})();
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err);
@@ -139,6 +153,26 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
 
 server.on('error', onError);
 server.on('listening', onListening);
+
+// Graceful shutdown on SIGTERM/SIGINT
+async function shutdown(signal) {
+  try {
+    setReady(false);
+  } catch {}
+  console.log(`Received ${signal}, shutting down gracefully...`);
+  try {
+    await new Promise((resolve) => server.close(resolve));
+  } catch {}
+  try {
+    await closeDatabase();
+  } catch {}
+  try {
+    await closeRedis();
+  } catch {}
+  process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 /**
  * Normalize a port into a number, string, or false.

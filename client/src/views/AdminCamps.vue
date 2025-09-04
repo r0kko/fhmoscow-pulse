@@ -899,16 +899,6 @@ async function toggleTrainingGroup(training, groupId, checked) {
 }
 
 @media (max-width: 575.98px) {
-  .admin-camps-page {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-
-  .section-card {
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-
   .ground-card {
     margin-left: -1rem;
     margin-right: -1rem;

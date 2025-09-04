@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import Toast from 'bootstrap/js/dist/toast';
+import { useToast } from '../utils/toast.js';
 import { apiFetch } from '../api.js';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
@@ -15,19 +15,13 @@ const q = ref('');
 const loading = ref(false);
 const syncing = ref(false);
 const error = ref('');
-const toastRef = ref(null);
-const toastMessage = ref('');
-let toast;
+const { showToast } = useToast();
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / pageSize.value))
 );
 
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toast) toast = new Toast(toastRef.value);
-  toast.show();
-}
+// global toast via useToast()
 
 async function load() {
   loading.value = true;
@@ -252,18 +246,6 @@ watch(q, () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastRef"
-        class="toast text-bg-secondary"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div class="toast-body">{{ toastMessage }}</div>
       </div>
     </div>
   </div>
