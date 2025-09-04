@@ -53,7 +53,6 @@ tmp/
 *.key
 
 # Local datasources (JetBrains)
-dataSources/
 dataSources.local.xml
 
 # Project-specific
