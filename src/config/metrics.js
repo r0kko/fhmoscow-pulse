@@ -28,6 +28,10 @@ let dbQueryDuration = null;
 let dbPoolSize = null;
 let dbPoolFree = null;
 let dbPoolPending = null;
+let authLoginAttempts = null;
+let authRefreshTotal = null;
+let tokensIssued = null;
+let emailSentTotal = null;
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -145,6 +149,32 @@ async function ensureInit() {
     cacheUpGauge = new client.Gauge({
       name: 'cache_up',
       help: 'Cache (Redis) connectivity status (0/1)',
+      registers: [register],
+    });
+
+    // Auth and mail metrics (corporate visibility)
+    authLoginAttempts = new client.Counter({
+      name: 'auth_login_attempts_total',
+      help: 'Login attempts grouped by result',
+      labelNames: ['result'], // success|invalid
+      registers: [register],
+    });
+    authRefreshTotal = new client.Counter({
+      name: 'auth_refresh_total',
+      help: 'Refresh token operations grouped by result',
+      labelNames: ['result'], // success|invalid
+      registers: [register],
+    });
+    tokensIssued = new client.Counter({
+      name: 'jwt_tokens_issued_total',
+      help: 'JWT tokens issued grouped by type',
+      labelNames: ['type'], // access|refresh
+      registers: [register],
+    });
+    emailSentTotal = new client.Counter({
+      name: 'email_sent_total',
+      help: 'Emails sent grouped by status and purpose',
+      labelNames: ['status', 'purpose'], // ok|error, e.g., verification, password_reset
       registers: [register],
     });
 
@@ -462,4 +492,38 @@ export function getRuntimeStates() {
     dbUp: _dbUpState,
     cacheUp: _cacheUpState,
   };
+}
+
+// Auth & mail helpers
+export function incAuthLogin(result) {
+  if (!metricsAvailable) return;
+  try {
+    authLoginAttempts.inc({ result });
+  } catch (_e) {
+    /* noop */
+  }
+}
+export function incAuthRefresh(result) {
+  if (!metricsAvailable) return;
+  try {
+    authRefreshTotal.inc({ result });
+  } catch (_e) {
+    /* noop */
+  }
+}
+export function incTokenIssued(type) {
+  if (!metricsAvailable) return;
+  try {
+    tokensIssued.inc({ type });
+  } catch (_e) {
+    /* noop */
+  }
+}
+export function incEmailSent(status, purpose = 'generic') {
+  if (!metricsAvailable) return;
+  try {
+    emailSentTotal.inc({ status, purpose });
+  } catch (_e) {
+    /* noop */
+  }
 }

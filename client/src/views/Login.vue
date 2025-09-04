@@ -97,7 +97,7 @@ async function login() {
 
 <template>
   <div
-    class="d-flex flex-column align-items-center justify-content-center min-vh-100"
+    class="auth-page d-flex flex-column align-items-center justify-content-center min-vh-100"
   >
     <div class="card section-card login-card w-100" style="max-width: 400px">
       <div class="card-body">
@@ -127,6 +127,7 @@ async function login() {
               class="form-control"
               placeholder="+7 (___) ___-__-__"
               autocomplete="tel"
+              inputmode="numeric"
               autofocus
               required
               @input="onPhoneInput"
@@ -143,7 +144,11 @@ async function login() {
             autocomplete="current-password"
             :required="true"
           />
-          <button type="submit" class="btn btn-brand w-100" :disabled="loading">
+          <button
+            type="submit"
+            class="btn btn-brand btn-lg w-100"
+            :disabled="loading"
+          >
             <span
               v-if="loading"
               class="spinner-border spinner-border-sm me-2"
@@ -168,6 +173,13 @@ async function login() {
 <style scoped>
 .login-card {
   animation: fade-in 0.4s ease-out;
+}
+
+@media (max-width: 575.98px) {
+  .auth-page {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
 }
 
 @keyframes fade-in {

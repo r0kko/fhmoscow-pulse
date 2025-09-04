@@ -125,3 +125,95 @@ groups:
         annotations:
           summary: "High CPU usage vs quota"
           description: "App CPU usage > 80% of CPU limit for 10m"
+
+  - name: infra-core
+    rules:
+      # Any target down
+      - alert: PrometheusJobDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Prometheus target down"
+          description: "Instance {{ $labels.instance }} of job {{ $labels.job }} is down"
+
+      # Postgres exporter reports DB down
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "postgres-exporter reports pg_up=0"
+
+      # Redis exporter reports instance down
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "Redis is down"
+          description: "redis_exporter reports redis_up=0"
+
+      # Node filesystem usage > 90%
+      - alert: HostDiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|aufs|squashfs"}
+            /
+            node_filesystem_size_bytes{fstype!~"tmpfs|overlay|aufs|squashfs"}
+          ) < 0.10
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Low disk space (<10%)"
+          description: "Filesystem {{ $labels.mountpoint }} low free space"
+
+      # Node filesystem inodes usage > 90%
+      - alert: HostDiskInodesLow
+        expr: |
+          (
+            node_filesystem_files_free{fstype!~"tmpfs|overlay|aufs|squashfs"}
+            /
+            node_filesystem_files{fstype!~"tmpfs|overlay|aufs|squashfs"}
+          ) < 0.10
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Low disk inodes (<10%)"
+          description: "Filesystem {{ $labels.mountpoint }} low free inodes"
+
+      # App readiness degraded
+      - alert: AppNotReady
+        expr: app_ready == 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "App readiness is false"
+          description: "app_ready=0 for over 5 minutes"
+
+      # Synthetics probe failing
+      - alert: BlackboxProbeFail
+        expr: probe_success == 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Blackbox probe failure"
+          description: "Synthetics health probe failing"
+
+      # Spike in invalid logins
+      - alert: LoginFailureSpike
+        expr: increase(auth_login_attempts_total{result="invalid"}[5m]) > 20
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Spike of failed logins"
+          description: ">20 invalid login attempts in 5m window"

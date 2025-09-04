@@ -102,6 +102,7 @@ onBeforeUnmount(() => {
       class="btn btn-link password-toggle"
       :aria-label="visible ? 'Скрыть пароль' : 'Показать пароль'"
       :title="visible ? 'Скрыть пароль' : 'Показать пароль'"
+      :aria-pressed="visible ? 'true' : 'false'"
       @click="toggleVisibility"
     >
       <span v-if="!visible">Показать</span>
@@ -120,5 +121,6 @@ onBeforeUnmount(() => {
   transform: translateY(-50%);
   padding: 0.25rem 0.5rem;
   text-decoration: none;
+  min-height: 44px; /* comfortable tap target */
 }
 </style>

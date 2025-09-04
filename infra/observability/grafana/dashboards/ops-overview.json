@@ -1,0 +1,39 @@
+{
+  "title": "Ops Overview",
+  "uid": "ops-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "ops"],
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"type": "stat", "title": "API Ready", "gridPos": {"x":0,"y":0,"w":4,"h":4},
+      "targets":[{"expr":"max(app_ready)", "datasource": {"type":"prometheus","uid":"Prometheus"}}],
+      "options":{"reduceOptions":{"calcs":["lastNotNull"]},"colorMode":"value","textMode":"value"}
+    },
+    {"type": "stat", "title": "DB Up", "gridPos": {"x":4,"y":0,"w":4,"h":4},
+      "targets":[{"expr":"max(db_up)", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "stat", "title": "Cache Up", "gridPos": {"x":8,"y":0,"w":4,"h":4},
+      "targets":[{"expr":"max(cache_up)", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "stat", "title": "Targets Down", "gridPos": {"x":12,"y":0,"w":4,"h":4},
+      "targets":[{"expr":"count(up==0)", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "stat", "title": "Error budget burn (5m)", "gridPos": {"x":16,"y":0,"w":8,"h":4},
+      "targets":[{"expr":"slo:availability:burnrate:5m", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "graph", "title": "HTTP p95 latency (s)", "gridPos": {"x":0,"y":4,"w":12,"h":8},
+      "targets":[{"expr":"histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "graph", "title": "HTTP 5xx rate", "gridPos": {"x":12,"y":4,"w":12,"h":8},
+      "targets":[{"expr":"sum(rate(http_requests_total{status=~\"5..\"}[5m]))", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "logs", "title": "Recent errors (Loki)", "gridPos": {"x":0,"y":12,"w":24,"h":10},
+      "options":{"showTime":true,"dedupStrategy":"none"},
+      "datasource":{"type":"loki","uid":"Loki"},
+      "targets":[{"expr":"{service=\"api\",level=\"error\"}"}]
+    }
+  ]
+}
+

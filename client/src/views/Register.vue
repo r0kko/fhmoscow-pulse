@@ -132,7 +132,7 @@ async function resend() {
 
 <template>
   <div
-    class="d-flex flex-column align-items-center justify-content-center min-vh-100"
+    class="auth-page d-flex flex-column align-items-center justify-content-center min-vh-100"
   >
     <div class="card section-card login-card w-100" style="max-width: 400px">
       <div class="card-body">
@@ -160,17 +160,19 @@ async function resend() {
               class="form-control"
               placeholder="Email"
               autocomplete="email"
+              autocapitalize="none"
               required
               :aria-invalid="
                 !isEmailValid && email.length > 0 ? 'true' : 'false'
               "
               @input="onEmailInput"
+              @keydown.enter.prevent="start"
             />
             <label for="email">Email</label>
           </div>
           <button
             type="submit"
-            class="btn btn-brand w-100"
+            class="btn btn-brand btn-lg w-100"
             :disabled="!canSubmitStart"
           >
             <span
@@ -242,7 +244,7 @@ async function resend() {
           </div>
           <button
             type="submit"
-            class="btn btn-brand w-100"
+            class="btn btn-brand btn-lg w-100"
             :disabled="!canSubmitFinish"
           >
             <span
@@ -274,6 +276,13 @@ async function resend() {
 .login-card {
   animation: fade-in 0.4s ease-out;
 }
+@media (max-width: 575.98px) {
+  .auth-page {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+/* no extra mobile overrides here; using global section-card/mobile.css */
 
 @keyframes fade-in {
   from {

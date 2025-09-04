@@ -157,6 +157,11 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=false
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/pulse-app-overview.json
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_DATE_FORMATS_DEFAULT_TIMEZONE=Europe/Moscow
+      - GF_SERVER_ENABLE_GZIP=true
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=None
     volumes:
       - grafana-data:/var/lib/grafana
       - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -217,7 +222,9 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: postgres-exporter
     environment:
-      - DATA_SOURCE_NAME=postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?sslmode=disable
+      - DATA_SOURCE_URI=postgresql://db:5432/${DB_NAME}?sslmode=disable
+      - DATA_SOURCE_USER=${DB_USER}
+      - DATA_SOURCE_PASS=${DB_PASS}
     ports:
       - "127.0.0.1:9187:9187"
     networks:

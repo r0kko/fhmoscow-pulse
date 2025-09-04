@@ -1,6 +1,11 @@
 import { validationResult } from 'express-validator';
 
 import authService from '../services/authService.js';
+import {
+  incAuthLogin,
+  incAuthRefresh,
+  incTokenIssued,
+} from '../config/metrics.js';
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
@@ -26,6 +31,9 @@ export default {
       await user.increment('token_version');
       const updated = await user.reload({ include: [UserStatus] });
       const { accessToken, refreshToken } = authService.issueTokens(updated);
+      incAuthLogin('success');
+      incTokenIssued('access');
+      incTokenIssued('refresh');
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias
       );
@@ -53,6 +61,11 @@ export default {
         ...extra,
       });
     } catch (err) {
+      try {
+        incAuthLogin('invalid');
+      } catch (_e) {
+        /* noop */
+      }
       return sendError(res, err, 401);
     }
   },
@@ -111,6 +124,9 @@ export default {
     try {
       const { user, accessToken, refreshToken } =
         await authService.rotateTokens(token);
+      incAuthRefresh('success');
+      incTokenIssued('access');
+      incTokenIssued('refresh');
       const roles = (await user.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias
       );
@@ -127,6 +143,11 @@ export default {
         },
       });
     } catch (err) {
+      try {
+        incAuthRefresh('invalid');
+      } catch (_e) {
+        /* noop */
+      }
       return sendError(res, err, 401);
     }
   },

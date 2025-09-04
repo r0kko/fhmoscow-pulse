@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
@@ -13,10 +13,34 @@ const confirm = ref('');
 const error = ref('');
 const loading = ref(false);
 
+const passwordMeetsMin = computed(() => (password.value || '').length >= 8);
+const passwordsMatch = computed(
+  () => (password.value || '') && password.value === confirm.value
+);
+const notSameAsCurrent = computed(
+  () => !current.value || !password.value || current.value !== password.value
+);
+const canSubmit = computed(
+  () =>
+    !loading.value &&
+    Boolean(current.value) &&
+    passwordMeetsMin.value &&
+    passwordsMatch.value &&
+    notSameAsCurrent.value
+);
+
 async function submit() {
   error.value = '';
-  if (!password.value || password.value !== confirm.value) {
+  if (!passwordsMatch.value) {
     error.value = 'Пароли не совпадают';
+    return;
+  }
+  if (!passwordMeetsMin.value) {
+    error.value = 'Минимальная длина пароля — 8 символов';
+    return;
+  }
+  if (!notSameAsCurrent.value) {
+    error.value = 'Новый пароль не должен совпадать с текущим';
     return;
   }
   loading.value = true;
@@ -42,15 +66,17 @@ async function submit() {
 </script>
 
 <template>
-  <div class="container py-5" style="max-width: 560px">
+  <div class="container change-password-page py-5" style="max-width: 560px">
     <h1 class="mb-3">Смена пароля</h1>
     <p class="text-muted">
       Для продолжения работы необходимо задать новый пароль.
     </p>
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
+    <div v-if="error" class="alert alert-danger" aria-live="polite">
+      {{ error }}
+    </div>
     <div class="card section-card">
       <div class="card-body">
-        <form @submit.prevent="submit">
+        <form novalidate @submit.prevent="submit">
           <PasswordInput
             id="current"
             v-model="current"
@@ -59,6 +85,7 @@ async function submit() {
             placeholder="Текущий пароль"
             autocomplete="current-password"
             :required="true"
+            autofocus
           />
           <PasswordInput
             id="password"
@@ -68,8 +95,16 @@ async function submit() {
             placeholder="Новый пароль"
             autocomplete="new-password"
             :required="true"
+            :aria-invalid="
+              !passwordMeetsMin && password.length > 0 ? 'true' : 'false'
+            "
+            aria-describedby="passwordHelp"
           />
           <PasswordStrengthMeter class="mb-3" :password="password" />
+          <small id="passwordHelp" class="text-muted d-block mb-2"
+            >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
+            символы.</small
+          >
           <PasswordInput
             id="confirm"
             v-model="confirm"
@@ -78,8 +113,16 @@ async function submit() {
             placeholder="Подтверждение пароля"
             autocomplete="new-password"
             :required="true"
+            :aria-invalid="
+              !passwordsMatch && confirm.length > 0 ? 'true' : 'false'
+            "
           />
-          <button type="submit" class="btn btn-brand" :disabled="loading">
+          <button
+            type="submit"
+            class="btn btn-brand submit-btn"
+            :disabled="!canSubmit"
+            :aria-busy="loading ? 'true' : 'false'"
+          >
             <span
               v-if="loading"
               class="spinner-border spinner-border-sm me-2"
@@ -92,3 +135,15 @@ async function submit() {
     </div>
   </div>
 </template>
+
+<style scoped>
+@media (max-width: 575.98px) {
+  .change-password-page {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+}
+.submit-btn {
+  min-height: 44px;
+}
+</style>

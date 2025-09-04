@@ -435,7 +435,7 @@ body {
     margin-right: 0;
   }
   .section-card .card-body {
-    padding: 0.5rem; /* tighter on phones per mobile UX */
+    padding: 0.75rem; /* slightly larger for comfort on phones */
   }
 }
 
