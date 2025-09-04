@@ -23,7 +23,9 @@ jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import('../src/controllers/passportSelfController.js');
+const { default: controller } = await import(
+  '../src/controllers/passportSelfController.js'
+);
 
 test('create returns 400 on validation errors', async () => {
   validationOk = false;
@@ -40,9 +42,12 @@ test('create stores new passport', async () => {
   const req = { user: { id: '1' }, body: { series: '11', number: '22' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   await controller.create(req, res);
-  expect(createMock).toHaveBeenCalledWith('1', { series: '11', number: '22' }, '1');
+  expect(createMock).toHaveBeenCalledWith(
+    '1',
+    { series: '11', number: '22' },
+    '1'
+  );
   expect(res.status).toHaveBeenCalledWith(201);
   expect(toPublicMock).toHaveBeenCalled();
   expect(res.json).toHaveBeenCalledWith({ passport: { id: 'p1' } });
 });
-

@@ -26,10 +26,7 @@ describe('userMapper', () => {
   });
 
   test('toPublicArray maps array', () => {
-    const users = [
-      { get: () => ({ id: '1' }) },
-      { get: () => ({ id: '2' }) },
-    ];
+    const users = [{ get: () => ({ id: '1' }) }, { get: () => ({ id: '2' }) }];
     expect(mapper.toPublicArray(users)).toEqual([{ id: '1' }, { id: '2' }]);
   });
 

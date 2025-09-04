@@ -39,7 +39,11 @@ beforeEach(() => {
   findAllUsersMock.mockReset();
   findRegMock.mockReset();
   findTrainingTypeMock.mockReset();
-  findTrainingTypeMock.mockResolvedValue({ id: 'tp', for_camp: true, online: false });
+  findTrainingTypeMock.mockResolvedValue({
+    id: 'tp',
+    for_camp: true,
+    online: false,
+  });
   sendInvitationMock.mockReset();
 });
 
@@ -326,7 +330,10 @@ test('create sends invitation email for seminar course', async () => {
   findAllCoursesMock.mockResolvedValue([{ id: 'c1' }]);
   findAllUsersMock.mockResolvedValue([{ id: 'u1' }]);
   findByPkMock.mockResolvedValue({
-    get: () => ({ id: 't6', TrainingType: { alias: 'SEMINAR', name: 'Семинар', online: false } }),
+    get: () => ({
+      id: 't6',
+      TrainingType: { alias: 'SEMINAR', name: 'Семинар', online: false },
+    }),
   });
   await service.create(
     {

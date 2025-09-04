@@ -16,4 +16,3 @@ test('withHttp returns falsy input as-is', () => {
   expect(withHttp(null)).toBe(null);
   expect(withHttp(undefined)).toBe(undefined);
 });
-

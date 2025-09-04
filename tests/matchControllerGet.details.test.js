@@ -39,7 +39,12 @@ test('get returns extended meta and ground details', async () => {
     date_start: '2025-09-10T12:00:00.000Z',
     team1_id: 'home-id',
     team2_id: 'away-id',
-    Ground: { id: 'g1', name: 'Арена', yandex_url: 'https://yandex.ru/maps', Address: { result: 'Москва, ул. Пушкина' } },
+    Ground: {
+      id: 'g1',
+      name: 'Арена',
+      yandex_url: 'https://yandex.ru/maps',
+      Address: { result: 'Москва, ул. Пушкина' },
+    },
     HomeTeam: { name: 'Команда А' },
     AwayTeam: { name: 'Команда Б' },
     Tournament: { name: 'Кубок' },
@@ -75,4 +80,3 @@ test('get returns extended meta and ground details', async () => {
     })
   );
 });
-

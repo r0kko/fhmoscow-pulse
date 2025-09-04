@@ -24,3 +24,11 @@ test('sendError falls back to error message', () => {
   expect(res.status).toHaveBeenCalledWith(401);
   expect(json).toHaveBeenCalledWith({ error: 'bad' });
 });
+
+test('sendError masks 5xx message with internal_error', () => {
+  const json = jest.fn();
+  const res = { status: jest.fn(() => ({ json })), set: jest.fn() };
+  sendError(res, { message: 'stack/internal details', status: 500 });
+  expect(res.status).toHaveBeenCalledWith(500);
+  expect(json).toHaveBeenCalledWith({ error: 'internal_error' });
+});

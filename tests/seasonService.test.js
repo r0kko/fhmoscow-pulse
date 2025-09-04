@@ -58,22 +58,37 @@ test('getById throws when missing', async () => {
 test('create deactivates other seasons when active', async () => {
   createMock.mockResolvedValue({ id: 's2' });
   await service.create({ name: 'New', active: true }, 'admin');
-  expect(updateMock).toHaveBeenCalledWith({ active: false }, { where: { active: true } });
+  expect(updateMock).toHaveBeenCalledWith(
+    { active: false },
+    { where: { active: true } }
+  );
   const arg = createMock.mock.calls[0][0];
   expect(arg.alias).toBe('NEW');
   expect(arg.created_by).toBe('admin');
 });
 
 test('update modifies existing season', async () => {
-  findByPkMock.mockResolvedValue({ id: 's1', name: 'Old', alias: 'OLD', active: false, update: updateMock });
+  findByPkMock.mockResolvedValue({
+    id: 's1',
+    name: 'Old',
+    alias: 'OLD',
+    active: false,
+    update: updateMock,
+  });
   await service.update('s1', { name: 'New', active: true }, 'admin');
-  expect(updateMock).toHaveBeenCalledWith({ active: false }, { where: { active: true } });
+  expect(updateMock).toHaveBeenCalledWith(
+    { active: false },
+    { where: { active: true } }
+  );
   expect(updateMock).toHaveBeenCalledTimes(2);
 });
 
 test('remove deletes season', async () => {
   const updateMockLocal = jest.fn();
-  findByPkMock.mockResolvedValue({ destroy: destroyMock, update: updateMockLocal });
+  findByPkMock.mockResolvedValue({
+    destroy: destroyMock,
+    update: updateMockLocal,
+  });
   await service.remove('s1', 'admin');
   expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
@@ -81,6 +96,7 @@ test('remove deletes season', async () => {
 
 test('remove throws when missing', async () => {
   findByPkMock.mockResolvedValue(null);
-  await expect(service.remove('s1', 'admin')).rejects.toThrow('season_not_found');
+  await expect(service.remove('s1', 'admin')).rejects.toThrow(
+    'season_not_found'
+  );
 });
-

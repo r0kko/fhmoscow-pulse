@@ -68,9 +68,10 @@ test('listAll passes pagination options', async () => {
 
 test('update throws when not found', async () => {
   findByPkMock.mockResolvedValue(null);
-  await expect(service.update('t1', {}, 'u1')).rejects.toThrow('ticket_not_found');
+  await expect(service.update('t1', {}, 'u1')).rejects.toThrow(
+    'ticket_not_found'
+  );
 });
-
 
 test('getById returns ticket', async () => {
   findByPkMock.mockResolvedValue({ id: 't1' });
@@ -82,7 +83,6 @@ test('getById throws when missing', async () => {
   findByPkMock.mockResolvedValue(null);
   await expect(service.getById('t2')).rejects.toThrow('ticket_not_found');
 });
-
 
 test('listByUser returns tickets', async () => {
   findAllMock.mockResolvedValue([{ id: 't1' }]);
@@ -97,7 +97,11 @@ test('createForUser creates ticket', async () => {
   maxMock.mockResolvedValue(null);
   createMock.mockResolvedValue({ id: 't1' });
   findByPkMock.mockResolvedValue({ id: 't1' });
-  const ticket = await service.createForUser('u1', { type_alias: 'A' }, 'admin');
+  const ticket = await service.createForUser(
+    'u1',
+    { type_alias: 'A' },
+    'admin'
+  );
   expect(createMock).toHaveBeenCalled();
   expect(ticket).toEqual({ id: 't1' });
   expect(sendCreatedEmailMock).toHaveBeenCalled();
@@ -125,7 +129,12 @@ test('updateForUser updates ticket', async () => {
   findOneStatusMock.mockResolvedValue({ id: 'status2' });
   userFindByPkMock.mockResolvedValue({ id: 'u1', email: 'e' });
   findByPkMock.mockResolvedValue({ id: 't1' });
-  const res = await service.updateForUser('u1', 't1', { status_alias: 'X' }, 'adm');
+  const res = await service.updateForUser(
+    'u1',
+    't1',
+    { status_alias: 'X' },
+    'adm'
+  );
   expect(updateMock).toHaveBeenCalled();
   expect(res).toEqual({ id: 't1' });
   expect(sendStatusChangedEmailMock).toHaveBeenCalled();
@@ -148,7 +157,9 @@ test('removeForUser rejects when not created', async () => {
     destroy: destroyMock,
     TicketStatus: { alias: 'IN_PROGRESS' },
   });
-  await expect(service.removeForUser('u1', 't1')).rejects.toThrow('ticket_locked');
+  await expect(service.removeForUser('u1', 't1')).rejects.toThrow(
+    'ticket_locked'
+  );
 });
 
 test('progressStatus moves ticket forward', async () => {
@@ -158,7 +169,10 @@ test('progressStatus moves ticket forward', async () => {
       user_id: 'u1',
       TicketStatus: { alias: 'CREATED' },
     })
-    .mockResolvedValueOnce({ id: 't1', TicketStatus: { alias: 'IN_PROGRESS' } });
+    .mockResolvedValueOnce({
+      id: 't1',
+      TicketStatus: { alias: 'IN_PROGRESS' },
+    });
   ticketFindOneMock.mockResolvedValue({
     id: 't1',
     user_id: 'u1',
@@ -174,15 +188,16 @@ test('progressStatus moves ticket forward', async () => {
   expect(sendStatusChangedEmailMock).toHaveBeenCalled();
 });
 
-
-
 test('createForUser throws when user missing', async () => {
   userFindByPkMock.mockResolvedValue(null);
-  await expect(service.createForUser('u1', { type_alias: 'A' }, 'adm')).rejects.toThrow('user_not_found');
+  await expect(
+    service.createForUser('u1', { type_alias: 'A' }, 'adm')
+  ).rejects.toThrow('user_not_found');
 });
 
 test('removeForUser throws when missing', async () => {
   ticketFindOneMock.mockResolvedValue(null);
-  await expect(service.removeForUser('u1', 't1')).rejects.toThrow('ticket_not_found');
+  await expect(service.removeForUser('u1', 't1')).rejects.toThrow(
+    'ticket_not_found'
+  );
 });
-

@@ -83,7 +83,9 @@ jest.unstable_mockModule('../src/services/externalMatchSyncService.js', () => ({
   default: { syncApprovedMatchToExternal: jest.fn().mockResolvedValue(true) },
 }));
 
-const { default: service } = await import('../src/services/matchAgreementService.js');
+const { default: service } = await import(
+  '../src/services/matchAgreementService.js'
+);
 
 test('create (HOME_PROPOSAL) notifies away team staff', async () => {
   const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
@@ -110,7 +112,8 @@ test('create (HOME_PROPOSAL) notifies away team staff', async () => {
     return Promise.resolve({ id: 'st_other' });
   });
   maTypeFindOneMock.mockImplementation(({ where }) => {
-    if (where.alias === 'HOME_PROPOSAL') return Promise.resolve({ id: 'tp_home' });
+    if (where.alias === 'HOME_PROPOSAL')
+      return Promise.resolve({ id: 'tp_home' });
     return Promise.resolve({ id: 'tp_other' });
   });
   maCountMock.mockResolvedValue(0);
@@ -151,7 +154,12 @@ test('approve notifies both sides', async () => {
     MatchAgreementStatus: { alias: 'PENDING' },
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
   });
-  matchFindByPkMock.mockResolvedValueOnce({ id: 'm1', date_start: future, team1_id: 't1', team2_id: 't2' });
+  matchFindByPkMock.mockResolvedValueOnce({
+    id: 'm1',
+    date_start: future,
+    team1_id: 't1',
+    team2_id: 't2',
+  });
   // actor is away
   userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] });
   maStatusFindOneMock.mockImplementation(({ where }) => {
@@ -370,7 +378,9 @@ test('approve reloads match to resolve side when Match include lacks team ids', 
     .mockResolvedValueOnce([{ email: 'home@x' }])
     .mockResolvedValueOnce([{ email: 'away@x' }]);
 
-  await expect(service.approve('agrR', 'actor_away')).resolves.toEqual({ ok: true });
+  await expect(service.approve('agrR', 'actor_away')).resolves.toEqual({
+    ok: true,
+  });
 });
 
 test('approve fails with match_teams_not_set when teams are missing', async () => {

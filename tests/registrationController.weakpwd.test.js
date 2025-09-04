@@ -46,7 +46,9 @@ jest.unstable_mockModule('../src/services/passportService.js', () => ({
 }));
 jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
-  default: { issueTokens: jest.fn(() => ({ accessToken: 'a', refreshToken: 'r' })) },
+  default: {
+    issueTokens: jest.fn(() => ({ accessToken: 'a', refreshToken: 'r' })),
+  },
 }));
 jest.unstable_mockModule('../src/utils/cookie.js', () => ({
   __esModule: true,

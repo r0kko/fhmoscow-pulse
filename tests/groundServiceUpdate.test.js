@@ -47,13 +47,21 @@ test('update clears address when empty string is provided', async () => {
   expect(addrUpdate).toHaveBeenCalledWith({ updated_by: 'admin' });
   // first ground.update clears address_id
   const firstCallArgs = groundUpdate.mock.calls[0][0];
-  expect(firstCallArgs).toMatchObject({ address_id: null, updated_by: 'admin' });
+  expect(firstCallArgs).toMatchObject({
+    address_id: null,
+    updated_by: 'admin',
+  });
   expect(addrDestroy).toHaveBeenCalled();
 });
 
 test('update creates address if missing and provided', async () => {
   const groundUpdate = jest.fn();
-  const groundNoAddr = { id: 'g2', name: 'G2', Address: null, update: groundUpdate };
+  const groundNoAddr = {
+    id: 'g2',
+    name: 'G2',
+    Address: null,
+    update: groundUpdate,
+  };
   // first call returns ground without Address, second call (getById) returns same
   findByPkMock.mockResolvedValue(groundNoAddr);
   cleanAddressMock.mockResolvedValue({ result: 'Addr' });

@@ -11,7 +11,9 @@ jest.unstable_mockModule('../src/mappers/staffMapper.js', () => ({
   default: { toPublicArray: (rows) => rows },
 }));
 
-const { default: controller } = await import('../src/controllers/staffController.js');
+const { default: controller } = await import(
+  '../src/controllers/staffController.js'
+);
 
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -50,4 +52,3 @@ describe('staffController.list extra branches', () => {
     expect(arg.includeClubs).toBe(true);
   });
 });
-

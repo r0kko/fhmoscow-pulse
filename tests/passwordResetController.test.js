@@ -22,7 +22,10 @@ const bumpTokenVersionMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
-  default: { resetPassword: resetPasswordMock, bumpTokenVersion: bumpTokenVersionMock },
+  default: {
+    resetPassword: resetPasswordMock,
+    bumpTokenVersion: bumpTokenVersionMock,
+  },
 }));
 
 const findUserMock = jest.fn();
@@ -32,7 +35,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: { findOne: findUserMock },
 }));
 
-const { default: controller } = await import('../src/controllers/passwordResetController.js');
+const { default: controller } = await import(
+  '../src/controllers/passwordResetController.js'
+);
 
 function createRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -77,7 +82,9 @@ test('start returns 400 on validation errors', async () => {
 test('finish resets password when code valid', async () => {
   const user = { id: 'u1' };
   findUserMock.mockResolvedValue(user);
-  const req = { body: { email: 't@example.com', code: '123', password: 'Passw0rd' } };
+  const req = {
+    body: { email: 't@example.com', code: '123', password: 'Passw0rd' },
+  };
   const res = createRes();
   await controller.finish(req, res);
   expect(verifyCodeMock).toHaveBeenCalledWith(user, '123');
@@ -89,7 +96,9 @@ test('finish returns error when code invalid', async () => {
   const user = { id: 'u1' };
   findUserMock.mockResolvedValue(user);
   verifyCodeMock.mockRejectedValue(new Error('invalid_code'));
-  const req = { body: { email: 't@example.com', code: 'bad', password: 'Pass' } };
+  const req = {
+    body: { email: 't@example.com', code: 'bad', password: 'Pass' },
+  };
   const res = createRes();
   await controller.finish(req, res);
   expect(res.status).toHaveBeenCalledWith(400);

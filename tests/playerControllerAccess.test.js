@@ -1,7 +1,9 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
 const listMock = jest.fn().mockResolvedValue({ rows: [], count: 0 });
-const facetsMock = jest.fn().mockResolvedValue({ teams: [], seasons: [], birthYears: [] });
+const facetsMock = jest
+  .fn()
+  .mockResolvedValue({ teams: [], seasons: [], birthYears: [] });
 const seasonBirthYearCountsMock = jest.fn().mockResolvedValue([]);
 const seasonTeamSummariesMock = jest.fn().mockResolvedValue([]);
 
@@ -25,7 +27,9 @@ jest.unstable_mockModule('../src/services/clubUserService.js', () => ({
   default: { listUserClubs: jest.fn() },
 }));
 
-const { default: controller } = await import('../src/controllers/playerController.js');
+const { default: controller } = await import(
+  '../src/controllers/playerController.js'
+);
 
 function mockRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -72,7 +76,11 @@ describe('playerController access', () => {
   });
 
   test('facets returns data for admin', async () => {
-    facetsMock.mockResolvedValue({ teams: [{ id: 't1' }], seasons: [], birthYears: [] });
+    facetsMock.mockResolvedValue({
+      teams: [{ id: 't1' }],
+      seasons: [],
+      birthYears: [],
+    });
     const req = { query: {}, access: { isAdmin: true } };
     const res = mockRes();
     await controller.facets(req, res);
@@ -83,7 +91,11 @@ describe('playerController access', () => {
     facetsMock.mockResolvedValue({ teams: [], seasons: [], birthYears: [] });
     const req = {
       query: { team_id: 'tx' },
-      access: { isAdmin: false, allowedClubIds: ['cx'], allowedTeamIds: ['tx'] },
+      access: {
+        isAdmin: false,
+        allowedClubIds: ['cx'],
+        allowedTeamIds: ['tx'],
+      },
     };
     const res = mockRes();
     await controller.facets(req, res);
@@ -129,7 +141,11 @@ describe('playerController access', () => {
     listMock.mockClear();
     const req = {
       query: { team_id: 'tx' },
-      access: { isAdmin: false, allowedClubIds: ['cx'], allowedTeamIds: ['tx'] },
+      access: {
+        isAdmin: false,
+        allowedClubIds: ['cx'],
+        allowedTeamIds: ['tx'],
+      },
     };
     const res = mockRes();
     await controller.list(req, res);
@@ -149,9 +165,27 @@ describe('playerController access', () => {
 
   test('seasonSummary groups by season and returns response', async () => {
     seasonBirthYearCountsMock.mockResolvedValue([
-      { season_id: 's1', season_name: '2024/25', season_active: true, birth_year: 2010, player_count: 12 },
-      { season_id: 's1', season_name: '2024/25', season_active: true, birth_year: 2011, player_count: 8 },
-      { season_id: 's2', season_name: '2023/24', season_active: false, birth_year: 2010, player_count: 5 },
+      {
+        season_id: 's1',
+        season_name: '2024/25',
+        season_active: true,
+        birth_year: 2010,
+        player_count: 12,
+      },
+      {
+        season_id: 's1',
+        season_name: '2024/25',
+        season_active: true,
+        birth_year: 2011,
+        player_count: 8,
+      },
+      {
+        season_id: 's2',
+        season_name: '2023/24',
+        season_active: false,
+        birth_year: 2010,
+        player_count: 5,
+      },
     ]);
     const req = { query: {}, access: { isAdmin: true } };
     const res = mockRes();

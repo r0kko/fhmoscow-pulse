@@ -27,7 +27,12 @@ test('delegates to csrf for normal paths', () => {
 
 test('bypasses middleware for exempt paths', () => {
   csrfMock.mockClear();
-  for (const p of ['/csrf-token', '/auth/login', '/auth/logout', '/auth/refresh']) {
+  for (const p of [
+    '/csrf-token',
+    '/auth/login',
+    '/auth/logout',
+    '/auth/refresh',
+  ]) {
     const req = buildReq(p);
     const res = buildRes();
     const next = jest.fn();

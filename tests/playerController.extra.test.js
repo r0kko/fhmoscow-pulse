@@ -7,18 +7,26 @@ const facetsMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/playerService.js', () => ({
   __esModule: true,
-  default: { list: listMock, syncExternal: syncExternalMock, facets: facetsMock },
+  default: {
+    list: listMock,
+    syncExternal: syncExternalMock,
+    facets: facetsMock,
+  },
   // Named exports used by controller in other endpoints
   seasonBirthYearCounts: jest.fn().mockResolvedValue([]),
   seasonTeamSummaries: jest.fn().mockResolvedValue([]),
 }));
 jest.unstable_mockModule('../src/services/teamService.js', () => ({
   __esModule: true,
-  default: { syncExternal: jest.fn().mockResolvedValue({ upserted: 0, softDeleted: 0 }) },
+  default: {
+    syncExternal: jest.fn().mockResolvedValue({ upserted: 0, softDeleted: 0 }),
+  },
 }));
 jest.unstable_mockModule('../src/services/clubService.js', () => ({
   __esModule: true,
-  default: { syncExternal: jest.fn().mockResolvedValue({ upserted: 0, softDeleted: 0 }) },
+  default: {
+    syncExternal: jest.fn().mockResolvedValue({ upserted: 0, softDeleted: 0 }),
+  },
 }));
 jest.unstable_mockModule('../src/mappers/playerMapper.js', () => ({
   __esModule: true,
@@ -40,7 +48,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   ClubPlayer: { findAll: clubPlayerFindAll },
 }));
 
-const { default: controller } = await import('../src/controllers/playerController.js');
+const { default: controller } = await import(
+  '../src/controllers/playerController.js'
+);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -56,8 +66,12 @@ describe('playerController sync', () => {
 
   test('sync returns stats and players when external is available', async () => {
     jest.resetModules();
-    const listMock2 = jest.fn().mockResolvedValue({ rows: [{ id: 'p1' }], count: 1 });
-    const playerSyncMock2 = jest.fn().mockResolvedValue({ upserted: 1, softDeleted: 0 });
+    const listMock2 = jest
+      .fn()
+      .mockResolvedValue({ rows: [{ id: 'p1' }], count: 1 });
+    const playerSyncMock2 = jest
+      .fn()
+      .mockResolvedValue({ upserted: 1, softDeleted: 0 });
     jest.unstable_mockModule('../src/services/playerService.js', () => ({
       __esModule: true,
       default: { list: listMock2, syncExternal: playerSyncMock2 },
@@ -66,11 +80,19 @@ describe('playerController sync', () => {
     }));
     jest.unstable_mockModule('../src/services/teamService.js', () => ({
       __esModule: true,
-      default: { syncExternal: jest.fn().mockResolvedValue({ upserted: 0, softDeleted: 0 }) },
+      default: {
+        syncExternal: jest
+          .fn()
+          .mockResolvedValue({ upserted: 0, softDeleted: 0 }),
+      },
     }));
     jest.unstable_mockModule('../src/services/clubService.js', () => ({
       __esModule: true,
-      default: { syncExternal: jest.fn().mockResolvedValue({ upserted: 0, softDeleted: 0 }) },
+      default: {
+        syncExternal: jest
+          .fn()
+          .mockResolvedValue({ upserted: 0, softDeleted: 0 }),
+      },
     }));
     jest.unstable_mockModule('../src/mappers/playerMapper.js', () => ({
       __esModule: true,
@@ -80,7 +102,9 @@ describe('playerController sync', () => {
       __esModule: true,
       isExternalDbAvailable: () => true,
     }));
-    const { default: controller2 } = await import('../src/controllers/playerController.js');
+    const { default: controller2 } = await import(
+      '../src/controllers/playerController.js'
+    );
     const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
     await controller2.sync({ user: { id: 'admin' } }, res);
     expect(playerSyncMock2).toHaveBeenCalled();

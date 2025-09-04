@@ -19,7 +19,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findByPk: findByPkMock,
     findAndCountAll: findAndCountAllMock,
   },
-  User: { findByPk: jest.fn().mockResolvedValue({ id: 'u1', email: 'e' }), findAll: findAllUsersMock },
+  User: {
+    findByPk: jest.fn().mockResolvedValue({ id: 'u1', email: 'e' }),
+    findAll: findAllUsersMock,
+  },
   Role: {},
 }));
 
@@ -28,7 +31,9 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   default: { sendMedicalCertificateAddedEmail: sendEmailMock },
 }));
 
-const { default: service } = await import('../src/services/medicalCertificateService.js');
+const { default: service } = await import(
+  '../src/services/medicalCertificateService.js'
+);
 
 beforeEach(() => {
   sendEmailMock.mockClear();
@@ -48,7 +53,7 @@ test('getByUser selects latest valid certificate', async () => {
   const res = await service.getByUser('u1');
   expect(res).toBe(cert);
   const opts = findOneMock.mock.calls[0][0];
-  expect(opts.order).toEqual([["valid_until", "DESC"]]);
+  expect(opts.order).toEqual([['valid_until', 'DESC']]);
   expect(opts.where.user_id).toBe('u1');
   const key = Object.getOwnPropertySymbols(opts.where.valid_until)[0];
   expect(key.toString()).toContain('gte');
@@ -88,7 +93,7 @@ test('listByUser selects only expired certificates', async () => {
   findAllMock.mockResolvedValue([]);
   await service.listByUser('u1');
   const opts = findAllMock.mock.calls[0][0];
-  expect(opts.order).toEqual([["issue_date", "DESC"]]);
+  expect(opts.order).toEqual([['issue_date', 'DESC']]);
   expect(opts.where.user_id).toBe('u1');
   const key = Object.getOwnPropertySymbols(opts.where.valid_until)[0];
   expect(key.toString()).toContain('lt');
@@ -134,5 +139,7 @@ test('listByRole groups certificates', async () => {
   findAllMock.mockResolvedValue([{ id: 'c1', user_id: 'u1' }]);
   const res = await service.listByRole('REF');
   expect(findAllUsersMock).toHaveBeenCalled();
-  expect(res).toEqual([{ user: { id: 'u1' }, certificates: [{ id: 'c1', user_id: 'u1' }] }]);
+  expect(res).toEqual([
+    { user: { id: 'u1' }, certificates: [{ id: 'c1', user_id: 'u1' }] },
+  ]);
 });

@@ -50,7 +50,9 @@ jest.unstable_mockModule('../src/services/seasonService.js', () => ({
   default: { getActive: getActiveMock },
 }));
 
-const { default: service } = await import('../src/services/refereeGroupService.js');
+const { default: service } = await import(
+  '../src/services/refereeGroupService.js'
+);
 
 test('removeUser soft deletes assignment', async () => {
   findOneMock.mockResolvedValue({ destroy: destroyMock, update: updateMock });
@@ -68,26 +70,43 @@ test('removeUser does nothing when link missing', async () => {
 test('setUserGroup restores deleted record', async () => {
   findGroupMock.mockResolvedValue({ id: 'g1' });
   findUserMock.mockResolvedValue({ id: 'u1' });
-  findOneMock.mockResolvedValue({ deletedAt: new Date(), restore: restoreMock, update: updateMock });
+  findOneMock.mockResolvedValue({
+    deletedAt: new Date(),
+    restore: restoreMock,
+    update: updateMock,
+  });
   await service.setUserGroup('u1', 'g1', 'admin');
   expect(restoreMock).toHaveBeenCalled();
-  expect(updateMock).toHaveBeenCalledWith({ group_id: 'g1', updated_by: 'admin' });
+  expect(updateMock).toHaveBeenCalledWith({
+    group_id: 'g1',
+    updated_by: 'admin',
+  });
   expect(createMock).not.toHaveBeenCalled();
 });
 
 test('user can be reassigned after removal', async () => {
   // soft delete existing assignment
-  findOneMock.mockResolvedValueOnce({ destroy: destroyMock, update: updateMock });
+  findOneMock.mockResolvedValueOnce({
+    destroy: destroyMock,
+    update: updateMock,
+  });
   await service.removeUser('u1', 'admin');
   expect(destroyMock).toHaveBeenCalled();
 
   // assign user to a group again
   findGroupMock.mockResolvedValue({ id: 'g2' });
   findUserMock.mockResolvedValue({ id: 'u1' });
-  findOneMock.mockResolvedValueOnce({ deletedAt: new Date(), restore: restoreMock, update: updateMock });
+  findOneMock.mockResolvedValueOnce({
+    deletedAt: new Date(),
+    restore: restoreMock,
+    update: updateMock,
+  });
   await service.setUserGroup('u1', 'g2', 'admin');
   expect(restoreMock).toHaveBeenCalled();
-  expect(updateMock).toHaveBeenCalledWith({ group_id: 'g2', updated_by: 'admin' });
+  expect(updateMock).toHaveBeenCalledWith({
+    group_id: 'g2',
+    updated_by: 'admin',
+  });
   expect(createMock).not.toHaveBeenCalled();
 });
 
@@ -104,7 +123,9 @@ test('listAll applies active season', async () => {
 
 test('getById throws when inactive', async () => {
   findGroupMock.mockResolvedValue({ Season: { active: false } });
-  await expect(service.getById('g1')).rejects.toThrow('referee_group_not_found');
+  await expect(service.getById('g1')).rejects.toThrow(
+    'referee_group_not_found'
+  );
 });
 
 test('create returns new group', async () => {

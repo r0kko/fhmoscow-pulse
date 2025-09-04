@@ -93,13 +93,17 @@ test('verifyCredentials returns user when valid', async () => {
 
 test('verifyCredentials throws for unknown phone', async () => {
   findOneMock.mockResolvedValue(null);
-  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
+  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow(
+    'invalid_credentials'
+  );
 });
 
 test('verifyCredentials throws for bad password', async () => {
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(false);
-  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
+  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow(
+    'invalid_credentials'
+  );
 });
 
 test('verifyCredentials increments attempts and applies temporary lockout', async () => {
@@ -110,10 +114,14 @@ test('verifyCredentials increments attempts and applies temporary lockout', asyn
   user.status_id = undefined;
 
   for (let i = 0; i < 9; i++) {
-    await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('invalid_credentials');
+    await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow(
+      'invalid_credentials'
+    );
   }
 
-  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow('account_locked');
+  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow(
+    'account_locked'
+  );
   // Temporary lockout should not change persistent user status
   expect(updateMock).not.toHaveBeenCalled();
 });
@@ -128,7 +136,7 @@ test('verifyCredentials resets attempts on success', async () => {
   expect(updateMock).not.toHaveBeenCalled();
 });
 
- test('issueTokens creates valid JWTs', () => {
+test('issueTokens creates valid JWTs', () => {
   const tokens = authService.issueTokens({ id: '1' });
   const p1 = jwt.verify(tokens.accessToken, 'secret');
   const p2 = jwt.verify(tokens.refreshToken, 'secret');
@@ -137,7 +145,7 @@ test('verifyCredentials resets attempts on success', async () => {
   expect(p2.type).toBe('refresh');
 });
 
- test('rotateTokens returns new tokens and user, and bumps version', async () => {
+test('rotateTokens returns new tokens and user, and bumps version', async () => {
   findByPkMock.mockResolvedValue(user);
   const { refreshToken } = authService.issueTokens(user);
   const result = await authService.rotateTokens(refreshToken);
@@ -148,22 +156,28 @@ test('verifyCredentials resets attempts on success', async () => {
   expect(user.token_version).toBe(1);
 });
 
- test('rotateTokens rejects token with wrong type', async () => {
+test('rotateTokens rejects token with wrong type', async () => {
   const { accessToken } = authService.issueTokens(user);
-  await expect(authService.rotateTokens(accessToken)).rejects.toThrow('invalid_token_type');
+  await expect(authService.rotateTokens(accessToken)).rejects.toThrow(
+    'invalid_token_type'
+  );
 });
 
 test('rotateTokens rejects mismatched token version', async () => {
   // User version is 0, but craft token with ver 1
   findByPkMock.mockResolvedValue(user);
   const token = jwt.sign({ sub: user.id, type: 'refresh', ver: 1 }, 'secret');
-  await expect(authService.rotateTokens(token)).rejects.toThrow('invalid_token');
+  await expect(authService.rotateTokens(token)).rejects.toThrow(
+    'invalid_token'
+  );
 });
 
 test('rotateTokens rejects missing user', async () => {
   findByPkMock.mockResolvedValue(null);
   const { refreshToken } = authService.issueTokens(user);
-  await expect(authService.rotateTokens(refreshToken)).rejects.toThrow('user_not_found');
+  await expect(authService.rotateTokens(refreshToken)).rejects.toThrow(
+    'user_not_found'
+  );
 });
 
 test('rotateTokens rejects inactive user', async () => {
@@ -171,5 +185,7 @@ test('rotateTokens rejects inactive user', async () => {
   findByPkMock.mockResolvedValue(user);
   findStatusMock.mockResolvedValue({ id: 'i' });
   const { refreshToken } = authService.issueTokens(user);
-  await expect(authService.rotateTokens(refreshToken)).rejects.toThrow('account_locked');
+  await expect(authService.rotateTokens(refreshToken)).rejects.toThrow(
+    'account_locked'
+  );
 });

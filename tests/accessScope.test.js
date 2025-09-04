@@ -71,7 +71,13 @@ describe('accessScope middleware', () => {
   });
 
   test('returns 500 on unexpected error', async () => {
-    const req = { user: { getRoles: jest.fn(() => { throw new Error('x'); }) } };
+    const req = {
+      user: {
+        getRoles: jest.fn(() => {
+          throw new Error('x');
+        }),
+      },
+    };
     const status = jest.fn().mockReturnThis();
     const json = jest.fn();
     const res = { status, json };

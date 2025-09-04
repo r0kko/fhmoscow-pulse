@@ -29,7 +29,9 @@ beforeEach(() => {
 });
 
 test('listUpcoming queries external games for user teams', async () => {
-  userFindByPkMock.mockResolvedValue({ Teams: [{ external_id: 10 }, { external_id: 20 }] });
+  userFindByPkMock.mockResolvedValue({
+    Teams: [{ external_id: 10 }, { external_id: 20 }],
+  });
   const date = new Date('2025-05-01T10:00:00Z');
   gameFindAllMock.mockResolvedValue([
     {
@@ -82,7 +84,11 @@ test('listUpcoming supports type filter and search query', async () => {
       team2_id: 42,
     },
   ]);
-  const { rows: res } = await service.listUpcoming('u1', { type: 'away', q: 'Beta', limit: 10 });
+  const { rows: res } = await service.listUpcoming('u1', {
+    type: 'away',
+    q: 'Beta',
+    limit: 10,
+  });
   expect(userFindByPkMock).toHaveBeenCalledWith('u1', { include: [TeamModel] });
   expect(gameFindAllMock).toHaveBeenCalled();
   const args = gameFindAllMock.mock.calls[0][0];

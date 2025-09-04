@@ -17,7 +17,9 @@ test('withRedisLock acquires and releases lock', async () => {
     },
     isRedisWritable: () => true,
   }));
-  const { withRedisLock, buildJobLockKey } = await import('../src/utils/redisLock.js');
+  const { withRedisLock, buildJobLockKey } = await import(
+    '../src/utils/redisLock.js'
+  );
   const key = buildJobLockKey('demo');
   const result = await withRedisLock(key, 1000, async () => 'work');
   expect(result).toBe('work');
@@ -30,13 +32,17 @@ test('withRedisLock falls back to onBusy when cannot acquire and writable', asyn
   jest.unstable_mockModule('../src/config/redis.js', () => ({
     __esModule: true,
     default: {
-      async set() { return null; }, // NX set failed (already held)
+      async set() {
+        return null;
+      }, // NX set failed (already held)
       async eval() {},
     },
     isRedisWritable: () => true,
   }));
   const { withRedisLock } = await import('../src/utils/redisLock.js');
-  const res = await withRedisLock('k', 1000, async () => 'work', { onBusy: () => 'busy' });
+  const res = await withRedisLock('k', 1000, async () => 'work', {
+    onBusy: () => 'busy',
+  });
   expect(res).toBe('busy');
 });
 
@@ -45,7 +51,9 @@ test('withRedisLock runs function if redis not writable or error', async () => {
   jest.unstable_mockModule('../src/config/redis.js', () => ({
     __esModule: true,
     default: {
-      async set() { throw new Error('READONLY'); },
+      async set() {
+        throw new Error('READONLY');
+      },
       async eval() {},
     },
     isRedisWritable: () => false,
@@ -60,7 +68,9 @@ test('withRedisLock returns null when busy and no onBusy', async () => {
   jest.unstable_mockModule('../src/config/redis.js', () => ({
     __esModule: true,
     default: {
-      async set() { return null; },
+      async set() {
+        return null;
+      },
       async eval() {},
     },
     isRedisWritable: () => true,

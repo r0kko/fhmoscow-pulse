@@ -43,4 +43,3 @@ describe('bankAccountMapper.toPublic', () => {
     expect(res.junk).toBeUndefined();
   });
 });
-

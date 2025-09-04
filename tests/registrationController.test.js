@@ -61,7 +61,6 @@ jest.unstable_mockModule('../src/services/sexService.js', () => ({
   default: { getByAlias: getByAliasMock },
 }));
 
-
 const issueTokensMock = jest.fn(() => ({
   accessToken: 'a',
   refreshToken: 'r',

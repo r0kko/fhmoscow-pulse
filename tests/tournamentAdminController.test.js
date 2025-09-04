@@ -40,7 +40,9 @@ jest.unstable_mockModule('../src/mappers/tournamentMapper.js', () => ({
   },
 }));
 
-const { default: controller } = await import('../src/controllers/tournamentAdminController.js');
+const { default: controller } = await import(
+  '../src/controllers/tournamentAdminController.js'
+);
 
 function mockRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -48,7 +50,17 @@ function mockRes() {
 
 test('listTournaments maps and passes query', async () => {
   listTournamentsMock.mockResolvedValue({ rows: [{ id: 't1' }], count: 1 });
-  const req = { query: { page: '2', limit: '5', q: 'cup', season_id: 's', type_id: 'tt', birth_year: '2010', status: 'ALL' } };
+  const req = {
+    query: {
+      page: '2',
+      limit: '5',
+      q: 'cup',
+      season_id: 's',
+      type_id: 'tt',
+      birth_year: '2010',
+      status: 'ALL',
+    },
+  };
   const res = mockRes();
   await controller.listTournaments(req, res);
   expect(listTournamentsMock).toHaveBeenCalledWith({
@@ -60,7 +72,10 @@ test('listTournaments maps and passes query', async () => {
     birth_year: '2010',
     status: 'ALL',
   });
-  expect(res.json).toHaveBeenCalledWith({ tournaments: [{ id: 't1' }], total: 1 });
+  expect(res.json).toHaveBeenCalledWith({
+    tournaments: [{ id: 't1' }],
+    total: 1,
+  });
 });
 
 test('listGroups uses q alias', async () => {
@@ -68,6 +83,12 @@ test('listGroups uses q alias', async () => {
   const req = { query: { q: 'Group A', page: '1', limit: '10' } };
   const res = mockRes();
   await controller.listGroups(req, res);
-  expect(listGroupsMock).toHaveBeenCalledWith({ page: 1, limit: 10, search: 'Group A', tournament_id: undefined, stage_id: undefined, status: undefined });
+  expect(listGroupsMock).toHaveBeenCalledWith({
+    page: 1,
+    limit: 10,
+    search: 'Group A',
+    tournament_id: undefined,
+    stage_id: undefined,
+    status: undefined,
+  });
 });
-

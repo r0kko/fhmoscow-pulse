@@ -56,7 +56,9 @@ test('update modifies existing record', async () => {
 
 test('update throws when record missing', async () => {
   findOneMock.mockResolvedValueOnce(null); // user record missing
-  await expect(service.update('u1', '456', 'b')).rejects.toThrow('inn_not_found');
+  await expect(service.update('u1', '456', 'b')).rejects.toThrow(
+    'inn_not_found'
+  );
 });
 
 test('remove destroys record and taxation removed', async () => {
@@ -77,4 +79,3 @@ test('remove throws when record not found', async () => {
   findOneMock.mockResolvedValueOnce(null);
   await expect(service.remove('u1', 'admin')).rejects.toThrow('inn_not_found');
 });
-

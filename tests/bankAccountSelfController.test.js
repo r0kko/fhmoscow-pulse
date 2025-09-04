@@ -29,7 +29,9 @@ jest.unstable_mockModule('../src/mappers/bankAccountMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import('../src/controllers/bankAccountSelfController.js');
+const { default: controller } = await import(
+  '../src/controllers/bankAccountSelfController.js'
+);
 
 test('create returns 400 on validation errors', async () => {
   validationOk = false;
@@ -44,10 +46,19 @@ test('create returns 400 on validation errors', async () => {
 test('create stores new bank account', async () => {
   findBankMock.mockResolvedValue({
     value: 'Bank',
-    data: { correspondent_account: '301', swift: 'SW', inn: '1', kpp: '2', address: 'A' },
+    data: {
+      correspondent_account: '301',
+      swift: 'SW',
+      inn: '1',
+      kpp: '2',
+      address: 'A',
+    },
   });
   createMock.mockResolvedValue({ id: 'b1' });
-  const req = { user: { id: '1' }, body: { number: '40702810900000005555', bic: '044525225' } };
+  const req = {
+    user: { id: '1' },
+    body: { number: '40702810900000005555', bic: '044525225' },
+  };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   await controller.create(req, res);
   expect(findBankMock).toHaveBeenCalledWith('044525225');

@@ -53,7 +53,9 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const { default: service } = await import('../src/services/normativeResultService.js');
+const { default: service } = await import(
+  '../src/services/normativeResultService.js'
+);
 
 const dataRow = {
   setDataValue(key, val) {
@@ -81,7 +83,11 @@ findTypeMock.mockResolvedValue({
   NormativeTypeZone: [],
 });
 findSeasonMock.mockResolvedValue({ id: 's1' });
-findUserMock.mockResolvedValue({ id: 'u1', sex_id: 'sx1', email: 'user@ex.com' });
+findUserMock.mockResolvedValue({
+  id: 'u1',
+  sex_id: 'sx1',
+  email: 'user@ex.com',
+});
 findRegMock.mockResolvedValue(null);
 createRegMock.mockResolvedValue({});
 findRoleMock.mockResolvedValue({ id: 'role1' });
@@ -118,7 +124,11 @@ test('create ensures registration', async () => {
     paranoid: false,
   });
   expect(createRegMock).toHaveBeenCalledWith(
-    expect.objectContaining({ training_id: 'tr1', user_id: 'u1', present: true })
+    expect.objectContaining({
+      training_id: 'tr1',
+      user_id: 'u1',
+      present: true,
+    })
   );
   expect(createResultMock).toHaveBeenCalled();
   expect(sendAddEmailMock).toHaveBeenCalled();

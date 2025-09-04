@@ -17,16 +17,16 @@ export default function authorize(...aliases) {
   return async function (req, res, next) {
     try {
       if (!req.user) {
-        return res.status(401).json({ error: 'Не авторизовано' });
+        return res.status(401).json({ error: 'unauthorized' });
       }
       const roles = await req.user.getRoles({ where: { alias: allowed } });
       if (!roles || roles.length === 0) {
-        return res.status(403).json({ error: 'Доступ запрещён' });
+        return res.status(403).json({ error: 'access_denied' });
       }
       return next();
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: 'Server error' });
+      return res.status(500).json({ error: 'internal_error' });
     }
   };
 }

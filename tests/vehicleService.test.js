@@ -34,12 +34,13 @@ beforeEach(() => {
 test('removing active vehicle activates another if available', async () => {
   const active = { is_active: true, destroy: destroyMock };
   const replacement = { update: updateMock };
-  findOneMock
-    .mockResolvedValueOnce(active)
-    .mockResolvedValueOnce(replacement);
+  findOneMock.mockResolvedValueOnce(active).mockResolvedValueOnce(replacement);
   await service.removeForUser('u1', 'v1', 'actor');
   expect(destroyMock).toHaveBeenCalled();
-  expect(updateMock).toHaveBeenCalledWith({ is_active: true, updated_by: 'actor' });
+  expect(updateMock).toHaveBeenCalledWith({
+    is_active: true,
+    updated_by: 'actor',
+  });
 });
 
 test('removing inactive vehicle leaves active untouched', async () => {
@@ -79,9 +80,9 @@ test('createForUser enforces limit and sets active on first', async () => {
     is_active: true,
   });
   countMock.mockResolvedValueOnce(3);
-  await expect(
-    service.createForUser('u1', data, 'actor')
-  ).rejects.toThrow('vehicle_limit');
+  await expect(service.createForUser('u1', data, 'actor')).rejects.toThrow(
+    'vehicle_limit'
+  );
 });
 
 test('updateForUser toggles active flag', async () => {
@@ -100,7 +101,7 @@ test('updateForUser toggles active flag', async () => {
 
 test('updateForUser throws when vehicle missing', async () => {
   findOneMock.mockResolvedValueOnce(null);
-  await expect(
-    service.updateForUser('u1', 'v1', {}, 'actor')
-  ).rejects.toThrow('vehicle_not_found');
+  await expect(service.updateForUser('u1', 'v1', {}, 'actor')).rejects.toThrow(
+    'vehicle_not_found'
+  );
 });

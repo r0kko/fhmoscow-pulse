@@ -46,7 +46,9 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   default: { sendAccountActivatedEmail: sendActivationEmailMock },
 }));
 
-const { default: controller } = await import('../src/controllers/userAdminController.js');
+const { default: controller } = await import(
+  '../src/controllers/userAdminController.js'
+);
 
 beforeEach(() => {
   sendActivationEmailMock.mockClear();
@@ -82,10 +84,13 @@ test('unblock updates user status to ACTIVE', async () => {
   expect(res.json).toHaveBeenCalledWith({ user: { id: '3' } });
 });
 
-
 test('resetPassword returns updated user', async () => {
   resetPasswordMock.mockResolvedValue({ id: '4' });
-  const req = { params: { id: '4' }, body: { password: 'P' }, user: { id: 'admin' } };
+  const req = {
+    params: { id: '4' },
+    body: { password: 'P' },
+    user: { id: 'admin' },
+  };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.resetPassword(req, res);
   expect(resetPasswordMock).toHaveBeenCalledWith('4', 'P', 'admin');
@@ -94,7 +99,10 @@ test('resetPassword returns updated user', async () => {
 
 test('assignRole assigns role to user', async () => {
   assignRoleMock.mockResolvedValue({ id: '5' });
-  const req = { params: { id: '5', roleAlias: 'ADMIN' }, user: { id: 'admin' } };
+  const req = {
+    params: { id: '5', roleAlias: 'ADMIN' },
+    user: { id: 'admin' },
+  };
   const res = { json: jest.fn() };
   await controller.assignRole(req, res);
   expect(assignRoleMock).toHaveBeenCalledWith('5', 'ADMIN', 'admin');
@@ -103,7 +111,10 @@ test('assignRole assigns role to user', async () => {
 
 test('removeRole removes role from user', async () => {
   removeRoleMock.mockResolvedValue({ id: '6' });
-  const req = { params: { id: '6', roleAlias: 'ADMIN' }, user: { id: 'admin' } };
+  const req = {
+    params: { id: '6', roleAlias: 'ADMIN' },
+    user: { id: 'admin' },
+  };
   const res = { json: jest.fn() };
   await controller.removeRole(req, res);
   expect(removeRoleMock).toHaveBeenCalledWith('6', 'ADMIN', 'admin');
@@ -121,11 +132,18 @@ test('getPassport returns 404 when not found', async () => {
 
 test('addPassport stores new passport', async () => {
   createPassportMock.mockResolvedValue({ id: 'p1' });
-  const req = { params: { id: '8' }, user: { id: 'admin' }, body: { number: '12' } };
+  const req = {
+    params: { id: '8' },
+    user: { id: 'admin' },
+    body: { number: '12' },
+  };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   await controller.addPassport(req, res);
-  expect(createPassportMock).toHaveBeenCalledWith('8', { number: '12' }, 'admin');
+  expect(createPassportMock).toHaveBeenCalledWith(
+    '8',
+    { number: '12' },
+    'admin'
+  );
   expect(res.status).toHaveBeenCalledWith(201);
   expect(res.json).toHaveBeenCalledWith({ passport: { id: 'p1' } });
 });
-

@@ -46,7 +46,13 @@ test('returns 401 when user missing', async () => {
 });
 
 test('returns 500 on unexpected error', async () => {
-  const req = { user: { getRoles: jest.fn(() => { throw new Error('x'); }) } };
+  const req = {
+    user: {
+      getRoles: jest.fn(() => {
+        throw new Error('x');
+      }),
+    },
+  };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
   const mw = authorize('ADMIN');

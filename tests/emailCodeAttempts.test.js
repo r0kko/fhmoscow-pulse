@@ -1,5 +1,11 @@
 import { beforeEach, expect, test } from '@jest/globals';
-import { markFailed, get, clear, _reset, WINDOW_MS } from '../src/services/emailCodeAttempts.js';
+import {
+  markFailed,
+  get,
+  clear,
+  _reset,
+  WINDOW_MS,
+} from '../src/services/emailCodeAttempts.js';
 
 beforeEach(() => {
   _reset();

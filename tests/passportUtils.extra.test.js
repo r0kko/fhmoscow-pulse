@@ -1,6 +1,9 @@
 import { expect, test } from '@jest/globals';
 
-import { calculateValidUntil, sanitizePassportData } from '../src/utils/passportUtils.js';
+import {
+  calculateValidUntil,
+  sanitizePassportData,
+} from '../src/utils/passportUtils.js';
 
 test('calculateValidUntil accepts Date objects (non-string path)', () => {
   const birth = new Date(Date.UTC(1990, 0, 1));
@@ -26,4 +29,3 @@ test('sanitizePassportData trims/unifies fields and preserves invalid dates as s
   expect(res.issuing_authority_code).toBe('7701');
   expect(res.place_of_birth).toBe('Moscow');
 });
-

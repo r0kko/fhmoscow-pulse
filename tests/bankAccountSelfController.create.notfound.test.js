@@ -26,7 +26,9 @@ jest.unstable_mockModule('../src/mappers/bankAccountMapper.js', () => ({
   default: { toPublic: jest.fn() },
 }));
 
-const { default: controller } = await import('../src/controllers/bankAccountSelfController.js');
+const { default: controller } = await import(
+  '../src/controllers/bankAccountSelfController.js'
+);
 
 test('create returns 400 when bank not found', async () => {
   findBankMock.mockResolvedValue(null);
@@ -36,4 +38,3 @@ test('create returns 400 when bank not found', async () => {
   expect(res.status).toHaveBeenCalledWith(400);
   expect(res.json).toHaveBeenCalledWith({ error: 'bank_not_found' });
 });
-

@@ -20,14 +20,22 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Tournament: { findAndCountAll: tournamentFindAndCountAllMock },
   TournamentType: {},
-  Stage: { findAll: stageFindAllMock, findAndCountAll: stageFindAndCountAllMock },
+  Stage: {
+    findAll: stageFindAllMock,
+    findAndCountAll: stageFindAndCountAllMock,
+  },
   TournamentGroup: { findAll: groupFindAllMock },
-  TournamentTeam: { findAll: ttFindAllMock, findAndCountAll: ttFindAndCountAllMock },
+  TournamentTeam: {
+    findAll: ttFindAllMock,
+    findAndCountAll: ttFindAndCountAllMock,
+  },
   Season: {},
   Team: {},
 }));
 
-const { default: svc } = await import('../src/services/tournamentAdminService.js');
+const { default: svc } = await import(
+  '../src/services/tournamentAdminService.js'
+);
 
 function makeRow(id) {
   return {
@@ -36,7 +44,10 @@ function makeRow(id) {
 }
 
 test('listTournaments aggregates counts', async () => {
-  tournamentFindAndCountAllMock.mockResolvedValue({ rows: [makeRow('a'), makeRow('b')], count: 2 });
+  tournamentFindAndCountAllMock.mockResolvedValue({
+    rows: [makeRow('a'), makeRow('b')],
+    count: 2,
+  });
   stageFindAllMock.mockResolvedValue([
     { tournament_id: 'a', cnt: '2' },
     { tournament_id: 'b', cnt: '1' },
@@ -55,7 +66,15 @@ test('listTournaments applies filters', async () => {
   stageFindAllMock.mockResolvedValue([]);
   groupFindAllMock.mockResolvedValue([]);
   ttFindAllMock.mockResolvedValue([]);
-  await svc.listTournaments({ page: 2, limit: 5, search: 'Cup', season_id: 's1', type_id: 't1', birth_year: 2010, status: 'ARCHIVED' });
+  await svc.listTournaments({
+    page: 2,
+    limit: 5,
+    search: 'Cup',
+    season_id: 's1',
+    type_id: 't1',
+    birth_year: 2010,
+    status: 'ARCHIVED',
+  });
   const args = tournamentFindAndCountAllMock.mock.calls[0][0];
   expect(args.limit).toBe(5);
   expect(args.offset).toBe(5);
@@ -68,21 +87,37 @@ test('listTournaments applies filters', async () => {
 
 test('listStages respects paranoid for ACTIVE and ALL and filters by tournament', async () => {
   stageFindAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
-  await svc.listStages({ page: 1, limit: 10, tournament_id: 'tid', status: 'ACTIVE' });
+  await svc.listStages({
+    page: 1,
+    limit: 10,
+    tournament_id: 'tid',
+    status: 'ACTIVE',
+  });
   expect(stageFindAndCountAllMock).toHaveBeenCalled();
   let args = stageFindAndCountAllMock.mock.calls[0][0];
   expect(args.where.tournament_id).toBe('tid');
   expect(args.paranoid).toBe(true);
 
   stageFindAndCountAllMock.mockClear();
-  await svc.listStages({ page: 1, limit: 10, tournament_id: 'tid', status: 'ALL' });
+  await svc.listStages({
+    page: 1,
+    limit: 10,
+    tournament_id: 'tid',
+    status: 'ALL',
+  });
   args = stageFindAndCountAllMock.mock.calls[0][0];
   expect(args.paranoid).toBe(false);
 });
 
 test('listTournamentTeams adds team where when search present', async () => {
   ttFindAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
-  await svc.listTournamentTeams({ page: 1, limit: 10, search: 'FC', tournament_id: 't1', group_id: 'g1' });
+  await svc.listTournamentTeams({
+    page: 1,
+    limit: 10,
+    search: 'FC',
+    tournament_id: 't1',
+    group_id: 'g1',
+  });
   const args = ttFindAndCountAllMock.mock.calls[0][0];
   expect(args.where.tournament_id).toBe('t1');
   expect(args.where.tournament_group_id).toBe('g1');

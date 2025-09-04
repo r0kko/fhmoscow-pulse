@@ -56,9 +56,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 const { default: service } = await import('../src/services/teamService.js');
 
 test('syncExternal upserts active teams and soft deletes missing ones', async () => {
-  extFindAllMock.mockResolvedValue([
-    { id: 1, short_name: 'T1', year: 2005 },
-  ]);
+  extFindAllMock.mockResolvedValue([{ id: 1, short_name: 'T1', year: 2005 }]);
   await service.syncExternal('admin');
   // External fetch is invoked (active + archive); we don't assert exact where shape
   expect(extFindAllMock).toHaveBeenCalled();
@@ -93,7 +91,10 @@ test('addUserTeam uses association with audit fields', async () => {
 });
 
 test('removeUserTeam updates audit and removes link', async () => {
-  userFindByPkMock.mockResolvedValue({ id: 'u1', removeTeam: userRemoveTeamMock });
+  userFindByPkMock.mockResolvedValue({
+    id: 'u1',
+    removeTeam: userRemoveTeamMock,
+  });
   teamFindByPkMock.mockResolvedValue({ id: 't1' });
   userTeamFindOneMock.mockResolvedValue({ update: userTeamUpdateMock });
   await service.removeUserTeam('u1', 't1', 'actor');

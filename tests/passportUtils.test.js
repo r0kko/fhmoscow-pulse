@@ -19,8 +19,10 @@ describe('passport utils', () => {
 
   test('sanitizePassportData normalizes dates', () => {
     const res = sanitizePassportData({
-      issue_date: 'Tue Mar 17 2020 00:00:00 GMT+0000 (Coordinated Universal Time)',
-      valid_until: 'Wed Mar 18 2026 00:00:00 GMT+0000 (Coordinated Universal Time)',
+      issue_date:
+        'Tue Mar 17 2020 00:00:00 GMT+0000 (Coordinated Universal Time)',
+      valid_until:
+        'Wed Mar 18 2026 00:00:00 GMT+0000 (Coordinated Universal Time)',
     });
     expect(res.issue_date).toBe('2020-03-17');
     expect(res.valid_until).toBe('2026-03-18');

@@ -199,6 +199,25 @@ if (isExternalDbAvailable()) {
 }
 ```
 
+## Quality checks and Git hooks
+
+- Prettier, ESLint, and Jest are configured and enforced locally:
+  - `npm run format:check` checks formatting; `npm run format` writes.
+  - `npm run lint` runs ESLint; `npm run lint:fix` applies fixes.
+  - `npm test` runs the test suite with coverage.
+- Husky + lint-staged ensure checks before commit and push:
+  - Pre-commit: runs `lint-staged` to lint and format staged files.
+  - Pre-push: runs `npm run check:all` (format check, lint, and tests).
+
+Setup:
+
+```bash
+npm ci          # installs dev deps (husky, lint-staged)
+# Husky installs Git hooks automatically via the `prepare` script
+```
+
+If hooks are not active, run `npm run prepare` once or ensure your Git config allows hooks.
+
 ## Согласования матчей (Match Agreements)
 
 - `GET /matches/:id/agreements` — список предложений/согласований по матчу.
@@ -207,6 +226,7 @@ if (isExternalDbAvailable()) {
 - `POST /matches/:id/agreements/:agreementId/decline` — отклонить ожидающее предложение.
 
 Правила:
+
 - Предложение может создавать только сотрудник домашней команды на одном из своих закреплённых стадионов.
 - Встречное может создавать только сотрудник гостевой команды на своём стадионе.
 - Дата `date_start` должна совпадать с датой матча; меняется только время по Москве (хранится в UTC автоматически).

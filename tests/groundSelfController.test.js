@@ -1,7 +1,9 @@
 import { expect, jest, test } from '@jest/globals';
 
 // Import the controller directly
-const { default: controller } = await import('../src/controllers/groundSelfController.js');
+const { default: controller } = await import(
+  '../src/controllers/groundSelfController.js'
+);
 
 test('available returns 403 when staff has no clubs/teams', async () => {
   const req = {
@@ -26,4 +28,3 @@ test('available returns empty groups for admin without scope', async () => {
   await controller.available(req, res);
   expect(res.json).toHaveBeenCalledWith({ groups: [] });
 });
-

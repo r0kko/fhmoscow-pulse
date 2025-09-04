@@ -35,7 +35,9 @@ jest.unstable_mockModule('../src/mappers/snilsMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import('../src/controllers/snilsController.js');
+const { default: controller } = await import(
+  '../src/controllers/snilsController.js'
+);
 
 test('create returns 400 on validation errors', async () => {
   validationOk = false;
@@ -66,5 +68,7 @@ test('me returns legacy snils when none stored', async () => {
   findOneExtMock.mockResolvedValue({ external_id: '10' });
   legacyFindMock.mockResolvedValue({ sv_ops: '111-222-333 44' });
   await controller.me(req, res);
-  expect(res.json).toHaveBeenCalledWith({ snils: { number: '111-222-333 44' } });
+  expect(res.json).toHaveBeenCalledWith({
+    snils: { number: '111-222-333 44' },
+  });
 });

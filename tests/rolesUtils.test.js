@@ -32,4 +32,3 @@ test('staff role checks', () => {
   ).toBe(false);
   expect(isStaffOnly([{ alias: 'REFEREE' }])).toBe(false);
 });
-

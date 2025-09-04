@@ -1,10 +1,4 @@
-import {
-  beforeEach,
-  describe,
-  expect,
-  jest,
-  test,
-} from '@jest/globals';
+import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 const zoneFindAllMock = jest.fn();
 const typeFindByPkMock = jest.fn();
@@ -147,7 +141,9 @@ describe('buildZones', () => {
 describe('recalcResults', () => {
   test('updates results with new zones', async () => {
     typeFindByPkMock.mockResolvedValue({
-      NormativeTypeZones: [{ min_value: 0, max_value: 10, zone_id: 1, sex_id: null }],
+      NormativeTypeZones: [
+        { min_value: 0, max_value: 10, zone_id: 1, sex_id: null },
+      ],
     });
     const update1 = jest.fn();
     const update2 = jest.fn();
@@ -157,7 +153,10 @@ describe('recalcResults', () => {
     ]);
     await recalcResults(1);
     expect(update1).toHaveBeenCalledWith({ zone_id: 1 }, { returning: false });
-    expect(update2).toHaveBeenCalledWith({ zone_id: null }, { returning: false });
+    expect(update2).toHaveBeenCalledWith(
+      { zone_id: null },
+      { returning: false }
+    );
   });
 
   test('returns when type not found', async () => {
@@ -166,4 +165,3 @@ describe('recalcResults', () => {
     expect(resultFindAllMock).not.toHaveBeenCalled();
   });
 });
-

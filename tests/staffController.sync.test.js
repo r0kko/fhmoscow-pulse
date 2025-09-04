@@ -30,7 +30,9 @@ jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   isExternalDbAvailable: () => externalAvailable,
 }));
 
-const { default: controller } = await import('../src/controllers/staffController.js');
+const { default: controller } = await import(
+  '../src/controllers/staffController.js'
+);
 
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -63,10 +65,14 @@ describe('staffController.sync', () => {
     expect(staffListMock).toHaveBeenCalledWith({ page: 1, limit: 100 });
     expect(toPublicArrayMock).toHaveBeenCalledWith([{ id: 's1' }]);
     expect(res.json).toHaveBeenCalledWith({
-      stats: { clubs: { created: 1, updated: 0 }, teams: { created: 5 }, created: 2, updated: 3 },
+      stats: {
+        clubs: { created: 1, updated: 0 },
+        teams: { created: 5 },
+        created: 2,
+        updated: 3,
+      },
       staff: [{ id: 's1' }],
       total: 1,
     });
   });
 });
-

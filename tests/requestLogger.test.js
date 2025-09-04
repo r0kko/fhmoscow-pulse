@@ -1,4 +1,4 @@
-import {expect, jest, test} from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 
 const createMock = jest.fn();
 const uuidMock = jest.fn(() => 'id');
@@ -25,10 +25,18 @@ jest.unstable_mockModule('../logger.js', () => ({
   default: { warn: warnMock },
 }));
 
-const { default: requestLogger } = await import('../src/middlewares/requestLogger.js');
+const { default: requestLogger } = await import(
+  '../src/middlewares/requestLogger.js'
+);
 
 test('persists log entry on finish', async () => {
-  const req = { method: 'GET', originalUrl: '/x', ip: '::1', get: () => 'ua', body: {foo:'bar'} };
+  const req = {
+    method: 'GET',
+    originalUrl: '/x',
+    ip: '::1',
+    get: () => 'ua',
+    body: { foo: 'bar' },
+  };
   const res = { statusCode: 200, locals: { body: 'ok' } };
   const next = jest.fn();
 
@@ -47,7 +55,7 @@ test('persists log entry on finish', async () => {
       request_body: { foo: 'bar' },
       response_body: 'ok',
     }),
-    { logging: false },
+    { logging: false }
   );
 });
 
@@ -65,7 +73,7 @@ test('omits sensitive fields from request body', async () => {
 
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({ request_body: { foo: 'bar' } }),
-    { logging: false },
+    { logging: false }
   );
   expect(req.body.password).toBe('secret');
   expect(req.body.refresh_token).toBe('r');
@@ -86,13 +94,19 @@ test('stores null when only sensitive fields present', async () => {
 
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({ request_body: null }),
-    { logging: false },
+    { logging: false }
   );
 });
 
 test('logs warning when create fails', async () => {
   createMock.mockRejectedValueOnce(new Error('fail'));
-  const req = { method: 'GET', originalUrl: '/x', ip: '::1', get: () => 'ua', body: {} };
+  const req = {
+    method: 'GET',
+    originalUrl: '/x',
+    ip: '::1',
+    get: () => 'ua',
+    body: {},
+  };
   const res = { statusCode: 200, locals: {} };
 
   await requestLogger(req, res, () => {});

@@ -12,14 +12,14 @@ describe('personal utils', () => {
     expect(isValidSnils('689-169-232 66')).toBe(false);
   });
 });
-  test('isValidSnils early return for small number', () => {
-    expect(isValidSnils('001-001-998 00')).toBe(true);
-  });
+test('isValidSnils early return for small number', () => {
+  expect(isValidSnils('001-001-998 00')).toBe(true);
+});
 
-  test('isValidSnils handles sum equal to 100', () => {
-    expect(isValidSnils('100-018-999 00')).toBe(true);
-  });
+test('isValidSnils handles sum equal to 100', () => {
+  expect(isValidSnils('100-018-999 00')).toBe(true);
+});
 
-  test('isValidSnils handles modulo check equal to 100', () => {
-    expect(isValidSnils('101-998-999 00')).toBe(true);
-  });
+test('isValidSnils handles modulo check equal to 100', () => {
+  expect(isValidSnils('101-998-999 00')).toBe(true);
+});

@@ -33,7 +33,9 @@ jest.unstable_mockModule('../src/mappers/normativeZoneMapper.js', () => ({
   default: { toPublic: (z) => z },
 }));
 
-const { default: service } = await import('../src/services/normativeLedgerService.js');
+const { default: service } = await import(
+  '../src/services/normativeLedgerService.js'
+);
 
 findAndCountAllUsersMock.mockResolvedValue({ rows: [{ id: 'u1' }], count: 1 });
 findAllTypesMock.mockResolvedValue([

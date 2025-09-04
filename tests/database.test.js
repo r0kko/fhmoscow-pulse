@@ -1,4 +1,4 @@
-import {expect, jest, test} from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 
 const authenticateMock = jest.fn();
 const closeMock = jest.fn();
@@ -35,10 +35,9 @@ process.env.DB_HOST = 'localhost';
 // eslint-disable-next-line no-undef
 process.env.DB_PORT = '5432';
 
-const {
-  connectToDatabase,
-  closeDatabase,
-} = await import('../src/config/database.js');
+const { connectToDatabase, closeDatabase } = await import(
+  '../src/config/database.js'
+);
 
 test('connectToDatabase authenticates', async () => {
   await connectToDatabase();

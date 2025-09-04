@@ -28,11 +28,9 @@ export const setLineupRules = [
           )
         )
           return false;
-        // If selected, role_id is required
+        // If selected, allow progressive save without mandatory role_id.
+        // Validate optional leadership fields and squad_no format.
         if (p.selected) {
-          if (!(p.role_id && isUuidLike(p.role_id))) {
-            throw new Error('match_role_required');
-          }
           if (
             !(p.is_captain === undefined || typeof p.is_captain === 'boolean')
           )
@@ -48,10 +46,27 @@ export const setLineupRules = [
           if (p.is_captain && p.assistant_order != null) {
             throw new Error('captain_cannot_be_assistant');
           }
+          // Optional: squad_no for double protocol (1 or 2)
+          if (
+            !(
+              p.squad_no == null ||
+              (Number.isFinite(p.squad_no) &&
+                [1, 2].includes(Number(p.squad_no)))
+            )
+          )
+            return false;
+          // Optional: squad_both flag
+          if (
+            !(p.squad_both === undefined || typeof p.squad_both === 'boolean')
+          )
+            return false;
+          if (!(p.role_id == null || isUuidLike(p.role_id))) return false;
         } else {
           if (!(p.role_id == null || isUuidLike(p.role_id))) return false;
           if (!(p.is_captain == null || p.is_captain === false)) return false;
           if (!(p.assistant_order == null)) return false;
+          if (!(p.squad_no == null)) return false;
+          if (!(p.squad_both == null || p.squad_both === false)) return false;
         }
       }
       return true;
@@ -63,28 +78,7 @@ export const setLineupRules = [
     .withMessage('player_ids_must_be_array')
     .custom((arr) => arr.every((x) => typeof x === 'string' && x.length > 0))
     .withMessage('player_ids_must_be_array_of_strings'),
-  body('players')
-    .optional()
-    .custom((arr) => {
-      let cap = 0;
-      let asst = 0;
-      const seen = new Set();
-      const dup = new Set();
-      for (const p of arr) {
-        if (!p || !p.selected) continue;
-        if (p.is_captain) cap += 1;
-        if (p.assistant_order != null) asst += 1;
-        if (p.number != null) {
-          const key = String(p.number);
-          if (seen.has(key)) dup.add(key);
-          else seen.add(key);
-        }
-      }
-      if (cap > 1) throw new Error('too_many_captains');
-      if (asst > 2) throw new Error('too_many_assistants');
-      if (dup.size > 0) throw new Error('duplicate_match_numbers');
-      return true;
-    }),
+  // Do not enforce global leadership counts here; handled in service per protocol type
 ];
 
 export default { setLineupRules };

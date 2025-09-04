@@ -34,7 +34,13 @@ describe('statusFilters', () => {
       },
       create: async () => {},
     };
-    const created = await ensureArchivedImported(LocalModel, [], () => ({}), null, null);
+    const created = await ensureArchivedImported(
+      LocalModel,
+      [],
+      () => ({}),
+      null,
+      null
+    );
     expect(created).toBe(0);
   });
 });

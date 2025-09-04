@@ -4,7 +4,7 @@ import { escapeHtml } from '../src/utils/html.js';
 
 describe('html.escapeHtml', () => {
   test('escapes special characters', () => {
-    const s = "<&>\"'";
+    const s = '<&>"\'';
     expect(escapeHtml(s)).toBe('&lt;&amp;&gt;&quot;&#039;');
   });
 
@@ -17,4 +17,3 @@ describe('html.escapeHtml', () => {
     expect(escapeHtml(123)).toBe('123');
   });
 });
-

@@ -18,4 +18,3 @@ test('toPublic maps without associations', () => {
   expect(out.document_type).toBeUndefined();
   expect(out.country).toBeUndefined();
 });
-

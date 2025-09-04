@@ -49,16 +49,18 @@ beforeEach(() => {
 test('createForUser throws when user missing', async () => {
   userFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.createForUser('u1', 'REG', { result: 'x' }, 'a'))
-    .rejects.toThrow('user_not_found');
+  await expect(
+    service.createForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('user_not_found');
 });
 
 test('createForUser throws when type missing', async () => {
   userFindMock.mockResolvedValue({});
   addressTypeFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.createForUser('u1', 'REG', { result: 'x' }, 'a'))
-    .rejects.toThrow('address_type_not_found');
+  await expect(
+    service.createForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('address_type_not_found');
 });
 
 test('createForUser throws when address exists', async () => {
@@ -66,8 +68,9 @@ test('createForUser throws when address exists', async () => {
   addressTypeFindMock.mockResolvedValue({ id: 't' });
   userAddressFindMock.mockResolvedValue({});
   const service = (await import(servicePath)).default;
-  await expect(service.createForUser('u1', 'REG', { result: 'x' }, 'a'))
-    .rejects.toThrow('address_exists');
+  await expect(
+    service.createForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('address_exists');
 });
 
 test('createForUser throws on invalid address', async () => {
@@ -76,8 +79,9 @@ test('createForUser throws on invalid address', async () => {
   userAddressFindMock.mockResolvedValue(null);
   cleanAddressMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.createForUser('u1', 'REG', { result: 'x' }, 'a'))
-    .rejects.toThrow('invalid_address');
+  await expect(
+    service.createForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('invalid_address');
 });
 
 test('createForUser returns created address', async () => {
@@ -129,7 +133,11 @@ test('fetchFromLegacy returns null when no address parts', async () => {
 
 test('fetchFromLegacy returns null when cleaning fails', async () => {
   findExtMock.mockResolvedValue({ external_id: 'e1' });
-  findLegacyMock.mockResolvedValue({ adr_ind: '1', adr_city: 'C', adr_adr: 'S' });
+  findLegacyMock.mockResolvedValue({
+    adr_ind: '1',
+    adr_city: 'C',
+    adr_adr: 'S',
+  });
   cleanAddressMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
   const res = await service.fetchFromLegacy('u1');
@@ -138,7 +146,11 @@ test('fetchFromLegacy returns null when cleaning fails', async () => {
 
 test('fetchFromLegacy returns cleaned result', async () => {
   findExtMock.mockResolvedValue({ external_id: 'e1' });
-  findLegacyMock.mockResolvedValue({ adr_ind: '1', adr_city: 'C', adr_adr: 'S' });
+  findLegacyMock.mockResolvedValue({
+    adr_ind: '1',
+    adr_city: 'C',
+    adr_adr: 'S',
+  });
   cleanAddressMock.mockResolvedValue({ result: 'ok' });
   const service = (await import(servicePath)).default;
   const res = await service.fetchFromLegacy('u1');
@@ -165,7 +177,11 @@ test('importFromLegacy returns null when create fails', async () => {
   userAddressFindMock.mockResolvedValueOnce(null); // existing check
   // fetchFromLegacy success path
   findExtMock.mockResolvedValue({ external_id: 'e1' });
-  findLegacyMock.mockResolvedValue({ adr_ind: '1', adr_city: 'C', adr_adr: 'S' });
+  findLegacyMock.mockResolvedValue({
+    adr_ind: '1',
+    adr_city: 'C',
+    adr_adr: 'S',
+  });
   cleanAddressMock.mockResolvedValue({ result: 'ok' });
   userFindMock.mockResolvedValue({});
   addressTypeFindMock.mockResolvedValue({ id: 't' });
@@ -179,7 +195,11 @@ test('importFromLegacy returns null when create fails', async () => {
 test('importFromLegacy creates address from legacy', async () => {
   userAddressFindMock.mockResolvedValueOnce(null); // existing check
   findExtMock.mockResolvedValue({ external_id: 'e1' });
-  findLegacyMock.mockResolvedValue({ adr_ind: '1', adr_city: 'C', adr_adr: 'S' });
+  findLegacyMock.mockResolvedValue({
+    adr_ind: '1',
+    adr_city: 'C',
+    adr_adr: 'S',
+  });
   cleanAddressMock.mockResolvedValue({ result: 'ok', street: 'S' });
   userFindMock.mockResolvedValue({});
   addressTypeFindMock.mockResolvedValue({ id: 't' });
@@ -193,12 +213,17 @@ test('importFromLegacy creates address from legacy', async () => {
 test('getForUser returns null when type missing', async () => {
   addressTypeFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.getForUser('u1', 'REG')).rejects.toThrow('address_type_not_found');
+  await expect(service.getForUser('u1', 'REG')).rejects.toThrow(
+    'address_type_not_found'
+  );
 });
 
 test('getForUser returns address', async () => {
   addressTypeFindMock.mockResolvedValue({ id: 't' });
-  userAddressFindMock.mockResolvedValue({ Address: { id: 'a' }, AddressType: { id: 't' } });
+  userAddressFindMock.mockResolvedValue({
+    Address: { id: 'a' },
+    AddressType: { id: 't' },
+  });
   const service = (await import(servicePath)).default;
   const res = await service.getForUser('u1', 'REG');
   expect(res).toEqual({ id: 'a', AddressType: { id: 't' } });
@@ -208,7 +233,11 @@ test('updateForUser updates address', async () => {
   addressTypeFindMock.mockResolvedValue({ id: 't' });
   const addressUpdate = jest.fn();
   const uaUpdate = jest.fn();
-  userAddressFindMock.mockResolvedValue({ address_id: 'a1', Address: { update: addressUpdate }, update: uaUpdate });
+  userAddressFindMock.mockResolvedValue({
+    address_id: 'a1',
+    Address: { update: addressUpdate },
+    update: uaUpdate,
+  });
   cleanAddressMock.mockResolvedValue({ street: 's', result: 'clean' });
   addressFindMock.mockResolvedValue({ id: 'a1' });
   const service = (await import(servicePath)).default;
@@ -224,7 +253,11 @@ test('removeForUser deletes address', async () => {
   const addrDestroy = jest.fn();
   const uaUpdate = jest.fn();
   const uaDestroy = jest.fn();
-  userAddressFindMock.mockResolvedValue({ Address: { update: addrUpdate, destroy: addrDestroy }, update: uaUpdate, destroy: uaDestroy });
+  userAddressFindMock.mockResolvedValue({
+    Address: { update: addrUpdate, destroy: addrDestroy },
+    update: uaUpdate,
+    destroy: uaDestroy,
+  });
   const service = (await import(servicePath)).default;
   await service.removeForUser('u1', 'REG', 'a');
   expect(addrUpdate).toHaveBeenCalledWith({ updated_by: 'a' });
@@ -244,14 +277,18 @@ test('getForUser returns null when address not found', async () => {
 test('updateForUser throws when type missing', async () => {
   addressTypeFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.updateForUser('u1', 'REG', { result: 'x' }, 'a')).rejects.toThrow('address_type_not_found');
+  await expect(
+    service.updateForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('address_type_not_found');
 });
 
 test('updateForUser throws when address missing', async () => {
   addressTypeFindMock.mockResolvedValue({ id: 't' });
   userAddressFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.updateForUser('u1', 'REG', { result: 'x' }, 'a')).rejects.toThrow('address_not_found');
+  await expect(
+    service.updateForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('address_not_found');
 });
 
 test('updateForUser throws on invalid address', async () => {
@@ -259,18 +296,24 @@ test('updateForUser throws on invalid address', async () => {
   userAddressFindMock.mockResolvedValue({ Address: {}, update: jest.fn() });
   cleanAddressMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.updateForUser('u1', 'REG', { result: 'x' }, 'a')).rejects.toThrow('invalid_address');
+  await expect(
+    service.updateForUser('u1', 'REG', { result: 'x' }, 'a')
+  ).rejects.toThrow('invalid_address');
 });
 
 test('removeForUser throws when type missing', async () => {
   addressTypeFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.removeForUser('u1', 'REG', 'a')).rejects.toThrow('address_type_not_found');
+  await expect(service.removeForUser('u1', 'REG', 'a')).rejects.toThrow(
+    'address_type_not_found'
+  );
 });
 
 test('removeForUser throws when address missing', async () => {
   addressTypeFindMock.mockResolvedValue({ id: 't' });
   userAddressFindMock.mockResolvedValue(null);
   const service = (await import(servicePath)).default;
-  await expect(service.removeForUser('u1', 'REG', 'a')).rejects.toThrow('address_not_found');
+  await expect(service.removeForUser('u1', 'REG', 'a')).rejects.toThrow(
+    'address_not_found'
+  );
 });

@@ -1,25 +1,30 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
-const { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } = await import('../src/utils/jwt.js');
+const {
+  signAccessToken,
+  signRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+} = await import('../src/utils/jwt.js');
 
 const user = { id: '42' };
 
- test('access token round trip', () => {
+test('access token round trip', () => {
   const token = signAccessToken(user);
   const payload = verifyAccessToken(token);
   expect(payload.sub).toBe(user.id);
 });
 
- test('refresh token round trip', () => {
+test('refresh token round trip', () => {
   const token = signRefreshToken(user);
   const payload = verifyRefreshToken(token);
   expect(payload.sub).toBe(user.id);
   expect(payload.type).toBe('refresh');
 });
 
- test('verifyRefreshToken rejects access token', () => {
+test('verifyRefreshToken rejects access token', () => {
   const token = signAccessToken(user);
   expect(() => verifyRefreshToken(token)).toThrow('invalid_token_type');
 });

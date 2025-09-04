@@ -25,4 +25,3 @@ test('connectLegacyDatabase sets availability false on error', async () => {
   await mod.connectLegacyDatabase();
   expect(mod.isLegacyDbAvailable()).toBe(false);
 });
-

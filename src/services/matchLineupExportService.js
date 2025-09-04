@@ -6,6 +6,7 @@ import {
   Match,
   Team,
   Tournament,
+  TournamentType,
   Stage,
   TournamentGroup,
   Tour,
@@ -36,11 +37,15 @@ function ruDateStr(iso) {
 
 async function getMatchMeta(matchId) {
   const m = await Match.findByPk(matchId, {
-    attributes: ['id', 'date_start', 'team1_id', 'team2_id'],
+    attributes: ['id', 'date_start', 'team1_id', 'team2_id', 'tournament_id'],
     include: [
       { model: Team, as: 'HomeTeam', attributes: ['name'] },
       { model: Team, as: 'AwayTeam', attributes: ['name'] },
-      { model: Tournament, attributes: ['name', 'full_name'] },
+      {
+        model: Tournament,
+        attributes: ['name', 'full_name', 'type_id'],
+        include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+      },
       { model: Stage, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
@@ -58,6 +63,7 @@ async function getMatchMeta(matchId) {
     tour: m.Tour?.name || null,
     homeName: m.HomeTeam?.name || 'Команда 1',
     awayName: m.AwayTeam?.name || 'Команда 2',
+    double: !!m.Tournament?.TournamentType?.double_protocol,
   };
 }
 
@@ -215,22 +221,24 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     err.code = 400;
     throw err;
   }
-  // Enforce limits: max 2 goalkeepers and max 20 field players
+  // Enforce limits: for single protocol only — max 2 goalkeepers and max 20 field players
   const isGKByName = (p) =>
     (p.match_role?.name || p.role?.name || '').toLowerCase() === 'вратарь';
   const gkCount = selected.filter((p) =>
     typeof p.is_gk === 'boolean' ? p.is_gk : isGKByName(p)
   ).length;
   const fieldCount = selected.length - gkCount;
-  if (gkCount > 2) {
-    const err = new Error('too_many_goalkeepers');
-    err.code = 400;
-    throw err;
-  }
-  if (fieldCount > 20) {
-    const err = new Error('too_many_field_players');
-    err.code = 400;
-    throw err;
+  if (!meta.double) {
+    if (gkCount > 2) {
+      const err = new Error('too_many_goalkeepers');
+      err.code = 400;
+      throw err;
+    }
+    if (fieldCount > 20) {
+      const err = new Error('too_many_field_players');
+      err.code = 400;
+      throw err;
+    }
   }
   // Enforce lower bounds before rendering: at least 1 GK, 5 field players and head coach selected
   const { default: matchStaffService } = await import('./matchStaffService.js');
@@ -238,15 +246,17 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
   const staffPoolEarly =
     (isHome ? staffDataEarly.home.staff : staffDataEarly.away.staff) || [];
   const selectedStaffEarly = staffPoolEarly.filter((s) => s.selected);
-  if (gkCount < 1) {
-    const err = new Error('too_few_goalkeepers');
-    err.code = 400;
-    throw err;
-  }
-  if (fieldCount < 5) {
-    const err = new Error('too_few_field_players');
-    err.code = 400;
-    throw err;
+  if (!meta.double) {
+    if (gkCount < 1) {
+      const err = new Error('too_few_goalkeepers');
+      err.code = 400;
+      throw err;
+    }
+    if (fieldCount < 5) {
+      const err = new Error('too_few_field_players');
+      err.code = 400;
+      throw err;
+    }
   }
   // Require explicit match numbers for all selected players (no fallback to club numbers)
   const missingNumbers = selected.filter((p) => p.match_number == null).length;
@@ -263,6 +273,21 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     err.code = 400;
     throw err;
   }
+  // Enforce unique match numbers on export (single protocol)
+  {
+    const seen = new Set();
+    for (const p of selected) {
+      const n = p.match_number;
+      if (n == null) continue; // handled above
+      const key = String(n);
+      if (seen.has(key)) {
+        const err = new Error('duplicate_match_numbers');
+        err.code = 400;
+        throw err;
+      }
+      seen.add(key);
+    }
+  }
   // Sort: GK first, then by number ASC
   const isGK = (p) =>
     (p.match_role?.name || p.role?.name || '').toLowerCase() === 'вратарь';
@@ -275,460 +300,1048 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     if (!isGK(a) && isGK(b)) return 1;
     return numVal(a) - numVal(b);
   });
-  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
-  const { regular, bold } = applyFonts(doc);
-  applyFirstPageHeader(doc);
+  // Branch rendering depending on protocol type
+  if (!meta.double) {
+    const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+    const { regular, bold } = applyFonts(doc);
+    applyFirstPageHeader(doc);
 
-  // Start content with a consistent offset from header
-  const headerBottom = 30 /* margin */ + 32 /* logo height */ + 16; // match utils/pdf.js
-  doc.y = Math.max(doc.y, headerBottom);
+    // Start content with a consistent offset from header
+    const headerBottom = 30 /* margin */ + 32 /* logo height */ + 16; // match utils/pdf.js
+    doc.y = Math.max(doc.y, headerBottom);
 
-  // Title
-  doc
-    .font(bold)
-    .fontSize(16)
-    .text('Заявочный лист на матч', { align: 'center' });
-  doc.moveDown(0.4);
-
-  // Meta block with brand style (background + border)
-  const left = doc.page.margins.left;
-  const right = doc.page.margins.right;
-  const boxX = left;
-  const boxW = doc.page.width - left - right;
-  const {
-    padX,
-    padY,
-    borderWidth,
-    borderColor,
-    radius,
-    background,
-    primaryColor,
-    primarySize,
-    secondarySize,
-  } = PDF_STYLE.infoBox;
-  // Slightly increase horizontal inset inside the box
-  const insetX = padX + 2;
-  const textX = boxX + insetX;
-  const innerW = boxW - insetX * 2;
-  // Ultra-compact gaps
-  const lineGap = 2;
-  const boxStartY = doc.y;
-  // Prepare lines without textual prefixes; we will render icons instead
-  const teamLine = isHome
-    ? data.team1_name || meta.homeName
-    : data.team2_name || meta.awayName;
-  const compLine = meta.tournament || meta.competition || '';
-  // match and date values are handwritten below (no text here)
-  const iconSize = 10;
-  const iconGap = 6;
-  const textAvailW = innerW - iconSize - iconGap;
-  // Measure heights: team + competition (text), then lines for match/date
-  // Measure with regular font for consistent spacing (no bold)
-  doc.font(regular).fontSize(primarySize);
-  const hTeam = doc.heightOfString(teamLine, { width: textAvailW });
-  const hComp = doc.heightOfString(compLine, { width: textAvailW });
-  // Handwriting lines: compact yet comfortable (single line)
-  const lineH = Math.max(20, secondarySize + 8);
-  // Slightly larger top/bottom padding for better breathing room
-  const padTop = Math.max(padY, 6);
-  const padBottom = 6;
-  const boxH = padTop + hTeam + 2 + hComp + lineGap + lineH + padBottom;
-  // Draw background + border
-  doc.save();
-  doc.lineWidth(borderWidth).strokeColor(borderColor).fillColor(background);
-  doc.roundedRect(boxX, boxStartY, boxW, boxH, radius).fillAndStroke();
-  doc.restore();
-  // Render with small inline icons
-  let textY = boxStartY + padTop;
-  const drawIcon = (kind, ix, iy, sz) => {
-    const g = '#98A2B3';
-    doc.save().lineWidth(1).strokeColor(g);
-    if (kind === 'team') {
-      doc.circle(ix + sz * 0.4, iy + sz * 0.6, sz * 0.25).stroke();
-      doc.circle(ix + sz * 0.75, iy + sz * 0.45, sz * 0.2).stroke();
-    } else if (kind === 'trophy') {
-      doc.rect(ix + sz * 0.1, iy, sz * 0.8, sz * 0.25).stroke();
-      doc
-        .moveTo(ix + sz * 0.15, iy + sz * 0.25)
-        .lineTo(ix + sz * 0.5, iy + sz * 0.7)
-        .lineTo(ix + sz * 0.85, iy + sz * 0.25)
-        .stroke();
-      doc.rect(ix + sz * 0.35, iy + sz * 0.75, sz * 0.3, sz * 0.2).stroke();
-    } else if (kind === 'match') {
-      doc.circle(ix + sz * 0.25, iy + sz * 0.5, sz * 0.18).stroke();
-      doc.circle(ix + sz * 0.75, iy + sz * 0.5, sz * 0.18).stroke();
-      doc
-        .moveTo(ix + sz * 0.35, iy + sz * 0.5)
-        .lineTo(ix + sz * 0.65, iy + sz * 0.5)
-        .stroke();
-    } else if (kind === 'calendar') {
-      doc.rect(ix, iy + sz * 0.1, sz, sz * 0.8).stroke();
-      doc
-        .moveTo(ix, iy + sz * 0.25)
-        .lineTo(ix + sz, iy + sz * 0.25)
-        .stroke();
-      doc.rect(ix + sz * 0.2, iy + sz * 0.45, sz * 0.2, sz * 0.2).stroke();
-      doc.rect(ix + sz * 0.6, iy + sz * 0.45, sz * 0.2, sz * 0.2).stroke();
-    }
-    doc.restore();
-  };
-  const renderLine = (icon, content, fontFam, size, color) => {
-    drawIcon(icon, textX, textY + 1, iconSize);
-    doc.font(fontFam).fontSize(size).fillColor(color);
-    doc.text(content, textX + iconSize + iconGap, textY, {
-      width: innerW - iconSize - iconGap,
-    });
-    textY = doc.y + lineGap;
-  };
-  renderLine('team', teamLine, regular, primarySize, primaryColor);
-  renderLine('trophy', compLine, regular, primarySize, primaryColor);
-  // One compact labeled handwriting line: "Матч и дата: ________"
-  const drawLabeledLine = (icon, label) => {
-    drawIcon(icon, textX, textY + 1, iconSize);
-    const tx = textX + iconSize + iconGap;
-    const tw = innerW - iconSize - iconGap;
-    // Compute baseline for handwriting row
-    const ly = textY + Math.floor(lineH / 2);
-    // Regular label (no bold), same style as the other primary lines
-    doc.font(regular).fontSize(primarySize).fillColor(primaryColor);
-    const lw = Math.min(doc.widthOfString(label), Math.max(60, tw * 0.4));
-    // Place label so its baseline aligns to handwriting line (slightly raised)
-    const baselineAdjust = 1;
-    const labelY = ly - primarySize + baselineAdjust;
-    doc.text(label, tx, labelY, { width: lw, lineBreak: false });
-    const gap = 8;
-    const lineStart = tx + lw + gap;
-    const lineEnd = tx + tw;
-    const lineY = ly + 1; // slightly lower handwriting line
+    // Title
     doc
-      .save()
-      .lineWidth(1)
-      .strokeColor('#D0D5DD')
-      .moveTo(lineStart, lineY)
-      .lineTo(lineEnd, lineY)
-      .stroke()
-      .restore();
-    textY += lineH;
-  };
-  drawLabeledLine('calendar', 'Матч и дата');
-  // Move cursor below box and caption
-  doc.y = boxStartY + boxH;
-  doc.fillColor('#000000');
-  doc.moveDown(0.6);
-  // Section heading: players
-  doc.font(bold).fontSize(12).fillColor('#000000').text('Игроки', left, doc.y);
-  doc.moveDown(0.4);
+      .font(bold)
+      .fontSize(16)
+      .text('Заявочный лист на матч', { align: 'center' });
+    doc.moveDown(0.4);
 
-  // Prepare rows (single-line values)
-  let rows = selected.map((p) => ({
-    n: (p.match_number ?? '').toString(),
-    fio: p.full_name || '',
-    role: p.match_role?.name || p.role?.name || '',
-    dob: p.date_of_birth
-      ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
-      : '',
-  }));
-  // Pad up to 22 rows
-  if (rows.length < 22) {
-    rows = rows.concat(
-      Array.from({ length: 22 - rows.length }, () => ({
-        n: '',
-        fio: '',
-        role: '',
-        dob: '',
-      }))
-    );
-  }
-
-  // Columns width must equal info box width
-  const wN = 40;
-  const wRole = 120;
-  const wDob = 100;
-  const wFio = Math.max(120, boxW - (wN + wRole + wDob));
-  const playerCols = [
-    { key: 'n', label: '№', width: wN, align: 'center', headerAlign: 'center' },
-    {
-      key: 'fio',
-      label: 'ФИО',
-      width: wFio,
-      align: 'left',
-      headerAlign: 'center',
-    },
-    {
-      key: 'role',
-      label: 'Амплуа',
-      width: wRole,
-      align: 'center',
-      headerAlign: 'center',
-    },
-    {
-      key: 'dob',
-      label: 'Дата рождения',
-      width: wDob,
-      align: 'center',
-      headerAlign: 'center',
-    },
-  ];
-  const tableY = doc.y;
-  const endPlayersY = drawTable(
-    doc,
-    { x: left, y: tableY, columns: playerCols, rows },
-    {
-      text: { font: regular, size: 9, color: '#000000' },
-      headerText: { font: bold, size: 9, color: '#000000' },
-      zebra: false,
-    }
-  );
-  // Overlay captain/assistant markers inside FIO cell, right-aligned
-  try {
+    // Meta block with brand style (background + border)
+    const left = doc.page.margins.left;
+    const right = doc.page.margins.right;
+    const boxX = left;
+    const boxW = doc.page.width - left - right;
+    const {
+      padX,
+      padY,
+      borderWidth,
+      borderColor,
+      radius,
+      background,
+      primaryColor,
+      primarySize,
+      secondarySize,
+    } = PDF_STYLE.infoBox;
+    // Slightly increase horizontal inset inside the box
+    const insetX = padX + 2;
+    const textX = boxX + insetX;
+    const innerW = boxW - insetX * 2;
+    // Ultra-compact gaps
+    const lineGap = 2;
+    const boxStartY = doc.y;
+    // Prepare lines without textual prefixes; we will render icons instead
+    const teamLine = isHome
+      ? data.team1_name || meta.homeName
+      : data.team2_name || meta.awayName;
+    const compLine = meta.tournament || meta.competition || '';
+    // match and date values are handwritten below (no text here)
+    const iconSize = 10;
+    const iconGap = 6;
+    const textAvailW = innerW - iconSize - iconGap;
+    // Measure heights: team + competition (text), then lines for match/date
+    // Measure with regular font for consistent spacing (no bold)
+    doc.font(regular).fontSize(primarySize);
+    const hTeam = doc.heightOfString(teamLine, { width: textAvailW });
+    const hComp = doc.heightOfString(compLine, { width: textAvailW });
+    // Handwriting lines: compact yet comfortable (single line)
+    const lineH = Math.max(20, secondarySize + 8);
+    // Slightly larger top/bottom padding for better breathing room
+    const padTop = Math.max(padY, 6);
+    const padBottom = 6;
+    const boxH = padTop + hTeam + 2 + hComp + lineGap + lineH + padBottom;
+    // Draw background + border
     doc.save();
-    const headerHeight = 18;
-    const rowHeight = 16;
-    const hPadding = 4;
-    const textSize = 9;
-    // compute column x positions
-    const colXs = [];
-    let acc = left;
-    for (const c of playerCols) {
-      colXs.push(acc);
-      acc += c.width;
-    }
-    const fioIdx = 1; // second column
-    const cellLeft = colXs[fioIdx];
-    const cellRight = cellLeft + playerCols[fioIdx].width;
-    // markers per row (Cyrillic letters): 'К' for captain, 'А' for assistant
-    const markers = rows.map((_, i) => {
-      if (i >= selected.length) return '';
-      const p = selected[i];
-      if (p?.is_captain) return 'К';
-      if (p?.assistant_order != null) return 'А';
-      return '';
-    });
-    for (let r = 0; r < rows.length; r += 1) {
-      const mk = markers[r];
-      if (!mk) continue;
-      const cy =
-        tableY + headerHeight + r * rowHeight + (rowHeight - textSize - 2) / 2;
-      doc.font(regular).fontSize(textSize).fillColor('#000000');
-      const mw = doc.widthOfString(mk);
-      const mx = Math.max(cellLeft + hPadding, cellRight - hPadding - mw);
-      doc.text(mk, mx, cy, { lineBreak: false });
-    }
+    doc.lineWidth(borderWidth).strokeColor(borderColor).fillColor(background);
+    doc.roundedRect(boxX, boxStartY, boxW, boxH, radius).fillAndStroke();
     doc.restore();
-  } catch {
-    // ignore overlay errors
-  }
-  doc.y = endPlayersY;
+    // Render with small inline icons
+    let textY = boxStartY + padTop;
+    const drawIcon = (kind, ix, iy, sz) => {
+      const g = '#98A2B3';
+      doc.save().lineWidth(1).strokeColor(g);
+      if (kind === 'team') {
+        doc.circle(ix + sz * 0.4, iy + sz * 0.6, sz * 0.25).stroke();
+        doc.circle(ix + sz * 0.75, iy + sz * 0.45, sz * 0.2).stroke();
+      } else if (kind === 'trophy') {
+        doc.rect(ix + sz * 0.1, iy, sz * 0.8, sz * 0.25).stroke();
+        doc
+          .moveTo(ix + sz * 0.15, iy + sz * 0.25)
+          .lineTo(ix + sz * 0.5, iy + sz * 0.7)
+          .lineTo(ix + sz * 0.85, iy + sz * 0.25)
+          .stroke();
+        doc.rect(ix + sz * 0.35, iy + sz * 0.75, sz * 0.3, sz * 0.2).stroke();
+      } else if (kind === 'match') {
+        doc.circle(ix + sz * 0.25, iy + sz * 0.5, sz * 0.18).stroke();
+        doc.circle(ix + sz * 0.75, iy + sz * 0.5, sz * 0.18).stroke();
+        doc
+          .moveTo(ix + sz * 0.35, iy + sz * 0.5)
+          .lineTo(ix + sz * 0.65, iy + sz * 0.5)
+          .stroke();
+      } else if (kind === 'calendar') {
+        doc.rect(ix, iy + sz * 0.1, sz, sz * 0.8).stroke();
+        doc
+          .moveTo(ix, iy + sz * 0.25)
+          .lineTo(ix + sz, iy + sz * 0.25)
+          .stroke();
+        doc.rect(ix + sz * 0.2, iy + sz * 0.45, sz * 0.2, sz * 0.2).stroke();
+        doc.rect(ix + sz * 0.6, iy + sz * 0.45, sz * 0.2, sz * 0.2).stroke();
+      }
+      doc.restore();
+    };
+    const renderLine = (icon, content, fontFam, size, color) => {
+      drawIcon(icon, textX, textY + 1, iconSize);
+      doc.font(fontFam).fontSize(size).fillColor(color);
+      doc.text(content, textX + iconSize + iconGap, textY, {
+        width: innerW - iconSize - iconGap,
+      });
+      textY = doc.y + lineGap;
+    };
+    renderLine('team', teamLine, regular, primarySize, primaryColor);
+    renderLine('trophy', compLine, regular, primarySize, primaryColor);
+    // One compact labeled handwriting line: "Матч и дата: ________"
+    const drawLabeledLine = (icon, label) => {
+      drawIcon(icon, textX, textY + 1, iconSize);
+      const tx = textX + iconSize + iconGap;
+      const tw = innerW - iconSize - iconGap;
+      // Compute baseline for handwriting row
+      const ly = textY + Math.floor(lineH / 2);
+      // Regular label (no bold), same style as the other primary lines
+      doc.font(regular).fontSize(primarySize).fillColor(primaryColor);
+      const lw = Math.min(doc.widthOfString(label), Math.max(60, tw * 0.4));
+      // Place label so its baseline aligns to handwriting line (slightly raised)
+      const baselineAdjust = 1;
+      const labelY = ly - primarySize + baselineAdjust;
+      doc.text(label, tx, labelY, { width: lw, lineBreak: false });
+      const gap = 8;
+      const lineStart = tx + lw + gap;
+      const lineEnd = tx + tw;
+      const lineY = ly + 1; // slightly lower handwriting line
+      doc
+        .save()
+        .lineWidth(1)
+        .strokeColor('#D0D5DD')
+        .moveTo(lineStart, lineY)
+        .lineTo(lineEnd, lineY)
+        .stroke()
+        .restore();
+      textY += lineH;
+    };
+    drawLabeledLine('calendar', 'Матч и дата');
+    // Move cursor below box and caption
+    doc.y = boxStartY + boxH;
+    doc.fillColor('#000000');
+    doc.moveDown(0.6);
+    // Section heading: players
+    doc
+      .font(bold)
+      .fontSize(12)
+      .fillColor('#000000')
+      .text('Игроки', left, doc.y);
+    doc.moveDown(0.4);
 
-  // Officials table directly under the players table
-  doc.moveDown(0.6);
-  doc
-    .font(bold)
-    .fontSize(12)
-    .fillColor('#000000')
-    .text('Официальные представители', left, doc.y);
-  doc.moveDown(0.4);
-  // We already loaded staff above for validation; use same lists here for consistency
-  const staffPool = staffPoolEarly;
-  const chosen = selectedStaffEarly;
-  // Enforce max 8 officials when selected
-  if (chosen.length > 8) {
-    const err = new Error('too_many_officials');
-    err.code = 400;
-    throw err;
-  }
-  const repList = chosen.length ? chosen : staffPool;
-  let repRows = repList.map((r) => ({
-    fio: r.full_name,
-    dob: r.date_of_birth
-      ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
-      : '',
-    role: r.match_role?.name || r.role?.name || '',
-  }));
-  // Representatives table rows: default 6 rows, if more than 6 then up to 8 rows
-  {
-    const targetRows = repRows.length > 6 ? 8 : 6;
-    if (repRows.length < targetRows) {
-      repRows = repRows.concat(
-        Array.from({ length: targetRows - repRows.length }, () => ({
+    // Prepare rows (single-line values)
+    let rows = selected.map((p) => ({
+      n: (p.match_number ?? '').toString(),
+      fio: p.full_name || '',
+      role: p.match_role?.name || p.role?.name || '',
+      dob: p.date_of_birth
+        ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
+        : '',
+    }));
+    // Pad up to 22 rows
+    if (rows.length < 22) {
+      rows = rows.concat(
+        Array.from({ length: 22 - rows.length }, () => ({
+          n: '',
           fio: '',
-          dob: '',
           role: '',
+          dob: '',
         }))
       );
-    } else if (repRows.length > targetRows) {
-      repRows = repRows.slice(0, targetRows);
     }
-  }
-  const repRole = 120;
-  const repDob = 100;
-  const repFio = Math.max(160, boxW - (repRole + repDob));
-  const repCols = [
-    {
-      key: 'fio',
-      label: 'ФИО',
-      width: repFio,
-      align: 'left',
-      headerAlign: 'center',
-    },
-    {
-      key: 'role',
-      label: 'Должность',
-      width: repRole,
-      align: 'center',
-      headerAlign: 'center',
-    },
-    {
-      key: 'dob',
-      label: 'Дата рождения',
-      width: repDob,
-      align: 'center',
-      headerAlign: 'center',
-    },
-  ];
-  const endRepsY = drawTable(
-    doc,
-    { x: left, y: doc.y, columns: repCols, rows: repRows },
-    {
-      text: { font: regular, size: 9, color: '#000000' },
-      headerText: { font: bold, size: 9, color: '#000000' },
-      zebra: false,
-    }
-  );
-  doc.y = endRepsY;
 
-  // Signature line: "Подпись ____   Дата ____   Фамилия И.О." (ФИО показываем только если главный тренер заявлен)
-  const headCoachShort = (() => {
-    const selectedOnly = (staffPool || []).filter((s) => s.selected);
-    const coach = selectedOnly.find(
-      (s) => (s.role?.name || '').toLowerCase() === 'главный тренер'
-    );
-    if (!coach) return '';
-    const parts = String(coach.full_name || '')
-      .trim()
-      .split(/\s+/);
-    if (!parts.length) return '';
-    const sur = parts[0] || '';
-    const ini = parts
-      .slice(1)
-      .map((p) => (p ? `${p[0].toUpperCase()}.` : ''))
-      .join(' ');
-    return `${sur} ${ini}`.trim();
-  })();
-  doc.moveDown(0.9);
-  const rowY = doc.y;
-  const labelColor = '#666666';
-  const lineColor = '#D0D5DD';
-  const fs = 10;
-  const micro = 8;
-  const lineY = rowY + fs + 3;
-  // Подпись — линия без метки сверху
-  const sigLineX1 = left;
-  const sigLineW = Math.min(160, Math.max(100, boxW * 0.28));
-  doc
-    .save()
-    .lineWidth(1)
-    .strokeColor(lineColor)
-    .moveTo(sigLineX1, lineY)
-    .lineTo(sigLineX1 + sigLineW, lineY)
-    .stroke()
-    .restore();
-  // Микро‑подпись под линией (центрируем)
-  try {
-    doc.font('SB-Italic');
-  } catch {
-    doc.font(regular);
-  }
-  const sigCap = 'подпись';
-  const sigCapW = doc.widthOfString(sigCap);
-  const sigCapX = sigLineX1 + Math.max(0, (sigLineW - sigCapW) / 2);
-  doc
-    .fontSize(micro)
-    .fillColor(labelColor)
-    .text(sigCap, sigCapX, lineY + 2, { lineBreak: false });
-  // Дата — линия справа от подписи
-  const dateLineX1 = sigLineX1 + sigLineW + 24;
-  const dateLineW = 90;
-  doc
-    .save()
-    .lineWidth(1)
-    .strokeColor(lineColor)
-    .moveTo(dateLineX1, lineY)
-    .lineTo(dateLineX1 + dateLineW, lineY)
-    .stroke()
-    .restore();
-  // Микро‑подпись под линией даты (центрируем)
-  try {
-    doc.font('SB-Italic');
-  } catch {
-    doc.font(regular);
-  }
-  const dateCap = 'дата';
-  const dateCapW = doc.widthOfString(dateCap);
-  const dateCapX = dateLineX1 + Math.max(0, (dateLineW - dateCapW) / 2);
-  doc
-    .fontSize(micro)
-    .fillColor(labelColor)
-    .text(dateCap, dateCapX, lineY + 2, { lineBreak: false });
-  // ФИО главного тренера — по центру отведённой области справа или линия для ручного ввода
-  const nameX = dateLineX1 + dateLineW + 24;
-  const nameW = Math.max(140, left + boxW - nameX);
-  if (headCoachShort) {
-    doc
-      .font(regular)
-      .fontSize(fs)
-      .fillColor('#000000')
-      .text(headCoachShort, nameX, rowY, {
-        width: nameW,
+    // Columns width must equal info box width
+    const wN = 40;
+    const wRole = 120;
+    const wDob = 100;
+    const wFio = Math.max(120, boxW - (wN + wRole + wDob));
+    const playerCols = [
+      {
+        key: 'n',
+        label: '№',
+        width: wN,
         align: 'center',
-        lineBreak: false,
+        headerAlign: 'center',
+      },
+      {
+        key: 'fio',
+        label: 'ФИО',
+        width: wFio,
+        align: 'left',
+        headerAlign: 'center',
+      },
+      {
+        key: 'role',
+        label: 'Амплуа',
+        width: wRole,
+        align: 'center',
+        headerAlign: 'center',
+      },
+      {
+        key: 'dob',
+        label: 'Дата рождения',
+        width: wDob,
+        align: 'center',
+        headerAlign: 'center',
+      },
+    ];
+    const tableY = doc.y;
+    const endPlayersY = drawTable(
+      doc,
+      { x: left, y: tableY, columns: playerCols, rows },
+      {
+        text: { font: regular, size: 9, color: '#000000' },
+        headerText: { font: bold, size: 9, color: '#000000' },
+        zebra: false,
+      }
+    );
+    // Overlay captain/assistant markers inside FIO cell, right-aligned
+    try {
+      doc.save();
+      const headerHeight = 18;
+      const rowHeight = 16;
+      const hPadding = 4;
+      const textSize = 9;
+      // compute column x positions
+      const colXs = [];
+      let acc = left;
+      for (const c of playerCols) {
+        colXs.push(acc);
+        acc += c.width;
+      }
+      const fioIdx = 1; // second column
+      const cellLeft = colXs[fioIdx];
+      const cellRight = cellLeft + playerCols[fioIdx].width;
+      // markers per row (Cyrillic letters): 'К' for captain, 'А' for assistant
+      const markers = rows.map((_, i) => {
+        if (i >= selected.length) return '';
+        const p = selected[i];
+        if (p?.is_captain) return 'К';
+        if (p?.assistant_order != null) return 'А';
+        return '';
       });
-  } else {
-    const ny = lineY;
+      for (let r = 0; r < rows.length; r += 1) {
+        const mk = markers[r];
+        if (!mk) continue;
+        const cy =
+          tableY +
+          headerHeight +
+          r * rowHeight +
+          (rowHeight - textSize - 2) / 2;
+        doc.font(regular).fontSize(textSize).fillColor('#000000');
+        const mw = doc.widthOfString(mk);
+        const mx = Math.max(cellLeft + hPadding, cellRight - hPadding - mw);
+        doc.text(mk, mx, cy, { lineBreak: false });
+      }
+      doc.restore();
+    } catch {
+      // ignore overlay errors
+    }
+    doc.y = endPlayersY;
+
+    // Officials table directly under the players table
+    doc.moveDown(0.6);
+    doc
+      .font(bold)
+      .fontSize(12)
+      .fillColor('#000000')
+      .text('Официальные представители', left, doc.y);
+    doc.moveDown(0.4);
+    // We already loaded staff above for validation; use same lists here for consistency
+    const staffPool = staffPoolEarly;
+    const chosen = selectedStaffEarly;
+    // Enforce max 8 officials when selected
+    if (chosen.length > 8) {
+      const err = new Error('too_many_officials');
+      err.code = 400;
+      throw err;
+    }
+    const repList = chosen.length ? chosen : staffPool;
+    let repRows = repList.map((r) => ({
+      fio: r.full_name,
+      dob: r.date_of_birth
+        ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
+        : '',
+      role: r.match_role?.name || r.role?.name || '',
+    }));
+    // Representatives table rows: default 6 rows, if more than 6 then up to 8 rows
+    {
+      const targetRows = repRows.length > 6 ? 8 : 6;
+      if (repRows.length < targetRows) {
+        repRows = repRows.concat(
+          Array.from({ length: targetRows - repRows.length }, () => ({
+            fio: '',
+            dob: '',
+            role: '',
+          }))
+        );
+      } else if (repRows.length > targetRows) {
+        repRows = repRows.slice(0, targetRows);
+      }
+    }
+    const repRole = 120;
+    const repDob = 100;
+    const repFio = Math.max(160, boxW - (repRole + repDob));
+    const repCols = [
+      {
+        key: 'fio',
+        label: 'ФИО',
+        width: repFio,
+        align: 'left',
+        headerAlign: 'center',
+      },
+      {
+        key: 'role',
+        label: 'Должность',
+        width: repRole,
+        align: 'center',
+        headerAlign: 'center',
+      },
+      {
+        key: 'dob',
+        label: 'Дата рождения',
+        width: repDob,
+        align: 'center',
+        headerAlign: 'center',
+      },
+    ];
+    const endRepsY = drawTable(
+      doc,
+      { x: left, y: doc.y, columns: repCols, rows: repRows },
+      {
+        text: { font: regular, size: 9, color: '#000000' },
+        headerText: { font: bold, size: 9, color: '#000000' },
+        zebra: false,
+      }
+    );
+    doc.y = endRepsY;
+
+    // Signature line: "Подпись ____   Дата ____   Фамилия И.О." (ФИО показываем только если главный тренер заявлен)
+    const headCoachShort = (() => {
+      const selectedOnly = (staffPool || []).filter((s) => s.selected);
+      const coach = selectedOnly.find(
+        (s) => (s.match_role?.name || '').toLowerCase() === 'главный тренер'
+      );
+      if (!coach) return '';
+      const parts = String(coach.full_name || '')
+        .trim()
+        .split(/\s+/);
+      if (!parts.length) return '';
+      const sur = parts[0] || '';
+      const ini = parts
+        .slice(1)
+        .map((p) => (p ? `${p[0].toUpperCase()}.` : ''))
+        .join(' ');
+      return `${sur} ${ini}`.trim();
+    })();
+    doc.moveDown(0.9);
+    const rowY = doc.y;
+    const labelColor = '#666666';
+    const lineColor = '#D0D5DD';
+    const fs = 10;
+    const micro = 8;
+    const lineY = rowY + fs + 3;
+    // Подпись — линия без метки сверху
+    const sigLineX1 = left;
+    const sigLineW = Math.min(160, Math.max(100, boxW * 0.28));
     doc
       .save()
       .lineWidth(1)
       .strokeColor(lineColor)
-      .moveTo(nameX, ny)
-      .lineTo(nameX + nameW, ny)
+      .moveTo(sigLineX1, lineY)
+      .lineTo(sigLineX1 + sigLineW, lineY)
       .stroke()
       .restore();
+    // Микро‑подпись под линией (центрируем)
     try {
       doc.font('SB-Italic');
     } catch {
       doc.font(regular);
     }
-    const coachCap = 'ФИО главного тренера';
-    const coachCapW = doc.widthOfString(coachCap);
-    const coachCapX = nameX + Math.max(0, (nameW - coachCapW) / 2);
+    const sigCap = 'подпись';
+    const sigCapW = doc.widthOfString(sigCap);
+    const sigCapX = sigLineX1 + Math.max(0, (sigLineW - sigCapW) / 2);
     doc
       .fontSize(micro)
       .fillColor(labelColor)
-      .text(coachCap, coachCapX, ny + 2, { lineBreak: false });
-  }
+      .text(sigCap, sigCapX, lineY + 2, { lineBreak: false });
+    // Дата — линия справа от подписи
+    const dateLineX1 = sigLineX1 + sigLineW + 24;
+    const dateLineW = 90;
+    doc
+      .save()
+      .lineWidth(1)
+      .strokeColor(lineColor)
+      .moveTo(dateLineX1, lineY)
+      .lineTo(dateLineX1 + dateLineW, lineY)
+      .stroke()
+      .restore();
+    // Микро‑подпись под линией даты (центрируем)
+    try {
+      doc.font('SB-Italic');
+    } catch {
+      doc.font(regular);
+    }
+    const dateCap = 'дата';
+    const dateCapW = doc.widthOfString(dateCap);
+    const dateCapX = dateLineX1 + Math.max(0, (dateLineW - dateCapW) / 2);
+    doc
+      .fontSize(micro)
+      .fillColor(labelColor)
+      .text(dateCap, dateCapX, lineY + 2, { lineBreak: false });
+    // ФИО главного тренера — по центру отведённой области справа или линия для ручного ввода
+    const nameX = dateLineX1 + dateLineW + 24;
+    const nameW = Math.max(140, left + boxW - nameX);
+    if (headCoachShort) {
+      doc
+        .font(regular)
+        .fontSize(fs)
+        .fillColor('#000000')
+        .text(headCoachShort, nameX, rowY, {
+          width: nameW,
+          align: 'center',
+          lineBreak: false,
+        });
+    } else {
+      const ny = lineY;
+      doc
+        .save()
+        .lineWidth(1)
+        .strokeColor(lineColor)
+        .moveTo(nameX, ny)
+        .lineTo(nameX + nameW, ny)
+        .stroke()
+        .restore();
+      try {
+        doc.font('SB-Italic');
+      } catch {
+        doc.font(regular);
+      }
+      const coachCap = 'ФИО главного тренера';
+      const coachCapW = doc.widthOfString(coachCap);
+      const coachCapX = nameX + Math.max(0, (nameW - coachCapW) / 2);
+      doc
+        .fontSize(micro)
+        .fillColor(labelColor)
+        .text(coachCap, coachCapX, ny + 2, { lineBreak: false });
+    }
 
-  // Footer across pages
-  const range = doc.bufferedPageRange();
-  const total = range.count || 1;
-  for (let i = range.start; i < range.start + total; i += 1) {
-    doc.switchToPage(i);
-    // barcodeText can be matchId
+    // Footer across pages
+    const range = doc.bufferedPageRange();
+    const total = range.count || 1;
+    for (let i = range.start; i < range.start + total; i += 1) {
+      doc.switchToPage(i);
+      // barcodeText is the match UUID
+      await applyFooter(doc, {
+        page: i - range.start + 1,
+        total,
+        barcodeText: String(matchId),
+        numberText: null,
+      });
+    }
 
-    await applyFooter(doc, {
-      page: i - range.start + 1,
-      total,
-      barcodeText: matchId,
-      numberText: null,
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      doc.on('data', (c) => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      doc.end();
+    });
+  } else {
+    // Double protocol branch: render two pages (squads 1 and 2)
+    const selectedAll = selected;
+    // Validate squads assignment and per-squad bounds (GK:1–2, Field:12–13)
+    if (
+      selectedAll.some(
+        (p) =>
+          p.squad_no == null &&
+          !(
+            p.squad_both &&
+            ((p.match_role?.name || p.role?.name || '').toLowerCase() ===
+              'вратарь' ||
+              p.is_gk === true)
+          )
+      )
+    ) {
+      const err = new Error('squad_number_required');
+      err.code = 400;
+      throw err;
+    }
+    const isGkName = (p) =>
+      (p.match_role?.name || p.role?.name || '').toLowerCase() === 'вратарь';
+    const includeInRoster = (p, rosterNo) => {
+      if (
+        p.squad_both &&
+        (typeof p.is_gk === 'boolean' ? p.is_gk : isGkName(p))
+      )
+        return true;
+      return p.squad_no === rosterNo;
+    };
+    const s1 = selectedAll.filter((p) => includeInRoster(p, 1));
+    const s2 = selectedAll.filter((p) => includeInRoster(p, 2));
+    const countGk = (arr) =>
+      arr.filter((p) => (typeof p.is_gk === 'boolean' ? p.is_gk : isGkName(p)))
+        .length;
+    const c1gk = countGk(s1);
+    const c2gk = countGk(s2);
+    const c1field = s1.length - c1gk;
+    const c2field = s2.length - c2gk;
+    if (c1gk < 1 || c1gk > 2 || c2gk < 1 || c2gk > 2) {
+      const err = new Error('too_few_or_many_goalkeepers');
+      err.code = 400;
+      throw err;
+    }
+    if (c1field < 12 || c1field > 13 || c2field < 12 || c2field > 13) {
+      const err = new Error('invalid_field_players_for_double');
+      err.code = 400;
+      throw err;
+    }
+    if (!s1.some((p) => p.is_captain) || !s2.some((p) => p.is_captain)) {
+      const err = new Error('captain_required');
+      err.code = 400;
+      throw err;
+    }
+    if (
+      s1.some((p) => p.match_number == null) ||
+      s2.some((p) => p.match_number == null)
+    ) {
+      const err = new Error('match_number_required');
+      err.code = 400;
+      throw err;
+    }
+    // Head coach: require exactly one overall (team), regardless of roster
+    {
+      const { default: matchStaffService } = await import(
+        './matchStaffService.js'
+      );
+      const staffData = await matchStaffService.list(matchId, actorId);
+      const staffPool =
+        (isHome ? staffData.home.staff : staffData.away.staff) || [];
+      const chosen = staffPool.filter((s) => s.selected);
+      const isHead = (s) =>
+        (s.match_role?.name || '').toLowerCase() === 'главный тренер';
+      const isCoach = (s) =>
+        (s.match_role?.name || s.role?.name || '')
+          .toLowerCase()
+          .includes('тренер');
+      const coachesTotal = chosen.filter(isCoach).length;
+      if (coachesTotal < 2) {
+        const err = new Error('too_few_coaches');
+        err.code = 400;
+        throw err;
+      }
+      const total = chosen.filter(isHead).length;
+      if (total === 0) {
+        const err = new Error('head_coach_required');
+        err.code = 400;
+        throw err;
+      }
+      if (total > 1) {
+        const err = new Error('too_many_head_coaches');
+        err.code = 400;
+        throw err;
+      }
+    }
+    // Unique match numbers per squad
+    const dupCheck = (arr) => {
+      const seen = new Set();
+      for (const p of arr) {
+        const n = p.match_number;
+        if (n == null) continue; // already checked
+        const key = String(n);
+        if (seen.has(key)) return true;
+        seen.add(key);
+      }
+      return false;
+    };
+    if (dupCheck(s1) || dupCheck(s2)) {
+      const err = new Error('duplicate_match_numbers');
+      err.code = 400;
+      throw err;
+    }
+
+    // Render two pages reusing the same layout
+    const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+    const renderOne = (players, rosterNo) => {
+      // sort GK first then by number
+      const isGK = (p) =>
+        (p.match_role?.name || p.role?.name || '').toLowerCase() === 'вратарь';
+      const numVal = (p) => {
+        const v = p.match_number ?? p.number;
+        return Number.isFinite(v) ? v : 999;
+      };
+      players.sort((a, b) => {
+        if (isGK(a) && !isGK(b)) return -1;
+        if (!isGK(a) && isGK(b)) return 1;
+        return numVal(a) - numVal(b);
+      });
+      const { regular, bold } = applyFonts(doc);
+      applyFirstPageHeader(doc);
+      const headerBottom = 30 + 32 + 16;
+      doc.y = Math.max(doc.y, headerBottom);
+      const title = `Заявочный лист на матч — Состав №${rosterNo}`;
+      doc.font(bold).fontSize(16).text(title, { align: 'center' });
+      doc.moveDown(0.4);
+
+      // Reuse the same content block as single variant by inlining variables
+      const left = doc.page.margins.left;
+      const right = doc.page.margins.right;
+      const boxX = left;
+      const boxW = doc.page.width - left - right;
+      const {
+        padX,
+        padY,
+        borderWidth,
+        borderColor,
+        radius,
+        background,
+        primaryColor,
+        primarySize,
+        secondarySize,
+      } = PDF_STYLE.infoBox;
+      const insetX = padX + 2;
+      const textX = boxX + insetX;
+      const innerW = boxW - insetX * 2;
+      const lineGap = 2;
+      const boxStartY = doc.y;
+      const teamLine = isHome
+        ? data.team1_name || meta.homeName
+        : data.team2_name || meta.awayName;
+      const compLine = meta.tournament || meta.competition || '';
+      const iconSize = 10;
+      const iconGap = 6;
+      const textAvailW = innerW - iconSize - iconGap;
+      doc.font(regular).fontSize(primarySize);
+      const hTeam = doc.heightOfString(teamLine, { width: textAvailW });
+      const hComp = doc.heightOfString(compLine, { width: textAvailW });
+      const lineH = Math.max(20, secondarySize + 8);
+      const padTop = Math.max(padY, 6);
+      const padBottom = 6;
+      const boxH = padTop + hTeam + 2 + hComp + lineGap + lineH + padBottom;
+      doc.save();
+      doc.lineWidth(borderWidth).strokeColor(borderColor).fillColor(background);
+      doc.roundedRect(boxX, boxStartY, boxW, boxH, radius).fillAndStroke();
+      doc.restore();
+      let textY = boxStartY + padTop;
+      const drawIcon = (kind, ix, iy, sz) => {
+        const g = '#98A2B3';
+        doc.save().lineWidth(1).strokeColor(g);
+        if (kind === 'team') {
+          doc.circle(ix + sz * 0.4, iy + sz * 0.6, sz * 0.25).stroke();
+          doc.circle(ix + sz * 0.75, iy + sz * 0.45, sz * 0.2).stroke();
+        } else if (kind === 'trophy') {
+          doc.rect(ix + sz * 0.1, iy, sz * 0.8, sz * 0.25).stroke();
+          doc
+            .moveTo(ix + sz * 0.15, iy + sz * 0.25)
+            .lineTo(ix + sz * 0.5, iy + sz * 0.7)
+            .lineTo(ix + sz * 0.85, iy + sz * 0.25)
+            .stroke();
+          doc.rect(ix + sz * 0.35, iy + sz * 0.75, sz * 0.3, sz * 0.2).stroke();
+        } else if (kind === 'match') {
+          doc.circle(ix + sz * 0.25, iy + sz * 0.5, sz * 0.18).stroke();
+          doc.circle(ix + sz * 0.75, iy + sz * 0.5, sz * 0.18).stroke();
+          doc
+            .moveTo(ix + sz * 0.35, iy + sz * 0.5)
+            .lineTo(ix + sz * 0.65, iy + sz * 0.5)
+            .stroke();
+        } else if (kind === 'calendar') {
+          doc.rect(ix, iy + sz * 0.1, sz, sz * 0.8).stroke();
+          doc
+            .moveTo(ix, iy + sz * 0.25)
+            .lineTo(ix + sz, iy + sz * 0.25)
+            .stroke();
+          doc.rect(ix + sz * 0.2, iy + sz * 0.45, sz * 0.2, sz * 0.2).stroke();
+          doc.rect(ix + sz * 0.6, iy + sz * 0.45, sz * 0.2, sz * 0.2).stroke();
+        }
+        doc.restore();
+      };
+      const renderLine = (icon, content, fontFam, size, color) => {
+        drawIcon(icon, textX, textY + 1, iconSize);
+        doc.font(fontFam).fontSize(size).fillColor(color);
+        doc.text(content, textX + iconSize + iconGap, textY, {
+          width: innerW - iconSize - iconGap,
+        });
+        textY = doc.y + lineGap;
+      };
+      renderLine('team', teamLine, regular, primarySize, primaryColor);
+      renderLine('trophy', compLine, regular, primarySize, primaryColor);
+      const drawLabeledLine = (icon, label) => {
+        drawIcon(icon, textX, textY + 1, iconSize);
+        const tx = textX + iconSize + iconGap;
+        const tw = innerW - iconSize - iconGap;
+        const ly = textY + Math.floor(lineH / 2);
+        doc.font(regular).fontSize(primarySize).fillColor(primaryColor);
+        const lw = Math.min(doc.widthOfString(label), Math.max(60, tw * 0.4));
+        const labelY = ly - primarySize + 1;
+        doc.text(label, tx, labelY, { width: lw, lineBreak: false });
+        const gap = 8;
+        const lineStart = tx + lw + gap;
+        const lineEnd = tx + tw;
+        doc
+          .save()
+          .lineWidth(1)
+          .strokeColor('#D0D5DD')
+          .moveTo(lineStart, ly + 1)
+          .lineTo(lineEnd, ly + 1)
+          .stroke()
+          .restore();
+        textY += lineH;
+      };
+      drawLabeledLine('calendar', 'Матч и дата');
+      doc.y = boxStartY + boxH;
+      doc.fillColor('#000000');
+      doc.moveDown(0.6);
+      // Section heading: players
+      doc
+        .font(bold)
+        .fontSize(12)
+        .fillColor('#000000')
+        .text('Игроки', left, doc.y);
+      doc.moveDown(0.4);
+      // Players table — layout exactly like single protocol + extra blank column "Цвет звена"
+      const wN = 40;
+      const wRole = 120;
+      const wDob = 100;
+      const wLine = 60; // Цвет (handwritten), компактнее
+      const wFio = Math.max(120, boxW - (wN + wRole + wDob + wLine));
+      const columns = [
+        {
+          key: 'n',
+          label: '№',
+          width: wN,
+          align: 'center',
+          headerAlign: 'center',
+        },
+        {
+          key: 'fio',
+          label: 'ФИО',
+          width: wFio,
+          align: 'left',
+          headerAlign: 'center',
+        },
+        {
+          key: 'role',
+          label: 'Амплуа',
+          width: wRole,
+          align: 'center',
+          headerAlign: 'center',
+        },
+        {
+          key: 'dob',
+          label: 'Дата рождения',
+          width: wDob,
+          align: 'center',
+          headerAlign: 'center',
+        },
+        {
+          key: 'line',
+          label: 'Цвет',
+          width: wLine,
+          align: 'center',
+          headerAlign: 'center',
+        },
+      ];
+      let rows = players.map((p) => ({
+        n: (p.match_number ?? '').toString(),
+        fio: p.full_name || '',
+        role: p.match_role?.name || p.role?.name || '',
+        dob: p.date_of_birth
+          ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
+          : '',
+        line: '',
+      }));
+      // For double protocol — draw exactly 15 rows
+      if (rows.length < 15) {
+        rows = rows.concat(
+          Array.from({ length: 15 - rows.length }, () => ({
+            n: '',
+            fio: '',
+            role: '',
+            dob: '',
+            line: '',
+          }))
+        );
+      } else if (rows.length > 15) {
+        rows = rows.slice(0, 15);
+      }
+      const tableY = doc.y;
+      const endPlayersY = drawTable(
+        doc,
+        { x: left, y: tableY, columns, rows },
+        {
+          text: { font: regular, size: 9, color: '#000000' },
+          headerText: { font: bold, size: 9, color: '#000000' },
+          zebra: false,
+        }
+      );
+      // Overlay captain/assistant markers inside FIO cell, right-aligned (same as single)
+      try {
+        doc.save();
+        const headerHeight = 18;
+        const rowHeight = 16;
+        const hPadding = 4;
+        const textSize = 9;
+        // compute column x positions
+        const colXs = [];
+        let acc = left;
+        for (const c of columns) {
+          colXs.push(acc);
+          acc += c.width;
+        }
+        const fioIdx = 1; // second column
+        const cellLeft = colXs[fioIdx];
+        const cellRight = cellLeft + columns[fioIdx].width;
+        const markers = rows.map((_, i) => {
+          if (i >= players.length) return '';
+          const p = players[i];
+          if (p?.is_captain) return 'К';
+          if (p?.assistant_order != null) return 'А';
+          return '';
+        });
+        for (let r = 0; r < rows.length; r += 1) {
+          const mk = markers[r];
+          if (!mk) continue;
+          const cy =
+            tableY +
+            headerHeight +
+            r * rowHeight +
+            (rowHeight - textSize - 2) / 2;
+          doc.font(regular).fontSize(textSize).fillColor('#000000');
+          const mw = doc.widthOfString(mk);
+          const mx = Math.max(cellLeft + hPadding, cellRight - hPadding - mw);
+          doc.text(mk, mx, cy, { lineBreak: false });
+        }
+        doc.restore();
+      } catch {
+        // ignore overlay errors
+      }
+      doc.y = endPlayersY;
+      doc.y = endPlayersY;
+      // Representatives table
+      doc.moveDown(0.6);
+      doc
+        .font(bold)
+        .fontSize(12)
+        .fillColor('#000000')
+        .text('Официальные представители', left, doc.y);
+      doc.moveDown(0.4);
+      const staffPool = staffPoolEarly;
+      const chosen = selectedStaffEarly;
+      if (chosen.length > 8) {
+        const err = new Error('too_many_officials');
+        err.code = 400;
+        throw err;
+      }
+      // Representatives block: independent of squad — same list on both pages
+      const repList = chosen.length ? chosen : staffPool;
+      let repRows = repList.map((r) => ({
+        fio: r.full_name,
+        dob: r.date_of_birth
+          ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
+          : '',
+        role: r.match_role?.name || r.role?.name || '',
+      }));
+      // Like single protocol: default 6 rows, if >6 then up to 8 rows
+      {
+        const targetRows = repRows.length > 6 ? 8 : 6;
+        if (repRows.length < targetRows) {
+          repRows = repRows.concat(
+            Array.from({ length: targetRows - repRows.length }, () => ({
+              fio: '',
+              dob: '',
+              role: '',
+            }))
+          );
+        } else if (repRows.length > targetRows) {
+          repRows = repRows.slice(0, targetRows);
+        }
+      }
+      const repRole = 120;
+      const repDob = 100;
+      const repFio = Math.max(160, boxW - (repRole + repDob));
+      const repCols = [
+        {
+          key: 'fio',
+          label: 'ФИО',
+          width: repFio,
+          align: 'left',
+          headerAlign: 'center',
+        },
+        {
+          key: 'role',
+          label: 'Должность',
+          width: repRole,
+          align: 'center',
+          headerAlign: 'center',
+        },
+        {
+          key: 'dob',
+          label: 'Дата рождения',
+          width: repDob,
+          align: 'center',
+          headerAlign: 'center',
+        },
+      ];
+      const endRepsY = drawTable(
+        doc,
+        { x: left, y: doc.y, columns: repCols, rows: repRows },
+        {
+          text: { font: regular, size: 9, color: '#000000' },
+          headerText: { font: bold, size: 9, color: '#000000' },
+          zebra: false,
+        }
+      );
+      doc.y = endRepsY;
+      // Signature line
+      const headCoachShort = (() => {
+        const selectedOnly = (staffPool || []).filter((s) => s.selected);
+        const coach = selectedOnly.find(
+          (s) => (s.match_role?.name || '').toLowerCase() === 'главный тренер'
+        );
+        if (!coach) return '';
+        const parts = String(coach.full_name || '')
+          .trim()
+          .split(/\s+/);
+        if (!parts.length) return '';
+        const sur = parts[0] || '';
+        const ini = parts
+          .slice(1)
+          .map((p) => (p ? `${p[0].toUpperCase()}.` : ''))
+          .join(' ');
+        return `${sur} ${ini}`.trim();
+      })();
+      doc.moveDown(0.9);
+      const rowY = doc.y;
+      const labelColor = '#666666';
+      const lineColor = '#D0D5DD';
+      const fs = 10;
+      const micro = 8;
+      const lineY = rowY + fs + 3;
+      const sigLineX1 = left;
+      const sigLineW = Math.min(160, Math.max(100, boxW * 0.28));
+      doc
+        .save()
+        .lineWidth(1)
+        .strokeColor(lineColor)
+        .moveTo(sigLineX1, lineY)
+        .lineTo(sigLineX1 + sigLineW, lineY)
+        .stroke()
+        .restore();
+      try {
+        doc.font('SB-Italic');
+      } catch {
+        doc.font(regular);
+      }
+      const sigCap = 'подпись';
+      const sigCapW = doc.widthOfString(sigCap);
+      const sigCapX = sigLineX1 + Math.max(0, (sigLineW - sigCapW) / 2);
+      doc
+        .fontSize(micro)
+        .fillColor(labelColor)
+        .text(sigCap, sigCapX, lineY + 2, { lineBreak: false });
+      const dateLineX1 = sigLineX1 + sigLineW + 24;
+      const dateLineW = 90;
+      doc
+        .save()
+        .lineWidth(1)
+        .strokeColor(lineColor)
+        .moveTo(dateLineX1, lineY)
+        .lineTo(dateLineX1 + dateLineW, lineY)
+        .stroke()
+        .restore();
+      try {
+        doc.font('SB-Italic');
+      } catch {
+        doc.font(regular);
+      }
+      const dateCap = 'дата';
+      const dateCapW = doc.widthOfString(dateCap);
+      const dateCapX = dateLineX1 + Math.max(0, (dateLineW - dateCapW) / 2);
+      doc
+        .fontSize(micro)
+        .fillColor(labelColor)
+        .text(dateCap, dateCapX, lineY + 2, { lineBreak: false });
+      const nameX = dateLineX1 + dateLineW + 24;
+      const nameW = Math.max(140, left + boxW - nameX);
+      if (headCoachShort) {
+        doc
+          .font(regular)
+          .fontSize(fs)
+          .fillColor('#000000')
+          .text(headCoachShort, nameX, rowY, {
+            width: nameW,
+            align: 'center',
+            lineBreak: false,
+          });
+      } else {
+        const ny = lineY;
+        doc
+          .save()
+          .lineWidth(1)
+          .strokeColor(lineColor)
+          .moveTo(nameX, ny)
+          .lineTo(nameX + nameW, ny)
+          .stroke()
+          .restore();
+        try {
+          doc.font('SB-Italic');
+        } catch {
+          doc.font(regular);
+        }
+        const coachCap = 'ФИО главного тренера';
+        const coachCapW = doc.widthOfString(coachCap);
+        const coachCapX = nameX + Math.max(0, (nameW - coachCapW) / 2);
+        doc
+          .fontSize(micro)
+          .fillColor(labelColor)
+          .text(coachCap, coachCapX, ny + 2, { lineBreak: false });
+      }
+    };
+
+    renderOne(s1.slice(), 1);
+    doc.addPage();
+    renderOne(s2.slice(), 2);
+    // Footer across pages
+    const range = doc.bufferedPageRange();
+    const total = range.count || 1;
+    for (let i = range.start; i < range.start + total; i += 1) {
+      doc.switchToPage(i);
+      await applyFooter(doc, {
+        page: i - range.start + 1,
+        total,
+        barcodeText: String(matchId),
+        numberText: null,
+      });
+    }
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      doc.on('data', (c) => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      doc.end();
     });
   }
-
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    doc.on('data', (c) => chunks.push(c));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-    doc.end();
-  });
 }
 
 async function exportRepresentativesPdf(matchId, teamId, actorId) {

@@ -31,7 +31,19 @@ function fio(s) {
 
 async function list(matchId, actorUserId) {
   const match = await Match.findByPk(matchId, {
-    attributes: ['id', 'team1_id', 'team2_id', 'season_id'],
+    attributes: ['id', 'team1_id', 'team2_id', 'season_id', 'tournament_id'],
+    include: [
+      {
+        model: (await import('../models/index.js')).Tournament,
+        attributes: ['type_id'],
+        include: [
+          {
+            model: (await import('../models/index.js')).TournamentType,
+            attributes: ['double_protocol'],
+          },
+        ],
+      },
+    ],
   });
   if (!match) throw Object.assign(new Error('match_not_found'), { code: 404 });
   const { isHome, isAway } = await getActorSides(match, actorUserId);
@@ -74,7 +86,7 @@ async function list(matchId, actorUserId) {
         })
       : [],
     MatchStaff.findAll({
-      attributes: ['team_staff_id', 'team_id', 'role_id'],
+      attributes: ['team_staff_id', 'team_id', 'role_id', 'squad_no'],
       where: { match_id: match.id },
     }),
     StaffCategory.findAll({
@@ -104,6 +116,10 @@ async function list(matchId, actorUserId) {
       const rid = r?.role_id ? String(r.role_id) : null;
       return rid ? { id: rid, name: catNameById.get(rid) || null } : null;
     })(),
+    squad_no: (function () {
+      const r = selById.get(ts.id);
+      return r?.squad_no ?? null;
+    })(),
     selected: sel.has(ts.id),
     is_head_coach: (function () {
       // Consider head coach ONLY by match role override (no base fallback)
@@ -127,7 +143,19 @@ async function list(matchId, actorUserId) {
 
 async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
   const match = await Match.findByPk(matchId, {
-    attributes: ['id', 'team1_id', 'team2_id', 'season_id'],
+    attributes: ['id', 'team1_id', 'team2_id', 'season_id', 'tournament_id'],
+    include: [
+      {
+        model: (await import('../models/index.js')).Tournament,
+        attributes: ['type_id'],
+        include: [
+          {
+            model: (await import('../models/index.js')).TournamentType,
+            attributes: ['double_protocol'],
+          },
+        ],
+      },
+    ],
   });
   if (!match) throw Object.assign(new Error('match_not_found'), { code: 404 });
   if (teamId !== match.team1_id && teamId !== match.team2_id) {
@@ -158,6 +186,12 @@ async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
           .map((x) => x.team_staff_id)
       )
     );
+    for (const it of staffDetailed) {
+      if (!it || !it.team_staff_id) continue;
+      const rid = it.role_id ? String(it.role_id) : null;
+      roleByTsId.set(String(it.team_staff_id), rid);
+      // squad_no deprecated — ignore
+    }
   } else {
     ids = Array.isArray(teamStaffIds)
       ? Array.from(new Set(teamStaffIds.filter(Boolean)))
@@ -188,14 +222,20 @@ async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
         const rid = it.role_id ? String(it.role_id) : null;
         roleByTsId.set(String(it.team_staff_id), rid);
         const nm = rid ? nameById.get(rid) || '' : '';
-        if (nm === 'главный тренер') headCount += 1;
+        if (nm === 'главный тренер') {
+          headCount += 1;
+          // per-squad head coach counts deprecated
+        }
+        // no per-squad coach limits anymore
       }
     }
+    // Global rule: only one head coach per team regardless of protocol format
     if (headCount > 1) {
       const err = new Error('too_many_head_coaches');
       err.code = 400;
       throw err;
     }
+    // no per-squad coach limits — staff list is global for export
   }
   for (const id of ids) {
     if (!validIds.has(id)) {
@@ -220,6 +260,7 @@ async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
             team_id: teamId,
             team_staff_id: tsId,
             role_id: roleByTsId.get(String(tsId)) || null,
+            squad_no: null,
             created_by: actorUserId,
             updated_by: actorUserId,
           },
@@ -231,6 +272,7 @@ async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
         await row.update(
           {
             role_id: roleByTsId.get(String(tsId)) || null,
+            squad_no: null,
             updated_by: actorUserId,
           },
           { transaction: tx }

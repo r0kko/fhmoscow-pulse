@@ -18,7 +18,9 @@ jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   isExternalDbAvailable: () => externalAvailable,
 }));
 
-const { default: controller } = await import('../src/controllers/clubController.js');
+const { default: controller } = await import(
+  '../src/controllers/clubController.js'
+);
 
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -43,14 +45,21 @@ describe('clubController.sync', () => {
     await controller.sync(req, res);
     expect(syncExternalMock).toHaveBeenCalledWith('uX');
     expect(listClubsMock).toHaveBeenCalledWith({ page: 1, limit: 100 });
-    expect(res.json).toHaveBeenCalledWith({ stats: { created: 1, updated: 2 }, clubs: [{ id: 'c1' }], total: 1 });
+    expect(res.json).toHaveBeenCalledWith({
+      stats: { created: 1, updated: 2 },
+      clubs: [{ id: 'c1' }],
+      total: 1,
+    });
   });
 });
 
 describe('clubController.list include flags', () => {
   test('include=teams,grounds maps to include flags', async () => {
     listClubsMock.mockResolvedValueOnce({ rows: [], count: 0 });
-    const req = { query: { include: ['teams', 'grounds'] }, access: { isAdmin: true } };
+    const req = {
+      query: { include: ['teams', 'grounds'] },
+      access: { isAdmin: true },
+    };
     const res = resMock();
     await controller.list(req, res);
     const call = listClubsMock.mock.calls[0][0];
@@ -58,4 +67,3 @@ describe('clubController.list include flags', () => {
     expect(call.includeGrounds).toBe(true);
   });
 });
-

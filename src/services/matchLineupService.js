@@ -11,6 +11,7 @@ import {
   PlayerRole,
   MatchPlayer,
   Tournament,
+  TournamentType,
   Stage,
   TournamentGroup,
   Tour,
@@ -71,11 +72,15 @@ async function _listTeamRoster(teamId, seasonId) {
 
 async function list(matchId, actorUserId) {
   const match = await Match.findByPk(matchId, {
-    attributes: ['id', 'team1_id', 'team2_id', 'season_id'],
+    attributes: ['id', 'team1_id', 'team2_id', 'season_id', 'tournament_id'],
     include: [
       { model: Team, as: 'HomeTeam', attributes: ['name'] },
       { model: Team, as: 'AwayTeam', attributes: ['name'] },
-      { model: Tournament, attributes: ['name'] },
+      {
+        model: Tournament,
+        attributes: ['name', 'type_id'],
+        include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+      },
       { model: Stage, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
@@ -105,6 +110,8 @@ async function list(matchId, actorUserId) {
         'role_id',
         'is_captain',
         'assistant_order',
+        'squad_no',
+        'squad_both',
       ],
       include: [{ model: PlayerRole, attributes: ['id', 'name'] }],
       where: { match_id: match.id },
@@ -133,6 +140,8 @@ async function list(matchId, actorUserId) {
         is_gk: isGoalkeeperName(sel?.PlayerRole?.name || p.role?.name || ''),
         is_captain: Boolean(sel?.is_captain),
         assistant_order: sel?.assistant_order ?? null,
+        squad_no: sel?.squad_no ?? null,
+        squad_both: Boolean(sel?.squad_both ?? false),
       };
     });
 
@@ -144,6 +153,7 @@ async function list(matchId, actorUserId) {
     team1_name: match.HomeTeam?.name || null,
     team2_name: match.AwayTeam?.name || null,
     tournament: match.Tournament?.name || null,
+    double_protocol: !!match.Tournament?.TournamentType?.double_protocol,
     stage: match.Stage?.name || null,
     group: match.TournamentGroup?.name || null,
     tour: match.Tour?.name || null,
@@ -163,7 +173,14 @@ async function list(matchId, actorUserId) {
 
 async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
   const match = await Match.findByPk(matchId, {
-    attributes: ['id', 'team1_id', 'team2_id', 'season_id'],
+    attributes: ['id', 'team1_id', 'team2_id', 'season_id', 'tournament_id'],
+    include: [
+      {
+        model: Tournament,
+        attributes: ['id', 'type_id'],
+        include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+      },
+    ],
   });
   if (!match) throw Object.assign(new Error('match_not_found'), { code: 404 });
   if (teamId !== match.team1_id && teamId !== match.team2_id) {
@@ -204,6 +221,11 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
         p.assistant_order == null || Number.isNaN(p.assistant_order)
           ? null
           : Math.max(1, Math.min(2, parseInt(p.assistant_order, 10))),
+      squad_no:
+        p.squad_no == null || Number.isNaN(p.squad_no)
+          ? null
+          : Math.max(1, Math.min(2, parseInt(p.squad_no, 10))),
+      squad_both: Boolean(p.squad_both),
     }));
     cleanIds = Array.from(
       new Set(detailed.filter((p) => p.selected).map((p) => p.team_player_id))
@@ -242,20 +264,40 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
           })
         : [];
       const roleNameById = new Map(roleRows.map((r) => [String(r.id), r.name]));
-      let gkCount = 0;
-      let fieldCount = 0;
-      let captainCount = 0;
-      let assistantCount = 0;
-      const numbersSeen = new Set();
-      const numbersDup = new Set();
+      const isDouble = !!match.Tournament?.TournamentType?.double_protocol;
+      // Per-squad accumulators for double protocol; otherwise single bucket
+      const gkCountBy = new Map(); // squad -> count
+      const fieldCountBy = new Map();
+      const captainCountBy = new Map();
+      const assistantCountBy = new Map();
+      const numbersSeenBy = new Map(); // squad -> Set(numbers)
+      const numbersDup = new Set(); // global dup flag, per-squad logic applied
+      let gkBothCount = 0;
+      let selectedGkTotal = 0;
       for (const p of detailed) {
         if (!p.selected) continue;
+        const squadKey = isDouble ? p.squad_no || null : 'all';
         const name = roleNameById.get(String(p.role_id)) || '';
         const isGk = isGoalkeeperName(name);
-        if (isGk) gkCount += 1;
-        else fieldCount += 1;
-        if (p.is_captain) captainCount += 1;
-        if (p.assistant_order != null) assistantCount += 1;
+        if (isGk) {
+          selectedGkTotal += 1;
+          if (isDouble && p.squad_both) {
+            gkBothCount += 1;
+            // counts for both squads
+            gkCountBy.set(1, (gkCountBy.get(1) || 0) + 1);
+            gkCountBy.set(2, (gkCountBy.get(2) || 0) + 1);
+          } else {
+            gkCountBy.set(squadKey, (gkCountBy.get(squadKey) || 0) + 1);
+          }
+        } else
+          fieldCountBy.set(squadKey, (fieldCountBy.get(squadKey) || 0) + 1);
+        if (p.is_captain)
+          captainCountBy.set(squadKey, (captainCountBy.get(squadKey) || 0) + 1);
+        if (p.assistant_order != null)
+          assistantCountBy.set(
+            squadKey,
+            (assistantCountBy.get(squadKey) || 0) + 1
+          );
         if (p.is_captain && isGk) {
           const err = new Error('captain_must_be_field_player');
           err.code = 400;
@@ -273,35 +315,97 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
         }
         if (p.number != null) {
           const key = String(p.number);
-          if (numbersSeen.has(key)) numbersDup.add(key);
-          else numbersSeen.add(key);
+          if (isDouble && isGk && p.squad_both) {
+            for (const sk of [1, 2]) {
+              const bucket = numbersSeenBy.get(sk) || new Set();
+              if (bucket.has(key)) numbersDup.add(`${sk}:${key}`);
+              bucket.add(key);
+              numbersSeenBy.set(sk, bucket);
+            }
+          } else {
+            const bucket = numbersSeenBy.get(squadKey) || new Set();
+            if (bucket.has(key)) numbersDup.add(`${squadKey || 'none'}:${key}`);
+            bucket.add(key);
+            numbersSeenBy.set(squadKey, bucket);
+          }
         }
       }
-      if (gkCount > 2) {
-        const err = new Error('too_many_goalkeepers');
+      if (isDouble && gkBothCount > 1) {
+        const err = new Error('too_many_goalkeepers_both');
         err.code = 400;
         throw err;
       }
-      if (fieldCount > 20) {
-        const err = new Error('too_many_field_players');
+      if (isDouble && gkBothCount === 1 && selectedGkTotal !== 3) {
+        const err = new Error('gk_both_requires_three');
         err.code = 400;
         throw err;
       }
-      if (captainCount > 1) {
-        const err = new Error('too_many_captains');
-        err.code = 400;
-        throw err;
+      // For single protocol, keep global limits; for double, do not enforce here
+      if (!isDouble) {
+        const gkCount = gkCountBy.get('all') || 0;
+        const fieldCount = fieldCountBy.get('all') || 0;
+        const captainCount = captainCountBy.get('all') || 0;
+        const assistantCount = assistantCountBy.get('all') || 0;
+        if (gkCount > 2) {
+          const err = new Error('too_many_goalkeepers');
+          err.code = 400;
+          throw err;
+        }
+        if (fieldCount > 20) {
+          const err = new Error('too_many_field_players');
+          err.code = 400;
+          throw err;
+        }
+        if (captainCount > 1) {
+          const err = new Error('too_many_captains');
+          err.code = 400;
+          throw err;
+        }
+        if (assistantCount > 2) {
+          const err = new Error('too_many_assistants');
+          err.code = 400;
+          throw err;
+        }
+      } else {
+        // For double: enforce per-squad leadership upper bounds and cap players per squad
+        for (const [, cap] of captainCountBy.entries()) {
+          if (cap > 1) {
+            const err = new Error('too_many_captains');
+            err.code = 400;
+            throw err;
+          }
+        }
+        for (const [, asst] of assistantCountBy.entries()) {
+          if (asst > 2) {
+            const err = new Error('too_many_assistants');
+            err.code = 400;
+            throw err;
+          }
+        }
+        // Enforce total players per squad <= 15
+        const totalBy = new Map(); // squad -> total
+        for (const p of detailed) {
+          if (!p.selected) continue;
+          const sq =
+            p.squad_no == null || Number.isNaN(p.squad_no) ? null : p.squad_no;
+          const name = roleNameById.get(String(p.role_id)) || '';
+          const isGk = isGoalkeeperName(name);
+          if (isGk && p.squad_both) {
+            totalBy.set(1, (totalBy.get(1) || 0) + 1);
+            totalBy.set(2, (totalBy.get(2) || 0) + 1);
+          } else if (sq === 1 || sq === 2) {
+            totalBy.set(sq, (totalBy.get(sq) || 0) + 1);
+          }
+        }
+        for (const [, total] of totalBy.entries()) {
+          if (total > 15) {
+            const err = new Error('too_many_players_in_squad');
+            err.code = 400;
+            throw err;
+          }
+        }
       }
-      if (assistantCount > 2) {
-        const err = new Error('too_many_assistants');
-        err.code = 400;
-        throw err;
-      }
-      if (numbersDup.size > 0) {
-        const err = new Error('duplicate_match_numbers');
-        err.code = 400;
-        throw err;
-      }
+      // Progressive save: allow duplicate numbers during editing; UI/export gate uniqueness
     }
     // Fetch existing selections for this team/match
     const existing = await MatchPlayer.findAll({
@@ -315,15 +419,7 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
     // Add new ones
     for (const tpId of cleanIds) {
       const payload = detailed?.find((p) => p.team_player_id === tpId) || null;
-      if (
-        payload &&
-        payload.selected &&
-        (payload.role_id == null || payload.role_id === '')
-      ) {
-        const err = new Error('match_role_required');
-        err.code = 400;
-        throw err;
-      }
+      // Progressive save: do not require role_id at this point
       if (!existingMap.has(tpId)) {
         await MatchPlayer.create(
           {
@@ -334,6 +430,8 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
             role_id: payload ? payload.role_id : null,
             is_captain: payload ? Boolean(payload.is_captain) : false,
             assistant_order: payload ? (payload.assistant_order ?? null) : null,
+            squad_no: payload ? (payload.squad_no ?? null) : null,
+            squad_both: payload ? Boolean(payload.squad_both) : false,
             created_by: actorUserId,
             updated_by: actorUserId,
           },
@@ -352,6 +450,8 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
               role_id: payload.role_id,
               is_captain: Boolean(payload.is_captain),
               assistant_order: payload.assistant_order ?? null,
+              squad_no: payload.squad_no ?? null,
+              squad_both: Boolean(payload.squad_both),
               updated_by: actorUserId,
             },
             { transaction: tx }

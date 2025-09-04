@@ -19,7 +19,9 @@ test('persists valid combined log line with response time', async () => {
   const line =
     '123.123.123.123 - - [10/Oct/2000:13:55:36 +0000] "GET /test HTTP/1.1" 200 123 "-" "Agent" 10ms';
 
-  await new Promise((resolve) => stream.write({ message: line }, null, resolve));
+  await new Promise((resolve) =>
+    stream.write({ message: line }, null, resolve)
+  );
 
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -37,7 +39,9 @@ test('persists log line without response time', async () => {
   const line =
     '123.123.123.123 - - [10/Oct/2000:13:55:36 +0000] "POST /foo HTTP/1.1" 201 123 "-" "Agent"';
 
-  await new Promise((resolve) => stream.write({ message: line }, null, resolve));
+  await new Promise((resolve) =>
+    stream.write({ message: line }, null, resolve)
+  );
 
   expect(createMock).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -50,7 +54,9 @@ test('persists log line without response time', async () => {
 });
 
 test('ignores unparsable log lines', async () => {
-  await new Promise((resolve) => stream.write({ message: 'not a combined line' }, null, resolve));
+  await new Promise((resolve) =>
+    stream.write({ message: 'not a combined line' }, null, resolve)
+  );
   expect(createMock).not.toHaveBeenCalled();
 });
 
@@ -60,7 +66,9 @@ test('warns when persistence fails', async () => {
   createMock.mockRejectedValueOnce(new Error('fail'));
   const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
 
-  await new Promise((resolve) => stream.write({ message: line }, null, resolve));
+  await new Promise((resolve) =>
+    stream.write({ message: line }, null, resolve)
+  );
 
   expect(warnSpy).toHaveBeenCalledWith('DB log persistence failed:', 'fail');
 });

@@ -7,7 +7,9 @@ jest.unstable_mockModule('../src/services/passportService.js', () => ({
   default: { removeByUser: removeMock },
 }));
 
-const { default: controller } = await import('../src/controllers/passportSelfController.js');
+const { default: controller } = await import(
+  '../src/controllers/passportSelfController.js'
+);
 
 test('remove deletes passport and returns 204', async () => {
   removeMock.mockResolvedValue(undefined);
@@ -27,4 +29,3 @@ test('remove returns 404 with error when service throws', async () => {
   expect(res.status).toHaveBeenCalledWith(404);
   expect(res.json).toHaveBeenCalledWith({ error: 'notfound' });
 });
-

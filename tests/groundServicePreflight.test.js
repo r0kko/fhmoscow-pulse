@@ -10,7 +10,9 @@ jest.unstable_mockModule('../src/externalModels/index.js', () => ({
 
 // Mock models with queryInterface.describeTable returning missing external_id
 const describeTableMock = jest.fn(async () => ({}));
-const getQueryInterfaceMock = jest.fn(() => ({ describeTable: describeTableMock }));
+const getQueryInterfaceMock = jest.fn(() => ({
+  describeTable: describeTableMock,
+}));
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -18,7 +20,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Address: {},
 }));
 
-const { default: groundService } = await import('../src/services/groundService.js');
+const { default: groundService } = await import(
+  '../src/services/groundService.js'
+);
 
 test('ground sync preflight returns early when external_id column is missing', async () => {
   const res = await groundService.syncExternal('admin');
@@ -30,4 +34,3 @@ test('ground sync preflight returns early when external_id column is missing', a
   });
   expect(stadiumFindAllMock).not.toHaveBeenCalled();
 });
-

@@ -35,4 +35,3 @@ test('get returns 404 when match not found', async () => {
   expect(res.json).toHaveBeenCalledWith({ error: 'match_not_found' });
   expect(next).not.toHaveBeenCalled();
 });
-

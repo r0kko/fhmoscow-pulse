@@ -7,11 +7,17 @@ describe('accountLockout service', () => {
     jest.unstable_mockModule('../src/config/redis.js', () => ({
       __esModule: true,
       default: {
-        async set(k, v) { store.set(k, v); },
-        async get(k) { return store.get(k) ?? null; },
+        async set(k, v) {
+          store.set(k, v);
+        },
+        async get(k) {
+          return store.get(k) ?? null;
+        },
       },
     }));
-    const { lock, isLocked } = await import('../src/services/accountLockout.js');
+    const { lock, isLocked } = await import(
+      '../src/services/accountLockout.js'
+    );
     await lock('u1', 1000);
     await expect(isLocked('u1')).resolves.toBe(true);
   });
@@ -21,11 +27,17 @@ describe('accountLockout service', () => {
     jest.unstable_mockModule('../src/config/redis.js', () => ({
       __esModule: true,
       default: {
-        async set() { throw new Error('READONLY You can not do that'); },
-        async get() { throw new Error('READONLY'); },
+        async set() {
+          throw new Error('READONLY You can not do that');
+        },
+        async get() {
+          throw new Error('READONLY');
+        },
       },
     }));
-    const { lock, isLocked } = await import('../src/services/accountLockout.js');
+    const { lock, isLocked } = await import(
+      '../src/services/accountLockout.js'
+    );
     await expect(lock('u2', 1000)).resolves.toBeUndefined();
     await expect(isLocked('u2')).resolves.toBe(false);
   });
@@ -36,8 +48,12 @@ describe('accountLockout service', () => {
     jest.unstable_mockModule('../src/config/redis.js', () => ({
       __esModule: true,
       default: {
-        async pTTL() { return 5000; },
-        async get() { return '1'; },
+        async pTTL() {
+          return 5000;
+        },
+        async get() {
+          return '1';
+        },
       },
     }));
     const mod1 = await import('../src/services/accountLockout.js');
@@ -48,8 +64,12 @@ describe('accountLockout service', () => {
     jest.unstable_mockModule('../src/config/redis.js', () => ({
       __esModule: true,
       default: {
-        async pTTL() { throw new Error('READONLY'); },
-        async get() { throw new Error('READONLY'); },
+        async pTTL() {
+          throw new Error('READONLY');
+        },
+        async get() {
+          throw new Error('READONLY');
+        },
       },
     }));
     const mod2 = await import('../src/services/accountLockout.js');

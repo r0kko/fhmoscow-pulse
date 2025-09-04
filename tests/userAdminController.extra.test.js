@@ -68,10 +68,16 @@ jest.unstable_mockModule('express-validator', () => ({
   validationResult: () => ({ isEmpty: () => true, array: () => [] }),
 }));
 
-const { default: controller } = await import('../src/controllers/userAdminController.js');
+const { default: controller } = await import(
+  '../src/controllers/userAdminController.js'
+);
 
 function mockRes() {
-  return { status: jest.fn().mockReturnThis(), json: jest.fn(), send: jest.fn() };
+  return {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn(),
+    send: jest.fn(),
+  };
 }
 
 beforeEach(() => {
@@ -81,7 +87,15 @@ beforeEach(() => {
 describe('userAdminController extra flows', () => {
   test('list returns mapped users and total', async () => {
     listUsersMock.mockResolvedValue({ rows: [{ id: 'u1' }], count: 1 });
-    const req = { query: { search: 'a', page: '2', limit: '10', sort: 'last_name', order: 'asc' } };
+    const req = {
+      query: {
+        search: 'a',
+        page: '2',
+        limit: '10',
+        sort: 'last_name',
+        order: 'asc',
+      },
+    };
     const res = mockRes();
     await controller.list(req, res);
     expect(listUsersMock).toHaveBeenCalled();
@@ -133,10 +147,18 @@ describe('userAdminController extra flows', () => {
 
   test('update returns mapped user on success', async () => {
     updateUserMock.mockResolvedValue({ id: 'u4' });
-    const req = { params: { id: 'u4' }, body: { first_name: 'A' }, user: { id: 'admin' } };
+    const req = {
+      params: { id: 'u4' },
+      body: { first_name: 'A' },
+      user: { id: 'admin' },
+    };
     const res = mockRes();
     await controller.update(req, res);
-    expect(updateUserMock).toHaveBeenCalledWith('u4', { first_name: 'A' }, 'admin');
+    expect(updateUserMock).toHaveBeenCalledWith(
+      'u4',
+      { first_name: 'A' },
+      'admin'
+    );
     expect(res.json).toHaveBeenCalledWith({ user: { id: 'u4' } });
   });
 
@@ -185,7 +207,9 @@ describe('userAdminController validation error flows', () => {
         array: () => [{ msg: 'bad' }],
       }),
     }));
-    const { default: controller2 } = await import('../src/controllers/userAdminController.js');
+    const { default: controller2 } = await import(
+      '../src/controllers/userAdminController.js'
+    );
 
     const res = mockRes();
     await controller2.create({ body: {} }, res);
@@ -208,7 +232,9 @@ describe('userAdminController validation error flows', () => {
       __esModule: true,
       validationResult: () => ({ isEmpty: () => false, array: () => ['x'] }),
     }));
-    const { default: controller3 } = await import('../src/controllers/userAdminController.js');
+    const { default: controller3 } = await import(
+      '../src/controllers/userAdminController.js'
+    );
     const res = mockRes();
     await controller3.resetPassword(
       { params: { id: 'u' }, body: { password: 'p' }, user: { id: 'a' } },

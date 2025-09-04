@@ -24,6 +24,14 @@ MatchPlayer.init(
       defaultValue: false,
     },
     assistant_order: { type: DataTypes.INTEGER, allowNull: true }, // 1 or 2
+    // Double protocol support: squad number (1 or 2)
+    squad_no: { type: DataTypes.INTEGER, allowNull: true },
+    // For double protocol: one goalkeeper can be declared for both squads
+    squad_both: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,
@@ -36,6 +44,8 @@ MatchPlayer.init(
       { fields: ['team_id'] },
       { fields: ['team_player_id'] },
       { fields: ['role_id'] },
+      { fields: ['squad_no'] },
+      { fields: ['squad_both'] },
       { unique: true, fields: ['match_id', 'team_player_id'] },
       { unique: true, fields: ['match_id', 'team_id', 'team_player_id'] },
     ],

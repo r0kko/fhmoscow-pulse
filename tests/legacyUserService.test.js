@@ -8,7 +8,9 @@ jest.unstable_mockModule('../src/config/legacyDatabase.js', () => ({
 }));
 
 const loggerErrorMock = jest.fn();
-jest.unstable_mockModule('../logger.js', () => ({ default: { error: loggerErrorMock } }));
+jest.unstable_mockModule('../logger.js', () => ({
+  default: { error: loggerErrorMock },
+}));
 
 const { findByEmail, findById } = await import(
   '../src/services/legacyUserService.js'
@@ -51,4 +53,3 @@ describe('legacyUserService', () => {
     expect(res).toEqual({ id: 2 });
   });
 });
-

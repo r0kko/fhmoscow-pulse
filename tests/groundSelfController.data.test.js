@@ -14,7 +14,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 }));
 
 // Use real mapper to validate output shape
-const { default: controller } = await import('../src/controllers/groundSelfController.js');
+const { default: controller } = await import(
+  '../src/controllers/groundSelfController.js'
+);
 
 beforeEach(() => {
   groundFindAll.mockReset();
@@ -54,14 +56,16 @@ test('available groups grounds by club and merges club/team links', async () => 
         Address: {
           id: 'a2',
           result: 'Москва, пр-т Пример, 2',
-          geo_lat: 55.7600,
-          geo_lon: 37.6200,
+          geo_lat: 55.76,
+          geo_lon: 37.62,
           metro: [],
         },
       },
     ],
   ];
-  groundFindAll.mockImplementation(() => Promise.resolve(orderedReturns.shift() || []));
+  groundFindAll.mockImplementation(() =>
+    Promise.resolve(orderedReturns.shift() || [])
+  );
 
   const req = {
     access: { isAdmin: false, allowedClubIds: ['c1'], allowedTeamIds: ['t1'] },
@@ -98,7 +102,9 @@ test('available returns grounds for club when no team links present', async () =
       },
     ],
   ];
-  groundFindAll.mockImplementation(() => Promise.resolve(orderedReturns.shift() || []));
+  groundFindAll.mockImplementation(() =>
+    Promise.resolve(orderedReturns.shift() || [])
+  );
 
   const req = {
     access: { isAdmin: false, allowedClubIds: ['cX'], allowedTeamIds: [] },

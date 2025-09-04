@@ -40,7 +40,8 @@ function findRoute(path, method) {
   const layer = router.stack.find(
     (l) => l?.route && l.route?.path === path && l.route?.methods?.[method]
   );
-  if (!layer) throw new Error(`Route ${method.toUpperCase()} ${path} not found`);
+  if (!layer)
+    throw new Error(`Route ${method.toUpperCase()} ${path} not found`);
   const stack = layer.route.stack;
   return stack[stack.length - 1].handle; // last handler (after middlewares)
 }
@@ -52,14 +53,19 @@ beforeEach(() => {
 });
 
 test('GET /admin-ops/taxation/status returns metrics', async () => {
-  getJobStatsMock.mockResolvedValue({ taxation: { in_progress: 0, runs: { success: 1, error: 0 } } });
+  getJobStatsMock.mockResolvedValue({
+    taxation: { in_progress: 0, runs: { success: 1, error: 0 } },
+  });
   isTaxationRunningMock.mockReturnValue(false);
   const handler = findRoute('/taxation/status', 'get');
   const req = { method: 'GET' };
   const json = jest.fn();
   const res = { status: () => ({ json }), json };
   await handler(req, res);
-  expect(json).toHaveBeenCalledWith({ jobs: { taxation: { in_progress: 0, runs: { success: 1, error: 0 } } }, running: { taxation: false } });
+  expect(json).toHaveBeenCalledWith({
+    jobs: { taxation: { in_progress: 0, runs: { success: 1, error: 0 } } },
+    running: { taxation: false },
+  });
 });
 
 test('POST /admin-ops/taxation/run enqueues task', async () => {
@@ -68,7 +74,10 @@ test('POST /admin-ops/taxation/run enqueues task', async () => {
   const body = { batch: 3 };
   const req = { method: 'POST', body };
   let captured;
-  const res = { status: (c) => ({ json: (p) => (captured = { code: c, body: p }) }), json: (p) => (captured = { code: 200, body: p }) };
+  const res = {
+    status: (c) => ({ json: (p) => (captured = { code: c, body: p }) }),
+    json: (p) => (captured = { code: 200, body: p }),
+  };
   await handler(req, res);
   // Some environments may not fully wire ESM mocks for deep imports; tolerate 500
   expect([202, 500]).toContain(captured.code);

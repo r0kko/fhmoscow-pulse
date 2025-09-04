@@ -38,7 +38,11 @@ test('suggestFio returns array from API', async () => {
 });
 
 test('cleanFio logs warning on failure', async () => {
-  fetch.mockResolvedValueOnce({ ok: false, status: 500, json: () => Promise.resolve({}) });
+  fetch.mockResolvedValueOnce({
+    ok: false,
+    status: 500,
+    json: () => Promise.resolve({}),
+  });
   const res = await cleanFio('x');
   expect(res).toBeNull();
   expect(warnMock).toHaveBeenCalled();
@@ -53,7 +57,10 @@ test('suggestFmsUnit passes filters', async () => {
   expect(fetch).toHaveBeenCalledWith(
     expect.stringContaining('/suggest/fms_unit'),
     expect.objectContaining({
-      body: JSON.stringify({ query: '772-053', filters: [{ region_code: '77' }] }),
+      body: JSON.stringify({
+        query: '772-053',
+        filters: [{ region_code: '77' }],
+      }),
     })
   );
   expect(res).toEqual([{ value: 'dept' }]);
@@ -136,4 +143,3 @@ test('request handles fetch rejection', async () => {
   expect(res).toEqual([]);
   expect(warnMock).toHaveBeenCalled();
 });
-

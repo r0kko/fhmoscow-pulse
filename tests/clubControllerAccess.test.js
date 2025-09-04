@@ -1,7 +1,9 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
 const listClubsMock = jest.fn().mockResolvedValue({ rows: [], count: 0 });
-const listUserClubsMock = jest.fn().mockResolvedValue([{ id: 'c1', name: 'A' }]);
+const listUserClubsMock = jest
+  .fn()
+  .mockResolvedValue([{ id: 'c1', name: 'A' }]);
 
 jest.unstable_mockModule('../src/services/clubService.js', () => ({
   __esModule: true,
@@ -16,7 +18,9 @@ jest.unstable_mockModule('../src/mappers/clubMapper.js', () => ({
   default: { toPublic: (c) => ({ id: c.id, name: c.name }) },
 }));
 
-const { default: controller } = await import('../src/controllers/clubController.js');
+const { default: controller } = await import(
+  '../src/controllers/clubController.js'
+);
 
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

@@ -19,4 +19,3 @@ test('toPublic maps club and grounds when present', () => {
   expect(out.club).toEqual({ id: 'c1', name: 'Клуб 1' });
   expect(out.grounds.map((g) => g.name)).toEqual(['Арена 1', 'Арена 2']);
 });
-

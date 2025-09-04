@@ -1,6 +1,10 @@
 import { expect, test } from '@jest/globals';
 
-import { moscowToUtc, utcToMoscow, formatMinutesSeconds } from '../src/utils/time.js';
+import {
+  moscowToUtc,
+  utcToMoscow,
+  formatMinutesSeconds,
+} from '../src/utils/time.js';
 
 test('moscowToUtc returns null for falsy/invalid', () => {
   expect(moscowToUtc(null)).toBeNull();

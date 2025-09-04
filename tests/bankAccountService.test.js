@@ -30,20 +30,31 @@ jest.unstable_mockModule('../src/services/dadataService.js', () => ({
   default: { findBankByBic: findBankMock },
 }));
 
-const { default: service } = await import('../src/services/bankAccountService.js');
+const { default: service } = await import(
+  '../src/services/bankAccountService.js'
+);
 
 findOneMock.mockResolvedValue(accountInstance);
 
-
 test('updateForUser throws when account missing', async () => {
   findOneMock.mockResolvedValueOnce(null);
-  await expect(service.updateForUser('u', {}, 'a')).rejects.toThrow('bank_account_not_found');
+  await expect(service.updateForUser('u', {}, 'a')).rejects.toThrow(
+    'bank_account_not_found'
+  );
 });
 
 test('updateForUser rejects number or bic changes', async () => {
-  findOneMock.mockResolvedValueOnce({ ...accountInstance, number: '1', bic: '2' });
-  await expect(service.updateForUser('u', { number: 'x' }, 'a')).rejects.toThrow('bank_account_locked');
-  await expect(service.updateForUser('u', { bic: 'y' }, 'a')).rejects.toThrow('bank_account_locked');
+  findOneMock.mockResolvedValueOnce({
+    ...accountInstance,
+    number: '1',
+    bic: '2',
+  });
+  await expect(
+    service.updateForUser('u', { number: 'x' }, 'a')
+  ).rejects.toThrow('bank_account_locked');
+  await expect(service.updateForUser('u', { bic: 'y' }, 'a')).rejects.toThrow(
+    'bank_account_locked'
+  );
 });
 
 test('updateForUser updates other fields', async () => {
@@ -76,7 +87,13 @@ test('importFromLegacy creates account from legacy data', async () => {
   createMock.mockResolvedValue(created);
   findBankMock.mockResolvedValue({
     value: 'Bank',
-    data: { correspondent_account: '301', swift: 'SW', inn: '1', kpp: '2', address: { unrestricted_value: 'A' } },
+    data: {
+      correspondent_account: '301',
+      swift: 'SW',
+      inn: '1',
+      kpp: '2',
+      address: { unrestricted_value: 'A' },
+    },
   });
 
   const res = await service.importFromLegacy('u1');
@@ -133,5 +150,3 @@ test('fetchFromLegacy returns sanitized data', async () => {
     address: 'A',
   });
 });
-
-

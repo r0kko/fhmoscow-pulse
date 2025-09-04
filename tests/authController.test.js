@@ -71,209 +71,213 @@ jest.unstable_mockModule('express-validator', () => ({
   })),
 }));
 
-const { default: authController } = await import('../src/controllers/authController.js');
+const { default: authController } = await import(
+  '../src/controllers/authController.js'
+);
 
 // eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 
 describe('authController', () => {
+  test('login does not include sensitive fields in response', async () => {
+    const user = {
+      id: '1',
+      phone: '123',
+      password: 'hash',
+      increment: jest.fn().mockResolvedValue(undefined),
+      createdAt: 't',
+      updatedAt: 't',
+      deletedAt: null,
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
+      reload: jest.fn().mockResolvedValue({
+        id: '1',
+        getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
+        UserStatus: { alias: 'ACTIVE' },
+      }),
+    };
+    verifyCredentialsMock.mockResolvedValue(user);
 
-test('login does not include sensitive fields in response', async () => {
-  const user = {
-    id: '1',
-    phone: '123',
-    password: 'hash',
-    increment: jest.fn().mockResolvedValue(undefined),
-    createdAt: 't',
-    updatedAt: 't',
-    deletedAt: null,
-    getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
-    reload: jest.fn().mockResolvedValue({
+    const req = { body: { phone: '123', password: 'pass' }, cookies: {} };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await authController.login(req, res);
+
+    const response = res.json.mock.calls[0][0];
+    expect(response.user.password).toBeUndefined();
+    expect(response.user.createdAt).toBeUndefined();
+    expect(response.user.updatedAt).toBeUndefined();
+    expect(response.user.deletedAt).toBeUndefined();
+    expect(Array.isArray(response.roles)).toBe(true);
+    expect(verifyCredentialsMock).toHaveBeenCalledWith('123', 'pass');
+    expect(user.increment).toHaveBeenCalledWith('token_version');
+    expect(user.reload).toHaveBeenCalled();
+    expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
+  });
+
+  test('login validation failure returns 400', async () => {
+    validationOk = false;
+    const req = { body: {}, cookies: {} };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await authController.login(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ errors: [{ msg: 'bad' }] });
+    validationOk = true;
+  });
+
+  test('login returns next_step when registration not complete', async () => {
+    const user = {
+      id: '1',
+      increment: jest.fn().mockResolvedValue(undefined),
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+      reload: jest.fn().mockResolvedValue({
+        id: '1',
+        getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+        UserStatus: { alias: 'REGISTRATION_STEP_3' },
+      }),
+    };
+    verifyCredentialsMock.mockResolvedValue(user);
+
+    const req = { body: { phone: '1', password: 'p' }, cookies: {} };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await authController.login(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      access_token: 'access',
+      user: { id: '1', status: 'REGISTRATION_STEP_3' },
+      roles: ['USER'],
+      capabilities: { is_staff_only: false },
+      next_step: 3,
+    });
+  });
+
+  test('login returns awaiting_confirmation flag', async () => {
+    const user = {
+      id: '2',
+      increment: jest.fn().mockResolvedValue(undefined),
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+      reload: jest.fn().mockResolvedValue({
+        id: '2',
+        getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
+        UserStatus: { alias: 'AWAITING_CONFIRMATION' },
+      }),
+    };
+    verifyCredentialsMock.mockResolvedValue(user);
+
+    const req = { body: { phone: '2', password: 'p' }, cookies: {} };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await authController.login(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      access_token: 'access',
+      user: { id: '2', status: 'AWAITING_CONFIRMATION' },
+      roles: ['USER'],
+      capabilities: { is_staff_only: false },
+      awaiting_confirmation: true,
+    });
+  });
+
+  test('logout clears refresh cookie and destroys session', async () => {
+    const destroy = jest.fn();
+    const req = { session: { destroy } };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await authController.logout(req, res);
+
+    expect(destroy).toHaveBeenCalled();
+    expect(clearRefreshCookieMock).toHaveBeenCalledWith(res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' });
+  });
+
+  test('logout bumps token version when user present', async () => {
+    const destroy = jest.fn();
+    const req = { session: { destroy }, user: { id: 'u1' } };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await authController.logout(req, res);
+
+    expect(bumpTokenVersionMock).toHaveBeenCalledWith('u1');
+  });
+
+  test('me returns sanitized user with status', async () => {
+    const loaded = {
       id: '1',
       getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
-      UserStatus: { alias: 'ACTIVE' },
-    }),
-  };
-  verifyCredentialsMock.mockResolvedValue(user);
-
-  const req = { body: { phone: '123', password: 'pass' }, cookies: {} };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-  await authController.login(req, res);
-
-  const response = res.json.mock.calls[0][0];
-  expect(response.user.password).toBeUndefined();
-  expect(response.user.createdAt).toBeUndefined();
-  expect(response.user.updatedAt).toBeUndefined();
-  expect(response.user.deletedAt).toBeUndefined();
-  expect(Array.isArray(response.roles)).toBe(true);
-  expect(verifyCredentialsMock).toHaveBeenCalledWith('123', 'pass');
-  expect(user.increment).toHaveBeenCalledWith('token_version');
-  expect(user.reload).toHaveBeenCalled();
-  expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'refresh');
-});
-
-test('login validation failure returns 400', async () => {
-  validationOk = false;
-  const req = { body: {}, cookies: {} };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-  await authController.login(req, res);
-
-  expect(res.status).toHaveBeenCalledWith(400);
-  expect(res.json).toHaveBeenCalledWith({ errors: [{ msg: 'bad' }] });
-  validationOk = true;
-});
-
-test('login returns next_step when registration not complete', async () => {
-  const user = {
-    id: '1',
-    increment: jest.fn().mockResolvedValue(undefined),
-    getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
-    reload: jest.fn().mockResolvedValue({
-      id: '1',
-      getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
-      UserStatus: { alias: 'REGISTRATION_STEP_3' },
-    }),
-  };
-  verifyCredentialsMock.mockResolvedValue(user);
-
-  const req = { body: { phone: '1', password: 'p' }, cookies: {} };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-  await authController.login(req, res);
-
-  expect(res.json).toHaveBeenCalledWith({
-    access_token: 'access',
-    user: { id: '1', status: 'REGISTRATION_STEP_3' },
-    roles: ['USER'],
-    capabilities: { is_staff_only: false },
-    next_step: 3,
-  });
-});
-
-test('login returns awaiting_confirmation flag', async () => {
-  const user = {
-    id: '2',
-    increment: jest.fn().mockResolvedValue(undefined),
-    getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
-    reload: jest.fn().mockResolvedValue({
-      id: '2',
-      getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
       UserStatus: { alias: 'AWAITING_CONFIRMATION' },
-    }),
-  };
-  verifyCredentialsMock.mockResolvedValue(user);
+    };
+    const req = {
+      user: {
+        reload: jest.fn().mockResolvedValue(loaded),
+      },
+    };
+    const res = { json: jest.fn() };
 
-  const req = { body: { phone: '2', password: 'p' }, cookies: {} };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    await authController.me(req, res);
 
-  await authController.login(req, res);
-
-  expect(res.json).toHaveBeenCalledWith({
-    access_token: 'access',
-    user: { id: '2', status: 'AWAITING_CONFIRMATION' },
-    roles: ['USER'],
-    capabilities: { is_staff_only: false },
-    awaiting_confirmation: true,
-  });
-});
-
-test('logout clears refresh cookie and destroys session', async () => {
-  const destroy = jest.fn();
-  const req = { session: { destroy } };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-  await authController.logout(req, res);
-
-  expect(destroy).toHaveBeenCalled();
-  expect(clearRefreshCookieMock).toHaveBeenCalledWith(res);
-  expect(res.status).toHaveBeenCalledWith(200);
-  expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' });
-});
-
-test('logout bumps token version when user present', async () => {
-  const destroy = jest.fn();
-  const req = { session: { destroy }, user: { id: 'u1' } };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-  await authController.logout(req, res);
-
-  expect(bumpTokenVersionMock).toHaveBeenCalledWith('u1');
-});
-
-test('me returns sanitized user with status', async () => {
-  const loaded = {
-    id: '1',
-    getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
-    UserStatus: { alias: 'AWAITING_CONFIRMATION' },
-  };
-  const req = {
-    user: {
-      reload: jest.fn().mockResolvedValue(loaded),
-    },
-  };
-  const res = { json: jest.fn() };
-
-  await authController.me(req, res);
-
-  expect(req.user.reload).toHaveBeenCalled();
-  expect(toPublicMock).toHaveBeenCalledWith(loaded);
-  expect(res.json).toHaveBeenCalledWith({
-    user: { id: '1', status: 'AWAITING_CONFIRMATION' },
-    roles: ['ADMIN'],
-    capabilities: { is_staff_only: false },
-  });
-});
-
-test('refresh returns new tokens when valid', async () => {
-  const user = { id: '1', getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]) };
-  rotateTokensMock.mockResolvedValue({
-    user,
-    accessToken: 'a',
-    refreshToken: 'r',
+    expect(req.user.reload).toHaveBeenCalled();
+    expect(toPublicMock).toHaveBeenCalledWith(loaded);
+    expect(res.json).toHaveBeenCalledWith({
+      user: { id: '1', status: 'AWAITING_CONFIRMATION' },
+      roles: ['ADMIN'],
+      capabilities: { is_staff_only: false },
+    });
   });
 
-  const req = { cookies: { refresh_token: 'r' }, body: {} };
-  const res = { json: jest.fn() };
+  test('refresh returns new tokens when valid', async () => {
+    const user = {
+      id: '1',
+      getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
+    };
+    rotateTokensMock.mockResolvedValue({
+      user,
+      accessToken: 'a',
+      refreshToken: 'r',
+    });
 
-  await authController.refresh(req, res);
+    const req = { cookies: { refresh_token: 'r' }, body: {} };
+    const res = { json: jest.fn() };
 
-  expect(rotateTokensMock).toHaveBeenCalledWith('r');
-  expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'r');
-  expect(res.json).toHaveBeenCalledWith({
-    access_token: 'a',
-    user: { id: '1' },
-    roles: ['ADMIN'],
-    capabilities: { is_staff_only: false },
+    await authController.refresh(req, res);
+
+    expect(rotateTokensMock).toHaveBeenCalledWith('r');
+    expect(setRefreshCookieMock).toHaveBeenCalledWith(res, 'r');
+    expect(res.json).toHaveBeenCalledWith({
+      access_token: 'a',
+      user: { id: '1' },
+      roles: ['ADMIN'],
+      capabilities: { is_staff_only: false },
+    });
   });
-});
 
-test('refresh missing token returns 401', async () => {
-  const req = { cookies: {}, body: {} };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  test('refresh missing token returns 401', async () => {
+    const req = { cookies: {}, body: {} };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-  await authController.refresh(req, res);
+    await authController.refresh(req, res);
 
-  expect(res.status).toHaveBeenCalledWith(401);
-});
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
 
-test('refresh ignores body token and requires cookie', async () => {
-  const req = { cookies: {}, body: { refresh_token: 'fromBody' } };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  test('refresh ignores body token and requires cookie', async () => {
+    const req = { cookies: {}, body: { refresh_token: 'fromBody' } };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-  await authController.refresh(req, res);
+    await authController.refresh(req, res);
 
-  expect(res.status).toHaveBeenCalledWith(401);
-});
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
 
-test('refresh invalid token returns 401', async () => {
-  rotateTokensMock.mockRejectedValue(new Error('bad'));
-  const req = { cookies: { refresh_token: 'x' }, body: {} };
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  test('refresh invalid token returns 401', async () => {
+    rotateTokensMock.mockRejectedValue(new Error('bad'));
+    const req = { cookies: { refresh_token: 'x' }, body: {} };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-  await authController.refresh(req, res);
+    await authController.refresh(req, res);
 
-  expect(res.status).toHaveBeenCalledWith(401);
-});
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
 });

@@ -18,13 +18,17 @@ const { default: service } = await import('../src/services/snilsService.js');
 
 test('create throws when duplicate exists', async () => {
   findOneMock.mockResolvedValueOnce({ id: 'd' });
-  await expect(service.create('u1', '123', 'a')).rejects.toThrow('snils_exists');
+  await expect(service.create('u1', '123', 'a')).rejects.toThrow(
+    'snils_exists'
+  );
 });
 
 test('update throws when duplicate exists', async () => {
   findOneMock.mockResolvedValueOnce(snilsInstance); // user record
   findOneMock.mockResolvedValueOnce({ id: 'other' }); // duplicate
-  await expect(service.update('u1', '123', 'a')).rejects.toThrow('snils_exists');
+  await expect(service.update('u1', '123', 'a')).rejects.toThrow(
+    'snils_exists'
+  );
 });
 
 test('create stores new snils', async () => {
@@ -51,7 +55,9 @@ test('update changes existing snils', async () => {
 
 test('update throws when record missing', async () => {
   findOneMock.mockResolvedValueOnce(null);
-  await expect(service.update('u1', '222', 'b')).rejects.toThrow('snils_not_found');
+  await expect(service.update('u1', '222', 'b')).rejects.toThrow(
+    'snils_not_found'
+  );
 });
 
 test('remove deletes snils', async () => {
@@ -69,5 +75,7 @@ test('remove deletes snils', async () => {
 
 test('remove throws when not found', async () => {
   findOneMock.mockResolvedValueOnce(null);
-  await expect(service.remove('u1', 'admin')).rejects.toThrow('snils_not_found');
+  await expect(service.remove('u1', 'admin')).rejects.toThrow(
+    'snils_not_found'
+  );
 });

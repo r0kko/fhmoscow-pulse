@@ -28,7 +28,14 @@ test('renders barcode when bwip-js is available', async () => {
 test('returns false when bwip-js fails to render', async () => {
   const toBuffer = jest.fn().mockRejectedValue(new Error('fail'));
   const renderPdf417 = await loadWithMock(() => ({ default: { toBuffer } }));
-  const result = await renderPdf417({ image: jest.fn() }, 1, 2, 100, 20, 'data');
+  const result = await renderPdf417(
+    { image: jest.fn() },
+    1,
+    2,
+    100,
+    20,
+    'data'
+  );
   expect(result).toBe(false);
 });
 
@@ -36,6 +43,13 @@ test('falls back to require when module import fails', async () => {
   const renderPdf417 = await loadWithMock(() => {
     throw new Error('missing');
   });
-  const result = await renderPdf417({ image: jest.fn() }, 1, 2, 100, 20, 'data');
+  const result = await renderPdf417(
+    { image: jest.fn() },
+    1,
+    2,
+    100,
+    20,
+    'data'
+  );
   expect(result).toBe(true);
 });

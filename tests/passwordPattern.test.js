@@ -18,4 +18,3 @@ test('throws error for unsafe password pattern', async () => {
     'Unsafe PASSWORD_PATTERN'
   );
 });
-

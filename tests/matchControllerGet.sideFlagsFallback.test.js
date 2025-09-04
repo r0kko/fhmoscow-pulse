@@ -52,4 +52,3 @@ test('get sets side flags to false when user not found', async () => {
   expect(payload.match.is_home).toBe(false);
   expect(payload.match.is_away).toBe(false);
 });
-

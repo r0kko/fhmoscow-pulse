@@ -19,14 +19,18 @@ const base = {
 };
 
 test('proposed email renders', () => {
-  const { subject, text, html } = renderMatchAgreementProposedEmail({ ...base, by: 'home' });
+  const { subject, text, html } = renderMatchAgreementProposedEmail({
+    ...base,
+    by: 'home',
+  });
   expect(subject).toMatch(/Новая заявка/);
   expect(text).toContain('Матч: Home — Away');
   expect(html).toContain('Открыть карточку согласования');
 });
 
 test('counter-proposed email renders', () => {
-  const { subject, text, html } = renderMatchAgreementCounterProposedEmail(base);
+  const { subject, text, html } =
+    renderMatchAgreementCounterProposedEmail(base);
   expect(subject).toMatch(/Контр-заявка/);
   expect(text).toContain('Стадион');
   expect(html).toContain('контр-заявка');
@@ -54,11 +58,16 @@ test('withdrawn email renders', () => {
 });
 
 test('reminder email variants render', () => {
-  const a = renderMatchAgreementReminderEmail({ ...base, status: 'no_proposal' });
-  const b = renderMatchAgreementReminderEmail({ ...base, status: 'pending_you' });
+  const a = renderMatchAgreementReminderEmail({
+    ...base,
+    status: 'no_proposal',
+  });
+  const b = renderMatchAgreementReminderEmail({
+    ...base,
+    status: 'pending_you',
+  });
   const c = renderMatchAgreementReminderEmail({ ...base, status: 'other' });
   expect(a.subject).toMatch(/Необходимо назначить/);
   expect(b.subject).toMatch(/Ожидается ваше решение/);
   expect(c.subject).toMatch(/Напоминание/);
 });
-

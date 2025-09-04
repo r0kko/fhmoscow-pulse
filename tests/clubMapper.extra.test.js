@@ -18,4 +18,3 @@ test('toPublic maps grounds when present', () => {
     { id: 'g2', name: 'Арена 2' },
   ]);
 });
-

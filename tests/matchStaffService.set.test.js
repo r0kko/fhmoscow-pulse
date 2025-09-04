@@ -48,7 +48,9 @@ jest.unstable_mockModule('../src/models/role.js', () => ({
   default: {},
 }));
 
-const { default: service } = await import('../src/services/matchStaffService.js');
+const { default: service } = await import(
+  '../src/services/matchStaffService.js'
+);
 
 function setupBase({ seasonId = 's1' } = {}) {
   findMatchMock.mockResolvedValue({
@@ -84,7 +86,12 @@ test('set creates rows only for selected staff', async () => {
   );
   expect(createMock).toHaveBeenCalledTimes(1);
   expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ team_staff_id: 'a', team_id: 't1', match_id: 'm1', role_id: 'coach' }),
+    expect.objectContaining({
+      team_staff_id: 'a',
+      team_id: 't1',
+      match_id: 'm1',
+      role_id: 'coach',
+    }),
     expect.any(Object)
   );
 });

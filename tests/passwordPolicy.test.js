@@ -8,7 +8,9 @@ process.env.PASSWORD_MAX_LENGTH = '64';
 // eslint-disable-next-line no-undef
 process.env.PASSWORD_PATTERN = '(?=.*[A-Za-z])(?=.*\\d)';
 
-const { validatePassword, assertPassword } = await import('../src/utils/passwordPolicy.js');
+const { validatePassword, assertPassword } = await import(
+  '../src/utils/passwordPolicy.js'
+);
 
 describe('passwordPolicy', () => {
   test('rejects common/weak passwords', () => {
@@ -17,16 +19,16 @@ describe('passwordPolicy', () => {
     expect(() => assertPassword('qwerty')).toThrow('weak_password');
   });
 
-    test('rejects too short or missing digit/letter', () => {
-      expect(validatePassword('a1b2c')).toBe(false);
-      expect(validatePassword('abcdefgh')).toBe(false);
-      expect(validatePassword('12345678')).toBe(false);
-    });
+  test('rejects too short or missing digit/letter', () => {
+    expect(validatePassword('a1b2c')).toBe(false);
+    expect(validatePassword('abcdefgh')).toBe(false);
+    expect(validatePassword('12345678')).toBe(false);
+  });
 
-    test('rejects overly long password', () => {
-      const longPwd = 'Ab1' + 'a'.repeat(100);
-      expect(validatePassword(longPwd)).toBe(false);
-    });
+  test('rejects overly long password', () => {
+    const longPwd = 'Ab1' + 'a'.repeat(100);
+    expect(validatePassword(longPwd)).toBe(false);
+  });
 
   test('accepts strong password', () => {
     expect(validatePassword('Abcdef12')).toBe(true);

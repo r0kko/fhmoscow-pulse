@@ -22,6 +22,8 @@ export const setMatchStaffRules = [
         if (r.selected) {
           if (!(typeof r.role_id === 'string' && r.role_id.length > 0))
             throw new Error('staff_role_required');
+          // squad_no is deprecated and ignored — must be null/undefined
+          if (!(r.squad_no == null)) return false;
         } else {
           if (
             !(
@@ -30,6 +32,7 @@ export const setMatchStaffRules = [
             )
           )
             return false;
+          if (!(r.squad_no == null)) return false;
         }
       }
       return true;

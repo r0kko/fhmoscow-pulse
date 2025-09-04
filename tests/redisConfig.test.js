@@ -16,7 +16,9 @@ test('isRedisWritable flips to false on READONLY error', async () => {
   }));
   const mod = await import('../src/config/redis.js');
   expect(mod.isRedisWritable()).toBe(true);
-  errorHandler(new Error('READONLY You can not write against a read only replica.'));
+  errorHandler(
+    new Error('READONLY You can not write against a read only replica.')
+  );
   expect(mod.isRedisWritable()).toBe(false);
 });
 
@@ -26,7 +28,9 @@ test('closeRedis calls client.quit()', async () => {
   const fakeClient = {
     on() {},
     async connect() {},
-    async quit() { quit(); },
+    async quit() {
+      quit();
+    },
   };
   jest.unstable_mockModule('redis', () => ({
     __esModule: true,

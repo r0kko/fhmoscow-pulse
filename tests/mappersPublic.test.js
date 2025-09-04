@@ -29,9 +29,7 @@ describe('public mappers', () => {
       id: 'c1',
       external_id: 22,
       name: 'Club',
-      Teams: [
-        { id: 't1', external_id: 11, name: 'Team A', birth_year: 2010 },
-      ],
+      Teams: [{ id: 't1', external_id: 11, name: 'Team A', birth_year: 2010 }],
     };
     const out = clubMapper.toPublic(club);
     expect(out).toMatchObject({ id: 'c1', external_id: 22, name: 'Club' });
@@ -46,9 +44,7 @@ describe('public mappers', () => {
       name: 'Иван',
       patronymic: 'Иваныч',
       date_of_birth: '2005-01-02',
-      Teams: [
-        { id: 't1', external_id: 11, name: 'Team A', birth_year: 2010 },
-      ],
+      Teams: [{ id: 't1', external_id: 11, name: 'Team A', birth_year: 2010 }],
       Clubs: [{ id: 'c1', external_id: 22, name: 'Club' }],
     };
     const out = playerMapper.toPublic(player);
@@ -57,4 +53,3 @@ describe('public mappers', () => {
     expect(out.clubs?.length).toBe(1);
   });
 });
-

@@ -8,6 +8,7 @@ import csrfMiddleware from './src/middlewares/csrf.js';
 import session from './src/config/session.js';
 import indexRouter from './src/routes/index.js';
 import requestLogger from './src/middlewares/requestLogger.js';
+import requestId from './src/middlewares/requestId.js';
 import rateLimiter from './src/middlewares/rateLimiter.js';
 import swaggerSpec from './src/docs/swagger.js';
 import { ALLOWED_ORIGINS } from './src/config/cors.js';
@@ -35,6 +36,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(helmet());
+app.use(requestId);
 app.use(rateLimiter);
 app.use(session);
 // Expose CSRF token in a cookie so the Vue client can read it
@@ -51,16 +53,19 @@ app.use((req, res) => {
 });
 
 // Centralized error handler
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   const status = err?.status || 500;
   if (status >= 500) {
-    logger.error('Unhandled server error: %s', err.stack || err);
+    logger.error(
+      'Unhandled server error [%s]: %s',
+      req.id || '-',
+      err.stack || err
+    );
   } else {
     const code = err?.code || err?.message || 'error';
-    logger.warn('Request failed: %s (%s)', code, status);
+    logger.warn('Request failed [%s]: %s (%s)', req.id || '-', code, status);
   }
   sendError(res, err, 500);
 });
-
 
 export default app;

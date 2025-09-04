@@ -1,6 +1,8 @@
 import { expect, test } from '@jest/globals';
 
-const { getJobStats, seedJobMetrics } = await import('../src/config/metrics.js');
+const { getJobStats, seedJobMetrics } = await import(
+  '../src/config/metrics.js'
+);
 
 test('getJobStats returns consistent keys when metrics disabled or enabled', async () => {
   const res = await getJobStats(['a', 'a', 'b']);
@@ -10,7 +12,10 @@ test('getJobStats returns consistent keys when metrics disabled or enabled', asy
   expect(res.a).toHaveProperty('last_run');
   expect(res.a).toHaveProperty('last_success');
   expect(res.a).toHaveProperty('runs');
-  expect(res.a.runs).toEqual({ success: expect.any(Number), error: expect.any(Number) });
+  expect(res.a.runs).toEqual({
+    success: expect.any(Number),
+    error: expect.any(Number),
+  });
 });
 
 test('seedJobMetrics does not throw when metrics disabled', async () => {

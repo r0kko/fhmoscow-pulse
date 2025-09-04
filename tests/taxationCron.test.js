@@ -18,7 +18,12 @@ jest.unstable_mockModule('../src/services/taxationService.js', () => ({
 
 jest.unstable_mockModule('../logger.js', () => ({
   __esModule: true,
-  default: { info: jest.fn(), error: jest.fn(), debug: jest.fn(), warn: jest.fn() },
+  default: {
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+  },
 }));
 
 const { runTaxationCheck } = await import('../src/jobs/taxationCron.js');

@@ -1,4 +1,6 @@
 export const ERROR_MESSAGES = {
+  unauthorized: 'Требуется авторизация',
+  internal_error: 'Произошла ошибка сервера. Попробуйте позже.',
   account_locked: 'Аккаунт заблокирован',
   already_confirmed: 'Электронная почта уже подтверждена',
   bank_account_exists: 'Банковский счёт уже указан',
@@ -79,6 +81,12 @@ export const ERROR_MESSAGES = {
   external_db_unavailable: 'Внешняя система недоступна. Попробуйте позже.',
   external_sync_failed:
     'Не удалось сохранить изменения во внешней системе. Попробуйте позже.',
+  metrics_error:
+    'Не удалось получить метрики. Попробуйте позже или обратитесь к администратору.',
+  sync_trigger_failed: 'Не удалось запустить синхронизацию. Попробуйте позже.',
+  taxation_trigger_failed: 'Не удалось запустить проверку налогообложения.',
+  job_not_restartable: 'Эту задачу нельзя перезапустить вручную.',
+  invalid_job: 'Неизвестная задача',
   // Match agreements / participation
   forbidden_not_match_member:
     'Недоступно: вы не участник этого матча. Требуется привязка к команде.',
@@ -96,9 +104,23 @@ export const ERROR_MESSAGES = {
   too_many_field_players: 'Нельзя выбрать более 20 полевых игроков',
   too_few_goalkeepers: 'Минимум 1 вратарь в заявке',
   too_few_field_players: 'Минимум 5 полевых игроков в заявке',
-  too_few_coaches: 'Минимум 1 тренер в заявке',
+  // Double protocol (составы 1 и 2)
+  squad_number_required:
+    'Для каждого выбранного игрока укажите состав (1 или 2)',
+  too_few_or_many_goalkeepers:
+    'В каждом составе должно быть от 1 до 2 вратарей',
+  invalid_field_players_for_double:
+    'В каждом составе должно быть от 12 до 13 полевых игроков',
+  too_many_players_in_squad: 'В каждом составе нельзя выбрать более 15 игроков',
+  too_many_goalkeepers_both:
+    'Можно указать только одного вратаря для обоих составов',
+  too_few_coaches: 'Минимум 2 тренера в заявке',
   too_many_officials: 'Нельзя выбрать более 8 официальных представителей',
   head_coach_required: 'Необходимо назначить главного тренера команды',
+  too_many_coaches_per_squad:
+    'В каждом составе нельзя выбрать более 4 тренеров',
+  gk_both_requires_three:
+    'Для отметки «Оба состава» необходимо выбрать минимум трёх вратарей',
   // Leadership
   captain_required: 'Необходимо указать капитана команды',
   too_many_captains: 'Можно выбрать только одного капитана',
@@ -115,9 +137,10 @@ export const ERROR_MESSAGES = {
   match_role_required: 'Выберите амплуа для всех выбранных игроков',
   match_number_required: 'Укажите номер для всех выбранных игроков',
   duplicate_match_numbers: 'Игровые номера в матче должны быть уникальными',
+  validation_error: 'Проверьте корректность введённых данных',
 };
 
 export function translateError(code) {
   if (!code) return '';
-  return ERROR_MESSAGES[code] || code;
+  return ERROR_MESSAGES[code] || 'Ошибка запроса';
 }

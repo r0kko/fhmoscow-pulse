@@ -24,7 +24,8 @@ jest.unstable_mockModule('../src/config/redis.js', () => ({
   },
 }));
 
-const { markFailed, clear, get, _reset, WINDOW_MS, isReadonlyError } = await import('../src/services/loginAttempts.js');
+const { markFailed, clear, get, _reset, WINDOW_MS, isReadonlyError } =
+  await import('../src/services/loginAttempts.js');
 
 describe('loginAttempts service', () => {
   beforeEach(async () => {

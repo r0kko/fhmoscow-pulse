@@ -351,7 +351,10 @@ test('add rejects listener for camp training', async () => {
     email: 'e4',
     Roles: [{ alias: 'BRIGADE_REFEREE' }],
   });
-  findTrainingRoleMock.mockResolvedValueOnce({ id: 'listener', alias: 'LISTENER' });
+  findTrainingRoleMock.mockResolvedValueOnce({
+    id: 'listener',
+    alias: 'LISTENER',
+  });
   await expect(service.add('t1', 'u4', 'listener', 'admin')).rejects.toThrow(
     'training_role_forbidden'
   );
@@ -401,9 +404,9 @@ test('updateRole rejects teacher for camp training', async () => {
   findTrainingRoleMock.mockResolvedValueOnce({ id: 'tRole', alias: 'TEACHER' });
   findTrainingMock.mockResolvedValue(training);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
-  await expect(service.updateRole('t1', 'u1', 'tRole', 'admin')).rejects.toThrow(
-    'training_role_forbidden'
-  );
+  await expect(
+    service.updateRole('t1', 'u1', 'tRole', 'admin')
+  ).rejects.toThrow('training_role_forbidden');
 });
 
 test('unregister sends notification', async () => {
@@ -431,7 +434,7 @@ test('unregister sends notification', async () => {
 test('unregister rejects when deadline passed', async () => {
   const soon = {
     ...training,
-    start_at: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(),
+    start_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   };
   findRegMock.mockResolvedValue({
     destroy: destroyMock,

@@ -108,6 +108,7 @@ export async function apiFetch(path, options = {}) {
   }
 
   const data = await res.json().catch(() => ({}));
+  const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
@@ -124,17 +125,21 @@ export async function apiFetch(path, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    const message =
+    let message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    if (reqId) message += ` (id: ${reqId})`;
     const err = new Error(message);
     err.code = data.error || null;
+    if (reqId) err.requestId = reqId;
     throw err;
   }
   if (!res.ok) {
-    const message =
+    let message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    if (reqId) message += ` (id: ${reqId})`;
     const err = new Error(message);
     err.code = data.error || null;
+    if (reqId) err.requestId = reqId;
     throw err;
   }
   return data;
@@ -158,6 +163,7 @@ export async function apiFetchForm(path, form, options = {}) {
     throw new Error('Сетевая ошибка');
   }
   const data = await res.json().catch(() => ({}));
+  const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
@@ -174,17 +180,21 @@ export async function apiFetchForm(path, form, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    const message =
+    let message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    if (reqId) message += ` (id: ${reqId})`;
     const err = new Error(message);
     err.code = data.error || null;
+    if (reqId) err.requestId = reqId;
     throw err;
   }
   if (!res.ok) {
-    const message =
+    let message =
       translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+    if (reqId) message += ` (id: ${reqId})`;
     const err = new Error(message);
     err.code = data.error || null;
+    if (reqId) err.requestId = reqId;
     throw err;
   }
   return data;
@@ -207,6 +217,7 @@ export async function apiFetchBlob(path, options = {}) {
   } catch (_err) {
     throw new Error('Сетевая ошибка');
   }
+  const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
@@ -226,10 +237,12 @@ export async function apiFetchBlob(path, options = {}) {
     // Try to extract API error code for friendly message
     try {
       const data = await res.clone().json();
-      const message =
+      let message =
         translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+      if (reqId) message += ` (id: ${reqId})`;
       const err = new Error(message);
       err.code = data.error || null;
+      if (reqId) err.requestId = reqId;
       throw err;
     } catch (_) {
       throw new Error(`Ошибка запроса, код ${res.status}`);
@@ -238,10 +251,12 @@ export async function apiFetchBlob(path, options = {}) {
   if (!res.ok) {
     try {
       const data = await res.clone().json();
-      const message =
+      let message =
         translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+      if (reqId) message += ` (id: ${reqId})`;
       const err = new Error(message);
       err.code = data.error || null;
+      if (reqId) err.requestId = reqId;
       throw err;
     } catch (_) {
       throw new Error(`Ошибка запроса, код ${res.status}`);

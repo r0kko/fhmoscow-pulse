@@ -41,7 +41,9 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const { default: service } = await import('../src/services/medicalExamRegistrationService.js');
+const { default: service } = await import(
+  '../src/services/medicalExamRegistrationService.js'
+);
 
 beforeEach(() => {
   findExamMock.mockReset();
@@ -77,9 +79,7 @@ const statuses = {
 
 test('register creates new registration', async () => {
   findExamMock.mockResolvedValue(exam);
-  findRegMock
-    .mockResolvedValueOnce(null)
-    .mockResolvedValueOnce(null);
+  findRegMock.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.register('u1', 'e1', 'u1');
   expect(findRegMock).toHaveBeenNthCalledWith(1, {
@@ -117,7 +117,11 @@ test('register fails when another active registration exists', async () => {
 test('register restores soft deleted registration', async () => {
   findExamMock.mockResolvedValue(exam);
   findRegMock
-    .mockResolvedValueOnce({ deletedAt: new Date(), restore: restoreMock, update: updateMock })
+    .mockResolvedValueOnce({
+      deletedAt: new Date(),
+      restore: restoreMock,
+      update: updateMock,
+    })
     .mockResolvedValueOnce(null);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.register('u1', 'e1', 'u1');
@@ -141,7 +145,10 @@ test('unregister removes pending registration', async () => {
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.unregister('u1', 'e1', 'u1');
   expect(destroyMock).toHaveBeenCalled();
-  expect(sendSelfCancelledMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, exam);
+  expect(sendSelfCancelledMock).toHaveBeenCalledWith(
+    { id: 'u1', email: 'e' },
+    exam
+  );
 });
 
 test('unregister fails when approved', async () => {
@@ -154,12 +161,23 @@ test('listAvailable returns mapped exams', async () => {
     rows: [
       {
         capacity: 1,
-        MedicalExamRegistrations: [{
-          user_id: 'u1',
-          MedicalExamRegistrationStatus: { alias: 'PENDING' },
-        }],
-        get: () => ({ id: 'e1', start_at: '2025-07-10T10:00:00Z', capacity: 1, MedicalCenter: { id: 'c1', name: 'C1', Address: { result: 'addr', metro: [] } } })
-      }
+        MedicalExamRegistrations: [
+          {
+            user_id: 'u1',
+            MedicalExamRegistrationStatus: { alias: 'PENDING' },
+          },
+        ],
+        get: () => ({
+          id: 'e1',
+          start_at: '2025-07-10T10:00:00Z',
+          capacity: 1,
+          MedicalCenter: {
+            id: 'c1',
+            name: 'C1',
+            Address: { result: 'addr', metro: [] },
+          },
+        }),
+      },
     ],
     count: 1,
   });
@@ -176,15 +194,21 @@ test('listUpcomingByUser filters by user', async () => {
     rows: [
       {
         capacity: 1,
-        MedicalExamRegistrations: [{
-          user_id: 'u1',
-          MedicalExamRegistrationStatus: { alias: 'APPROVED' },
-        }],
+        MedicalExamRegistrations: [
+          {
+            user_id: 'u1',
+            MedicalExamRegistrationStatus: { alias: 'APPROVED' },
+          },
+        ],
         get: () => ({
           id: 'e1',
           start_at: '2025-07-10T10:00:00Z',
           capacity: 1,
-          MedicalCenter: { id: 'c1', name: 'C1', Address: { result: 'addr', metro: [] } },
+          MedicalCenter: {
+            id: 'c1',
+            name: 'C1',
+            Address: { result: 'addr', metro: [] },
+          },
         }),
       },
     ],
@@ -203,18 +227,26 @@ test('setStatus sends email on approval', async () => {
   findExamMock.mockResolvedValue(exam);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.setStatus('e1', 'u1', 'APPROVED', 'admin');
-  expect(updateMock).toHaveBeenCalledWith({ status_id: statuses.APPROVED.id, updated_by: 'admin' });
+  expect(updateMock).toHaveBeenCalledWith({
+    status_id: statuses.APPROVED.id,
+    updated_by: 'admin',
+  });
   expect(sendApprovedMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, exam);
 });
 
 test('remove sends cancellation email', async () => {
   const updateMockLocal = jest.fn();
-  findRegMock.mockResolvedValue({ destroy: destroyMock, update: updateMockLocal });
+  findRegMock.mockResolvedValue({
+    destroy: destroyMock,
+    update: updateMockLocal,
+  });
   findExamMock.mockResolvedValue(exam);
   findUserMock.mockResolvedValue({ id: 'u1', email: 'e' });
   await service.remove('e1', 'u1', 'admin');
   expect(updateMockLocal).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(destroyMock).toHaveBeenCalled();
-  expect(sendCancelledMock).toHaveBeenCalledWith({ id: 'u1', email: 'e' }, exam);
+  expect(sendCancelledMock).toHaveBeenCalledWith(
+    { id: 'u1', email: 'e' },
+    exam
+  );
 });
-

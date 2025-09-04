@@ -1,6 +1,14 @@
 export function sendError(res, err, defaultStatus = 400) {
   const status = err?.status || defaultStatus;
-  const code = err?.code || err?.message || 'internal_error';
+  let code;
+  if (err?.code) {
+    code = err.code;
+  } else if (status >= 500) {
+    // Не раскрываем внутренние детали для 5xx
+    code = 'internal_error';
+  } else {
+    code = err?.message || 'internal_error';
+  }
   if (err?.retryAfter) {
     // Seconds per RFC for Retry-After
     const secs = Math.max(1, Math.ceil(Number(err.retryAfter)));

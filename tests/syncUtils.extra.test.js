@@ -6,7 +6,12 @@ test('ensureArchivedImported handles non-function mapFn', async () => {
     findAll: async () => [],
     create: async () => {},
   };
-  const created = await ensureArchivedImported(LocalModel, [{ id: 1 }], null, 'actor', null);
+  const created = await ensureArchivedImported(
+    LocalModel,
+    [{ id: 1 }],
+    null,
+    'actor',
+    null
+  );
   expect(created).toBe(1);
 });
-
