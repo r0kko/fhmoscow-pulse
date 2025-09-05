@@ -27,10 +27,14 @@ function setRefreshFailed(val) {
 
 function getXsrfToken() {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('XSRF-TOKEN='));
-  return match ? decodeURIComponent(match.split('=')[1]) : null;
+  const cookies = document.cookie.split('; ');
+  // Prefer the API-specific CSRF cookie; fallback to legacy name if present
+  const names = ['XSRF-TOKEN-API', 'XSRF-TOKEN'];
+  for (const name of names) {
+    const row = cookies.find((c) => c.startsWith(`${name}=`));
+    if (row) return decodeURIComponent(row.split('=')[1]);
+  }
+  return null;
 }
 
 function shouldSendXsrf(method) {
@@ -66,16 +70,36 @@ async function refreshToken() {
 
   refreshPromise = (async () => {
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      const xsrf = getXsrfToken();
+      let headers = { 'Content-Type': 'application/json' };
+      let xsrf = getXsrfToken();
       if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+      let res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
         headers,
         body: '{}',
       });
-      const data = await res.json().catch(() => ({}));
+      let data = await res.json().catch(() => ({}));
+      if (
+        res.status === 403 &&
+        (data?.error === 'EBADCSRFTOKEN' ||
+          data?.error === 'CSRF token mismatch')
+      ) {
+        // Re-prime CSRF then retry once
+        try {
+          await initCsrf();
+        } catch (_) {}
+        headers = { 'Content-Type': 'application/json' };
+        xsrf = getXsrfToken();
+        if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
+        res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers,
+          body: '{}',
+        });
+        data = await res.json().catch(() => ({}));
+      }
       if (res.ok && data.access_token) {
         setAccessToken(data.access_token);
         setRefreshFailed(false);
@@ -94,7 +118,7 @@ async function refreshToken() {
 }
 
 export async function apiFetch(path, options = {}) {
-  const { redirectOn401 = true, ...rest } = options;
+  const { redirectOn401 = true, _csrfRetried = false, ...rest } = options;
   const opts = { credentials: 'include', ...rest };
   opts.headers = {
     'Content-Type': 'application/json',
@@ -116,6 +140,18 @@ export async function apiFetch(path, options = {}) {
   }
 
   const data = await res.json().catch(() => ({}));
+  // Handle CSRF mismatch: re-prime token and retry once
+  if (
+    res.status === 403 &&
+    (data?.error === 'EBADCSRFTOKEN' || data?.error === 'CSRF token mismatch')
+  ) {
+    if (!_csrfRetried) {
+      try {
+        await initCsrf();
+      } catch (_) {}
+      return apiFetch(path, { ...options, _csrfRetried: true });
+    }
+  }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
@@ -154,7 +190,7 @@ export async function apiFetch(path, options = {}) {
 }
 
 export async function apiFetchForm(path, form, options = {}) {
-  const { redirectOn401 = true, ...rest } = options;
+  const { redirectOn401 = true, _csrfRetried = false, ...rest } = options;
   const opts = { credentials: 'include', ...rest, body: form };
   opts.headers = { ...(opts.headers || {}) };
   const xsrf = getXsrfToken();
@@ -171,6 +207,17 @@ export async function apiFetchForm(path, form, options = {}) {
     throw new Error('Сетевая ошибка');
   }
   const data = await res.json().catch(() => ({}));
+  if (
+    res.status === 403 &&
+    (data?.error === 'EBADCSRFTOKEN' || data?.error === 'CSRF token mismatch')
+  ) {
+    if (!_csrfRetried) {
+      try {
+        await initCsrf();
+      } catch (_) {}
+      return apiFetchForm(path, form, { ...options, _csrfRetried: true });
+    }
+  }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
@@ -209,7 +256,7 @@ export async function apiFetchForm(path, form, options = {}) {
 }
 
 export async function apiFetchBlob(path, options = {}) {
-  const { redirectOn401 = true, ...rest } = options;
+  const { redirectOn401 = true, _csrfRetried = false, ...rest } = options;
   const opts = { credentials: 'include', ...rest };
   opts.headers = { ...(opts.headers || {}) };
   const xsrf = getXsrfToken();
@@ -226,6 +273,24 @@ export async function apiFetchBlob(path, options = {}) {
     throw new Error('Сетевая ошибка');
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
+  if (res.status === 403) {
+    try {
+      const data = await res.clone().json();
+      if (
+        data?.error === 'EBADCSRFTOKEN' ||
+        data?.error === 'CSRF token mismatch'
+      ) {
+        if (!_csrfRetried) {
+          try {
+            await initCsrf();
+          } catch (_) {}
+          return apiFetchBlob(path, { ...options, _csrfRetried: true });
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();

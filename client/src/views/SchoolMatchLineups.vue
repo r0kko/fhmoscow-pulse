@@ -72,6 +72,119 @@ const captain2Id = ref('');
 const assistants1 = ref(new Set());
 const assistants2 = ref(new Set());
 
+// --- Draft persistence (protect user actions across reloads) -------------
+function draftKey(kind = 'all') {
+  const id = route.params.id || 'match';
+  const team = activeTeam.value || 'team';
+  return `lineupDraft:${id}:${team}:${kind}`;
+}
+
+function persistDraft() {
+  try {
+    const playersDraft = {
+      selected: Array.from(selected.value),
+      editedNumber: editedNumber.value,
+      editedRole: editedRole.value,
+      editedSquad: editedSquad.value,
+      editedBoth: editedBoth.value,
+      captainId: captainId.value,
+      assistants: Array.from(assistants.value),
+      captain1Id: captain1Id.value,
+      captain2Id: captain2Id.value,
+      assistants1: Array.from(assistants1.value),
+      assistants2: Array.from(assistants2.value),
+    };
+    localStorage.setItem(draftKey('players'), JSON.stringify(playersDraft));
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    const staffDraft = {
+      staffSelected: Array.from(staffSelected.value),
+      editedStaffRole: editedStaffRole.value,
+    };
+    localStorage.setItem(draftKey('staff'), JSON.stringify(staffDraft));
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function loadDraftPlayers() {
+  try {
+    const raw = localStorage.getItem(draftKey('players'));
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    const pool =
+      activeTeam.value === data.value?.team2_id
+        ? data.value?.away?.players || []
+        : data.value?.home?.players || [];
+    const validIds = new Set(pool.map((p) => p.team_player_id));
+    if (Array.isArray(draft.selected))
+      selected.value = new Set(draft.selected.filter((id) => validIds.has(id)));
+    // Shallow-merge edited maps only for existing ids
+    const applyMap = (src) => {
+      const out = {};
+      for (const id of validIds) if (src && id in src) out[id] = src[id];
+      return out;
+    };
+    if (draft.editedNumber) editedNumber.value = applyMap(draft.editedNumber);
+    if (draft.editedRole) editedRole.value = applyMap(draft.editedRole);
+    if (draft.editedSquad) editedSquad.value = applyMap(draft.editedSquad);
+    if (draft.editedBoth) editedBoth.value = applyMap(draft.editedBoth);
+    if (draft.captainId && validIds.has(draft.captainId))
+      captainId.value = draft.captainId;
+    if (Array.isArray(draft.assistants))
+      assistants.value = new Set(
+        draft.assistants.filter((id) => validIds.has(id))
+      );
+    // Double-protocol leadership
+    if (draft.captain1Id && validIds.has(draft.captain1Id))
+      captain1Id.value = draft.captain1Id;
+    if (draft.captain2Id && validIds.has(draft.captain2Id))
+      captain2Id.value = draft.captain2Id;
+    if (Array.isArray(draft.assistants1))
+      assistants1.value = new Set(
+        draft.assistants1.filter((id) => validIds.has(id))
+      );
+    if (Array.isArray(draft.assistants2))
+      assistants2.value = new Set(
+        draft.assistants2.filter((id) => validIds.has(id))
+      );
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function loadDraftStaff() {
+  try {
+    const raw = localStorage.getItem(draftKey('staff'));
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    const validIds = new Set((staff.value || []).map((r) => r.team_staff_id));
+    if (Array.isArray(draft.staffSelected))
+      staffSelected.value = new Set(
+        draft.staffSelected.filter((id) => validIds.has(id))
+      );
+    if (draft.editedStaffRole) {
+      const out = {};
+      for (const id of validIds)
+        if (id in draft.editedStaffRole) out[id] = draft.editedStaffRole[id];
+      editedStaffRole.value = out;
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+// Persist drafts on significant state changes (debounced)
+let draftPersistTimer = null;
+function scheduleDraftPersist() {
+  if (draftPersistTimer) clearTimeout(draftPersistTimer);
+  draftPersistTimer = setTimeout(() => {
+    persistDraft();
+  }, 300);
+}
+
 // Goalkeeper helpers
 const gkRoleId = computed(() => {
   const r = roles.value.find((x) => (x.name || '').toLowerCase() === 'вратарь');
@@ -516,6 +629,8 @@ function applyFromResponse(d) {
       .sort((a, b) => (a.assistant_order || 0) - (b.assistant_order || 0))
       .map((p) => p.team_player_id)
   );
+  // Apply persisted draft for current team if present (players only here)
+  loadDraftPlayers();
 }
 
 const canEdit = computed(() => {
@@ -666,6 +781,7 @@ function toggle(p) {
       editedRole.value[id] = p.match_role?.id ?? p.role?.id ?? null;
   }
   scheduleAutoSave();
+  scheduleDraftPersist();
 }
 
 function allSelected() {
@@ -709,6 +825,7 @@ function toggleAll() {
   }
   selected.value = s;
   scheduleAutoSave();
+  scheduleDraftPersist();
 }
 
 const initialSelectedKey = ref('');
@@ -813,6 +930,8 @@ async function load() {
       m[r.team_staff_id] = r.match_role?.id ?? r.role?.id ?? null;
     }
     editedStaffRole.value = m;
+    // Apply persisted draft for current team if present (staff only here)
+    loadDraftStaff();
   } catch (e) {
     error.value = e.message || 'Ошибка загрузки данных';
   } finally {
@@ -890,6 +1009,8 @@ async function save(force = false) {
       method: 'POST',
       body: JSON.stringify({ team_id: activeTeam.value, players: payload }),
     });
+    // Persist draft after a successful save
+    persistDraft();
     // Reflect saved state locally to avoid heavy reload
     const roleById = new Map((roles.value || []).map((r) => [String(r.id), r]));
     const updateLocal = (arr) => {
@@ -947,7 +1068,12 @@ async function save(force = false) {
       updateLocal(data.value.away.players);
     else updateLocal(data.value.home.players);
   } catch (e) {
-    error.value = e.message || 'Не удалось сохранить состав';
+    if (e?.code === 'player_not_in_team' || e?.code === 'team_not_in_match') {
+      await load();
+      error.value = 'Состав данных обновлён. Проверьте список игроков.';
+    } else {
+      error.value = e.message || 'Не удалось сохранить состав';
+    }
   } finally {
     saving.value = false;
     if (saveNext) {
@@ -974,6 +1100,7 @@ function onNumberInput(p, e) {
     val === '' ? null : Math.max(0, Math.min(99, parseInt(val, 10) || 0));
   // Debounced autosave on input for immediate UX without flooding server
   scheduleAutoSave();
+  scheduleDraftPersist();
 }
 
 async function onRoleChange(p, e) {
@@ -1012,6 +1139,7 @@ async function onRoleChange(p, e) {
     }
   }
   editedRole.value[p.team_player_id] = val;
+  scheduleDraftPersist();
   await save(true);
 }
 
@@ -1092,6 +1220,7 @@ function onSquadChange(p, e) {
   }
   // Сохраняем действие сразу
   save(true);
+  scheduleDraftPersist();
 }
 
 // Опция "Оба состава" доступна через выпадающий список (значение 'both')
@@ -1403,6 +1532,7 @@ async function toggleAllStaff() {
     }
   }
   staffSelected.value = s;
+  persistDraft();
   await saveStaff();
 }
 
@@ -1430,6 +1560,7 @@ async function onStaffRoleChange(row, e) {
     }
   }
   editedStaffRole.value[row.team_staff_id] = next;
+  persistDraft();
   await saveStaff();
 }
 
@@ -1441,6 +1572,7 @@ async function toggleStaff(row) {
   if (s.has(id)) s.delete(id);
   else s.add(id);
   staffSelected.value = s;
+  persistDraft();
   await saveStaff();
 }
 
@@ -1474,6 +1606,7 @@ async function saveStaff() {
       method: 'POST',
       body: JSON.stringify({ team_id: activeTeam.value, staff: payload }),
     });
+    persistDraft();
     // Update local staff state
     const nameById = new Map(
       (staffCategories.value || []).map((c) => [String(c.id), c.name])
@@ -1500,7 +1633,16 @@ async function saveStaff() {
       }
     }
   } catch (e) {
-    error.value = e.message || 'Не удалось сохранить представителей';
+    if (e?.code === 'staff_not_in_team' || e?.code === 'team_not_in_match') {
+      await load();
+      error.value = 'Данные обновлены. Проверьте список представителей.';
+    } else if (e?.code === 'too_many_officials') {
+      error.value = 'Нельзя выбрать более 8 официальных представителей';
+    } else if (e?.code === 'staff_role_required') {
+      error.value = 'Укажите должность для всех выбранных представителей';
+    } else {
+      error.value = e.message || 'Не удалось сохранить представителей';
+    }
   }
 }
 
