@@ -13,8 +13,14 @@ async function exportPlayers(req, res, next) {
     res.setHeader('Content-Disposition', 'attachment; filename="lineup.pdf"');
     return res.end(buf);
   } catch (e) {
-    if (e.code && Number.isFinite(e.code))
+    if (e.code && Number.isFinite(e.code)) {
+      try {
+        res.setHeader('X-Error-Code', String(e.message || ''));
+      } catch (_) {
+        /* noop */
+      }
       return res.status(e.code).json({ error: e.message });
+    }
     next(e);
   }
 }
@@ -35,8 +41,14 @@ async function exportRepresentatives(req, res, next) {
     );
     return res.end(buf);
   } catch (e) {
-    if (e.code && Number.isFinite(e.code))
+    if (e.code && Number.isFinite(e.code)) {
+      try {
+        res.setHeader('X-Error-Code', String(e.message || ''));
+      } catch (_) {
+        /* noop */
+      }
       return res.status(e.code).json({ error: e.message });
+    }
     next(e);
   }
 }

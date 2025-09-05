@@ -5,6 +5,8 @@ import { RouterLink, useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
 
 const route = useRoute();
+// Disable local draft persistence to avoid any UI/DB mismatch on reload
+const DRAFT_ENABLED = false;
 const error = ref('');
 const loading = ref(true);
 const saving = ref(false);
@@ -80,6 +82,7 @@ function draftKey(kind = 'all') {
 }
 
 function persistDraft() {
+  if (!DRAFT_ENABLED) return;
   try {
     const playersDraft = {
       selected: Array.from(selected.value),
@@ -104,6 +107,19 @@ function persistDraft() {
       editedStaffRole: editedStaffRole.value,
     };
     localStorage.setItem(draftKey('staff'), JSON.stringify(staffDraft));
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(draftKey('players'));
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    localStorage.removeItem(draftKey('staff'));
   } catch (_) {
     /* ignore */
   }
@@ -629,8 +645,6 @@ function applyFromResponse(d) {
       .sort((a, b) => (a.assistant_order || 0) - (b.assistant_order || 0))
       .map((p) => p.team_player_id)
   );
-  // Apply persisted draft for current team if present (players only here)
-  loadDraftPlayers();
 }
 
 const canEdit = computed(() => {
@@ -780,7 +794,8 @@ function toggle(p) {
     if (editedRole.value[id] === undefined)
       editedRole.value[id] = p.match_role?.id ?? p.role?.id ?? null;
   }
-  scheduleAutoSave();
+  // Persist immediately to avoid any UI/DB drift
+  save(true);
   scheduleDraftPersist();
 }
 
@@ -824,7 +839,8 @@ function toggleAll() {
     }
   }
   selected.value = s;
-  scheduleAutoSave();
+  // Persist immediately for bulk selection to keep DB in sync
+  save(true);
   scheduleDraftPersist();
 }
 
@@ -873,20 +889,86 @@ const hasChanges = computed(() => {
       : data.value.home?.players || [];
   for (const p of pool) {
     if (!selected.value.has(p.team_player_id)) continue;
+    const id = p.team_player_id;
     const currNum = p.match_number ?? null;
     const currRole = p.match_role?.id ?? null;
     const currBoth = Boolean(p.squad_both ?? false);
-    const newNum = editedNumber.value[p.team_player_id] ?? null;
-    const newRole = editedRole.value[p.team_player_id] ?? null;
-    const newBoth = Boolean(
-      editedBoth.value[p.team_player_id] ?? p.squad_both ?? false
-    );
+    const currSq = p.squad_no ?? null;
+    const newNum = editedNumber.value[id] ?? null;
+    const newRole = editedRole.value[id] ?? null;
+    const newBoth = Boolean(editedBoth.value[id] ?? p.squad_both ?? false);
+    const newSq = editedSquad.value[id] ?? p.squad_no ?? null;
     if (String(currNum ?? '') !== String(newNum ?? '')) return true;
     if (String(currRole ?? '') !== String(newRole ?? '')) return true;
     if (currBoth !== newBoth) return true;
+    // Detect squad changes (double protocol); ignore when GK is marked for both
+    if (isDouble.value && !newBoth) {
+      if (String(currSq ?? '') !== String(newSq ?? '')) return true;
+    }
   }
 
-  // Leadership change check (captain and assistants)
+  // Leadership change check
+  if (isDouble.value) {
+    const savedCap1 =
+      (
+        pool.find(
+          (p) =>
+            p.is_captain &&
+            (editedSquad.value[p.team_player_id] ?? p.squad_no) === 1
+        ) || {}
+      ).team_player_id || '';
+    const savedCap2 =
+      (
+        pool.find(
+          (p) =>
+            p.is_captain &&
+            (editedSquad.value[p.team_player_id] ?? p.squad_no) === 2
+        ) || {}
+      ).team_player_id || '';
+    const uiCap1 =
+      captain1Id.value && selected.value.has(captain1Id.value)
+        ? captain1Id.value
+        : '';
+    const uiCap2 =
+      captain2Id.value && selected.value.has(captain2Id.value)
+        ? captain2Id.value
+        : '';
+    if (String(savedCap1 || '') !== String(uiCap1 || '')) return true;
+    if (String(savedCap2 || '') !== String(uiCap2 || '')) return true;
+    const savedAs1 = pool
+      .filter(
+        (p) =>
+          selected.value.has(p.team_player_id) &&
+          p.assistant_order != null &&
+          (editedSquad.value[p.team_player_id] ?? p.squad_no) === 1
+      )
+      .sort((a, b) => (a.assistant_order || 0) - (b.assistant_order || 0))
+      .map((p) => p.team_player_id)
+      .join(',');
+    const savedAs2 = pool
+      .filter(
+        (p) =>
+          selected.value.has(p.team_player_id) &&
+          p.assistant_order != null &&
+          (editedSquad.value[p.team_player_id] ?? p.squad_no) === 2
+      )
+      .sort((a, b) => (a.assistant_order || 0) - (b.assistant_order || 0))
+      .map((p) => p.team_player_id)
+      .join(',');
+    const uiAs1 = Array.from(assistants1.value)
+      .filter((id) => selected.value.has(id))
+      .slice(0, 2)
+      .join(',');
+    const uiAs2 = Array.from(assistants2.value)
+      .filter((id) => selected.value.has(id))
+      .slice(0, 2)
+      .join(',');
+    if (savedAs1 !== uiAs1) return true;
+    if (savedAs2 !== uiAs2) return true;
+    return false;
+  }
+
+  // Single protocol leadership
   const savedCap = (pool.find((p) => p.is_captain) || {}).team_player_id || '';
   const uiCap =
     captainId.value && selected.value.has(captainId.value)
@@ -930,8 +1012,6 @@ async function load() {
       m[r.team_staff_id] = r.match_role?.id ?? r.role?.id ?? null;
     }
     editedStaffRole.value = m;
-    // Apply persisted draft for current team if present (staff only here)
-    loadDraftStaff();
   } catch (e) {
     error.value = e.message || 'Ошибка загрузки данных';
   } finally {
@@ -1011,6 +1091,7 @@ async function save(force = false) {
     });
     // Persist draft after a successful save
     persistDraft();
+    clearDraft();
     // Reflect saved state locally to avoid heavy reload
     const roleById = new Map((roles.value || []).map((r) => [String(r.id), r]));
     const updateLocal = (arr) => {
@@ -1609,6 +1690,7 @@ async function saveStaff() {
       body: JSON.stringify({ team_id: activeTeam.value, staff: payload }),
     });
     persistDraft();
+    clearDraft();
     // Update local staff state
     const nameById = new Map(
       (staffCategories.value || []).map((c) => [String(c.id), c.name])

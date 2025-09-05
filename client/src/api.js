@@ -9,6 +9,7 @@ export const API_BASE = (
 
 let accessToken = null;
 let refreshPromise = null;
+let refreshTimerId = null;
 let refreshFailed =
   (typeof sessionStorage !== 'undefined' &&
     sessionStorage.getItem('refreshFailed') === '1') ||
@@ -60,14 +61,54 @@ export async function initCsrf() {
   }
 }
 
+function decodeJwt(token) {
+  try {
+    const [, payload] = String(token || '').split('.');
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch (_) {
+    return null;
+  }
+}
+
+function scheduleProactiveRefresh() {
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+  if (!accessToken) return;
+  const payload = decodeJwt(accessToken);
+  const now = Date.now();
+  const expMs =
+    payload && payload.exp ? payload.exp * 1000 : now + 10 * 60 * 1000;
+  // Refresh 2 minutes before expiry (minimum 5 seconds)
+  const safetyMs = 2 * 60 * 1000;
+  let delay = Math.max(5000, expMs - now - safetyMs);
+  // Cap delay to 12 hours to avoid huge timers
+  delay = Math.min(delay, 12 * 60 * 60 * 1000);
+  refreshTimerId = setTimeout(async () => {
+    try {
+      await refreshToken();
+    } catch (_) {
+      /* ignore */
+    }
+  }, delay);
+}
+
 export function setAccessToken(token) {
   accessToken = token;
   setRefreshFailed(false);
+  scheduleProactiveRefresh();
 }
 
 export function clearAccessToken() {
   accessToken = null;
   setRefreshFailed(true);
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
 }
 
 export function getAccessToken() {
@@ -127,11 +168,34 @@ async function refreshToken() {
   return refreshPromise;
 }
 
+// Keep session alive on return to tab/network re‑gain if token is near expiry
+if (typeof window !== 'undefined') {
+  const kickIfNearExpiry = () => {
+    const payload = decodeJwt(accessToken);
+    if (!payload || !payload.exp) return;
+    const now = Date.now();
+    const expMs = payload.exp * 1000;
+    if (expMs - now < 90 * 1000) {
+      // less than 90s left — refresh now
+      refreshToken();
+    }
+  };
+  try {
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') kickIfNearExpiry();
+    });
+    window.addEventListener('online', () => kickIfNearExpiry());
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 export async function apiFetch(path, options = {}) {
   const {
     redirectOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
+    _ddosRetried = false,
     ...rest
   } = options;
   const opts = { credentials: 'include', ...rest };
@@ -154,6 +218,8 @@ export async function apiFetch(path, options = {}) {
     throw new Error('Сетевая ошибка');
   }
 
+  const contentType =
+    (res.headers?.get && res.headers.get('content-type')) || '';
   const data = await res.json().catch(() => ({}));
   // Graceful handling for 429 (rate limited), including upstream DDoS proxies
   if (res.status === 429) {
@@ -178,6 +244,17 @@ export async function apiFetch(path, options = {}) {
     const err = new Error(message);
     err.code = data.error || 'rate_limited';
     throw err;
+  }
+  // DDoS/WAF challenge pages (403/503 with HTML) — retry once for idempotent calls
+  if ((res.status === 403 || res.status === 503) && !_ddosRetried) {
+    const method = (opts.method || 'GET').toUpperCase();
+    if (
+      (method === 'GET' || method === 'HEAD') &&
+      /text\/html|text\/plain/i.test(contentType)
+    ) {
+      await new Promise((r) => setTimeout(r, 2000));
+      return apiFetch(path, { ...options, _ddosRetried: true });
+    }
   }
   // Handle CSRF mismatch: re-prime token and retry once
   if (
@@ -238,6 +315,7 @@ export async function apiFetchForm(path, form, options = {}) {
     redirectOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
+    _ddosRetried = false,
     ...rest
   } = options;
   const opts = { credentials: 'include', ...rest, body: form };
@@ -255,6 +333,8 @@ export async function apiFetchForm(path, form, options = {}) {
   } catch (_err) {
     throw new Error('Сетевая ошибка');
   }
+  const contentType =
+    (res.headers?.get && res.headers.get('content-type')) || '';
   const data = await res.json().catch(() => ({}));
   if (res.status === 429) {
     const retryAfter = Number(
@@ -278,6 +358,17 @@ export async function apiFetchForm(path, form, options = {}) {
     const err = new Error(message);
     err.code = data.error || 'rate_limited';
     throw err;
+  }
+  // DDoS/WAF challenge (403/503 with HTML) — retry once (idempotent only)
+  if ((res.status === 403 || res.status === 503) && !_ddosRetried) {
+    const method = (opts.method || 'POST').toUpperCase();
+    if (
+      (method === 'GET' || method === 'HEAD') &&
+      /text\/html|text\/plain/i.test(contentType)
+    ) {
+      await new Promise((r) => setTimeout(r, 2000));
+      return apiFetchForm(path, form, { ...options, _ddosRetried: true });
+    }
   }
   if (
     res.status === 403 &&
@@ -337,6 +428,7 @@ export async function apiFetchBlob(path, options = {}) {
     redirectOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
+    _ddosRetried = false,
     ...rest
   } = options;
   const opts = { credentials: 'include', ...rest };
@@ -404,6 +496,18 @@ export async function apiFetchBlob(path, options = {}) {
       }
     } catch (_) {
       // ignore
+    }
+  }
+  // DDoS/WAF 403/503 with HTML payload — retry once for idempotent calls
+  if ((res.status === 403 || res.status === 503) && !_ddosRetried) {
+    const method = (opts.method || 'GET').toUpperCase();
+    const ct = (res.headers?.get && res.headers.get('content-type')) || '';
+    if (
+      (method === 'GET' || method === 'HEAD') &&
+      /text\/html|text\/plain/i.test(ct)
+    ) {
+      await new Promise((r) => setTimeout(r, 2000));
+      return apiFetchBlob(path, { ...options, _ddosRetried: true });
     }
   }
   if (res.status === 401) {
