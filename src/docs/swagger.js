@@ -31,6 +31,26 @@ const options = {
           bearerFormat: 'JWT',
         },
       },
+      responses: {
+        RateLimited: {
+          description:
+            'Too Many Requests (rate limit exceeded — may be enforced by API or upstream DDoS protection)',
+          headers: {
+            'Retry-After': {
+              description: 'Seconds to wait before retrying (advisory)',
+              schema: { type: 'integer', minimum: 1 },
+            },
+          },
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+              examples: {
+                default: { value: { error: 'rate_limited' } },
+              },
+            },
+          },
+        },
+      },
       schemas: {
         ErrorResponse: {
           type: 'object',

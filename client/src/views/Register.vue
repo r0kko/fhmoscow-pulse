@@ -4,6 +4,7 @@ import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue';
+import PasswordChecklist from '../components/PasswordChecklist.vue';
 import PasswordInput from '../components/PasswordInput.vue';
 import CookieNotice from '../components/CookieNotice.vue';
 
@@ -38,6 +39,12 @@ const sanitizedCode = computed(() =>
   code.value.replace(/\s+/g, '').toUpperCase()
 );
 const passwordMeetsMin = computed(() => password.value.length >= 8);
+const passwordHasLetter = computed(() => /[A-Za-z]/.test(password.value));
+const passwordHasDigit = computed(() => /\d/.test(password.value));
+const passwordMeetsPolicy = computed(
+  () =>
+    passwordMeetsMin.value && passwordHasLetter.value && passwordHasDigit.value
+);
 const passwordsMatch = computed(
   () => password.value && password.value === confirm.value
 );
@@ -45,7 +52,7 @@ const canSubmitStart = computed(() => isEmailValid.value && !loading.value);
 const canSubmitFinish = computed(
   () =>
     sanitizedCode.value.length > 0 &&
-    passwordMeetsMin.value &&
+    passwordMeetsPolicy.value &&
     passwordsMatch.value &&
     !loading.value
 );
@@ -101,6 +108,10 @@ async function finish() {
   }
   if (!passwordMeetsMin.value) {
     error.value = 'Минимальная длина пароля — 8 символов';
+    return;
+  }
+  if (!passwordHasLetter.value || !passwordHasDigit.value) {
+    error.value = 'Пароль должен содержать латинские буквы и цифры';
     return;
   }
   loading.value = true;
@@ -224,10 +235,11 @@ async function resend() {
               aria-describedby="passwordHelp"
             />
           </div>
-          <PasswordStrengthMeter class="mb-3" :password="password" />
+          <PasswordStrengthMeter class="mb-2" :password="password" />
+          <PasswordChecklist :password="password" />
           <small id="passwordHelp" class="text-muted d-block mb-3"
-            >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
-            символы.</small
+            >Минимум 8 символов. Обязательно: латинские буквы и цифры.
+            Рекомендуем добавить спецсимволы.</small
           >
           <div class="mb-3">
             <PasswordInput

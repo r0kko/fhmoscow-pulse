@@ -14,6 +14,8 @@ const props = defineProps({
   autofocus: { type: Boolean, default: false },
   // optional error text (to render invalid state consistently with BS)
   error: { type: String, default: '' },
+  // optional maximum length (align with server policy default 128)
+  maxLength: { type: Number, default: 128 },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -91,6 +93,7 @@ onBeforeUnmount(() => {
       :aria-invalid="props.ariaInvalid"
       :aria-describedby="props.ariaDescribedby"
       :disabled="props.disabled"
+      :maxlength="props.maxLength"
       autocapitalize="off"
       spellcheck="false"
       @input="onInput"

@@ -139,6 +139,8 @@ export const ERROR_MESSAGES = {
   match_number_required: 'Укажите номер для всех выбранных игроков',
   duplicate_match_numbers: 'Игровые номера в матче должны быть уникальными',
   validation_error: 'Проверьте корректность введённых данных',
+  rate_limited:
+    'Слишком много запросов. Пожалуйста, подождите и попробуйте снова.',
 };
 
 export function translateError(code) {

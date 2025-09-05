@@ -7,6 +7,7 @@ import validate from '../middlewares/validate.js';
 import passwordChangeController from '../controllers/passwordChangeController.js';
 import { passwordChangeRules } from '../validators/passwordChangeValidators.js';
 import loginRateLimiter from '../middlewares/loginRateLimiter.js';
+import passwordPolicyController from '../controllers/passwordPolicyController.js';
 
 const router = express.Router();
 
@@ -121,5 +122,16 @@ router.post(
   validate,
   passwordChangeController.changeSelf
 );
+
+/**
+ * @swagger
+ * /auth/password-policy:
+ *   get:
+ *     summary: Get current password policy metadata
+ *     responses:
+ *       200:
+ *         description: Policy info
+ */
+router.get('/password-policy', passwordPolicyController.get);
 
 export default router;

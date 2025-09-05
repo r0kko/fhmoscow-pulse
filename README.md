@@ -90,9 +90,14 @@ DADATA_SECRET=your_dadata_secret
 # SMTP_PASS=secret
 # EMAIL_FROM=no-reply@example.com
 # REGISTRATION_RATE_WINDOW_MS=3600000
-# REGISTRATION_RATE_MAX=5
-# RATE_LIMIT_WINDOW_MS=900000
-# RATE_LIMIT_MAX=100
+# REGISTRATION_RATE_MAX=30
+# PASSWORD_RESET_RATE_WINDOW_MS=3600000
+# PASSWORD_RESET_RATE_MAX=30
+# LOGIN_RATE_WINDOW_MS=60000
+# LOGIN_RATE_MAX=30
+# RATE_LIMIT_WINDOW_MS=60000
+# RATE_LIMIT_MAX=1200
+# RATE_LIMIT_USE_REDIS=true
 # ALLOWED_ORIGINS=http://localhost:5173,http://example.com
 # BASE_URL=https://pulse.fhmoscow.com
 # COOKIE_DOMAIN=pulse.fhmoscow.com
@@ -108,9 +113,14 @@ DADATA_SECRET=your_dadata_secret
 Письмо об изменении статуса дополнительно включает тип обращения для удобства пользователя.
 
 `PASSWORD_MIN_LENGTH`, `PASSWORD_MAX_LENGTH`, and `PASSWORD_PATTERN`
-allow customizing the password policy for user registration. By default
-passwords must be at least eight characters long, no more than 128
-characters, and contain both letters and numbers.
+allow customizing the password policy for user registration and password changes.
+By default passwords must be at least eight characters long, no more than 128
+characters, and contain both letters and numbers. Additional server-side checks
+reject passwords with whitespace, trivial repeats (e.g. `aaaaaaaa`), and simple
+keyboard/alpha sequences (`qwertyui`, `abcdef`, `0123456789`).
+
+Client can retrieve current policy metadata via `GET /auth/password-policy`.
+The frontend shows a live strength meter and a checklist with actionable hints.
 
 ## Running with Docker
 

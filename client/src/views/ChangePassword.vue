@@ -4,6 +4,7 @@ import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import { auth, setAuthToken } from '../auth.js';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue';
+import PasswordChecklist from '../components/PasswordChecklist.vue';
 import PasswordInput from '../components/PasswordInput.vue';
 
 const router = useRouter();
@@ -110,7 +111,8 @@ async function submit() {
             "
             aria-describedby="passwordHelp"
           />
-          <PasswordStrengthMeter class="mb-3" :password="password" />
+          <PasswordStrengthMeter class="mb-2" :password="password" />
+          <PasswordChecklist :password="password" />
           <small id="passwordHelp" class="text-muted d-block mb-2"
             >Минимум 8 символов. Обязательно: латинские буквы и цифры.
             Рекомендуем добавить спецсимволы.</small

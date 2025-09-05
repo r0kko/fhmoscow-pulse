@@ -32,6 +32,7 @@ let authLoginAttempts = null;
 let authRefreshTotal = null;
 let tokensIssued = null;
 let emailSentTotal = null;
+let rateLimitedTotal = null;
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -175,6 +176,12 @@ async function ensureInit() {
       name: 'email_sent_total',
       help: 'Emails sent grouped by status and purpose',
       labelNames: ['status', 'purpose'], // ok|error, e.g., verification, password_reset
+      registers: [register],
+    });
+    rateLimitedTotal = new client.Counter({
+      name: 'rate_limited_total',
+      help: 'Requests blocked by rate limiter grouped by limiter name',
+      labelNames: ['name'], // global|login|registration|password_reset|custom
       registers: [register],
     });
 
@@ -523,6 +530,15 @@ export function incEmailSent(status, purpose = 'generic') {
   if (!metricsAvailable) return;
   try {
     emailSentTotal.inc({ status, purpose });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incRateLimited(name = 'global') {
+  if (!metricsAvailable) return;
+  try {
+    rateLimitedTotal.inc({ name });
   } catch (_e) {
     /* noop */
   }

@@ -1,34 +1,62 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
-function clientIp(req) {
-  return (
-    req.headers['cf-connecting-ip'] ||
-    req.headers['x-real-ip'] ||
-    // Express respects trust proxy for req.ip; this is a fallback
-    req.ip ||
-    req.connection?.remoteAddress ||
-    ''
-  ).toString();
+import { incRateLimited } from '../config/metrics.js';
+import { isRedisWritable } from '../config/redis.js';
+import { sendError } from '../utils/api.js';
+
+import RedisRateLimitStore from './stores/redisRateLimitStore.js';
+
+function clientKey(req) {
+  // Prefer per-user buckets for authenticated requests, else IP subnet key
+  if (req.user?.id) return `u:${req.user.id}`;
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  return `ip:${ipKeyGenerator(ip, 64)}`;
 }
 
 /**
  * Global rate limiter middleware to mitigate denial-of-service attacks.
- * Defaults to 100 requests per 15 minute window unless overridden by env vars.
+ * Defaults increased significantly. Tunable via env vars.
  */
-const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000');
-const max = parseInt(process.env.RATE_LIMIT_MAX || '100');
+const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
+const max = parseInt(process.env.RATE_LIMIT_MAX || '1200');
+
+const store =
+  process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
+    ? new RedisRateLimitStore({ prefix: 'rate:global' })
+    : undefined;
 
 export default rateLimit({
   windowMs,
   max,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: clientIp,
+  keyGenerator: clientKey,
+  store,
+  handler: (req, res, _next, options) => {
+    incRateLimited('global');
+    return sendError(res, {
+      status: 429,
+      code: 'rate_limited',
+      retryAfter: Math.ceil((options?.windowMs || windowMs) / 1000),
+    });
+  },
   skip: (req) => {
+    // Skip CORS preflight and HEAD
+    const method = (req.method || 'GET').toUpperCase();
+    if (method === 'OPTIONS' || method === 'HEAD') return true;
     // Do not rate-limit health and CSRF token endpoints
     const p = req.path || '';
-    return (
-      p === '/health' || p === '/ready' || p === '/live' || p === '/csrf-token'
-    );
+    if (
+      p === '/health' ||
+      p === '/ready' ||
+      p === '/live' ||
+      p === '/csrf-token' ||
+      p === '/metrics' ||
+      p === '/favicon.ico'
+    )
+      return true;
+    // Avoid hammering API docs if enabled
+    if (p.startsWith('/api-docs')) return true;
+    return false;
   },
 });

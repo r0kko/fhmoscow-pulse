@@ -12,7 +12,18 @@ export default {
   async changeSelf(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      // Normalize password validation error to a single code for client UX
+      const items = errors.array();
+      const weakPwd = items.find(
+        (e) =>
+          (e.path === 'new_password' || e.param === 'new_password') &&
+          (e.msg === 'weak_password' ||
+            String(e.msg).toLowerCase() === 'weak_password')
+      );
+      if (weakPwd) {
+        return res.status(400).json({ error: 'weak_password' });
+      }
+      return res.status(400).json({ errors: items });
     }
     const { current_password: currentPassword, new_password: newPassword } =
       req.body;

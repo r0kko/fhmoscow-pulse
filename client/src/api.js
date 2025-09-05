@@ -128,7 +128,12 @@ async function refreshToken() {
 }
 
 export async function apiFetch(path, options = {}) {
-  const { redirectOn401 = true, _csrfRetried = false, ...rest } = options;
+  const {
+    redirectOn401 = true,
+    _csrfRetried = false,
+    _429Retried = false,
+    ...rest
+  } = options;
   const opts = { credentials: 'include', ...rest };
   opts.headers = {
     'Content-Type': 'application/json',
@@ -150,6 +155,30 @@ export async function apiFetch(path, options = {}) {
   }
 
   const data = await res.json().catch(() => ({}));
+  // Graceful handling for 429 (rate limited), including upstream DDoS proxies
+  if (res.status === 429) {
+    const retryAfter = Number(
+      res.headers?.get && res.headers.get('Retry-After')
+    );
+    const method = (opts.method || 'GET').toUpperCase();
+    // Auto-retry once for idempotent GET/HEAD with short backoff
+    if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
+      const secs =
+        !Number.isNaN(retryAfter) && retryAfter > 0
+          ? Math.min(5, Math.ceil(retryAfter))
+          : 2;
+      await new Promise((r) => setTimeout(r, secs * 1000));
+      return apiFetch(path, { ...options, _429Retried: true });
+    }
+    let message = translateError(data.error) || 'Слишком много запросов';
+    if (!Number.isNaN(retryAfter) && retryAfter > 0) {
+      const secs = Math.max(1, Math.ceil(retryAfter));
+      message = `${message}. Повторите через ${secs} с.`;
+    }
+    const err = new Error(message);
+    err.code = data.error || 'rate_limited';
+    throw err;
+  }
   // Handle CSRF mismatch: re-prime token and retry once
   if (
     res.status === 403 &&
@@ -205,7 +234,12 @@ export async function apiFetch(path, options = {}) {
 }
 
 export async function apiFetchForm(path, form, options = {}) {
-  const { redirectOn401 = true, _csrfRetried = false, ...rest } = options;
+  const {
+    redirectOn401 = true,
+    _csrfRetried = false,
+    _429Retried = false,
+    ...rest
+  } = options;
   const opts = { credentials: 'include', ...rest, body: form };
   opts.headers = { ...(opts.headers || {}) };
   const xsrf = getXsrfToken();
@@ -222,6 +256,29 @@ export async function apiFetchForm(path, form, options = {}) {
     throw new Error('Сетевая ошибка');
   }
   const data = await res.json().catch(() => ({}));
+  if (res.status === 429) {
+    const retryAfter = Number(
+      res.headers?.get && res.headers.get('Retry-After')
+    );
+    const method = (opts.method || 'POST').toUpperCase();
+    // Allow single auto-retry only for idempotent GET/HEAD
+    if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
+      const secs =
+        !Number.isNaN(retryAfter) && retryAfter > 0
+          ? Math.min(5, Math.ceil(retryAfter))
+          : 2;
+      await new Promise((r) => setTimeout(r, secs * 1000));
+      return apiFetchForm(path, form, { ...options, _429Retried: true });
+    }
+    let message = translateError(data.error) || 'Слишком много запросов';
+    if (!Number.isNaN(retryAfter) && retryAfter > 0) {
+      const secs = Math.max(1, Math.ceil(retryAfter));
+      message = `${message}. Повторите через ${secs} с.`;
+    }
+    const err = new Error(message);
+    err.code = data.error || 'rate_limited';
+    throw err;
+  }
   if (
     res.status === 403 &&
     (data?.error === 'EBADCSRFTOKEN' || data?.error === 'CSRF token mismatch')
@@ -276,7 +333,12 @@ export async function apiFetchForm(path, form, options = {}) {
 }
 
 export async function apiFetchBlob(path, options = {}) {
-  const { redirectOn401 = true, _csrfRetried = false, ...rest } = options;
+  const {
+    redirectOn401 = true,
+    _csrfRetried = false,
+    _429Retried = false,
+    ...rest
+  } = options;
   const opts = { credentials: 'include', ...rest };
   opts.headers = { ...(opts.headers || {}) };
   const xsrf = getXsrfToken();
@@ -293,6 +355,34 @@ export async function apiFetchBlob(path, options = {}) {
     throw new Error('Сетевая ошибка');
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
+  if (res.status === 429) {
+    try {
+      const data = await res.clone().json();
+      const retryAfter = Number(
+        res.headers?.get && res.headers.get('Retry-After')
+      );
+      const method = (opts.method || 'GET').toUpperCase();
+      if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
+        const secs =
+          !Number.isNaN(retryAfter) && retryAfter > 0
+            ? Math.min(5, Math.ceil(retryAfter))
+            : 2;
+        await new Promise((r) => setTimeout(r, secs * 1000));
+        return apiFetchBlob(path, { ...options, _429Retried: true });
+      }
+      let message = translateError(data.error) || 'Слишком много запросов';
+      if (!Number.isNaN(retryAfter) && retryAfter > 0) {
+        const secs = Math.max(1, Math.ceil(retryAfter));
+        message = `${message}. Повторите через ${secs} с.`;
+      }
+      const err = new Error(message);
+      err.code = data.error || 'rate_limited';
+      if (reqId) err.requestId = reqId;
+      throw err;
+    } catch (_) {
+      throw new Error(`Ошибка запроса, код ${res.status}`);
+    }
+  }
   if (res.status === 403) {
     try {
       const data = await res.clone().json();
@@ -383,8 +473,13 @@ export function apiUpload(path, form, { onProgress } = {}) {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(data);
       } else {
-        const message =
+        let message =
           translateError(data.error) || `Ошибка запроса, код ${xhr.status}`;
+        if (xhr.status === 429) {
+          const ra = parseInt(xhr.getResponseHeader('Retry-After') || '0', 10);
+          if (ra > 0)
+            message = `${translateError('rate_limited')}. Повторите через ${Math.ceil(ra)} с.`;
+        }
         const err = new Error(message);
         err.code = data.error || null;
         reject(err);

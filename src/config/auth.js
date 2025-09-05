@@ -18,6 +18,7 @@ if (!safeRegex(rawPasswordPattern)) {
 }
 
 export const PASSWORD_PATTERN = new RegExp(rawPasswordPattern);
+export const PASSWORD_PATTERN_STR = rawPasswordPattern;
 
 export const COOKIE_NAME = 'refresh_token';
 export const COOKIE_HTTP_ONLY = true;
