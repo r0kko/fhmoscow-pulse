@@ -160,8 +160,7 @@ services:
       - GF_USERS_DEFAULT_THEME=dark
       - GF_DATE_FORMATS_DEFAULT_TIMEZONE=Europe/Moscow
       - GF_SERVER_ENABLE_GZIP=true
-      - GF_SECURITY_COOKIE_SECURE=true
-      - GF_SECURITY_COOKIE_SAMESITE=None
+
     volumes:
       - grafana-data:/var/lib/grafana
       - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
