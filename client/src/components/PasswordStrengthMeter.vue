@@ -26,12 +26,16 @@ const props = defineProps({
 const strength = computed(() => {
   const val = props.password || '';
   let score = 0;
+  // Базовые требования политики: длина и наличие цифр/букв
   if (val.length >= 8) score++;
-  if (/[A-Z]/.test(val)) score++;
+  if (/[A-Za-z]/.test(val)) score++;
   if (/[0-9]/.test(val)) score++;
+  // Доп. очки за верхний регистр/спецсимволы/длину
+  if (/[A-Z]/.test(val)) score++;
   if (/[^A-Za-z0-9]/.test(val)) score++;
   if (val.length >= 12) score++;
-  return score;
+  // Нормируем в диапазон 0..5
+  return Math.min(score, 5);
 });
 
 const strengthPercent = computed(() => (strength.value / 5) * 100);

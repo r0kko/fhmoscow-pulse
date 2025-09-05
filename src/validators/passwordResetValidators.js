@@ -2,12 +2,27 @@ import { body } from 'express-validator';
 
 import { assertPassword } from '../utils/passwordPolicy.js';
 
-export const passwordResetStartRules = [body('email').isEmail()];
+export const passwordResetStartRules = [
+  body('email').isEmail().normalizeEmail(),
+];
 
 export const passwordResetFinishRules = [
-  body('email').isEmail(),
+  body('email').isEmail().normalizeEmail(),
   body('code').isString().notEmpty(),
   body('password')
+    .customSanitizer((val, { req }) => {
+      if (typeof val === 'string' && val.length > 0) return val;
+      const b = req?.body || {};
+      let s = b.new_password || b.pwd || b.p || null;
+      if (!s && typeof b.password_b64 === 'string') {
+        try {
+          s = Buffer.from(b.password_b64, 'base64').toString('utf8');
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      return s;
+    })
     .isString()
     .custom((val) => {
       try {

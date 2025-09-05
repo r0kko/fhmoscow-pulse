@@ -20,6 +20,12 @@ const isEmailValid = computed(() =>
 );
 const sanitizedCode = computed(() => code.value.replace(/\s+/g, ''));
 const passwordMeetsMin = computed(() => password.value.length >= 8);
+const passwordHasLetter = computed(() => /[A-Za-z]/.test(password.value));
+const passwordHasDigit = computed(() => /\d/.test(password.value));
+const passwordMeetsPolicy = computed(
+  () =>
+    passwordMeetsMin.value && passwordHasLetter.value && passwordHasDigit.value
+);
 const passwordsMatch = computed(
   () => password.value && password.value === confirm.value
 );
@@ -27,7 +33,7 @@ const canSubmitStart = computed(() => isEmailValid.value && !loading.value);
 const canSubmitFinish = computed(
   () =>
     sanitizedCode.value.length > 0 &&
-    passwordMeetsMin.value &&
+    passwordMeetsPolicy.value &&
     passwordsMatch.value &&
     !loading.value
 );
@@ -172,8 +178,8 @@ async function finish() {
           </div>
           <PasswordStrengthMeter class="mb-3" :password="password" />
           <small id="passwordHelp" class="text-muted d-block mb-3"
-            >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
-            символы.</small
+            >Минимум 8 символов. Обязательно: латинские буквы и цифры.
+            Рекомендуем добавить спецсимволы.</small
           >
           <div class="mb-3">
             <PasswordInput

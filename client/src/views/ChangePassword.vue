@@ -14,6 +14,12 @@ const error = ref('');
 const loading = ref(false);
 
 const passwordMeetsMin = computed(() => (password.value || '').length >= 8);
+const passwordHasLetter = computed(() => /[A-Za-z]/.test(password.value || ''));
+const passwordHasDigit = computed(() => /\d/.test(password.value || ''));
+const passwordMeetsPolicy = computed(
+  () =>
+    passwordMeetsMin.value && passwordHasLetter.value && passwordHasDigit.value
+);
 const passwordsMatch = computed(
   () => (password.value || '') && password.value === confirm.value
 );
@@ -24,7 +30,7 @@ const canSubmit = computed(
   () =>
     !loading.value &&
     Boolean(current.value) &&
-    passwordMeetsMin.value &&
+    passwordMeetsPolicy.value &&
     passwordsMatch.value &&
     notSameAsCurrent.value
 );
@@ -37,6 +43,10 @@ async function submit() {
   }
   if (!passwordMeetsMin.value) {
     error.value = 'Минимальная длина пароля — 8 символов';
+    return;
+  }
+  if (!passwordHasLetter.value || !passwordHasDigit.value) {
+    error.value = 'Пароль должен содержать латинские буквы и цифры';
     return;
   }
   if (!notSameAsCurrent.value) {
@@ -102,8 +112,8 @@ async function submit() {
           />
           <PasswordStrengthMeter class="mb-3" :password="password" />
           <small id="passwordHelp" class="text-muted d-block mb-2"
-            >Минимум 8 символов. Рекомендуем использовать буквы, цифры и
-            символы.</small
+            >Минимум 8 символов. Обязательно: латинские буквы и цифры.
+            Рекомендуем добавить спецсимволы.</small
           >
           <PasswordInput
             id="confirm"

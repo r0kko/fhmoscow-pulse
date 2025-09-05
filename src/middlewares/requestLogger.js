@@ -13,6 +13,7 @@ const SENSITIVE_KEYS = [
   'refreshToken',
   'access_token',
   'token',
+  'code',
 ];
 
 function isReadonlyDbError(err) {
@@ -29,15 +30,55 @@ function isReadonlyDbError(err) {
 export default function requestLogger(req, res, next) {
   const start = process.hrtime.bigint();
 
+  function redact(value) {
+    if (Array.isArray(value)) return value.map((v) => redact(v));
+    if (value && typeof value === 'object') {
+      const out = {};
+      for (const [k, v] of Object.entries(value)) {
+        if (SENSITIVE_KEYS.includes(k)) continue; // drop sensitive key
+        out[k] = redact(v);
+      }
+      return out;
+    }
+    return value;
+  }
+
+  function maskUrl(originalUrl) {
+    try {
+      const u = new URL(originalUrl, 'http://local');
+      const params = u.searchParams;
+      let changed = false;
+      for (const key of Array.from(params.keys())) {
+        if (SENSITIVE_KEYS.includes(key)) {
+          params.set(key, 'redacted');
+          changed = true;
+        }
+      }
+      return changed ? `${u.pathname}?${params.toString()}` : originalUrl;
+    } catch {
+      return originalUrl;
+    }
+  }
+
   // Дождаться завершения ответа
   onFinished(res, async () => {
     const duration = Number((process.hrtime.bigint() - start) / 1_000_000n); // ms
     try {
       let bodyClone = null;
       if (req.body && typeof req.body === 'object') {
-        bodyClone = JSON.parse(JSON.stringify(req.body));
-        for (const key of SENSITIVE_KEYS) delete bodyClone[key];
-        if (Object.keys(bodyClone).length === 0) bodyClone = null;
+        bodyClone = redact(req.body);
+        try {
+          if (
+            bodyClone &&
+            typeof bodyClone === 'object' &&
+            !Array.isArray(bodyClone) &&
+            Object.keys(bodyClone).length === 0
+          ) {
+            bodyClone = null;
+          }
+        } catch (_) {
+          /* noop */
+        }
       }
 
       await Log.create(
@@ -45,7 +86,7 @@ export default function requestLogger(req, res, next) {
           id: uuidv4(),
           user_id: req.user?.id || null, // появится после внедрения auth
           method: req.method,
-          path: req.originalUrl,
+          path: maskUrl(req.originalUrl || req.url || ''),
           status_code: res.statusCode,
           ip: req.ip,
           user_agent: req.get('user-agent') || '',
