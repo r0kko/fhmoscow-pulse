@@ -222,7 +222,7 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: postgres-exporter
     environment:
-      - DATA_SOURCE_URI=postgresql://db:5432/${DB_NAME}?sslmode=disable
+      - DATA_SOURCE_URI=db:5432/${DB_NAME}?sslmode=disable
       - DATA_SOURCE_USER=${DB_USER}
       - DATA_SOURCE_PASS=${DB_PASS}
     ports:
