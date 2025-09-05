@@ -34,6 +34,7 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
+  exposedHeaders: ['X-Request-Id'],
 };
 
 app.use(cors(corsOptions));
@@ -60,7 +61,14 @@ app.use((req, res) => {
 
 // Centralized error handler
 app.use((err, req, res, _next) => {
-  const status = err?.status || 500;
+  // Normalize common, expected errors for consistent API responses
+  let normalized = err;
+  const msg = String(err?.message || '').toLowerCase();
+  if (msg.includes('csrf token mismatch') || msg.includes('ebadcsrftoken')) {
+    normalized = { status: 403, code: 'EBADCSRFTOKEN' };
+  }
+
+  const status = normalized?.status || 500;
   if (status >= 500) {
     logger.error(
       'Unhandled server error [%s]: %s',
@@ -68,10 +76,11 @@ app.use((err, req, res, _next) => {
       err.stack || err
     );
   } else {
-    const code = err?.code || err?.message || 'error';
+    const code = normalized?.code || normalized?.message || 'error';
     logger.warn('Request failed [%s]: %s (%s)', req.id || '-', code, status);
   }
-  sendError(res, err, 500);
+  // Respect normalized status; fall back to 400 for non-specified errors
+  sendError(res, normalized);
 });
 
 export default app;

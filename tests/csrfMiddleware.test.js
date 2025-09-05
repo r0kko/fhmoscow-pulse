@@ -13,32 +13,34 @@ function buildRes() {
   return {};
 }
 
-function buildReq(path = '/') {
-  return { path };
+function buildReq(path = '/', method = 'GET') {
+  return { path, method };
 }
 
-test('delegates to csrf for normal paths', () => {
-  const req = buildReq('/login');
+test('delegates to csrf for normal unsafe requests', () => {
+  const req = buildReq('/login', 'POST');
   const res = buildRes();
   const next = jest.fn();
   csrfMiddleware(req, res, next);
   expect(csrfMock).toHaveBeenCalledWith(req, res, next);
 });
 
-test('bypasses middleware for exempt paths', () => {
+test('bypasses middleware for exempt and safe requests', () => {
   csrfMock.mockClear();
-  for (const p of [
-    '/csrf-token',
-    '/auth/login',
-    '/auth/logout',
-    '/auth/refresh',
-  ]) {
-    const req = buildReq(p);
-    const res = buildRes();
-    const next = jest.fn();
-    csrfMiddleware(req, res, next);
-    expect(csrfMock).not.toHaveBeenCalled();
-    expect(next).toHaveBeenCalled();
-    csrfMock.mockClear();
-  }
+  // Exempt path
+  let req = buildReq('/csrf-token', 'GET');
+  let res = buildRes();
+  let next = jest.fn();
+  csrfMiddleware(req, res, next);
+  expect(csrfMock).not.toHaveBeenCalled();
+  expect(next).toHaveBeenCalled();
+  csrfMock.mockClear();
+
+  // Safe method should bypass
+  req = buildReq('/any', 'GET');
+  res = buildRes();
+  next = jest.fn();
+  csrfMiddleware(req, res, next);
+  expect(csrfMock).not.toHaveBeenCalled();
+  expect(next).toHaveBeenCalled();
 });

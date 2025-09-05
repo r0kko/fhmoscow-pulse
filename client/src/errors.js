@@ -58,6 +58,7 @@ export const ERROR_MESSAGES = {
   email_unconfirmed: 'Электронная почта не подтверждена',
   password_change_required:
     'Необходимо сменить пароль перед продолжением работы',
+  EBADCSRFTOKEN: 'Сессия устарела. Обновите страницу.',
   invalid_current_password: 'Неверный текущий пароль',
   file_required: 'Не выбран файл',
   active_ticket_exists: 'Есть активное обращение данного типа',

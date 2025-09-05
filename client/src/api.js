@@ -33,6 +33,11 @@ function getXsrfToken() {
   return match ? decodeURIComponent(match.split('=')[1]) : null;
 }
 
+function shouldSendXsrf(method) {
+  const m = (method || 'GET').toUpperCase();
+  return !(m === 'GET' || m === 'HEAD' || m === 'OPTIONS');
+}
+
 export async function initCsrf() {
   try {
     await fetch(`${API_BASE}/csrf-token`, { credentials: 'include' });
@@ -61,10 +66,13 @@ async function refreshToken() {
 
   refreshPromise = (async () => {
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      const xsrf = getXsrfToken();
+      if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
       const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: '{}',
       });
       const data = await res.json().catch(() => ({}));
@@ -93,7 +101,7 @@ export async function apiFetch(path, options = {}) {
     ...(opts.headers || {}),
   };
   const xsrf = getXsrfToken();
-  if (xsrf) {
+  if (xsrf && shouldSendXsrf(opts.method)) {
     opts.headers['X-XSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
@@ -150,7 +158,7 @@ export async function apiFetchForm(path, form, options = {}) {
   const opts = { credentials: 'include', ...rest, body: form };
   opts.headers = { ...(opts.headers || {}) };
   const xsrf = getXsrfToken();
-  if (xsrf) {
+  if (xsrf && shouldSendXsrf(opts.method || 'POST')) {
     opts.headers['X-XSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
@@ -205,7 +213,7 @@ export async function apiFetchBlob(path, options = {}) {
   const opts = { credentials: 'include', ...rest };
   opts.headers = { ...(opts.headers || {}) };
   const xsrf = getXsrfToken();
-  if (xsrf) {
+  if (xsrf && shouldSendXsrf(opts.method)) {
     opts.headers['X-XSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
@@ -272,7 +280,8 @@ export function apiUpload(path, form, { onProgress } = {}) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE}${path}`);
     xhr.withCredentials = true;
-    if (xsrf) xhr.setRequestHeader('X-XSRF-TOKEN', xsrf);
+    if (xsrf && shouldSendXsrf('POST'))
+      xhr.setRequestHeader('X-XSRF-TOKEN', xsrf);
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.onload = () => {
       let data = {};
