@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:8.0.2
+    image: redis:latest
     container_name: redis
     networks:
       - backend
@@ -98,7 +98,7 @@ services:
 
   # Observability stack (production)
   loki:
-    image: grafana/loki:2.9.8
+    image: grafana/loki:latest
     container_name: loki
     command: ["-config.file=/etc/loki/local-config.yaml"]
     ports:
@@ -108,7 +108,7 @@ services:
     restart: unless-stopped
 
   promtail:
-    image: grafana/promtail:2.9.8
+    image: grafana/promtail:latest
     container_name: promtail
     command: ["-config.file=/etc/promtail/config.yml"]
     volumes:
@@ -121,7 +121,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:v2.53.0
+    image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "127.0.0.1:9090:9090"
@@ -136,7 +136,7 @@ services:
     restart: unless-stopped
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:latest
     container_name: alertmanager
     ports:
       - "127.0.0.1:9093:9093"
@@ -147,7 +147,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:10.4.6
+    image: grafana/grafana:latest
     container_name: grafana
     ports:
       - "3001:3000"
@@ -176,7 +176,7 @@ services:
     restart: unless-stopped
 
   tempo:
-    image: grafana/tempo:2.5.0
+    image: grafana/tempo:latest
     container_name: tempo
     command: ["-config.file=/etc/tempo.yaml"]
     ports:
@@ -188,7 +188,7 @@ services:
     restart: unless-stopped
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.52.0
+    image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     ports:
       - "127.0.0.1:8081:8080"
@@ -201,7 +201,7 @@ services:
     restart: unless-stopped
 
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:latest
     container_name: node-exporter
     pid: "host"
     ports:
@@ -219,7 +219,7 @@ services:
     restart: unless-stopped
 
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
+    image: prometheuscommunity/postgres-exporter:latest
     container_name: postgres-exporter
     environment:
       - DATA_SOURCE_URI=db:5432/${DB_NAME}?sslmode=disable
@@ -234,7 +234,7 @@ services:
     restart: unless-stopped
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.58.0
+    image: oliver006/redis_exporter:latest
     container_name: redis-exporter
     environment:
       - REDIS_ADDR=redis://redis:6379
@@ -247,7 +247,7 @@ services:
     restart: unless-stopped
 
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:latest
     container_name: blackbox-exporter
     ports:
       - "127.0.0.1:9115:9115"
