@@ -1271,6 +1271,7 @@ function toggleCaptain(p) {
   }
   // immediate save like checkbox behavior
   save(true);
+  scheduleDraftPersist();
 }
 function toggleAssistant(p) {
   if (!canAssignLeadership(p)) return;
@@ -1331,6 +1332,7 @@ function toggleAssistant(p) {
   }
   // immediate save like checkbox behavior
   save(true);
+  scheduleDraftPersist();
 }
 
 async function exportPlayers() {
