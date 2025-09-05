@@ -158,6 +158,9 @@ router.get('/ready', (_req, res) => {
  *         description: Token value
  */
 router.get('/csrf-token', csrf, (req, res) => {
+  // Avoid any caching of CSRF token responses at client/CDN proxies
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
   res.json({ csrfToken: req.csrfToken() });
 });
 

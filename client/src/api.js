@@ -37,6 +37,16 @@ function getXsrfToken() {
   return null;
 }
 
+function clearXsrfCookies() {
+  try {
+    const opts = 'Max-Age=0; path=/';
+    document.cookie = `XSRF-TOKEN-API=; ${opts}`;
+    document.cookie = `XSRF-TOKEN=; ${opts}`;
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 function shouldSendXsrf(method) {
   const m = (method || 'GET').toUpperCase();
   return !(m === 'GET' || m === 'HEAD' || m === 'OPTIONS');
@@ -151,6 +161,11 @@ export async function apiFetch(path, options = {}) {
       } catch (_) {}
       return apiFetch(path, { ...options, _csrfRetried: true });
     }
+    try {
+      clearXsrfCookies();
+      await initCsrf();
+    } catch (_) {}
+    return apiFetch(path, { ...options, _csrfRetried: true });
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
@@ -217,6 +232,11 @@ export async function apiFetchForm(path, form, options = {}) {
       } catch (_) {}
       return apiFetchForm(path, form, { ...options, _csrfRetried: true });
     }
+    try {
+      clearXsrfCookies();
+      await initCsrf();
+    } catch (_) {}
+    return apiFetchForm(path, form, { ...options, _csrfRetried: true });
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
@@ -286,6 +306,11 @@ export async function apiFetchBlob(path, options = {}) {
           } catch (_) {}
           return apiFetchBlob(path, { ...options, _csrfRetried: true });
         }
+        try {
+          clearXsrfCookies();
+          await initCsrf();
+        } catch (_) {}
+        return apiFetchBlob(path, { ...options, _csrfRetried: true });
       }
     } catch (_) {
       // ignore

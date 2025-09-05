@@ -18,7 +18,9 @@ import logger from './logger.js';
 import { httpMetricsMiddleware } from './src/config/metrics.js';
 
 const app = express();
-app.set('trust proxy', 2);
+// Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-For
+// Ensure your edge sanitizes these headers
+app.set('trust proxy', true);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

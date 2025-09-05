@@ -9,6 +9,12 @@ morgan.token('reqid', (req) => req.id || '-');
 
 // Build a JSON line to stdout; promtail/Loki will parse it easily
 const jsonFormat = (tokens, req, res) => {
+  const clientIp =
+    req.headers['cf-connecting-ip'] ||
+    req.headers['x-real-ip'] ||
+    req.ip ||
+    req.connection?.remoteAddress ||
+    '';
   const line = {
     type: 'access',
     ts: tokens.date(req, res, 'iso'),
@@ -20,9 +26,18 @@ const jsonFormat = (tokens, req, res) => {
     length: Number(tokens.res(req, res, 'content-length') || 0),
     rt_ms: Number(tokens['response-time'](req, res) || 0),
     ip: tokens['remote-addr'](req, res),
+    client_ip: String(clientIp),
     ua: tokens['user-agent'](req, res),
     ref: tokens.referrer(req, res),
   };
+  try {
+    const cfRay = req.headers['cf-ray'];
+    if (cfRay) line.cf_ray = String(cfRay);
+    const cfCountry = req.headers['cf-ipcountry'] || req.headers['cf-country'];
+    if (cfCountry) line.cf_country = String(cfCountry);
+  } catch (_e) {
+    /* noop */
+  }
   try {
     const span = trace.getSpan(context.active());
     if (span && typeof span.spanContext === 'function') {
