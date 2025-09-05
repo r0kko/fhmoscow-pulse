@@ -35,6 +35,15 @@ function getXsrfToken() {
     const row = cookies.find((c) => c.startsWith(`${name}=`));
     if (row) return decodeURIComponent(row.split('=')[1]);
   }
+  try {
+    // Fallback to stateless HMAC token stored in sessionStorage
+    if (typeof sessionStorage !== 'undefined') {
+      const h = sessionStorage.getItem('csrfHmac');
+      if (h) return h;
+    }
+    // As a last resort, check an in-memory var (non-persistent across reloads)
+    if (typeof window !== 'undefined' && window.__csrfHmac) return window.__csrfHmac;
+  } catch (_) {}
   return null;
 }
 
@@ -55,9 +64,25 @@ function shouldSendXsrf(method) {
 
 export async function initCsrf() {
   try {
-    await fetch(`${API_BASE}/csrf-token`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/csrf-token`, { credentials: 'include' });
+    try {
+      const data = await res.clone().json();
+      if (data && data.csrfHmac) {
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('csrfHmac', data.csrfHmac);
+          } else if (typeof window !== 'undefined') {
+            window.__csrfHmac = data.csrfHmac;
+          }
+        } catch (_) {
+          if (typeof window !== 'undefined') window.__csrfHmac = data.csrfHmac;
+        }
+      }
+    } catch (_) {
+      /* ignore parsing errors */
+    }
   } catch (_) {
-    // ignore
+    // ignore network failures
   }
 }
 

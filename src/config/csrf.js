@@ -15,6 +15,11 @@ const csrfOptions = {
       secure: isSecureEnv(),
       domain: cookieDomain(),
       path: '/',
+      // Opt-in to partitioned cookies to improve cross-site delivery in modern browsers
+      // (effective only when Secure and SameSite=None)
+      partitioned:
+        isSecureEnv() &&
+        String(process.env.COOKIE_PARTITIONED || 'true').toLowerCase() === 'true',
     },
   },
 };

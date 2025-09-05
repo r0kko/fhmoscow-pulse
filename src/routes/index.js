@@ -4,6 +4,7 @@ import { isReady, isSyncing } from '../config/readiness.js';
 import auth from '../middlewares/auth.js';
 import requireActive from '../middlewares/requireActive.js';
 import csrf from '../config/csrf.js';
+import { issueCsrfHmac } from '../utils/csrfHmac.js';
 import { getRuntimeStates } from '../config/metrics.js';
 
 import authRouter from './auth.js';
@@ -161,7 +162,13 @@ router.get('/csrf-token', csrf, (req, res) => {
   // Avoid any caching of CSRF token responses at client/CDN proxies
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   res.set('Pragma', 'no-cache');
-  res.json({ csrfToken: req.csrfToken() });
+  const json = { csrfToken: req.csrfToken() };
+  try {
+    json.csrfHmac = issueCsrfHmac(req);
+  } catch (_e) {
+    /* if misconfigured, still return cookie-based token */
+  }
+  res.json(json);
 });
 
 /**

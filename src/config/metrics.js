@@ -33,6 +33,8 @@ let authRefreshTotal = null;
 let tokensIssued = null;
 let emailSentTotal = null;
 let rateLimitedTotal = null;
+let csrfAcceptedTotal = null;
+let csrfRejectedTotal = null;
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -182,6 +184,18 @@ async function ensureInit() {
       name: 'rate_limited_total',
       help: 'Requests blocked by rate limiter grouped by limiter name',
       labelNames: ['name'], // global|login|registration|password_reset|custom
+      registers: [register],
+    });
+    csrfAcceptedTotal = new client.Counter({
+      name: 'csrf_accepted_total',
+      help: 'CSRF checks accepted grouped by mode',
+      labelNames: ['mode'], // cookie|hmac|skipped_safe|skipped_bearer
+      registers: [register],
+    });
+    csrfRejectedTotal = new client.Counter({
+      name: 'csrf_rejected_total',
+      help: 'CSRF checks rejected grouped by reason',
+      labelNames: ['reason'], // cookie_missing_or_mismatch|hmac_error|other
       registers: [register],
     });
 
@@ -539,6 +553,24 @@ export function incRateLimited(name = 'global') {
   if (!metricsAvailable) return;
   try {
     rateLimitedTotal.inc({ name });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incCsrfAccepted(mode = 'cookie') {
+  if (!metricsAvailable) return;
+  try {
+    csrfAcceptedTotal.inc({ mode });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incCsrfRejected(reason = 'other') {
+  if (!metricsAvailable) return;
+  try {
+    csrfRejectedTotal.inc({ reason });
   } catch (_e) {
     /* noop */
   }

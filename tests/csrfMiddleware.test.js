@@ -22,7 +22,8 @@ test('delegates to csrf for normal unsafe requests', () => {
   const res = buildRes();
   const next = jest.fn();
   csrfMiddleware(req, res, next);
-  expect(csrfMock).toHaveBeenCalledWith(req, res, next);
+  expect(csrfMock).toHaveBeenCalledTimes(1);
+  expect(next).toHaveBeenCalledTimes(1);
 });
 
 test('bypasses middleware for exempt and safe requests', () => {
