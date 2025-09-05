@@ -289,80 +289,29 @@ const squad2 = computed(() => countsBySquad(2));
 // Staff export is independent of squads; no per-squad coach limits in UI
 const coachesOverLimit = computed(() => false);
 
-// Duplicate numbers guard (selected players with the same match number)
+// Duplicate numbers guard (selected players with the same match number) —
+// global across both squads (double protocol also enforces global uniqueness)
 const duplicateNumbers = computed(() => {
   if (!data.value) return [];
   const pool =
     activeTeam.value === data.value.team2_id
       ? data.value.away?.players || []
       : data.value.home?.players || [];
-  // For double protocol, track duplicates per squad separately
-  const seen = new Map(); // key -> count, key is squad:num for double, just num otherwise
+  const byNum = new Map(); // num -> count across all selected players
   for (const p of pool) {
     if (!selected.value.has(p.team_player_id)) continue;
     const n = editedNumber.value[p.team_player_id];
     if (n == null || Number.isNaN(n)) continue;
-    if (
-      isDouble.value &&
-      isPlayerGk(p) &&
-      Boolean(editedBoth.value[p.team_player_id] ?? p.squad_both ?? false)
-    ) {
-      for (const sq of [1, 2]) {
-        const key = `${sq}:${String(n)}`;
-        seen.set(key, (seen.get(key) || 0) + 1);
-      }
-    } else {
-      const sq = isDouble.value
-        ? (editedSquad.value[p.team_player_id] ?? p.squad_no ?? null)
-        : null;
-      const key = isDouble.value ? `${sq ?? 'x'}:${String(n)}` : String(n);
-      seen.set(key, (seen.get(key) || 0) + 1);
-    }
+    const key = String(n);
+    byNum.set(key, (byNum.get(key) || 0) + 1);
   }
-  return Array.from(seen.entries())
+  return Array.from(byNum.entries())
     .filter(([, cnt]) => cnt > 1)
-    .map(([num]) => (isDouble.value ? num.split(':')[1] : num));
+    .map(([num]) => num);
 });
 const hasDuplicateNumbers = computed(() => duplicateNumbers.value.length > 0);
-// Duplicate keys set: for quick per-player duplicate detection in double protocol
-const duplicateKeys = computed(() => {
-  if (!data.value) return new Set();
-  const pool =
-    activeTeam.value === data.value.team2_id
-      ? data.value.away?.players || []
-      : data.value.home?.players || [];
-  const seen = new Map(); // key: squad -> Map(num->count)
-  const dups = new Set(); // values like `${sq}:${num}`
-  for (const p of pool) {
-    if (!selected.value.has(p.team_player_id)) continue;
-    const n = editedNumber.value[p.team_player_id];
-    if (n == null || Number.isNaN(n)) continue;
-    if (
-      isDouble.value &&
-      isPlayerGk(p) &&
-      Boolean(editedBoth.value[p.team_player_id] ?? p.squad_both ?? false)
-    ) {
-      for (const sq of [1, 2]) {
-        const byNum = seen.get(sq) || new Map();
-        byNum.set(String(n), (byNum.get(String(n)) || 0) + 1);
-        seen.set(sq, byNum);
-      }
-    } else {
-      const sq = isDouble.value
-        ? (editedSquad.value[p.team_player_id] ?? p.squad_no ?? null)
-        : 'all';
-      const byNum = seen.get(sq) || new Map();
-      byNum.set(String(n), (byNum.get(String(n)) || 0) + 1);
-      seen.set(sq, byNum);
-    }
-  }
-  for (const [sq, byNum] of seen.entries()) {
-    for (const [num, cnt] of byNum.entries()) {
-      if (cnt > 1) dups.add(`${sq}:${num}`);
-    }
-  }
-  return dups;
-});
+// For quick per-player duplicate detection in UI
+const duplicateNumbersSet = computed(() => new Set(duplicateNumbers.value));
 const missingNumbers = computed(() => {
   if (!data.value) return 0;
   const pool =
@@ -485,8 +434,8 @@ const exportRequirements = computed(() => {
         key: 'uniqueNumbers',
         ok: !hasDuplicateNumbers.value,
         text: hasDuplicateNumbers.value
-          ? `Дубли игровых номеров (внутри составов): ${duplicateNumbers.value.join(', ')}`
-          : 'Игровые номера уникальны в каждом составе',
+          ? `Дубли игровых номеров (в команде): ${duplicateNumbers.value.join(', ')}`
+          : 'Игровые номера уникальны в команде',
       },
       {
         key: 'gk1',
@@ -2257,15 +2206,10 @@ watch(activeTeam, async () => {
                           :class="{
                             'is-invalid':
                               selected.has(p.team_player_id) &&
-                              ((isDouble
-                                ? duplicateKeys.has(
-                                    `${
-                                      editedSquad[p.team_player_id] ??
-                                      p.squad_no ??
-                                      null
-                                    }:${editedNumber[p.team_player_id]}`
-                                  )
-                                : hasDuplicateNumbers) ||
+                              ((editedNumber[p.team_player_id] != null &&
+                                duplicateNumbersSet.has(
+                                  String(editedNumber[p.team_player_id])
+                                )) ||
                                 editedNumber[p.team_player_id] == null),
                           }"
                           @input="(e) => onNumberInput(p, e)"
@@ -2284,15 +2228,10 @@ watch(activeTeam, async () => {
                       <div
                         v-else-if="
                           selected.has(p.team_player_id) &&
-                          (isDouble
-                            ? duplicateKeys.has(
-                                `${
-                                  editedSquad[p.team_player_id] ??
-                                  p.squad_no ??
-                                  null
-                                }:${editedNumber[p.team_player_id]}`
-                              )
-                            : hasDuplicateNumbers)
+                          editedNumber[p.team_player_id] != null &&
+                          duplicateNumbersSet.has(
+                            String(editedNumber[p.team_player_id])
+                          )
                         "
                         class="invalid-feedback d-block"
                       >

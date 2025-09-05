@@ -863,22 +863,20 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
         throw err;
       }
     }
-    // Unique match numbers per squad
-    const dupCheck = (arr) => {
+    // Unique match numbers across the whole match (both squads combined)
+    {
       const seen = new Set();
-      for (const p of arr) {
+      for (const p of selectedAll) {
         const n = p.match_number;
-        if (n == null) continue; // already checked
+        if (n == null) continue;
         const key = String(n);
-        if (seen.has(key)) return true;
+        if (seen.has(key)) {
+          const err = new Error('duplicate_match_numbers');
+          err.code = 400;
+          throw err;
+        }
         seen.add(key);
       }
-      return false;
-    };
-    if (dupCheck(s1) || dupCheck(s2)) {
-      const err = new Error('duplicate_match_numbers');
-      err.code = 400;
-      throw err;
     }
 
     // Render two pages reusing the same layout
