@@ -11,6 +11,8 @@ import {
 import InfoItem from '../components/InfoItem.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import AgreementTimeline from '../components/AgreementTimeline.vue';
+import vkLogo from '../assets/vkvideo.png';
+import MenuTile from '../components/MenuTile.vue';
 
 const route = useRoute();
 const match = ref(null);
@@ -84,6 +86,49 @@ const showStadiumCard = computed(() => {
   return name !== 'Согласовывается';
 });
 
+function normalizeUrl(u) {
+  const s = (u || '').toString().trim();
+  if (!s) return '';
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
+}
+
+const streamLinks = computed(() => {
+  try {
+    const urls = (match.value?.broadcast_links || [])
+      .filter(Boolean)
+      .map(normalizeUrl)
+      .filter((x) => /^https?:\/\//i.test(x));
+    if (!urls.length) return [];
+    if (urls.length === 1)
+      return [
+        {
+          url: urls[0],
+          label: 'Прямая трансляция',
+          aria: 'Открыть прямую трансляцию',
+        },
+      ];
+    const res = [];
+    const labels = ['Первый состав', 'Второй состав'];
+    for (let i = 0; i < Math.min(2, urls.length); i += 1) {
+      res.push({
+        url: urls[i],
+        label: labels[i],
+        aria: `Открыть трансляцию: ${labels[i]}`,
+      });
+    }
+    for (let i = 2; i < urls.length; i += 1) {
+      res.push({
+        url: urls[i],
+        label: `Трансляция #${i + 1}`,
+        aria: `Открыть трансляцию #${i + 1}`,
+      });
+    }
+    return res;
+  } catch {
+    return [];
+  }
+});
+
 onMounted(async () => {
   loading.value = true;
   error.value = '';
@@ -130,6 +175,10 @@ async function loadAux() {
 }
 
 const kickoff = computed(() => formatKickoff(match.value?.date_start));
+const statusAlias = computed(() =>
+  (match.value?.status?.alias || '').toUpperCase()
+);
+const isCancelled = computed(() => statusAlias.value === 'CANCELLED');
 const kickoffHeader = computed(() => {
   const iso = match.value?.date_start;
   if (!iso) return '';
@@ -212,49 +261,44 @@ async function submitSchedule() {
         {{ error }}
       </div>
 
-      <!-- Broadcast links -->
-      <div v-if="!error" class="card section-card tile fade-in shadow-sm mb-3">
+      <!-- Admin menu tiles (structure aligned with client) -->
+      <div class="card section-card mb-2 menu-section">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h2 class="h5 mb-0">Трансляции</h2>
-            <button
-              class="btn btn-outline-secondary btn-sm"
-              :disabled="syncingBroadcast"
-              @click="syncBroadcasts"
-              aria-label="Синхронизировать трансляции матча"
-            >
-              <span
-                v-if="syncingBroadcast"
-                class="spinner-border spinner-border-sm me-1"
-              ></span>
-              Обновить ссылки
-            </button>
+          <h2 class="card-title h5 mb-3">Управление матчем</h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              title="Согласование времени"
+              icon="bi-calendar-check"
+              :to="`/school-matches/${route.params.id}/agreements`"
+              :placeholder="isCancelled"
+              :note="isCancelled ? 'Отмена' : ''"
+            />
+            <MenuTile
+              title="Составы на матч"
+              icon="bi-people"
+              :to="`/school-matches/${route.params.id}/lineups`"
+              :placeholder="isCancelled"
+              :note="isCancelled ? 'Отмена' : ''"
+            />
+            <MenuTile
+              title="Судьи матча"
+              icon="bi-person-badge"
+              :to="null"
+              :placeholder="true"
+              note="Скоро"
+            />
+            <MenuTile
+              title="Обращения по матчу"
+              icon="bi-chat-dots"
+              :to="null"
+              :placeholder="true"
+              note="Скоро"
+            />
           </div>
-          <div v-if="broadcastError" class="alert alert-danger" role="alert">
-            {{ broadcastError }}
-          </div>
-          <template v-if="(match?.broadcast_links || []).length">
-            <div class="d-flex gap-2 flex-wrap">
-              <a
-                v-for="(u, idx) in match.broadcast_links"
-                :key="u + '-' + idx"
-                class="btn btn-sm btn-outline-primary"
-                :href="u"
-                target="_blank"
-                rel="noopener"
-                :aria-label="'Открыть трансляцию #' + (idx + 1)"
-              >
-                Смотреть #{{ idx + 1 }}
-              </a>
-            </div>
-          </template>
-          <template v-else>
-            <div class="text-muted small">
-              Ссылки на трансляции отсутствуют.
-            </div>
-          </template>
         </div>
       </div>
+
+      <!-- Broadcast links moved to stadium card below for unified UX -->
 
       <div v-if="!error" class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
@@ -339,12 +383,13 @@ async function submitSchedule() {
                 >Координаты: {{ arenaCoords }}</span
               >
             </div>
+            <!-- Broadcast links moved to a separate tile section -->
           </div>
         </div>
       </div>
 
       <!-- Schedule management -->
-      <div class="card section-card tile fade-in shadow-sm mb-3">
+      <div id="schedule" class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <h2 class="h5 mb-0">Управление расписанием</h2>
@@ -403,6 +448,51 @@ async function submitSchedule() {
             После утверждения расписание станет недоступным для изменения
             клубами и будет записано во внешнюю систему.
           </p>
+        </div>
+      </div>
+
+      <!-- Broadcast section as tiles (admin) -->
+      <div
+        v-if="streamLinks.length"
+        class="card section-card mb-2 menu-section"
+      >
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="card-title h5 mb-0">Медиа по матчу</h2>
+            <button
+              class="btn btn-outline-secondary btn-sm"
+              :disabled="syncingBroadcast"
+              @click="syncBroadcasts"
+              aria-label="Синхронизировать трансляции матча"
+            >
+              <span
+                v-if="syncingBroadcast"
+                class="spinner-border spinner-border-sm me-1"
+              ></span>
+              Обновить ссылки
+            </button>
+          </div>
+          <div v-if="broadcastError" class="alert alert-danger" role="alert">
+            {{ broadcastError }}
+          </div>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="(s, idx) in streamLinks"
+              :key="s.url + '-' + idx"
+              :title="
+                streamLinks.length === 1
+                  ? 'Прямой эфир'
+                  : idx === 0
+                    ? 'Трансляция (1-й состав)'
+                    : idx === 1
+                      ? 'Трансляция (2-й состав)'
+                      : `Трансляция #${idx + 1}`
+              "
+              :to="s.url"
+              :image-src="vkLogo"
+              image-alt="VK Видео"
+            />
+          </div>
         </div>
       </div>
 

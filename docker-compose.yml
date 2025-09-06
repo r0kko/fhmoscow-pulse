@@ -158,6 +158,22 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
+    command:
+      - '--docker_only=true'
+      - '--housekeeping_interval=30s'
+      - '--disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp,percpu,perf_event,pressure,diskIO'
+      - '--store_container_labels=false'
+      - '--whitelisted_container_labels=env,com.docker.compose.service,com.docker.compose.project'
+      - '--event_storage_event_limit=default=0'
+      - '--v=1'
+    labels:
+      service: "cadvisor"
+      env: "dev"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - backend
     restart: unless-stopped

@@ -19,6 +19,7 @@ import { runPenaltyMinutesSync } from './penaltyMinutesSyncCron.js';
 import { runGameSituationSync } from './gameSituationSyncCron.js';
 import { runGameViolationSync } from './gameViolationSyncCron.js';
 import { runBroadcastLinkSync } from './broadcastLinkSyncCron.js';
+import { runGamePenaltySync } from './gamePenaltySyncCron.js';
 
 let running = false;
 let scheduled = false;
@@ -55,7 +56,9 @@ export async function runSyncAll() {
           await runPenaltyMinutesSync();
           await runGameSituationSync();
           await runGameViolationSync();
+          await runGamePenaltySync();
           await runBroadcastLinkSync();
+          // Note: deletion-only maintenance runs on its own daily schedule
           logger.info('syncAll completed successfully');
         } catch (err) {
           logger.error('syncAll failed: %s', err.stack || err);

@@ -75,7 +75,6 @@ const { default: authController } = await import(
   '../src/controllers/authController.js'
 );
 
-// eslint-disable-next-line no-undef
 process.env.JWT_SECRET = 'secret';
 
 describe('authController', () => {

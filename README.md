@@ -183,6 +183,7 @@ For a simple but powerful local stack with dashboards, log search, and metrics:
 
 - Quick start: `npm run obs:up` → Grafana at `http://localhost:3001`.
 - Details and setup (including Loki logging driver override): see `README_observability.md`.
+  - Note: cAdvisor is pinned and tuned to reduce noisy logs and CPU usage. Its logs are intentionally excluded from Loki.
 - Probes and metrics:
   - Liveness: `GET /live`
   - Readiness: `GET /ready`
@@ -282,15 +283,15 @@ new entries: `external_id` and `name`. Address can be added later by admins.
 ### Sync orchestrator and metrics
 
 - A single orchestrator runs the pipeline: Clubs → Grounds → Teams → Staff → Players → Tournaments.
-- Default schedule: every 6 hours (`SYNC_ALL_CRON`), timezone `Europe/Moscow`.
+- Fixed schedule: every 30 minutes (Europe/Moscow).
 - All jobs are protected by a Redis-based distributed lock to avoid overlaps across instances.
 - Prometheus metrics are exposed at `/metrics` (text format), including job run counts, durations and last run timestamps.
 
 ### External DB watcher and taxation check
 
-- External DB watcher: a lightweight cron monitors the external MariaDB availability and immediately triggers a full sync once a connection is established after startup. Configure via `EXT_DB_WATCH_CRON` (default every minute).
-- Taxation check cron: periodically validates and updates users’ taxation status by INN in small batches. Configure `TAXATION_CRON` and `TAXATION_CRON_BATCH_SIZE` (default 1).
-- Admin panel: System Operations now includes controls to trigger a full sync and a taxation check on demand. API endpoints: `GET/POST /admin-ops/sync/*` and `GET/POST /admin-ops/taxation/*` (ADMIN only).
+- External DB watcher: a lightweight cron monitors the external MariaDB availability and immediately triggers a full sync once a connection is established after startup. Fixed schedule: every minute.
+- Taxation check cron: periodically validates and updates users’ taxation status by INN in small batches. Configurable batch size via API (no env required). Endpoints: `GET/POST /admin-ops/taxation/*`.
+- Admin panel: System Operations includes controls to trigger a full sync and a taxation check on demand. API endpoints: `GET/POST /admin-ops/sync/*` and `GET/POST /admin-ops/taxation/*` (ADMIN only).
 
 ## Local development
 

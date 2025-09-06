@@ -22,6 +22,8 @@ const { default: validateEnv } = await import('../src/config/validateEnv.js');
 const { default: startTaxationCron } = await import('../src/jobs/taxationCron.js');
 const { default: startSyncAllCron, runSyncAll } = await import('../src/jobs/syncAllCron.js');
 const { default: startBroadcastLinkSyncCron } = await import('../src/jobs/broadcastLinkSyncCron.js');
+const { default: startGamePenaltySyncCron } = await import('../src/jobs/gamePenaltySyncCron.js');
+const { default: startGameEventDeletionSyncCron } = await import('../src/jobs/gameEventDeletionSyncCron.js');
 const { default: startMatchAgreementReminderCron } = await import('../src/jobs/matchAgreementReminderCron.js');
 const { default: startExternalDbWatchCron } = await import('../src/jobs/externalDbWatchCron.js');
 const { setReady, setSyncing } = await import('../src/config/readiness.js');
@@ -100,6 +102,10 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   startSyncAllCron();
   // Dedicated broadcast link reconciler to track frequent link updates
   startBroadcastLinkSyncCron();
+  // Dedicated penalties reconciler (keeps infractions fresh on its own schedule)
+  startGamePenaltySyncCron();
+  // Deletions-only reconciler for events: keep local penalties clean across full history
+  startGameEventDeletionSyncCron();
 
   // Seed metrics series for known jobs so gauges appear at startup
   try {
@@ -115,7 +121,9 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       'penaltyMinutesSync',
       'gameSituationSync',
       'gameViolationSync',
+      'gamePenaltySync',
       'broadcastLinkSync',
+      'gameEventDeletionSync',
       'matchAgreementReminders',
       'taxation',
     ]);

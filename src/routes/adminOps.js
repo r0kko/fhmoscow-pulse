@@ -6,6 +6,8 @@ import { getJobStats } from '../config/metrics.js';
 // Lazy-load job modules inside handlers to avoid heavy imports during test bootstrap
 import JobLog from '../models/jobLog.js';
 import { buildJobLockKey, forceDeleteLock } from '../utils/redisLock.js';
+import penaltyService from '../services/gamePenaltySyncService.js';
+import deletionService from '../services/gameEventDeletionSyncService.js';
 
 const router = express.Router();
 
@@ -25,6 +27,8 @@ router.get('/sync/status', auth, authorize('ADMIN'), async (_req, res) => {
       'gameSituationSync',
       'gameViolationSync',
       'broadcastLinkSync',
+      'gamePenaltySync',
+      'gameEventDeletionSync',
     ];
     const stats = await getJobStats(jobs);
     // Return latest job logs (per job) for context
@@ -116,6 +120,56 @@ router.post('/taxation/run', auth, authorize('ADMIN'), async (req, res) => {
   }
 });
 
+// Manual: reconcile penalties for a custom rolling window (admin backfill)
+router.post(
+  '/penalties/sync-window',
+  auth,
+  authorize('ADMIN'),
+  async (req, res) => {
+    try {
+      const daysBack = Number(req.body?.daysBack);
+      const daysAhead = Number(req.body?.daysAhead);
+      const limit = Number(req.body?.limit);
+      const actorId = req.user?.id || null;
+      const stats = await penaltyService.reconcileWindow({
+        daysBack: Number.isFinite(daysBack) ? daysBack : undefined,
+        daysAhead: Number.isFinite(daysAhead) ? daysAhead : undefined,
+        limit: Number.isFinite(limit) ? limit : undefined,
+        actorId,
+      });
+      return res.json({ ok: true, stats });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ error: 'external_sync_failed', detail: err?.message });
+    }
+  }
+);
+
+// Manual: run deletions-only reconcile for penalties
+router.post(
+  '/penalties/reap-orphans',
+  auth,
+  authorize('ADMIN'),
+  async (req, res) => {
+    try {
+      const batchSize = Number(req.body?.batchSize);
+      const maxBatches = Number(req.body?.maxBatches);
+      const actorId = req.user?.id || null;
+      const stats = await deletionService.reapOrphans({
+        batchSize: Number.isFinite(batchSize) ? batchSize : undefined,
+        maxBatches: Number.isFinite(maxBatches) ? maxBatches : undefined,
+        actorId,
+      });
+      return res.json({ ok: true, stats });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ error: 'external_sync_failed', detail: err?.message });
+    }
+  }
+);
+
 // POST /admin-ops/jobs/reset — force-release lock and reset running state (admin recovery)
 router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
   const job = String(req.body?.job || '').trim();
@@ -133,6 +187,8 @@ router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
     'gameSituationSync',
     'gameViolationSync',
     'broadcastLinkSync',
+    'gamePenaltySync',
+    'gameEventDeletionSync',
   ]);
   if (!allowed.has(job)) return res.status(400).json({ error: 'invalid_job' });
   try {

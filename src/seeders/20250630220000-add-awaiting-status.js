@@ -1,5 +1,5 @@
 'use strict';
-// eslint-disable-next-line
+
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = {

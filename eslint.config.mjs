@@ -73,10 +73,32 @@ export default [
       '**/dist/**',
       '**/build/**',
       '**/coverage/**',
-      '**/*.test.js',
+      // Do not lint tests with this config block; a dedicated block is below
       '**/*.spec.js',
       '**/logs/**',
       '**/client/**',
     ],
+  },
+  // Tests: enable Node + Jest globals so `process` and Jest globals are defined
+  {
+    files: ['tests/**/*.js'],
+    plugins: { import: eslintPluginImport },
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+        ...globals.es2021,
+      },
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    rules: {
+      // Tests can import dev dependencies
+      'import/no-extraneous-dependencies': 'off',
+      'import/order': 'off',
+      'no-redeclare': 'off',
+      'prefer-const': 'off',
+      quotes: 'off',
+    },
   },
 ];

@@ -52,6 +52,7 @@ async function checkAndTrigger() {
 }
 
 export default function startExternalDbWatchCron() {
-  const schedule = process.env.EXT_DB_WATCH_CRON || '*/1 * * * *';
+  // Fixed schedule: every minute
+  const schedule = '*/1 * * * *';
   cron.schedule(schedule, checkAndTrigger, { timezone: 'Europe/Moscow' });
 }

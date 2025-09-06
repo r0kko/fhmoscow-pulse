@@ -46,7 +46,7 @@ export async function runTournamentSync() {
 }
 
 export default function startTournamentSyncCron() {
-  // Default: every 6 hours at minute 50 (after players)
-  const schedule = process.env.TOURNAMENT_SYNC_CRON || '50 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 50 (after players)
+  const schedule = '50 */6 * * *';
   cron.schedule(schedule, runTournamentSync, { timezone: 'Europe/Moscow' });
 }

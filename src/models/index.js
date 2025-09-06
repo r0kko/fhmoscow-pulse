@@ -99,6 +99,7 @@ import GameEventType from './gameEventType.js';
 import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
 import GameViolation from './gameViolation.js';
+import GamePenalty from './gamePenalty.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -382,6 +383,18 @@ MatchAgreement.belongsTo(MatchAgreement, {
   as: 'Parent',
 });
 
+/* game penalties (events: infractions) */
+Match.hasMany(GamePenalty, { foreignKey: 'game_id' });
+GamePenalty.belongsTo(Match, { foreignKey: 'game_id' });
+GameEventType.hasMany(GamePenalty, { foreignKey: 'event_type_id' });
+GamePenalty.belongsTo(GameEventType, { foreignKey: 'event_type_id' });
+Player.hasMany(GamePenalty, { foreignKey: 'penalty_player_id' });
+GamePenalty.belongsTo(Player, { foreignKey: 'penalty_player_id' });
+GameViolation.hasMany(GamePenalty, { foreignKey: 'penalty_violation_id' });
+GamePenalty.belongsTo(GameViolation, { foreignKey: 'penalty_violation_id' });
+PenaltyMinutes.hasMany(GamePenalty, { foreignKey: 'penalty_minutes_id' });
+GamePenalty.belongsTo(PenaltyMinutes, { foreignKey: 'penalty_minutes_id' });
+
 /* courses */
 Course.belongsTo(User, { foreignKey: 'responsible_id', as: 'Responsible' });
 User.hasMany(Course, {
@@ -624,6 +637,7 @@ export {
   TeamPlayer,
   MatchPlayer,
   MatchStaff,
+  GamePenalty,
   GameEventType,
   PenaltyMinutes,
   GameSituation,

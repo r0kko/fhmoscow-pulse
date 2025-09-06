@@ -32,7 +32,7 @@ export async function runClubSync() {
 }
 
 export default function startClubSyncCron() {
-  // Default: every 6 hours at minute 0
-  const schedule = process.env.CLUB_SYNC_CRON || '0 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 0
+  const schedule = '0 */6 * * *';
   cron.schedule(schedule, runClubSync, { timezone: 'Europe/Moscow' });
 }

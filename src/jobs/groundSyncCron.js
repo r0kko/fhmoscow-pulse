@@ -32,7 +32,7 @@ export async function runGroundSync() {
 }
 
 export default function startGroundSyncCron() {
-  // Default: every 6 hours at minute 10 (after clubs)
-  const schedule = process.env.GROUND_SYNC_CRON || '10 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 10 (after clubs)
+  const schedule = '10 */6 * * *';
   cron.schedule(schedule, runGroundSync, { timezone: 'Europe/Moscow' });
 }

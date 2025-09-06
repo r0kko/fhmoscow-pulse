@@ -21,9 +21,43 @@ import lineupExportController from '../controllers/matchLineupExportController.j
 import matchStaffController from '../controllers/matchStaffController.js';
 import { setMatchStaffRules } from '../validators/matchStaffValidators.js';
 import broadcastController from '../controllers/broadcastController.js';
+import penaltyController, {
+  listPenalties,
+} from '../controllers/matchPenaltyController.js';
 
 const router = express.Router();
 
+/**
+ * @openapi
+ * /matches/{id}/sync-penalties:
+ *   post:
+ *     summary: Reconcile penalties (Нарушение) for a match from external DB
+ *     tags: [Matches]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: Internal match UUID
+ *     responses:
+ *       200:
+ *         description: Reconciled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 upserts: { type: integer }
+ *                 softDeleted: { type: integer }
+ *       400:
+ *         description: Match is not mapped to external or preconditions missing
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 router.get(
   '/upcoming',
   auth,
@@ -156,6 +190,79 @@ router.post(
   auth,
   authorize('ADMIN'),
   broadcastController.reconcile
+);
+
+// Admin: reconcile penalty events for a match from external DB ("Нарушение")
+router.post(
+  '/:id/sync-penalties',
+  auth,
+  authorize('ADMIN'),
+  penaltyController.reconcile
+);
+
+/**
+ * @openapi
+ * /matches/{id}/penalties:
+ *   get:
+ *     summary: List penalties for a match (ordered by period/time)
+ *     tags: [Matches]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: Internal match UUID
+ *     responses:
+ *       200:
+ *         description: A list of penalties
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       external_id: { type: integer }
+ *                       period: { type: integer }
+ *                       minute: { type: integer }
+ *                       second: { type: integer }
+ *                       clock: { type: string, example: '12:34' }
+ *                       team_penalty: { type: boolean }
+ *                       player:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           id: { type: string }
+ *                           external_id: { type: integer }
+ *                           full_name: { type: string }
+ *                       violation:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           id: { type: string }
+ *                           external_id: { type: integer }
+ *                           name: { type: string }
+ *                           full_name: { type: string }
+ *                       minutes:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           id: { type: string }
+ *                           external_id: { type: integer }
+ *                           name: { type: string }
+ */
+// Read: list penalties for a match (sorted by period, time)
+router.get(
+  '/:id/penalties',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  listPenalties
 );
 
 // Admin: calendar for the next N days (default 10), global scope

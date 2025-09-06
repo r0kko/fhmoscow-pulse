@@ -34,6 +34,7 @@ export async function runGameSituationSync() {
 }
 
 export default function startGameSituationSyncCron() {
-  const schedule = process.env.GAME_SITUATION_SYNC_CRON || '57 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 57
+  const schedule = '57 */6 * * *';
   cron.schedule(schedule, runGameSituationSync, { timezone: 'Europe/Moscow' });
 }

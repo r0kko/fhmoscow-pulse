@@ -4,6 +4,10 @@ import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
 import logger from '../../logger.js';
 import { reconcileWindow } from '../services/broadcastSyncService.js';
+import {
+  isExternalDbAvailable,
+  connectExternalMariaDb,
+} from '../config/externalMariaDb.js';
 
 let running = false;
 let scheduled = false;
@@ -18,9 +22,21 @@ export async function runBroadcastLinkSync() {
       running = true;
       await withJobMetrics('broadcastLinkSync', async () => {
         try {
-          const daysAhead = Number(process.env.BROADCAST_SYNC_AHEAD_DAYS || 7);
-          const daysBack = Number(process.env.BROADCAST_SYNC_BACK_DAYS || 3);
-          const limit = Number(process.env.BROADCAST_SYNC_LIMIT || 500);
+          if (!isExternalDbAvailable()) {
+            try {
+              await connectExternalMariaDb();
+            } catch (_e) {
+              /* empty */
+            }
+          }
+          if (!isExternalDbAvailable()) {
+            logger.warn('BroadcastLink sync skipped: external DB unavailable');
+            return;
+          }
+          // Fixed defaults in code (no env overrides)
+          const daysAhead = 7;
+          const daysBack = 3;
+          const limit = 500;
           const stats = await reconcileWindow({ daysAhead, daysBack, limit });
           logger.info(
             'BroadcastLink sync: processed=%d, updated=%d, deleted=%d',
@@ -41,7 +57,8 @@ export async function runBroadcastLinkSync() {
 
 export default function startBroadcastLinkSyncCron() {
   if (scheduled) return;
-  const schedule = process.env.BROADCAST_SYNC_CRON || '*/10 * * * *';
+  // Fixed schedule: every 10 minutes
+  const schedule = '*/10 * * * *';
   task = cron.schedule(schedule, runBroadcastLinkSync, {
     timezone: 'Europe/Moscow',
   });

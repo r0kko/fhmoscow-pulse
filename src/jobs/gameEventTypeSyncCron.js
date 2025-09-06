@@ -34,7 +34,7 @@ export async function runGameEventTypeSync() {
 }
 
 export default function startGameEventTypeSyncCron() {
-  // Default: every 6 hours at minute 55 (near tournament sync)
-  const schedule = process.env.GAME_EVENT_TYPE_SYNC_CRON || '55 */6 * * *';
+  // Fixed schedule: every 6 hours at :55 (near tournament sync)
+  const schedule = '55 */6 * * *';
   cron.schedule(schedule, runGameEventTypeSync, { timezone: 'Europe/Moscow' });
 }

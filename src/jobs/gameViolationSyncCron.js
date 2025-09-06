@@ -34,6 +34,7 @@ export async function runGameViolationSync() {
 }
 
 export default function startGameViolationSyncCron() {
-  const schedule = process.env.GAME_VIOLATION_SYNC_CRON || '58 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 58
+  const schedule = '58 */6 * * *';
   cron.schedule(schedule, runGameViolationSync, { timezone: 'Europe/Moscow' });
 }

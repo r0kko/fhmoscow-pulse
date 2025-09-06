@@ -30,7 +30,7 @@ export async function runTeamSync() {
 }
 
 export default function startTeamSyncCron() {
-  // Default: every 6 hours at minute 20 (after clubs and grounds)
-  const schedule = process.env.TEAM_SYNC_CRON || '20 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 20 (after clubs and grounds)
+  const schedule = '20 */6 * * *';
   cron.schedule(schedule, runTeamSync, { timezone: 'Europe/Moscow' });
 }

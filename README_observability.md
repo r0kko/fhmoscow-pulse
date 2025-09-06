@@ -32,6 +32,7 @@ Quick start (now runs with your project)
    - Explore logs: Grafana → Explore → Loki → filter `{service="api"}` or `{service="client"}`.
    - JSON fields: Promtail parses JSON access/app logs; you can filter by `level` label and see `req_id`, `status`, `rt_ms` in log details.
    - Derived field: `req_id` is extracted in Grafana and shown in log details for easier correlation.
+   - Infra noise control: cAdvisor logs are excluded from Loki to avoid high‑volume, low‑signal messages.
 
 4) Traces (Tempo + OpenTelemetry):
    - Enable in env: `OTEL_ENABLED=true`, `OTEL_SERVICE_NAME=api`, `OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317`.
@@ -42,6 +43,14 @@ Notes
 - Security: change Grafana admin password via `GRAFANA_ADMIN_PASSWORD` env or UI.
 - Labels: logs include `service`, `env`, `container_name`, and env `NODE_ENV`, `VERSION`.
 - Metrics endpoint: prefer to protect `/metrics` with basic auth in environments where the API port is exposed. Set `METRICS_USER` and `METRICS_PASS`. Prometheus inside Docker network scrapes internally without auth.
+
+Performance and cAdvisor tuning
+- cAdvisor is pinned (dev and prod) and launched with conservative flags:
+  - `--docker_only=true`, `--housekeeping_interval=30s`
+  - Disabled metrics: `advtcp,percpu,sched,tcp,udp,disk,hugetlb,cpuset,referenced_memory,accelerator`
+  - `--store_container_labels=false`, `--event_storage_event_limit=default=0`, verbosity `--v=1`
+- Rationale: dramatically reduces log noise and CPU usage without breaking dashboards/alerts that rely on CPU/memory/container limits.
+- If you need more detail (e.g., per‑CPU metrics), remove items from `--disable_metrics` in `docker-compose*.yml` and re‑create the `cadvisor` service.
 
 NPM scripts
 - `npm run obs:up` — start Grafana/Loki/Prometheus

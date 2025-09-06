@@ -19,6 +19,14 @@ const taxTriggering = ref(false);
 const taxNotice = ref('');
 let refreshTimer = null;
 
+// Penalties backfill & deletion actions
+const penaltyTriggering = ref(false);
+const penaltyNotice = ref('');
+const deletionTriggering = ref(false);
+const deletionNotice = ref('');
+const penaltyParams = ref({ daysBack: 14, daysAhead: 7, limit: 400 });
+const deletionParams = ref({ batchSize: 1000, maxBatches: 50 });
+
 const reports = {
   jobRuns(days = 30) {
     return `${API_BASE}/reports/job-runs.csv?days=${days}`;
@@ -52,6 +60,44 @@ function fmt(ts) {
   if (!ts) return '—';
   const d = new Date(ts * 1000);
   return d.toLocaleString('ru-RU', { hour12: false });
+}
+
+async function runPenaltyWindowSync() {
+  penaltyTriggering.value = true;
+  error.value = '';
+  penaltyNotice.value = '';
+  try {
+    await apiFetch('/admin-ops/penalties/sync-window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...penaltyParams.value }),
+    });
+    penaltyNotice.value = 'Синхронизация нарушений поставлена в очередь.';
+    await load();
+  } catch (e) {
+    error.value = e.message || 'Не удалось запустить синхронизацию нарушений';
+  } finally {
+    penaltyTriggering.value = false;
+  }
+}
+
+async function runPenaltyReapOrphans() {
+  deletionTriggering.value = true;
+  error.value = '';
+  deletionNotice.value = '';
+  try {
+    await apiFetch('/admin-ops/penalties/reap-orphans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...deletionParams.value }),
+    });
+    deletionNotice.value = 'Очистка устаревших нарушений запущена.';
+    await load();
+  } catch (e) {
+    error.value = e.message || 'Не удалось запустить очистку нарушений';
+  } finally {
+    deletionTriggering.value = false;
+  }
 }
 
 function fmtDuration(ms) {
@@ -217,6 +263,87 @@ onUnmounted(() => {
         <div class="col-12 col-lg-4">
           <div class="card h-100">
             <div class="card-body d-flex flex-column">
+              <h2 class="h6">Нарушения (штрафы)</h2>
+              <div class="small text-muted mb-2">
+                Синхронизация событий типа «Нарушение» и регулярная очистка
+                удалённых записей.
+              </div>
+              <div class="mb-2">
+                <label class="form-label small mb-1">Окно, дней</label>
+                <div class="row g-2">
+                  <div class="col">
+                    <input
+                      v-model.number="penaltyParams.daysBack"
+                      type="number"
+                      min="0"
+                      class="form-control form-control-sm"
+                      placeholder="Назад"
+                    />
+                  </div>
+                  <div class="col">
+                    <input
+                      v-model.number="penaltyParams.daysAhead"
+                      type="number"
+                      min="0"
+                      class="form-control form-control-sm"
+                      placeholder="Вперёд"
+                    />
+                  </div>
+                  <div class="col">
+                    <input
+                      v-model.number="penaltyParams.limit"
+                      type="number"
+                      min="1"
+                      class="form-control form-control-sm"
+                      placeholder="Лимит матчей"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="mt-auto d-flex flex-wrap gap-2 align-items-center">
+                <button
+                  class="btn btn-brand"
+                  :disabled="penaltyTriggering"
+                  @click="runPenaltyWindowSync"
+                >
+                  <span
+                    v-if="penaltyTriggering"
+                    class="spinner-border spinner-border-sm me-1"
+                  ></span>
+                  Синхронизировать окно
+                </button>
+                <button
+                  class="btn btn-outline-danger"
+                  :disabled="deletionTriggering"
+                  @click="runPenaltyReapOrphans"
+                >
+                  <span
+                    v-if="deletionTriggering"
+                    class="spinner-border spinner-border-sm me-1"
+                  ></span>
+                  Очистить удалённые
+                </button>
+              </div>
+              <div
+                v-if="penaltyNotice"
+                class="alert alert-success mt-2 py-1 px-2 small"
+                role="status"
+              >
+                {{ penaltyNotice }}
+              </div>
+              <div
+                v-if="deletionNotice"
+                class="alert alert-success mt-2 py-1 px-2 small"
+                role="status"
+              >
+                {{ deletionNotice }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="card h-100">
+            <div class="card-body d-flex flex-column">
               <h2 class="h6">Проверка налогового статуса</h2>
               <div class="small text-muted mb-2">
                 Пошаговая проверка ИНН и статуса самозанятости для
@@ -303,6 +430,8 @@ onUnmounted(() => {
                         'playerSync',
                         'tournamentSync',
                         'broadcastLinkSync',
+                        'gamePenaltySync',
+                        'gameEventDeletionSync',
                       ]"
                       :key="name"
                     >

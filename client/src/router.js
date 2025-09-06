@@ -486,7 +486,7 @@ router.beforeEach(async (to, _from, next) => {
     next('/forbidden');
   } else if (
     to.meta.requiresStaff &&
-    !roles.some((r) => staffRoles.includes(r))
+    !roles.some((r) => staffRoles.includes(r) || adminRoles.includes(r))
   ) {
     next('/forbidden');
   } else if (

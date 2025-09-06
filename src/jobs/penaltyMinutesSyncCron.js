@@ -34,6 +34,7 @@ export async function runPenaltyMinutesSync() {
 }
 
 export default function startPenaltyMinutesSyncCron() {
-  const schedule = process.env.PENALTY_MINUTES_SYNC_CRON || '56 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 56
+  const schedule = '56 */6 * * *';
   cron.schedule(schedule, runPenaltyMinutesSync, { timezone: 'Europe/Moscow' });
 }

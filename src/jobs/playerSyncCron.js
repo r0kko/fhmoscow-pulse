@@ -36,7 +36,7 @@ export async function runPlayerSync() {
 }
 
 export default function startPlayerSyncCron() {
-  // Default: every 6 hours at minute 40 (after clubs/teams)
-  const schedule = process.env.PLAYER_SYNC_CRON || '40 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 40 (after clubs/teams)
+  const schedule = '40 */6 * * *';
   cron.schedule(schedule, runPlayerSync, { timezone: 'Europe/Moscow' });
 }

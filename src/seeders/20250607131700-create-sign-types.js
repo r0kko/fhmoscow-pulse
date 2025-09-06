@@ -1,7 +1,7 @@
 'use strict';
 
 /** @type {import('sequelize-cli').Migration} */
-// eslint-disable-next-line import/no-extraneous-dependencies
+
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = {

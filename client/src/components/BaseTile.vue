@@ -15,16 +15,42 @@ const props = defineProps({
   extraClass: { type: [String, Array, Object], default: '' },
   // Optional role override when not a link (e.g., 'button' for intercept tiles)
   role: { type: String, default: 'group' },
+  // Optional: force opening in new tab for external links
+  target: { type: String, default: null },
+  rel: { type: String, default: null },
 });
 
 const isLink = computed(() => Boolean(props.to) && !props.disabled);
+const hrefLike = computed(() => {
+  const t = props.to;
+  return (
+    typeof t === 'string' &&
+    (/^https?:\/\//i.test(t) || t.startsWith('#') || /^mailto:|^tel:/i.test(t))
+  );
+});
+const componentTag = computed(() =>
+  isLink.value ? (hrefLike.value ? 'a' : RouterLink) : 'div'
+);
+const linkAttrs = computed(() => {
+  if (!isLink.value) return {};
+  if (hrefLike.value) {
+    const isHttp =
+      typeof props.to === 'string' && /^https?:\/\//i.test(props.to);
+    return {
+      href: props.to,
+      target: props.target || (isHttp ? '_blank' : null),
+      rel: props.rel || (isHttp ? 'noopener noreferrer' : null),
+    };
+  }
+  return { to: props.to };
+});
 const tileRole = computed(() => (isLink.value ? null : props.role || 'group'));
 </script>
 
 <template>
   <component
-    :is="isLink ? RouterLink : 'div'"
-    :to="isLink ? props.to : null"
+    :is="componentTag"
+    v-bind="linkAttrs"
     class="card tile text-body"
     :class="[props.section ? 'section-card' : null, props.extraClass]"
     :aria-label="props.ariaLabel || null"

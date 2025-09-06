@@ -6,6 +6,7 @@ import { formatKickoff, isMskMidnight } from '../utils/time.js';
 import InfoItem from '../components/InfoItem.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import MenuTile from '../components/MenuTile.vue';
+import vkLogo from '../assets/vkvideo.png';
 
 const route = useRoute();
 const match = ref(null);
@@ -86,6 +87,49 @@ const isPostponed = computed(() => statusAlias.value === 'POSTPONED');
 const isParticipant = computed(
   () => Boolean(match.value?.is_home) || Boolean(match.value?.is_away)
 );
+
+function normalizeUrl(u) {
+  const s = (u || '').toString().trim();
+  if (!s) return '';
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
+}
+
+const streamLinks = computed(() => {
+  try {
+    const urls = (match.value?.broadcast_links || [])
+      .filter(Boolean)
+      .map(normalizeUrl)
+      .filter((x) => /^https?:\/\//i.test(x));
+    if (!urls.length) return [];
+    if (urls.length === 1)
+      return [
+        {
+          url: urls[0],
+          label: 'Прямая трансляция',
+          aria: 'Открыть прямую трансляцию',
+        },
+      ];
+    const res = [];
+    const labels = ['Первый состав', 'Второй состав'];
+    for (let i = 0; i < Math.min(2, urls.length); i += 1) {
+      res.push({
+        url: urls[i],
+        label: labels[i],
+        aria: `Открыть трансляцию: ${labels[i]}`,
+      });
+    }
+    for (let i = 2; i < urls.length; i += 1) {
+      res.push({
+        url: urls[i],
+        label: `Трансляция #${i + 1}`,
+        aria: `Открыть трансляцию #${i + 1}`,
+      });
+    }
+    return res;
+  } catch {
+    return [];
+  }
+});
 
 // Reschedule date flow (for postponed)
 const reschedDate = ref('');
@@ -230,23 +274,7 @@ const statusChip = computed(() => {
               </div>
             </div>
           </div>
-          <!-- Broadcast links, if available -->
-          <div v-if="(match?.broadcast_links || []).length" class="mt-3">
-            <div class="text-muted small mb-2">Трансляция</div>
-            <div class="d-flex gap-2 flex-wrap">
-              <a
-                v-for="(u, idx) in match.broadcast_links"
-                :key="`${u}-${idx}`"
-                class="btn btn-sm btn-outline-primary"
-                :href="u"
-                target="_blank"
-                rel="noopener"
-                :aria-label="`Открыть трансляцию #${idx + 1}`"
-              >
-                Смотреть #{{ idx + 1 }}
-              </a>
-            </div>
-          </div>
+          <!-- broadcast links moved to the stadium card for better context -->
         </div>
       </div>
 
@@ -378,6 +406,34 @@ const statusChip = computed(() => {
               :to="null"
               :placeholder="true"
               note="Скоро"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Broadcast section as tiles -->
+      <div
+        v-if="streamLinks.length"
+        class="card section-card mb-2 menu-section"
+      >
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">Медиа по матчу</h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="(s, idx) in streamLinks"
+              :key="s.url + '-' + idx"
+              :title="
+                streamLinks.length === 1
+                  ? 'Прямой эфир'
+                  : idx === 0
+                    ? 'Трансляция (1-й состав)'
+                    : idx === 1
+                      ? 'Трансляция (2-й состав)'
+                      : `Трансляция #${idx + 1}`
+              "
+              :to="s.url"
+              :image-src="vkLogo"
+              image-alt="VK Видео"
             />
           </div>
         </div>

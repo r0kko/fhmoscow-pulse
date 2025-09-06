@@ -36,7 +36,7 @@ export async function runStaffSync() {
 }
 
 export default function startStaffSyncCron() {
-  // Default: every 6 hours at minute 35 (after teams, before players)
-  const schedule = process.env.STAFF_SYNC_CRON || '35 */6 * * *';
+  // Fixed schedule: every 6 hours at minute 35 (after teams, before players)
+  const schedule = '35 */6 * * *';
   cron.schedule(schedule, runStaffSync, { timezone: 'Europe/Moscow' });
 }
