@@ -1,0 +1,103 @@
+{
+  "title": "Pulse App HTTP (Drill)",
+  "uid": "pulse-app-http-drill",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "http", "drill"],
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "route",
+        "type": "query",
+        "label": "Route",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(http_requests_total, route)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": ["$__all"] }
+      },
+      {
+        "name": "status",
+        "type": "query",
+        "label": "Status",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(http_requests_total, status)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": ["$__all"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Latency p50/p95/p99 (route filter)",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "options": { "legend": { "displayMode": "list" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
+          "legendFormat": "p50",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
+          "legendFormat": "p99",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "RPS (route filter)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{route=~\"$route\"}[5m]))",
+          "legendFormat": "RPS",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Error ratio (5xx / all) (route filter)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{route=~\"$route\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{route=~\"$route\"}[5m])), 1)",
+          "legendFormat": "%",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Top routes by 4xx (5m)",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "options": { "showHeader": true },
+      "transformations": [ { "id": "labelsToFields", "options": { "keepLabels": true } } ],
+      "fieldConfig": { "defaults": { "links": [ { "title": "Explore logs", "url": "/explore?left=%5B%22now-6h%22,%22now%22,%22Loki%22,%7B%22expr%22:%22%7Bservice%3D%5C"api%5C",type%3D%5C"access%5C",route%3D%5C"$__value%5C"%7D%20%7C%20json%22%7D%5D" } ] }, "overrides": [] },
+      "targets": [
+        { "expr": "topk(15, sum by (route) (rate(http_requests_total{status=~\"4..\"}[5m])))", "format": "table", "datasource": { "type": "prometheus", "uid": "Prometheus" } }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Access logs (route/status filters)",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "options": { "dedupStrategy": "none", "wrapLogMessage": true },
+      "targets": [
+        { "expr": "{service=\"api\", type=\"access\"} | route=~\"$route\" | json | status=~\"$status\"", "datasource": { "type": "loki", "uid": "Loki" } }
+      ]
+    }
+  ]
+}
+

@@ -42,7 +42,8 @@ function getXsrfToken() {
       if (h) return h;
     }
     // As a last resort, check an in-memory var (non-persistent across reloads)
-    if (typeof window !== 'undefined' && window.__csrfHmac) return window.__csrfHmac;
+    if (typeof window !== 'undefined' && window.__csrfHmac)
+      return window.__csrfHmac;
   } catch (_) {}
   return null;
 }
@@ -64,7 +65,9 @@ function shouldSendXsrf(method) {
 
 export async function initCsrf() {
   try {
-    const res = await fetch(`${API_BASE}/csrf-token`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/csrf-token`, {
+      credentials: 'include',
+    });
     try {
       const data = await res.clone().json();
       if (data && data.csrfHmac) {

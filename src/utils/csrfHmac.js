@@ -4,7 +4,9 @@ import '../config/env.js';
 
 // Secret precedence: dedicated CSRF_HMAC_SECRET, else JWT_SECRET, else SESSION_SECRET
 const SECRET =
-  process.env.CSRF_HMAC_SECRET || process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  process.env.CSRF_HMAC_SECRET ||
+  process.env.JWT_SECRET ||
+  process.env.SESSION_SECRET;
 
 // Default TTL: 6 hours (in seconds)
 const DEFAULT_TTL = parseInt(process.env.CSRF_HMAC_TTL_SECONDS || '21600', 10);
@@ -75,4 +77,3 @@ export function verifyCsrfHmac(token, req) {
 }
 
 export default { issueCsrfHmac, verifyCsrfHmac };
-

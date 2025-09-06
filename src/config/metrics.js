@@ -35,6 +35,7 @@ let emailSentTotal = null;
 let rateLimitedTotal = null;
 let csrfAcceptedTotal = null;
 let csrfRejectedTotal = null;
+let httpErrorCodeTotal = null;
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -196,6 +197,12 @@ async function ensureInit() {
       name: 'csrf_rejected_total',
       help: 'CSRF checks rejected grouped by reason',
       labelNames: ['reason'], // cookie_missing_or_mismatch|hmac_error|other
+      registers: [register],
+    });
+    httpErrorCodeTotal = new client.Counter({
+      name: 'http_error_code_total',
+      help: 'Application error responses grouped by code and status class',
+      labelNames: ['code', 'status'], // e.g., EBADCSRFTOKEN, unauthorized, 403, 401
       registers: [register],
     });
 
@@ -571,6 +578,16 @@ export function incCsrfRejected(reason = 'other') {
   if (!metricsAvailable) return;
   try {
     csrfRejectedTotal.inc({ reason });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incHttpErrorCode(code = 'error', status = 0) {
+  if (!metricsAvailable) return;
+  try {
+    const s = String(status || 0);
+    httpErrorCodeTotal.inc({ code: String(code), status: s });
   } catch (_e) {
     /* noop */
   }

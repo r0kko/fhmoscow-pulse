@@ -1,0 +1,119 @@
+{
+  "title": "Security & CSRF Overview",
+  "uid": "pulse-security",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "security", "csrf"],
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "code",
+        "type": "query",
+        "label": "Error code",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(http_error_code_total, code)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": ["$__all"] }
+      },
+      {
+        "name": "route",
+        "type": "query",
+        "label": "Route",
+        "datasource": { "type": "loki", "uid": "Loki" },
+        "query": "label_values({service=\"api\", type=\"access\"}, route)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": ["$__all"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CSRF accepted by mode (rate)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "options": { "legend": { "displayMode": "table" } },
+      "targets": [
+        {
+          "expr": "sum by (mode) (rate(csrf_accepted_total[5m]))",
+          "legendFormat": "{{mode}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CSRF rejected by reason (rate)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "options": { "legend": { "displayMode": "table" } },
+      "targets": [
+        {
+          "expr": "sum by (reason) (rate(csrf_rejected_total[5m]))",
+          "legendFormat": "{{reason}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Top error codes (5m rate)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (code) (rate(http_error_code_total[5m])))",
+          "legendFormat": "{{code}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "4xx by code (5m rate)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 7 },
+      "options": {
+        "showHeader": true
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "keepLabels": true } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "title": "Explore logs",
+              "url": "/explore?left=%5B%22now-6h%22,%22now%22,%22Loki%22,%7B%22expr%22:%22%7Bservice%3D%5C"api%5C",error_code%3D%5C"$__value%5C"%7D%20%7C%20json%22%7D%5D"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (code) (rate(http_error_code_total{status=~\"4..\"}[5m]))",
+          "format": "table",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Recent 403/CSRF logs",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 9 },
+      "options": {
+        "dedupStrategy": "none",
+        "showTime": true,
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{service=\"api\", type=\"access\"} | json | status=403 | (error_code=\"EBADCSRFTOKEN\" or $code) | (route=~\"$route\" or route=\"$__all\")",
+          "datasource": { "type": "loki", "uid": "Loki" }
+        }
+      ]
+    }
+  ]
+}
+

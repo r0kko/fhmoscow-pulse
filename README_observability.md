@@ -70,6 +70,7 @@ Operational tips
 - Provisioned dashboards:
   - Pulse → "Pulse App Overview" (jobs + logs)
   - Pulse → "Pulse App HTTP" (latency, 5xx, RPS)
+  - Pulse → "Pulse App HTTP (Drill)" (route/status variables, top 4xx, one-click log drill)
   - Pulse → "App Golden Signals" (RPS, errors, latency p50/p95/p99, inflight)
   - Pulse → "Runtime (Node.js)" (event loop, GC, memory, readiness)
   - Pulse → "Infra Overview" (container CPU/memory, node memory/load)
@@ -77,9 +78,12 @@ Operational tips
   - Pulse → "Synthetics" (Blackbox probe for `/health`)
   - Pulse → "SLO: Availability (99%)" (burn rates and error ratios across windows)
   - Pulse → "Tracing Overview" (service latency and rates by operation)
+  - Pulse → "Security & CSRF Overview" (CSRF accepted/rejected, top error codes, 403/CSRF logs)
 
 Alerts (Prometheus + Alertmanager)
 - Burn-rate SLO (99%), 5xx spikes, event loop lag, process/container memory, CPU usage.
+- CSRF: rejection ratio (>1%), EBADCSRFTOKEN spikes.
+- Auth: invalid refresh ratio (>5%); Usage: rate-limited surge.
 - Edit rules: `infra/observability/alerts.yml`. Receivers: `infra/observability/alertmanager.yml`.
   - To integrate Slack/Telegram/Email, edit `alertmanager.yml` and recreate containers.
 
@@ -92,3 +96,8 @@ Release annotations (Grafana)
   - Job runs: `GET /reports/job-runs.csv?days=30`
   - HTTP errors aggregated by path/status: `GET /reports/http-errors.csv?days=7`
   - UI shortcuts: Admin → Системные операции → buttons “Экспорт запусков …”, “Экспорт ошибок …”
+
+Deep drill UX
+- Dashboard variables (route/status/code) allow slicing panels and the logs panel updates accordingly.
+- Click any code in the 4xx table to jump to Explore with that `error_code` pre-filled (last 6h).
+- Access logs include `req_id`, `route`, `error_code`, `trace_id` for correlation.

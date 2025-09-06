@@ -19,7 +19,8 @@ const csrfOptions = {
       // (effective only when Secure and SameSite=None)
       partitioned:
         isSecureEnv() &&
-        String(process.env.COOKIE_PARTITIONED || 'true').toLowerCase() === 'true',
+        String(process.env.COOKIE_PARTITIONED || 'true').toLowerCase() ===
+          'true',
     },
   },
 };

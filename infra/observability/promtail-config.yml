@@ -33,8 +33,14 @@ scrape_configs:
             req_id: req_id
             type: type
             status: status
+            route: route
+            method: method
             path: path
             rt_ms: rt_ms
+            error_code: error_code
       - labels:
           level:
           type:
+          status:
+          error_code:
+          route:

@@ -6,6 +6,8 @@ import { context, trace } from '@opentelemetry/api';
 
 // Custom token for request id provided by requestId middleware
 morgan.token('reqid', (req) => req.id || '-');
+morgan.token('route', (req) => req.route?.path || 'unmatched');
+morgan.token('errorcode', (_req, res) => res.getHeader('X-Error-Code') || '');
 
 // Build a JSON line to stdout; promtail/Loki will parse it easily
 const jsonFormat = (tokens, req, res) => {
@@ -22,13 +24,16 @@ const jsonFormat = (tokens, req, res) => {
     req_id: tokens.reqid(req, res),
     method: tokens.method(req, res),
     path: tokens.url(req, res),
+    route: tokens.route(req, res),
     status: Number(tokens.status(req, res) || 0),
+    status_class: `${String(tokens.status(req, res) || 0)[0]}xx`,
     length: Number(tokens.res(req, res, 'content-length') || 0),
     rt_ms: Number(tokens['response-time'](req, res) || 0),
     ip: tokens['remote-addr'](req, res),
     client_ip: String(clientIp),
     ua: tokens['user-agent'](req, res),
     ref: tokens.referrer(req, res),
+    error_code: tokens.errorcode(req, res) || undefined,
   };
   try {
     const cfRay = req.headers['cf-ray'];

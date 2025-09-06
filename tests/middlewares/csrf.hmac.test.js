@@ -30,7 +30,9 @@ describe('csrfMiddleware with HMAC token', () => {
   });
 
   test('accepts valid HMAC token from header and does not invoke lusca', () => {
-    const baseReq = makeReq('POST', '/documents', { Origin: 'https://example.com' });
+    const baseReq = makeReq('POST', '/documents', {
+      Origin: 'https://example.com',
+    });
     const token = issueCsrfHmac(baseReq);
     const req = makeReq('POST', '/documents', {
       'X-XSRF-TOKEN': token,
@@ -54,4 +56,4 @@ describe('csrfMiddleware with HMAC token', () => {
     expect(mockLuscaCsrf).toHaveBeenCalledTimes(1);
   });
 });
-
+/* global process */

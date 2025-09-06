@@ -14,7 +14,9 @@ export default function csrfMiddleware(req, res, next) {
   if (SAFE_METHODS.has(req.method) || EXEMPT_PATHS.includes(req.path)) {
     try {
       incCsrfAccepted('skipped_safe');
-    } catch (_) {}
+    } catch (_) {
+      /* noop */ void 0;
+    }
     return next();
   }
   // If request carries a Bearer token, treat it as API-style auth and skip CSRF
@@ -25,7 +27,9 @@ export default function csrfMiddleware(req, res, next) {
   ) {
     try {
       incCsrfAccepted('skipped_bearer');
-    } catch (_) {}
+    } catch (_) {
+      /* noop */ void 0;
+    }
     return next();
   }
   // If client provides a valid stateless, HMAC-signed token in header, accept it.
@@ -40,16 +44,21 @@ export default function csrfMiddleware(req, res, next) {
     // fall back to cookie-based enforcement below
     try {
       incCsrfRejected('hmac_error');
-    } catch (_) {}
+    } catch (_) {
+      /* noop */ void 0;
+    }
   }
   // Enforce CSRF for state-changing requests only
   return csrf(req, res, (err) => {
     if (err) {
       try {
         const msg = String(err?.message || '').toLowerCase();
-        if (msg.includes('ebadcsrftoken')) incCsrfRejected('cookie_missing_or_mismatch');
+        if (msg.includes('ebadcsrftoken'))
+          incCsrfRejected('cookie_missing_or_mismatch');
         else incCsrfRejected('other');
-      } catch (_) {}
+      } catch (_) {
+        /* noop */ void 0;
+      }
     }
     return next(err);
   });

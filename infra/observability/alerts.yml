@@ -73,6 +73,31 @@ groups:
           description: |
             5xx requests present over the last 5 minutes.
 
+      # CSRF rejection ratio > 1% of POST requests over 10m
+      - alert: CsrfRejectionHigh
+        expr: |
+          sum(rate(csrf_rejected_total[10m]))
+          /
+          clamp_min(sum(rate(http_requests_total{method="POST"}[10m])), 1)
+          > 0.01
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "CSRF rejections elevated (>1%)"
+          description: |
+            Increase in CSRF rejections over 10 minutes. Investigate security dashboard.
+
+      # EBADCSRFTOKEN surge (absolute rate)
+      - alert: CsrfTokenMismatchSpike
+        expr: sum(rate(http_error_code_total{code="EBADCSRFTOKEN"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "EBADCSRFTOKEN spike"
+          description: "More than 1 EBADCSRFTOKEN per second over 5 minutes"
+
   - name: runtime-health
     rules:
       # Event loop lag (average > 250ms for 5m)
@@ -217,3 +242,27 @@ groups:
         annotations:
           summary: "Spike of failed logins"
           description: ">20 invalid login attempts in 5m window"
+
+      # Rate limiting surge (global limiter)
+      - alert: RateLimitedSurge
+        expr: increase(rate_limited_total{name="global"}[5m]) > 100
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Clients frequently rate-limited"
+          description: ">100 requests blocked by global rate limiter in 5m"
+
+      # Refresh token invalid ratio > 5% (auth_refresh_total invalid vs total)
+      - alert: RefreshInvalidHigh
+        expr: |
+          sum(increase(auth_refresh_total{result="invalid"}[10m]))
+          /
+          clamp_min(sum(increase(auth_refresh_total[10m])), 1)
+          > 0.05
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "High invalid refresh ratio"
+          description: ">5% invalid refresh attempts over 10m"
