@@ -7,6 +7,8 @@ class GameViolation extends Model {}
 GameViolation.init(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true },
+    name: { type: DataTypes.STRING(255) },
+    full_name: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

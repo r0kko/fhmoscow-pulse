@@ -13,13 +13,14 @@ async function list(req, res, next) {
 
 async function set(req, res, next) {
   try {
-    const { team_id, staff_ids, staff } = req.body || {};
+    const { team_id, staff_ids, staff, if_staff_rev } = req.body || {};
     const data = await service.set(
       req.params.id,
       team_id,
       staff_ids,
       staff,
-      req.user.id
+      req.user.id,
+      if_staff_rev || null
     );
     res.json(data);
   } catch (e) {

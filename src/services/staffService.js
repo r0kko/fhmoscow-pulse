@@ -544,7 +544,7 @@ async function syncExternal(actorId = null) {
   });
 
   logger.info(
-    'Staff sync: staff upserted=%d, softDeleted=%d (archived=%d, missing=%d); categories upserted=%d, softDeleted=%d; clubStaff upserted=%d, softDeletedMissing=%d; teamStaff upserted=%d, softDeletedMissing=%d',
+    'Staff sync: staff upserted=%d, softDeleted=%d (archived=%d, missing=%d); categories upserted=%d, softDeleted=%d; clubStaff upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamStaff upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
     staffUpserts,
     staffSoftDeletedMissing + staffSoftDeletedArchived,
     staffSoftDeletedArchived,
@@ -552,8 +552,12 @@ async function syncExternal(actorId = null) {
     categoryUpserts,
     categorySoftDeleted,
     clubStaffUpserts,
+    clubStaffSoftDeletedMissing + clubStaffSoftDeletedArchived,
+    clubStaffSoftDeletedArchived,
     clubStaffSoftDeletedMissing,
     teamStaffUpserts,
+    teamStaffSoftDeletedMissing + teamStaffSoftDeletedArchived,
+    teamStaffSoftDeletedArchived,
     teamStaffSoftDeletedMissing
   );
 

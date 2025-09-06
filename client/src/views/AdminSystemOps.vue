@@ -302,6 +302,7 @@ onUnmounted(() => {
                         'staffSync',
                         'playerSync',
                         'tournamentSync',
+                        'broadcastLinkSync',
                       ]"
                       :key="name"
                     >

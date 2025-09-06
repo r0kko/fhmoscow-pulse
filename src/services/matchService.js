@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import { User, Team } from '../models/index.js';
 import { Game, Team as ExtTeam, Stadium } from '../externalModels/index.js';
 import { utcToMoscow, moscowToUtc } from '../utils/time.js';
+import { extractFirstUrl } from '../utils/url.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listUpcoming(userId, options) {
@@ -82,6 +83,10 @@ async function listUpcoming(userId, options) {
       stadium: g.Stadium?.name || null,
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
+      broadcast_links: [
+        extractFirstUrl(g.broadcast),
+        extractFirstUrl(g.broadcast2),
+      ].filter(Boolean),
     }));
   }
 
@@ -109,6 +114,10 @@ async function listUpcoming(userId, options) {
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
       is_home: extIds.includes(Number(g.team1_id)),
+      broadcast_links: [
+        extractFirstUrl(g.broadcast),
+        extractFirstUrl(g.broadcast2),
+      ].filter(Boolean),
     })),
     count: total,
   };
@@ -128,6 +137,7 @@ async function listUpcomingLocal(userId, options) {
     MatchAgreement,
     MatchAgreementStatus,
     GameStatus,
+    MatchBroadcastLink,
   } = await import('../models/index.js');
   const compatArrayReturn = typeof options !== 'object' || options === null;
   const opts = compatArrayReturn
@@ -175,6 +185,7 @@ async function listUpcomingLocal(userId, options) {
       { model: Tournament, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
+      { model: MatchBroadcastLink, attributes: ['url', 'position'] },
     ],
     order: [['date_start', 'ASC']],
     distinct: true,
@@ -247,6 +258,10 @@ async function listUpcomingLocal(userId, options) {
       tournament: m.Tournament?.name || null,
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
+      broadcast_links: (m.MatchBroadcastLinks || [])
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+        .map((x) => x.url)
+        .filter(Boolean),
     }));
   }
 
@@ -300,6 +315,10 @@ async function listUpcomingLocal(userId, options) {
         agreement_accepted: !!flags.accepted,
         agreement_pending: !!flags.pending && !flags.accepted,
         urgent_unagreed: isUrgent,
+        broadcast_links: (m.MatchBroadcastLinks || [])
+          .sort((a, b) => (a.position || 0) - (b.position || 0))
+          .map((x) => x.url)
+          .filter(Boolean),
       };
     }),
     count: total,
@@ -379,6 +398,10 @@ async function listPast(userId, options) {
       stadium: g.Stadium?.name || null,
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
+      broadcast_links: [
+        extractFirstUrl(g.broadcast),
+        extractFirstUrl(g.broadcast2),
+      ].filter(Boolean),
     }));
   }
   let total = rowsRaw.length;
@@ -403,14 +426,25 @@ async function listPast(userId, options) {
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
       is_home: extIds.includes(Number(g.team1_id)),
+      broadcast_links: [
+        extractFirstUrl(g.broadcast),
+        extractFirstUrl(g.broadcast2),
+      ].filter(Boolean),
     })),
     count: total,
   };
 }
 
 async function listPastLocal(userId, options) {
-  const { Match, Ground, Tournament, TournamentGroup, Tour, GameStatus } =
-    await import('../models/index.js');
+  const {
+    Match,
+    Ground,
+    Tournament,
+    TournamentGroup,
+    Tour,
+    GameStatus,
+    MatchBroadcastLink,
+  } = await import('../models/index.js');
   const compatArrayReturn = typeof options !== 'object' || options === null;
   const opts = compatArrayReturn
     ? { limit: typeof options === 'number' ? options : undefined }
@@ -463,6 +497,7 @@ async function listPastLocal(userId, options) {
       { model: Tournament, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
+      { model: MatchBroadcastLink, attributes: ['url', 'position'] },
     ],
     order: [['date_start', 'DESC']],
     distinct: true,
@@ -506,6 +541,10 @@ async function listPastLocal(userId, options) {
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
       season_id: m.season_id || null,
+      broadcast_links: (m.MatchBroadcastLinks || [])
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+        .map((x) => x.url)
+        .filter(Boolean),
     }));
   }
   let total = rowsRaw.length;
@@ -538,6 +577,10 @@ async function listPastLocal(userId, options) {
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,
+      broadcast_links: (m.MatchBroadcastLinks || [])
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+        .map((x) => x.url)
+        .filter(Boolean),
     })),
     count: total,
   };

@@ -1,0 +1,27 @@
+import { DataTypes, Model } from 'sequelize';
+
+import sequelize from '../config/database.js';
+
+class GameViolation extends Model {}
+
+GameViolation.init(
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    external_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+    name: { type: DataTypes.STRING(255), allowNull: true },
+    full_name: { type: DataTypes.STRING(255), allowNull: true },
+  },
+  {
+    sequelize,
+    modelName: 'GameViolation',
+    tableName: 'game_violations',
+    paranoid: true,
+    underscored: true,
+  }
+);
+
+export default GameViolation;

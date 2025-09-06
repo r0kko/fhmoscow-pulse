@@ -2,14 +2,20 @@ import crypto from 'crypto';
 
 import '../config/env.js';
 
-// Secret precedence: dedicated CSRF_HMAC_SECRET, else JWT_SECRET, else SESSION_SECRET
-const SECRET =
-  process.env.CSRF_HMAC_SECRET ||
-  process.env.JWT_SECRET ||
-  process.env.SESSION_SECRET;
+// Read secret and TTL at call time so tests and runtime env overrides apply.
+function getSecret() {
+  return (
+    process.env.CSRF_HMAC_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.SESSION_SECRET ||
+    ''
+  );
+}
 
-// Default TTL: 6 hours (in seconds)
-const DEFAULT_TTL = parseInt(process.env.CSRF_HMAC_TTL_SECONDS || '21600', 10);
+function getDefaultTtl() {
+  // 6 hours by default
+  return parseInt(process.env.CSRF_HMAC_TTL_SECONDS || '21600', 10);
+}
 
 function b64urlEncode(buf) {
   return Buffer.from(buf)
@@ -26,8 +32,9 @@ function b64urlDecode(str) {
 }
 
 function hmac(payload) {
-  if (!SECRET) throw new Error('CSRF HMAC secret is not configured');
-  return crypto.createHmac('sha256', SECRET).update(payload, 'utf8').digest();
+  const secret = getSecret();
+  if (!secret) throw new Error('CSRF HMAC secret is not configured');
+  return crypto.createHmac('sha256', secret).update(payload, 'utf8').digest();
 }
 
 function nowSec() {
@@ -35,9 +42,9 @@ function nowSec() {
 }
 
 // Build a compact, signed token: base64url(JSON).base64url(HMAC)
-export function issueCsrfHmac(req, ttlSeconds = DEFAULT_TTL) {
+export function issueCsrfHmac(req, ttlSeconds = getDefaultTtl()) {
   const iat = nowSec();
-  const exp = iat + Math.max(60, Number(ttlSeconds) || DEFAULT_TTL);
+  const exp = iat + Math.max(60, Number(ttlSeconds) || getDefaultTtl());
   const origin = req.get && (req.get('Origin') || req.get('origin'));
   const payload = {
     iat,
@@ -55,7 +62,7 @@ export function issueCsrfHmac(req, ttlSeconds = DEFAULT_TTL) {
 export function verifyCsrfHmac(token, req) {
   try {
     if (!token || typeof token !== 'string') return false;
-    if (!SECRET) return false;
+    if (!getSecret()) return false;
     const [body, sig] = token.split('.');
     if (!body || !sig) return false;
     const expected = b64urlEncode(hmac(body));

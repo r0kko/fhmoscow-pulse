@@ -30,6 +30,26 @@ const scheduleForm = ref({ dtLocal: '', groundId: '' });
 const submittingSchedule = ref(false);
 const scheduleError = ref('');
 
+// Broadcast links admin reconcile
+const syncingBroadcast = ref(false);
+const broadcastError = ref('');
+async function syncBroadcasts() {
+  if (!route.params.id) return;
+  syncingBroadcast.value = true;
+  broadcastError.value = '';
+  try {
+    await apiFetch(`/matches/${route.params.id}/sync-broadcasts`, {
+      method: 'POST',
+    });
+    const mres = await apiFetch(`/matches/${route.params.id}`);
+    match.value = mres.match || null;
+  } catch (e) {
+    broadcastError.value = e.message || 'Не удалось обновить трансляции';
+  } finally {
+    syncingBroadcast.value = false;
+  }
+}
+
 const stadiumName = computed(
   () => match.value?.ground_details?.name || match.value?.ground || ''
 );
@@ -192,7 +212,51 @@ async function submitSchedule() {
         {{ error }}
       </div>
 
-      <div v-else class="card section-card tile fade-in shadow-sm mb-3">
+      <!-- Broadcast links -->
+      <div v-if="!error" class="card section-card tile fade-in shadow-sm mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h5 mb-0">Трансляции</h2>
+            <button
+              class="btn btn-outline-secondary btn-sm"
+              :disabled="syncingBroadcast"
+              @click="syncBroadcasts"
+              aria-label="Синхронизировать трансляции матча"
+            >
+              <span
+                v-if="syncingBroadcast"
+                class="spinner-border spinner-border-sm me-1"
+              ></span>
+              Обновить ссылки
+            </button>
+          </div>
+          <div v-if="broadcastError" class="alert alert-danger" role="alert">
+            {{ broadcastError }}
+          </div>
+          <template v-if="(match?.broadcast_links || []).length">
+            <div class="d-flex gap-2 flex-wrap">
+              <a
+                v-for="(u, idx) in match.broadcast_links"
+                :key="u + '-' + idx"
+                class="btn btn-sm btn-outline-primary"
+                :href="u"
+                target="_blank"
+                rel="noopener"
+                :aria-label="'Открыть трансляцию #' + (idx + 1)"
+              >
+                Смотреть #{{ idx + 1 }}
+              </a>
+            </div>
+          </template>
+          <template v-else>
+            <div class="text-muted small">
+              Ссылки на трансляции отсутствуют.
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div v-if="!error" class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
           <div
             class="d-flex justify-content-between align-items-start flex-wrap gap-2"

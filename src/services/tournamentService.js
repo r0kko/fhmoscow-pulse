@@ -12,6 +12,7 @@ import {
   Team,
   Ground,
 } from '../models/index.js';
+import { MatchBroadcastLink } from '../models/index.js';
 import { MatchAgreement } from '../models/index.js';
 import {
   Tournament as ExtTournament,
@@ -25,6 +26,7 @@ import {
 } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
 import { moscowToUtc, utcToMoscow } from '../utils/time.js';
+import { extractFirstUrl } from '../utils/url.js';
 import logger from '../../logger.js';
 import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
 import { GameStatus } from '../models/index.js';
@@ -42,10 +44,15 @@ async function syncTypes(actorId = null) {
   const stats = emptyStats();
   // Respect object_status on external tournament types
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtTournamentType.findAll({ where: ACTIVE }),
     ExtTournamentType.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: when object_status is missing/unused, treat all types as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtTournamentType.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((t) => t.id);
   const archivedIds = extArchived.map((t) => t.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
@@ -157,10 +164,15 @@ async function syncTypes(actorId = null) {
 async function syncTournaments(actorId = null) {
   const stats = emptyStats();
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtTournament.findAll({ where: ACTIVE }),
     ExtTournament.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: when object_status is missing/unused, treat all tournaments as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtTournament.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((t) => t.id);
   const archivedIds = extArchived.map((t) => t.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
@@ -372,10 +384,15 @@ async function syncStages(actorId = null) {
 async function syncGroups(actorId = null) {
   const stats = emptyStats();
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtTournamentGroup.findAll({ where: ACTIVE }),
     ExtTournamentGroup.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: when object_status is missing/unused, treat all groups as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtTournamentGroup.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((g) => g.id);
   const archivedIds = extArchived.map((g) => g.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
@@ -655,10 +672,15 @@ export default {
 async function syncTours(actorId = null) {
   const stats = emptyStats();
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtTour.findAll({ where: ACTIVE }),
     ExtTour.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: when object_status is missing/unused, treat all tours as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtTour.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((r) => r.id);
   const archivedIds = extArchived.map((r) => r.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
@@ -811,10 +833,15 @@ async function syncTours(actorId = null) {
 async function syncGames(actorId = null) {
   const stats = emptyStats();
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtGame.findAll({ where: ACTIVE }),
     ExtGame.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: when object_status is missing/unused, treat all games as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtGame.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((g) => g.id);
   const archivedIds = extArchived.map((g) => g.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
@@ -884,6 +911,61 @@ async function syncGames(actorId = null) {
     return 'SCHEDULED';
   }
 
+  // uses utils/url.extractFirstUrl
+
+  // Map of match_id -> MatchBroadcastLink[] (prefetched once per transaction)
+  let linksByMatchId = null;
+
+  async function syncBroadcastsForMatch(matchId, g, tx) {
+    const desired = [
+      { position: 1, url: extractFirstUrl(g.broadcast) },
+      { position: 2, url: extractFirstUrl(g.broadcast2) },
+    ].filter((x) => !!x.url);
+    let locals = (linksByMatchId && linksByMatchId.get(matchId)) || null;
+    if (!locals) {
+      locals = await MatchBroadcastLink.findAll({
+        where: { match_id: matchId },
+        paranoid: false,
+        transaction: tx,
+      });
+    }
+    const byPos = new Map(locals.map((l) => [l.position, l]));
+    const seen = new Set();
+    for (const d of desired) {
+      seen.add(d.position);
+      const local = byPos.get(d.position);
+      if (!local) {
+        await MatchBroadcastLink.create(
+          {
+            match_id: matchId,
+            position: d.position,
+            url: d.url,
+            created_by: actorId,
+            updated_by: actorId,
+          },
+          { transaction: tx }
+        );
+        continue;
+      }
+      if (local.deletedAt) {
+        await local.restore({ transaction: tx });
+      }
+      if (local.url !== d.url) {
+        await local.update(
+          { url: d.url, updated_by: actorId },
+          { transaction: tx }
+        );
+      }
+    }
+    // Soft-delete positions that are present locally but not desired
+    for (const [pos, local] of byPos.entries()) {
+      if (!seen.has(pos) && !local.deletedAt) {
+        await local.update({ updated_by: actorId }, { transaction: tx });
+        await local.destroy({ transaction: tx });
+      }
+    }
+  }
+
   function toMoscowDateOnlyString(utcDate) {
     const msk = utcToMoscow(utcDate) || utcDate;
     const y = msk.getUTCFullYear();
@@ -915,6 +997,21 @@ async function syncGames(actorId = null) {
         })
       : [];
     const localByExt = new Map(locals.map((l) => [l.external_id, l]));
+    // Prefetch broadcast links for all local matches to avoid N+1
+    const localMatchIds = locals.map((l) => l.id);
+    linksByMatchId = new Map();
+    if (localMatchIds.length) {
+      const allLinks = await MatchBroadcastLink.findAll({
+        where: { match_id: { [Op.in]: localMatchIds } },
+        paranoid: false,
+        transaction: tx,
+      });
+      for (const link of allLinks) {
+        const arr = linksByMatchId.get(link.match_id) || [];
+        arr.push(link);
+        linksByMatchId.set(link.match_id, arr);
+      }
+    }
 
     for (const g of extActive) {
       const t = tourByExt.get(g.tour_id);
@@ -935,7 +1032,7 @@ async function syncGames(actorId = null) {
       const statusId = statusIdByAlias.get(statusAlias) || null;
       const local = localByExt.get(g.id);
       if (!local) {
-        await Match.create(
+        const created = await Match.create(
           {
             external_id: g.id,
             ...desired,
@@ -948,6 +1045,7 @@ async function syncGames(actorId = null) {
           },
           { transaction: tx }
         );
+        await syncBroadcastsForMatch(created.id, g, tx);
         stats.upserts += 1;
         continue;
       }
@@ -1002,6 +1100,7 @@ async function syncGames(actorId = null) {
         );
       }
       if (changed) stats.upserts += 1;
+      await syncBroadcastsForMatch(local.id, g, tx);
     }
 
     // Ensure archived external games exist locally as soft-deleted
@@ -1033,6 +1132,10 @@ async function syncGames(actorId = null) {
     );
     stats.upserts += createdArchived;
 
+    // Pre-capture matches that are going to be soft-deleted as archived
+    const toArchiveMatches = locals
+      .filter((m) => archivedIds.includes(m.external_id) && !m.deletedAt)
+      .map((m) => m.id);
     const [archCnt] = await Match.update(
       { deletedAt: new Date(), updated_by: actorId },
       {
@@ -1042,8 +1145,29 @@ async function syncGames(actorId = null) {
       }
     );
     stats.softDeletedArchived = archCnt;
+    if (toArchiveMatches.length) {
+      await MatchBroadcastLink.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: { match_id: { [Op.in]: toArchiveMatches }, deletedAt: null },
+          paranoid: false,
+          transaction: tx,
+        }
+      );
+    }
 
     if (knownIds.length) {
+      // Pre-capture currently existing matches that will be marked missing
+      const missingRows = await Match.findAll({
+        attributes: ['id'],
+        where: {
+          external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
+          deletedAt: null,
+        },
+        paranoid: false,
+        transaction: tx,
+      });
+      const missingMatchIds = missingRows.map((r) => r.id);
       const [missCnt] = await Match.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -1056,6 +1180,19 @@ async function syncGames(actorId = null) {
         }
       );
       stats.softDeletedMissing = missCnt;
+      if (missingMatchIds.length) {
+        await MatchBroadcastLink.update(
+          { deletedAt: new Date(), updated_by: actorId },
+          {
+            where: {
+              match_id: { [Op.in]: missingMatchIds },
+              deletedAt: null,
+            },
+            paranoid: false,
+            transaction: tx,
+          }
+        );
+      }
     }
     stats.softDeletedTotal =
       (stats.softDeletedArchived || 0) + (stats.softDeletedMissing || 0);

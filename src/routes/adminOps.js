@@ -20,6 +20,11 @@ router.get('/sync/status', auth, authorize('ADMIN'), async (_req, res) => {
       'staffSync',
       'playerSync',
       'tournamentSync',
+      'gameEventTypeSync',
+      'penaltyMinutesSync',
+      'gameSituationSync',
+      'gameViolationSync',
+      'broadcastLinkSync',
     ];
     const stats = await getJobStats(jobs);
     // Return latest job logs (per job) for context
@@ -123,6 +128,11 @@ router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
     'staffSync',
     'playerSync',
     'tournamentSync',
+    'gameEventTypeSync',
+    'penaltyMinutesSync',
+    'gameSituationSync',
+    'gameViolationSync',
+    'broadcastLinkSync',
   ]);
   if (!allowed.has(job)) return res.status(400).json({ error: 'invalid_job' });
   try {

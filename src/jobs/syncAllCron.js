@@ -14,6 +14,11 @@ import { runTeamSync } from './teamSyncCron.js';
 import { runStaffSync } from './staffSyncCron.js';
 import { runPlayerSync } from './playerSyncCron.js';
 import { runTournamentSync } from './tournamentSyncCron.js';
+import { runGameEventTypeSync } from './gameEventTypeSyncCron.js';
+import { runPenaltyMinutesSync } from './penaltyMinutesSyncCron.js';
+import { runGameSituationSync } from './gameSituationSyncCron.js';
+import { runGameViolationSync } from './gameViolationSyncCron.js';
+import { runBroadcastLinkSync } from './broadcastLinkSyncCron.js';
 
 let running = false;
 let scheduled = false;
@@ -46,6 +51,11 @@ export async function runSyncAll() {
           await runStaffSync();
           await runPlayerSync();
           await runTournamentSync();
+          await runGameEventTypeSync();
+          await runPenaltyMinutesSync();
+          await runGameSituationSync();
+          await runGameViolationSync();
+          await runBroadcastLinkSync();
           logger.info('syncAll completed successfully');
         } catch (err) {
           logger.error('syncAll failed: %s', err.stack || err);

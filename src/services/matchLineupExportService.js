@@ -1517,7 +1517,7 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
     dob: r.date_of_birth
       ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
       : '',
-    role: r.role?.name || '',
+    role: r.match_role?.name || r.role?.name || '',
   }));
   // Representatives table rows: default 6 rows, if more than 6 then up to 8 rows
   {

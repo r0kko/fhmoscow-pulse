@@ -79,10 +79,15 @@ async function syncExternal(actorId = null) {
 
   // 2) Players (respect object_status === 'archive')
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtPlayer.findAll({ where: ACTIVE }),
     ExtPlayer.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: if external table returns nothing for status, treat all as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtPlayer.findAll();
+    extArchived = [];
+  }
   const playerActiveIds = extActive.map((p) => p.id);
   const playerArchivedIds = extArchived.map((p) => p.id);
   const playerKnownIds = Array.from(

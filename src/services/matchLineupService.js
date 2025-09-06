@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import { Op } from 'sequelize';
 
 import sequelize from '../config/database.js';
@@ -92,8 +94,8 @@ async function list(matchId, actorUserId) {
     err.code = 409;
     throw err;
   }
-  const { isHome, isAway } = await _getActorSides(match, actorUserId);
-  if (!isHome && !isAway) {
+  const { isHome, isAway, isAdmin } = await _getActorSides(match, actorUserId);
+  if (!isHome && !isAway && !isAdmin) {
     const err = new Error('forbidden_not_match_member');
     err.code = 403;
     throw err;
@@ -124,6 +126,26 @@ async function list(matchId, actorUserId) {
   const selectedByTpId = new Map(
     selectedRows.map((r) => [r.team_player_id, r])
   );
+
+  // Compute team revisions (optimistic concurrency tokens)
+  function computeTeamRev(teamId) {
+    const rows = selectedRows
+      .filter((r) => String(r.team_id) === String(teamId))
+      .map((r) => ({
+        id: String(r.team_player_id),
+        n: r.number ?? null,
+        role: r.role_id ? String(r.role_id) : null,
+        c: Boolean(r.is_captain),
+        a: r.assistant_order == null ? null : Number(r.assistant_order),
+        s: r.squad_no == null ? null : Number(r.squad_no),
+        b: Boolean(r.squad_both),
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const json = JSON.stringify(rows);
+    return crypto.createHash('sha1').update(json).digest('hex');
+  }
+  const homeRev = match.team1_id ? computeTeamRev(match.team1_id) : null;
+  const awayRev = match.team2_id ? computeTeamRev(match.team2_id) : null;
 
   const markSelected = (arr) =>
     arr.map((p) => {
@@ -159,6 +181,9 @@ async function list(matchId, actorUserId) {
     tour: match.Tour?.name || null,
     is_home: isHome,
     is_away: isAway,
+    is_admin: isAdmin,
+    home_rev: homeRev,
+    away_rev: awayRev,
     home: {
       team_id: match.team1_id,
       players: markSelected(homeRoster),
@@ -171,7 +196,13 @@ async function list(matchId, actorUserId) {
   };
 }
 
-async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
+async function set(
+  matchId,
+  teamId,
+  playerIdsOrDetailed,
+  actorUserId,
+  ifMatchRev
+) {
   const match = await Match.findByPk(matchId, {
     attributes: ['id', 'team1_id', 'team2_id', 'season_id', 'tournament_id'],
     include: [
@@ -251,6 +282,41 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
   }
 
   await sequelize.transaction(async (tx) => {
+    // Check optimistic concurrency token if provided
+    if (ifMatchRev) {
+      const existingRows = await MatchPlayer.findAll({
+        attributes: [
+          'team_player_id',
+          'team_id',
+          'number',
+          'role_id',
+          'is_captain',
+          'assistant_order',
+          'squad_no',
+          'squad_both',
+        ],
+        where: { match_id: match.id, team_id: teamId },
+        transaction: tx,
+      });
+      const rows = existingRows
+        .map((r) => ({
+          id: String(r.team_player_id),
+          n: r.number ?? null,
+          role: r.role_id ? String(r.role_id) : null,
+          c: Boolean(r.is_captain),
+          a: r.assistant_order == null ? null : Number(r.assistant_order),
+          s: r.squad_no == null ? null : Number(r.squad_no),
+          b: Boolean(r.squad_both),
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const json = JSON.stringify(rows);
+      const currentRev = crypto.createHash('sha1').update(json).digest('hex');
+      if (String(currentRev) !== String(ifMatchRev)) {
+        const err = new Error('conflict_lineup_version');
+        err.code = 409;
+        throw err;
+      }
+    }
     // Validate GK + field players constraints if detailed provided
     if (Array.isArray(detailed) && detailed.length) {
       const roleIds = Array.from(
@@ -474,8 +540,36 @@ async function set(matchId, teamId, playerIdsOrDetailed, actorUserId) {
       }
     }
   });
-
-  return { ok: true };
+  // Return updated team revision
+  const newRows = await MatchPlayer.findAll({
+    attributes: [
+      'team_player_id',
+      'team_id',
+      'number',
+      'role_id',
+      'is_captain',
+      'assistant_order',
+      'squad_no',
+      'squad_both',
+    ],
+    where: { match_id: matchId, team_id: teamId },
+  });
+  const rows = newRows
+    .map((r) => ({
+      id: String(r.team_player_id),
+      n: r.number ?? null,
+      role: r.role_id ? String(r.role_id) : null,
+      c: Boolean(r.is_captain),
+      a: r.assistant_order == null ? null : Number(r.assistant_order),
+      s: r.squad_no == null ? null : Number(r.squad_no),
+      b: Boolean(r.squad_both),
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const team_rev = crypto
+    .createHash('sha1')
+    .update(JSON.stringify(rows))
+    .digest('hex');
+  return { ok: true, team_rev };
 }
 
 export default { list, set };

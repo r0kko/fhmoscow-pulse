@@ -14,13 +14,14 @@ async function list(req, res, next) {
 
 async function set(req, res, next) {
   try {
-    const { team_id, player_ids, players } = req.body || {};
+    const { team_id, player_ids, players, if_match_rev } = req.body || {};
     const payload = Array.isArray(players) ? players : player_ids;
     const data = await service.set(
       req.params.id,
       team_id,
       payload,
-      req.user.id
+      req.user.id,
+      if_match_rev || null
     );
     res.json(data);
   } catch (e) {

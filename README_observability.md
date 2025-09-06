@@ -47,6 +47,12 @@ NPM scripts
 - `npm run obs:up` — start Grafana/Loki/Prometheus
 - `npm run obs:down` — stop and remove the observability stack
 - `npm run obs:status` — list containers
+- `npm run validate:dashboards` — validate all Grafana dashboards JSON
+
+Troubleshooting
+- If Grafana logs show "failed to load dashboard ... invalid character ...":
+  - Run `npm run validate:dashboards` to pinpoint invalid JSON.
+  - Most common cause is bad escaping inside Explore links; ensure quotes are percent-encoded (`%22`) inside URLs.
 
 Production (docker-compose.prod.yml)
 - Stack included: Loki, Promtail, Prometheus, Alertmanager, Grafana, Tempo, cAdvisor, Node Exporter, Postgres/Redis exporters, Blackbox exporter.

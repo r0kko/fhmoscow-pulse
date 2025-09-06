@@ -20,6 +20,7 @@ import { setLineupRules } from '../validators/matchLineupValidators.js';
 import lineupExportController from '../controllers/matchLineupExportController.js';
 import matchStaffController from '../controllers/matchStaffController.js';
 import { setMatchStaffRules } from '../validators/matchStaffValidators.js';
+import broadcastController from '../controllers/broadcastController.js';
 
 const router = express.Router();
 
@@ -147,6 +148,14 @@ router.post(
   rescheduleRules,
   validate,
   rescheduleController.reschedule
+);
+
+// Admin: reconcile broadcast links for a match from external DB
+router.post(
+  '/:id/sync-broadcasts',
+  auth,
+  authorize('ADMIN'),
+  broadcastController.reconcile
 );
 
 // Admin: calendar for the next N days (default 10), global scope

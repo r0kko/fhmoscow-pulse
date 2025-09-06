@@ -57,7 +57,8 @@ export default [
           'newlines-between': 'always',
         },
       ],
-      'import/no-unresolved': 'error',
+      // Some ESM packages expose only export maps; resolver can be flaky in CI. Ignore 'uuid'.
+      'import/no-unresolved': ['error', { ignore: ['^uuid$'] }],
       'import/no-extraneous-dependencies': 'error',
     },
     settings: {

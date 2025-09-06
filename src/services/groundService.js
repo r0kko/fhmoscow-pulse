@@ -204,10 +204,15 @@ export default {
     // ACTIVE and ARCHIVE, tolerant to case/whitespace in external DB
     const { ACTIVE, ARCHIVE } = statusFilters('object_status');
 
-    const [extActive, extArchived] = await Promise.all([
+    let [extActive, extArchived] = await Promise.all([
       ExtStadium.findAll({ where: ACTIVE }),
       ExtStadium.findAll({ where: ARCHIVE }),
     ]);
+    // Fallback: when object_status is missing/unused, treat all stadiums as ACTIVE
+    if (extActive.length === 0 && extArchived.length === 0) {
+      extActive = await ExtStadium.findAll();
+      extArchived = [];
+    }
     const activeIds = extActive.map((s) => s.id);
     const archivedIds = extArchived.map((s) => s.id);
     const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));

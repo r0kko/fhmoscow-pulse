@@ -10,10 +10,16 @@ import logger from '../../logger.js';
 async function syncExternal(actorId = null) {
   // Pull ACTIVE and ARCHIVE sets explicitly; tolerant to case/whitespace.
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtTeam.findAll({ where: ACTIVE }),
     ExtTeam.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: if the external table has no object_status or returns nothing,
+  // treat all rows as ACTIVE to avoid accidental mass soft-deletes
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtTeam.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((t) => t.id);
   const archivedIds = extArchived.map((t) => t.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));

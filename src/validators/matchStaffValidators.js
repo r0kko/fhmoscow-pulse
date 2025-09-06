@@ -2,6 +2,7 @@ import { body } from 'express-validator';
 
 export const setMatchStaffRules = [
   body('team_id').isString().notEmpty().withMessage('team_id_required'),
+  body('if_staff_rev').optional().isString(),
   // Allow either simple staff_ids OR detailed staff array
   body().custom((body) => {
     if (Array.isArray(body.staff)) return true;

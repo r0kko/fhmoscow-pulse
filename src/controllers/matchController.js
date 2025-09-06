@@ -114,7 +114,9 @@ export { listPast };
 export async function get(req, res, next) {
   try {
     // Lazy import Club to avoid strict module mocks in tests failing on named exports
-    const { Club, GameStatus } = await import('../models/index.js');
+    const { Club, GameStatus, MatchBroadcastLink } = await import(
+      '../models/index.js'
+    );
     const m = await Match.findByPk(req.params.id, {
       attributes: [
         'id',
@@ -156,6 +158,7 @@ export async function get(req, res, next) {
         { model: Tour, attributes: ['name'] },
         { model: Season, attributes: ['name'] },
         { model: GameStatus, attributes: ['name', 'alias'] },
+        { model: MatchBroadcastLink, attributes: ['url', 'position'] },
       ],
     });
     if (!m) return res.status(404).json({ error: 'match_not_found' });
@@ -206,6 +209,10 @@ export async function get(req, res, next) {
         status: m.GameStatus
           ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
           : null,
+        broadcast_links: (m.MatchBroadcastLinks || [])
+          .sort((a, b) => (a.position || 0) - (b.position || 0))
+          .map((x) => x.url)
+          .filter(Boolean),
       },
     });
   } catch (e) {

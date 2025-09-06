@@ -7,6 +7,7 @@ class GameEventType extends Model {}
 GameEventType.init(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true },
+    name: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

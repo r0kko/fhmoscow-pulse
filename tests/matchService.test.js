@@ -52,7 +52,8 @@ test('listUpcoming queries external games for user teams', async () => {
   // robust filter should not strictly equal 'active'; ensure date filter present
   expect(args.where.date_start).toBeDefined();
   expect(args.where[Op.or][0].team1_id[Op.in]).toEqual([10, 20]);
-  expect(res).toEqual([
+  // Allow extra fields from service (e.g., broadcast_links)
+  expect(res).toMatchObject([
     {
       id: 1,
       date,
@@ -95,7 +96,8 @@ test('listUpcoming supports type filter and search query', async () => {
   // away filter
   expect(args.where.team2_id).toBeDefined();
   // Request includes filters; search path executed without throwing
-  expect(res).toEqual([
+  // Allow extra fields (e.g., broadcast_links) without over-specifying shape
+  expect(res).toMatchObject([
     {
       id: 2,
       date,

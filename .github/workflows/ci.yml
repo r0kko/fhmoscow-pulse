@@ -49,6 +49,9 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Validate Grafana dashboards
+        run: npm run validate:dashboards
+
       - name: Run tests
         env:
           CI: true

@@ -6,6 +6,7 @@ function isUuidLike(val) {
 
 export const setLineupRules = [
   body('team_id').isString().notEmpty().withMessage('team_id_required'),
+  body('if_match_rev').optional().isString(),
   // Allow either simple player_ids array OR detailed players array
   body().custom((body) => {
     if (Array.isArray(body.players)) return true;

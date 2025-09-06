@@ -72,6 +72,7 @@ import TournamentGroup from './tournamentGroup.js';
 import TournamentTeam from './tournamentTeam.js';
 import Tour from './tour.js';
 import Match from './match.js';
+import MatchBroadcastLink from './matchBroadcastLink.js';
 import GameStatus from './gameStatus.js';
 import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
@@ -94,6 +95,10 @@ import MatchAgreement from './matchAgreement.js';
 import JobLog from './jobLog.js';
 import MatchPlayer from './matchPlayer.js';
 import MatchStaff from './matchStaff.js';
+import GameEventType from './gameEventType.js';
+import PenaltyMinutes from './penaltyMinutes.js';
+import GameSituation from './gameSituation.js';
+import GameViolation from './gameViolation.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -338,6 +343,10 @@ Season.hasMany(Match, { foreignKey: 'season_id' });
 Match.belongsTo(Season, { foreignKey: 'season_id' });
 GameStatus.hasMany(Match, { foreignKey: 'game_status_id' });
 Match.belongsTo(GameStatus, { foreignKey: 'game_status_id' });
+
+// match broadcast links
+Match.hasMany(MatchBroadcastLink, { foreignKey: 'match_id' });
+MatchBroadcastLink.belongsTo(Match, { foreignKey: 'match_id' });
 
 /* match players (lineups) */
 Match.hasMany(MatchPlayer, { foreignKey: 'match_id' });
@@ -594,6 +603,7 @@ export {
   TicketFile,
   Tour,
   Match,
+  MatchBroadcastLink,
   GameStatus,
   MatchAgreement,
   JobLog,
@@ -614,6 +624,10 @@ export {
   TeamPlayer,
   MatchPlayer,
   MatchStaff,
+  GameEventType,
+  PenaltyMinutes,
+  GameSituation,
+  GameViolation,
   Staff,
   StaffCategory,
   ClubStaff,

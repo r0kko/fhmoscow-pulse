@@ -71,6 +71,7 @@
       "type": "graph",
       "title": "Latency p50/p95/p99 (s)",
       "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "legend": { "show": true },
       "targets": [
         {
           "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"$route\"}[5m])))",
@@ -106,6 +107,7 @@
       "type": "graph",
       "title": "Traffic by status",
       "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "legend": { "show": true },
       "targets": [
         {
           "expr": "sum by (status) (rate(http_requests_total{route=~\"$route\",status=~\"$status\"}[5m]))",
@@ -118,7 +120,7 @@
       "type": "logs",
       "title": "Errors (Loki)",
       "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
-      "options": { "showTime": true, "dedupStrategy": "none" },
+      "options": { "showTime": true, "dedupStrategy": "none", "wrapLogMessage": true },
       "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         { "expr": "{service=\"api\",level=\"error\"}", "refId": "A" }
@@ -126,4 +128,3 @@
     }
   ]
 }
-

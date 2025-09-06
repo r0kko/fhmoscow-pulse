@@ -7,6 +7,7 @@ class GameSituation extends Model {}
 GameSituation.init(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true },
+    name: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

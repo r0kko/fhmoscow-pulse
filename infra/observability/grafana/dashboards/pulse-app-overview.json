@@ -58,7 +58,7 @@
     {
       "type": "logs", "title": "Recent logs (Loki)",
       "gridPos": {"x": 0, "y": 16, "w": 24, "h": 10},
-      "options": {"showTime": true, "dedupStrategy": "none"},
+      "options": {"showTime": true, "dedupStrategy": "none", "wrapLogMessage": true},
       "datasource": {"type": "loki", "uid": "Loki"},
       "targets": [
         {"expr": "{service=\"api\"}", "refId": "A"}
@@ -66,4 +66,3 @@
     }
   ]
 }
-

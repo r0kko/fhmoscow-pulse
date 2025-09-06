@@ -230,6 +230,23 @@ const statusChip = computed(() => {
               </div>
             </div>
           </div>
+          <!-- Broadcast links, if available -->
+          <div v-if="(match?.broadcast_links || []).length" class="mt-3">
+            <div class="text-muted small mb-2">Трансляция</div>
+            <div class="d-flex gap-2 flex-wrap">
+              <a
+                v-for="(u, idx) in match.broadcast_links"
+                :key="`${u}-${idx}`"
+                class="btn btn-sm btn-outline-primary"
+                :href="u"
+                target="_blank"
+                rel="noopener"
+                :aria-label="`Открыть трансляцию #${idx + 1}`"
+              >
+                Смотреть #{{ idx + 1 }}
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 

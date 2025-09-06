@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import { Op } from 'sequelize';
 
 import sequelize from '../config/database.js';
@@ -46,8 +48,8 @@ async function list(matchId, actorUserId) {
     ],
   });
   if (!match) throw Object.assign(new Error('match_not_found'), { code: 404 });
-  const { isHome, isAway } = await getActorSides(match, actorUserId);
-  if (!isHome && !isAway) {
+  const { isHome, isAway, isAdmin } = await getActorSides(match, actorUserId);
+  if (!isHome && !isAway && !isAdmin) {
     const err = new Error('forbidden_not_match_member');
     err.code = 403;
     throw err;
@@ -130,18 +132,42 @@ async function list(matchId, actorUserId) {
       return sel.has(ts.id) && isHeadCoachName(nm);
     })(),
   });
+  // Compute team revisions (optimistic concurrency tokens)
+  function computeTeamRev(teamId) {
+    const rows = selected
+      .filter((r) => String(r.team_id) === String(teamId))
+      .map((r) => ({
+        id: String(r.team_staff_id),
+        role: r.role_id ? String(r.role_id) : null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const json = JSON.stringify(rows);
+    return crypto.createHash('sha1').update(json).digest('hex');
+  }
+  const homeRev = match.team1_id ? computeTeamRev(match.team1_id) : null;
+  const awayRev = match.team2_id ? computeTeamRev(match.team2_id) : null;
   return {
     match_id: match.id,
     team1_id: match.team1_id,
     team2_id: match.team2_id,
     season_id: match.season_id,
+    is_admin: isAdmin,
     home: { team_id: match.team1_id, staff: homeStaff.map(mapRow) },
     away: { team_id: match.team2_id, staff: awayStaff.map(mapRow) },
     categories: (categories || []).map((c) => ({ id: c.id, name: c.name })),
+    home_rev: homeRev,
+    away_rev: awayRev,
   };
 }
 
-async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
+async function set(
+  matchId,
+  teamId,
+  teamStaffIds,
+  staffDetailed,
+  actorUserId,
+  ifStaffRev
+) {
   const match = await Match.findByPk(matchId, {
     attributes: ['id', 'team1_id', 'team2_id', 'season_id', 'tournament_id'],
     include: [
@@ -251,6 +277,21 @@ async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
       transaction: tx,
       paranoid: false,
     });
+    if (ifStaffRev) {
+      const rows = existing
+        .map((r) => ({
+          id: String(r.team_staff_id),
+          role: r.role_id ? String(r.role_id) : null,
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const json = JSON.stringify(rows);
+      const currentRev = crypto.createHash('sha1').update(json).digest('hex');
+      if (String(currentRev) !== String(ifStaffRev)) {
+        const err = new Error('conflict_staff_version');
+        err.code = 409;
+        throw err;
+      }
+    }
     const byId = new Map(existing.map((e) => [e.team_staff_id, e]));
     for (const tsId of ids) {
       if (!byId.has(tsId)) {
@@ -289,7 +330,22 @@ async function set(matchId, teamId, teamStaffIds, staffDetailed, actorUserId) {
       }
     }
   });
-  return { ok: true };
+  // Return updated team revision
+  const after = await MatchStaff.findAll({
+    attributes: ['team_staff_id', 'team_id', 'role_id'],
+    where: { match_id: match.id, team_id: teamId },
+  });
+  const rows = after
+    .map((r) => ({
+      id: String(r.team_staff_id),
+      role: r.role_id ? String(r.role_id) : null,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const team_rev = crypto
+    .createHash('sha1')
+    .update(JSON.stringify(rows))
+    .digest('hex');
+  return { ok: true, team_rev };
 }
 
 export default { list, set };

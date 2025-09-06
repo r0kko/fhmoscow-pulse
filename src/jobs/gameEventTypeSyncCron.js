@@ -1,0 +1,40 @@
+import cron from 'node-cron';
+
+import gameEventTypeService from '../services/gameEventTypeService.js';
+import logger from '../../logger.js';
+import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
+import { withJobMetrics } from '../config/metrics.js';
+
+let running = false;
+
+export async function runGameEventTypeSync() {
+  if (running) return;
+  await withRedisLock(
+    buildJobLockKey('gameEventTypeSync'),
+    15 * 60_000,
+    async () => {
+      running = true;
+      await withJobMetrics('gameEventTypeSync', async () => {
+        try {
+          const stats = await gameEventTypeService.syncExternal();
+          logger.info(
+            'GameEventType sync completed: upserted=%d, softDeleted=%d',
+            stats.upserts,
+            stats.softDeleted
+          );
+        } catch (err) {
+          logger.error('GameEventType sync failed: %s', err.stack || err);
+          throw err;
+        } finally {
+          running = false;
+        }
+      });
+    }
+  );
+}
+
+export default function startGameEventTypeSyncCron() {
+  // Default: every 6 hours at minute 55 (near tournament sync)
+  const schedule = process.env.GAME_EVENT_TYPE_SYNC_CRON || '55 */6 * * *';
+  cron.schedule(schedule, runGameEventTypeSync, { timezone: 'Europe/Moscow' });
+}

@@ -21,6 +21,7 @@ const { connectRedis, closeRedis } = await import('../src/config/redis.js');
 const { default: validateEnv } = await import('../src/config/validateEnv.js');
 const { default: startTaxationCron } = await import('../src/jobs/taxationCron.js');
 const { default: startSyncAllCron, runSyncAll } = await import('../src/jobs/syncAllCron.js');
+const { default: startBroadcastLinkSyncCron } = await import('../src/jobs/broadcastLinkSyncCron.js');
 const { default: startMatchAgreementReminderCron } = await import('../src/jobs/matchAgreementReminderCron.js');
 const { default: startExternalDbWatchCron } = await import('../src/jobs/externalDbWatchCron.js');
 const { setReady, setSyncing } = await import('../src/config/readiness.js');
@@ -97,6 +98,8 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   // Start orchestrator cron regardless of external DB availability —
   // the job itself checks availability and uses a distributed lock.
   startSyncAllCron();
+  // Dedicated broadcast link reconciler to track frequent link updates
+  startBroadcastLinkSyncCron();
 
   // Seed metrics series for known jobs so gauges appear at startup
   try {
@@ -108,6 +111,11 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       'staffSync',
       'playerSync',
       'tournamentSync',
+      'gameEventTypeSync',
+      'penaltyMinutesSync',
+      'gameSituationSync',
+      'gameViolationSync',
+      'broadcastLinkSync',
       'matchAgreementReminders',
       'taxation',
     ]);

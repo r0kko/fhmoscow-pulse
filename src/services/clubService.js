@@ -9,10 +9,15 @@ import logger from '../../logger.js';
 async function syncExternal(actorId = null) {
   // Pull ACTIVE and ARCHIVE sets explicitly; tolerant to case/whitespace
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
+  let [extActive, extArchived] = await Promise.all([
     ExtClub.findAll({ where: ACTIVE }),
     ExtClub.findAll({ where: ARCHIVE }),
   ]);
+  // Fallback: if external has no object_status or returns nothing, treat all rows as ACTIVE
+  if (extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtClub.findAll();
+    extArchived = [];
+  }
   const activeIds = extActive.map((c) => c.id);
   const archivedIds = extArchived.map((c) => c.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));

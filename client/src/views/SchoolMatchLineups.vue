@@ -3,6 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { RouterLink, useRoute } from 'vue-router';
 import { apiFetch } from '../api.js';
+import { useToast } from '../utils/toast.js';
+import { createLineupSync } from '../utils/lineupSync.js';
+import SyncStatus from '../components/lineups/SyncStatus.vue';
+import ExportModal from '../components/lineups/ExportModal.vue';
+import StaffList from '../components/lineups/StaffList.vue';
+import PlayersTable from '../components/lineups/PlayersTable.vue';
 
 const route = useRoute();
 // Disable local draft persistence to avoid any UI/DB mismatch on reload
@@ -13,6 +19,9 @@ const saving = ref(false);
 const data = ref(null); // result of GET /matches/:id/lineups
 const search = ref('');
 const activeTeam = ref(''); // team_id we're editing
+// Optimistic concurrency and offline persistence
+const teamRev = ref(''); // revision token for current team players
+const staffRev = ref(''); // revision token for current team staff
 const selected = ref(new Set()); // Set of team_player_id currently selected
 const roles = ref([]); // available roles
 const editedNumber = ref({}); // tpId -> number
@@ -24,6 +33,28 @@ const staff = ref([]); // current team staff rows
 const staffSelected = ref(new Set());
 const staffCategories = ref([]);
 const editedStaffRole = ref({});
+// Toasts
+const { showToast } = useToast();
+// Sync (revisions + pending queue)
+const {
+  isOnline,
+  pendingPlayers,
+  pendingStaff,
+  setPending,
+  getPending,
+  clearPending,
+  flushPending,
+  initNetworkListeners,
+  initPendingFlagsFromStorage,
+} = createLineupSync({
+  matchId: route.params.id,
+  teamIdRef: activeTeam,
+  apiFetch,
+  getTeamRev: () => teamRev.value,
+  setTeamRev: (v) => (teamRev.value = v),
+  getStaffRev: () => staffRev.value,
+  setStaffRev: (v) => (staffRev.value = v),
+});
 // Составы для штаба не используются — убрано по требованию
 // Global search is shared across players and staff
 // Staff selection UX limits (server-side validation on export)
@@ -201,6 +232,9 @@ function scheduleDraftPersist() {
   }, 300);
 }
 
+// --- Pending queue (offline-friendly progressive save) ----------------------
+// pending helpers are provided by createLineupSync
+
 // Goalkeeper helpers
 const gkRoleId = computed(() => {
   const r = roles.value.find((x) => (x.name || '').toLowerCase() === 'вратарь');
@@ -346,6 +380,11 @@ const playersSelectedCount = computed(() => {
   return pool.filter((p) => selected.value.has(p.team_player_id)).length;
 });
 const exportDisabled = computed(() => {
+  const needsSync =
+    saving.value ||
+    pendingPlayers.value ||
+    pendingStaff.value ||
+    !isOnline.value;
   if (isDouble.value) {
     const s1 = squad1.value;
     const s2 = squad2.value;
@@ -354,6 +393,7 @@ const exportDisabled = computed(() => {
     const cap1 = !!captain1Id.value && selected.value.has(captain1Id.value);
     const cap2 = !!captain2Id.value && selected.value.has(captain2Id.value);
     return (
+      needsSync ||
       !activeTeam.value ||
       squadMissingCount.value > 0 ||
       missingRoles.value ||
@@ -373,6 +413,7 @@ const exportDisabled = computed(() => {
   const gkOk = gkCount.value >= 1 && gkCount.value <= 2;
   const fldOk = fieldCount.value >= 5 && fieldCount.value <= 20;
   return (
+    needsSync ||
     !activeTeam.value ||
     !gkOk ||
     !fldOk ||
@@ -387,6 +428,11 @@ const exportDisabled = computed(() => {
   );
 });
 const exportRequirements = computed(() => {
+  const syncOk =
+    !saving.value &&
+    !pendingPlayers.value &&
+    !pendingStaff.value &&
+    isOnline.value;
   if (isDouble.value) {
     const s1 = squad1.value;
     const s2 = squad2.value;
@@ -408,6 +454,13 @@ const exportRequirements = computed(() => {
     );
     const staffCount = staffSelectedCount.value;
     return [
+      {
+        key: 'sync',
+        ok: syncOk,
+        text: syncOk
+          ? 'Данные синхронизированы с сервером'
+          : 'Ожидается синхронизация с сервером',
+      },
       { key: 'team', ok: !!activeTeam.value, text: 'Команда выбрана' },
       {
         key: 'roles',
@@ -484,8 +537,20 @@ const exportRequirements = computed(() => {
   }
   const gkOk = gkCount.value >= 1 && gkCount.value <= 2;
   const fldOk = fieldCount.value >= 5 && fieldCount.value <= 20;
+  const syncOk2 =
+    !saving.value &&
+    !pendingPlayers.value &&
+    !pendingStaff.value &&
+    isOnline.value;
   const staffCount = staffSelectedCount.value;
   return [
+    {
+      key: 'sync',
+      ok: syncOk2,
+      text: syncOk2
+        ? 'Данные синхронизированы с сервером'
+        : 'Ожидается синхронизация с сервером',
+    },
     {
       key: 'team',
       ok: !!activeTeam.value,
@@ -547,8 +612,12 @@ const exportBlocking = computed(() =>
   exportRequirements.value.filter((r) => !r.ok).map((r) => r.text)
 );
 // Export readiness modal
-const exportModalRef = ref(null);
 let exportModal;
+const exportModalEl = ref(null);
+function onModalReady(el) {
+  exportModalEl.value = el;
+  if (el) exportModal = new Modal(el);
+}
 
 function normalize(str) {
   return (str || '').toString().toLowerCase();
@@ -561,6 +630,9 @@ function applyFromResponse(d) {
   if (d.is_home && d.team1_id) activeTeam.value = d.team1_id;
   else if (d.is_away && d.team2_id) activeTeam.value = d.team2_id;
   else activeTeam.value = d.team1_id || d.team2_id || '';
+  // Set revision for current team
+  if (activeTeam.value === d.team2_id) teamRev.value = d.away_rev || '';
+  else teamRev.value = d.home_rev || '';
   // Preselect already saved players from the server
   const all = [...(d.home?.players || []), ...(d.away?.players || [])];
   selected.value = new Set(
@@ -598,6 +670,9 @@ function applyFromResponse(d) {
 
 const canEdit = computed(() => {
   if (!data.value) return false;
+  // ADMIN can edit any side
+  const isAdmin = Boolean(data.value.is_admin);
+  if (isAdmin) return true;
   if (activeTeam.value === data.value.team1_id) return !!data.value.is_home;
   if (activeTeam.value === data.value.team2_id) return !!data.value.is_away;
   return false;
@@ -951,6 +1026,9 @@ async function load() {
     const pool =
       (activeTeam.value === s.team2_id ? s.away?.staff : s.home?.staff) || [];
     staff.value = pool;
+    // Set staff rev for the current team
+    staffRev.value =
+      activeTeam.value === s.team2_id ? s.away_rev || '' : s.home_rev || '';
     // Preselect already saved representatives
     staffSelected.value = new Set(
       pool.filter((x) => x.selected).map((x) => x.team_staff_id)
@@ -1034,13 +1112,21 @@ async function save(force = false) {
         return i >= 0 ? i + 1 : null;
       })(),
     }));
-    await apiFetch(`/matches/${route.params.id}/lineups`, {
+    // Persist pending snapshot before attempting to save (for offline safety)
+    setPending('players', { team_id: activeTeam.value, players: payload });
+    const resp1 = await apiFetch(`/matches/${route.params.id}/lineups`, {
       method: 'POST',
-      body: JSON.stringify({ team_id: activeTeam.value, players: payload }),
+      body: JSON.stringify({
+        team_id: activeTeam.value,
+        players: payload,
+        if_match_rev: teamRev.value || undefined,
+      }),
     });
+    if (resp1 && resp1.team_rev) teamRev.value = resp1.team_rev;
     // Persist draft after a successful save
     persistDraft();
     clearDraft();
+    clearPending('players');
     // Reflect saved state locally to avoid heavy reload
     const roleById = new Map((roles.value || []).map((r) => [String(r.id), r]));
     const updateLocal = (arr) => {
@@ -1101,6 +1187,23 @@ async function save(force = false) {
     if (e?.code === 'player_not_in_team' || e?.code === 'team_not_in_match') {
       await load();
       error.value = 'Состав данных обновлён. Проверьте список игроков.';
+    } else if (e?.code === 'conflict_lineup_version') {
+      // Reload and retry once without If-Match to apply latest client snapshot
+      try {
+        await load();
+        const resp2 = await apiFetch(`/matches/${route.params.id}/lineups`, {
+          method: 'POST',
+          body: JSON.stringify({
+            team_id: activeTeam.value,
+            players: getPending('players')?.players || payload,
+          }),
+        });
+        if (resp2 && resp2.team_rev) teamRev.value = resp2.team_rev;
+        clearPending('players');
+        showToast('Обновили данные и применили ваши изменения');
+      } catch (e2) {
+        error.value = e2.message || 'Конфликт при сохранении состава';
+      }
     } else {
       error.value = e.message || 'Не удалось сохранить состав';
     }
@@ -1377,6 +1480,15 @@ async function exportPlayers() {
     // Flush all pending changes before export to match server validations
     await save(true);
     await saveStaff();
+    await flushPending(`/matches/${route.params.id}`);
+    // Verify revisions are up-to-date
+    const ok = await verifySync();
+    if (!ok) {
+      if (!exportModal && exportModalRef.value)
+        exportModal = new Modal(exportModalRef.value);
+      exportModal?.show();
+      return;
+    }
     // Recheck after save just in case
     if (exportDisabled.value) {
       if (!exportModal && exportModalRef.value)
@@ -1437,6 +1549,10 @@ async function exportPlayers() {
 }
 
 function exportDisabledReason() {
+  if (saving.value) return 'Идёт сохранение изменений';
+  if (pendingPlayers.value || pendingStaff.value)
+    return 'Изменения ожидают синхронизации';
+  if (!isOnline.value) return 'Нет подключения к интернету';
   if (!activeTeam.value) return 'Выберите команду';
   if (isDouble.value) {
     if (squadMissingCount.value > 0)
@@ -1634,12 +1750,20 @@ async function saveStaff() {
     squad_no: null,
   }));
   try {
-    await apiFetch(`/matches/${route.params.id}/staff`, {
+    // Persist pending snapshot before attempting to save (offline safety)
+    setPending('staff', { team_id: activeTeam.value, staff: payload });
+    const respS1 = await apiFetch(`/matches/${route.params.id}/staff`, {
       method: 'POST',
-      body: JSON.stringify({ team_id: activeTeam.value, staff: payload }),
+      body: JSON.stringify({
+        team_id: activeTeam.value,
+        staff: payload,
+        if_staff_rev: staffRev.value || undefined,
+      }),
     });
+    if (respS1 && respS1.team_rev) staffRev.value = respS1.team_rev;
     persistDraft();
     clearDraft();
+    clearPending('staff');
     // Update local staff state
     const nameById = new Map(
       (staffCategories.value || []).map((c) => [String(c.id), c.name])
@@ -1669,6 +1793,22 @@ async function saveStaff() {
     if (e?.code === 'staff_not_in_team' || e?.code === 'team_not_in_match') {
       await load();
       error.value = 'Данные обновлены. Проверьте список представителей.';
+    } else if (e?.code === 'conflict_staff_version') {
+      try {
+        await load();
+        const respS2 = await apiFetch(`/matches/${route.params.id}/staff`, {
+          method: 'POST',
+          body: JSON.stringify({
+            team_id: activeTeam.value,
+            staff: getPending('staff')?.staff || payload,
+          }),
+        });
+        if (respS2 && respS2.team_rev) staffRev.value = respS2.team_rev;
+        clearPending('staff');
+        showToast('Обновили данные и применили ваши изменения');
+      } catch (e2) {
+        error.value = e2.message || 'Конфликт при сохранении представителей';
+      }
     } else if (e?.code === 'too_many_officials') {
       error.value = 'Нельзя выбрать более 8 официальных представителей';
     } else if (e?.code === 'staff_role_required') {
@@ -1693,9 +1833,47 @@ function scheduleStaffAutoSave() {
 onMounted(load);
 
 onMounted(() => {
-  // Init export modal
-  if (exportModalRef.value) exportModal = new Modal(exportModalRef.value);
+  // Online/offline tracking
+  initNetworkListeners(() => flushPending(`/matches/${route.params.id}`));
+  // Initialize pending flags based on storage and flush on entry
+  initPendingFlagsFromStorage();
+  flushPending(`/matches/${route.params.id}`);
 });
+
+// Ensure local revision matches server before export
+async function verifySync() {
+  try {
+    const d = await apiFetch(`/matches/${route.params.id}/lineups`, {
+      _ddosRetried: true,
+    });
+    const currentTeamRev =
+      activeTeam.value === d.team2_id ? d.away_rev || '' : d.home_rev || '';
+    const s = await apiFetch(`/matches/${route.params.id}/staff`, {
+      _ddosRetried: true,
+    });
+    const currentStaffRev =
+      activeTeam.value === s.team2_id ? s.away_rev || '' : s.home_rev || '';
+    const playersOk =
+      currentTeamRev &&
+      teamRev.value &&
+      String(currentTeamRev) === String(teamRev.value);
+    const staffOk =
+      currentStaffRev &&
+      staffRev.value &&
+      String(currentStaffRev) === String(staffRev.value);
+    if (!playersOk || !staffOk) {
+      await load();
+      showToast(
+        'Нашли обновления на сервере. Синхронизировали данные. Повторите экспорт.'
+      );
+      return false;
+    }
+    return true;
+  } catch (_) {
+    // If cannot verify, be safe and block export
+    return false;
+  }
+}
 
 // When GK count is not exactly 3, clear any transient "both" flags so UI re-enables squad select
 watch(gkCount, (val) => {
@@ -1728,11 +1906,15 @@ function onConfirmExportFromModal() {
   exportPlayers();
 }
 
+// flushPending implemented in lineupSync util
+
 watch(activeTeam, async () => {
   // Recompute selected set limited to current team pool
   if (!data.value) return;
   // Preselect already saved players for the chosen team
   if (activeTeam.value === data.value.team2_id) {
+    // Update revision for players when switching team
+    teamRev.value = data.value.away_rev || '';
     selected.value = new Set(
       (data.value.away?.players || [])
         .filter((p) => p.selected)
@@ -1790,6 +1972,7 @@ watch(activeTeam, async () => {
       assistants2.value = new Set();
     }
   } else {
+    teamRev.value = data.value.home_rev || '';
     selected.value = new Set(
       (data.value.home?.players || [])
         .filter((p) => p.selected)
@@ -1852,6 +2035,8 @@ watch(activeTeam, async () => {
     const staffPool =
       (activeTeam.value === s.team2_id ? s.away?.staff : s.home?.staff) || [];
     staff.value = staffPool;
+    staffRev.value =
+      activeTeam.value === s.team2_id ? s.away_rev || '' : s.home_rev || '';
     if (Array.isArray(s.categories)) staffCategories.value = s.categories;
     staffSelected.value = new Set(
       staffPool.filter((x) => x.selected).map((x) => x.team_staff_id)
@@ -1930,7 +2115,9 @@ watch(activeTeam, async () => {
             </div>
             <div
               v-if="
-                data.team1_id && data.team2_id && data.is_home && data.is_away
+                data.team1_id &&
+                data.team2_id &&
+                (data.is_admin || (data.is_home && data.is_away))
               "
               class="ms-md-auto"
             >
@@ -1947,6 +2134,14 @@ watch(activeTeam, async () => {
               </select>
             </div>
           </div>
+
+          <!-- Save status hint -->
+          <SyncStatus
+            :saving="saving"
+            :pending-players="pendingPlayers"
+            :pending-staff="pendingStaff"
+            :is-online="isOnline"
+          />
 
           <div class="section-heading mt-2 mb-2">
             <span class="text-muted small fw-semibold">Игроки</span>
@@ -1984,177 +2179,110 @@ watch(activeTeam, async () => {
           </div>
 
           <!-- Export readiness modal -->
-          <div
-            ref="exportModalRef"
-            class="modal fade"
-            tabindex="-1"
-            aria-hidden="true"
-          >
-            <div
-              class="modal-dialog modal-dialog-centered modal-dialog-scrollable"
-            >
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2 class="modal-title h5">Готовность к выгрузке заявки</h2>
-                  <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                  ></button>
-                </div>
-                <div class="modal-body">
-                  <div
-                    class="mb-2"
-                    :class="
-                      exportBlocking.length === 0
-                        ? 'text-success'
-                        : 'text-muted'
-                    "
-                  >
-                    <span v-if="exportBlocking.length === 0"
-                      >Все условия выполнены. Можно выгружать PDF.</span
-                    >
-                    <span v-else
-                      >Чтобы выгрузить PDF, выполните условия ниже:</span
-                    >
-                  </div>
-                  <ul class="mb-0 ps-3">
-                    <li
-                      v-for="r in exportRequirements"
-                      :key="r.key"
-                      :class="r.ok ? 'text-success' : 'text-danger'"
-                    >
-                      <span class="me-1">{{ r.ok ? '✔' : '✖' }}</span
-                      >{{ r.text }}
-                    </li>
-                  </ul>
-                </div>
-                <div class="modal-footer">
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    data-bs-dismiss="modal"
-                  >
-                    Закрыть
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-primary"
-                    :disabled="exportDisabled"
-                    @click="onConfirmExportFromModal"
-                  >
-                    Экспорт PDF
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ExportModal
+            :export-requirements="exportRequirements"
+            :export-disabled="exportDisabled"
+            :on-confirm="onConfirmExportFromModal"
+            :on-ready="onModalReady"
+          />
 
-          <div class="table-responsive">
-            <table class="table align-middle">
-              <thead>
-                <tr class="text-muted small">
-                  <th style="width: 44px" class="text-center">
+          <div class="d-flex align-items-center mb-2">
+            <input
+              class="form-check-input me-2"
+              type="checkbox"
+              :checked="allSelected()"
+              :aria-label="allSelected() ? 'Снять все' : 'Выбрать все'"
+              @change="toggleAll"
+            />
+            <span class="small text-muted">Выбрать всех в текущем списке</span>
+          </div>
+          <PlayersTable
+            :grouped-roster="groupedRoster"
+            :roster-length="roster.length"
+            :selected="selected"
+            :can-edit="canEdit"
+            :is-double="isDouble"
+            :roles="roles"
+            :edited-number="editedNumber"
+            :edited-role="editedRole"
+            :edited-squad="editedSquad"
+            :edited-both="editedBoth"
+            :is-player-gk="isPlayerGk"
+            :gk-count="gkCount"
+            :duplicate-numbers-set="duplicateNumbersSet"
+            :captain-id="captainId"
+            :captain1-id="captain1Id"
+            :captain2-id="captain2Id"
+            :assistants="assistants"
+            :assistants1="assistants1"
+            :assistants2="assistants2"
+            :on-toggle="toggle"
+            :on-number-input="onNumberInput"
+            :on-role-change="onRoleChange"
+            :on-squad-change="onSquadChange"
+            :on-toggle-captain="toggleCaptain"
+            :on-toggle-assistant="toggleAssistant"
+          />
+          <!-- legacy table removed -->
+          <table class="table align-middle">
+            <thead>
+              <tr class="text-muted small">
+                <th style="width: 44px" class="text-center">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    :checked="allSelected()"
+                    :aria-label="allSelected() ? 'Снять все' : 'Выбрать все'"
+                    @change="toggleAll"
+                  />
+                </th>
+                <th>Игрок</th>
+                <th style="width: 120px">Д.р.</th>
+                <th style="width: 120px">№ на матч</th>
+                <th v-if="isDouble" style="width: 120px">Состав</th>
+                <th style="width: 220px">Амплуа на матч</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="grp in groupedRoster" :key="grp.group">
+                <tr class="table-light">
+                  <td :colspan="isDouble ? 6 : 5" class="fw-semibold">
+                    {{ grp.group }}
+                  </td>
+                </tr>
+                <tr
+                  v-for="p in grp.players"
+                  :key="p.team_player_id"
+                  class="fade-in"
+                >
+                  <td class="text-center">
                     <input
                       class="form-check-input"
                       type="checkbox"
-                      :checked="allSelected()"
-                      :aria-label="allSelected() ? 'Снять все' : 'Выбрать все'"
-                      @change="toggleAll"
+                      :checked="selected.has(p.team_player_id)"
+                      :disabled="!canEdit"
+                      :aria-label="`Выбрать игрока ${p.full_name}`"
+                      @change="() => toggle(p)"
                     />
-                  </th>
-                  <th>Игрок</th>
-                  <th style="width: 120px">Д.р.</th>
-                  <th style="width: 120px">№ на матч</th>
-                  <th v-if="isDouble" style="width: 120px">Состав</th>
-                  <th style="width: 220px">Амплуа на матч</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template v-for="grp in groupedRoster" :key="grp.group">
-                  <tr class="table-light">
-                    <td :colspan="isDouble ? 6 : 5" class="fw-semibold">
-                      {{ grp.group }}
-                    </td>
-                  </tr>
-                  <tr
-                    v-for="p in grp.players"
-                    :key="p.team_player_id"
-                    class="fade-in"
-                  >
-                    <td class="text-center">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        :checked="selected.has(p.team_player_id)"
-                        :disabled="!canEdit"
-                        :aria-label="`Выбрать игрока ${p.full_name}`"
-                        @change="() => toggle(p)"
-                      />
-                    </td>
-                    <td>
+                  </td>
+                  <td>
+                    <div
+                      class="d-flex align-items-center justify-content-between gap-2"
+                    >
+                      <div class="fw-semibold">{{ p.full_name }}</div>
                       <div
-                        class="d-flex align-items-center justify-content-between gap-2"
+                        v-if="
+                          canEdit &&
+                          selected.has(p.team_player_id) &&
+                          !isPlayerGk(p)
+                        "
+                        class="d-flex gap-1"
                       >
-                        <div class="fw-semibold">{{ p.full_name }}</div>
-                        <div
-                          v-if="
-                            canEdit &&
-                            selected.has(p.team_player_id) &&
-                            !isPlayerGk(p)
-                          "
-                          class="d-flex gap-1"
-                        >
-                          <button
-                            class="btn btn-xs btn-outline-secondary"
-                            type="button"
-                            :class="{
-                              active:
-                                (!isDouble && captainId === p.team_player_id) ||
-                                (isDouble &&
-                                  ((editedSquad[p.team_player_id] ??
-                                    p.squad_no) === 1
-                                    ? captain1Id === p.team_player_id
-                                    : (editedSquad[p.team_player_id] ??
-                                          p.squad_no) === 2
-                                      ? captain2Id === p.team_player_id
-                                      : false)),
-                            }"
-                            title="Капитан"
-                            @click="() => toggleCaptain(p)"
-                          >
-                            К
-                          </button>
-                          <button
-                            class="btn btn-xs btn-outline-secondary"
-                            type="button"
-                            :class="{
-                              active:
-                                (!isDouble &&
-                                  assistants.has(p.team_player_id)) ||
-                                (isDouble &&
-                                  ((editedSquad[p.team_player_id] ??
-                                    p.squad_no) === 1
-                                    ? assistants1.has(p.team_player_id)
-                                    : (editedSquad[p.team_player_id] ??
-                                          p.squad_no) === 2
-                                      ? assistants2.has(p.team_player_id)
-                                      : false)),
-                            }"
-                            title="Ассистент"
-                            @click="() => toggleAssistant(p)"
-                          >
-                            A
-                          </button>
-                        </div>
-                        <div
-                          v-else
-                          class="text-muted small"
-                          style="min-width: 16px; text-align: right"
-                        >
-                          <span
-                            v-if="
+                        <button
+                          class="btn btn-xs btn-outline-secondary"
+                          type="button"
+                          :class="{
+                            active:
                               (!isDouble && captainId === p.team_player_id) ||
                               (isDouble &&
                                 ((editedSquad[p.team_player_id] ??
@@ -2163,12 +2291,18 @@ watch(activeTeam, async () => {
                                   : (editedSquad[p.team_player_id] ??
                                         p.squad_no) === 2
                                     ? captain2Id === p.team_player_id
-                                    : false))
-                            "
-                            >К</span
-                          >
-                          <span
-                            v-else-if="
+                                    : false)),
+                          }"
+                          title="Капитан"
+                          @click="() => toggleCaptain(p)"
+                        >
+                          К
+                        </button>
+                        <button
+                          class="btn btn-xs btn-outline-secondary"
+                          type="button"
+                          :class="{
+                            active:
                               (!isDouble && assistants.has(p.team_player_id)) ||
                               (isDouble &&
                                 ((editedSquad[p.team_player_id] ??
@@ -2177,334 +2311,228 @@ watch(activeTeam, async () => {
                                   : (editedSquad[p.team_player_id] ??
                                         p.squad_no) === 2
                                     ? assistants2.has(p.team_player_id)
-                                    : false))
-                            "
-                            >A</span
-                          >
-                        </div>
-                      </div>
-                    </td>
-                    <td class="text-muted">
-                      <span v-if="p.date_of_birth">{{
-                        new Date(p.date_of_birth).toLocaleDateString('ru-RU')
-                      }}</span>
-                      <span v-else>—</span>
-                    </td>
-                    <td style="max-width: 140px">
-                      <div class="input-group input-group-sm">
-                        <input
-                          type="number"
-                          class="form-control"
-                          min="0"
-                          max="99"
-                          :disabled="
-                            !canEdit || !selected.has(p.team_player_id)
-                          "
-                          :value="editedNumber[p.team_player_id] ?? ''"
-                          aria-label="Номер в матче"
-                          placeholder="—"
-                          :class="{
-                            'is-invalid':
-                              selected.has(p.team_player_id) &&
-                              ((editedNumber[p.team_player_id] != null &&
-                                duplicateNumbersSet.has(
-                                  String(editedNumber[p.team_player_id])
-                                )) ||
-                                editedNumber[p.team_player_id] == null),
+                                    : false)),
                           }"
-                          @input="(e) => onNumberInput(p, e)"
-                          @change="() => save(true)"
-                        />
-                      </div>
-                      <div
-                        v-if="
-                          selected.has(p.team_player_id) &&
-                          editedNumber[p.team_player_id] == null
-                        "
-                        class="invalid-feedback d-block"
-                      >
-                        Укажите номер
-                      </div>
-                      <div
-                        v-else-if="
-                          selected.has(p.team_player_id) &&
-                          editedNumber[p.team_player_id] != null &&
-                          duplicateNumbersSet.has(
-                            String(editedNumber[p.team_player_id])
-                          )
-                        "
-                        class="invalid-feedback d-block"
-                      >
-                        Дублируется номер в составе
-                      </div>
-                    </td>
-                    <td v-if="isDouble">
-                      <select
-                        class="form-select form-select-sm"
-                        :disabled="!canEdit || !selected.has(p.team_player_id)"
-                        :value="
-                          (function () {
-                            if (isPlayerGk(p) && gkCount === 3) {
-                              return (editedBoth[p.team_player_id] ??
-                                p.squad_both ??
-                                false)
-                                ? 'both'
-                                : String(
-                                    editedSquad[p.team_player_id] ??
-                                      p.squad_no ??
-                                      ''
-                                  );
-                            }
-                            return String(
-                              editedSquad[p.team_player_id] ?? p.squad_no ?? ''
-                            );
-                          })()
-                        "
-                        aria-label="Состав (1/2/оба)"
-                        :class="{
-                          'is-invalid':
-                            selected.has(p.team_player_id) &&
-                            !(function () {
-                              if (
-                                isPlayerGk(p) &&
-                                gkCount === 3 &&
-                                (editedBoth[p.team_player_id] ??
-                                  p.squad_both ??
-                                  false)
-                              )
-                                return true;
-                              const v =
-                                editedSquad[p.team_player_id] ??
-                                p.squad_no ??
-                                null;
-                              return v === 1 || v === 2;
-                            })(),
-                        }"
-                        @change="(e) => onSquadChange(p, e)"
-                      >
-                        <option value="" disabled>—</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option
-                          v-if="isPlayerGk(p) && gkCount === 3"
-                          value="both"
+                          title="Ассистент"
+                          @click="() => toggleAssistant(p)"
                         >
-                          Оба состава
-                        </option>
-                      </select>
-                      <div
-                        v-if="
-                          selected.has(p.team_player_id) &&
-                          !(
-                            isPlayerGk(p) &&
-                            (editedBoth[p.team_player_id] ??
-                              p.squad_both ??
-                              false)
-                          ) &&
-                          !(
-                            (editedSquad[p.team_player_id] ??
-                              p.squad_no ??
-                              null) === 1 ||
-                            (editedSquad[p.team_player_id] ??
-                              p.squad_no ??
-                              null) === 2
-                          )
-                        "
-                        class="invalid-feedback d-block"
-                      >
-                        Выберите состав (1 или 2)
+                          A
+                        </button>
                       </div>
-                    </td>
-                    <td>
-                      <select
-                        class="form-select form-select-sm"
-                        :disabled="!canEdit || !selected.has(p.team_player_id)"
-                        :value="editedRole[p.team_player_id] ?? ''"
-                        aria-label="Амплуа в матче"
-                        :class="{
-                          'is-invalid':
-                            selected.has(p.team_player_id) &&
-                            !(editedRole[p.team_player_id] ?? null),
-                        }"
-                        @change="(e) => onRoleChange(p, e)"
-                      >
-                        <option v-for="r in roles" :key="r.id" :value="r.id">
-                          {{ r.name }}
-                        </option>
-                      </select>
                       <div
-                        v-if="
-                          selected.has(p.team_player_id) &&
-                          !(editedRole[p.team_player_id] ?? null)
-                        "
-                        class="invalid-feedback d-block"
+                        v-else
+                        class="text-muted small"
+                        style="min-width: 16px; text-align: right"
                       >
-                        Выберите амплуа
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-                <tr v-if="roster.length === 0">
-                  <td :colspan="isDouble ? 6 : 5" class="text-muted py-4">
-                    Нет игроков по текущему фильтру
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <hr class="my-4" />
-          <div class="section-heading mt-2 mb-2">
-            <span class="text-muted small fw-semibold"
-              >Представители команды</span
-            >
-          </div>
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">
-              Всего: {{ filteredStaff().length }}
-              <span class="text-muted">•</span>
-              Выбрано:
-              {{
-                Array.from(staffSelected).filter((id) =>
-                  filteredStaff().some((r) => r.team_staff_id === id)
-                ).length
-              }}
-            </div>
-            <div class="d-flex gap-2 flex-wrap">
-              <button
-                class="btn btn-sm btn-outline-secondary"
-                type="button"
-                :disabled="filteredStaff().length === 0"
-                @click="toggleAllStaff"
-              >
-                {{ allStaffSelected() ? 'Снять все' : 'Выбрать все' }}
-              </button>
-            </div>
-          </div>
-          <!-- Desktop/tablet view -->
-          <div class="table-responsive d-none d-md-block">
-            <table class="table align-middle">
-              <thead>
-                <tr class="text-muted small">
-                  <th style="width: 44px" class="text-center"></th>
-                  <th>ФИО</th>
-                  <th style="width: 220px">Должность на матч</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template v-for="grp in groupedStaff" :key="grp.group">
-                  <tr class="table-light">
-                    <td :colspan="3" class="fw-semibold">
-                      {{ grp.group }}
-                    </td>
-                  </tr>
-                  <tr
-                    v-for="r in grp.staff"
-                    :key="r.team_staff_id"
-                    class="fade-in"
-                  >
-                    <td class="text-center">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        :checked="staffSelected.has(r.team_staff_id)"
-                        @change="() => toggleStaff(r)"
-                      />
-                    </td>
-                    <td>
-                      <div class="fw-semibold">{{ r.full_name }}</div>
-                    </td>
-
-                    <td>
-                      <select
-                        class="form-select form-select-sm"
-                        :disabled="
-                          !canEdit || !staffSelected.has(r.team_staff_id)
-                        "
-                        :value="
-                          editedStaffRole[r.team_staff_id] ??
-                          r.match_role?.id ??
-                          ''
-                        "
-                        aria-label="Должность представителя на матч"
-                        @change="(e) => onStaffRoleChange(r, e)"
-                      >
-                        <option
-                          v-for="c in staffCategories"
-                          :key="c.id"
-                          :value="c.id"
-                        >
-                          {{ c.name }}
-                        </option>
-                      </select>
-                    </td>
-                  </tr>
-                </template>
-                <tr v-if="filteredStaff().length === 0">
-                  <td :colspan="3" class="text-muted py-3">
-                    Нет представителей по текущему фильтру
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Mobile view -->
-          <div class="d-block d-md-none">
-            <div
-              v-if="filteredStaff().length === 0"
-              class="text-muted py-2 small"
-            >
-              Нет представителей по текущему фильтру
-            </div>
-            <div v-for="grp in groupedStaff" :key="grp.group" class="mb-2">
-              <div class="text-muted small fw-semibold mb-1">
-                {{ grp.group }}
-              </div>
-              <div class="list-group">
-                <div
-                  v-for="r in grp.staff"
-                  :key="r.team_staff_id"
-                  class="list-group-item py-2"
-                >
-                  <div class="d-flex align-items-start gap-2">
-                    <input
-                      class="form-check-input mt-1"
-                      type="checkbox"
-                      :checked="staffSelected.has(r.team_staff_id)"
-                      aria-label="Выбрать представителя"
-                      @change="() => toggleStaff(r)"
-                    />
-                    <div class="flex-grow-1">
-                      <div class="fw-semibold">{{ r.full_name }}</div>
-                      <div class="mt-1">
-                        <select
-                          class="form-select form-select-sm"
-                          :disabled="
-                            !canEdit || !staffSelected.has(r.team_staff_id)
+                        <span
+                          v-if="
+                            (!isDouble && captainId === p.team_player_id) ||
+                            (isDouble &&
+                              ((editedSquad[p.team_player_id] ?? p.squad_no) ===
+                              1
+                                ? captain1Id === p.team_player_id
+                                : (editedSquad[p.team_player_id] ??
+                                      p.squad_no) === 2
+                                  ? captain2Id === p.team_player_id
+                                  : false))
                           "
-                          :value="
-                            editedStaffRole[r.team_staff_id] ??
-                            r.match_role?.id ??
-                            ''
-                          "
-                          aria-label="Должность представителя на матч"
-                          @change="(e) => onStaffRoleChange(r, e)"
+                          >К</span
                         >
-                          <option
-                            v-for="c in staffCategories"
-                            :key="c.id"
-                            :value="c.id"
-                          >
-                            {{ c.name }}
-                          </option>
-                        </select>
+                        <span
+                          v-else-if="
+                            (!isDouble && assistants.has(p.team_player_id)) ||
+                            (isDouble &&
+                              ((editedSquad[p.team_player_id] ?? p.squad_no) ===
+                              1
+                                ? assistants1.has(p.team_player_id)
+                                : (editedSquad[p.team_player_id] ??
+                                      p.squad_no) === 2
+                                  ? assistants2.has(p.team_player_id)
+                                  : false))
+                          "
+                          >A</span
+                        >
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                  </td>
+                  <td class="text-muted">
+                    <span v-if="p.date_of_birth">{{
+                      new Date(p.date_of_birth).toLocaleDateString('ru-RU')
+                    }}</span>
+                    <span v-else>—</span>
+                  </td>
+                  <td style="max-width: 140px">
+                    <div class="input-group input-group-sm">
+                      <input
+                        type="number"
+                        class="form-control"
+                        min="0"
+                        max="99"
+                        :disabled="!canEdit || !selected.has(p.team_player_id)"
+                        :value="editedNumber[p.team_player_id] ?? ''"
+                        aria-label="Номер в матче"
+                        placeholder="—"
+                        :class="{
+                          'is-invalid':
+                            selected.has(p.team_player_id) &&
+                            ((editedNumber[p.team_player_id] != null &&
+                              duplicateNumbersSet.has(
+                                String(editedNumber[p.team_player_id])
+                              )) ||
+                              editedNumber[p.team_player_id] == null),
+                        }"
+                        @input="(e) => onNumberInput(p, e)"
+                        @change="() => save(true)"
+                      />
+                    </div>
+                    <div
+                      v-if="
+                        selected.has(p.team_player_id) &&
+                        editedNumber[p.team_player_id] == null
+                      "
+                      class="invalid-feedback d-block"
+                    >
+                      Укажите номер
+                    </div>
+                    <div
+                      v-else-if="
+                        selected.has(p.team_player_id) &&
+                        editedNumber[p.team_player_id] != null &&
+                        duplicateNumbersSet.has(
+                          String(editedNumber[p.team_player_id])
+                        )
+                      "
+                      class="invalid-feedback d-block"
+                    >
+                      Дублируется номер в составе
+                    </div>
+                  </td>
+                  <td v-if="isDouble">
+                    <select
+                      class="form-select form-select-sm"
+                      :disabled="!canEdit || !selected.has(p.team_player_id)"
+                      :value="
+                        (function () {
+                          if (isPlayerGk(p) && gkCount === 3) {
+                            return (editedBoth[p.team_player_id] ??
+                              p.squad_both ??
+                              false)
+                              ? 'both'
+                              : String(
+                                  editedSquad[p.team_player_id] ??
+                                    p.squad_no ??
+                                    ''
+                                );
+                          }
+                          return String(
+                            editedSquad[p.team_player_id] ?? p.squad_no ?? ''
+                          );
+                        })()
+                      "
+                      aria-label="Состав (1/2/оба)"
+                      :class="{
+                        'is-invalid':
+                          selected.has(p.team_player_id) &&
+                          !(function () {
+                            if (
+                              isPlayerGk(p) &&
+                              gkCount === 3 &&
+                              (editedBoth[p.team_player_id] ??
+                                p.squad_both ??
+                                false)
+                            )
+                              return true;
+                            const v =
+                              editedSquad[p.team_player_id] ??
+                              p.squad_no ??
+                              null;
+                            return v === 1 || v === 2;
+                          })(),
+                      }"
+                      @change="(e) => onSquadChange(p, e)"
+                    >
+                      <option value="" disabled>—</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option
+                        v-if="isPlayerGk(p) && gkCount === 3"
+                        value="both"
+                      >
+                        Оба состава
+                      </option>
+                    </select>
+                    <div
+                      v-if="
+                        selected.has(p.team_player_id) &&
+                        !(
+                          isPlayerGk(p) &&
+                          (editedBoth[p.team_player_id] ??
+                            p.squad_both ??
+                            false)
+                        ) &&
+                        !(
+                          (editedSquad[p.team_player_id] ??
+                            p.squad_no ??
+                            null) === 1 ||
+                          (editedSquad[p.team_player_id] ??
+                            p.squad_no ??
+                            null) === 2
+                        )
+                      "
+                      class="invalid-feedback d-block"
+                    >
+                      Выберите состав (1 или 2)
+                    </div>
+                  </td>
+                  <td>
+                    <select
+                      class="form-select form-select-sm"
+                      :disabled="!canEdit || !selected.has(p.team_player_id)"
+                      :value="editedRole[p.team_player_id] ?? ''"
+                      aria-label="Амплуа в матче"
+                      :class="{
+                        'is-invalid':
+                          selected.has(p.team_player_id) &&
+                          !(editedRole[p.team_player_id] ?? null),
+                      }"
+                      @change="(e) => onRoleChange(p, e)"
+                    >
+                      <option v-for="r in roles" :key="r.id" :value="r.id">
+                        {{ r.name }}
+                      </option>
+                    </select>
+                    <div
+                      v-if="
+                        selected.has(p.team_player_id) &&
+                        !(editedRole[p.team_player_id] ?? null)
+                      "
+                      class="invalid-feedback d-block"
+                    >
+                      Выберите амплуа
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <tr v-if="roster.length === 0">
+                <td :colspan="isDouble ? 6 : 5" class="text-muted py-4">
+                  Нет игроков по текущему фильтру
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <hr class="my-4" />
+          <StaffList
+            :grouped-staff="groupedStaff"
+            :filtered-count="filteredStaff().length"
+            :staff-selected="staffSelected"
+            :staff-categories="staffCategories"
+            :can-edit="canEdit"
+            :all-staff-selected="allStaffSelected"
+            :toggle-all-staff="toggleAllStaff"
+            :toggle-staff="toggleStaff"
+            :on-staff-role-change="onStaffRoleChange"
+          />
         </div>
       </div>
     </div>
