@@ -7,7 +7,8 @@ export function formatFio(full, mode = 'full') {
   const ini = parts
     .slice(1)
     .map((p) => (p ? `${p[0].toUpperCase()}.` : ''))
-    .join(' ')
+    // UX: no spaces between initials (e.g., "И.П.")
+    .join('')
     .trim();
   return `${sur}${ini ? ' ' + ini : ''}`.trim();
 }

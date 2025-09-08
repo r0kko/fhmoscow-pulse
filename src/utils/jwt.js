@@ -35,19 +35,30 @@ export function signRefreshToken(user) {
 
 /* ---------- verify helpers ------------------------------------------------ */
 export function verifyAccessToken(token) {
-  return jwt.verify(token, JWT_SECRET, {
-    algorithms: [JWT_ALG],
-    issuer: JWT_ISS,
-    audience: JWT_AUD,
-  });
+  try {
+    return jwt.verify(token, JWT_SECRET, {
+      algorithms: [JWT_ALG],
+      issuer: JWT_ISS,
+      audience: JWT_AUD,
+    });
+  } catch (_e) {
+    // Security/UX: do not leak JWT verification details
+    throw new ServiceError('invalid_token', 401);
+  }
 }
 
 export function verifyRefreshToken(token) {
-  const payload = jwt.verify(token, JWT_SECRET, {
-    algorithms: [JWT_ALG],
-    issuer: JWT_ISS,
-    audience: JWT_AUD,
-  });
+  let payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET, {
+      algorithms: [JWT_ALG],
+      issuer: JWT_ISS,
+      audience: JWT_AUD,
+    });
+  } catch (_e) {
+    // Security/UX: normalize verification failures
+    throw new ServiceError('invalid_token', 401);
+  }
   if (payload.type !== 'refresh') {
     throw new ServiceError('invalid_token_type', 401);
   }
