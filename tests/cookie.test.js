@@ -1,5 +1,6 @@
 import { expect, test, jest } from '@jest/globals';
 import { setRefreshCookie, clearRefreshCookie } from '../src/utils/cookie.js';
+import { COOKIE_OPTIONS } from '../src/config/auth.js';
 
 test('setRefreshCookie calls res.cookie with options', () => {
   const res = { cookie: jest.fn() };
@@ -9,8 +10,8 @@ test('setRefreshCookie calls res.cookie with options', () => {
     'token',
     expect.objectContaining({
       httpOnly: true,
-      sameSite: 'strict',
-      secure: false,
+      sameSite: COOKIE_OPTIONS.sameSite,
+      secure: COOKIE_OPTIONS.secure,
       maxAge: expect.any(Number),
       path: '/',
     })
@@ -24,8 +25,8 @@ test('clearRefreshCookie calls res.clearCookie with options', () => {
     'refresh_token',
     expect.objectContaining({
       httpOnly: true,
-      sameSite: 'strict',
-      secure: false,
+      sameSite: COOKIE_OPTIONS.sameSite,
+      secure: COOKIE_OPTIONS.secure,
       path: '/',
     })
   );

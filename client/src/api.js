@@ -1,4 +1,5 @@
 import { translateError } from './errors.js';
+
 import { clearAuth } from './auth.js';
 export const API_BASE = (
   (typeof import.meta !== 'undefined' &&

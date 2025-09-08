@@ -489,8 +489,8 @@ export async function syncExternal(actorId = null) {
 
   // Phase 1: scan external ids + lightweight checksum per row
   const fpExpr = literal(
-    // eslint
-    'MD5(CONCAT_WS(\'|\', COALESCE(penalty_player_id,\'#\'), COALESCE(penalty_violation_id,\'#\'), COALESCE(minute,\'#\'), COALESCE(second,\'#\'), COALESCE(period,\'#\'), COALESCE(penalty_minutes_id,\'#\'), COALESCE(team_penalty,\'#\')))'
+    // eslint-disable-next-line
+    "MD5(CONCAT_WS('|', COALESCE(penalty_player_id,'#'), COALESCE(penalty_violation_id,'#'), COALESCE(minute,'#'), COALESCE(second,'#'), COALESCE(period,'#'), COALESCE(penalty_minutes_id,'#'), COALESCE(team_penalty,'#')))"
   );
   const extSummary = await ExtGameEvent.findAll({
     where: {

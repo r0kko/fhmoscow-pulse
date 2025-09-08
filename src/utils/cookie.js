@@ -16,8 +16,11 @@ export function setRefreshCookie(res, token) {
  * @param {import('express').Response} res
  */
 export function clearRefreshCookie(res) {
-  const { path, domain, httpOnly, sameSite, secure } = COOKIE_OPTIONS;
+  const { path, domain, httpOnly, sameSite, secure, partitioned, priority } =
+    COOKIE_OPTIONS;
   const options = { path, httpOnly, sameSite, secure };
   if (domain) options.domain = domain;
+  if (partitioned) options.partitioned = true;
+  if (priority) options.priority = priority;
   res.clearCookie(COOKIE_NAME, options);
 }

@@ -11,6 +11,7 @@ import {
   TournamentGroup,
   Tour,
 } from '../models/index.js';
+import { formatFio } from '../utils/format.js';
 
 import lineupService from './matchLineupService.js';
 
@@ -54,6 +55,13 @@ async function getMatchMeta(matchId) {
   if (!m) throw Object.assign(new Error('match_not_found'), { code: 404 });
   return {
     date: ruDateStr(m.date_start),
+    dateOnly: (function () {
+      try {
+        return new Date(m.date_start).toLocaleDateString('ru-RU');
+      } catch {
+        return '';
+      }
+    })(),
     competition: cleanJoin(
       [m.Tournament?.full_name || m.Tournament?.name].filter(Boolean)
     ),
@@ -203,7 +211,9 @@ function drawTable(doc, { x, y, columns, rows }, options = {}) {
   return endY;
 }
 
-async function exportPlayersPdf(matchId, teamId, actorId) {
+async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
+  const showDob = !opts.hideDob;
+  const fioMode = opts.fioFormat === 'initials' ? 'initials' : 'full';
   // Authorization and data retrieval are delegated to lineupService
   const data = await lineupService.list(matchId, actorId);
   if (teamId !== data.team1_id && teamId !== data.team2_id) {
@@ -331,7 +341,7 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       background,
       primaryColor,
       primarySize,
-      secondarySize,
+      _secondarySize,
     } = PDF_STYLE.infoBox;
     // Slightly increase horizontal inset inside the box
     const insetX = padX + 2;
@@ -344,22 +354,28 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     const teamLine = isHome
       ? data.team1_name || meta.homeName
       : data.team2_name || meta.awayName;
-    const compLine = meta.tournament || meta.competition || '';
-    // match and date values are handwritten below (no text here)
+    const compBase = meta.tournament || meta.competition || '';
+    const compExtra = [meta.stage, meta.group].filter(Boolean).join(' · ');
+    const compLine = compExtra ? `${compBase} (${compExtra})` : compBase;
+    // Third line is composed text: DD.MM.YYYY · {Tour or 'Тур'} · «Home» — «Away»
+    const pairLine = `«${data.team1_name || meta.homeName}» — «${
+      data.team2_name || meta.awayName
+    }»`;
+    const tourPart = meta.tour || 'Тур';
+    const matchLine = `${meta.dateOnly}${tourPart ? ` · ${tourPart}` : ''} · ${pairLine}`;
     const iconSize = 10;
     const iconGap = 6;
     const textAvailW = innerW - iconSize - iconGap;
-    // Measure heights: team + competition (text), then lines for match/date
+    // Measure heights: team + competition + composed match line
     // Measure with regular font for consistent spacing (no bold)
     doc.font(regular).fontSize(primarySize);
     const hTeam = doc.heightOfString(teamLine, { width: textAvailW });
     const hComp = doc.heightOfString(compLine, { width: textAvailW });
-    // Handwriting lines: compact yet comfortable (single line)
-    const lineH = Math.max(20, secondarySize + 8);
+    const hMatch = doc.heightOfString(matchLine, { width: textAvailW });
     // Slightly larger top/bottom padding for better breathing room
     const padTop = Math.max(padY, 6);
     const padBottom = 6;
-    const boxH = padTop + hTeam + 2 + hComp + lineGap + lineH + padBottom;
+    const boxH = padTop + hTeam + 2 + hComp + lineGap + hMatch + padBottom;
     // Draw background + border
     doc.save();
     doc.lineWidth(borderWidth).strokeColor(borderColor).fillColor(background);
@@ -409,35 +425,8 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     };
     renderLine('team', teamLine, regular, primarySize, primaryColor);
     renderLine('trophy', compLine, regular, primarySize, primaryColor);
-    // One compact labeled handwriting line: "Матч и дата: ________"
-    const drawLabeledLine = (icon, label) => {
-      drawIcon(icon, textX, textY + 1, iconSize);
-      const tx = textX + iconSize + iconGap;
-      const tw = innerW - iconSize - iconGap;
-      // Compute baseline for handwriting row
-      const ly = textY + Math.floor(lineH / 2);
-      // Regular label (no bold), same style as the other primary lines
-      doc.font(regular).fontSize(primarySize).fillColor(primaryColor);
-      const lw = Math.min(doc.widthOfString(label), Math.max(60, tw * 0.4));
-      // Place label so its baseline aligns to handwriting line (slightly raised)
-      const baselineAdjust = 1;
-      const labelY = ly - primarySize + baselineAdjust;
-      doc.text(label, tx, labelY, { width: lw, lineBreak: false });
-      const gap = 8;
-      const lineStart = tx + lw + gap;
-      const lineEnd = tx + tw;
-      const lineY = ly + 1; // slightly lower handwriting line
-      doc
-        .save()
-        .lineWidth(1)
-        .strokeColor('#D0D5DD')
-        .moveTo(lineStart, lineY)
-        .lineTo(lineEnd, lineY)
-        .stroke()
-        .restore();
-      textY += lineH;
-    };
-    drawLabeledLine('calendar', 'Матч и дата');
+    // Composed match/date/tour/teams line
+    renderLine('calendar', matchLine, regular, primarySize, primaryColor);
     // Move cursor below box and caption
     doc.y = boxStartY + boxH;
     doc.fillColor('#000000');
@@ -453,21 +442,24 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     // Prepare rows (single-line values)
     let rows = selected.map((p) => ({
       n: (p.match_number ?? '').toString(),
-      fio: p.full_name || '',
+      fio: formatFio(p.full_name || '', fioMode),
       role: p.match_role?.name || p.role?.name || '',
-      dob: p.date_of_birth
-        ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
-        : '',
+      ...(showDob
+        ? {
+            dob: p.date_of_birth
+              ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
+              : '',
+          }
+        : {}),
     }));
     // Pad up to 22 rows
     if (rows.length < 22) {
       rows = rows.concat(
-        Array.from({ length: 22 - rows.length }, () => ({
-          n: '',
-          fio: '',
-          role: '',
-          dob: '',
-        }))
+        Array.from({ length: 22 - rows.length }, () =>
+          showDob
+            ? { n: '', fio: '', role: '', dob: '' }
+            : { n: '', fio: '', role: '' }
+        )
       );
     }
 
@@ -475,7 +467,7 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     const wN = 40;
     const wRole = 120;
     const wDob = 100;
-    const wFio = Math.max(120, boxW - (wN + wRole + wDob));
+    const wFio = Math.max(120, boxW - (wN + wRole + (showDob ? wDob : 0)));
     const playerCols = [
       {
         key: 'n',
@@ -498,13 +490,17 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
         align: 'center',
         headerAlign: 'center',
       },
-      {
-        key: 'dob',
-        label: 'Дата рождения',
-        width: wDob,
-        align: 'center',
-        headerAlign: 'center',
-      },
+      ...(showDob
+        ? [
+            {
+              key: 'dob',
+              label: 'Дата рождения',
+              width: wDob,
+              align: 'center',
+              headerAlign: 'center',
+            },
+          ]
+        : []),
     ];
     const tableY = doc.y;
     const endPlayersY = drawTable(
@@ -579,10 +575,14 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     }
     const repList = chosen.length ? chosen : staffPool;
     let repRows = repList.map((r) => ({
-      fio: r.full_name,
-      dob: r.date_of_birth
-        ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
-        : '',
+      fio: formatFio(r.full_name, fioMode),
+      ...(showDob
+        ? {
+            dob: r.date_of_birth
+              ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
+              : '',
+          }
+        : {}),
       role: r.match_role?.name || r.role?.name || '',
     }));
     // Representatives table rows: default 6 rows, if more than 6 then up to 8 rows
@@ -602,7 +602,7 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
     }
     const repRole = 120;
     const repDob = 100;
-    const repFio = Math.max(160, boxW - (repRole + repDob));
+    const repFio = Math.max(160, boxW - (repRole + (showDob ? repDob : 0)));
     const repCols = [
       {
         key: 'fio',
@@ -618,13 +618,17 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
         align: 'center',
         headerAlign: 'center',
       },
-      {
-        key: 'dob',
-        label: 'Дата рождения',
-        width: repDob,
-        align: 'center',
-        headerAlign: 'center',
-      },
+      ...(showDob
+        ? [
+            {
+              key: 'dob',
+              label: 'Дата рождения',
+              width: repDob,
+              align: 'center',
+              headerAlign: 'center',
+            },
+          ]
+        : []),
     ];
     const endRepsY = drawTable(
       doc,
@@ -916,7 +920,7 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
         background,
         primaryColor,
         primarySize,
-        secondarySize,
+        _secondarySize,
       } = PDF_STYLE.infoBox;
       const insetX = padX + 2;
       const textX = boxX + insetX;
@@ -926,17 +930,24 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       const teamLine = isHome
         ? data.team1_name || meta.homeName
         : data.team2_name || meta.awayName;
-      const compLine = meta.tournament || meta.competition || '';
+      const compBase = meta.tournament || meta.competition || '';
+      const compExtra = [meta.stage, meta.group].filter(Boolean).join(' · ');
+      const compLine = compExtra ? `${compBase} (${compExtra})` : compBase;
+      const pairLine = `«${data.team1_name || meta.homeName}» — «${
+        data.team2_name || meta.awayName
+      }»`;
+      const tourPart = meta.tour || 'Тур';
+      const matchLine = `${meta.dateOnly}${tourPart ? ` · ${tourPart}` : ''} · ${pairLine}`;
       const iconSize = 10;
       const iconGap = 6;
       const textAvailW = innerW - iconSize - iconGap;
       doc.font(regular).fontSize(primarySize);
       const hTeam = doc.heightOfString(teamLine, { width: textAvailW });
       const hComp = doc.heightOfString(compLine, { width: textAvailW });
-      const lineH = Math.max(20, secondarySize + 8);
+      const hMatch = doc.heightOfString(matchLine, { width: textAvailW });
       const padTop = Math.max(padY, 6);
       const padBottom = 6;
-      const boxH = padTop + hTeam + 2 + hComp + lineGap + lineH + padBottom;
+      const boxH = padTop + hTeam + 2 + hComp + lineGap + hMatch + padBottom;
       doc.save();
       doc.lineWidth(borderWidth).strokeColor(borderColor).fillColor(background);
       doc.roundedRect(boxX, boxStartY, boxW, boxH, radius).fillAndStroke();
@@ -984,29 +995,8 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       };
       renderLine('team', teamLine, regular, primarySize, primaryColor);
       renderLine('trophy', compLine, regular, primarySize, primaryColor);
-      const drawLabeledLine = (icon, label) => {
-        drawIcon(icon, textX, textY + 1, iconSize);
-        const tx = textX + iconSize + iconGap;
-        const tw = innerW - iconSize - iconGap;
-        const ly = textY + Math.floor(lineH / 2);
-        doc.font(regular).fontSize(primarySize).fillColor(primaryColor);
-        const lw = Math.min(doc.widthOfString(label), Math.max(60, tw * 0.4));
-        const labelY = ly - primarySize + 1;
-        doc.text(label, tx, labelY, { width: lw, lineBreak: false });
-        const gap = 8;
-        const lineStart = tx + lw + gap;
-        const lineEnd = tx + tw;
-        doc
-          .save()
-          .lineWidth(1)
-          .strokeColor('#D0D5DD')
-          .moveTo(lineStart, ly + 1)
-          .lineTo(lineEnd, ly + 1)
-          .stroke()
-          .restore();
-        textY += lineH;
-      };
-      drawLabeledLine('calendar', 'Матч и дата');
+      // Composed match/date/tour/teams line
+      renderLine('calendar', matchLine, regular, primarySize, primaryColor);
       doc.y = boxStartY + boxH;
       doc.fillColor('#000000');
       doc.moveDown(0.6);
@@ -1022,7 +1012,10 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       const wRole = 120;
       const wDob = 100;
       const wLine = 60; // Цвет (handwritten), компактнее
-      const wFio = Math.max(120, boxW - (wN + wRole + wDob + wLine));
+      const wFio = Math.max(
+        120,
+        boxW - (wN + wRole + (showDob ? wDob : 0) + wLine)
+      );
       const columns = [
         {
           key: 'n',
@@ -1045,13 +1038,17 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
           align: 'center',
           headerAlign: 'center',
         },
-        {
-          key: 'dob',
-          label: 'Дата рождения',
-          width: wDob,
-          align: 'center',
-          headerAlign: 'center',
-        },
+        ...(showDob
+          ? [
+              {
+                key: 'dob',
+                label: 'Дата рождения',
+                width: wDob,
+                align: 'center',
+                headerAlign: 'center',
+              },
+            ]
+          : []),
         {
           key: 'line',
           label: 'Цвет',
@@ -1062,23 +1059,25 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       ];
       let rows = players.map((p) => ({
         n: (p.match_number ?? '').toString(),
-        fio: p.full_name || '',
+        fio: formatFio(p.full_name || '', fioMode),
         role: p.match_role?.name || p.role?.name || '',
-        dob: p.date_of_birth
-          ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
-          : '',
+        ...(showDob
+          ? {
+              dob: p.date_of_birth
+                ? new Date(p.date_of_birth).toLocaleDateString('ru-RU')
+                : '',
+            }
+          : {}),
         line: '',
       }));
       // For double protocol — draw exactly 15 rows
       if (rows.length < 15) {
         rows = rows.concat(
-          Array.from({ length: 15 - rows.length }, () => ({
-            n: '',
-            fio: '',
-            role: '',
-            dob: '',
-            line: '',
-          }))
+          Array.from({ length: 15 - rows.length }, () =>
+            showDob
+              ? { n: '', fio: '', role: '', dob: '', line: '' }
+              : { n: '', fio: '', role: '', line: '' }
+          )
         );
       } else if (rows.length > 15) {
         rows = rows.slice(0, 15);
@@ -1154,10 +1153,14 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       // Representatives block: independent of squad — same list on both pages
       const repList = chosen.length ? chosen : staffPool;
       let repRows = repList.map((r) => ({
-        fio: r.full_name,
-        dob: r.date_of_birth
-          ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
-          : '',
+        fio: formatFio(r.full_name, fioMode),
+        ...(showDob
+          ? {
+              dob: r.date_of_birth
+                ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
+                : '',
+            }
+          : {}),
         role: r.match_role?.name || r.role?.name || '',
       }));
       // Like single protocol: default 6 rows, if >6 then up to 8 rows
@@ -1177,7 +1180,7 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
       }
       const repRole = 120;
       const repDob = 100;
-      const repFio = Math.max(160, boxW - (repRole + repDob));
+      const repFio = Math.max(160, boxW - (repRole + (showDob ? repDob : 0)));
       const repCols = [
         {
           key: 'fio',
@@ -1193,13 +1196,17 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
           align: 'center',
           headerAlign: 'center',
         },
-        {
-          key: 'dob',
-          label: 'Дата рождения',
-          width: repDob,
-          align: 'center',
-          headerAlign: 'center',
-        },
+        ...(showDob
+          ? [
+              {
+                key: 'dob',
+                label: 'Дата рождения',
+                width: repDob,
+                align: 'center',
+                headerAlign: 'center',
+              },
+            ]
+          : []),
       ];
       const endRepsY = drawTable(
         doc,
@@ -1342,7 +1349,9 @@ async function exportPlayersPdf(matchId, teamId, actorId) {
   }
 }
 
-async function exportRepresentativesPdf(matchId, teamId, actorId) {
+async function exportRepresentativesPdf(matchId, teamId, actorId, opts = {}) {
+  const showDob = !opts.hideDob;
+  const fioMode = opts.fioFormat === 'initials' ? 'initials' : 'full';
   const data = await lineupService.list(matchId, actorId);
   if (teamId !== data.team1_id && teamId !== data.team2_id) {
     const err = new Error('team_not_in_match');
@@ -1394,7 +1403,7 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
     background: bg2,
     primaryColor: pc2,
     primarySize: ps2,
-    secondarySize: ss2,
+    secondarySize: _ss2,
   } = PDF_STYLE.infoBox;
   // Slightly increase horizontal inset inside the box
   const insetX2 = padX2 + 2;
@@ -1409,7 +1418,14 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
     teamId === data.team1_id
       ? data.team1_name || meta.homeName
       : data.team2_name || meta.awayName;
-  const compLine2 = meta.tournament || meta.competition || '';
+  const compBase2 = meta.tournament || meta.competition || '';
+  const compExtra2 = [meta.stage, meta.group].filter(Boolean).join(' · ');
+  const compLine2 = compExtra2 ? `${compBase2} (${compExtra2})` : compBase2;
+  const pairLine2 = `«${data.team1_name || meta.homeName}» — «${
+    data.team2_name || meta.awayName
+  }»`;
+  const tourPart2 = meta.tour || 'Тур';
+  const matchLine2 = `${meta.dateOnly}${tourPart2 ? ` · ${tourPart2}` : ''} · ${pairLine2}`;
   // match/date are handwritten lines below in this variant too
   const iconSize2 = 10;
   const iconGap2 = 6;
@@ -1418,11 +1434,10 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
   doc.font(regular).fontSize(ps2);
   const hT2 = doc.heightOfString(teamLine2, { width: textAvailW2 });
   const hC2 = doc.heightOfString(compLine2, { width: textAvailW2 });
-  doc.font(regular).fontSize(ss2);
-  const lineH2 = Math.max(20, ss2 + 8);
+  const hM2 = doc.heightOfString(matchLine2, { width: textAvailW2 });
   const padTop2 = Math.max(padY2, 6);
   const padBottom2 = 6;
-  const boxH2 = padTop2 + hT2 + 2 + hC2 + lineGap2 + lineH2 + padBottom2;
+  const boxH2 = padTop2 + hT2 + 2 + hC2 + lineGap2 + hM2 + padBottom2;
   // Draw background + border
   doc.save();
   doc.lineWidth(bw2).strokeColor(bc2).fillColor(bg2);
@@ -1473,33 +1488,8 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
   renderLine2('team', teamLine2, regular, ps2, pc2);
   renderLine2('trophy', compLine2, regular, ps2, pc2);
   // One compact labeled handwriting line: "Матч и дата: ________"
-  const drawLabeledLine2 = (icon, label) => {
-    drawIcon2(icon, textX2, textY2 + 1, iconSize2);
-    const tx = textX2 + iconSize2 + iconGap2;
-    const tw = innerW2 - iconSize2 - iconGap2;
-    // Compute baseline line position
-    const ly = textY2 + Math.floor(lineH2 / 2);
-    // Bold label, same style as primary lines (Команда/Соревнование)
-    // Regular label (no bold), same style as other primary lines
-    doc.font(regular).fontSize(ps2).fillColor(pc2);
-    const lw = Math.min(doc.widthOfString(label), Math.max(60, tw * 0.4));
-    const baselineAdjust = 1;
-    const labelY = ly - ps2 + baselineAdjust;
-    doc.text(label, tx, labelY, { width: lw, lineBreak: false });
-    const gap = 8;
-    const lineStart = tx + lw + gap;
-    const lineEnd = tx + tw;
-    doc
-      .save()
-      .lineWidth(1)
-      .strokeColor('#D0D5DD')
-      .moveTo(lineStart, ly + 1)
-      .lineTo(lineEnd, ly + 1)
-      .stroke()
-      .restore();
-    textY2 += lineH2;
-  };
-  drawLabeledLine2('calendar', 'Матч и дата');
+  // Composed match/date/tour/teams line
+  renderLine2('calendar', matchLine2, regular, ps2, pc2);
   // Below box
   doc.y = boxStartY2 + boxH2;
   doc.fillColor('#000000');
@@ -1513,10 +1503,14 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
   doc.moveDown(0.2);
   // Table with exactly 8 rows (pad blanks) — consistent with players sheet
   let rows = list.map((r) => ({
-    fio: r.full_name,
-    dob: r.date_of_birth
-      ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
-      : '',
+    fio: formatFio(r.full_name, fioMode),
+    ...(showDob
+      ? {
+          dob: r.date_of_birth
+            ? new Date(r.date_of_birth).toLocaleDateString('ru-RU')
+            : '',
+        }
+      : {}),
     role: r.match_role?.name || r.role?.name || '',
   }));
   // Representatives table rows: default 6 rows, if more than 6 then up to 8 rows
@@ -1524,17 +1518,15 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
     const targetRows2 = rows.length > 6 ? 8 : 6;
     if (rows.length < targetRows2)
       rows = rows.concat(
-        Array.from({ length: targetRows2 - rows.length }, () => ({
-          fio: '',
-          dob: '',
-          role: '',
-        }))
+        Array.from({ length: targetRows2 - rows.length }, () =>
+          showDob ? { fio: '', dob: '', role: '' } : { fio: '', role: '' }
+        )
       );
     if (rows.length > targetRows2) rows = rows.slice(0, targetRows2);
   }
   const repRole2 = 120;
   const repDob2 = 100;
-  const repFio2 = Math.max(200, boxW2 - (repRole2 + repDob2));
+  const repFio2 = Math.max(200, boxW2 - (repRole2 + (showDob ? repDob2 : 0)));
   const repCols2 = [
     {
       key: 'fio',
@@ -1550,13 +1542,17 @@ async function exportRepresentativesPdf(matchId, teamId, actorId) {
       align: 'center',
       headerAlign: 'center',
     },
-    {
-      key: 'dob',
-      label: 'Дата рождения',
-      width: repDob2,
-      align: 'center',
-      headerAlign: 'center',
-    },
+    ...(showDob
+      ? [
+          {
+            key: 'dob',
+            label: 'Дата рождения',
+            width: repDob2,
+            align: 'center',
+            headerAlign: 'center',
+          },
+        ]
+      : []),
   ];
   drawTable(
     doc,

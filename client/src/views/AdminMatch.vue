@@ -462,8 +462,8 @@ async function submitSchedule() {
             <button
               class="btn btn-outline-secondary btn-sm"
               :disabled="syncingBroadcast"
-              @click="syncBroadcasts"
               aria-label="Синхронизировать трансляции матча"
+              @click="syncBroadcasts"
             >
               <span
                 v-if="syncingBroadcast"

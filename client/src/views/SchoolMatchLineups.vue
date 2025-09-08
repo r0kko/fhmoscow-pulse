@@ -9,6 +9,7 @@ import SyncStatus from '../components/lineups/SyncStatus.vue';
 import ExportModal from '../components/lineups/ExportModal.vue';
 import StaffList from '../components/lineups/StaffList.vue';
 import PlayersTable from '../components/lineups/PlayersTable.vue';
+import PlayersListMobile from '../components/lineups/PlayersListMobile.vue';
 
 const route = useRoute();
 // Disable local draft persistence to avoid any UI/DB mismatch on reload
@@ -369,6 +370,8 @@ const hasCaptain = computed(() => {
   }
   return !!captainId.value && selected.value.has(captainId.value);
 });
+
+// Preferences removed
 
 // Export readiness helpers (players + staff)
 const playersSelectedCount = computed(() => {
@@ -2147,14 +2150,18 @@ watch(activeTeam, async () => {
             <span class="text-muted small fw-semibold">Игроки</span>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">
-              Всего: {{ roster.length }}
-              <span class="text-muted">•</span>
-              Выбрано:
-              {{ roster.filter((p) => selected.has(p.team_player_id)).length }}
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col">
+              <div class="fw-semibold">
+                Всего: {{ roster.length }}
+                <span class="text-muted">•</span>
+                Выбрано:
+                {{
+                  roster.filter((p) => selected.has(p.team_player_id)).length
+                }}
+              </div>
             </div>
-            <div class="d-flex gap-2 flex-wrap">
+            <div class="col-12 col-sm-auto d-flex justify-content-end gap-2">
               <button
                 class="btn btn-sm btn-outline-secondary"
                 type="button"
@@ -2186,340 +2193,70 @@ watch(activeTeam, async () => {
             :on-ready="onModalReady"
           />
 
-          <div class="d-flex align-items-center mb-2">
-            <input
-              class="form-check-input me-2"
-              type="checkbox"
-              :checked="allSelected()"
-              :aria-label="allSelected() ? 'Снять все' : 'Выбрать все'"
-              @change="toggleAll"
+          <!-- Removed inline select-all checkbox to reduce UI clutter -->
+          <!-- Preferences controls removed per design review -->
+
+          <!-- Desktop/tablet table view -->
+          <div class="d-none d-md-block">
+            <PlayersTable
+              :grouped-roster="groupedRoster"
+              :roster-length="roster.length"
+              :selected="selected"
+              :can-edit="canEdit"
+              :is-double="isDouble"
+              :roles="roles"
+              :edited-number="editedNumber"
+              :edited-role="editedRole"
+              :edited-squad="editedSquad"
+              :edited-both="editedBoth"
+              :is-player-gk="isPlayerGk"
+              :gk-count="gkCount"
+              :duplicate-numbers-set="duplicateNumbersSet"
+              :captain-id="captainId"
+              :captain1-id="captain1Id"
+              :captain2-id="captain2Id"
+              :assistants="assistants"
+              :assistants1="assistants1"
+              :assistants2="assistants2"
+              :on-toggle="toggle"
+              :on-number-input="onNumberInput"
+              :on-role-change="onRoleChange"
+              :on-squad-change="onSquadChange"
+              :on-toggle-captain="toggleCaptain"
+              :on-toggle-assistant="toggleAssistant"
             />
-            <span class="small text-muted">Выбрать всех в текущем списке</span>
           </div>
-          <PlayersTable
-            :grouped-roster="groupedRoster"
-            :roster-length="roster.length"
-            :selected="selected"
-            :can-edit="canEdit"
-            :is-double="isDouble"
-            :roles="roles"
-            :edited-number="editedNumber"
-            :edited-role="editedRole"
-            :edited-squad="editedSquad"
-            :edited-both="editedBoth"
-            :is-player-gk="isPlayerGk"
-            :gk-count="gkCount"
-            :duplicate-numbers-set="duplicateNumbersSet"
-            :captain-id="captainId"
-            :captain1-id="captain1Id"
-            :captain2-id="captain2Id"
-            :assistants="assistants"
-            :assistants1="assistants1"
-            :assistants2="assistants2"
-            :on-toggle="toggle"
-            :on-number-input="onNumberInput"
-            :on-role-change="onRoleChange"
-            :on-squad-change="onSquadChange"
-            :on-toggle-captain="toggleCaptain"
-            :on-toggle-assistant="toggleAssistant"
-          />
-          <!-- legacy table removed -->
-          <table class="table align-middle">
-            <thead>
-              <tr class="text-muted small">
-                <th style="width: 44px" class="text-center">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :checked="allSelected()"
-                    :aria-label="allSelected() ? 'Снять все' : 'Выбрать все'"
-                    @change="toggleAll"
-                  />
-                </th>
-                <th>Игрок</th>
-                <th style="width: 120px">Д.р.</th>
-                <th style="width: 120px">№ на матч</th>
-                <th v-if="isDouble" style="width: 120px">Состав</th>
-                <th style="width: 220px">Амплуа на матч</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="grp in groupedRoster" :key="grp.group">
-                <tr class="table-light">
-                  <td :colspan="isDouble ? 6 : 5" class="fw-semibold">
-                    {{ grp.group }}
-                  </td>
-                </tr>
-                <tr
-                  v-for="p in grp.players"
-                  :key="p.team_player_id"
-                  class="fade-in"
-                >
-                  <td class="text-center">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      :checked="selected.has(p.team_player_id)"
-                      :disabled="!canEdit"
-                      :aria-label="`Выбрать игрока ${p.full_name}`"
-                      @change="() => toggle(p)"
-                    />
-                  </td>
-                  <td>
-                    <div
-                      class="d-flex align-items-center justify-content-between gap-2"
-                    >
-                      <div class="fw-semibold">{{ p.full_name }}</div>
-                      <div
-                        v-if="
-                          canEdit &&
-                          selected.has(p.team_player_id) &&
-                          !isPlayerGk(p)
-                        "
-                        class="d-flex gap-1"
-                      >
-                        <button
-                          class="btn btn-xs btn-outline-secondary"
-                          type="button"
-                          :class="{
-                            active:
-                              (!isDouble && captainId === p.team_player_id) ||
-                              (isDouble &&
-                                ((editedSquad[p.team_player_id] ??
-                                  p.squad_no) === 1
-                                  ? captain1Id === p.team_player_id
-                                  : (editedSquad[p.team_player_id] ??
-                                        p.squad_no) === 2
-                                    ? captain2Id === p.team_player_id
-                                    : false)),
-                          }"
-                          title="Капитан"
-                          @click="() => toggleCaptain(p)"
-                        >
-                          К
-                        </button>
-                        <button
-                          class="btn btn-xs btn-outline-secondary"
-                          type="button"
-                          :class="{
-                            active:
-                              (!isDouble && assistants.has(p.team_player_id)) ||
-                              (isDouble &&
-                                ((editedSquad[p.team_player_id] ??
-                                  p.squad_no) === 1
-                                  ? assistants1.has(p.team_player_id)
-                                  : (editedSquad[p.team_player_id] ??
-                                        p.squad_no) === 2
-                                    ? assistants2.has(p.team_player_id)
-                                    : false)),
-                          }"
-                          title="Ассистент"
-                          @click="() => toggleAssistant(p)"
-                        >
-                          A
-                        </button>
-                      </div>
-                      <div
-                        v-else
-                        class="text-muted small"
-                        style="min-width: 16px; text-align: right"
-                      >
-                        <span
-                          v-if="
-                            (!isDouble && captainId === p.team_player_id) ||
-                            (isDouble &&
-                              ((editedSquad[p.team_player_id] ?? p.squad_no) ===
-                              1
-                                ? captain1Id === p.team_player_id
-                                : (editedSquad[p.team_player_id] ??
-                                      p.squad_no) === 2
-                                  ? captain2Id === p.team_player_id
-                                  : false))
-                          "
-                          >К</span
-                        >
-                        <span
-                          v-else-if="
-                            (!isDouble && assistants.has(p.team_player_id)) ||
-                            (isDouble &&
-                              ((editedSquad[p.team_player_id] ?? p.squad_no) ===
-                              1
-                                ? assistants1.has(p.team_player_id)
-                                : (editedSquad[p.team_player_id] ??
-                                      p.squad_no) === 2
-                                  ? assistants2.has(p.team_player_id)
-                                  : false))
-                          "
-                          >A</span
-                        >
-                      </div>
-                    </div>
-                  </td>
-                  <td class="text-muted">
-                    <span v-if="p.date_of_birth">{{
-                      new Date(p.date_of_birth).toLocaleDateString('ru-RU')
-                    }}</span>
-                    <span v-else>—</span>
-                  </td>
-                  <td style="max-width: 140px">
-                    <div class="input-group input-group-sm">
-                      <input
-                        type="number"
-                        class="form-control"
-                        min="0"
-                        max="99"
-                        :disabled="!canEdit || !selected.has(p.team_player_id)"
-                        :value="editedNumber[p.team_player_id] ?? ''"
-                        aria-label="Номер в матче"
-                        placeholder="—"
-                        :class="{
-                          'is-invalid':
-                            selected.has(p.team_player_id) &&
-                            ((editedNumber[p.team_player_id] != null &&
-                              duplicateNumbersSet.has(
-                                String(editedNumber[p.team_player_id])
-                              )) ||
-                              editedNumber[p.team_player_id] == null),
-                        }"
-                        @input="(e) => onNumberInput(p, e)"
-                        @change="() => save(true)"
-                      />
-                    </div>
-                    <div
-                      v-if="
-                        selected.has(p.team_player_id) &&
-                        editedNumber[p.team_player_id] == null
-                      "
-                      class="invalid-feedback d-block"
-                    >
-                      Укажите номер
-                    </div>
-                    <div
-                      v-else-if="
-                        selected.has(p.team_player_id) &&
-                        editedNumber[p.team_player_id] != null &&
-                        duplicateNumbersSet.has(
-                          String(editedNumber[p.team_player_id])
-                        )
-                      "
-                      class="invalid-feedback d-block"
-                    >
-                      Дублируется номер в составе
-                    </div>
-                  </td>
-                  <td v-if="isDouble">
-                    <select
-                      class="form-select form-select-sm"
-                      :disabled="!canEdit || !selected.has(p.team_player_id)"
-                      :value="
-                        (function () {
-                          if (isPlayerGk(p) && gkCount === 3) {
-                            return (editedBoth[p.team_player_id] ??
-                              p.squad_both ??
-                              false)
-                              ? 'both'
-                              : String(
-                                  editedSquad[p.team_player_id] ??
-                                    p.squad_no ??
-                                    ''
-                                );
-                          }
-                          return String(
-                            editedSquad[p.team_player_id] ?? p.squad_no ?? ''
-                          );
-                        })()
-                      "
-                      aria-label="Состав (1/2/оба)"
-                      :class="{
-                        'is-invalid':
-                          selected.has(p.team_player_id) &&
-                          !(function () {
-                            if (
-                              isPlayerGk(p) &&
-                              gkCount === 3 &&
-                              (editedBoth[p.team_player_id] ??
-                                p.squad_both ??
-                                false)
-                            )
-                              return true;
-                            const v =
-                              editedSquad[p.team_player_id] ??
-                              p.squad_no ??
-                              null;
-                            return v === 1 || v === 2;
-                          })(),
-                      }"
-                      @change="(e) => onSquadChange(p, e)"
-                    >
-                      <option value="" disabled>—</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option
-                        v-if="isPlayerGk(p) && gkCount === 3"
-                        value="both"
-                      >
-                        Оба состава
-                      </option>
-                    </select>
-                    <div
-                      v-if="
-                        selected.has(p.team_player_id) &&
-                        !(
-                          isPlayerGk(p) &&
-                          (editedBoth[p.team_player_id] ??
-                            p.squad_both ??
-                            false)
-                        ) &&
-                        !(
-                          (editedSquad[p.team_player_id] ??
-                            p.squad_no ??
-                            null) === 1 ||
-                          (editedSquad[p.team_player_id] ??
-                            p.squad_no ??
-                            null) === 2
-                        )
-                      "
-                      class="invalid-feedback d-block"
-                    >
-                      Выберите состав (1 или 2)
-                    </div>
-                  </td>
-                  <td>
-                    <select
-                      class="form-select form-select-sm"
-                      :disabled="!canEdit || !selected.has(p.team_player_id)"
-                      :value="editedRole[p.team_player_id] ?? ''"
-                      aria-label="Амплуа в матче"
-                      :class="{
-                        'is-invalid':
-                          selected.has(p.team_player_id) &&
-                          !(editedRole[p.team_player_id] ?? null),
-                      }"
-                      @change="(e) => onRoleChange(p, e)"
-                    >
-                      <option v-for="r in roles" :key="r.id" :value="r.id">
-                        {{ r.name }}
-                      </option>
-                    </select>
-                    <div
-                      v-if="
-                        selected.has(p.team_player_id) &&
-                        !(editedRole[p.team_player_id] ?? null)
-                      "
-                      class="invalid-feedback d-block"
-                    >
-                      Выберите амплуа
-                    </div>
-                  </td>
-                </tr>
-              </template>
-              <tr v-if="roster.length === 0">
-                <td :colspan="isDouble ? 6 : 5" class="text-muted py-4">
-                  Нет игроков по текущему фильтру
-                </td>
-              </tr>
-            </tbody>
-          </table>
+
+          <!-- Mobile list view -->
+          <div class="d-block d-md-none">
+            <PlayersListMobile
+              :grouped-roster="groupedRoster"
+              :roster-length="roster.length"
+              :selected="selected"
+              :can-edit="canEdit"
+              :is-double="isDouble"
+              :roles="roles"
+              :edited-number="editedNumber"
+              :edited-role="editedRole"
+              :edited-squad="editedSquad"
+              :edited-both="editedBoth"
+              :is-player-gk="isPlayerGk"
+              :gk-count="gkCount"
+              :duplicate-numbers-set="duplicateNumbersSet"
+              :captain-id="captainId"
+              :captain1-id="captain1Id"
+              :captain2-id="captain2Id"
+              :assistants="assistants"
+              :assistants1="assistants1"
+              :assistants2="assistants2"
+              :on-toggle="toggle"
+              :on-number-input="onNumberInput"
+              :on-role-change="onRoleChange"
+              :on-squad-change="onSquadChange"
+              :on-toggle-captain="toggleCaptain"
+              :on-toggle-assistant="toggleAssistant"
+            />
+          </div>
 
           <hr class="my-4" />
           <StaffList

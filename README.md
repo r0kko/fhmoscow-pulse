@@ -190,6 +190,54 @@ For a simple but powerful local stack with dashboards, log search, and metrics:
   - Health summary: `GET /health`
   - Prometheus metrics: `GET /metrics` (optional Basic Auth via `METRICS_USER`/`METRICS_PASS`).
 
+## Maintenance mode (503)
+
+- Purpose: cleanly disable the API during planned work or emergencies and serve a branded, lightweight "Идут технические работы" page to browsers; API clients receive a structured JSON error with `Retry-After`.
+- Enable/disable:
+  - Set `MAINTENANCE_MODE=true` (in env) or create a flag file at `MAINTENANCE_FILE` path.
+  - Optionally set `MAINTENANCE_UNTIL` (ISO or epoch seconds) to populate the `Retry-After` header for clients and an ETA hint on the page.
+  - Optional HTML text: `MAINTENANCE_MESSAGE` and contact: `MAINTENANCE_CONTACT`.
+- Bypass and health:
+  - Paths `/live`, `/ready`, `/health`, `/metrics` are allowed by default; override via `MAINTENANCE_ALLOW_PATHS` (comma-separated, prefix match).
+  - Set `MAINTENANCE_BYPASS_TOKEN` and pass header `X-Maintenance-Bypass: <token>` to bypass for admin checks.
+  - `MAINTENANCE_ALLOWLIST` lets specific IPs bypass (exact match).
+- Behavior:
+  - API: `503` with `{ "error": "maintenance" }` and `Retry-After` (if configured).
+  - Browser (backend): `503` with an inline, accessible HTML page styled to project design tokens (brand color, rounded sections), no external assets, auto-refresh hint.
+  - Metrics: responses are tagged with `X-Maintenance-Mode: 1`; errors counted via `http_error_code_total{code="maintenance",status="503"}`.
+
+### Client behavior (SPA)
+
+- Startup health probe to `/ready`: if backend is unavailable or returns `503`, the SPA routes to `/maintenance` and shows a lightweight, branded page. It auto-retries in the background and reloads when the API is back up.
+- Any API call receiving `503` also activates maintenance mode; hints are read from headers:
+  - `Retry-After` → ETA text, optional.
+  - `X-Maintenance-Message`/`X-Maintenance-Contact` → message and contact on the page.
+- Static fallback file is available at `client/public/maintenance.html` for external use.
+
+Optional Nginx fallback: see `infra/nginx/conf.d/maintenance.conf.example` to serve a static maintenance page when upstream returns 502/503/504.
+
+### Compose: динамическое включение без рестартов контейнеров
+
+- Backend (предпочтительно для API):
+  - В `docker-compose.prod.yml` примонтирован том `./infra/runtime` в `/runtime` для сервиса `app`.
+  - Установите переменную в `.env`:
+    - `MAINTENANCE_FILE=/runtime/maintenance.flag`
+  - Включить: `touch infra/runtime/maintenance.flag`
+  - Отключить: `rm -f infra/runtime/maintenance.flag`
+  - Не требуется рестарт контейнера.
+
+- Nginx (глобально на уровне прокси):
+  - В `docker-compose.prod.yml` примонтирован том `./infra/nginx/flags` в `/etc/nginx/flags`.
+  - Включить: `touch infra/nginx/flags/maintenance.enable`
+  - Отключить: `rm -f infra/nginx/flags/maintenance.enable`
+  - Nginx по флагу:
+    - возвращает `503` на `/api/*` (и отдаёт статический `maintenance.html` через `error_page`),
+    - переписывает все запросы на корень (`/`) на статическую страницу `maintenance.html`.
+  - Не требуется `reload`/рестарт.
+
+Оба механизма можно комбинировать: включать серверный `503` для API (клиент аккуратно покажет экран техработ) и при необходимости подменять весь сайт статической страницей через Nginx.
+
+
 ## Production Nginx
 
 - The production Nginx site config is stored in-repo at `infra/nginx/conf.d/pulse.conf` and is mounted into the `nginx` container in `docker-compose.prod.yml`.

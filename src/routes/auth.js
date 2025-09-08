@@ -73,20 +73,9 @@ router.get('/me', auth, authController.me);
  * /auth/refresh:
  *   post:
  *     summary: Refresh access token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - refresh_token
- *             properties:
- *               refresh_token:
- *                 type: string
  *     responses:
  *       200:
- *         description: New access token
+ *         description: New access token. Requires a valid HTTP-only refresh cookie.
  */
 router.post('/refresh', refreshRules, validate, authController.refresh);
 
