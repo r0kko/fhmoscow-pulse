@@ -5,6 +5,7 @@ const props = defineProps({
   title: { type: String, required: true },
   icon: { type: String, default: '' },
   to: { type: [String, Object], default: null },
+  replace: { type: Boolean, default: false },
   placeholder: { type: Boolean, default: false },
   note: { type: String, default: '' },
   imageSrc: { type: String, default: '' },
@@ -15,6 +16,7 @@ const props = defineProps({
 <template>
   <BaseTile
     :to="props.to || null"
+    :replace="props.replace"
     :disabled="props.placeholder || !props.to"
     :aria-label="props.to ? props.title : null"
     :section="false"

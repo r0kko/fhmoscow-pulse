@@ -1,16 +1,21 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import { formatKickoff, isMskMidnight } from '../utils/time.js';
 import InfoItem from '../components/InfoItem.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import MenuTile from '../components/MenuTile.vue';
+import PenaltyTimeline from '../components/PenaltyTimeline.vue';
 import vkLogo from '../assets/vkvideo.png';
 
 const route = useRoute();
 const match = ref(null);
 const agreements = ref([]);
+const penalties = ref([]);
+const penaltiesLoading = ref(true);
+const penaltiesError = ref('');
 const loading = ref(true);
 const error = ref('');
 
@@ -52,16 +57,29 @@ onMounted(async () => {
   loading.value = true;
   error.value = '';
   try {
-    const [mres, ares] = await Promise.all([
-      apiFetch(`/matches/${route.params.id}`),
-      apiFetch(`/matches/${route.params.id}/agreements`),
-    ]);
+    const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
+    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
     agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
+    // Load penalties only when enabled
+    const canSeePenalties = !penaltiesDisabled.value;
+    if (canSeePenalties) {
+      const pres = await apiFetch(
+        `/matches/${route.params.id}/penalties`
+      ).catch((e) => ({ items: [], _err: e }));
+      penalties.value = Array.isArray(pres.items) ? pres.items : [];
+      penaltiesError.value = pres._err
+        ? pres._err.message || 'Ошибка загрузки штрафов'
+        : '';
+    } else {
+      penalties.value = [];
+      penaltiesError.value = '';
+    }
   } catch (e) {
     error.value = e.message || 'Ошибка загрузки данных';
   } finally {
     loading.value = false;
+    penaltiesLoading.value = false;
   }
 });
 
@@ -87,6 +105,12 @@ const isPostponed = computed(() => statusAlias.value === 'POSTPONED');
 const isParticipant = computed(
   () => Boolean(match.value?.is_home) || Boolean(match.value?.is_away)
 );
+
+const penaltiesDisabled = computed(
+  () => !!match.value?.double_protocol && match.value?.season_active === false
+);
+
+// No filters/tabs — timeline displays both teams side-by-side
 
 function normalizeUrl(u) {
   const s = (u || '').toString().trim();
@@ -193,18 +217,14 @@ const statusChip = computed(() => {
 <template>
   <div class="py-3 school-match-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Спортивная школа</li>
-          <li class="breadcrumb-item">
-            <RouterLink to="/school-matches">Матчи школы</RouterLink>
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">Матч</li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', disabled: true },
+          { label: 'Матчи', to: '/school-matches' },
+          { label: 'Матч' },
+        ]"
+      />
       <h1 class="mb-3">{{ match?.team1 }} — {{ match?.team2 }}</h1>
       <div
         v-if="!loading && match && !isParticipant"
@@ -436,6 +456,22 @@ const statusChip = computed(() => {
               image-alt="VK Видео"
             />
           </div>
+        </div>
+      </div>
+
+      <!-- Penalties -->
+      <div
+        v-if="!penaltiesDisabled"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
+        <div class="card-body">
+          <h2 class="h5 mb-3">Штрафы в матче</h2>
+          <PenaltyTimeline
+            :items="penalties"
+            :double-protocol="!!match?.double_protocol"
+            :home-label="`Хозяева: ${match?.team1 || ''}`"
+            :away-label="`Гости: ${match?.team2 || ''}`"
+          />
         </div>
       </div>
     </div>

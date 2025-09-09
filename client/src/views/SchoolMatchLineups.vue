@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { RouterLink, useRoute } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import { useToast } from '../utils/toast.js';
 import { createLineupSync } from '../utils/lineupSync.js';
@@ -2058,23 +2059,15 @@ watch(activeTeam, async () => {
 <template>
   <div class="py-3 school-match-lineups-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Управление спортивной школой</li>
-          <li class="breadcrumb-item">
-            <RouterLink to="/school-matches">Матчи</RouterLink>
-          </li>
-          <li class="breadcrumb-item">
-            <RouterLink :to="`/school-matches/${route.params.id}`"
-              >Матч</RouterLink
-            >
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">Составы</li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', disabled: true },
+          { label: 'Матчи', to: '/school-matches' },
+          { label: 'Матч', to: `/school-matches/${route.params.id}` },
+          { label: 'Составы' },
+        ]"
+      />
       <h1 class="mb-3">Составы на матч</h1>
 
       <div v-if="error" class="alert alert-danger" role="alert">

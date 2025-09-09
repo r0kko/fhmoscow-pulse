@@ -1,7 +1,9 @@
 import { Op } from 'sequelize';
 
-import { Snils } from '../models/index.js';
+import { Snils, UserExternalId } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+
+import legacyService from './legacyUserService.js';
 
 async function getByUser(userId) {
   return Snils.findOne({ where: { user_id: userId } });
@@ -39,3 +41,19 @@ async function remove(userId, actorId = null) {
 }
 
 export default { getByUser, create, update, remove };
+
+// Presence helper used by multiple modules to ensure consistent logic across UI screens
+export async function hasAnySnils(userId) {
+  // 1) Local record exists
+  const local = await Snils.findOne({ where: { user_id: userId } });
+  if (local) return true;
+  // 2) Fallback to legacy field if available (no validation, presence-only)
+  try {
+    const ext = await UserExternalId.findOne({ where: { user_id: userId } });
+    if (!ext) return false;
+    const legacy = await legacyService.findById(ext.external_id);
+    return Boolean(legacy?.sv_ops);
+  } catch (_e) {
+    return false;
+  }
+}

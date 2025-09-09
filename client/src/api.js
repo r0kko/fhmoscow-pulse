@@ -16,6 +16,29 @@ let refreshFailed =
     sessionStorage.getItem('refreshFailed') === '1') ||
   false;
 
+// Avoid indefinite waits behind CDN/proxies: set sane network timeouts
+const DEFAULT_TIMEOUT_MS = 20000; // general API
+const DEFAULT_REFRESH_TIMEOUT_MS = 12000; // token refresh
+const DEFAULT_CSRF_TIMEOUT_MS = 8000; // CSRF bootstrap
+
+function withTimeout(signal, ms = DEFAULT_TIMEOUT_MS) {
+  if (typeof AbortController === 'undefined') return { signal };
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('TimeoutError', 'AbortError')),
+    ms
+  );
+  if (signal) {
+    try {
+      signal.addEventListener('abort', () => controller.abort(signal.reason));
+    } catch (_) {}
+  }
+  return {
+    signal: controller.signal,
+    cancelTimeout: () => clearTimeout(timer),
+  };
+}
+
 function setRefreshFailed(val) {
   refreshFailed = val;
   if (typeof sessionStorage !== 'undefined') {
@@ -66,9 +89,12 @@ function shouldSendXsrf(method) {
 
 export async function initCsrf() {
   try {
+    const t = withTimeout(undefined, DEFAULT_CSRF_TIMEOUT_MS);
     const res = await fetch(`${API_BASE}/csrf-token`, {
       credentials: 'include',
+      signal: t.signal,
     });
+    t.cancelTimeout?.();
     try {
       const data = await res.clone().json();
       if (data && data.csrfHmac) {
@@ -153,12 +179,15 @@ async function refreshToken() {
       let headers = { 'Content-Type': 'application/json' };
       let xsrf = getXsrfToken();
       if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
+      const t1 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
       let res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
         headers,
         body: '{}',
+        signal: t1.signal,
       });
+      t1.cancelTimeout?.();
       let data = await res.json().catch(() => ({}));
       if (
         res.status === 403 &&
@@ -172,12 +201,15 @@ async function refreshToken() {
         headers = { 'Content-Type': 'application/json' };
         xsrf = getXsrfToken();
         if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
+        const t2 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
         res = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
           headers,
           body: '{}',
+          signal: t2.signal,
         });
+        t2.cancelTimeout?.();
         data = await res.json().catch(() => ({}));
       }
       if (res.ok && data.access_token) {
@@ -242,9 +274,15 @@ export async function apiFetch(path, options = {}) {
 
   let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, opts);
+    const t = withTimeout(opts.signal, options.timeoutMs || DEFAULT_TIMEOUT_MS);
+    res = await fetch(`${API_BASE}${path}`, { ...opts, signal: t.signal });
+    t.cancelTimeout?.();
   } catch (_err) {
-    throw new Error('Сетевая ошибка');
+    const msg =
+      _err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
+    const e = new Error(msg);
+    e.code = _err?.name === 'AbortError' ? 'timeout' : 'network_error';
+    throw e;
   }
 
   const contentType =
@@ -358,9 +396,15 @@ export async function apiFetchForm(path, form, options = {}) {
   }
   let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, opts);
+    const t = withTimeout(opts.signal, options.timeoutMs || DEFAULT_TIMEOUT_MS);
+    res = await fetch(`${API_BASE}${path}`, { ...opts, signal: t.signal });
+    t.cancelTimeout?.();
   } catch (_err) {
-    throw new Error('Сетевая ошибка');
+    const msg =
+      _err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
+    const e = new Error(msg);
+    e.code = _err?.name === 'AbortError' ? 'timeout' : 'network_error';
+    throw e;
   }
   const contentType =
     (res.headers?.get && res.headers.get('content-type')) || '';
@@ -471,9 +515,15 @@ export async function apiFetchBlob(path, options = {}) {
   }
   let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, opts);
+    const t = withTimeout(opts.signal, options.timeoutMs || DEFAULT_TIMEOUT_MS);
+    res = await fetch(`${API_BASE}${path}`, { ...opts, signal: t.signal });
+    t.cancelTimeout?.();
   } catch (_err) {
-    throw new Error('Сетевая ошибка');
+    const msg =
+      _err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
+    const e = new Error(msg);
+    e.code = _err?.name === 'AbortError' ? 'timeout' : 'network_error';
+    throw e;
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 429) {

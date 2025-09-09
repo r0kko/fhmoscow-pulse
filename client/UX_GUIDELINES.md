@@ -95,3 +95,10 @@ Example:
 - Always set `aria-label` on interactive tiles and actions with icons only.
 - Preserve the visible focus ring (`:focus-visible`) and do not override it.
 - Ensure lists and grouped items have appropriate roles when they behave like tables or lists.
+
+## Breadcrumbs
+
+- Use the shared `components/Breadcrumbs.vue` for all breadcrumbs.
+- Structure: provide `items=[{ label, to?, disabled? }]`; the component renders `<nav aria-label="breadcrumb">` with `ol.breadcrumb` and schema.org microdata. Set `disabled: true` to render a non-interactive crumb regardless of `to`.
+- Labels: keep section names short and consistent (e.g., «Управление спортивной школой» → hub, then page-specific label like «Матчи», «Стадионы»).
+- Links: every intermediate crumb is a link; the last crumb is plain text with `aria-current="page"`. Exception: category hubs like «Управление спортивной школой» are non-interactive (use `disabled: true` or omit `to`) to avoid accidental navigation into grouping pages.

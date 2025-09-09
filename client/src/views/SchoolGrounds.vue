@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import { withHttp } from '../utils/url.js';
 import yandexLogo from '../assets/yandex-maps.svg';
@@ -48,15 +49,13 @@ function metros(address) {
 <template>
   <div class="py-3 school-grounds-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Управление спортивной школой</li>
-          <li class="breadcrumb-item active" aria-current="page">Стадионы</li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', disabled: true },
+          { label: 'Стадионы' },
+        ]"
+      />
       <h1 class="mb-3">Стадионы</h1>
 
       <div v-if="error" class="alert alert-danger">{{ error }}</div>

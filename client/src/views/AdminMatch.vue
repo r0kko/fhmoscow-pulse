@@ -13,12 +13,18 @@ import yandexLogo from '../assets/yandex-maps.svg';
 import AgreementTimeline from '../components/AgreementTimeline.vue';
 import vkLogo from '../assets/vkvideo.png';
 import MenuTile from '../components/MenuTile.vue';
+import PenaltyTimeline from '../components/PenaltyTimeline.vue';
 
 const route = useRoute();
 const match = ref(null);
 const agreements = ref([]);
 const loading = ref(true);
 const error = ref('');
+
+// Penalties
+const penalties = ref([]);
+const penaltiesLoading = ref(true);
+const penaltiesError = ref('');
 
 // Staff of both teams
 const homeStaff = ref([]);
@@ -133,12 +139,22 @@ onMounted(async () => {
   loading.value = true;
   error.value = '';
   try {
-    const [mres, ares] = await Promise.all([
-      apiFetch(`/matches/${route.params.id}`),
-      apiFetch(`/matches/${route.params.id}/agreements`),
-    ]);
+    const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
+    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
     agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
+    if (!penaltiesDisabled.value) {
+      const pres = await apiFetch(
+        `/matches/${route.params.id}/penalties`
+      ).catch((e) => ({ items: [], _err: e }));
+      penalties.value = Array.isArray(pres.items) ? pres.items : [];
+      penaltiesError.value = pres._err
+        ? pres._err.message || 'Не удалось загрузить штрафы'
+        : '';
+    } else {
+      penalties.value = [];
+      penaltiesError.value = '';
+    }
     // Prefill schedule form
     scheduleForm.value.dtLocal = toDateTimeLocal(match.value?.date_start);
     scheduleForm.value.groundId = match.value?.ground_details?.id || '';
@@ -148,6 +164,7 @@ onMounted(async () => {
     error.value = e.message || 'Ошибка загрузки данных';
   } finally {
     loading.value = false;
+    penaltiesLoading.value = false;
   }
 });
 
@@ -235,6 +252,12 @@ async function submitSchedule() {
     submittingSchedule.value = false;
   }
 }
+
+// No side split/filters — timeline shows both teams
+
+const penaltiesDisabled = computed(
+  () => !!match.value?.double_protocol && match.value?.season_active === false
+);
 </script>
 
 <template>
@@ -501,6 +524,22 @@ async function submitSchedule() {
         <div class="card-body">
           <h2 class="h5 mb-3">История согласований</h2>
           <AgreementTimeline :items="agreements" :actions-disabled="true" />
+        </div>
+      </div>
+
+      <!-- Penalties block -->
+      <div
+        v-if="!penaltiesDisabled"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
+        <div class="card-body">
+          <h2 class="h5 mb-3">Штрафы в матче</h2>
+          <PenaltyTimeline
+            :items="penalties"
+            :double-protocol="!!match?.double_protocol"
+            :home-label="`Хозяева: ${match?.team1 || ''}`"
+            :away-label="`Гости: ${match?.team2 || ''}`"
+          />
         </div>
       </div>
 

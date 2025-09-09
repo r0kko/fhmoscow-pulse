@@ -31,6 +31,7 @@ import SchoolMatchReferees from './views/SchoolMatchReferees.vue';
 import SchoolMatchAppeals from './views/SchoolMatchAppeals.vue';
 import SchoolPlayers from './views/SchoolPlayers.vue';
 import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
+import SchoolHome from './views/SchoolHome.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
@@ -64,6 +65,15 @@ const routes = [
     path: '/',
     component: Home,
     meta: { requiresAuth: true, fluid: true, title: 'Главная' },
+  },
+  {
+    path: '/school',
+    component: SchoolHome,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Управление спортивной школой',
+    },
   },
   {
     path: '/admin/sports-calendar',

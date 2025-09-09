@@ -88,6 +88,13 @@ async function loadSexes() {
 onMounted(loadUser);
 onMounted(loadSexes);
 
+// Allow deep-linking to a specific tab (e.g., ?tab=inn to jump to "ИНН и СНИЛС")
+onMounted(() => {
+  const tab = String(route.query.tab || '').toLowerCase();
+  const allowed = ['info', 'passport', 'inn', 'bank', 'address', 'tax'];
+  if (allowed.includes(tab)) activeTab.value = tab;
+});
+
 async function loadPassport() {
   try {
     const data = await apiFetch(`/users/${route.params.id}/passport`);

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
 import PageNav from '../components/PageNav.vue';
@@ -211,17 +212,13 @@ function onChangePageSize(val) {
 <template>
   <div class="py-3 school-matches-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Управление спортивной школой</li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Прошедшие матчи
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', disabled: true },
+          { label: 'Прошедшие матчи' },
+        ]"
+      />
       <h1 class="mb-3">Прошедшие матчи</h1>
 
       <div class="card section-card tile fade-in shadow-sm mb-3">

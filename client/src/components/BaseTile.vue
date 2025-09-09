@@ -5,6 +5,8 @@ import { RouterLink } from 'vue-router';
 const props = defineProps({
   // Route location or path for tile navigation. When absent or disabled, renders as a non-link.
   to: { type: [String, Object], default: null },
+  // When true, navigate with router.replace (no new history entry)
+  replace: { type: Boolean, default: false },
   // When true, renders inert and with aria-disabled
   disabled: { type: Boolean, default: false },
   // When true, applies section styling (larger radius/padding)
@@ -42,7 +44,7 @@ const linkAttrs = computed(() => {
       rel: props.rel || (isHttp ? 'noopener noreferrer' : null),
     };
   }
-  return { to: props.to };
+  return { to: props.to, replace: props.replace || undefined };
 });
 const tileRole = computed(() => (isLink.value ? null : props.role || 'group'));
 </script>

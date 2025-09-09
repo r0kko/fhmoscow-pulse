@@ -32,7 +32,10 @@ Sync behavior
 Endpoints
 
 - POST `/matches/{id}/sync-penalties` (ADMIN) — reconcile a single match
-- GET `/matches/{id}/penalties` (ADMIN, SPORT_SCHOOL_STAFF) — list penalties ordered by time
+- GET `/matches/{id}/penalties` (ADMIN, SPORT_SCHOOL_STAFF) — list penalties ordered by time; items include `team_id` and `side` (`home`/`away`) inferred by player membership in match teams.
+  - Access rules:
+    - Authorized roles (ADMIN, SPORT_SCHOOL_STAFF) see штрафы обеих команд.
+    - Для матчей с `tournament_type.double_protocol = true` вне текущего сезона список штрафов отключён для всех ролей (HTTP 403 `penalties_disabled_out_of_season`).
 
 Operational notes
 

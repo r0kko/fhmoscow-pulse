@@ -25,21 +25,50 @@ app.set('trust proxy', true);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+function originAllowed(origin) {
+  try {
+    if (!origin) return true; // same-origin/non-browser
+    if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin))
+      return true;
+    const url = new URL(origin);
+    const host = url.hostname;
+    const cookieDomain = process.env.COOKIE_DOMAIN || '';
+    if (
+      cookieDomain &&
+      (host === cookieDomain || host.endsWith(`.${cookieDomain}`))
+    )
+      return true;
+    const base = process.env.BASE_URL ? new URL(process.env.BASE_URL) : null;
+    if (base && base.origin === origin) return true;
+  } catch (_) {
+    /* noop */
+  }
+  return false;
+}
+
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin) {
-      return callback(null, true);
-    }
-    if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
+    if (originAllowed(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-XSRF-TOKEN',
+    'X-Request-Id',
+  ],
   credentials: true,
   exposedHeaders: ['X-Request-Id'],
+  optionsSuccessStatus: 204,
+  preflightContinue: false,
 };
 
+// Fast CORS preflight path and runtime origin verification
 app.use(cors(corsOptions));
+// Express 5 uses path-to-regexp@^6 which is stricter about patterns like '*'.
+// Use a RegExp to match any path for CORS preflight to avoid parsing errors.
+app.options(/.*/, cors(corsOptions));
 app.use(helmet());
 app.use(requestId);
 // Lightweight structured HTTP access logs to stdout (Loki/Promtail friendly)

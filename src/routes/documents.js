@@ -4,12 +4,14 @@ import multer from 'multer';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/documentAdminController.js';
+import contractsController from '../controllers/documentContractAdminController.js';
 import documentController from '../controllers/documentController.js';
 import {
   createDocumentValidator,
   updateDocumentValidator,
 } from '../validators/documentValidators.js';
 import validate from '../middlewares/validate.js';
+import { uuidParam } from '../validators/paramsValidators.js';
 
 const upload = multer();
 
@@ -23,6 +25,32 @@ router.get(
 );
 
 router.get('/admin', auth, authorize('ADMIN'), controller.list);
+
+// Admin: Contracting tab — list eligible judges
+router.get(
+  '/admin/contracts/judges',
+  auth,
+  authorize('ADMIN'),
+  contractsController.listJudges
+);
+
+router.get(
+  '/admin/contracts/judges/:id/precheck',
+  auth,
+  authorize('ADMIN'),
+  ...uuidParam('id'),
+  validate,
+  contractsController.precheck
+);
+
+router.post(
+  '/admin/contracts/judges/:id/application',
+  auth,
+  authorize('ADMIN'),
+  ...uuidParam('id'),
+  validate,
+  contractsController.generateApplication
+);
 
 router.get('/', auth, documentController.list);
 router.post(

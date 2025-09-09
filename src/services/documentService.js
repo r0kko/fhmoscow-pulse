@@ -1454,6 +1454,474 @@ async function buildElectronicInteractionAgreementPdf(user, meta = {}) {
   return Buffer.concat(chunks);
 }
 
+/* istanbul ignore next */
+async function buildRefereeContractApplicationPdf(user, meta = {}) {
+  const chunks = [];
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: 30, bottom: 80, left: 30, right: 30 },
+    bufferPages: true,
+    info: { Title: 'Заявление о присоединении к условиям договора' },
+  });
+  doc.on('data', (d) => chunks.push(d));
+  const done = new Promise((resolve) => doc.on('end', () => resolve()));
+
+  const fonts = applyFonts(doc);
+  const contentWidth =
+    doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  const clean = (v) =>
+    v
+      ? String(v)
+          .replace(/[\r\n]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+      : v;
+  const NBSP = '\u00A0';
+  const protectTypography = (s) =>
+    typeof s === 'string'
+      ? s
+          .replace(/\b([ВвКкСсУуОоИи])\s/g, `$1${NBSP}`)
+          .replace(/\s№\s*/g, `${NBSP}№ `)
+      : s;
+  const seg = (text, bold = false) => ({
+    text: protectTypography(text ?? ''),
+    bold,
+  });
+
+  const tokenize = (text) =>
+    (text || '').split(/(\s+)/).filter((t) => t.length > 0);
+  const measure = (doc, fonts, token, bold) => {
+    const prev = doc._font;
+    try {
+      doc.font(bold ? fonts.bold : fonts.regular);
+    } catch {
+      /* noop */
+    }
+    const w = doc.widthOfString(token);
+    if (prev) {
+      try {
+        doc.font(prev.name || prev);
+      } catch {
+        /* noop */
+      }
+    }
+    return w;
+  };
+  const layoutJustifiedStyledParagraph = (doc, fonts, segments, width) => {
+    const startX = doc.page.margins.left;
+    let y = doc.y;
+    const lines = [];
+    let line = [];
+    let lineWidth = 0;
+    const isStretchableSpace = (t) => t === ' ';
+    const pushLine = () => {
+      while (line.length && /^\s+$/.test(line[line.length - 1].text))
+        line.pop();
+      lines.push({ items: line, width: lineWidth });
+      line = [];
+      lineWidth = 0;
+    };
+    const styledTokens = [];
+    segments.forEach((s) => {
+      tokenize(s.text).forEach((t) =>
+        styledTokens.push({ text: t, bold: s.bold })
+      );
+    });
+    let i = 0;
+    while (i < styledTokens.length) {
+      const { text, bold } = styledTokens[i];
+      const isWs = /^\s+$/.test(text);
+      if (isWs && (!line.length || /^\s+$/.test(line[line.length - 1]?.text))) {
+        i++;
+        continue;
+      }
+      const tokenWidth = measure(doc, fonts, text, bold);
+      const maxWidth = width;
+      const remaining = maxWidth - lineWidth;
+      if (tokenWidth <= remaining || (!line.length && tokenWidth <= maxWidth)) {
+        line.push({ text, bold, width: tokenWidth });
+        lineWidth += tokenWidth;
+        i++;
+      } else if (line.length) {
+        pushLine();
+      } else {
+        let cut = 1;
+        let part = text.slice(0, cut);
+        let partWidth = measure(doc, fonts, part + '-', bold);
+        while (cut < text.length && partWidth <= maxWidth) {
+          cut++;
+          part = text.slice(0, cut);
+          partWidth = measure(doc, fonts, part + '-', bold);
+        }
+        cut = Math.max(1, cut - 1);
+        part = text.slice(0, cut);
+        partWidth = measure(doc, fonts, part + '-', bold);
+        const rest = text.slice(cut);
+        line.push({ text: part + '-', bold, width: partWidth });
+        lineWidth += partWidth;
+        pushLine();
+        styledTokens[i] = { text: rest, bold };
+      }
+    }
+    if (line.length) pushLine();
+    const lineHeight = doc.currentLineHeight(true);
+    lines.forEach((ln, idx) => {
+      const last = idx === lines.length - 1;
+      let x = startX;
+      const totalWidth = ln.items.reduce((s, it) => s + it.width, 0);
+      const extra = Math.max(0, width - totalWidth);
+      const stretchPoints = !last
+        ? ln.items.filter((it) => isStretchableSpace(it.text)).length
+        : 0;
+      const extraPerSpace = stretchPoints > 0 ? extra / stretchPoints : 0;
+      ln.items.forEach((it) => {
+        try {
+          doc.font(it.bold ? fonts.bold : fonts.regular);
+        } catch {
+          /* noop */
+        }
+        doc.text(it.text, x, y, { lineBreak: false });
+        x +=
+          it.width + (isStretchableSpace(it.text) && !last ? extraPerSpace : 0);
+      });
+      y += lineHeight;
+    });
+    doc.x = startX;
+    doc.y = y;
+  };
+
+  // Header
+  doc.font(fonts.regular);
+  applyFirstPageHeader(doc);
+  try {
+    const HEADER_TOP = 30,
+      HEADER_HEIGHT = 32,
+      HEADER_PADDING = 12;
+    const minY = HEADER_TOP + HEADER_HEIGHT + HEADER_PADDING;
+    if (doc.y < minY) doc.y = minY;
+  } catch {
+    /* empty */
+  }
+
+  // Fetch data
+  const [
+    passports,
+    userAddresses,
+    innRec,
+    snilsRec,
+    bank,
+    taxation,
+    userDetails,
+    season,
+  ] = await Promise.all([
+    (
+      Models.Passport?.findAll?.bind(Models.Passport) ||
+      (() => Promise.resolve([]))
+    )({
+      where: { user_id: user.id },
+      order: [['created_at', 'DESC']],
+      include: [{ model: Models.Country, attributes: ['alias', 'name'] }],
+    }),
+    (
+      Models.UserAddress?.findAll?.bind(Models.UserAddress) ||
+      (() => Promise.resolve([]))
+    )({
+      where: { user_id: user.id },
+      include: [
+        { model: Models.Address, attributes: ['result', 'postal_code'] },
+        { model: Models.AddressType, attributes: ['alias', 'name'] },
+      ],
+    }),
+    (Models.Inn?.findOne?.bind(Models.Inn) || (() => Promise.resolve(null)))({
+      where: { user_id: user.id },
+      attributes: ['number'],
+    }),
+    (
+      Models.Snils?.findOne?.bind(Models.Snils) || (() => Promise.resolve(null))
+    )({
+      where: { user_id: user.id },
+      attributes: ['number'],
+    }),
+    (
+      Models.BankAccount?.findOne?.bind(Models.BankAccount) ||
+      (() => Promise.resolve(null))
+    )({
+      where: { user_id: user.id },
+      order: [['created_at', 'DESC']],
+      attributes: [
+        'bank_name',
+        'address',
+        'inn',
+        'bic',
+        'correspondent_account',
+        'number',
+      ],
+    }),
+    (
+      Models.Taxation?.findOne?.bind(Models.Taxation) ||
+      (() => Promise.resolve(null))
+    )({
+      where: { user_id: user.id },
+      include: [{ model: Models.TaxationType, attributes: ['alias', 'name'] }],
+    }),
+    (Models.User?.findByPk?.bind(Models.User) || (() => Promise.resolve(user)))(
+      user.id,
+      {
+        attributes: ['email', 'phone'],
+      }
+    ),
+    (
+      Models.Season?.findOne?.bind(Models.Season) ||
+      (() => Promise.resolve(null))
+    )({ where: { active: true } }),
+  ]);
+
+  const passport = passports?.[0];
+  const isCitizenRU = passport?.Country?.alias === 'RU';
+  const reg = (userAddresses || []).find(
+    (ua) => ua.AddressType?.alias === 'REGISTRATION'
+  );
+  const res = (userAddresses || []).find(
+    (ua) => ua.AddressType?.alias === 'RESIDENCE'
+  );
+  const regAdr = reg?.Address;
+  const resAdr = res?.Address;
+  const pSeries = clean(passport?.series) || '';
+  const pNumber = clean(passport?.number) || '';
+  const pIssuer = clean(passport?.issuing_authority) || '';
+  const pIssuerCode = clean(passport?.issuing_authority_code) || '';
+  const pIssueDate = passport?.issue_date
+    ? formatDateHuman(passport.issue_date)
+    : '«__» __________ ____ г.';
+  const regAddress = clean(regAdr?.result) || '';
+  const regPostal = regAdr?.postal_code ? `${regAdr.postal_code}, ` : '';
+  const resAddress = clean(resAdr?.result) || '';
+  const resPostal = resAdr?.postal_code ? `${resAdr.postal_code}, ` : '';
+  const innNumber = innRec?.number || '';
+  const snilsNumber = snilsRec?.number || '';
+  const phoneFormatted = (() => {
+    const d = String(userDetails?.phone || '').replace(/\D/g, '');
+    if (!d) return '';
+    let out = '+7';
+    if (d.length > 1) out += ' (' + d.slice(1, 4);
+    if (d.length >= 4) out += ') ';
+    if (d.length >= 4) out += d.slice(4, 7);
+    if (d.length >= 7) out += '-' + d.slice(7, 9);
+    if (d.length >= 9) out += '-' + d.slice(9, 11);
+    return out;
+  })();
+  const seasonName = season?.name || '2024/2025';
+  const taxAlias = taxation?.TaxationType?.alias || null;
+  const isIP = taxAlias === 'IP_USN' || taxAlias === 'IP_NPD';
+  const isNPD = taxAlias === 'NPD' || taxAlias === 'IP_NPD';
+
+  // Title block
+  try {
+    doc.font(fonts.bold).fontSize(11).text('Приложение №1');
+  } catch {
+    doc.fontSize(11).text('Приложение №1');
+  }
+  try {
+    doc.font(fonts.regular);
+  } catch {
+    /* empty */
+  }
+  doc
+    .fontSize(10)
+    .text(
+      `к Договору возмездного оказания услуг\nофициальных детско-юношеских, любительских и иных спортивных соревнований,\nпроводимых под эгидой Федерации хоккея г. Москвы\nсезона ${seasonName} годов`,
+      { align: 'left' }
+    );
+  doc.moveDown(0.8);
+  const docDate = meta.documentDate
+    ? formatDateHuman(meta.documentDate)
+    : '«__» __________ ____ г.';
+  try {
+    doc.font(fonts.bold).fontSize(12);
+  } catch {
+    doc.fontSize(12);
+  }
+  doc.text(`Заявление № ${meta.number || ''} от ${docDate}`);
+  try {
+    doc.font(fonts.regular);
+  } catch {
+    /* empty */
+  }
+  doc.moveDown(0.6);
+
+  // Purpose paragraph
+  layoutJustifiedStyledParagraph(
+    doc,
+    fonts,
+    [
+      seg(
+        'о присоединении к условиям договора оказания услуг по судейству хоккейных матчей официальных детско-юношеских, любительских и иных спортивных соревнований, проводимых под эгидой Федерации хоккея г. Москвы, '
+      ),
+      seg(`сезона ${seasonName} годов`, true),
+      seg(
+        ', утвержденного Президентом РОО «Федерация хоккея г. Москвы» «05» сентября 2024 г. и размещенного в телекоммуникационной сети «Интернет» по адресу referee.fhmoscow.com.'
+      ),
+    ],
+    contentWidth
+  );
+  doc.moveDown(0.6);
+
+  // Check options
+  doc.fontSize(11);
+  doc.text('Я, судья (отметить подходящее):');
+  const cb = (v) => (v ? '☒' : '☐');
+  doc.text(`${cb(isIP)}   индивидуальный предприниматель`);
+  doc.text(
+    `${cb(isNPD)}   применяю специальный налоговый режим «Налог на профессиональный доход»`
+  );
+  doc.text(`${cb(!isCitizenRU)}   не являюсь гражданином Российской Федерации`);
+  doc.moveDown(0.6);
+
+  // Personal data lines
+  const line = (label, value) =>
+    layoutJustifiedStyledParagraph(
+      doc,
+      fonts,
+      [seg(`${label}: `), seg(String(value || '—'), true)],
+      contentWidth
+    );
+  line(
+    'Фамилия, Имя, Отчество',
+    `${user.last_name} ${user.first_name}${user.patronymic ? ` ${user.patronymic}` : ''}`
+  );
+  line(
+    'Дата рождения',
+    user.birth_date
+      ? new Date(user.birth_date).toLocaleDateString('ru-RU')
+      : '—'
+  );
+  doc.moveDown(0.2);
+
+  try {
+    doc.font(fonts.bold);
+  } catch {
+    /* empty */
+  }
+  doc.text(
+    isCitizenRU
+      ? 'Паспорт РФ (действующий)'
+      : 'Документ, удостоверяющий личность'
+  );
+  try {
+    doc.font(fonts.regular);
+  } catch {
+    /* empty */
+  }
+  line('Серия', pSeries || '—');
+  line('Номер', pNumber || '—');
+  line('Кем выдан', pIssuer || '—');
+  line('Код подразделения', pIssuerCode || '—');
+  line('Дата выдачи', pIssueDate);
+  doc.moveDown(0.2);
+  line(
+    'Адрес места жительства с индексом (регистрации)',
+    `${regPostal}${regAddress}` || '—'
+  );
+  line(
+    'Адрес фактического места жительства',
+    `${resPostal}${resAddress}` || '—'
+  );
+  doc.moveDown(0.2);
+  line('Номер мобильного телефона', phoneFormatted || '—');
+  line('E-mail', userDetails?.email || '—');
+  doc.moveDown(0.2);
+  line('ОГРНИП (если применимо)', taxation?.ogrn ? `№ ${taxation.ogrn}` : '—');
+  line('ИНН (TIN, выданный иностранным государством)', innNumber || '—');
+  line('Страховое свидетельство (СНИЛС)', snilsNumber || '—');
+  doc.moveDown(0.2);
+  try {
+    doc.font(fonts.bold);
+  } catch {
+    /* empty */
+  }
+  doc.text('Банковские реквизиты');
+  try {
+    doc.font(fonts.regular);
+  } catch {
+    /* empty */
+  }
+  line('Наименование банка', bank?.bank_name || '—');
+  line('Адрес банка', bank?.address || '—');
+  line('ИНН', bank?.inn || '—');
+  line('БИК', bank?.bic || '—');
+  line('к/с', bank?.correspondent_account || '—');
+  line('р/с', bank?.number || '—');
+  doc.moveDown(0.6);
+
+  // Declaration paragraph
+  layoutJustifiedStyledParagraph(
+    doc,
+    fonts,
+    [
+      seg(
+        'настоящим заявляю о своем полном и безоговорочном присоединении к Договору возмездного оказания услуг по судейству хоккейных матчей официальных детско-юношеских, любительских и иных спортивных соревнований, проводимых под эгидой Федерации хоккея г. Москвы в сезоне '
+      ),
+      seg(`${seasonName} годов`, true),
+      seg(
+        ', утвержденному Президентом РОО «Федерация хоккея г. Москвы» «05» сентября 2024 г. и размещённому в телекоммуникационной сети «Интернет» по адресу: http://referee.fhmoscow.com (далее – Договор). Подтверждаю, что с условиями Договора ознакомлен, полностью согласен без каких-либо изъятий или ограничений и принимаю требования Договора в полном объеме.'
+      ),
+    ],
+    contentWidth
+  );
+  doc.moveDown(1);
+
+  // Signature note area
+  try {
+    doc.save().lineWidth(0.8).strokeColor('#D0D5DD');
+    const x = doc.page.margins.left;
+    const y = doc.y;
+    const w = contentWidth;
+    const h = 36;
+    doc.roundedRect(x, y, w, h, 8).stroke();
+    doc.restore();
+    const note =
+      'Подпись Исполнителя и отметка Заказчика в системе электронного документооборота';
+    try {
+      doc.font('SB-Italic');
+    } catch {
+      /* empty */
+    }
+    doc
+      .fillColor('#555555')
+      .fontSize(10)
+      .text(note, x + 10, y + 10, {
+        width: w - 20,
+        align: 'left',
+      });
+    doc.fillColor('black');
+    doc.moveDown(3);
+  } catch {
+    doc.text(
+      'Подпись Исполнителя и отметка Заказчика в системе электронного документооборота'
+    );
+    doc.moveDown(1);
+  }
+
+  // Footer across pages
+  const range = doc.bufferedPageRange();
+  const barcodeText = meta.docId || null;
+  const numberText = meta.number || null;
+  for (let i = 0; i < range.count; i += 1) {
+    doc.switchToPage(range.start + i);
+    await applyFooter(doc, {
+      page: i + 1,
+      total: range.count,
+      barcodeText,
+      numberText,
+    });
+  }
+
+  doc.end();
+  await done;
+  return Buffer.concat(chunks);
+}
+
 async function create(data, userId) {
   let statusId = data.statusId;
   if (!statusId) {
@@ -1820,6 +2288,12 @@ async function regenerate(documentId, actorId) {
       number: doc.number,
       documentDate: doc.document_date,
     });
+  } else if (doc.DocumentType.alias === 'REFEREE_CONTRACT_APPLICATION') {
+    pdf = await buildRefereeContractApplicationPdf(doc.recipient, {
+      docId: doc.id,
+      number: doc.number,
+      documentDate: doc.document_date,
+    });
   } else {
     pdf = await createPdfBuffer(doc.name);
   }
@@ -1975,6 +2449,89 @@ export default {
   generateInitial,
   update,
   remove,
+  async createContractApplicationDocument(userId, actorId) {
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'last_name', 'first_name', 'patronymic', 'birth_date'],
+    });
+    if (!user) throw new ServiceError('user_not_found', 404);
+
+    const [docType, status, userSign, simpleSignType] = await Promise.all([
+      DocumentType.findOne({
+        where: { alias: 'REFEREE_CONTRACT_APPLICATION' },
+        attributes: ['id', 'name', 'alias', 'generated'],
+      }),
+      DocumentStatus.findOne({
+        where: { alias: 'CREATED' },
+        attributes: ['id'],
+      }),
+      UserSignType.findOne({
+        where: { user_id: user.id },
+        include: [{ model: SignType, attributes: ['id', 'alias'] }],
+      }),
+      SignType.findOne({
+        where: { alias: 'SIMPLE_ELECTRONIC' },
+        attributes: ['id'],
+      }),
+    ]);
+    if (!docType) throw new ServiceError('document_type_not_found', 404);
+    if (!status) throw new ServiceError('document_status_not_found', 500);
+
+    const signTypeId = userSign?.SignType?.id || simpleSignType?.id;
+    if (!signTypeId) throw new ServiceError('sign_type_not_found', 500);
+
+    // 1st pass: create minimal PDF to obtain UUID/number
+    const initial = await createPdfBuffer(docType.name);
+    const file = await fileService.saveGeneratedPdf(
+      initial,
+      `${docType.name}.pdf`,
+      actorId
+    );
+    const created = await Document.create({
+      recipient_id: user.id,
+      document_type_id: docType.id,
+      status_id: status.id,
+      file_id: file.id,
+      sign_type_id: signTypeId,
+      name: docType.name,
+      document_date: new Date(),
+      created_by: actorId,
+      updated_by: actorId,
+    });
+    // 2nd pass: regenerate with known id/number
+    let regenerated;
+    try {
+      regenerated = await regenerate(created.id, actorId);
+    } catch {
+      regenerated = {
+        file: { id: file.id, url: await fileService.getDownloadUrl(file) },
+      };
+    }
+    const outDoc = await Document.findByPk(created.id, {
+      include: [
+        { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
+        { model: SignType, attributes: ['name', 'alias'] },
+      ],
+    });
+    return {
+      document: {
+        id: outDoc.id,
+        number: outDoc.number,
+        name: outDoc.name,
+        documentDate: outDoc.document_date,
+        documentType: outDoc.DocumentType
+          ? {
+              name: outDoc.DocumentType.name,
+              alias: outDoc.DocumentType.alias,
+              generated: outDoc.DocumentType.generated,
+            }
+          : null,
+        signType: outDoc.SignType
+          ? { name: outDoc.SignType.name, alias: outDoc.SignType.alias }
+          : null,
+      },
+      file: regenerated.file,
+    };
+  },
   async generatePersonalDataConsent(idOrUserId) {
     // Try as document id first
     let doc = await Document.findByPk(idOrUserId, {

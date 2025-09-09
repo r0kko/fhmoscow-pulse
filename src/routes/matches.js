@@ -234,6 +234,7 @@ router.post(
  *                       second: { type: integer }
  *                       clock: { type: string, example: '12:34' }
  *                       team_penalty: { type: boolean }
+ *                       computed_period: { type: integer, example: 1 }
  *                       player:
  *                         type: object
  *                         nullable: true
@@ -256,6 +257,14 @@ router.post(
  *                           id: { type: string }
  *                           external_id: { type: integer }
  *                           name: { type: string }
+ *                       team_id: { type: string, nullable: true }
+ *                       side: { type: string, enum: ['home','away'], nullable: true }
+ *                       minutes_value: { type: integer, nullable: true }
+ *       403:
+ *         description: Forbidden for non-participants (non-admin), or disabled for non-current double protocol matches
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  */
 // Read: list penalties for a match (sorted by period, time)
 router.get(

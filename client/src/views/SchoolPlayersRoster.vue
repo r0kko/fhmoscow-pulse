@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 
 const route = useRoute();
@@ -164,30 +165,23 @@ const forwards = computed(() =>
 <template>
   <div class="py-3 school-roster-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <template v-if="isAdminView">
-            <li class="breadcrumb-item">
-              <RouterLink to="/admin">Администрирование</RouterLink>
-            </li>
-            <li class="breadcrumb-item">
-              <RouterLink to="/admin/clubs-teams">Команды и клубы</RouterLink>
-            </li>
-          </template>
-          <template v-else>
-            <li class="breadcrumb-item">
-              <RouterLink to="/">Главная</RouterLink>
-            </li>
-            <li class="breadcrumb-item">Управление спортивной школой</li>
-            <li class="breadcrumb-item">
-              <RouterLink to="/school-players">Команды и составы</RouterLink>
-            </li>
-          </template>
-          <li class="breadcrumb-item active" aria-current="page">
-            Состав — {{ clubName || 'Клуб' }} / {{ year || '' }} г.р.
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        v-if="isAdminView"
+        :items="[
+          { label: 'Администрирование', to: '/admin' },
+          { label: 'Команды и клубы', to: '/admin/clubs-teams' },
+          { label: `Состав — ${clubName || 'Клуб'} / ${year || ''} г.р.` },
+        ]"
+      />
+      <Breadcrumbs
+        v-else
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', disabled: true },
+          { label: 'Команды и составы', to: '/school-players' },
+          { label: `Состав — ${clubName || 'Клуб'} / ${year || ''} г.р.` },
+        ]"
+      />
       <h1 class="mb-3">
         Состав — {{ clubName || 'Клуб' }} / {{ year || '' }} г.р.
       </h1>

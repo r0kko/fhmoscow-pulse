@@ -11,6 +11,7 @@ import {
   Season,
   Stage,
   Address,
+  TournamentType,
 } from '../models/index.js';
 
 async function listUpcoming(req, res, next) {
@@ -152,11 +153,15 @@ export async function get(req, res, next) {
             },
           ],
         },
-        { model: Tournament, attributes: ['name'] },
+        {
+          model: Tournament,
+          attributes: ['name', 'type_id'],
+          include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+        },
         { model: Stage, attributes: ['name'] },
         { model: TournamentGroup, attributes: ['name'] },
         { model: Tour, attributes: ['name'] },
-        { model: Season, attributes: ['name'] },
+        { model: Season, attributes: ['name', 'active'] },
         { model: GameStatus, attributes: ['name', 'alias'] },
         { model: MatchBroadcastLink, attributes: ['url', 'position'] },
       ],
@@ -199,10 +204,12 @@ export async function get(req, res, next) {
         home_club: m.HomeTeam?.Club?.name || null,
         away_club: m.AwayTeam?.Club?.name || null,
         tournament: m.Tournament?.name || null,
+        double_protocol: !!m.Tournament?.TournamentType?.double_protocol,
         stage: m.Stage?.name || null,
         group: m.TournamentGroup?.name || null,
         tour: m.Tour?.name || null,
         season: m.Season?.name || null,
+        season_active: m.Season?.active ?? null,
         is_home: isHome,
         is_away: isAway,
         schedule_locked_by_admin: !!m.schedule_locked_by_admin,

@@ -103,6 +103,17 @@ DADATA_SECRET=your_dadata_secret
 # COOKIE_DOMAIN=pulse.fhmoscow.com
 # SSL_CERT_PATH=/etc/ssl/pulse/fullchain.pem
 # SSL_KEY_PATH=/etc/ssl/pulse/privkey.pem
+
+### Troubleshooting: login spinner under CDN/proxy
+
+If the login spinner does not stop after clicking "Войти":
+
+- Client-side API now aborts long requests and will show `Таймаут запроса`. Retry the action.
+- Verify `ALLOWED_ORIGINS` includes all SPA origins used by your CDN/domains.
+- Set `BASE_URL` to the public HTTPS origin so cookies are issued with `Secure` and `SameSite=None`.
+- Prefer leaving `COOKIE_DOMAIN` empty unless you need cross-subdomain cookies; using an incorrect domain can cause browsers to drop cookies.
+- Ensure CDN/proxy forwards `Origin` and `X-Forwarded-*` headers and does not cache `/csrf-token` (the API sends `Cache-Control: no-store`).
+- Preflight `OPTIONS` requests are handled by the API (204); if your edge blocks OPTIONS, allow it for `/api/*`.
 ```
 
 Приложение отправляет HTML-письма для подтверждения электронной почты и сброса

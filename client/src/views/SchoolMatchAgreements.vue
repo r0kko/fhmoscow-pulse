@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import ContactModal from '../components/ContactModal.vue';
 import { apiFetch } from '../api.js';
 import yandexLogo from '../assets/yandex-maps.svg';
@@ -347,25 +348,15 @@ async function loadContacts() {
 <template>
   <div class="py-3 school-match-agreements-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Спортивная школа</li>
-          <li class="breadcrumb-item">
-            <RouterLink to="/school-matches">Матчи школы</RouterLink>
-          </li>
-          <li class="breadcrumb-item">
-            <RouterLink :to="`/school-matches/${route.params.id}`"
-              >Матч</RouterLink
-            >
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Время и место
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', disabled: true },
+          { label: 'Матчи', to: '/school-matches' },
+          { label: 'Матч', to: `/school-matches/${route.params.id}` },
+          { label: 'Время и место' },
+        ]"
+      />
       <h1 class="mb-3">{{ pageTitle || 'Матч' }}</h1>
       <div
         v-if="!loading && match && !isParticipant"

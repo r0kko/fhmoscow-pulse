@@ -13,6 +13,7 @@ import {
 import {
   GameEvent as ExtGameEvent,
   GameEventType as ExtGameEventType,
+  PenaltyMinutes as ExtPenaltyMinutes,
 } from '../externalModels/index.js';
 import logger from '../../logger.js';
 
@@ -93,6 +94,35 @@ export async function reconcileForMatch(matchId, actorId = null, tx = null) {
         .filter((x) => !Number.isNaN(x))
     )
   );
+
+  // Ensure local PenaltyMinutes rows exist for all external ids we'll reference
+  if (extMinutesIds.length) {
+    const existing = await PenaltyMinutes.findAll({
+      attributes: ['id', 'external_id'],
+      where: { external_id: { [Op.in]: extMinutesIds } },
+      paranoid: false,
+      transaction: tx,
+    });
+    const existingSet = new Set(existing.map((m) => Number(m.external_id)));
+    const missing = extMinutesIds.filter((id) => !existingSet.has(id));
+    if (missing.length) {
+      const extDict = await ExtPenaltyMinutes.findAll({
+        where: { id: { [Op.in]: missing } },
+        attributes: ['id', 'name'],
+      });
+      for (const r of extDict) {
+        await PenaltyMinutes.create(
+          {
+            external_id: Number(r.id),
+            name: r.name || null,
+            created_by: actorId,
+            updated_by: actorId,
+          },
+          { transaction: tx }
+        );
+      }
+    }
+  }
 
   const [players, violations, minutes, localType] = await Promise.all([
     extPlayerIds.length
@@ -336,6 +366,31 @@ export async function reconcileWindow({
         .filter((x) => !Number.isNaN(x))
     )
   );
+
+  // Ensure local PenaltyMinutes rows exist for all external ids we'll reference
+  if (extMinutesIds.length) {
+    const existing = await PenaltyMinutes.findAll({
+      attributes: ['id', 'external_id'],
+      where: { external_id: { [Op.in]: extMinutesIds } },
+      paranoid: false,
+    });
+    const existingSet = new Set(existing.map((m) => Number(m.external_id)));
+    const missing = extMinutesIds.filter((id) => !existingSet.has(id));
+    if (missing.length) {
+      const extDict = await ExtPenaltyMinutes.findAll({
+        where: { id: { [Op.in]: missing } },
+        attributes: ['id', 'name'],
+      });
+      await PenaltyMinutes.sequelize.transaction(async (t) => {
+        for (const r of extDict) {
+          await PenaltyMinutes.create(
+            { external_id: Number(r.id), name: r.name || null },
+            { transaction: t }
+          );
+        }
+      });
+    }
+  }
 
   const [players, violations, minutes, localType] = await Promise.all([
     extPlayerIds.length
@@ -612,6 +667,33 @@ export async function syncExternal(actorId = null) {
         .filter((x) => !Number.isNaN(x))
     )
   );
+
+  // Ensure local PenaltyMinutes rows exist for any external ids in changedRows
+  if (extMinutesIds.length) {
+    const existing = await PenaltyMinutes.findAll({
+      attributes: ['id', 'external_id'],
+      where: { external_id: { [Op.in]: extMinutesIds } },
+      paranoid: false,
+      raw: true,
+    });
+    const existingSet = new Set(existing.map((m) => Number(m.external_id)));
+    const missing = extMinutesIds.filter((id) => !existingSet.has(id));
+    if (missing.length) {
+      const extDict = await ExtPenaltyMinutes.findAll({
+        where: { id: { [Op.in]: missing } },
+        attributes: ['id', 'name'],
+        raw: true,
+      });
+      await PenaltyMinutes.sequelize.transaction(async (t) => {
+        for (const r of extDict) {
+          await PenaltyMinutes.create(
+            { external_id: Number(r.id), name: r.name || null },
+            { transaction: t }
+          );
+        }
+      });
+    }
+  }
 
   const [players, violations, minutes, localType] = await Promise.all([
     extPlayerIds.length
