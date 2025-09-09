@@ -28,7 +28,7 @@
     "@aws-sdk/s3-request-presigner": "^3.883.0",
     "@jest/globals": "^30.1.2",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.55.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.63.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.204.0",
     "@opentelemetry/resources": "^2.1.0",
     "@opentelemetry/sdk-node": "^0.55.0",
