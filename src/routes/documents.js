@@ -62,7 +62,22 @@ router.post(
   validate,
   documentController.create
 );
-router.post('/:id/sign', auth, documentController.sign);
+// User: request a signing code for a specific document
+router.post(
+  '/:id/send-code',
+  auth,
+  ...uuidParam('id'),
+  validate,
+  documentController.sendCode
+);
+// User: sign a specific document with a 6-digit code
+router.post(
+  '/:id/sign',
+  auth,
+  ...uuidParam('id'),
+  validate,
+  documentController.sign
+);
 router.post(
   '/:id/request-sign',
   auth,

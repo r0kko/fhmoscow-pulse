@@ -147,7 +147,7 @@ export async function applyFooter(
       .stroke()
       .restore();
   } catch {
-    /* noop */
+    // ignore drawing failure
   }
   // left: document number · page X of Y, plus optional system/timestamp
   try {
@@ -218,6 +218,118 @@ export async function applyFooter(
     } catch {
       /* noop */
     }
+  }
+  doc.fillColor('black');
+}
+
+export async function applyESignStamp(doc, info) {
+  // Draw a compact signature stamp anchored to the right, above the footer band
+  const BRAND_BLUE = '#113867';
+  const margin = 30;
+  const bandHeight = 44; // must match footer band
+  const stampHeight = 68;
+  const stampWidth = 280;
+  const x = doc.page.width - margin - stampWidth;
+  const y = doc.page.height - margin - bandHeight - stampHeight - 6;
+  try {
+    doc
+      .save()
+      .lineWidth(0.9)
+      .roundedRect(x, y, stampWidth, stampHeight, 6)
+      .stroke(BRAND_BLUE)
+      .restore();
+  } catch {
+    /* noop */
+  }
+  // QR area (higher pixel density for print)
+  const qrSize = 64;
+  const qrX = x + 8;
+  const qrY = y + 6;
+  const textX = qrX + qrSize + 10;
+  const line1Y = y + 8;
+  const line2Y = line1Y + 16;
+  const line3Y = line2Y + 16;
+  const line4Y = line3Y + 16;
+  const payload = `USER:${String(info.userId || '')}`;
+  let QR;
+  try {
+    QR = await import('qrcode');
+  } catch {
+    QR = null;
+  }
+  if (QR?.toDataURL) {
+    try {
+      const dataUrl = await QR.toDataURL(payload, {
+        errorCorrectionLevel: 'H',
+        margin: 0,
+        width: qrSize * 2,
+        color: { dark: BRAND_BLUE, light: '#ffffff' },
+      });
+      doc.image(dataUrl, qrX, qrY, {
+        width: qrSize,
+        height: qrSize,
+        fit: [qrSize, qrSize],
+      });
+    } catch {
+      doc.rect(qrX, qrY, qrSize, qrSize).stroke(BRAND_BLUE);
+    }
+  } else {
+    try {
+      doc.rect(qrX, qrY, qrSize, qrSize).stroke(BRAND_BLUE);
+    } catch {
+      /* noop */
+    }
+  }
+  // Text content — brand blue
+  const title = 'ДОКУМЕНТ ПОДПИСАН ЭП';
+  const fio = String(info.fio || '');
+  // Format date: DD.MM.YYYY в HH:mm (Europe/Moscow)
+  let dtText = '';
+  try {
+    const d = new Date(info.signedAt || Date.now());
+    const pad = (n) => String(n).padStart(2, '0');
+    const tz = 'Europe/Moscow';
+    const dd = pad(
+      new Intl.DateTimeFormat('ru-RU', { day: '2-digit', timeZone: tz }).format(
+        d
+      )
+    );
+    const mm = pad(
+      new Intl.DateTimeFormat('ru-RU', {
+        month: '2-digit',
+        timeZone: tz,
+      }).format(d)
+    );
+    const yyyy = new Intl.DateTimeFormat('ru-RU', {
+      year: 'numeric',
+      timeZone: tz,
+    }).format(d);
+    const hh = pad(
+      new Intl.DateTimeFormat('ru-RU', {
+        hour: '2-digit',
+        hour12: false,
+        timeZone: tz,
+      }).format(d)
+    );
+    const mi = pad(
+      new Intl.DateTimeFormat('ru-RU', {
+        minute: '2-digit',
+        timeZone: tz,
+      }).format(d)
+    );
+    dtText = `${dd}.${mm}.${yyyy} в ${hh}:${mi}`;
+  } catch {
+    /* noop */
+  }
+  const pageInfo = `Страница № ${info.page || 1} из ${info.total || 1}`;
+  try {
+    doc.fontSize(9).fillColor(BRAND_BLUE);
+    doc.text(title, textX, line1Y, { lineBreak: false });
+    doc.text(fio, textX, line2Y, { lineBreak: false });
+    doc.text(`Дата подписания: ${dtText}`, textX, line3Y, { lineBreak: false });
+    doc.text(pageInfo, textX, line4Y, { lineBreak: false });
+  } catch {
+    /* noop */
   }
   doc.fillColor('black');
 }

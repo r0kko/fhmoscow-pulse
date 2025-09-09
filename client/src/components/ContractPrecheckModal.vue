@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
+import { formatMinutesSeconds } from '../utils/time.js';
 
 const modalRef = ref(null);
 let modal;
@@ -14,6 +15,19 @@ const judge = ref(null);
 const precheck = ref(null);
 const passedRulesTest = ref(false);
 const generating = ref(false);
+const emit = defineEmits(['created']);
+
+function zoneClass(r) {
+  return r?.zone?.alias ? `zone-${r.zone.alias}` : '';
+}
+
+function formatValue(r) {
+  if (!r || r.value == null) return '';
+  const u = r.unit || {};
+  if (u.alias === 'MIN_SEC') return formatMinutesSeconds(r.value);
+  if (u.alias === 'SECONDS') return Number(r.value).toFixed(2);
+  return r.value;
+}
 
 function open(user) {
   judge.value = user;
@@ -69,6 +83,8 @@ async function generate() {
     if (url) {
       window.open(url, '_blank', 'noopener');
     }
+    // Notify parent that a contract was created to refresh the list
+    emit('created');
     close();
   } catch (e) {
     error.value = e.message || 'Не удалось сформировать договор';
@@ -159,7 +175,7 @@ defineExpose({ open });
                   class="list-group-item d-flex justify-content-between align-items-center"
                 >
                   <div>
-                    Возраст строго больше 16 лет
+                    Возраст 16 полных лет
                     <small class="d-block text-muted"
                       >Фактически:
                       {{ precheck.checks.ageYears ?? '—' }} лет</small
@@ -284,30 +300,39 @@ defineExpose({ open });
                 </li>
               </ul>
 
-              <div
-                v-if="
-                  precheck.checks.isFieldReferee &&
-                  precheck.bestNormatives.length
-                "
-              >
-                <h3 class="h6">Лучшие результаты нормативов</h3>
+              <div v-if="precheck.checks.isFieldReferee">
+                <h3 class="h6">Нормативы текущего сезона</h3>
                 <div class="table-responsive">
-                  <table class="table table-sm align-middle mb-3">
+                  <table
+                    class="table table-sm align-middle mb-3 normatives-table"
+                  >
                     <thead>
                       <tr>
                         <th>Норматив</th>
-                        <th class="text-end">Значение</th>
-                        <th>Зона</th>
+                        <th class="text-center">Лучший результат</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="r in precheck.bestNormatives" :key="r.typeId">
+                      <tr
+                        v-for="r in precheck.seasonNormatives ||
+                        precheck.bestNormatives ||
+                        []"
+                        :key="r.typeId"
+                      >
                         <td>{{ r.typeName }}</td>
-                        <td class="text-end">
-                          {{ r.value }}
-                          <small class="text-muted">{{ r.unitAlias }}</small>
+                        <td :class="['text-center', 'zone-cell', zoneClass(r)]">
+                          <template
+                            v-if="r.value !== null && r.value !== undefined"
+                          >
+                            {{ formatValue(r) }}
+                            <small
+                              v-if="r.unit?.name"
+                              class="text-muted ms-1"
+                              >{{ r.unit.name }}</small
+                            >
+                          </template>
+                          <span v-else class="text-muted">—</span>
                         </td>
-                        <td>{{ r.zone?.name || '—' }}</td>
                       </tr>
                     </tbody>
                   </table>

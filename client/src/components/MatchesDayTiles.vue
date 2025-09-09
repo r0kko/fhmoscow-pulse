@@ -14,6 +14,10 @@ const props = defineProps({
   noScroll: { type: Boolean, default: false },
   // Base path for details links, e.g., '/school-matches' or '/admin/matches'
   detailsBase: { type: String, default: '/school-matches' },
+  // When true, renders a dedicated score column (used on past matches page)
+  showScoreAsColumn: { type: Boolean, default: false },
+  // Mobile row style: 'card' (default) or 'divider' to separate rows with hairline dividers
+  mobileStyle: { type: String, default: 'card' },
 });
 
 const groups = computed(() => {
@@ -55,8 +59,19 @@ function computeUiStatus(m) {
   // Past matches: always show backend-provided status
   const ts = new Date(m?.date || '').getTime();
   const isPast = isFinite(ts) && ts < Date.now();
-  if (isPast)
+  if (isPast) {
+    if (alias === 'CANCELLED' || alias === 'POSTPONED')
+      return {
+        text: m?.status?.name || '—',
+        cls: statusPillClassByAlias(alias),
+      };
+    const outcome = computeOutcome(m, alias);
+    if (outcome === 'WIN') return { text: 'Победа', cls: 'pill pill-success' };
+    if (outcome === 'LOSS')
+      return { text: 'Поражение', cls: 'pill pill-danger' };
+    if (outcome === 'DRAW') return { text: 'Ничья', cls: 'pill pill-info' };
     return { text: m?.status?.name || '—', cls: statusPillClassByAlias(alias) };
+  }
   const agreed = Boolean(m?.agreement_accepted);
   const pending = Boolean(m?.agreement_pending);
   if (!schedulable) {
@@ -105,6 +120,32 @@ function statusPillClassByAlias(alias) {
       return 'pill pill-muted';
   }
 }
+
+function computeOutcome(m, alias) {
+  // Compute WIN/LOSS/DRAW from the viewer's perspective for finished games only
+  if ((alias || '').toUpperCase() !== 'FINISHED') return null;
+  const a = Number(m?.score_team1);
+  const b = Number(m?.score_team2);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  if (m?.is_both_teams) return 'DRAW';
+  const isHome = !!m?.is_home;
+  const isAway = !!m?.is_away;
+  if (a === b) return 'DRAW';
+  if (isHome) return a > b ? 'WIN' : 'LOSS';
+  if (isAway) return b > a ? 'WIN' : 'LOSS';
+  // Unknown side: avoid misleading result
+  return null;
+}
+
+function formatScore(m) {
+  const a = m?.score_team1;
+  const b = m?.score_team2;
+  if (a == null || b == null) return '';
+  const safeA = Number.isFinite(Number(a)) ? String(a) : '';
+  const safeB = Number.isFinite(Number(b)) ? String(b) : '';
+  if (!safeA || !safeB) return '';
+  return `${safeA}:${safeB}`;
+}
 </script>
 
 <template>
@@ -127,13 +168,24 @@ function statusPillClassByAlias(alias) {
       <div class="tile-body py-2 px-2" :class="{ 'no-scroll': props.noScroll }">
         <div
           class="grid-table"
-          :class="{ 'no-actions': !props.showActions }"
+          :class="{
+            'no-actions': !props.showActions,
+            'with-score': props.showScoreAsColumn,
+            'mobile-divider': props.mobileStyle === 'divider',
+          }"
           role="table"
           aria-label="Список матчей за день"
         >
           <div class="grid-header" role="row">
             <div class="cell col-teams" role="columnheader">Матч</div>
             <div class="cell col-status" role="columnheader">Статус</div>
+            <div
+              v-if="props.showScoreAsColumn"
+              class="cell col-score"
+              role="columnheader"
+            >
+              Счёт
+            </div>
             <div class="cell col-time" role="columnheader">Время</div>
             <div class="cell col-stadium" role="columnheader">Стадион</div>
             <div
@@ -145,9 +197,20 @@ function statusPillClassByAlias(alias) {
             </div>
           </div>
           <div v-for="m in group.list" :key="m.id" class="grid-row" role="row">
+            <!-- Mobile: make entire row clickable via stretched link overlay -->
+            <RouterLink
+              class="stretched-link d-md-none"
+              :to="`${props.detailsBase}/${m.id}`"
+              :aria-label="`Открыть карточку матча`"
+            />
             <div class="cell col-teams" role="cell">
               <div class="teams-line" :title="`${m.team1} — ${m.team2}`">
                 {{ m.team1 }} — {{ m.team2 }}
+                <span
+                  v-if="!props.showScoreAsColumn && formatScore(m)"
+                  class="score-pill pill pill-muted ms-2"
+                  >{{ formatScore(m) }}</span
+                >
               </div>
               <div
                 v-if="gameMetaLine(m)"
@@ -176,6 +239,21 @@ function statusPillClassByAlias(alias) {
                   aria-hidden="true"
                 ></i>
                 <i
+                  v-else-if="computeUiStatus(m).text === 'Победа'"
+                  class="bi bi-trophy-fill icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'Ничья'"
+                  class="bi bi-slash-circle icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'Поражение'"
+                  class="bi bi-emoji-frown icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
                   v-else-if="computeUiStatus(m).text === 'По расписанию'"
                   class="bi bi-check2-circle icon-pin me-1"
                   aria-hidden="true"
@@ -192,6 +270,19 @@ function statusPillClassByAlias(alias) {
                 ></i>
                 {{ computeUiStatus(m).text }}
               </span>
+            </div>
+            <div
+              v-if="props.showScoreAsColumn"
+              class="cell col-score"
+              role="cell"
+            >
+              <template v-if="new Date(m.date).getTime() < Date.now()">
+                <span
+                  :class="['score-chip', formatScore(m) ? '' : 'text-muted']"
+                  >{{ formatScore(m) || '—' }}</span
+                >
+              </template>
+              <template v-else>—</template>
             </div>
             <div class="cell col-time" role="cell">
               <template v-if="isStatusReplacingSchedule(m)">—</template>
@@ -214,7 +305,7 @@ function statusPillClassByAlias(alias) {
             >
               <RouterLink
                 :to="`${props.detailsBase}/${m.id}`"
-                class="btn btn-link p-0 text-primary"
+                class="btn btn-link p-0 text-primary position-relative"
                 :title="`Открыть карточку матча`"
                 aria-label="Открыть карточку матча"
               >
@@ -258,22 +349,43 @@ function statusPillClassByAlias(alias) {
 .grid-table {
   display: grid;
   /* Columns: Match | Status | Time | Stadium | Actions */
+  /* Allocate more space to teams/tournament; time is fixed-width (XX:XX) */
   grid-template-columns:
-    minmax(0, 2.6fr)
+    minmax(0, 3fr)
+    minmax(0, 1.4fr)
+    minmax(0, 0.8fr)
     minmax(0, 1.5fr)
-    minmax(0, 1.1fr)
-    minmax(0, 1.6fr)
-    minmax(0, 0.9fr);
+    minmax(0, 0.8fr);
   row-gap: 0.25rem;
 }
 
 .grid-table.no-actions {
   /* Without actions column, re-distribute space */
   grid-template-columns:
-    minmax(0, 2.8fr)
+    minmax(0, 3.2fr)
+    minmax(0, 1.4fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1.6fr);
+}
+
+/* When score column is present */
+.grid-table.with-score {
+  /* Columns: Match | Status | Score | Time | Stadium | Actions */
+  grid-template-columns:
+    minmax(0, 2.7fr)
+    minmax(0, 1.3fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.8fr)
     minmax(0, 1.5fr)
-    minmax(0, 1.1fr)
-    minmax(0, 2fr);
+    minmax(0, 0.8fr);
+}
+.grid-table.with-score.no-actions {
+  grid-template-columns:
+    minmax(0, 3fr)
+    minmax(0, 1.3fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1.6fr);
 }
 
 .grid-header {
@@ -293,8 +405,9 @@ function statusPillClassByAlias(alias) {
   white-space: normal;
 }
 
-/* Vertically center status pin, time and stadium within the row */
+/* Vertically center status, score, time and stadium within the row */
 .col-status,
+.col-score,
 .col-time,
 .col-stadium {
   display: flex;
@@ -302,10 +415,15 @@ function statusPillClassByAlias(alias) {
   /* ensure a comfortable touch target without affecting row auto-height */
   min-height: 2rem;
 }
+/* Use tabular figures for time to tighten layout */
+.col-time {
+  font-variant-numeric: tabular-nums;
+}
 
 /* Allow grid children to shrink so ellipsis works */
 .col-teams,
 .col-status,
+.col-score,
 .col-time,
 .col-stadium,
 .col-actions {
@@ -388,6 +506,10 @@ function statusPillClassByAlias(alias) {
   background: #f1f3f5;
   color: #495057;
 }
+/* Score chip */
+.score-chip {
+  font-weight: 600;
+}
 /* time displayed inline without pill */
 
 /* Responsive: карточный подход на мобильных */
@@ -414,6 +536,24 @@ function statusPillClassByAlias(alias) {
     margin-bottom: 0.5rem;
     box-shadow: var(--shadow-tile);
     background: #fff;
+    position: relative; /* for stretched-link */
+  }
+  /* Divider-style rows: lighter, with hairline separators between items */
+  .grid-table.mobile-divider .grid-row {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    padding: 0.5rem 0;
+    margin-bottom: 0;
+  }
+  .grid-table.mobile-divider .grid-row + .grid-row {
+    border-top: 1px solid var(--border-subtle);
+  }
+  /* Ensure actions remain clickable above stretched-link */
+  .grid-table .col-actions {
+    position: relative;
+    z-index: 2;
   }
   /* No special state background on mobile either */
   .cell {
@@ -429,6 +569,7 @@ function statusPillClassByAlias(alias) {
     font-size: 0.8125rem;
   }
   .col-status,
+  .col-score,
   .col-time,
   .col-stadium {
     display: inline-block;
@@ -436,6 +577,9 @@ function statusPillClassByAlias(alias) {
     font-size: 0.875rem;
   }
   .col-status {
+    margin-right: 0.5rem;
+  }
+  .col-score {
     margin-right: 0.5rem;
   }
   .d-none-sm {

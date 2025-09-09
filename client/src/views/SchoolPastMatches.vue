@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, reactive } from 'vue';
+import Modal from 'bootstrap/js/dist/modal';
 import { RouterLink } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
@@ -10,17 +11,35 @@ import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 const matches = ref([]);
 const loading = ref(false);
 const error = ref('');
-const activeTab = ref('home');
 const search = ref('');
 const selectedTournament = ref('');
 const selectedGroup = ref('');
 const selectedTour = ref('');
 const seasons = ref([]);
 const selectedSeason = ref('');
+// Filters modal state (mobile)
+const filtersModalRef = ref(null);
+let filtersModal;
+const draft = reactive({
+  season: '',
+  search: '',
+  tournament: '',
+  group: '',
+  tour: '',
+});
+
+// Active filters count (exclude free-text search)
+const activeFiltersCount = computed(() => {
+  let n = 0;
+  if (selectedSeason.value) n += 1;
+  if (selectedTournament.value) n += 1;
+  if (selectedGroup.value) n += 1;
+  if (selectedTour.value) n += 1;
+  return n;
+});
 
 // Pagination state
-const homePage = ref(1);
-const awayPage = ref(1);
+const page = ref(1);
 const pageSize = ref(loadPageSize('schoolPastMatchesPageSize', 20));
 
 onMounted(init);
@@ -48,13 +67,9 @@ async function load() {
     const params = selectedSeason.value
       ? `&season_id=${encodeURIComponent(selectedSeason.value)}`
       : '';
-    const [homeRes, awayRes] = await Promise.all([
-      apiFetch(`/matches/past?source=local&type=home&all=true${params}`),
-      apiFetch(`/matches/past?source=local&type=away&all=true${params}`),
-    ]);
-    const home = Array.isArray(homeRes.matches) ? homeRes.matches : [];
-    const away = Array.isArray(awayRes.matches) ? awayRes.matches : [];
-    matches.value = [...home, ...away];
+    const res = await apiFetch(`/matches/past?source=local&all=true${params}`);
+    const list = Array.isArray(res.matches) ? res.matches : [];
+    matches.value = list;
     resetFilters();
   } catch (e) {
     error.value = e.message || 'Не удалось загрузить данные';
@@ -63,30 +78,13 @@ async function load() {
   }
 }
 
-const homeMatches = computed(() =>
-  matches.value.filter((m) => m.is_home !== false)
+const filtered = computed(() => filterByQuery(matches.value));
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filtered.value.length / pageSize.value))
 );
-const awayMatches = computed(() =>
-  matches.value.filter((m) => m.is_home === false)
-);
-
-const filteredHome = computed(() => filterByQuery(homeMatches.value));
-const filteredAway = computed(() => filterByQuery(awayMatches.value));
-
-const totalHomePages = computed(() =>
-  Math.max(1, Math.ceil(filteredHome.value.length / pageSize.value))
-);
-const totalAwayPages = computed(() =>
-  Math.max(1, Math.ceil(filteredAway.value.length / pageSize.value))
-);
-
-const paginatedHome = computed(() => {
-  const start = (homePage.value - 1) * pageSize.value;
-  return filteredHome.value.slice(start, start + pageSize.value);
-});
-const paginatedAway = computed(() => {
-  const start = (awayPage.value - 1) * pageSize.value;
-  return filteredAway.value.slice(start, start + pageSize.value);
+const paginated = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return filtered.value.slice(start, start + pageSize.value);
 });
 
 function filterByQuery(list) {
@@ -121,16 +119,42 @@ function resetFilters() {
   selectedTournament.value = '';
   selectedGroup.value = '';
   selectedTour.value = '';
-  homePage.value = 1;
-  awayPage.value = 1;
+  page.value = 1;
 }
 
-const baseForOptions = computed(() =>
-  activeTab.value === 'home' ? homeMatches.value : awayMatches.value
-);
+function openFilters() {
+  // Init draft with current filters
+  draft.season = selectedSeason.value || '';
+  draft.search = search.value || '';
+  draft.tournament = selectedTournament.value || '';
+  draft.group = selectedGroup.value || '';
+  draft.tour = selectedTour.value || '';
+  if (!filtersModal) filtersModal = new Modal(filtersModalRef.value);
+  filtersModal.show();
+}
+
+function applyFilters() {
+  selectedSeason.value = draft.season || '';
+  search.value = draft.search || '';
+  selectedTournament.value = draft.tournament || '';
+  selectedGroup.value = draft.group || '';
+  selectedTour.value = draft.tour || '';
+  page.value = 1;
+  load();
+  filtersModal?.hide();
+}
+
+function resetDraft() {
+  draft.season = '';
+  draft.search = '';
+  draft.tournament = '';
+  draft.group = '';
+  draft.tour = '';
+}
+
 const tournamentOptions = computed(() => {
   const set = Array.from(
-    new Set(baseForOptions.value.map((m) => m.tournament).filter(Boolean))
+    new Set(matches.value.map((m) => m.tournament).filter(Boolean))
   );
   return set.sort((a, b) =>
     String(a).localeCompare(String(b), 'ru', { sensitivity: 'base' })
@@ -138,10 +162,8 @@ const tournamentOptions = computed(() => {
 });
 const groupOptions = computed(() => {
   const withinTournament = selectedTournament.value
-    ? baseForOptions.value.filter(
-        (m) => m.tournament === selectedTournament.value
-      )
-    : baseForOptions.value;
+    ? matches.value.filter((m) => m.tournament === selectedTournament.value)
+    : matches.value;
   const set = Array.from(
     new Set(withinTournament.map((m) => m.group).filter(Boolean))
   );
@@ -151,17 +173,15 @@ const groupOptions = computed(() => {
 });
 const tourOptions = computed(() => {
   const withinGroup = selectedGroup.value
-    ? baseForOptions.value.filter(
+    ? matches.value.filter(
         (m) =>
           (selectedTournament.value
             ? m.tournament === selectedTournament.value
             : true) && m.group === selectedGroup.value
       )
     : selectedTournament.value
-      ? baseForOptions.value.filter(
-          (m) => m.tournament === selectedTournament.value
-        )
-      : baseForOptions.value;
+      ? matches.value.filter((m) => m.tournament === selectedTournament.value)
+      : matches.value;
   const unique = Array.from(
     new Set(withinGroup.map((m) => m.tour).filter(Boolean))
   );
@@ -182,13 +202,13 @@ const tourOptions = computed(() => {
   });
 });
 
-watch([activeTab, selectedTournament], () => {
+watch([selectedTournament], () => {
   if (selectedGroup.value && !groupOptions.value.includes(selectedGroup.value))
     selectedGroup.value = '';
   if (selectedTour.value && !tourOptions.value.includes(selectedTour.value))
     selectedTour.value = '';
 });
-watch([activeTab, selectedGroup], () => {
+watch([selectedGroup], () => {
   if (selectedTour.value && !tourOptions.value.includes(selectedTour.value))
     selectedTour.value = '';
 });
@@ -196,16 +216,14 @@ watch([activeTab, selectedGroup], () => {
 watch(
   [search, selectedTournament, selectedGroup, selectedTour, selectedSeason],
   () => {
-    homePage.value = 1;
-    awayPage.value = 1;
+    page.value = 1;
   }
 );
 
 function onChangePageSize(val) {
   pageSize.value = val;
   savePageSize('schoolPastMatchesPageSize', val);
-  homePage.value = 1;
-  awayPage.value = 1;
+  page.value = 1;
 }
 </script>
 
@@ -221,139 +239,228 @@ function onChangePageSize(val) {
       />
       <h1 class="mb-3">Прошедшие матчи</h1>
 
-      <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <ul class="nav nav-pills nav-fill mb-0 tab-selector" role="tablist">
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'home' }"
-                role="tab"
-                :aria-selected="activeTab === 'home'"
-                @click="activeTab = 'home'"
-              >
-                Домашние матчи
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                class="nav-link"
-                :class="{ active: activeTab === 'away' }"
-                role="tab"
-                :aria-selected="activeTab === 'away'"
-                @click="activeTab = 'away'"
-              >
-                Матчи на выезде
-              </button>
-            </li>
-          </ul>
-        </div>
-      </div>
+      <!-- Removed home/away separation: unified past matches list -->
 
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
-          <div class="row g-2 align-items-end mb-3">
-            <div class="col-12 col-md-3">
-              <select
-                v-model="selectedSeason"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по сезону"
-                @change="load"
-              >
-                <option value="">Все сезоны</option>
-                <option v-for="s in seasons" :key="s.id" :value="s.id">
-                  {{ s.active ? `${s.name} (текущий)` : s.name }}
-                </option>
-              </select>
+          <!-- Sticky controls on mobile: search + filters -->
+          <div class="sticky-controls">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="flex-grow-1 min-w-0">
+                <input
+                  v-model="search"
+                  type="text"
+                  class="form-control form-control-sm w-100"
+                  placeholder="Поиск по командам/турниру/группе/туру"
+                  aria-label="Поиск"
+                />
+              </div>
+              <div class="flex-shrink-0">
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  type="button"
+                  @click="openFilters"
+                >
+                  <i class="bi bi-sliders me-1" aria-hidden="true"></i>
+                  Фильтры
+                  <span
+                    v-if="activeFiltersCount"
+                    class="badge text-bg-secondary ms-1"
+                    >{{ activeFiltersCount }}</span
+                  >
+                </button>
+              </div>
             </div>
-            <div class="col-12 col-md-3">
-              <input
-                v-model="search"
-                type="text"
-                class="form-control form-control-sm"
-                placeholder="Поиск по командам/турниру/группе/туру"
-                aria-label="Поиск"
-              />
+            <!-- Active filter chips -->
+            <div
+              v-if="
+                selectedSeason ||
+                selectedTournament ||
+                selectedGroup ||
+                selectedTour
+              "
+              class="filter-chips mt-2"
+            >
+              <span v-if="selectedSeason" class="chip">
+                {{
+                  seasons.find((s) => String(s.id) === String(selectedSeason))
+                    ?.name || 'Сезон'
+                }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр сезона"
+                  @click="
+                    selectedSeason = '';
+                    load();
+                  "
+                ></button>
+              </span>
+              <span v-if="selectedTournament" class="chip">
+                {{ selectedTournament }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр соревнования"
+                  @click="selectedTournament = ''"
+                ></button>
+              </span>
+              <span v-if="selectedGroup" class="chip">
+                {{ selectedGroup }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр группы"
+                  @click="selectedGroup = ''"
+                ></button>
+              </span>
+              <span v-if="selectedTour" class="chip">
+                {{ selectedTour }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр тура"
+                  @click="selectedTour = ''"
+                ></button>
+              </span>
             </div>
-            <div class="col-12 col-md-3">
-              <select
-                v-model="selectedTournament"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по соревнованию"
-              >
-                <option value="">Все соревнования</option>
-                <option v-for="t in tournamentOptions" :key="t" :value="t">
-                  {{ t }}
-                </option>
-              </select>
-            </div>
-            <div class="col-12 col-md-2">
-              <select
-                v-model="selectedGroup"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по группе"
-              >
-                <option value="">Все группы</option>
-                <option v-for="g in groupOptions" :key="g" :value="g">
-                  {{ g }}
-                </option>
-              </select>
-            </div>
-            <div class="col-12 col-md-1">
-              <select
-                v-model="selectedTour"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по туру"
-              >
-                <option value="">Все туры</option>
-                <option v-for="tr in tourOptions" :key="tr" :value="tr">
-                  {{ tr }}
-                </option>
-              </select>
-            </div>
-            <div class="col-12 col-md-12 text-end">
-              <button
-                class="btn btn-outline-secondary btn-sm"
-                @click="resetFilters"
-              >
-                Сбросить фильтры
-              </button>
+            <div class="visually-hidden" aria-live="polite">
+              Показано {{ filtered.length }} матчей
             </div>
           </div>
 
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
-          <div v-if="loading" class="text-center py-3">
-            <div class="spinner-border spinner-brand" role="status"></div>
+          <div v-if="loading" class="py-2">
+            <!-- Lightweight skeleton for better perceived performance on mobile -->
+            <div class="skeleton-line mb-2" style="width: 60%"></div>
+            <div class="skeleton-line mb-2" style="width: 85%"></div>
+            <div class="skeleton-line mb-2" style="width: 72%"></div>
+            <div class="skeleton-line mb-2" style="width: 90%"></div>
           </div>
 
           <template v-else>
-            <div v-show="activeTab === 'home'">
-              <MatchesDayTiles :items="paginatedHome" />
-              <p v-if="!filteredHome.length" class="mb-0">
-                Нет домашних матчей.
-              </p>
-              <PageNav
-                v-if="filteredHome.length > 0"
-                v-model:page="homePage"
-                :total-pages="totalHomePages"
-                :page-size="pageSize"
-                @update:page-size="onChangePageSize"
-              />
-            </div>
-            <div v-show="activeTab === 'away'">
-              <MatchesDayTiles :items="paginatedAway" />
-              <p v-if="!filteredAway.length" class="mb-0">
-                Нет матчей на выезде.
-              </p>
-              <PageNav
-                v-if="filteredAway.length > 0"
-                v-model:page="awayPage"
-                :total-pages="totalAwayPages"
-                :page-size="pageSize"
-                @update:page-size="onChangePageSize"
-              />
-            </div>
+            <MatchesDayTiles :items="paginated" :showScoreAsColumn="true" />
+            <p v-if="!filtered.length" class="mb-0">Нет матчей.</p>
+            <PageNav
+              v-if="filtered.length > 0"
+              v-model:page="page"
+              :total-pages="totalPages"
+              :page-size="pageSize"
+              @update:page-size="onChangePageSize"
+            />
           </template>
+        </div>
+      </div>
+
+      <!-- Filters Modal (mobile) -->
+      <div
+        ref="filtersModalRef"
+        class="modal fade"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div
+          class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down"
+        >
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 class="modal-title h5">Фильтры</h2>
+              <button
+                type="button"
+                class="btn-close"
+                aria-label="Закрыть"
+                @click="filtersModal?.hide()"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="m-season"
+                    >Сезон</label
+                  >
+                  <select
+                    id="m-season"
+                    v-model="draft.season"
+                    class="form-select"
+                  >
+                    <option value="">Все сезоны</option>
+                    <option v-for="s in seasons" :key="s.id" :value="s.id">
+                      {{ s.active ? `${s.name} (текущий)` : s.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="m-search"
+                    >Поиск</label
+                  >
+                  <input
+                    id="m-search"
+                    v-model="draft.search"
+                    type="text"
+                    class="form-control"
+                    placeholder="Команды/турнир/группа/тур"
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="m-tourn"
+                    >Соревнование</label
+                  >
+                  <select
+                    id="m-tourn"
+                    v-model="draft.tournament"
+                    class="form-select"
+                  >
+                    <option value="">Все соревнования</option>
+                    <option v-for="t in tournamentOptions" :key="t" :value="t">
+                      {{ t }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="m-group"
+                    >Группа</label
+                  >
+                  <select
+                    id="m-group"
+                    v-model="draft.group"
+                    class="form-select"
+                  >
+                    <option value="">Все группы</option>
+                    <option v-for="g in groupOptions" :key="g" :value="g">
+                      {{ g }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="m-tour"
+                    >Тур</label
+                  >
+                  <select id="m-tour" v-model="draft.tour" class="form-select">
+                    <option value="">Все туры</option>
+                    <option v-for="tr in tourOptions" :key="tr" :value="tr">
+                      {{ tr }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="resetDraft"
+              >
+                Сбросить
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                @click="applyFilters"
+              >
+                Применить
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -366,4 +473,34 @@ export default { name: 'SchoolPastMatchesView' };
 
 <style scoped>
 /* Mobile spacing handled globally */
+
+.sticky-controls {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.filter-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: #f8f9fa;
+  font-size: 0.875rem;
+}
+.filter-chips .btn-close-sm {
+  width: 0.65rem;
+  height: 0.65rem;
+}
 </style>

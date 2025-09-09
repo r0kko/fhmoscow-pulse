@@ -13,7 +13,7 @@ function generateCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
 
-export async function sendCode(user, type = 'verify') {
+export async function sendCode(user, type = 'verify', context = {}) {
   const code = generateCode();
   const expires = new Date(Date.now() + 15 * 60 * 1000);
   await EmailCode.destroy({ where: { user_id: user.id } });
@@ -26,6 +26,9 @@ export async function sendCode(user, type = 'verify') {
   attempts.clear(user.id);
   if (type === 'sign-type') {
     await emailService.sendSignTypeSelectionEmail(user, code);
+  } else if (type === 'doc-sign') {
+    // Expect context.document with minimal info { id, number, name }
+    await emailService.sendDocumentSignCodeEmail(user, context.document, code);
   } else {
     await emailService.sendVerificationEmail(user, code);
   }
@@ -55,4 +58,23 @@ export async function verifyCode(user, code, statusAlias = 'ACTIVE') {
   ]);
 }
 
-export default { sendCode, verifyCode };
+export async function verifyCodeOnly(user, code) {
+  const rec = await EmailCode.findOne({
+    where: {
+      user_id: user.id,
+      code,
+      expires_at: { [Op.gt]: new Date() },
+    },
+  });
+  if (!rec) {
+    const count = attempts.markFailed(user.id);
+    if (count >= 5) {
+      throw new ServiceError('too_many_attempts');
+    }
+    throw new ServiceError('invalid_code');
+  }
+  attempts.clear(user.id);
+  await EmailCode.destroy({ where: { user_id: user.id } });
+}
+
+export default { sendCode, verifyCode, verifyCodeOnly };

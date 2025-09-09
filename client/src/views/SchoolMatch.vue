@@ -18,6 +18,9 @@ const penaltiesLoading = ref(true);
 const penaltiesError = ref('');
 const loading = ref(true);
 const error = ref('');
+const hasPenalties = computed(
+  () => Array.isArray(penalties.value) && penalties.value.length > 0
+);
 
 const stadiumName = computed(
   () => match.value?.ground_details?.name || match.value?.ground || ''
@@ -461,7 +464,7 @@ const statusChip = computed(() => {
 
       <!-- Penalties -->
       <div
-        v-if="!penaltiesDisabled"
+        v-if="!penaltiesDisabled && hasPenalties"
         class="card section-card tile fade-in shadow-sm mb-3"
       >
         <div class="card-body">

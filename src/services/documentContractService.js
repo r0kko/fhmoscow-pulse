@@ -6,6 +6,9 @@ import {
   UserStatus,
   UserSignType,
   SignType,
+  Document,
+  DocumentType,
+  DocumentStatus,
   Passport,
   Inn,
   Snils,
@@ -55,6 +58,29 @@ async function listJudges() {
     ],
   });
 
+  // Fetch existing contract applications for these users (latest per user)
+  const ids = users.map((u) => u.id);
+  let docsByUser = new Map();
+  try {
+    const docs = await Document.findAll({
+      where: { recipient_id: { [Op.in]: ids } },
+      include: [
+        {
+          model: DocumentType,
+          attributes: ['alias'],
+          where: { alias: 'REFEREE_CONTRACT_APPLICATION' },
+        },
+        { model: DocumentStatus, attributes: ['name', 'alias'] },
+      ],
+      order: [['created_at', 'DESC']],
+    });
+    for (const d of docs) {
+      if (!docsByUser.has(d.recipient_id)) docsByUser.set(d.recipient_id, d);
+    }
+  } catch (_e) {
+    docsByUser = new Map();
+  }
+
   return users.map((u) => ({
     id: u.id,
     lastName: u.last_name,
@@ -66,6 +92,18 @@ async function listJudges() {
           id: u.UserSignTypes[0].SignType.id,
           name: u.UserSignTypes[0].SignType.name,
           alias: u.UserSignTypes[0].SignType.alias,
+        }
+      : null,
+    contract: docsByUser.has(u.id)
+      ? {
+          id: docsByUser.get(u.id).id,
+          number: docsByUser.get(u.id).number || null,
+          status: docsByUser.get(u.id).DocumentStatus
+            ? {
+                name: docsByUser.get(u.id).DocumentStatus.name,
+                alias: docsByUser.get(u.id).DocumentStatus.alias,
+              }
+            : null,
         }
       : null,
   }));
@@ -115,7 +153,7 @@ async function precheck(userId) {
   const isFieldReferee = roles.includes('REFEREE');
 
   const ageYears = calcAgeYears(user.birth_date);
-  const ageOk = ageYears != null && ageYears > 16;
+  const ageOk = ageYears != null && ageYears >= 16;
 
   const signTypeAlias = user.UserSignTypes?.[0]?.SignType?.alias || null;
   const signTypeName = user.UserSignTypes?.[0]?.SignType?.name || null;
@@ -142,6 +180,7 @@ async function precheck(userId) {
 
   // Best normative results for field referees only
   let bestNormatives = [];
+  let seasonNormatives = [];
   if (isFieldReferee) {
     try {
       const season = await Season.findOne({ where: { active: true } });
@@ -150,7 +189,7 @@ async function precheck(userId) {
           where: { user_id: user.id, season_id: season.id },
           include: [
             { model: NormativeType, attributes: ['id', 'name'] },
-            { model: MeasurementUnit, attributes: ['alias'] },
+            { model: MeasurementUnit, attributes: ['alias', 'name'] },
             { model: NormativeValueType, attributes: ['alias'] },
             { model: NormativeZone, attributes: ['id', 'name', 'alias'] },
           ],
@@ -169,7 +208,12 @@ async function precheck(userId) {
             map.set(key, {
               typeId: r.NormativeType?.id,
               typeName: r.NormativeType?.name,
-              unitAlias: r.MeasurementUnit?.alias,
+              unit: r.MeasurementUnit
+                ? {
+                    alias: r.MeasurementUnit.alias,
+                    name: r.MeasurementUnit.name,
+                  }
+                : null,
               value: r.value,
               zone: r.NormativeZone
                 ? {
@@ -182,10 +226,37 @@ async function precheck(userId) {
           }
         }
         bestNormatives = Array.from(map.values());
+
+        // Build full season normative list: include all types even when no results
+        const types = await NormativeType.findAll({
+          where: { season_id: season.id },
+          attributes: ['id', 'name'],
+          include: [
+            { model: MeasurementUnit, attributes: ['alias', 'name'] },
+            { model: NormativeValueType, attributes: ['alias'] },
+          ],
+          order: [['name', 'ASC']],
+        });
+        const bestByTypeId = new Map(bestNormatives.map((x) => [x.typeId, x]));
+        seasonNormatives = types.map((t) => {
+          const best = bestByTypeId.get(t.id);
+          return {
+            typeId: t.id,
+            typeName: t.name,
+            unit: t.MeasurementUnit
+              ? { alias: t.MeasurementUnit.alias, name: t.MeasurementUnit.name }
+              : null,
+            // For consistency include value_type for future UI decisions
+            valueType: t.NormativeValueType?.alias || null,
+            value: best?.value ?? null,
+            zone: best?.zone || null,
+          };
+        });
       }
     } catch (_e) {
       // non-critical; leave bestNormatives empty on error
       bestNormatives = [];
+      seasonNormatives = [];
     }
   }
 
@@ -215,6 +286,7 @@ async function precheck(userId) {
       isFieldReferee,
     },
     bestNormatives,
+    seasonNormatives,
   };
 }
 

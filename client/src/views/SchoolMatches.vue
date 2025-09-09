@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, reactive } from 'vue';
+import Modal from 'bootstrap/js/dist/modal';
 import { RouterLink } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
@@ -10,7 +11,7 @@ import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 const matches = ref([]);
 const loading = ref(false);
 const error = ref('');
-const extUnavailable = ref(false);
+// External availability banner was removed for mobile in favor of local source of truth
 const activeTab = ref('home'); // 'home' | 'away'
 const search = ref('');
 let searchTimer;
@@ -18,6 +19,16 @@ const debouncedSearch = ref('');
 const selectedTournament = ref('');
 const selectedGroup = ref('');
 const selectedTour = ref('');
+const filtersModalRef = ref(null);
+let filtersModal;
+const draft = reactive({ tournament: '', group: '', tour: '' });
+const activeFiltersCount = computed(() => {
+  let n = 0;
+  if (selectedTournament.value) n += 1;
+  if (selectedGroup.value) n += 1;
+  if (selectedTour.value) n += 1;
+  return n;
+});
 
 // Pagination state
 const homePage = ref(1);
@@ -34,8 +45,6 @@ async function load() {
       apiFetch('/matches/upcoming?source=local&type=home&all=true'),
       apiFetch('/matches/upcoming?source=local&type=away&all=true'),
     ]);
-    // When we explicitly force local source, do not surface external availability banner
-    extUnavailable.value = false;
     const home = Array.isArray(homeRes.matches) ? homeRes.matches : [];
     const away = Array.isArray(awayRes.matches) ? awayRes.matches : [];
     matches.value = [...home, ...away];
@@ -289,6 +298,27 @@ function onChangePageSize(val) {
   homePage.value = 1;
   awayPage.value = 1;
 }
+
+function openFilters() {
+  draft.tournament = selectedTournament.value || '';
+  draft.group = selectedGroup.value || '';
+  draft.tour = selectedTour.value || '';
+  if (!filtersModal) filtersModal = new Modal(filtersModalRef.value);
+  filtersModal.show();
+}
+function applyFilters() {
+  selectedTournament.value = draft.tournament || '';
+  selectedGroup.value = draft.group || '';
+  selectedTour.value = draft.tour || '';
+  homePage.value = 1;
+  awayPage.value = 1;
+  filtersModal?.hide();
+}
+function resetDraft() {
+  draft.tournament = '';
+  draft.group = '';
+  draft.tour = '';
+}
 </script>
 
 <template>
@@ -358,59 +388,73 @@ function onChangePageSize(val) {
 
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
-          <div class="row g-2 align-items-end mb-3">
-            <div class="col-12 col-md-4">
-              <input
-                v-model="search"
-                type="text"
-                class="form-control form-control-sm"
-                placeholder="Поиск по командам/турниру/группе/туру"
-                aria-label="Поиск"
-              />
+          <!-- Sticky controls on mobile: search, filters, toggle -->
+          <div class="sticky-controls">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="flex-grow-1 min-w-0">
+                <input
+                  v-model="search"
+                  type="text"
+                  class="form-control form-control-sm w-100"
+                  placeholder="Поиск по командам/турниру/группе/туру"
+                  aria-label="Поиск"
+                />
+              </div>
+              <div class="flex-shrink-0 d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  @click="openFilters"
+                >
+                  <i class="bi bi-sliders me-1" aria-hidden="true"></i>
+                  Фильтры
+                  <span
+                    v-if="activeFiltersCount"
+                    class="badge text-bg-secondary ms-1"
+                    >{{ activeFiltersCount }}</span
+                  >
+                </button>
+              </div>
             </div>
-            <div class="col-12 col-md-3">
-              <select
-                v-model="selectedTournament"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по соревнованию"
-              >
-                <option value="">Все соревнования</option>
-                <option v-for="t in tournamentOptions" :key="t" :value="t">
-                  {{ t }}
-                </option>
-              </select>
+            <!-- Active filter chips -->
+            <div
+              v-if="selectedTournament || selectedGroup || selectedTour"
+              class="filter-chips mt-2"
+            >
+              <span v-if="selectedTournament" class="chip">
+                {{ selectedTournament }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр соревнования"
+                  @click="selectedTournament = ''"
+                ></button>
+              </span>
+              <span v-if="selectedGroup" class="chip">
+                {{ selectedGroup }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр группы"
+                  @click="selectedGroup = ''"
+                ></button>
+              </span>
+              <span v-if="selectedTour" class="chip">
+                {{ selectedTour }}
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm"
+                  aria-label="Сбросить фильтр тура"
+                  @click="selectedTour = ''"
+                ></button>
+              </span>
             </div>
-            <div class="col-12 col-md-2">
-              <select
-                v-model="selectedGroup"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по группе"
-              >
-                <option value="">Все группы</option>
-                <option v-for="g in groupOptions" :key="g" :value="g">
-                  {{ g }}
-                </option>
-              </select>
-            </div>
-            <div class="col-12 col-md-2">
-              <select
-                v-model="selectedTour"
-                class="form-select form-select-sm"
-                aria-label="Фильтр по туру"
-              >
-                <option value="">Все туры</option>
-                <option v-for="tr in tourOptions" :key="tr" :value="tr">
-                  {{ tr }}
-                </option>
-              </select>
-            </div>
-            <div class="col-12 col-md-1">
-              <button
-                class="btn btn-outline-secondary btn-sm w-100"
-                @click="resetFilters"
-              >
-                Сбросить
-              </button>
+            <div class="visually-hidden" aria-live="polite">
+              Показано
+              {{
+                activeTab === 'home' ? filteredHome.length : filteredAway.length
+              }}
+              матчей
             </div>
           </div>
 
@@ -432,13 +476,17 @@ function onChangePageSize(val) {
           </div>
 
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
-          <div v-if="loading" class="text-center py-3">
-            <div class="spinner-border spinner-brand" role="status"></div>
+          <div v-if="loading" class="py-2">
+            <!-- Lightweight skeleton for better perceived performance on mobile -->
+            <div class="skeleton-line mb-2" style="width: 60%"></div>
+            <div class="skeleton-line mb-2" style="width: 85%"></div>
+            <div class="skeleton-line mb-2" style="width: 72%"></div>
+            <div class="skeleton-line mb-2" style="width: 90%"></div>
           </div>
 
           <template v-else>
             <div v-show="activeTab === 'home'">
-              <MatchesDayTiles :items="paginatedHome" />
+              <MatchesDayTiles :items="paginatedHome" mobileStyle="divider" />
               <p v-if="!filteredHome.length" class="mb-0">
                 Нет домашних матчей.
               </p>
@@ -451,7 +499,7 @@ function onChangePageSize(val) {
               />
             </div>
             <div v-show="activeTab === 'away'">
-              <MatchesDayTiles :items="paginatedAway" />
+              <MatchesDayTiles :items="paginatedAway" mobileStyle="divider" />
               <p v-if="!filteredAway.length" class="mb-0">
                 Нет матчей на выезде.
               </p>
@@ -466,6 +514,91 @@ function onChangePageSize(val) {
           </template>
         </div>
       </div>
+
+      <!-- Filters Modal -->
+      <div
+        ref="filtersModalRef"
+        class="modal fade"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div
+          class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down"
+        >
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 class="modal-title h5">Фильтры</h2>
+              <button
+                type="button"
+                class="btn-close"
+                aria-label="Закрыть"
+                @click="filtersModal?.hide()"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="f-tourn"
+                    >Соревнование</label
+                  >
+                  <select
+                    id="f-tourn"
+                    v-model="draft.tournament"
+                    class="form-select"
+                  >
+                    <option value="">Все соревнования</option>
+                    <option v-for="t in tournamentOptions" :key="t" :value="t">
+                      {{ t }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="f-group"
+                    >Группа</label
+                  >
+                  <select
+                    id="f-group"
+                    v-model="draft.group"
+                    class="form-select"
+                  >
+                    <option value="">Все группы</option>
+                    <option v-for="g in groupOptions" :key="g" :value="g">
+                      {{ g }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small text-muted" for="f-tour"
+                    >Тур</label
+                  >
+                  <select id="f-tour" v-model="draft.tour" class="form-select">
+                    <option value="">Все туры</option>
+                    <option v-for="tr in tourOptions" :key="tr" :value="tr">
+                      {{ tr }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="resetDraft"
+              >
+                Сбросить
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                @click="applyFilters"
+              >
+                Применить
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -476,6 +609,37 @@ export default { name: 'SchoolMatchesView' };
 
 <style scoped>
 /* Mobile paddings and gutters use global styles */
+
+.sticky-controls {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  /* subtle divider to distinguish from content while scrolling */
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.filter-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: #f8f9fa;
+  font-size: 0.875rem;
+}
+.filter-chips .btn-close-sm {
+  width: 0.65rem;
+  height: 0.65rem;
+}
 
 .legend {
   display: flex;

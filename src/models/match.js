@@ -21,6 +21,9 @@ Match.init(
     season_id: { type: DataTypes.UUID },
     team1_id: { type: DataTypes.UUID },
     team2_id: { type: DataTypes.UUID },
+    // Final score imported from external system (if available)
+    score_team1: { type: DataTypes.INTEGER, allowNull: true },
+    score_team2: { type: DataTypes.INTEGER, allowNull: true },
     schedule_locked_by_admin: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

@@ -26,8 +26,18 @@ export default {
 
   async sign(req, res) {
     try {
-      await documentService.sign(req.user, req.params.id);
+      const code = req.body?.code || '';
+      await documentService.signWithCode(req.user, req.params.id, code);
       res.json({ signed: true });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+
+  async sendCode(req, res) {
+    try {
+      await documentService.sendSignCode(req.user, req.params.id);
+      res.json({ message: 'sent' });
     } catch (err) {
       sendError(res, err);
     }

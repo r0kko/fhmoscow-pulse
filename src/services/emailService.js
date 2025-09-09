@@ -30,6 +30,7 @@ import { renderNormativeResultUpdatedEmail } from '../templates/normativeResultU
 import { renderNormativeResultRemovedEmail } from '../templates/normativeResultRemovedEmail.js';
 import { renderSignTypeSelectionEmail } from '../templates/signTypeSelectionEmail.js';
 import { renderDocumentAwaitingSignatureEmail } from '../templates/documentAwaitingSignatureEmail.js';
+import { renderDocumentSignCodeEmail } from '../templates/documentSignCodeEmail.js';
 import { renderDocumentCreatedEmail } from '../templates/documentCreatedEmail.js';
 import { renderDocumentSignedEmail } from '../templates/documentSignedEmail.js';
 import { renderDocumentRejectedEmail } from '../templates/documentRejectedEmail.js';
@@ -269,6 +270,11 @@ export async function sendDocumentAwaitingSignatureEmail(user, document) {
   await sendMail(user.email, subject, text, html, 'doc_awaiting_signature');
 }
 
+export async function sendDocumentSignCodeEmail(user, document, code) {
+  const { subject, text, html } = renderDocumentSignCodeEmail(document, code);
+  await sendMail(user.email, subject, text, html, 'doc_sign_code');
+}
+
 export async function sendMatchAgreementProposedEmail(user, event) {
   const { subject, text, html } = renderMatchAgreementProposedEmail(event);
   await sendMail(user.email, subject, text, html, 'match_proposed');
@@ -332,6 +338,7 @@ export default {
   sendDocumentSignedEmail,
   sendDocumentRejectedEmail,
   sendDocumentAwaitingSignatureEmail,
+  sendDocumentSignCodeEmail,
   sendMatchAgreementProposedEmail,
   sendMatchAgreementCounterProposedEmail,
   sendMatchAgreementApprovedEmail,

@@ -1027,6 +1027,15 @@ async function syncGames(actorId = null) {
         ground_id: groundIdByExt.get(g.stadium_id) || null,
         team1_id: teamIdByExt.get(g.team1_id) || null,
         team2_id: teamIdByExt.get(g.team2_id) || null,
+        // Import final score when available
+        score_team1:
+          typeof g.score_team1 === 'number'
+            ? g.score_team1
+            : g.score_team1 || null,
+        score_team2:
+          typeof g.score_team2 === 'number'
+            ? g.score_team2
+            : g.score_team2 || null,
       };
       const statusAlias = mapGameStatusAlias(g);
       const statusId = statusIdByAlias.get(statusAlias) || null;
@@ -1074,6 +1083,10 @@ async function syncGames(actorId = null) {
         updates.team1_id = desired.team1_id;
       if (local.team2_id !== desired.team2_id)
         updates.team2_id = desired.team2_id;
+      if (local.score_team1 !== desired.score_team1)
+        updates.score_team1 = desired.score_team1;
+      if (local.score_team2 !== desired.score_team2)
+        updates.score_team2 = desired.score_team2;
       const prevStatusId = local.game_status_id || null;
       if (prevStatusId !== statusId) updates.game_status_id = statusId;
       if (!local.scheduled_date && desired.date_start)
@@ -1121,6 +1134,14 @@ async function syncGames(actorId = null) {
           ground_id: groundIdByExt.get(g.stadium_id) || null,
           team1_id: teamIdByExt.get(g.team1_id) || null,
           team2_id: teamIdByExt.get(g.team2_id) || null,
+          score_team1:
+            typeof g.score_team1 === 'number'
+              ? g.score_team1
+              : g.score_team1 || null,
+          score_team2:
+            typeof g.score_team2 === 'number'
+              ? g.score_team2
+              : g.score_team2 || null,
           game_status_id: statusIdByAlias.get(mapGameStatusAlias(g)) || null,
           scheduled_date: g.date_start
             ? toMoscowDateOnlyString(moscowToUtc(g.date_start))

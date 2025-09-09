@@ -15,7 +15,12 @@ import {
 } from '../models/index.js';
 import * as Models from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
-import { applyFonts, applyFirstPageHeader, applyFooter } from '../utils/pdf.js';
+import {
+  applyFonts,
+  applyFirstPageHeader,
+  applyFooter,
+  applyESignStamp,
+} from '../utils/pdf.js';
 
 import fileService from './fileService.js';
 import emailService from './emailService.js';
@@ -611,10 +616,19 @@ async function buildPersonalDataConsentPdf(user, meta = {}) {
   const range = doc.bufferedPageRange();
   const barcodeText = meta.docId || null;
   const numberText = meta.number || null;
+  const esign = meta?.esign || null;
   for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(range.start + i);
-    // best-effort: render barcode if lib available, otherwise text
-
+    // E-signature stamp (if any)
+    if (esign) {
+      await applyESignStamp(doc, {
+        fio: `${fio(user)}`,
+        signedAt: esign.signedAt,
+        userId: user.id,
+        page: i + 1,
+        total: range.count,
+      });
+    }
     await applyFooter(doc, {
       page: i + 1,
       total: range.count,
@@ -1439,8 +1453,18 @@ async function buildElectronicInteractionAgreementPdf(user, meta = {}) {
   const range = doc.bufferedPageRange();
   const barcodeText = meta.docId || null;
   const numberText = meta.number || null;
+  const esign = meta?.esign || null;
   for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(range.start + i);
+    if (esign) {
+      await applyESignStamp(doc, {
+        fio: `${fio(user)}`,
+        signedAt: esign.signedAt,
+        userId: user.id,
+        page: i + 1,
+        total: range.count,
+      });
+    }
     await applyFooter(doc, {
       page: i + 1,
       total: range.count,
@@ -1484,14 +1508,14 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
           .replace(/\b([ВвКкСсУуОоИи])\s/g, `$1${NBSP}`)
           .replace(/\s№\s*/g, `${NBSP}№ `)
       : s;
-  const seg = (text, bold = false) => ({
+  const _seg = (text, bold = false) => ({
     text: protectTypography(text ?? ''),
     bold,
   });
 
-  const tokenize = (text) =>
+  const _tokenize = (text) =>
     (text || '').split(/(\s+)/).filter((t) => t.length > 0);
-  const measure = (doc, fonts, token, bold) => {
+  const _measure = (doc, fonts, token, bold) => {
     const prev = doc._font;
     try {
       doc.font(bold ? fonts.bold : fonts.regular);
@@ -1508,7 +1532,7 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
     }
     return w;
   };
-  const layoutJustifiedStyledParagraph = (doc, fonts, segments, width) => {
+  const _layoutJustifiedStyledParagraph = (doc, fonts, segments, width) => {
     const startX = doc.page.margins.left;
     let y = doc.y;
     const lines = [];
@@ -1524,7 +1548,7 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
     };
     const styledTokens = [];
     segments.forEach((s) => {
-      tokenize(s.text).forEach((t) =>
+      _tokenize(s.text).forEach((t) =>
         styledTokens.push({ text: t, bold: s.bold })
       );
     });
@@ -1536,7 +1560,7 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
         i++;
         continue;
       }
-      const tokenWidth = measure(doc, fonts, text, bold);
+      const tokenWidth = _measure(doc, fonts, text, bold);
       const maxWidth = width;
       const remaining = maxWidth - lineWidth;
       if (tokenWidth <= remaining || (!line.length && tokenWidth <= maxWidth)) {
@@ -1548,15 +1572,15 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
       } else {
         let cut = 1;
         let part = text.slice(0, cut);
-        let partWidth = measure(doc, fonts, part + '-', bold);
+        let partWidth = _measure(doc, fonts, part + '-', bold);
         while (cut < text.length && partWidth <= maxWidth) {
           cut++;
           part = text.slice(0, cut);
-          partWidth = measure(doc, fonts, part + '-', bold);
+          partWidth = _measure(doc, fonts, part + '-', bold);
         }
         cut = Math.max(1, cut - 1);
         part = text.slice(0, cut);
-        partWidth = measure(doc, fonts, part + '-', bold);
+        partWidth = _measure(doc, fonts, part + '-', bold);
         const rest = text.slice(cut);
         line.push({ text: part + '-', bold, width: partWidth });
         lineWidth += partWidth;
@@ -1716,199 +1740,225 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
   const isIP = taxAlias === 'IP_USN' || taxAlias === 'IP_NPD';
   const isNPD = taxAlias === 'NPD' || taxAlias === 'IP_NPD';
 
-  // Title block
+  // Right-aligned appendix block
   try {
-    doc.font(fonts.bold).fontSize(11).text('Приложение №1');
+    doc.font(fonts.bold).fontSize(10).text('Приложение №1', { align: 'right' });
   } catch {
-    doc.fontSize(11).text('Приложение №1');
+    doc.fontSize(10).text('Приложение №1', { align: 'right' });
   }
   try {
     doc.font(fonts.regular);
   } catch {
     /* empty */
   }
-  doc
-    .fontSize(10)
-    .text(
-      `к Договору возмездного оказания услуг\nофициальных детско-юношеских, любительских и иных спортивных соревнований,\nпроводимых под эгидой Федерации хоккея г. Москвы\nсезона ${seasonName} годов`,
-      { align: 'left' }
-    );
-  doc.moveDown(0.8);
-  const docDate = meta.documentDate
-    ? formatDateHuman(meta.documentDate)
-    : '«__» __________ ____ г.';
+  [
+    'к Договору возмездного оказания услуг',
+    'официальных детско-юношеских, любительских и иных спортивных соревнований,',
+    'проводимых под эгидой Федерации хоккея г. Москвы',
+    `сезона ${seasonName} годов`,
+  ].forEach((ln) => doc.text(ln, { align: 'right' }));
+  doc.moveDown(1.0);
+
+  // Centered statement with fixed date
+  const fixedDate = '«20» августа 2025 года';
   try {
     doc.font(fonts.bold).fontSize(12);
   } catch {
     doc.fontSize(12);
   }
-  doc.text(`Заявление № ${meta.number || ''} от ${docDate}`);
+  doc.text(`Заявление № ${meta.number || ''} от ${fixedDate}`.trim(), {
+    align: 'center',
+  });
   try {
-    doc.font(fonts.regular);
+    doc.font(fonts.regular).fontSize(10.5);
   } catch {
     /* empty */
   }
-  doc.moveDown(0.6);
-
-  // Purpose paragraph
-  layoutJustifiedStyledParagraph(
-    doc,
-    fonts,
-    [
-      seg(
-        'о присоединении к условиям договора оказания услуг по судейству хоккейных матчей официальных детско-юношеских, любительских и иных спортивных соревнований, проводимых под эгидой Федерации хоккея г. Москвы, '
-      ),
-      seg(`сезона ${seasonName} годов`, true),
-      seg(
-        ', утвержденного Президентом РОО «Федерация хоккея г. Москвы» «05» сентября 2024 г. и размещенного в телекоммуникационной сети «Интернет» по адресу referee.fhmoscow.com.'
-      ),
-    ],
-    contentWidth
-  );
-  doc.moveDown(0.6);
-
-  // Check options
-  doc.fontSize(11);
-  doc.text('Я, судья (отметить подходящее):');
-  const cb = (v) => (v ? '☒' : '☐');
-  doc.text(`${cb(isIP)}   индивидуальный предприниматель`);
   doc.text(
-    `${cb(isNPD)}   применяю специальный налоговый режим «Налог на профессиональный доход»`
+    'О присоединении к условиям договора оказания услуг по судейству хоккейных матчей',
+    { align: 'center' }
   );
-  doc.text(`${cb(!isCitizenRU)}   не являюсь гражданином Российской Федерации`);
   doc.moveDown(0.6);
 
-  // Personal data lines
-  const line = (label, value) =>
-    layoutJustifiedStyledParagraph(
-      doc,
-      fonts,
-      [seg(`${label}: `), seg(String(value || '—'), true)],
-      contentWidth
-    );
-  line(
-    'Фамилия, Имя, Отчество',
-    `${user.last_name} ${user.first_name}${user.patronymic ? ` ${user.patronymic}` : ''}`
-  );
-  line(
+  // Компактная таблица с автоматическим переносом и динамической высотой строк
+  const contentX = doc.page.margins.left;
+  const labelWidth = Math.min(180, Math.round(contentWidth * 0.35));
+  const valueWidth = contentWidth - labelWidth;
+  const rowH = 15;
+  const headerH = 17;
+  const drawRow = (y, label, value, isHeader = false) => {
+    const padX = 6;
+    const padY = isHeader ? 4 : 3;
+    try {
+      doc
+        .font(isHeader ? fonts.bold : fonts.regular)
+        .fontSize(isHeader ? 9.5 : 9);
+    } catch {
+      /* empty */
+    }
+    const labelBoxW = labelWidth - padX * 2;
+    const valueBoxW = valueWidth - padX * 2;
+    const lblH = doc.heightOfString(String(label ?? ''), {
+      width: labelBoxW,
+      align: 'left',
+    });
+    const valH = isHeader
+      ? doc.currentLineHeight(true)
+      : doc.heightOfString(String(value ?? '—'), {
+          width: valueBoxW,
+          align: 'left',
+        });
+    const innerH = Math.max(lblH, valH);
+    const baseH = isHeader ? headerH : rowH;
+    const rowHeight = Math.max(baseH, Math.ceil(innerH + padY * 2));
+    const yb = y + rowHeight;
+    // header background
+    if (isHeader) {
+      doc
+        .save()
+        .fillColor('#F2F4F7')
+        .rect(contentX, y, contentWidth, rowHeight)
+        .fill()
+        .restore();
+    }
+    // borders
+    doc
+      .save()
+      .lineWidth(0.5)
+      .strokeColor('#E5E7EB')
+      .rect(contentX, y, contentWidth, rowHeight)
+      .stroke();
+    if (!isHeader) {
+      doc
+        .moveTo(contentX + labelWidth, y)
+        .lineTo(contentX + labelWidth, yb)
+        .stroke();
+    }
+    doc.restore();
+    // draw text (wrapped) at fixed positions; restore cursor after
+    const savedX = doc.x;
+    const savedY = doc.y;
+    doc
+      .fillColor('#111827')
+      .text(String(label ?? ''), contentX + padX, y + padY, {
+        width: labelBoxW,
+        align: 'left',
+      });
+    if (!isHeader) {
+      try {
+        doc.font(fonts.regular).fontSize(9);
+      } catch {
+        /* empty */
+      }
+      doc
+        .fillColor('#111827')
+        .text(String(value ?? '—'), contentX + labelWidth + padX, y + padY, {
+          width: valueBoxW,
+          align: 'left',
+        });
+    }
+    doc.fillColor('black');
+    doc.x = savedX;
+    doc.y = savedY;
+    return yb;
+  };
+
+  let y = doc.y;
+  const fullName = `${user.last_name} ${user.first_name}${
+    user.patronymic ? ` ${user.patronymic}` : ''
+  }`.trim();
+  const statusChunks = [];
+  if (isIP) statusChunks.push('ИП');
+  if (isNPD) statusChunks.push('НПД');
+  const statusText = statusChunks.length ? statusChunks.join(' · ') : '—';
+  // 1) Судья
+  y = drawRow(y, 'Сведения о судье', ' ', true);
+  y = drawRow(y, 'ФИО', fullName);
+  y = drawRow(
+    y,
     'Дата рождения',
     user.birth_date
       ? new Date(user.birth_date).toLocaleDateString('ru-RU')
       : '—'
   );
-  doc.moveDown(0.2);
-
-  try {
-    doc.font(fonts.bold);
-  } catch {
-    /* empty */
-  }
-  doc.text(
+  y = drawRow(y, 'Статус', statusText || '—');
+  // 2) Документ (заголовок объединяем с правой ячейкой как значение одного ряда)
+  y = drawRow(
+    y,
+    'Документ',
     isCitizenRU
-      ? 'Паспорт РФ (действующий)'
-      : 'Документ, удостоверяющий личность'
+      ? 'Паспорт гражданина Российской Федерации'
+      : 'Документ, удостоверяющий личность',
+    false
   );
+  y = drawRow(y, 'Серия и номер', `${pSeries || '—'} ${pNumber || ''}`.trim());
+  y = drawRow(y, 'Кем выдан', pIssuer || '—');
+  y = drawRow(y, 'Код подразделения', pIssuerCode || '—');
+  y = drawRow(y, 'Дата выдачи', pIssueDate || '—');
+  // 3) Адреса
+  y = drawRow(y, 'Адреса', ' ', true);
+  y = drawRow(y, 'Адрес регистрации', `${regPostal}${regAddress}` || '—');
+  y = drawRow(y, 'Адрес проживания', `${resPostal}${resAddress}` || '—');
+  // 4) Контакты
+  y = drawRow(y, 'Контактные данные', ' ', true);
+  y = drawRow(y, 'Контактный телефон', phoneFormatted || '—');
+  y = drawRow(y, 'Адрес электронной почты', userDetails?.email || '—');
+  // 5) Идентификационные сведения
+  y = drawRow(y, 'Идентификационные сведения', ' ', true);
+  y = drawRow(y, 'ИНН', innNumber || '—');
+  y = drawRow(y, 'СНИЛС', snilsNumber || '—');
+  // Сведения о налогообложении (сжатый формат)
+  y = drawRow(y, 'Сведения о налогообложении', ' ', true);
+  y = drawRow(y, 'Тип налогообложения', taxation?.TaxationType?.name || '—');
+  {
+    const reg = taxation?.registration_date
+      ? new Date(taxation.registration_date).toLocaleDateString('ru-RU')
+      : null;
+    const ogrnText = taxation?.ogrn
+      ? reg
+        ? `${taxation.ogrn} от ${reg}`
+        : `${taxation.ogrn}`
+      : '—';
+    y = drawRow(y, 'ОГРНИП', ogrnText);
+  }
+  y = drawRow(y, 'ОКВЭД', taxation?.okved || '—');
+  // 6) Банк
+  y = drawRow(y, 'Банковские реквизиты', ' ', true);
+  y = drawRow(y, 'Расчетный счет (р/с)', bank?.number || '—');
+  y = drawRow(y, 'Наименование банка', bank?.bank_name || '—');
+  y = drawRow(y, 'Адрес банка', bank?.address || '—');
+  y = drawRow(y, 'ИНН банка', bank?.inn || '—');
+  y = drawRow(y, 'БИК', bank?.bic || '—');
+  y = drawRow(
+    y,
+    'Корреспондентский счет (к/с)',
+    bank?.correspondent_account || '—'
+  );
+  // Синхронизируем курсор с нижней границей таблицы для дальнейших блоков/футера
   try {
-    doc.font(fonts.regular);
+    doc.y = y;
   } catch {
     /* empty */
   }
-  line('Серия', pSeries || '—');
-  line('Номер', pNumber || '—');
-  line('Кем выдан', pIssuer || '—');
-  line('Код подразделения', pIssuerCode || '—');
-  line('Дата выдачи', pIssueDate);
-  doc.moveDown(0.2);
-  line(
-    'Адрес места жительства с индексом (регистрации)',
-    `${regPostal}${regAddress}` || '—'
-  );
-  line(
-    'Адрес фактического места жительства',
-    `${resPostal}${resAddress}` || '—'
-  );
-  doc.moveDown(0.2);
-  line('Номер мобильного телефона', phoneFormatted || '—');
-  line('E-mail', userDetails?.email || '—');
-  doc.moveDown(0.2);
-  line('ОГРНИП (если применимо)', taxation?.ogrn ? `№ ${taxation.ogrn}` : '—');
-  line('ИНН (TIN, выданный иностранным государством)', innNumber || '—');
-  line('Страховое свидетельство (СНИЛС)', snilsNumber || '—');
-  doc.moveDown(0.2);
-  try {
-    doc.font(fonts.bold);
-  } catch {
-    /* empty */
-  }
-  doc.text('Банковские реквизиты');
-  try {
-    doc.font(fonts.regular);
-  } catch {
-    /* empty */
-  }
-  line('Наименование банка', bank?.bank_name || '—');
-  line('Адрес банка', bank?.address || '—');
-  line('ИНН', bank?.inn || '—');
-  line('БИК', bank?.bic || '—');
-  line('к/с', bank?.correspondent_account || '—');
-  line('р/с', bank?.number || '—');
-  doc.moveDown(0.6);
 
-  // Declaration paragraph
-  layoutJustifiedStyledParagraph(
-    doc,
-    fonts,
-    [
-      seg(
-        'настоящим заявляю о своем полном и безоговорочном присоединении к Договору возмездного оказания услуг по судейству хоккейных матчей официальных детско-юношеских, любительских и иных спортивных соревнований, проводимых под эгидой Федерации хоккея г. Москвы в сезоне '
-      ),
-      seg(`${seasonName} годов`, true),
-      seg(
-        ', утвержденному Президентом РОО «Федерация хоккея г. Москвы» «05» сентября 2024 г. и размещённому в телекоммуникационной сети «Интернет» по адресу: http://referee.fhmoscow.com (далее – Договор). Подтверждаю, что с условиями Договора ознакомлен, полностью согласен без каких-либо изъятий или ограничений и принимаю требования Договора в полном объеме.'
-      ),
-    ],
-    contentWidth
-  );
-  doc.moveDown(1);
-
-  // Signature note area
-  try {
-    doc.save().lineWidth(0.8).strokeColor('#D0D5DD');
-    const x = doc.page.margins.left;
-    const y = doc.y;
-    const w = contentWidth;
-    const h = 36;
-    doc.roundedRect(x, y, w, h, 8).stroke();
-    doc.restore();
-    const note =
-      'Подпись Исполнителя и отметка Заказчика в системе электронного документооборота';
-    try {
-      doc.font('SB-Italic');
-    } catch {
-      /* empty */
-    }
-    doc
-      .fillColor('#555555')
-      .fontSize(10)
-      .text(note, x + 10, y + 10, {
-        width: w - 20,
-        align: 'left',
-      });
-    doc.fillColor('black');
-    doc.moveDown(3);
-  } catch {
-    doc.text(
-      'Подпись Исполнителя и отметка Заказчика в системе электронного документооборота'
-    );
-    doc.moveDown(1);
-  }
+  // Блок для отметки о подписании скрыт (зарезервировано для будущего)
 
   // Footer across pages
   const range = doc.bufferedPageRange();
   const barcodeText = meta.docId || null;
   const numberText = meta.number || null;
+  const esign = meta?.esign || null;
   for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(range.start + i);
+    if (esign) {
+      await applyESignStamp(doc, {
+        fio: `${fio(user)}`,
+        signedAt: esign.signedAt,
+        userId: user.id,
+        page: i + 1,
+        total: range.count,
+      });
+    }
     await applyFooter(doc, {
       page: i + 1,
       total: range.count,
@@ -1981,37 +2031,52 @@ async function listByUser(userId) {
     order: [['created_at', 'DESC']],
   });
   return Promise.all(
-    docs.map(async (d) => ({
-      id: d.id,
-      number: d.number,
-      name: d.name,
-      description: d.description,
-      documentDate: d.document_date,
-      documentType: d.DocumentType
-        ? {
-            name: d.DocumentType.name,
-            alias: d.DocumentType.alias,
-            generated: d.DocumentType.generated,
-          }
-        : null,
-      signType: d.SignType
-        ? { name: d.SignType.name, alias: d.SignType.alias }
-        : null,
-      status: d.DocumentStatus
-        ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
-        : null,
-      file: d.File
+    docs.map(async (d) => {
+      // Build a friendly download name like "<DocumentType> · №<number>"
+      const typeName = d.DocumentType ? d.DocumentType.name : 'Документ';
+      const baseName = `${typeName} · №${d.number}`.replace(
+        /[\\/:*?"<>|]/g,
+        ' '
+      );
+      /* istanbul ignore next */ const ext = d.File
+        ? path.extname(d.File.key)
+        : '';
+      const downloadName = `${baseName}${ext || ''}`;
+      /* istanbul ignore next */ const filePayload = d.File
         ? {
             id: d.File.id,
-            url: await fileService.getDownloadUrl(d.File),
+            url: await fileService.getDownloadUrl(d.File, {
+              filename: downloadName,
+            }),
           }
-        : null,
-      signs: d.DocumentUserSigns.map((s) => ({
-        id: s.id,
-        userId: s.user_id,
-        createdAt: s.created_at,
-      })),
-    }))
+        : null;
+      return {
+        id: d.id,
+        number: d.number,
+        name: d.name,
+        description: d.description,
+        documentDate: d.document_date,
+        documentType: d.DocumentType
+          ? {
+              name: d.DocumentType.name,
+              alias: d.DocumentType.alias,
+              generated: d.DocumentType.generated,
+            }
+          : null,
+        signType: d.SignType
+          ? { name: d.SignType.name, alias: d.SignType.alias }
+          : null,
+        status: d.DocumentStatus
+          ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
+          : null,
+        file: filePayload,
+        signs: d.DocumentUserSigns.map((s) => ({
+          id: s.id,
+          userId: s.user_id,
+          createdAt: s.created_at,
+        })),
+      };
+    })
   );
 }
 
@@ -2086,7 +2151,12 @@ async function listAll() {
 }
 
 async function sign(user, documentId) {
-  const doc = await Document.findByPk(documentId);
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentStatus, attributes: ['alias'] },
+      { model: SignType, attributes: ['alias'] },
+    ],
+  });
   if (!doc) {
     throw new ServiceError('document_not_found', 404);
   }
@@ -2105,6 +2175,12 @@ async function sign(user, documentId) {
   const userSign = await UserSignType.findOne({ where: { user_id: user.id } });
   if (!userSign || userSign.sign_type_id !== doc.sign_type_id) {
     throw new ServiceError('sign_type_mismatch', 400);
+  }
+  // Only allow SIMPLE_ELECTRONIC and AWAITING_SIGNATURE for user-initiated sign
+  if (doc.SignType?.alias === 'SIMPLE_ELECTRONIC') {
+    if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE') {
+      throw new ServiceError('document_status_invalid', 400);
+    }
   }
   await DocumentUserSign.create({
     document_id: documentId,
@@ -2145,6 +2221,122 @@ async function sign(user, documentId) {
         updated_by: user.id,
       });
     }
+  }
+}
+
+async function sendSignCode(user, documentId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentStatus, attributes: ['alias'] },
+      { model: SignType, attributes: ['alias', 'name'] },
+      { model: User, as: 'recipient', attributes: ['email'] },
+    ],
+  });
+  if (!doc) throw new ServiceError('document_not_found', 404);
+  if (doc.recipient_id !== user.id) throw new ServiceError('forbidden', 403);
+  if (doc.SignType?.alias !== 'SIMPLE_ELECTRONIC')
+    throw new ServiceError('unsupported_sign_type', 400);
+  if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE')
+    throw new ServiceError('document_status_invalid', 400);
+  const payload = { id: doc.id, number: doc.number, name: doc.name };
+  const emailVerificationService = (
+    await import('./emailVerificationService.js')
+  ).default;
+  await emailVerificationService.sendCode(user, 'doc-sign', {
+    document: payload,
+  });
+}
+
+async function signWithCode(user, documentId, code) {
+  if (!/^[0-9]{6}$/.test(String(code || ''))) {
+    throw new ServiceError('invalid_code', 400);
+  }
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentStatus, attributes: ['alias', 'name', 'id'] },
+      { model: SignType, attributes: ['alias', 'id'] },
+      {
+        model: User,
+        as: 'recipient',
+        attributes: ['id', 'last_name', 'first_name', 'patronymic', 'email'],
+      },
+      { model: DocumentType, attributes: ['alias', 'name', 'generated'] },
+    ],
+  });
+  if (!doc) throw new ServiceError('document_not_found', 404);
+  if (doc.recipient_id !== user.id) throw new ServiceError('forbidden', 403);
+  if (doc.SignType?.alias !== 'SIMPLE_ELECTRONIC')
+    throw new ServiceError('unsupported_sign_type', 400);
+  if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE')
+    throw new ServiceError('document_status_invalid', 400);
+  const { verifyCodeOnly } = await import('./emailVerificationService.js');
+  await verifyCodeOnly(user, code);
+  // proceed with signing and stamping
+  await sign(user, documentId);
+  // After status update and sign record creation, regenerate with stamp
+  await regenerateSigned(documentId, user.id);
+}
+
+async function regenerateSigned(documentId, actorId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentType, attributes: ['name', 'generated', 'alias'] },
+      { model: DocumentStatus, attributes: ['alias'] },
+      {
+        model: User,
+        as: 'recipient',
+        attributes: [
+          'id',
+          'last_name',
+          'first_name',
+          'patronymic',
+          'birth_date',
+        ],
+      },
+    ],
+  });
+  if (!doc) throw new ServiceError('document_not_found', 404);
+  if (!doc.DocumentType?.generated)
+    throw new ServiceError('document_type_not_generated', 400);
+  // Fetch last user sign record to place stamp
+  const lastSign = await DocumentUserSign.findOne({
+    where: { document_id: documentId },
+    order: [['created_at', 'DESC']],
+  });
+  if (!lastSign) throw new ServiceError('document_not_signed', 400);
+  const esign = {
+    signId: lastSign.id,
+    signedAt: lastSign.created_at,
+    signer: doc.recipient,
+  };
+  let pdf;
+  const metaCommon = {
+    docId: doc.id,
+    number: doc.number,
+    documentDate: doc.document_date,
+    esign,
+  };
+  if (doc.DocumentType.alias === 'PERSONAL_DATA_CONSENT') {
+    pdf = await buildPersonalDataConsentPdf(doc.recipient, metaCommon);
+  } else if (doc.DocumentType.alias === 'ELECTRONIC_INTERACTION_AGREEMENT') {
+    pdf = await buildElectronicInteractionAgreementPdf(
+      doc.recipient,
+      metaCommon
+    );
+  } else if (doc.DocumentType.alias === 'REFEREE_CONTRACT_APPLICATION') {
+    pdf = await buildRefereeContractApplicationPdf(doc.recipient, metaCommon);
+  } else {
+    pdf = await createPdfBuffer(doc.name);
+  }
+  const newFile = await fileService.saveGeneratedPdf(
+    pdf,
+    `${doc.name}.pdf`,
+    actorId
+  );
+  const oldFileId = doc.file_id;
+  await doc.update({ file_id: newFile.id, updated_by: actorId });
+  if (oldFileId) {
+    await fileService.removeFile(oldFileId);
   }
 }
 
@@ -2271,15 +2463,31 @@ async function regenerate(documentId, actorId) {
   if (!doc.DocumentType?.generated) {
     throw new ServiceError('document_type_not_generated', 400);
   }
-  if (!['CREATED', 'AWAITING_SIGNATURE'].includes(doc.DocumentStatus?.alias)) {
+  if (
+    !['CREATED', 'AWAITING_SIGNATURE', 'SIGNED'].includes(
+      doc.DocumentStatus?.alias
+    )
+  ) {
     throw new ServiceError('document_status_invalid', 400);
   }
   let pdf;
+  const esign =
+    doc.DocumentStatus?.alias === 'SIGNED'
+      ? await (async () => {
+          const lastSign = await DocumentUserSign.findOne({
+            where: { document_id: documentId },
+            order: [['created_at', 'DESC']],
+          });
+          if (!lastSign) return null;
+          return { signId: lastSign.id, signedAt: lastSign.created_at };
+        })()
+      : null;
   if (doc.DocumentType.alias === 'PERSONAL_DATA_CONSENT') {
     pdf = await buildPersonalDataConsentPdf(doc.recipient, {
       docId: doc.id,
       number: doc.number,
       documentDate: doc.document_date,
+      esign,
     });
     /* istanbul ignore next */
   } else if (doc.DocumentType.alias === 'ELECTRONIC_INTERACTION_AGREEMENT') {
@@ -2287,12 +2495,14 @@ async function regenerate(documentId, actorId) {
       docId: doc.id,
       number: doc.number,
       documentDate: doc.document_date,
+      esign,
     });
   } else if (doc.DocumentType.alias === 'REFEREE_CONTRACT_APPLICATION') {
     pdf = await buildRefereeContractApplicationPdf(doc.recipient, {
       docId: doc.id,
       number: doc.number,
       documentDate: doc.document_date,
+      esign,
     });
   } else {
     pdf = await createPdfBuffer(doc.name);
@@ -2446,12 +2656,21 @@ export default {
   requestSignature,
   uploadSignedFile,
   regenerate,
+  sendSignCode,
+  signWithCode,
   generateInitial,
   update,
   remove,
   async createContractApplicationDocument(userId, actorId) {
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'last_name', 'first_name', 'patronymic', 'birth_date'],
+      attributes: [
+        'id',
+        'email',
+        'last_name',
+        'first_name',
+        'patronymic',
+        'birth_date',
+      ],
     });
     if (!user) throw new ServiceError('user_not_found', 404);
 
@@ -2461,8 +2680,8 @@ export default {
         attributes: ['id', 'name', 'alias', 'generated'],
       }),
       DocumentStatus.findOne({
-        where: { alias: 'CREATED' },
-        attributes: ['id'],
+        where: { alias: 'AWAITING_SIGNATURE' },
+        attributes: ['id', 'name', 'alias'],
       }),
       UserSignType.findOne({
         where: { user_id: user.id },
@@ -2475,6 +2694,12 @@ export default {
     ]);
     if (!docType) throw new ServiceError('document_type_not_found', 404);
     if (!status) throw new ServiceError('document_status_not_found', 500);
+
+    // Guard: only one contract per user
+    const exists = await Document.findOne({
+      where: { recipient_id: user.id, document_type_id: docType.id },
+    });
+    if (exists) throw new ServiceError('document_exists', 400);
 
     const signTypeId = userSign?.SignType?.id || simpleSignType?.id;
     if (!signTypeId) throw new ServiceError('sign_type_not_found', 500);
@@ -2512,6 +2737,21 @@ export default {
         { model: SignType, attributes: ['name', 'alias'] },
       ],
     });
+    // Notify recipient that the document awaits signature
+    try {
+      if (user?.email) {
+        await emailService.sendDocumentAwaitingSignatureEmail(user, {
+          id: outDoc.id,
+          number: outDoc.number,
+          name: outDoc.name,
+          SignType: outDoc.SignType
+            ? { alias: outDoc.SignType.alias, name: outDoc.SignType.name }
+            : null,
+        });
+      }
+    } catch (_e) {
+      // Do not fail the request if email sending fails
+    }
     return {
       document: {
         id: outDoc.id,
@@ -2528,6 +2768,7 @@ export default {
         signType: outDoc.SignType
           ? { name: outDoc.SignType.name, alias: outDoc.SignType.alias }
           : null,
+        status: status ? { name: status.name, alias: status.alias } : null,
       },
       file: regenerated.file,
     };

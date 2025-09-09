@@ -406,3 +406,7 @@ npm run dev
 ```
 
 Running `docker-compose up` will also build the frontend image and serve it on port `5173`.
+- Admin · Documents/Contracts
+  - Contracts tab now supports search and filters (signature type, status, only with contract) for faster navigation.
+  - Creating a referee contract sets status to “AWAITING_SIGNATURE” immediately and emails the recipient.
+  - The precheck modal shows all normative types for the active season with best results and measurement units.

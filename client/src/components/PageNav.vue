@@ -20,16 +20,18 @@ function updatePageSize(e) {
 </script>
 
 <template>
-  <nav class="mt-3 d-flex align-items-center justify-content-between">
-    <select
-      :value="pageSize"
-      class="form-select w-auto"
-      :class="{ 'form-select-sm': small }"
-      aria-label="Количество на странице"
-      @change="updatePageSize"
-    >
-      <option v-for="s in sizes" :key="s" :value="s">{{ s }}</option>
-    </select>
+  <nav class="mt-3 page-nav d-flex align-items-center justify-content-between">
+    <div class="page-size">
+      <select
+        :value="pageSize"
+        class="form-select w-auto"
+        :class="{ 'form-select-sm': small }"
+        aria-label="Количество на странице"
+        @change="updatePageSize"
+      >
+        <option v-for="s in sizes" :key="s" :value="s">{{ s }}</option>
+      </select>
+    </div>
     <Pagination
       :model-value="page"
       :total-pages="totalPages"
@@ -40,4 +42,10 @@ function updatePageSize(e) {
 
 <style scoped>
 /* Inherits brand pagination styles */
+@media (max-width: 575.98px) {
+  /* Hide page-size selector on narrow screens to reduce clutter */
+  .page-nav .page-size {
+    display: none;
+  }
+}
 </style>

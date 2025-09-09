@@ -25,6 +25,9 @@ const error = ref('');
 const penalties = ref([]);
 const penaltiesLoading = ref(true);
 const penaltiesError = ref('');
+const hasPenalties = computed(
+  () => Array.isArray(penalties.value) && penalties.value.length > 0
+);
 
 // Staff of both teams
 const homeStaff = ref([]);
@@ -529,7 +532,7 @@ const penaltiesDisabled = computed(
 
       <!-- Penalties block -->
       <div
-        v-if="!penaltiesDisabled"
+        v-if="!penaltiesDisabled && hasPenalties"
         class="card section-card tile fade-in shadow-sm mb-3"
       >
         <div class="card-body">

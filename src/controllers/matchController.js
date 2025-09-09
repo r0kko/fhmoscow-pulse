@@ -127,6 +127,8 @@ export async function get(req, res, next) {
         'team2_id',
         'season_id',
         'stage_id',
+        'score_team1',
+        'score_team2',
         'schedule_locked_by_admin',
         'scheduled_date',
       ],
@@ -185,6 +187,8 @@ export async function get(req, res, next) {
         scheduled_date: m.scheduled_date || null,
         team1_id: m.team1_id,
         team2_id: m.team2_id,
+        score_team1: m.score_team1 ?? null,
+        score_team2: m.score_team2 ?? null,
         ground: m.Ground?.name || null,
         ground_details: m.Ground
           ? {

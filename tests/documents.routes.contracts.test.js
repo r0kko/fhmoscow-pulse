@@ -12,6 +12,7 @@ jest.unstable_mockModule('../src/middlewares/authorize.js', () => ({
 
 const listJudgesMock = jest.fn();
 const precheckMock = jest.fn();
+const generateMock = jest.fn();
 jest.unstable_mockModule(
   '../src/controllers/documentContractAdminController.js',
   () => ({
@@ -19,6 +20,7 @@ jest.unstable_mockModule(
     default: {
       listJudges: (...args) => listJudgesMock(...args),
       precheck: (...args) => precheckMock(...args),
+      generateApplication: (...args) => generateMock(...args),
     },
   })
 );
@@ -41,6 +43,9 @@ beforeEach(() => {
   precheckMock
     .mockReset()
     .mockImplementation((_req, res) => res.json({ precheck: { ok: true } }));
+  generateMock
+    .mockReset()
+    .mockImplementation((_req, res) => res.json({ ok: true }));
 });
 
 test('GET /documents/admin/contracts/judges route exists and returns json', async () => {
@@ -59,4 +64,13 @@ test('GET /documents/admin/contracts/judges/:id/precheck route exists and return
   await handler({ params: { id: 'u1' } }, res);
   expect(captured).toEqual({ precheck: { ok: true } });
   expect(precheckMock).toHaveBeenCalled();
+});
+
+test('POST /documents/admin/contracts/judges/:id/application route exists and returns json', async () => {
+  const handler = findRoute('/admin/contracts/judges/:id/application', 'post');
+  let captured;
+  const res = { json: (p) => (captured = p) };
+  await handler({ params: { id: 'u1' } }, res);
+  expect(captured).toEqual({ ok: true });
+  expect(generateMock).toHaveBeenCalled();
 });

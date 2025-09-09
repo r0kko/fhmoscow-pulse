@@ -173,6 +173,8 @@ async function listUpcomingLocal(userId, options) {
       'team1_id',
       'team2_id',
       'ground_id',
+      'score_team1',
+      'score_team2',
       'scheduled_date',
     ],
     where,
@@ -305,6 +307,8 @@ async function listUpcomingLocal(userId, options) {
         team1: m.HomeTeam?.name || null,
         team2: m.AwayTeam?.name || null,
         is_home: teamIds.includes(m.team1_id),
+        score_team1: m.score_team1 ?? null,
+        score_team2: m.score_team2 ?? null,
         tournament: m.Tournament?.name || null,
         group: m.TournamentGroup?.name || null,
         tour: m.Tour?.name || null,
@@ -398,6 +402,8 @@ async function listPast(userId, options) {
       stadium: g.Stadium?.name || null,
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
+      score_team1: g.score_team1 ?? null,
+      score_team2: g.score_team2 ?? null,
       broadcast_links: [
         extractFirstUrl(g.broadcast),
         extractFirstUrl(g.broadcast2),
@@ -426,6 +432,12 @@ async function listPast(userId, options) {
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
       is_home: extIds.includes(Number(g.team1_id)),
+      is_away: extIds.includes(Number(g.team2_id)),
+      is_both_teams:
+        extIds.includes(Number(g.team1_id)) &&
+        extIds.includes(Number(g.team2_id)),
+      score_team1: g.score_team1 ?? null,
+      score_team2: g.score_team2 ?? null,
       broadcast_links: [
         extractFirstUrl(g.broadcast),
         extractFirstUrl(g.broadcast2),
@@ -486,6 +498,8 @@ async function listPastLocal(userId, options) {
       'team2_id',
       'ground_id',
       'season_id',
+      'score_team1',
+      'score_team2',
       'scheduled_date',
     ],
     where,
@@ -534,6 +548,12 @@ async function listPastLocal(userId, options) {
       stadium: m.Ground?.name || null,
       team1: m.HomeTeam?.name || null,
       team2: m.AwayTeam?.name || null,
+      score_team1: m.score_team1 ?? null,
+      score_team2: m.score_team2 ?? null,
+      is_home: teamIds.includes(m.team1_id),
+      is_away: teamIds.includes(m.team2_id),
+      is_both_teams:
+        teamIds.includes(m.team1_id) && teamIds.includes(m.team2_id),
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,
@@ -573,6 +593,11 @@ async function listPastLocal(userId, options) {
       tour: m.Tour?.name || null,
       season_id: m.season_id || null,
       is_home: teamIds.includes(m.team1_id),
+      is_away: teamIds.includes(m.team2_id),
+      is_both_teams:
+        teamIds.includes(m.team1_id) && teamIds.includes(m.team2_id),
+      score_team1: m.score_team1 ?? null,
+      score_team2: m.score_team2 ?? null,
       scheduled_date: m.scheduled_date || null,
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }

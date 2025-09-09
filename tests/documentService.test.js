@@ -235,3 +235,80 @@ test('uploadSignedFile updates document and notifies recipient', async () => {
     expect.objectContaining({ id: 'd1', number: '25.08/4' })
   );
 });
+
+test('createContractApplicationDocument sets AWAITING_SIGNATURE and emails recipient', async () => {
+  // Mock dependencies
+  findUserByPkMock.mockResolvedValueOnce({
+    id: 'u1',
+    email: 'user@example.com',
+    last_name: 'L',
+    first_name: 'F',
+    patronymic: 'P',
+  });
+  // DocumentType
+  const findDocType = jest.fn().mockResolvedValue({
+    id: 'type1',
+    name: 'REFEREE_CONTRACT',
+    alias: 'REFEREE_CONTRACT_APPLICATION',
+    generated: true,
+  });
+  // Swap DocumentType.findOne for this test
+  const { DocumentType } = await import('../src/models/index.js');
+  DocumentType.findOne = findDocType;
+
+  // Status AWAITING_SIGNATURE
+  findOneStatusMock.mockImplementation(({ where: { alias } }) =>
+    Promise.resolve({ id: alias, name: alias, alias })
+  );
+
+  // Sign type: SIMPLE_ELECTRONIC
+  findUserSignTypeMock.mockResolvedValueOnce({
+    user_id: 'u1',
+    SignType: { id: 'sign1', alias: 'SIMPLE_ELECTRONIC' },
+  });
+
+  // File save
+  const { default: fileService } = await import(
+    '../src/services/fileService.js'
+  );
+  fileService.saveGeneratedPdf = jest
+    .fn()
+    .mockResolvedValue({ id: 'file1', key: 'k' });
+
+  // Document.create
+  createMock.mockResolvedValueOnce({
+    id: 'doc1',
+    name: 'REFEREE_CONTRACT',
+    number: '25.09/1',
+  });
+  // FindByPk after regenerate
+  findByPkMock.mockResolvedValueOnce({
+    id: 'doc1',
+    number: '25.09/1',
+    name: 'REFEREE_CONTRACT',
+    DocumentType: {
+      name: 'REFEREE_CONTRACT',
+      alias: 'REFEREE_CONTRACT_APPLICATION',
+      generated: true,
+    },
+    SignType: { name: 'Простая ЭП', alias: 'SIMPLE_ELECTRONIC' },
+  });
+
+  const { default: service } = await import(
+    '../src/services/documentService.js'
+  );
+  const res = await service.createContractApplicationDocument('u1', 'adm');
+
+  expect(res.document.status).toEqual({
+    name: 'AWAITING_SIGNATURE',
+    alias: 'AWAITING_SIGNATURE',
+  });
+  expect(sendAwaitingEmailMock).toHaveBeenCalledWith(
+    expect.objectContaining({ email: 'user@example.com' }),
+    expect.objectContaining({
+      id: 'doc1',
+      number: '25.09/1',
+      name: 'REFEREE_CONTRACT',
+    })
+  );
+});

@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api.js';
@@ -11,6 +11,7 @@ import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
 import DocumentCreateModal from '../components/DocumentCreateModal.vue';
 import ContractPrecheckModal from '../components/ContractPrecheckModal.vue';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -48,6 +49,29 @@ const usersError = ref('');
 const contractsJudges = ref([]);
 const contractsLoading = ref(false);
 const contractsError = ref('');
+const contractFilters = reactive({
+  search: '',
+  signType: '',
+  status: '',
+  onlyWithContract: false,
+});
+
+const contractSignTypes = computed(() => {
+  const map = new Map();
+  contractsJudges.value.forEach((u) => {
+    if (u.signType?.alias) map.set(u.signType.alias, u.signType.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+const contractStatuses = computed(() => {
+  const map = new Map();
+  contractsJudges.value.forEach((u) => {
+    const st = u.contract?.status;
+    if (st?.alias) map.set(st.alias, st.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
 
 const actionId = ref('');
 const actionError = ref('');
@@ -122,6 +146,9 @@ watch(users, () => {
 onMounted(() => {
   const saved = localStorage.getItem('adminDocFilters');
   if (saved) Object.assign(filters, JSON.parse(saved));
+  const savedContracts = localStorage.getItem('adminContractsFilters');
+  if (savedContracts)
+    Object.assign(contractFilters, JSON.parse(savedContracts));
   loadDocuments();
   loadUsers();
   loadSignTypes();
@@ -153,6 +180,13 @@ watch(
   (val) => {
     tab.value = ['signatures', 'contracts'].includes(val) ? val : 'documents';
   }
+);
+
+// Persist contract filters locally for admin UX continuity
+watch(
+  contractFilters,
+  (val) => localStorage.setItem('adminContractsFilters', JSON.stringify(val)),
+  { deep: true }
 );
 
 async function requestSignature(doc) {
@@ -329,10 +363,36 @@ async function loadContractsJudges() {
   }
 }
 
+const filteredContracts = computed(() => {
+  const q = contractFilters.search.trim().toLowerCase();
+  return contractsJudges.value.filter((u) => {
+    if (contractFilters.onlyWithContract && !u.contract) return false;
+    if (
+      contractFilters.signType &&
+      (u.signType?.alias || '') !== contractFilters.signType
+    )
+      return false;
+    if (
+      contractFilters.status &&
+      (u.contract?.status?.alias || '') !== contractFilters.status
+    )
+      return false;
+    if (q) {
+      const fio =
+        `${u.lastName} ${u.firstName} ${u.patronymic || ''}`.toLowerCase();
+      if (!fio.includes(q)) return false;
+    }
+    return true;
+  });
+});
+
 const pageSizeContracts = ref(loadPageSize('adminContractsPageSize', 10));
 const currentPageContracts = ref(1);
 const totalPagesContracts = computed(() =>
-  Math.max(1, Math.ceil(contractsJudges.value.length / pageSizeContracts.value))
+  Math.max(
+    1,
+    Math.ceil(filteredContracts.value.length / pageSizeContracts.value)
+  )
 );
 watch(pageSizeContracts, () => {
   currentPageContracts.value = 1;
@@ -340,9 +400,9 @@ watch(pageSizeContracts, () => {
 });
 const pagedContracts = computed(() => {
   const start = (currentPageContracts.value - 1) * pageSizeContracts.value;
-  return contractsJudges.value.slice(start, start + pageSizeContracts.value);
+  return filteredContracts.value.slice(start, start + pageSizeContracts.value);
 });
-watch(contractsJudges, () => {
+watch([contractsJudges, filteredContracts], () => {
   if (currentPageContracts.value > totalPagesContracts.value)
     currentPageContracts.value = totalPagesContracts.value;
 });
@@ -350,14 +410,12 @@ watch(contractsJudges, () => {
 
 <template>
   <div class="container mt-4">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <RouterLink to="/admin">Администрирование</RouterLink>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Документы</li>
-      </ol>
-    </nav>
+    <Breadcrumbs
+      :items="[
+        { label: 'Администрирование', to: '/admin' },
+        { label: 'Документы' },
+      ]"
+    />
     <h1 class="mb-3">Документы</h1>
 
     <div class="mb-4">
@@ -709,6 +767,62 @@ watch(contractsJudges, () => {
       <BrandSpinner v-else-if="contractsLoading" label="Загрузка" />
       <div v-else class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
+          <div class="row g-2 mb-3 align-items-center">
+            <div class="col-12 col-sm-5">
+              <input
+                v-model="contractFilters.search"
+                type="search"
+                class="form-control"
+                placeholder="Поиск по ФИО"
+                aria-label="Поиск по ФИО"
+              />
+            </div>
+            <div class="col-6 col-sm-3">
+              <select
+                v-model="contractFilters.signType"
+                class="form-select"
+                aria-label="Фильтр по типу подписи"
+              >
+                <option value="">Все подписи</option>
+                <option
+                  v-for="s in contractSignTypes"
+                  :key="s.alias"
+                  :value="s.alias"
+                >
+                  {{ s.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-6 col-sm-3">
+              <select
+                v-model="contractFilters.status"
+                class="form-select"
+                aria-label="Фильтр по статусу договора"
+              >
+                <option value="">Все статусы</option>
+                <option
+                  v-for="s in contractStatuses"
+                  :key="s.alias"
+                  :value="s.alias"
+                >
+                  {{ s.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-12 col-sm-1 d-flex align-items-center">
+              <div class="form-check ms-sm-2">
+                <input
+                  id="onlyWithContract"
+                  class="form-check-input"
+                  type="checkbox"
+                  v-model="contractFilters.onlyWithContract"
+                />
+                <label class="form-check-label" for="onlyWithContract"
+                  >Только с договором</label
+                >
+              </div>
+            </div>
+          </div>
           <div class="table-responsive d-none d-sm-block">
             <table class="table align-middle mb-0">
               <thead>
@@ -730,7 +844,18 @@ watch(contractsJudges, () => {
                   </td>
                   <td>{{ u.signType ? u.signType.name : '—' }}</td>
                   <td>
+                    <template v-if="u.contract">
+                      <span
+                        class="badge text-bg-secondary me-2"
+                        v-if="u.contract.number"
+                        >№ {{ u.contract.number }}</span
+                      >
+                      <span class="text-muted">{{
+                        u.contract.status?.name || 'Создан'
+                      }}</span>
+                    </template>
                     <button
+                      v-else
                       class="btn btn-sm btn-primary"
                       @click="openContractPrecheck(u)"
                       :aria-label="`Сформировать договор для ${u.lastName} ${u.firstName}`"
@@ -740,7 +865,7 @@ watch(contractsJudges, () => {
                     </button>
                   </td>
                 </tr>
-                <tr v-if="!contractsJudges.length">
+                <tr v-if="!filteredContracts.length">
                   <td colspan="4" class="p-0">
                     <EmptyState
                       icon="bi-people"
@@ -753,7 +878,7 @@ watch(contractsJudges, () => {
             </table>
           </div>
 
-          <div v-if="contractsJudges.length" class="d-block d-sm-none">
+          <div v-if="filteredContracts.length" class="d-block d-sm-none">
             <div v-for="u in pagedContracts" :key="u.id" class="card mb-2">
               <div class="card-body">
                 <h3 class="h6 mb-1">
@@ -766,7 +891,16 @@ watch(contractsJudges, () => {
                 <p class="mb-2 small">
                   Подпись: <strong>{{ u.signType?.name || '—' }}</strong>
                 </p>
+                <div v-if="u.contract" class="d-flex align-items-center gap-2">
+                  <span class="badge text-bg-secondary" v-if="u.contract.number"
+                    >№ {{ u.contract.number }}</span
+                  >
+                  <span class="text-muted small">{{
+                    u.contract.status?.name || 'Создан'
+                  }}</span>
+                </div>
                 <button
+                  v-else
                   class="btn btn-sm btn-primary w-100"
                   @click="openContractPrecheck(u)"
                   :aria-label="`Сформировать договор для ${u.lastName} ${u.firstName}`"
@@ -780,7 +914,7 @@ watch(contractsJudges, () => {
         </div>
       </div>
       <PageNav
-        v-if="contractsJudges.length"
+        v-if="filteredContracts.length"
         v-model:page="currentPageContracts"
         v-model:page-size="pageSizeContracts"
         :total-pages="totalPagesContracts"
@@ -803,7 +937,10 @@ watch(contractsJudges, () => {
     :sign-types="allSignTypes"
     @created="onCreated"
   />
-  <ContractPrecheckModal ref="contractPrecheckModal" />
+  <ContractPrecheckModal
+    ref="contractPrecheckModal"
+    @created="loadContractsJudges"
+  />
 </template>
 
 <style scoped>
