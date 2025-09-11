@@ -24,4 +24,3 @@ export function isRateLimitEnabled(kind = 'global') {
 }
 
 export default { isLockoutEnabled, isRateLimitEnabled };
-

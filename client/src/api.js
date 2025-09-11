@@ -9,7 +9,8 @@ function resolveApiBase() {
   const envBase =
     (typeof import.meta !== 'undefined' &&
       import.meta.env &&
-      import.meta.env.VITE_API_BASE) || null;
+      import.meta.env.VITE_API_BASE) ||
+    null;
 
   // In browsers, prefer relative /api unless an absolute URL targets the
   // current origin. This prevents 301/302 during refresh calls that can turn
@@ -22,7 +23,8 @@ function resolveApiBase() {
       const u = new URL(envBase);
       const loc = window.location;
       const sameHost =
-        u.hostname === loc.hostname && String(u.port || '') === (loc.port || '');
+        u.hostname === loc.hostname &&
+        String(u.port || '') === (loc.port || '');
       if (sameHost) return u.origin.replace(/\/+$/, '');
       // Different host — avoid potential redirect/CORS pitfalls
       return '/api';
@@ -247,7 +249,9 @@ async function refreshToken() {
         !res.ok &&
         typeof window !== 'undefined' &&
         /^https?:/i.test(API_BASE) &&
-        (res.status === 404 || res.status === 405 || data?.error === 'not_found')
+        (res.status === 404 ||
+          res.status === 405 ||
+          data?.error === 'not_found')
       ) {
         try {
           const t3 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);

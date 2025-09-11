@@ -9,10 +9,10 @@ import {
   verifyRefreshToken,
 } from '../utils/jwt.js';
 import { LOGIN_MAX_ATTEMPTS } from '../config/auth.js';
+import { isLockoutEnabled } from '../config/featureFlags.js';
 
 import * as attempts from './loginAttempts.js';
 import * as lockout from './accountLockout.js';
-import { isLockoutEnabled } from '../config/featureFlags.js';
 
 /* ------------------- service implementation ------------------------------ */
 async function verifyCredentials(phone, password) {

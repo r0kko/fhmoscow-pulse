@@ -63,6 +63,4 @@ const middleware = rateLimit({
   },
 });
 
-export default enabled
-  ? middleware
-  : (_req, _res, next) => next();
+export default enabled ? middleware : (_req, _res, next) => next();
