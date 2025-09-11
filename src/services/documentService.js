@@ -1642,7 +1642,6 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
     bank,
     taxation,
     userDetails,
-    season,
   ] = await Promise.all([
     (
       Models.Passport?.findAll?.bind(Models.Passport) ||
@@ -1740,7 +1739,6 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
     if (d.length >= 9) out += '-' + d.slice(9, 11);
     return out;
   })();
-  const seasonName = season?.name || '2024/2025';
   const taxAlias = taxation?.TaxationType?.alias || null;
   const isIP = taxAlias === 'IP_USN' || taxAlias === 'IP_NPD';
   const isNPD = taxAlias === 'NPD' || taxAlias === 'IP_NPD';

@@ -69,8 +69,10 @@ function computeUiStatus(m) {
     if (tech === 'home' || tech === 'away') {
       const viewerHome = !!m?.is_home;
       const viewerAway = !!m?.is_away;
-      const won = (viewerHome && tech === 'home') || (viewerAway && tech === 'away');
-      const lost = (viewerHome && tech === 'away') || (viewerAway && tech === 'home');
+      const won =
+        (viewerHome && tech === 'home') || (viewerAway && tech === 'away');
+      const lost =
+        (viewerHome && tech === 'away') || (viewerAway && tech === 'home');
       if (won) return { text: 'Тех. победа', cls: 'pill pill-success' };
       if (lost) return { text: 'Тех. поражение', cls: 'pill pill-danger' };
       // Unknown side for viewer: show neutral winner

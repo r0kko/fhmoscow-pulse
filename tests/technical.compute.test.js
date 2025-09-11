@@ -1,8 +1,6 @@
 import { expect, test } from '@jest/globals';
 
-const { computeTechnicalWinner } = await import(
-  '../src/utils/technical.js'
-);
+const { computeTechnicalWinner } = await import('../src/utils/technical.js');
 
 test('computeTechnicalWinner returns null when not technical', () => {
   expect(computeTechnicalWinner({ technical_defeat: 0 })).toBeNull();
@@ -53,4 +51,3 @@ test('computeTechnicalWinner returns null on equal points', () => {
     })
   ).toBeNull();
 });
-

@@ -272,7 +272,9 @@ const statusChip = computed(() => {
         <div class="card-body">
           <div
             v-if="technicalStatus"
-            class="alert" :class="technicalStatus.cls" role="alert"
+            class="alert"
+            :class="technicalStatus.cls"
+            role="alert"
           >
             Матч завершён: {{ technicalStatus.text }}.
           </div>

@@ -47,7 +47,9 @@ const resendCooldown = ref(0);
 let resendTimer = null;
 const { showToast } = useToast();
 const userEmail = ref('');
-const showServiceContractTile = computed(() => hasRole(auth.roles, REFEREE_ROLES));
+const showServiceContractTile = computed(() =>
+  hasRole(auth.roles, REFEREE_ROLES)
+);
 
 function formatDate(value) {
   if (!value) return '-';
@@ -396,16 +398,25 @@ watch(filteredDocuments, () => {
                   :aria-label="'Договор оказания услуг по судейству хоккейных матчей'"
                   class="w-100 h-100"
                 >
-                  <div class="card-body d-flex flex-column justify-content-between">
+                  <div
+                    class="card-body d-flex flex-column justify-content-between"
+                  >
                     <div>
                       <h2 class="h6 mb-2">Договор оказания услуг</h2>
                       <p class="mb-0 text-muted small">
                         Судейство хоккейных матчей · PDF
                       </p>
                     </div>
-                    <div class="d-flex align-items-center justify-content-between mt-3">
-                      <span class="text-muted small">Откроется в новой вкладке</span>
-                      <i class="bi bi-file-earmark-text fs-3" aria-hidden="true"></i>
+                    <div
+                      class="d-flex align-items-center justify-content-between mt-3"
+                    >
+                      <span class="text-muted small"
+                        >Откроется в новой вкладке</span
+                      >
+                      <i
+                        class="bi bi-file-earmark-text fs-3"
+                        aria-hidden="true"
+                      ></i>
                     </div>
                   </div>
                 </BaseTile>
@@ -413,10 +424,14 @@ watch(filteredDocuments, () => {
               <div
                 :class="[
                   'col-12',
-                  showServiceContractTile ? 'col-md-7 col-lg-7 order-1 order-md-2' : ''
+                  showServiceContractTile
+                    ? 'col-md-7 col-lg-7 order-1 order-md-2'
+                    : '',
                 ]"
               >
-                <div class="card section-card tile fade-in h-100 signature-card">
+                <div
+                  class="card section-card tile fade-in h-100 signature-card"
+                >
                   <div class="card-body">
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">

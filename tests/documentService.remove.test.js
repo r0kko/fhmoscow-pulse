@@ -34,10 +34,13 @@ jest.unstable_mockModule('../src/services/fileService.js', () => ({
   },
 }));
 
-const documentService = (await import('../src/services/documentService.js')).default;
+const documentService = (await import('../src/services/documentService.js'))
+  .default;
 
 test('remove forbids deleting SES-signed documents', async () => {
-  await expect(documentService.remove('doc-1', 'admin-1')).rejects.toMatchObject({
+  await expect(
+    documentService.remove('doc-1', 'admin-1')
+  ).rejects.toMatchObject({
     code: 'document_delete_forbidden_signed_simple',
     status: 403,
   });
@@ -45,4 +48,3 @@ test('remove forbids deleting SES-signed documents', async () => {
   expect(updateMock).not.toHaveBeenCalled();
   expect(destroyMock).not.toHaveBeenCalled();
 });
-
