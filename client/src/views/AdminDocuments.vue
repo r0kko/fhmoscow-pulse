@@ -53,7 +53,7 @@ const contractFilters = reactive({
   search: '',
   signType: '',
   status: '',
-  onlyWithContract: false,
+  withoutContract: false,
 });
 
 const contractSignTypes = computed(() => {
@@ -147,8 +147,19 @@ onMounted(() => {
   const saved = localStorage.getItem('adminDocFilters');
   if (saved) Object.assign(filters, JSON.parse(saved));
   const savedContracts = localStorage.getItem('adminContractsFilters');
-  if (savedContracts)
-    Object.assign(contractFilters, JSON.parse(savedContracts));
+  if (savedContracts) {
+    try {
+      const parsed = JSON.parse(savedContracts);
+      if (Object.prototype.hasOwnProperty.call(parsed, 'onlyWithContract')) {
+        delete parsed.onlyWithContract;
+        parsed.withoutContract = false;
+        localStorage.setItem('adminContractsFilters', JSON.stringify(parsed));
+      }
+      Object.assign(contractFilters, parsed);
+    } catch {
+      /* ignore */
+    }
+  }
   loadDocuments();
   loadUsers();
   loadSignTypes();
@@ -366,7 +377,7 @@ async function loadContractsJudges() {
 const filteredContracts = computed(() => {
   const q = contractFilters.search.trim().toLowerCase();
   return contractsJudges.value.filter((u) => {
-    if (contractFilters.onlyWithContract && !u.contract) return false;
+    if (contractFilters.withoutContract && u.contract) return false;
     if (
       contractFilters.signType &&
       (u.signType?.alias || '') !== contractFilters.signType
@@ -406,6 +417,12 @@ watch([contractsJudges, filteredContracts], () => {
   if (currentPageContracts.value > totalPagesContracts.value)
     currentPageContracts.value = totalPagesContracts.value;
 });
+
+function canDelete(doc) {
+  const isSimple = doc?.signType?.alias === 'SIMPLE_ELECTRONIC';
+  const isSigned = doc?.status?.alias === 'SIGNED';
+  return !(isSimple && isSigned);
+}
 </script>
 
 <template>
@@ -573,7 +590,12 @@ watch([contractsJudges, filteredContracts], () => {
                         </button>
                         <button
                           class="btn btn-sm btn-outline-danger"
-                          title="Удалить"
+                          :disabled="!canDelete(d)"
+                          :title="
+                            canDelete(d)
+                              ? 'Удалить'
+                              : 'Нельзя удалить подписанный ПЭП документ'
+                          "
                           @click="deleteDocument(d)"
                         >
                           <i class="bi bi-trash" aria-hidden="true"></i>
@@ -688,7 +710,12 @@ watch([contractsJudges, filteredContracts], () => {
                     </button>
                     <button
                       class="btn btn-sm btn-outline-danger"
-                      title="Удалить"
+                      :disabled="!canDelete(d)"
+                      :title="
+                        canDelete(d)
+                          ? 'Удалить'
+                          : 'Нельзя удалить подписанный ПЭП документ'
+                      "
                       @click="deleteDocument(d)"
                     >
                       <i class="bi bi-trash" aria-hidden="true"></i>
@@ -812,13 +839,13 @@ watch([contractsJudges, filteredContracts], () => {
             <div class="col-12 col-sm-1 d-flex align-items-center">
               <div class="form-check ms-sm-2">
                 <input
-                  id="onlyWithContract"
+                  id="withoutContract"
                   class="form-check-input"
                   type="checkbox"
-                  v-model="contractFilters.onlyWithContract"
+                  v-model="contractFilters.withoutContract"
                 />
-                <label class="form-check-label" for="onlyWithContract"
-                  >Только с договором</label
+                <label class="form-check-label" for="withoutContract"
+                  >Без договора</label
                 >
               </div>
             </div>

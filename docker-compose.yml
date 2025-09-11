@@ -80,7 +80,7 @@ services:
 
   # Observability stack (runs with the project)
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.9.8
     container_name: loki
     command: ["-config.file=/etc/loki/local-config.yaml"]
     ports:
@@ -90,7 +90,7 @@ services:
     restart: unless-stopped
 
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:2.9.8
     container_name: promtail
     command: ["-config.file=/etc/promtail/config.yml"]
     volumes:
@@ -103,7 +103,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.53.1
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -115,7 +115,7 @@ services:
     restart: unless-stopped
 
   alertmanager:
-    image: prom/alertmanager:latest
+    image: prom/alertmanager:v0.27.0
     container_name: alertmanager
     ports:
       - "9093:9093"
@@ -126,7 +126,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.0
     container_name: grafana
     ports:
       - "3001:3000"
@@ -134,7 +134,6 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_AUTH_ANONYMOUS_ENABLED=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/pulse-app-overview.json
     volumes:
       - grafana-data:/var/lib/grafana
@@ -179,7 +178,7 @@ services:
     restart: unless-stopped
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.8.2
     container_name: node-exporter
     pid: "host"
     ports:

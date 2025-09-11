@@ -30,6 +30,7 @@ import { extractFirstUrl } from '../utils/url.js';
 import logger from '../../logger.js';
 import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
 import { GameStatus } from '../models/index.js';
+import { computeTechnicalWinner } from '../utils/technical.js';
 
 function emptyStats() {
   return {
@@ -1036,6 +1037,7 @@ async function syncGames(actorId = null) {
           typeof g.score_team2 === 'number'
             ? g.score_team2
             : g.score_team2 || null,
+        technical_winner: computeTechnicalWinner(g),
       };
       const statusAlias = mapGameStatusAlias(g);
       const statusId = statusIdByAlias.get(statusAlias) || null;
@@ -1087,6 +1089,8 @@ async function syncGames(actorId = null) {
         updates.score_team1 = desired.score_team1;
       if (local.score_team2 !== desired.score_team2)
         updates.score_team2 = desired.score_team2;
+      if (local.technical_winner !== desired.technical_winner)
+        updates.technical_winner = desired.technical_winner;
       const prevStatusId = local.game_status_id || null;
       if (prevStatusId !== statusId) updates.game_status_id = statusId;
       if (!local.scheduled_date && desired.date_start)
@@ -1142,6 +1146,7 @@ async function syncGames(actorId = null) {
             typeof g.score_team2 === 'number'
               ? g.score_team2
               : g.score_team2 || null,
+          technical_winner: computeTechnicalWinner(g),
           game_status_id: statusIdByAlias.get(mapGameStatusAlias(g)) || null,
           scheduled_date: g.date_start
             ? toMoscowDateOnlyString(moscowToUtc(g.date_start))

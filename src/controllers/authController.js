@@ -39,6 +39,16 @@ export default {
       );
       const staffOnly = isStaffOnly(roles);
 
+      // Prevent any intermediate cache (CDN/proxy) from caching auth responses
+      // and ensure Set-Cookie is honored per request context
+      if (typeof res?.set === 'function') {
+        res.set(
+          'Cache-Control',
+          'no-store, no-cache, must-revalidate, max-age=0'
+        );
+        res.set('Pragma', 'no-cache');
+      }
+      if (typeof res?.vary === 'function') res.vary('Cookie');
       setRefreshCookie(res, refreshToken);
 
       const extra = {};
@@ -83,6 +93,15 @@ export default {
         // best-effort; still clear cookie
       }
     }
+    // Prevent caches from storing logout responses and make cookie semantics explicit
+    if (typeof res?.set === 'function') {
+      res.set(
+        'Cache-Control',
+        'no-store, no-cache, must-revalidate, max-age=0'
+      );
+      res.set('Pragma', 'no-cache');
+    }
+    if (typeof res?.vary === 'function') res.vary('Cookie');
     clearRefreshCookie(res);
     return res.status(200).json({ message: 'Logged out' });
   },
@@ -132,6 +151,15 @@ export default {
       );
       const staffOnly = isStaffOnly(roles);
 
+      // Avoid cache and ensure Set-Cookie is not stripped by intermediaries
+      if (typeof res?.set === 'function') {
+        res.set(
+          'Cache-Control',
+          'no-store, no-cache, must-revalidate, max-age=0'
+        );
+        res.set('Pragma', 'no-cache');
+      }
+      if (typeof res?.vary === 'function') res.vary('Cookie');
       setRefreshCookie(res, refreshToken);
 
       return res.json({

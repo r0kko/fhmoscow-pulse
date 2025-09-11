@@ -31,8 +31,13 @@ export default {
         };
         ticket.files = [];
         for (const f of t.TicketFiles) {
-          const url = await fileService.getDownloadUrl(f.File);
-          ticket.files.push(fileMapper.toPublic(f, url));
+          // Skip orphan attachments without a backing File row
+          if (!f?.File) continue;
+          const url = await fileService
+            .getDownloadUrl(f.File)
+            .catch(() => null);
+          const pub = fileMapper.toPublic(f, url);
+          if (pub) ticket.files.push(pub);
         }
         result.push(ticket);
       }
@@ -94,8 +99,10 @@ export default {
       };
       result.files = [];
       for (const f of files) {
-        const url = await fileService.getDownloadUrl(f.File);
-        result.files.push(fileMapper.toPublic(f, url));
+        if (!f?.File) continue;
+        const url = await fileService.getDownloadUrl(f.File).catch(() => null);
+        const pub = fileMapper.toPublic(f, url);
+        if (pub) result.files.push(pub);
       }
       return res.json({ ticket: result });
     } catch (err) {
@@ -119,8 +126,10 @@ export default {
       };
       result.files = [];
       for (const f of files) {
-        const url = await fileService.getDownloadUrl(f.File);
-        result.files.push(fileMapper.toPublic(f, url));
+        if (!f?.File) continue;
+        const url = await fileService.getDownloadUrl(f.File).catch(() => null);
+        const pub = fileMapper.toPublic(f, url);
+        if (pub) result.files.push(pub);
       }
       return res.json({ ticket: result });
     } catch (err) {

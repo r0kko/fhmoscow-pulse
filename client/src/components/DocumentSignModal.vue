@@ -1,10 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { useToast } from '../utils/toast.js';
 
 const emit = defineEmits(['signed']);
+const props = defineProps({
+  userEmail: { type: String, default: '' },
+});
 
 const modalRef = ref(null);
 let modal;
@@ -15,6 +18,23 @@ const error = ref('');
 const resendCooldown = ref(0);
 let timer = null;
 const { showToast } = useToast();
+const inputRef = ref(null);
+
+function maskEmail(email) {
+  if (!email || typeof email !== 'string') return '';
+  const [name, domain] = email.split('@');
+  if (!domain) return email;
+  const maskedName =
+    name.length <= 2
+      ? name[0] + '*'
+      : name[0] + '*'.repeat(Math.max(1, name.length - 2)) + name.at(-1);
+  const [d1, ...rest] = domain.split('.');
+  const maskedDomain =
+    d1.length <= 2
+      ? d1[0] + '*'
+      : d1[0] + '*'.repeat(Math.max(1, d1.length - 2)) + d1.at(-1);
+  return `${maskedName}@${[maskedDomain, ...rest].filter(Boolean).join('.')}`;
+}
 
 function startCooldown(seconds = 30) {
   clearInterval(timer);
@@ -67,6 +87,14 @@ function open(d) {
   modal.show();
   // Request code immediately on open
   sendCode();
+  // Focus input for quick entry
+  nextTick(() => {
+    try {
+      inputRef.value?.focus?.();
+    } catch {
+      /* ignore focus errors */
+    }
+  });
 }
 
 function close() {
@@ -77,15 +105,34 @@ onMounted(() => {
   modal = new Modal(modalRef.value);
 });
 
+// Keep only digits; auto-submit when length is 6
+watch(code, (v) => {
+  const digits = String(v || '')
+    .replace(/\D+/g, '')
+    .slice(0, 6);
+  if (digits !== v) code.value = digits;
+  if (digits.length === 6 && !sending.value) {
+    setTimeout(() => confirm(), 0);
+  }
+});
+
 defineExpose({ open });
 </script>
 
 <template>
-  <div ref="modalRef" class="modal fade" tabindex="-1" aria-hidden="true">
+  <div
+    ref="modalRef"
+    class="modal fade"
+    tabindex="-1"
+    aria-hidden="true"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="docSignModalTitle"
+  >
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
+          <h5 id="docSignModalTitle" class="modal-title">
             Подписание документа
             <span v-if="doc" class="text-muted">· № {{ doc.number }}</span>
           </h5>
@@ -98,16 +145,26 @@ defineExpose({ open });
           ></button>
         </div>
         <div class="modal-body">
-          <p class="mb-3" v-if="doc">
+          <p class="mb-2" v-if="doc">
             Документ: <strong>{{ doc.name }}</strong>
           </p>
-          <div v-if="error" class="alert alert-danger" role="alert">
+          <p v-if="props.userEmail" class="text-muted small mb-3">
+            Код отправлен на e‑mail
+            <strong>{{ maskEmail(props.userEmail) }}</strong>
+          </p>
+          <div
+            v-if="error"
+            class="alert alert-danger"
+            role="alert"
+            aria-live="assertive"
+          >
             {{ error }}
           </div>
 
           <label for="docSignCode" class="form-label">Код из письма</label>
           <input
             id="docSignCode"
+            ref="inputRef"
             v-model="code"
             class="form-control"
             type="text"
@@ -115,9 +172,10 @@ defineExpose({ open });
             pattern="[0-9]*"
             autocomplete="one-time-code"
             maxlength="6"
+            aria-describedby="docSignHelp"
             @keyup.enter="code.length === 6 && !sending ? confirm() : null"
           />
-          <div class="form-text">
+          <div id="docSignHelp" class="form-text" aria-live="polite">
             Введите 6-значный код подтверждения, отправленный на вашу почту
           </div>
         </div>

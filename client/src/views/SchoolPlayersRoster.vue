@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
+import EditPlayerRosterModal from '../components/EditPlayerRosterModal.vue';
 
 const route = useRoute();
 const isAdminView = computed(() => (route.path || '').startsWith('/admin'));
@@ -17,10 +18,14 @@ const q = ref('');
 const activeTab = ref('players'); // 'players' | 'staff'
 const teamId = computed(() => route.query.team_id || '');
 const clubId = computed(() => route.query.club_id || '');
+const roles = ref([]);
+const showEdit = ref(false);
+const currentPlayer = ref(null);
 
 onMounted(async () => {
   // Always resolve labels; only fetch roster/staff when a specific team is provided
   await Promise.all([loadSeasonName(), loadClubName()]);
+  await loadRoles();
   await loadRoster();
   await loadStaff();
 });
@@ -75,7 +80,13 @@ async function loadRoster() {
     const res = await apiFetch(`/players?${params.toString()}`);
     players.value = res.players || [];
   } catch (e) {
-    error.value = e.message || 'Не удалось загрузить состав команды';
+    const msg = e?.message || '';
+    if (String(msg).includes('403')) {
+      // Block access to foreign rosters explicitly
+      if (typeof window !== 'undefined') window.location.assign('/forbidden');
+      return;
+    }
+    error.value = msg || 'Не удалось загрузить состав команды';
   } finally {
     loading.value = false;
   }
@@ -119,6 +130,54 @@ function openPlayer(p) {
   if (typeof window !== 'undefined') {
     window.open(url, '_blank', 'noopener');
   }
+}
+
+async function loadRoles() {
+  try {
+    const res = await apiFetch('/players/roles');
+    roles.value = Array.isArray(res.roles) ? res.roles : [];
+  } catch (_) {
+    roles.value = [];
+  }
+}
+
+function openEdit(p) {
+  currentPlayer.value = {
+    id: p.id,
+    full_name: p.full_name,
+    height: p.height ?? null,
+    weight: p.weight ?? null,
+    grip: p.grip ?? '',
+    jersey_number: p.jersey_number ?? null,
+    role: p.role || (p.role_name ? { id: null, name: p.role_name } : null),
+  };
+  // Prefill role_id by matching name if possible
+  if (!currentPlayer.value.role?.id && p.role_name) {
+    const found = roles.value.find((r) => r.name === p.role_name);
+    if (found) currentPlayer.value.role = found;
+  }
+  showEdit.value = true;
+}
+
+function onSaved(updated) {
+  // Merge updated fields into local list for snappy UX; also safe to re-fetch
+  if (updated) {
+    const idx = players.value.findIndex((x) => x.id === updated.id);
+    if (idx !== -1) {
+      const p = players.value[idx];
+      players.value[idx] = {
+        ...p,
+        height: updated.height,
+        weight: updated.weight,
+        grip: updated.grip,
+        jersey_number: updated.jersey_number,
+        role_name: updated.role?.name || p.role_name || null,
+        role: updated.role || p.role || null,
+      };
+    }
+  }
+  // Always refresh to ensure complete consistency
+  void loadRoster();
 }
 
 const sorted = (arr) => {
@@ -303,20 +362,22 @@ const forwards = computed(() =>
             </div>
             <ul v-else class="list-group list-group-flush">
               <li v-for="p in goalies" :key="p.id" class="list-group-item">
-                <div
-                  class="d-flex align-items-start gap-3 clickable-row"
-                  role="button"
-                  tabindex="0"
-                  @click="openPlayer(p)"
-                  @keydown.enter="openPlayer(p)"
-                >
+                <div class="d-flex align-items-start gap-3">
                   <div
                     class="jersey badge bg-secondary-subtle text-dark fw-semibold"
                   >
                     {{ p.jersey_number ?? '—' }}
                   </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-semibold">{{ p.full_name || '—' }}</div>
+                  <div
+                    class="flex-grow-1 clickable-row"
+                    role="button"
+                    tabindex="0"
+                    @click="openPlayer(p)"
+                    @keydown.enter="openPlayer(p)"
+                  >
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                      <span>{{ p.full_name || '—' }}</span>
+                    </div>
                     <div class="text-muted small">
                       {{ formatDate(p.date_of_birth) || '—' }}
                     </div>
@@ -330,6 +391,17 @@ const forwards = computed(() =>
                       <span v-if="p.weight && p.grip"> · </span>
                       <span v-if="p.grip">Хват: {{ p.grip }}</span>
                     </div>
+                  </div>
+                  <div class="ms-auto">
+                    <button
+                      type="button"
+                      class="btn btn-link btn-icon text-muted"
+                      aria-label="Изменить данные игрока"
+                      title="Изменить"
+                      @click.stop="openEdit(p)"
+                    >
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
               </li>
@@ -350,20 +422,22 @@ const forwards = computed(() =>
             </div>
             <ul v-else class="list-group list-group-flush">
               <li v-for="p in defenders" :key="p.id" class="list-group-item">
-                <div
-                  class="d-flex align-items-start gap-3 clickable-row"
-                  role="button"
-                  tabindex="0"
-                  @click="openPlayer(p)"
-                  @keydown.enter="openPlayer(p)"
-                >
+                <div class="d-flex align-items-start gap-3">
                   <div
                     class="jersey badge bg-secondary-subtle text-dark fw-semibold"
                   >
                     {{ p.jersey_number ?? '—' }}
                   </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-semibold">{{ p.full_name || '—' }}</div>
+                  <div
+                    class="flex-grow-1 clickable-row"
+                    role="button"
+                    tabindex="0"
+                    @click="openPlayer(p)"
+                    @keydown.enter="openPlayer(p)"
+                  >
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                      <span>{{ p.full_name || '—' }}</span>
+                    </div>
                     <div class="text-muted small">
                       {{ formatDate(p.date_of_birth) || '—' }}
                     </div>
@@ -377,6 +451,17 @@ const forwards = computed(() =>
                       <span v-if="p.weight && p.grip"> · </span>
                       <span v-if="p.grip">Хват: {{ p.grip }}</span>
                     </div>
+                  </div>
+                  <div class="ms-auto">
+                    <button
+                      type="button"
+                      class="btn btn-link btn-icon text-muted"
+                      aria-label="Изменить данные игрока"
+                      title="Изменить"
+                      @click.stop="openEdit(p)"
+                    >
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
               </li>
@@ -397,20 +482,22 @@ const forwards = computed(() =>
             </div>
             <ul v-else class="list-group list-group-flush">
               <li v-for="p in forwards" :key="p.id" class="list-group-item">
-                <div
-                  class="d-flex align-items-start gap-3 clickable-row"
-                  role="button"
-                  tabindex="0"
-                  @click="openPlayer(p)"
-                  @keydown.enter="openPlayer(p)"
-                >
+                <div class="d-flex align-items-start gap-3">
                   <div
                     class="jersey badge bg-secondary-subtle text-dark fw-semibold"
                   >
                     {{ p.jersey_number ?? '—' }}
                   </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-semibold">{{ p.full_name || '—' }}</div>
+                  <div
+                    class="flex-grow-1 clickable-row"
+                    role="button"
+                    tabindex="0"
+                    @click="openPlayer(p)"
+                    @keydown.enter="openPlayer(p)"
+                  >
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                      <span>{{ p.full_name || '—' }}</span>
+                    </div>
                     <div class="text-muted small">
                       {{ formatDate(p.date_of_birth) || '—' }}
                     </div>
@@ -424,6 +511,17 @@ const forwards = computed(() =>
                       <span v-if="p.weight && p.grip"> · </span>
                       <span v-if="p.grip">Хват: {{ p.grip }}</span>
                     </div>
+                  </div>
+                  <div class="ms-auto">
+                    <button
+                      type="button"
+                      class="btn btn-link btn-icon text-muted"
+                      aria-label="Изменить данные игрока"
+                      title="Изменить"
+                      @click.stop="openEdit(p)"
+                    >
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
               </li>
@@ -474,6 +572,15 @@ const forwards = computed(() =>
       </div>
     </div>
   </div>
+  <EditPlayerRosterModal
+    v-model="showEdit"
+    :player="currentPlayer"
+    :season-id="season.id"
+    :team-id="teamId"
+    :club-id="clubId"
+    :roles="roles"
+    @saved="onSaved"
+  />
 </template>
 
 <script>
@@ -535,5 +642,13 @@ export default { name: 'SchoolPlayersRosterView' };
   min-width: 2.25rem;
   height: 2.25rem;
   border-radius: 0.5rem;
+}
+
+.btn-icon {
+  padding: 0.25rem;
+  line-height: 1;
+}
+.btn-icon .bi {
+  font-size: 1rem;
 }
 </style>

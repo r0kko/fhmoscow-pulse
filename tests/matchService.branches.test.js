@@ -80,4 +80,8 @@ test('listPast (external) builds where and returns rows+count', async () => {
   });
   expect(count).toBe(1);
   expect(rows[0]).toMatchObject({ id: 10, team1: 'A', team2: 'B' });
+  // Ensure ordering is by date descending
+  const args = gameFindAllMock.mock.calls[0][0];
+  expect(Array.isArray(args.order)).toBe(true);
+  expect(args.order[0]).toEqual(['date_start', 'DESC']);
 });

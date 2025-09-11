@@ -284,3 +284,75 @@ export async function updateExternalGameDateAndClearCancelStatus({
     throw err;
   }
 }
+
+// Whitelisted write: update external player anthropometry (grip/height/weight)
+export async function updateExternalPlayerAnthropometry({
+  playerId,
+  grip,
+  height,
+  weight,
+}) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  if (
+    playerId == null ||
+    (typeof playerId !== 'number' && typeof playerId !== 'string') ||
+    Number.isNaN(Number(playerId))
+  )
+    throw new Error('Invalid playerId');
+  // Normalize values: allow nulls; sanitize grip length
+  const g = grip == null ? null : String(grip).trim().slice(0, 255) || null;
+  const h =
+    height == null || Number.isNaN(Number(height)) ? null : Number(height);
+  const w =
+    weight == null || Number.isNaN(Number(weight)) ? null : Number(weight);
+  const sql = 'UPDATE player SET grip = ?, height = ?, weight = ? WHERE id = ?';
+  const params = [g, h, w, Number(playerId)];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}
+
+// Whitelisted write: update external club_player roster fields (number, role_id)
+export async function updateExternalClubPlayerNumberAndRole({
+  clubPlayerId,
+  number,
+  roleExternalId,
+}) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  if (
+    clubPlayerId == null ||
+    (typeof clubPlayerId !== 'number' && typeof clubPlayerId !== 'string') ||
+    Number.isNaN(Number(clubPlayerId))
+  )
+    throw new Error('Invalid clubPlayerId');
+  // Normalize values
+  const n =
+    number == null || Number.isNaN(Number(number)) ? null : Number(number);
+  const r =
+    roleExternalId == null || Number.isNaN(Number(roleExternalId))
+      ? null
+      : Number(roleExternalId);
+  const sql = 'UPDATE club_player SET number = ?, role_id = ? WHERE id = ?';
+  const params = [n, r, Number(clubPlayerId)];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}

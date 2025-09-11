@@ -48,8 +48,22 @@ const transporter = isEmailConfigured
   ? nodemailer.createTransport({
       host: SMTP_HOST,
       port: Number(SMTP_PORT),
+      // 465 = implicit TLS, 587/25 = STARTTLS
       secure: Number(SMTP_PORT) === 465,
+      requireTLS: Number(SMTP_PORT) !== 465, // enforce STARTTLS on submission ports
       auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+      // Connection pool + conservative timeouts to avoid long-hanging requests
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 50,
+      connectionTimeout: 10_000, // 10s to establish TCP/TLS
+      greetingTimeout: 8_000, // 8s for server greeting
+      socketTimeout: 15_000, // 15s per operation
+      tls: {
+        servername: SMTP_HOST,
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true,
+      },
     })
   : null;
 

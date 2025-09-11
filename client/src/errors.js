@@ -8,6 +8,8 @@ export const ERROR_MESSAGES = {
   bank_account_locked: 'Банковский счёт заблокирован',
   bank_account_not_found: 'Банковский счёт не найден',
   bank_not_found: 'Банк не найден',
+  sign_type_simple_required:
+    'Требуется простая электронная подпись. Настройте её в разделе «Документы»',
   country_not_found: 'Страна не найдена',
   document_type_not_found: 'Тип документа не найден',
   email_exists: 'Email уже зарегистрирован',
@@ -65,6 +67,8 @@ export const ERROR_MESSAGES = {
   registration_incomplete: 'Регистрация не завершена',
   status_unknown: 'Неизвестный статус',
   not_found: 'Не найдено',
+  document_delete_forbidden_signed_simple:
+    'Нельзя удалять документы, подписанные простой электронной подписью',
   course_not_found: 'Курс не назначен',
   invalid_vehicle: 'Введите корректно марку и модель',
   invalid_number: 'Введите корректный госномер',
@@ -137,6 +141,14 @@ export const ERROR_MESSAGES = {
   staff_not_in_team: 'Некорректный представитель команды',
   match_role_required: 'Выберите амплуа для всех выбранных игроков',
   match_number_required: 'Укажите номер для всех выбранных игроков',
+  // Player roster edit (school)
+  grip_required: 'Выберите хват',
+  invalid_grip: 'Некорректный хват',
+  invalid_height: 'Рост должен быть от 90 до 220 см',
+  invalid_weight: 'Вес должен быть от 10 до 140 кг',
+  jersey_required: 'Укажите номер игрока',
+  jersey_invalid: 'Номер должен быть от 1 до 99',
+  role_required: 'Выберите амплуа',
   duplicate_match_numbers: 'Игровые номера в матче должны быть уникальными',
   conflict_lineup_version:
     'Состав был изменён с другого устройства. Обновили данные. Повторяем сохранение…',

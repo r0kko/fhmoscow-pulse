@@ -40,7 +40,12 @@ async function listByUser(userId) {
   });
 }
 
-async function createForUser(userId, data, actorId) {
+async function createForUser(
+  userId,
+  data,
+  actorId,
+  options = { notify: true }
+) {
   const [user, type, status] = await Promise.all([
     User.findByPk(userId),
     TicketType.findOne({ where: { alias: data.type_alias } }),
@@ -95,10 +100,12 @@ async function createForUser(userId, data, actorId) {
   const result = await Ticket.findByPk(ticket.id, {
     include: [TicketType, TicketStatus],
   });
-  try {
-    await emailService.sendTicketCreatedEmail(user, result);
-  } catch (err) {
-    console.error('Email send failed', err);
+  if (options?.notify !== false) {
+    try {
+      await emailService.sendTicketCreatedEmail(user, result);
+    } catch (err) {
+      console.error('Email send failed', err);
+    }
   }
   return result;
 }
@@ -109,7 +116,13 @@ async function getById(id) {
   return ticket;
 }
 
-async function updateForUser(userId, ticketId, data, actorId) {
+async function updateForUser(
+  userId,
+  ticketId,
+  data,
+  actorId,
+  options = { notify: true }
+) {
   const ticket = await Ticket.findOne({
     where: { id: ticketId, user_id: userId },
   });
@@ -143,13 +156,15 @@ async function updateForUser(userId, ticketId, data, actorId) {
     include: [TicketType, TicketStatus],
   });
   if (data.status_alias) {
-    try {
-      const user = await User.findByPk(userId);
-      if (user) {
-        await emailService.sendTicketStatusChangedEmail(user, result);
+    if (options?.notify !== false) {
+      try {
+        const user = await User.findByPk(userId);
+        if (user) {
+          await emailService.sendTicketStatusChangedEmail(user, result);
+        }
+      } catch (err) {
+        console.error('Email send failed', err);
       }
-    } catch (err) {
-      console.error('Email send failed', err);
     }
     if (result.TicketType?.alias === 'NORMATIVE_ONLINE') {
       const nts = (await import('./normativeTicketService.js')).default;
@@ -224,10 +239,10 @@ async function listAll(options = {}) {
   });
 }
 
-async function update(id, data, actorId) {
+async function update(id, data, actorId, options = { notify: true }) {
   const ticket = await Ticket.findByPk(id);
   if (!ticket) throw new ServiceError('ticket_not_found', 404);
-  return updateForUser(ticket.user_id, id, data, actorId);
+  return updateForUser(ticket.user_id, id, data, actorId, options);
 }
 
 async function progressStatus(id, actorId) {

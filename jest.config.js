@@ -17,6 +17,8 @@ export default {
 
     roots: ['<rootDir>/src', '<rootDir>/tests'],
 
+    // Coverage is collected from files touched by tests (default)
+
     maxWorkers: 1,
     resetModules: true,
     clearMocks: true,
@@ -27,6 +29,7 @@ export default {
         '<rootDir>/src/externalModels/',
         '<rootDir>/src/migrations/',
         '<rootDir>/src/config/externalMariaDb.js',
+        
     ],
     coverageThreshold: {
         global: {

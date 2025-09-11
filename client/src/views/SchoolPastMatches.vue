@@ -7,6 +7,7 @@ import { apiFetch } from '../api.js';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { toDayKey } from '../utils/time.js';
 
 const matches = ref([]);
 const loading = ref(false);
@@ -79,12 +80,23 @@ async function load() {
 }
 
 const filtered = computed(() => filterByQuery(matches.value));
+// Global sort for stable pagination: days DESC, time ASC within day
+const sorted = computed(() => {
+  const arr = [...filtered.value];
+  arr.sort((a, b) => {
+    const da = toDayKey(a.date);
+    const db = toDayKey(b.date);
+    if (db !== da) return db - da; // newer day first
+    return new Date(a.date) - new Date(b.date); // within-day ascending
+  });
+  return arr;
+});
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filtered.value.length / pageSize.value))
+  Math.max(1, Math.ceil(sorted.value.length / pageSize.value))
 );
 const paginated = computed(() => {
   const start = (page.value - 1) * pageSize.value;
-  return filtered.value.slice(start, start + pageSize.value);
+  return sorted.value.slice(start, start + pageSize.value);
 });
 
 function filterByQuery(list) {
@@ -339,7 +351,11 @@ function onChangePageSize(val) {
           </div>
 
           <template v-else>
-            <MatchesDayTiles :items="paginated" :showScoreAsColumn="true" />
+            <MatchesDayTiles
+              :items="paginated"
+              :showScoreAsColumn="true"
+              sortDirection="desc"
+            />
             <p v-if="!filtered.length" class="mb-0">Нет матчей.</p>
             <PageNav
               v-if="filtered.length > 0"

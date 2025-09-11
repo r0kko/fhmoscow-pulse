@@ -24,6 +24,8 @@ Match.init(
     // Final score imported from external system (if available)
     score_team1: { type: DataTypes.INTEGER, allowNull: true },
     score_team2: { type: DataTypes.INTEGER, allowNull: true },
+    // Technical defeat winner side: 'home' | 'away' (null when not applicable)
+    technical_winner: { type: DataTypes.STRING(10), allowNull: true },
     schedule_locked_by_admin: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

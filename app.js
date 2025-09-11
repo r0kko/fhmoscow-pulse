@@ -69,7 +69,34 @@ app.use(cors(corsOptions));
 // Express 5 uses path-to-regexp@^6 which is stricter about patterns like '*'.
 // Use a RegExp to match any path for CORS preflight to avoid parsing errors.
 app.options(/.*/, cors(corsOptions));
-app.use(helmet());
+// Align security headers with the edge (CDN/DDoS/WAF). To avoid conflicts and
+// duplicates across layers, keep most security headers at the outermost
+// terminator. Here we disable Helmet sub-middleware that would duplicate
+// headers often injected by CDNs (DDoS-Guard/Cloudflare) or nginx.
+app.use(
+  helmet({
+    // Outer TLS terminator should set HSTS
+    hsts: false,
+    // Security policy and cross-origin headers typically enforced at edge
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    originAgentCluster: false,
+    // Frame policy is also set at edge; avoid conflicts (SAMEORIGIN vs DENY)
+    frameguard: false,
+    // Avoid duplicate referrer policy
+    referrerPolicy: false,
+    // Avoid duplicating X-Content-Type-Options
+    noSniff: false,
+    // Disable legacy IE headers and Adobe policy header (often duplicated upstream)
+    ieNoOpen: false,
+    permittedCrossDomainPolicies: false,
+    // DNS prefetch control often set by edge
+    dnsPrefetchControl: false,
+    // Keep hidePoweredBy (removes X-Powered-By)
+  })
+);
 app.use(requestId);
 // Lightweight structured HTTP access logs to stdout (Loki/Promtail friendly)
 app.use(accessLog());

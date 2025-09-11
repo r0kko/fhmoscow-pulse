@@ -15,8 +15,10 @@ export default {
       const files = await fileService.listForTicket(t.id);
       ticket.files = [];
       for (const f of files) {
-        const url = await fileService.getDownloadUrl(f.File);
-        ticket.files.push(fileMapper.toPublic(f, url));
+        if (!f?.File) continue;
+        const url = await fileService.getDownloadUrl(f.File).catch(() => null);
+        const pub = fileMapper.toPublic(f, url);
+        if (pub) ticket.files.push(pub);
       }
       result.push(ticket);
     }

@@ -392,4 +392,56 @@ export default {
       return sendError(res, err);
     }
   },
+  async roles(_req, res) {
+    try {
+      const roles = await PlayerRole.findAll({
+        attributes: ['id', 'name'],
+        order: [['name', 'ASC']],
+      });
+      return res.json({
+        roles: roles.map((r) => ({ id: r.id, name: r.name })),
+      });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async updateAnthroAndRoster(req, res) {
+    try {
+      const { default: playerEditService } = await import(
+        '../services/playerEditService.js'
+      );
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = scope.allowedClubIds || [];
+      const allowedTeamIds = scope.allowedTeamIds || [];
+      const playerId = req.params.id;
+      const { season_id, team_id, club_id } = req.body || {};
+
+      // Enforce access: admin allowed; staff must be attached to the team and club
+      if (!isAdmin) {
+        if (
+          !allowedTeamIds.includes(team_id) ||
+          !allowedClubIds.includes(club_id)
+        ) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+      }
+
+      const updated = await playerEditService.updateAnthropometryAndRoster({
+        actor: req.user,
+        playerId,
+        seasonId: season_id,
+        teamId: team_id,
+        clubId: club_id,
+        grip: req.body?.grip,
+        height: req.body?.height,
+        weight: req.body?.weight,
+        jerseyNumber: req.body?.jersey_number,
+        roleId: req.body?.role_id || null,
+      });
+      return res.json({ ok: true, updated });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
 };

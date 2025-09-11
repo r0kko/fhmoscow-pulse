@@ -1,18 +1,5 @@
 import service, { listUpcomingLocal } from '../services/matchService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
-import {
-  Match,
-  Team,
-  Ground,
-  Tournament,
-  TournamentGroup,
-  Tour,
-  User,
-  Season,
-  Stage,
-  Address,
-  TournamentType,
-} from '../models/index.js';
 
 async function listUpcoming(req, res, next) {
   try {
@@ -114,10 +101,22 @@ export { listPast };
 
 export async function get(req, res, next) {
   try {
-    // Lazy import Club to avoid strict module mocks in tests failing on named exports
-    const { Club, GameStatus, MatchBroadcastLink } = await import(
-      '../models/index.js'
-    );
+    const {
+      Match,
+      Team,
+      Ground,
+      Tournament,
+      TournamentGroup,
+      Tour,
+      User,
+      Season,
+      Stage,
+      Address,
+      TournamentType,
+      Club,
+      GameStatus,
+      MatchBroadcastLink,
+    } = await import('../models/index.js');
     const m = await Match.findByPk(req.params.id, {
       attributes: [
         'id',
@@ -127,6 +126,7 @@ export async function get(req, res, next) {
         'team2_id',
         'season_id',
         'stage_id',
+        'technical_winner',
         'score_team1',
         'score_team2',
         'schedule_locked_by_admin',
@@ -189,6 +189,7 @@ export async function get(req, res, next) {
         team2_id: m.team2_id,
         score_team1: m.score_team1 ?? null,
         score_team2: m.score_team2 ?? null,
+        technical_winner: m.technical_winner || null,
         ground: m.Ground?.name || null,
         ground_details: m.Ground
           ? {

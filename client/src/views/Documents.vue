@@ -12,17 +12,30 @@ import { apiFetch } from '../api.js';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
-import TabSelector from '../components/TabSelector.vue';
+import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
+import PageNav from '../components/PageNav.vue';
 import DocumentSignModal from '../components/DocumentSignModal.vue';
 import { useToast } from '../utils/toast.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import BaseTile from '../components/BaseTile.vue';
+import { auth } from '../auth.js';
+import { hasRole, REFEREE_ROLES } from '../utils/roles.js';
 
 const loading = ref(true);
 const error = ref('');
 const current = ref(null);
 const signTypes = ref([]);
 const documents = ref([]);
-const activeTab = ref(localStorage.getItem('documentsTab') || 'all');
 const search = ref(localStorage.getItem('documentsSearch') || '');
+const filters = ref({
+  number: localStorage.getItem('documentsFilter:number') || '',
+  signType: localStorage.getItem('documentsFilter:signType') || '',
+  status: localStorage.getItem('documentsFilter:status') || '',
+  docType: localStorage.getItem('documentsFilter:docType') || '',
+  dateFrom: localStorage.getItem('documentsFilter:dateFrom') || '',
+  dateTo: localStorage.getItem('documentsFilter:dateTo') || '',
+});
+const filtersModal = ref(null);
 const selected = ref('');
 const selectedType = ref(null);
 const code = ref('');
@@ -34,6 +47,7 @@ const resendCooldown = ref(0);
 let resendTimer = null;
 const { showToast } = useToast();
 const userEmail = ref('');
+const showServiceContractTile = computed(() => hasRole(auth.roles, REFEREE_ROLES));
 
 function formatDate(value) {
   if (!value) return '-';
@@ -178,6 +192,22 @@ function downloadName(d) {
   return `${base} · №${d.number}`;
 }
 
+function downloadFile(d) {
+  if (!d?.file?.url) return;
+  try {
+    const a = document.createElement('a');
+    a.href = d.file.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.setAttribute('download', downloadName(d));
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (_) {
+    window.open(d.file.url, '_blank', 'noopener');
+  }
+}
+
 const statusBadge = computed(() => (alias) => {
   switch (alias) {
     case 'SIGNED':
@@ -232,53 +262,115 @@ function cancelSelection() {
   success.value = false;
 }
 
-// Tabs and filtering
-const tabs = computed(() => {
-  const created = documents.value.filter(
-    (d) => d.status?.alias === 'CREATED'
-  ).length;
-  const awaiting = documents.value.filter(
-    (d) => d.status?.alias === 'AWAITING_SIGNATURE'
-  ).length;
-  const signed = documents.value.filter(
-    (d) => d.status?.alias === 'SIGNED'
-  ).length;
-  return [
-    { key: 'all', label: 'Все' },
-    { key: 'created', label: 'Требуют подписи', badge: created },
-    { key: 'awaiting', label: 'На подписи', badge: awaiting },
-    { key: 'signed', label: 'Подписано', badge: signed },
-  ];
-});
-
+// Filtering
 const filteredDocuments = computed(() => {
   let list = documents.value;
-  switch (activeTab.value) {
-    case 'created':
-      list = list.filter((d) => d.status?.alias === 'CREATED');
-      break;
-    case 'awaiting':
-      list = list.filter((d) => d.status?.alias === 'AWAITING_SIGNATURE');
-      break;
-    case 'signed':
-      list = list.filter((d) => d.status?.alias === 'SIGNED');
-      break;
-    default:
-      break;
-  }
-  if (search.value) {
-    const q = search.value.trim().toLowerCase();
+  const q = search.value.trim().toLowerCase();
+  if (q) {
     list = list.filter((d) => {
       const name = String(d.name || '').toLowerCase();
       const number = String(d.number || '').toLowerCase();
       return name.includes(q) || number.includes(q);
     });
   }
+  if (filters.value.number) {
+    const n = filters.value.number.trim().toLowerCase();
+    list = list.filter((d) =>
+      String(d.number || '')
+        .toLowerCase()
+        .includes(n)
+    );
+  }
+  if (filters.value.signType) {
+    list = list.filter(
+      (d) => (d.signType?.alias || '') === filters.value.signType
+    );
+  }
+  if (filters.value.status) {
+    list = list.filter((d) => (d.status?.alias || '') === filters.value.status);
+  }
+  if (filters.value.docType) {
+    list = list.filter(
+      (d) => (d.documentType?.alias || '') === filters.value.docType
+    );
+  }
+  if (filters.value.dateFrom) {
+    const from = new Date(filters.value.dateFrom);
+    list = list.filter((d) => new Date(d.documentDate) >= from);
+  }
+  if (filters.value.dateTo) {
+    const to = new Date(filters.value.dateTo);
+    to.setDate(to.getDate() + 1);
+    list = list.filter((d) => new Date(d.documentDate) < to);
+  }
   return list;
 });
 
-watch(activeTab, (v) => localStorage.setItem('documentsTab', v));
 watch(search, (v) => localStorage.setItem('documentsSearch', v));
+watch(
+  filters,
+  (f) => {
+    try {
+      localStorage.setItem('documentsFilter:number', f.number || '');
+      localStorage.setItem('documentsFilter:signType', f.signType || '');
+      localStorage.setItem('documentsFilter:status', f.status || '');
+      localStorage.setItem('documentsFilter:docType', f.docType || '');
+      localStorage.setItem('documentsFilter:dateFrom', f.dateFrom || '');
+      localStorage.setItem('documentsFilter:dateTo', f.dateTo || '');
+    } catch (_) {}
+  },
+  { deep: true }
+);
+
+// Options for filters
+const filterSignTypes = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.signType?.alias) map.set(d.signType.alias, d.signType.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+const filterStatuses = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.status?.alias) map.set(d.status.alias, d.status.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+const filterDocTypes = computed(() => {
+  const map = new Map();
+  documents.value.forEach((d) => {
+    if (d.documentType?.alias)
+      map.set(d.documentType.alias, d.documentType.name);
+  });
+  return Array.from(map, ([alias, name]) => ({ alias, name }));
+});
+
+function openFilters() {
+  filtersModal.value?.open?.();
+}
+function applyFilters(next) {
+  filters.value = { ...filters.value, ...next };
+}
+
+// Pagination
+const pageSize = ref(loadPageSize('documentsPageSize', 10));
+const currentPage = ref(1);
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredDocuments.value.length / pageSize.value))
+);
+watch(pageSize, () => {
+  currentPage.value = 1;
+  savePageSize('documentsPageSize', pageSize.value);
+});
+const pagedDocuments = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredDocuments.value.slice(start, start + pageSize.value);
+});
+watch(filteredDocuments, () => {
+  if (currentPage.value > totalPages.value)
+    currentPage.value = totalPages.value;
+});
 </script>
 
 <template>
@@ -293,15 +385,44 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
         <div v-if="error" class="text-danger">{{ error }}</div>
         <div v-else>
           <div v-if="current">
-            <div class="row">
-              <div class="col-md-8 col-lg-6">
-                <div class="card section-card tile fade-in mb-3">
+            <div class="row g-3 g-lg-2 align-items-stretch">
+              <div
+                v-if="showServiceContractTile"
+                class="col-12 col-md-5 col-lg-5 order-2 order-md-1"
+              >
+                <BaseTile
+                  to="https://disk.360.yandex.ru/d/1Ayq7JNB19biLw"
+                  :section="true"
+                  :aria-label="'Договор оказания услуг по судейству хоккейных матчей'"
+                  class="w-100 h-100"
+                >
+                  <div class="card-body d-flex flex-column justify-content-between">
+                    <div>
+                      <h2 class="h6 mb-2">Договор оказания услуг</h2>
+                      <p class="mb-0 text-muted small">
+                        Судейство хоккейных матчей · PDF
+                      </p>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mt-3">
+                      <span class="text-muted small">Откроется в новой вкладке</span>
+                      <i class="bi bi-file-earmark-text fs-3" aria-hidden="true"></i>
+                    </div>
+                  </div>
+                </BaseTile>
+              </div>
+              <div
+                :class="[
+                  'col-12',
+                  showServiceContractTile ? 'col-md-7 col-lg-7 order-1 order-md-2' : ''
+                ]"
+              >
+                <div class="card section-card tile fade-in h-100 signature-card">
                   <div class="card-body">
                     <h2 class="h6 mb-3">Ваш способ подписания</h2>
                     <template v-if="current.alias === 'HANDWRITTEN'">
                       <p class="mb-2">
                         <span
-                          class="badge rounded-pill text-bg-light fw-semibold badge-sign-type"
+                          class="badge rounded-pill text-bg-danger fw-semibold badge-sign-type"
                         >
                           Собственноручная подпись
                         </span>
@@ -314,7 +435,7 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                     <template v-else-if="current.alias === 'KONTUR_SIGN'">
                       <p class="mb-2">
                         <span
-                          class="badge rounded-pill text-bg-light fw-semibold badge-sign-type"
+                          class="badge rounded-pill text-bg-warning fw-semibold badge-sign-type"
                         >
                           Подписание через Контур.Сайн
                         </span>
@@ -349,7 +470,7 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                     <template v-else-if="current.alias === 'SIMPLE_ELECTRONIC'">
                       <p class="mb-2">
                         <span
-                          class="badge rounded-pill text-bg-light fw-semibold badge-sign-type"
+                          class="badge rounded-pill text-bg-success fw-semibold badge-sign-type"
                         >
                           Простая электронная подпись
                         </span>
@@ -362,18 +483,6 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                         <span class="fw-semibold">Эмитент сертификата:</span>
                         <span class="ms-1">Федерация хоккея Москвы</span>
                       </p>
-                      <p class="mb-1 d-flex align-items-center flex-wrap gap-2">
-                        <span class="fw-semibold">ID:</span>
-                        <span class="ms-1">{{ current.id }}</span>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline-secondary"
-                          @click="copyToClipboard(current.id, 'ID скопирован')"
-                          aria-label="Скопировать ID"
-                        >
-                          <i class="bi bi-clipboard" aria-hidden="true"></i>
-                        </button>
-                      </p>
                       <p class="text-muted mb-0">
                         <span class="fw-semibold">Дата создания подписи:</span>
                         <span class="ms-1">{{
@@ -385,18 +494,12 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                 </div>
               </div>
             </div>
-            <div class="row g-3 mt-2">
+            <div class="row g-3 mt-2 mt-lg-1">
               <div class="col-12">
                 <div class="card section-card tile fade-in">
                   <div class="card-body">
-                    <div
-                      class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center mb-3"
-                    >
-                      <h2 class="h6 mb-0 flex-grow-1">Ваши документы</h2>
-                      <div
-                        class="ms-sm-auto w-100 w-sm-auto"
-                        style="min-width: 240px"
-                      >
+                    <div class="row g-2 align-items-end mb-3">
+                      <div class="col-12 col-sm">
                         <label for="docSearch" class="visually-hidden"
                           >Поиск</label
                         >
@@ -404,19 +507,25 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                           id="docSearch"
                           v-model="search"
                           type="search"
-                          class="form-control form-control-sm"
+                          class="form-control"
                           placeholder="Поиск по названию или номеру"
                           autocomplete="off"
+                          aria-label="Поиск по названию или номеру"
                         />
                       </div>
+                      <div class="col-6 col-sm-auto">
+                        <button
+                          class="btn btn-outline-secondary w-100"
+                          @click="openFilters"
+                          aria-label="Открыть фильтры"
+                        >
+                          <i class="bi bi-funnel" aria-hidden="true"></i>
+                          <span class="visually-hidden">Фильтры</span>
+                        </button>
+                      </div>
                     </div>
-                    <TabSelector
-                      v-model="activeTab"
-                      :tabs="tabs"
-                      aria-label="Фильтрация документов"
-                    />
                     <div class="table-responsive d-none d-sm-block">
-                      <table class="table align-middle mb-0">
+                      <table class="table table-hover align-middle mb-0">
                         <caption class="visually-hidden">
                           Список ваших документов с номером, датой, типом
                           подписи и статусом
@@ -428,149 +537,59 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                             <th scope="col">Дата</th>
                             <th scope="col">Тип подписи</th>
                             <th scope="col">Статус</th>
-                            <th scope="col" class="text-end">Действия</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr v-for="d in filteredDocuments" :key="d.id">
+                          <tr
+                            v-for="d in pagedDocuments"
+                            :key="d.id"
+                            :class="{ 'table-row-click': d.file }"
+                            role="button"
+                            :tabindex="d.file ? 0 : -1"
+                            @click="d.file ? downloadFile(d) : null"
+                            @keydown.enter="d.file ? downloadFile(d) : null"
+                          >
                             <td>{{ d.number }}</td>
                             <td>{{ d.name }}</td>
                             <td>{{ formatDate(d.documentDate) }}</td>
                             <td>{{ d.signType?.name || '-' }}</td>
                             <td>
-                              <span
-                                v-if="d.status?.alias"
-                                class="badge"
-                                :class="statusBadge(d.status.alias)"
-                              >
-                                {{ d.status?.name }}
-                              </span>
-                              <span v-else class="text-muted">—</span>
-                            </td>
-                            <td class="text-end">
-                              <button
+                              <template
                                 v-if="
                                   d.signType?.alias === 'SIMPLE_ELECTRONIC' &&
-                                  d.status?.alias === 'AWAITING_SIGNATURE'
-                                "
-                                class="btn btn-sm btn-primary me-2"
-                                :disabled="
-                                  signing === d.id ||
-                                  current?.alias !== 'SIMPLE_ELECTRONIC'
-                                "
-                                @click="openSignDialog(d)"
-                                :title="
-                                  current?.alias !== 'SIMPLE_ELECTRONIC'
-                                    ? 'Выберите простую электронную подпись вверху, чтобы подписывать документы онлайн'
-                                    : 'Подписать документ'
+                                  d.status?.alias === 'AWAITING_SIGNATURE' &&
+                                  current?.alias === 'SIMPLE_ELECTRONIC'
                                 "
                               >
+                                <button
+                                  class="btn btn-sm btn-brand"
+                                  @click.stop="openSignDialog(d)"
+                                  :disabled="
+                                    current?.alias !== 'SIMPLE_ELECTRONIC'
+                                  "
+                                  :title="
+                                    current?.alias !== 'SIMPLE_ELECTRONIC'
+                                      ? 'Выберите простую электронную подпись вверху, чтобы подписывать документы онлайн'
+                                      : 'Подписать документ'
+                                  "
+                                >
+                                  Подписать
+                                </button>
+                              </template>
+                              <template v-else>
                                 <span
-                                  v-if="signing === d.id"
-                                  class="spinner-border spinner-border-sm me-1"
-                                  aria-hidden="true"
-                                ></span>
-                                Подписать
-                              </button>
-                              <a
-                                v-if="d.file"
-                                class="btn btn-sm btn-outline-secondary"
-                                :href="d.file.url"
-                                target="_blank"
-                                rel="noopener"
-                                title="Скачать"
-                                :aria-label="`Скачать документ ${d.name}`"
-                                :download="downloadName(d)"
-                              >
-                                <i
-                                  class="bi bi-download"
-                                  aria-hidden="true"
-                                ></i>
-                              </a>
-                              <div
-                                v-if="signCodeDocId === d.id"
-                                class="mt-2 text-start"
-                              >
-                                <div class="border rounded p-2 bg-light">
-                                  <div class="row g-2 align-items-end">
-                                    <div class="col-12 col-sm-auto">
-                                      <label
-                                        for="signCodeInput"
-                                        class="form-label mb-1"
-                                        >Код из письма</label
-                                      >
-                                      <input
-                                        id="signCodeInput"
-                                        v-model="signCode"
-                                        class="form-control form-control-sm"
-                                        type="text"
-                                        inputmode="numeric"
-                                        pattern="[0-9]*"
-                                        autocomplete="one-time-code"
-                                        maxlength="6"
-                                        @keyup.enter="
-                                          signCode.length === 6 &&
-                                          !signConfirming
-                                            ? confirmSign()
-                                            : null
-                                        "
-                                      />
-                                    </div>
-                                    <div class="col-12 col-sm-auto">
-                                      <button
-                                        class="btn btn-sm btn-brand w-100"
-                                        :disabled="
-                                          signCode.length !== 6 ||
-                                          signConfirming
-                                        "
-                                        @click="confirmSign"
-                                      >
-                                        <span
-                                          v-if="signConfirming"
-                                          class="spinner-border spinner-border-sm me-1"
-                                          aria-hidden="true"
-                                        ></span>
-                                        Подтвердить
-                                      </button>
-                                    </div>
-                                    <div class="col-12 col-sm-auto">
-                                      <button
-                                        class="btn btn-sm btn-outline-secondary w-100"
-                                        :disabled="
-                                          signResendCooldown > 0 ||
-                                          signConfirming
-                                        "
-                                        @click="requestSignCode(d)"
-                                      >
-                                        <span v-if="signResendCooldown > 0"
-                                          >Отправить код ({{
-                                            signResendCooldown
-                                          }}
-                                          с)</span
-                                        >
-                                        <span v-else>Отправить код</span>
-                                      </button>
-                                    </div>
-                                    <div class="col-12 col-sm-auto">
-                                      <button
-                                        class="btn btn-sm btn-outline-secondary w-100"
-                                        @click="signCodeDocId = ''"
-                                      >
-                                        Отмена
-                                      </button>
-                                    </div>
-                                    <div class="col-12" v-if="signError">
-                                      <div class="alert alert-danger py-2 mb-0">
-                                        {{ signError }}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                                  v-if="d.status?.alias"
+                                  class="badge"
+                                  :class="statusBadge(d.status.alias)"
+                                >
+                                  {{ d.status?.name }}
+                                </span>
+                                <span v-else class="text-muted">—</span>
+                              </template>
                             </td>
                           </tr>
                           <tr v-if="!filteredDocuments.length">
-                            <td colspan="6" class="p-0">
+                            <td colspan="5" class="p-0">
                               <EmptyState
                                 icon="bi-file-earmark"
                                 title="Документы отсутствуют"
@@ -590,9 +609,14 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                       class="d-block d-sm-none"
                     >
                       <div
-                        v-for="d in filteredDocuments"
+                        v-for="d in pagedDocuments"
                         :key="d.id"
                         class="card mb-2"
+                        :class="{ 'table-row-click': d.file }"
+                        role="button"
+                        :tabindex="d.file ? 0 : -1"
+                        @click="d.file ? downloadFile(d) : null"
+                        @keydown.enter="d.file ? downloadFile(d) : null"
                       >
                         <div class="card-body">
                           <h3 class="h6 mb-1">{{ d.name }}</h3>
@@ -603,118 +627,44 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                           <p class="mb-1 small">
                             Подпись: {{ d.signType?.name || '—' }}
                           </p>
-                          <p class="mb-1 small d-flex align-items-center gap-2">
-                            <span>Статус:</span>
-                            <span
-                              v-if="d.status?.alias"
-                              class="badge"
-                              :class="statusBadge(d.status.alias)"
-                            >
-                              {{ d.status?.name }}
-                            </span>
-                            <span v-else class="text-muted">—</span>
-                          </p>
-                          <div class="d-flex flex-wrap gap-2 mt-2">
-                            <button
+                          <div class="mt-2">
+                            <template
                               v-if="
                                 d.signType?.alias === 'SIMPLE_ELECTRONIC' &&
-                                d.status?.alias === 'AWAITING_SIGNATURE'
-                              "
-                              class="btn btn-sm btn-primary"
-                              :disabled="
-                                signing === d.id ||
-                                current?.alias !== 'SIMPLE_ELECTRONIC'
-                              "
-                              @click="openSignDialog(d)"
-                              :title="
-                                current?.alias !== 'SIMPLE_ELECTRONIC'
-                                  ? 'Выберите простую электронную подпись вверху, чтобы подписывать документы онлайн'
-                                  : 'Подписать документ'
+                                d.status?.alias === 'AWAITING_SIGNATURE' &&
+                                current?.alias === 'SIMPLE_ELECTRONIC'
                               "
                             >
-                              <span
-                                v-if="signing === d.id"
-                                class="spinner-border spinner-border-sm me-1"
-                                aria-hidden="true"
-                              ></span>
-                              Подписать
-                            </button>
-                            <a
-                              v-if="d.file"
-                              :href="d.file.url"
-                              class="btn btn-sm btn-outline-secondary"
-                              target="_blank"
-                              rel="noopener"
-                              title="Скачать"
-                              :aria-label="`Скачать документ ${d.name}`"
-                              :download="downloadName(d)"
-                            >
-                              <i class="bi bi-download" aria-hidden="true"></i>
-                            </a>
-                          </div>
-                          <div v-if="signCodeDocId === d.id" class="mt-2">
-                            <div class="border rounded p-2 bg-light">
-                              <label
-                                for="signCodeInputM"
-                                class="form-label mb-1"
-                                >Код из письма</label
+                              <button
+                                class="btn btn-sm btn-brand"
+                                @click.stop="openSignDialog(d)"
+                                :disabled="
+                                  current?.alias !== 'SIMPLE_ELECTRONIC'
+                                "
+                                :title="
+                                  current?.alias !== 'SIMPLE_ELECTRONIC'
+                                    ? 'Выберите простую электронную подпись вверху, чтобы подписывать документы онлайн'
+                                    : 'Подписать документ'
+                                "
                               >
-                              <div class="d-flex gap-2">
-                                <input
-                                  id="signCodeInputM"
-                                  v-model="signCode"
-                                  class="form-control form-control-sm"
-                                  type="text"
-                                  inputmode="numeric"
-                                  pattern="[0-9]*"
-                                  autocomplete="one-time-code"
-                                  maxlength="6"
-                                  @keyup.enter="
-                                    signCode.length === 6 && !signConfirming
-                                      ? confirmSign()
-                                      : null
-                                  "
-                                />
-                                <button
-                                  class="btn btn-sm btn-brand"
-                                  :disabled="
-                                    signCode.length !== 6 || signConfirming
-                                  "
-                                  @click="confirmSign"
-                                >
-                                  <span
-                                    v-if="signConfirming"
-                                    class="spinner-border spinner-border-sm me-1"
-                                    aria-hidden="true"
-                                  ></span>
-                                  ОК
-                                </button>
-                                <button
-                                  class="btn btn-sm btn-outline-secondary"
-                                  :disabled="
-                                    signResendCooldown > 0 || signConfirming
-                                  "
-                                  @click="requestSignCode(d)"
-                                >
-                                  <span v-if="signResendCooldown > 0"
-                                    >Код ({{ signResendCooldown }} с)</span
-                                  >
-                                  <span v-else>Код</span>
-                                </button>
-                                <button
-                                  class="btn btn-sm btn-outline-secondary"
-                                  @click="signCodeDocId = ''"
-                                >
-                                  Отмена
-                                </button>
-                              </div>
-                              <div
-                                v-if="signError"
-                                class="alert alert-danger py-2 mb-0 mt-2"
+                                Подписать
+                              </button>
+                            </template>
+                            <template v-else>
+                              <p
+                                class="mb-1 small d-flex align-items-center gap-2"
                               >
-                                {{ signError }}
-                              </div>
-                            </div>
+                                <span>Статус:</span>
+                                <span
+                                  v-if="d.status?.alias"
+                                  class="badge"
+                                  :class="statusBadge(d.status.alias)"
+                                >
+                                  {{ d.status?.name }}
+                                </span>
+                                <span v-else class="text-muted">—</span>
+                              </p>
+                            </template>
                           </div>
                         </div>
                       </div>
@@ -732,9 +682,19 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
                     </div>
                   </div>
                 </div>
+                <PageNav
+                  v-if="filteredDocuments.length"
+                  v-model:page="currentPage"
+                  v-model:page-size="pageSize"
+                  :total-pages="totalPages"
+                />
               </div>
             </div>
-            <DocumentSignModal ref="signModal" @signed="onSigned" />
+            <DocumentSignModal
+              ref="signModal"
+              :user-email="userEmail"
+              @signed="onSigned"
+            />
           </div>
           <div v-else>
             <p class="mb-3">Выберите способ подписания первичных документов</p>
@@ -872,6 +832,14 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
         </div>
       </div>
     </div>
+    <DocumentFiltersModal
+      ref="filtersModal"
+      :filters="filters"
+      :sign-types="filterSignTypes"
+      :statuses="filterStatuses"
+      :doc-types="filterDocTypes"
+      @apply="applyFilters"
+    />
   </div>
 </template>
 
@@ -882,5 +850,26 @@ watch(search, (v) => localStorage.setItem('documentsSearch', v));
 }
 .table-row-click {
   cursor: pointer;
+}
+/* Keep the signature tile visually compact on wide screens */
+.signature-card {
+  width: 100%;
+  max-width: 520px;
+}
+@media (min-width: 992px) {
+  .signature-card {
+    max-width: 500px;
+  }
+}
+@media (min-width: 1200px) {
+  .signature-card {
+    max-width: 480px;
+  }
+}
+/* On mobile, let the signature block span full width for clean stacking */
+@media (max-width: 767.98px) {
+  .signature-card {
+    max-width: none;
+  }
 }
 </style>

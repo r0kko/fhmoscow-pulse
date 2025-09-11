@@ -24,7 +24,16 @@ const sequelize = new Sequelize(
       idle: 10_000,
     },
     benchmark: true,
-    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    logging:
+      process.env.NODE_ENV === 'development'
+        ? (msg, timing) => {
+            // Suppress trivial connection pings in dev logs
+            if (/SELECT\s+1(\+1)?\s+AS\s+result/i.test(msg)) return;
+            if (/^Executing \(default\):\s+SELECT\s+1(\s|;|$)/i.test(msg))
+              return;
+            console.log(msg, timing ? `(in ${timing} ms)` : '');
+          }
+        : false,
   }
 );
 

@@ -185,6 +185,28 @@ reference an existing directory on the system. If the fonts are missing or
 cannot be read, the service falls back to builtin PDF fonts which may render
 Cyrillic characters incorrectly.
 
+### Document verification via QR
+
+- Generated PDFs include a standardized e‑signature stamp with a QR code that points to a secure URL: `GET /verify?t=<token>`.
+- The token is a compact base64url payload (document id, sign id, signer id) with an HMAC signature using `VERIFY_HMAC_SECRET`.
+- Backend endpoint: `GET /verify` returns minimal confirmation details if the token is valid. No authentication required.
+- SPA route: `/verify` presents a human‑friendly confirmation page; it calls the API endpoint above.
+- Configure:
+  - `BASE_URL` must be set to the public SPA origin; it is embedded in the QR URL.
+  - `VERIFY_HMAC_SECRET` (optional). If unset, the app falls back to `CSRF_HMAC_SECRET` → `JWT_SECRET` → `SESSION_SECRET`.
+
+Stamp sizing and appearance can be tuned via environment variables if required by branding or printer constraints (defaults are sensible for A4):
+
+- `PDF_STAMP_WIDTH`/`PDF_STAMP_HEIGHT` — outer stamp size; default `270x66` px.
+- `PDF_STAMP_MIN_WIDTH` — minimal width when auto-shrinking stamp to fit content; default `220` px.
+- `PDF_STAMP_PAD_X`/`PDF_STAMP_PAD_Y` — inner padding; default `10/8` px.
+- `PDF_STAMP_GAP` — gap between QR and text block; default `10` px.
+- `PDF_QR_MIN_SIZE` — minimum QR side; default `40` px to ensure scan reliability.
+- `PDF_QR_IDEAL_RATIO` — target ratio of QR side to the smaller inner stamp side; default `0.46` (clamped to `[0.25..0.6]`).
+- `PDF_QR_QUIET_MODULES` — QR quiet zone in modules per side; default `4`.
+
+The QR size is computed to stay inside the stamp, balance with the text block, and render sharply (vector when available, crisp pixel snapping otherwise). The stamp border auto-shrinks horizontally to avoid excessive empty space on the right while keeping padding and spacing.
+
 Do **not** set `SSL_CERT_PATH` or `SSL_KEY_PATH` so that the Node.js application
 starts in HTTP mode and relies on nginx for TLS termination.
 

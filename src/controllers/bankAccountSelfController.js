@@ -4,6 +4,7 @@ import bankAccountService from '../services/bankAccountService.js';
 import dadataService from '../services/dadataService.js';
 import bankAccountMapper from '../mappers/bankAccountMapper.js';
 import { sendError } from '../utils/api.js';
+import bankAccountChangeService from '../services/bankAccountChangeService.js';
 
 export default {
   async create(req, res) {
@@ -41,6 +42,21 @@ export default {
       return res.status(204).end();
     } catch (err) {
       return sendError(res, err, 404);
+    }
+  },
+  async requestChange(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const result = await bankAccountChangeService.requestChange(req.user, {
+        number: req.body.number,
+        bic: req.body.bic,
+      });
+      return res.status(201).json(result);
+    } catch (err) {
+      return sendError(res, err);
     }
   },
 };

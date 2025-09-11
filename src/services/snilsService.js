@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 
-import { Snils, UserExternalId } from '../models/index.js';
+import { Snils } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import legacyService from './legacyUserService.js';
@@ -49,6 +49,7 @@ export async function hasAnySnils(userId) {
   if (local) return true;
   // 2) Fallback to legacy field if available (no validation, presence-only)
   try {
+    const { UserExternalId } = await import('../models/index.js');
     const ext = await UserExternalId.findOne({ where: { user_id: userId } });
     if (!ext) return false;
     const legacy = await legacyService.findById(ext.external_id);

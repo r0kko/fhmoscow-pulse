@@ -135,6 +135,11 @@ defineExpose({ open });
             :disabled="saving"
             @click="save"
           >
+            <span
+              v-if="saving"
+              class="spinner-border spinner-border-sm spinner-brand me-2"
+              aria-hidden="true"
+            ></span>
             Создать
           </button>
         </div>

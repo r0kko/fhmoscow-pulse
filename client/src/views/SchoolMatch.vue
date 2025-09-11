@@ -115,6 +115,29 @@ const penaltiesDisabled = computed(
 
 // No filters/tabs — timeline displays both teams side-by-side
 
+// Technical result banner for past matches
+const isPastMatch = computed(() => {
+  try {
+    const ts = new Date(match.value?.date_start || '').getTime();
+    return isFinite(ts) && ts < Date.now();
+  } catch {
+    return false;
+  }
+});
+const technicalStatus = computed(() => {
+  if (!isPastMatch.value) return null;
+  const w = String(match.value?.technical_winner || '').toLowerCase();
+  if (w !== 'home' && w !== 'away') return null;
+  const isHome = !!match.value?.is_home;
+  const isAway = !!match.value?.is_away;
+  const won = (isHome && w === 'home') || (isAway && w === 'away');
+  const lost = (isHome && w === 'away') || (isAway && w === 'home');
+  if (won) return { text: 'Тех. победа', cls: 'alert-success' };
+  if (lost) return { text: 'Тех. поражение', cls: 'alert-danger' };
+  // Unknown side: show neutral info
+  return { text: 'Технический результат', cls: 'alert-secondary' };
+});
+
 function normalizeUrl(u) {
   const s = (u || '').toString().trim();
   if (!s) return '';
@@ -247,6 +270,12 @@ const statusChip = computed(() => {
 
       <div v-else class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
+          <div
+            v-if="technicalStatus"
+            class="alert" :class="technicalStatus.cls" role="alert"
+          >
+            Матч завершён: {{ technicalStatus.text }}.
+          </div>
           <div v-if="isCancelled" class="alert alert-warning" role="alert">
             Матч отменен. Для уточнения всех сведений, касающихся проведения
             встречи, просьба обращаться в отдел проведения соревнований ФХМ.

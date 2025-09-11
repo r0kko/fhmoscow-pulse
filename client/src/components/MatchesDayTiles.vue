@@ -18,6 +18,8 @@ const props = defineProps({
   showScoreAsColumn: { type: Boolean, default: false },
   // Mobile row style: 'card' (default) or 'divider' to separate rows with hairline dividers
   mobileStyle: { type: String, default: 'card' },
+  // Sort direction for groups and items: 'asc' (default) or 'desc'
+  sortDirection: { type: String, default: 'asc' },
 });
 
 const groups = computed(() => {
@@ -27,9 +29,11 @@ const groups = computed(() => {
     if (!map.has(key)) map.set(key, { date: new Date(key), list: [] });
     map.get(key).list.push(m);
   });
+  const dir = (props.sortDirection || 'asc').toLowerCase() === 'desc' ? -1 : 1;
   return [...map.values()]
-    .sort((a, b) => a.date - b.date)
+    .sort((a, b) => dir * (a.date - b.date))
     .map((g) => {
+      // Always sort matches within the day in ascending order by kickoff time
       g.list.sort((a, b) => new Date(a.date) - new Date(b.date));
       return g;
     });
@@ -60,6 +64,20 @@ function computeUiStatus(m) {
   const ts = new Date(m?.date || '').getTime();
   const isPast = isFinite(ts) && ts < Date.now();
   if (isPast) {
+    // Technical result dominates over any status (perspective-aware)
+    const tech = (m?.technical_winner || '').toLowerCase();
+    if (tech === 'home' || tech === 'away') {
+      const viewerHome = !!m?.is_home;
+      const viewerAway = !!m?.is_away;
+      const won = (viewerHome && tech === 'home') || (viewerAway && tech === 'away');
+      const lost = (viewerHome && tech === 'away') || (viewerAway && tech === 'home');
+      if (won) return { text: 'Тех. победа', cls: 'pill pill-success' };
+      if (lost) return { text: 'Тех. поражение', cls: 'pill pill-danger' };
+      // Unknown side for viewer: show neutral winner
+      return tech === 'home'
+        ? { text: 'Тех. победа', cls: 'pill pill-success' }
+        : { text: 'Тех. поражение', cls: 'pill pill-danger' };
+    }
     if (alias === 'CANCELLED' || alias === 'POSTPONED')
       return {
         text: m?.status?.name || '—',
@@ -138,6 +156,11 @@ function computeOutcome(m, alias) {
 }
 
 function formatScore(m) {
+  const ts = new Date(m?.date || '').getTime();
+  const isPast = isFinite(ts) && ts < Date.now();
+  const tech = (m?.technical_winner || '').toLowerCase();
+  if (isPast && (tech === 'home' || tech === 'away'))
+    return tech === 'home' ? '+/-' : '-/+';
   const a = m?.score_team1;
   const b = m?.score_team2;
   if (a == null || b == null) return '';
@@ -236,6 +259,16 @@ function formatScore(m) {
                     (m.status?.alias || '').toUpperCase() === 'CANCELLED'
                   "
                   class="bi bi-x-octagon icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'Тех. победа'"
+                  class="bi bi-trophy-fill icon-pin me-1"
+                  aria-hidden="true"
+                ></i>
+                <i
+                  v-else-if="computeUiStatus(m).text === 'Тех. поражение'"
+                  class="bi bi-emoji-frown icon-pin me-1"
                   aria-hidden="true"
                 ></i>
                 <i

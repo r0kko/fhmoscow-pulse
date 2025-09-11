@@ -74,6 +74,35 @@ export const PDF_META = {
   barcodeOpacity: process.env.PDF_BARCODE_OPACITY
     ? Number(process.env.PDF_BARCODE_OPACITY)
     : undefined,
+  // E-sign stamp and QR tuning
+  stampWidth: process.env.PDF_STAMP_WIDTH
+    ? Number(process.env.PDF_STAMP_WIDTH)
+    : 270,
+  // Optional minimum width for the e-sign stamp when auto-shrinking is applied
+  stampWidthMin: process.env.PDF_STAMP_MIN_WIDTH
+    ? Number(process.env.PDF_STAMP_MIN_WIDTH)
+    : 220,
+  stampHeight: process.env.PDF_STAMP_HEIGHT
+    ? Number(process.env.PDF_STAMP_HEIGHT)
+    : 66,
+  stampGap: process.env.PDF_STAMP_GAP ? Number(process.env.PDF_STAMP_GAP) : 10,
+  stampPadX: process.env.PDF_STAMP_PAD_X
+    ? Number(process.env.PDF_STAMP_PAD_X)
+    : 10,
+  stampPadY: process.env.PDF_STAMP_PAD_Y
+    ? Number(process.env.PDF_STAMP_PAD_Y)
+    : 8,
+  qrMinSize: process.env.PDF_QR_MIN_SIZE
+    ? Number(process.env.PDF_QR_MIN_SIZE)
+    : 40,
+  // Target proportion of QR side to the smaller of stamp inner width/height.
+  // Clamped in code to a sane range [0.25..0.6].
+  qrIdealRatio: process.env.PDF_QR_IDEAL_RATIO
+    ? Number(process.env.PDF_QR_IDEAL_RATIO)
+    : 0.46,
+  qrQuietZoneModules: process.env.PDF_QR_QUIET_MODULES
+    ? Number(process.env.PDF_QR_QUIET_MODULES)
+    : 4,
 };
 
 // Visual style for PDF elements (info boxes etc.)

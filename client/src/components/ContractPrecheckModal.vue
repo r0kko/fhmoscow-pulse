@@ -367,6 +367,11 @@ defineExpose({ open });
             :disabled="!canGenerate() || generating"
             @click="generate"
           >
+            <span
+              v-if="generating"
+              class="spinner-border spinner-border-sm spinner-brand me-2"
+              aria-hidden="true"
+            ></span>
             Сформировать
           </button>
         </div>

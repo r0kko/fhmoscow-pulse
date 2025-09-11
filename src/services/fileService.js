@@ -108,6 +108,9 @@ function buildContentDisposition(filename) {
 }
 
 async function getDownloadUrl(file, options = {}) {
+  if (!file || !file.key) {
+    throw new ServiceError('file_not_found', 404);
+  }
   const params = { Bucket: getS3Bucket(), Key: file.key };
   /* istanbul ignore next */ if (options.filename) {
     params.ResponseContentDisposition = buildContentDisposition(

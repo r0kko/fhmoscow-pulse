@@ -62,6 +62,8 @@ import sportSchoolsRouter from './sportSchools.js';
 import metricsRouter from './metrics.js';
 import adminOpsRouter from './adminOps.js';
 import reportsRouter from './reports.js';
+import verifyRouter from './verify.js';
+import shortLinksRouter from './shortLinks.js';
 
 const router = express.Router();
 
@@ -120,6 +122,8 @@ router.use('/sport-schools', sportSchoolsRouter);
 router.use('/metrics', metricsRouter);
 router.use('/admin-ops', adminOpsRouter);
 router.use('/reports', reportsRouter);
+router.use('/v', shortLinksRouter);
+router.use('/verify', verifyRouter);
 
 /**
  * @swagger
@@ -162,6 +166,10 @@ router.get('/csrf-token', csrf, (req, res) => {
   // Avoid any caching of CSRF token responses at client/CDN proxies
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   res.set('Pragma', 'no-cache');
+  if (typeof res?.vary === 'function') {
+    res.vary('Cookie');
+    res.vary('Origin');
+  }
   const json = { csrfToken: req.csrfToken() };
   try {
     json.csrfHmac = issueCsrfHmac(req);

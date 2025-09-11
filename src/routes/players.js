@@ -37,4 +37,21 @@ router.get(
 );
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);
 
+// Update anthropometry + roster (jersey number + role) for a player within a specific team/season
+router.patch(
+  '/:id/anthro-and-roster',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.updateAnthroAndRoster
+);
+
+// Player roles list for UI selectors
+router.get(
+  '/roles',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  controller.roles
+);
+
 export default router;

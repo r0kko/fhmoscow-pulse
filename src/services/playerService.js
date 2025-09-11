@@ -859,8 +859,10 @@ export async function seasonBirthYearCounts(options = {}) {
              COUNT(DISTINCT tp.player_id) AS player_count
       FROM team_players tp
       JOIN teams t ON t.id = tp.team_id
+      JOIN players p ON p.id = tp.player_id
       WHERE tp.deleted_at IS NULL
         AND t.deleted_at IS NULL
+        AND p.deleted_at IS NULL
         AND tp.season_id IS NOT NULL
         AND t.birth_year IS NOT NULL
         ${clubIds ? 'AND t.club_id IN (:clubIds)' : ''}
@@ -903,8 +905,10 @@ export async function seasonTeamSummaries(options = {}) {
              COUNT(DISTINCT tp.player_id) AS player_count
       FROM team_players tp
       JOIN teams t ON t.id = tp.team_id
+      JOIN players p ON p.id = tp.player_id
       WHERE tp.deleted_at IS NULL
         AND t.deleted_at IS NULL
+        AND p.deleted_at IS NULL
         ${clubIds ? 'AND t.club_id IN (:clubIds)' : ''}
         ${teamIds ? 'AND tp.team_id IN (:teamIds)' : ''}
       GROUP BY tp.season_id, tp.team_id

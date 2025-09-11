@@ -173,6 +173,7 @@ async function listUpcomingLocal(userId, options) {
       'team1_id',
       'team2_id',
       'ground_id',
+      'technical_winner',
       'score_team1',
       'score_team2',
       'scheduled_date',
@@ -307,6 +308,7 @@ async function listUpcomingLocal(userId, options) {
         team1: m.HomeTeam?.name || null,
         team2: m.AwayTeam?.name || null,
         is_home: teamIds.includes(m.team1_id),
+        technical_winner: m.technical_winner || null,
         score_team1: m.score_team1 ?? null,
         score_team2: m.score_team2 ?? null,
         tournament: m.Tournament?.name || null,
@@ -337,7 +339,8 @@ async function listPast(userId, options) {
   const opts = compatArrayReturn
     ? { limit: typeof options === 'number' ? options : undefined }
     : options;
-  const { limit = 100, offset = 0, type = 'all', q = '' } = opts;
+  // Do not default limit to 100: undefined means 'no limit' (show all)
+  const { limit, offset = 0, type = 'all', q = '' } = opts;
   const user = await User.findByPk(userId, { include: [Team] });
   if (!user) throw new ServiceError('user_not_found', 404);
   const extIds = (user.Teams || [])
@@ -461,13 +464,8 @@ async function listPastLocal(userId, options) {
   const opts = compatArrayReturn
     ? { limit: typeof options === 'number' ? options : undefined }
     : options;
-  const {
-    limit = 100,
-    offset = 0,
-    type = 'all',
-    q = '',
-    seasonId = null,
-  } = opts;
+  // Do not default limit to 100: undefined means 'no limit' (show all)
+  const { limit, offset = 0, type = 'all', q = '', seasonId = null } = opts;
 
   const user = await User.findByPk(userId, { include: [Team] });
   if (!user) throw new ServiceError('user_not_found', 404);
@@ -498,6 +496,7 @@ async function listPastLocal(userId, options) {
       'team2_id',
       'ground_id',
       'season_id',
+      'technical_winner',
       'score_team1',
       'score_team2',
       'scheduled_date',
@@ -548,6 +547,7 @@ async function listPastLocal(userId, options) {
       stadium: m.Ground?.name || null,
       team1: m.HomeTeam?.name || null,
       team2: m.AwayTeam?.name || null,
+      technical_winner: m.technical_winner || null,
       score_team1: m.score_team1 ?? null,
       score_team2: m.score_team2 ?? null,
       is_home: teamIds.includes(m.team1_id),
@@ -596,6 +596,7 @@ async function listPastLocal(userId, options) {
       is_away: teamIds.includes(m.team2_id),
       is_both_teams:
         teamIds.includes(m.team1_id) && teamIds.includes(m.team2_id),
+      technical_winner: m.technical_winner || null,
       score_team1: m.score_team1 ?? null,
       score_team2: m.score_team2 ?? null,
       scheduled_date: m.scheduled_date || null,

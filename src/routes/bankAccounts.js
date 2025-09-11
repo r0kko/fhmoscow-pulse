@@ -55,4 +55,24 @@ router.post(
  */
 router.delete('/', auth, denyStaffOnly, selfController.remove);
 
+/**
+ * @swagger
+ * /bank-accounts/change-request:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Request bank details change (creates ticket + statement)
+ *     responses:
+ *       201:
+ *         description: Created ticket and document
+ */
+router.post(
+  '/change-request',
+  auth,
+  denyStaffOnly,
+  bankAccountRules,
+  validate,
+  selfController.requestChange
+);
+
 export default router;

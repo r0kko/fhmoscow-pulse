@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api.js';
 import InfoField from '../components/InfoField.vue';
 import AddVehicleModal from '../components/AddVehicleModal.vue';
+import ChangeBankRequisitesModal from '../components/ChangeBankRequisitesModal.vue';
+import DocumentSignModal from '../components/DocumentSignModal.vue';
 import { auth } from '../auth.js';
 
 const noDataPlaceholder = '—';
@@ -19,10 +21,13 @@ const snils = ref();
 const driverLicense = ref();
 const bankAccount = ref();
 const bankAccountError = ref('');
+const hasSimpleESign = ref(false);
 const registrationAddress = ref();
 const residenceAddress = ref();
 const vehicles = ref([]);
 const addVehicleModal = ref(null);
+const changeBankModal = ref(null);
+const signModal = ref(null);
 const maskedAccountNumber = computed(() => {
   if (!bankAccount.value?.number) return noDataPlaceholder;
   const num = bankAccount.value.number;
@@ -257,6 +262,14 @@ onMounted(() => {
   fetchInn();
   fetchTaxation();
   fetchSnils();
+  // Load current sign type to gate bank change flow
+  apiFetch('/sign-types/me')
+    .then((res) => {
+      hasSimpleESign.value = res?.signType?.alias === 'SIMPLE_ELECTRONIC';
+    })
+    .catch(() => {
+      hasSimpleESign.value = false;
+    });
   if (!isStaffOnly.value) {
     fetchBankAccount();
     fetchAddresses();
@@ -265,6 +278,15 @@ onMounted(() => {
     fetchVehicles();
   }
 });
+
+function openChangeBank() {
+  changeBankModal.value?.open?.();
+}
+
+function onBankChangeCreated(doc) {
+  // Open sign modal for the newly created document
+  if (doc) signModal.value?.open?.(doc);
+}
 </script>
 
 <template>
@@ -435,7 +457,21 @@ onMounted(() => {
             >
               <div class="card section-card tile fade-in shadow-sm">
                 <div class="card-body">
-                  <h2 class="card-title h5 mb-3">Банковские реквизиты</h2>
+                  <div
+                    class="d-flex align-items-center justify-content-between mb-3"
+                  >
+                    <h2 class="card-title h5 mb-0">Банковские реквизиты</h2>
+                    <button
+                      v-if="bankAccount && hasSimpleESign"
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="openChangeBank"
+                      aria-label="Изменить банковские реквизиты"
+                      title="Изменить"
+                    >
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </button>
+                  </div>
                   <div v-if="loading.bankAccount" class="text-center py-4">
                     <div
                       class="spinner-border"
@@ -463,6 +499,15 @@ onMounted(() => {
                           :value="bankAccount.bank_name"
                         />
                       </div>
+                    </div>
+                    <div
+                      v-if="!hasSimpleESign"
+                      class="alert alert-warning mt-3 mb-0"
+                      role="alert"
+                    >
+                      Для изменения реквизитов требуется простая электронная
+                      подпись. Перейдите в раздел «Документы», чтобы выбрать
+                      способ подписания.
                     </div>
                   </div>
                   <p v-else class="mb-0 text-muted">
@@ -643,6 +688,20 @@ onMounted(() => {
     </div>
   </div>
   <AddVehicleModal ref="addVehicleModal" @saved="fetchVehicles" />
+  <ChangeBankRequisitesModal
+    ref="changeBankModal"
+    @created="onBankChangeCreated"
+  />
+  <DocumentSignModal
+    ref="signModal"
+    :user-email="user?.email || ''"
+    @signed="
+      () => {
+        fetchProfile();
+        fetchBankAccount();
+      }
+    "
+  />
 </template>
 
 <style scoped>

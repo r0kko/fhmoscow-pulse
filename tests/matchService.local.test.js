@@ -109,3 +109,12 @@ test('listPastLocal returns past matches with season filter', async () => {
   expect(args.offset).toBe(5);
   expect(args.where.season_id).toBe(2025);
 });
+
+test('listPastLocal orders by date_start DESC', async () => {
+  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] });
+  matchFindAllMock.mockResolvedValue([]);
+  await listPastLocal('u1', { limit: 10, offset: 0 });
+  const args = matchFindAllMock.mock.calls[0][0];
+  expect(Array.isArray(args.order)).toBe(true);
+  expect(args.order[0]).toEqual(['date_start', 'DESC']);
+});

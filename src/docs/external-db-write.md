@@ -4,9 +4,12 @@ External DB Write Policy
 - Whitelisted mutations:
   - Updating `game.date_start` and `game.stadium_id` when a match time and ground are approved by both sides in Pulse.
   - Rescheduling a postponed match: updating `game.date_start` and clearing `game.cancel_status` (set to NULL) when a team selects a new date (00:00 MSK) to resume coordination.
+  - Updating player anthropometric data: `player.grip`, `player.height`, `player.weight` as part of school roster management.
+  - Updating club roster fields: `club_player.number`, `club_player.role_id` (амплуа) as part of school roster management.
 - Entry points:
   - `src/services/externalMatchSyncService.js` via `updateExternalGameDateAndStadium()` from `src/config/externalMariaDb.js` (approval flow).
   - `src/services/rescheduleExternalService.js` via `updateExternalGameDateAndClearCancelStatus()` from `src/config/externalMariaDb.js` (reschedule flow).
+  - `src/services/playerEditService.js` via `updateExternalPlayerAnthropometry()` and `updateExternalClubPlayerNumberAndRole()` from `src/config/externalMariaDb.js` (roster edit flow).
 - Timezone: Pulse stores times in UTC, external DB stores Moscow time (UTC+03:00). We add +3 hours when writing to external and when comparing values for idempotency.
 - Approval flow requires successful external write: status `ACCEPTED` is set only after the external DB is updated (or already in sync). If the external DB is unavailable or mappings are missing, the approval fails with a clear error.
 

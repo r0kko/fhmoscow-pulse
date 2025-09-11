@@ -53,6 +53,7 @@ import ChangePassword from './views/ChangePassword.vue';
 import NotFound from './views/NotFound.vue';
 import Forbidden from './views/Forbidden.vue';
 import ServerError from './views/ServerError.vue';
+import Verify from './views/Verify.vue';
 
 import {
   ADMIN_ROLES as adminRoles,
@@ -65,6 +66,11 @@ const routes = [
     path: '/',
     component: Home,
     meta: { requiresAuth: true, fluid: true, title: 'Главная' },
+  },
+  {
+    path: '/verify',
+    component: Verify,
+    meta: { hideLayout: true, title: 'Проверка документа' },
   },
   {
     path: '/school',
