@@ -25,6 +25,40 @@ test('computeTechnicalWinner picks away when only team2 points present', () => {
   expect(computeTechnicalWinner(g)).toBe('away');
 });
 
+test('computeTechnicalWinner returns null when only team1 points are non-positive', () => {
+  expect(
+    computeTechnicalWinner({
+      technical_defeat: 1,
+      points_for_tournament_table_team1: 0,
+      points_for_tournament_table_team2: null,
+    })
+  ).toBeNull();
+  expect(
+    computeTechnicalWinner({
+      technical_defeat: 1,
+      points_for_tournament_table_team1: -2,
+      points_for_tournament_table_team2: undefined,
+    })
+  ).toBeNull();
+});
+
+test('computeTechnicalWinner returns null when only team2 points are non-positive', () => {
+  expect(
+    computeTechnicalWinner({
+      technical_defeat: 1,
+      points_for_tournament_table_team1: null,
+      points_for_tournament_table_team2: 0,
+    })
+  ).toBeNull();
+  expect(
+    computeTechnicalWinner({
+      technical_defeat: 1,
+      points_for_tournament_table_team1: 'x',
+      points_for_tournament_table_team2: -1,
+    })
+  ).toBeNull();
+});
+
 test('computeTechnicalWinner compares when both present', () => {
   expect(
     computeTechnicalWinner({
