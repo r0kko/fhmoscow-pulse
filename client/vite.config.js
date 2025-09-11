@@ -22,12 +22,22 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: '0.0.0.0',
-    allowedHosts: ['pulse.fhmoscow.com', 'localhost', '127.0.0.1', 'lk.fhmoscow.com'],
+    allowedHosts: [
+      'pulse.fhmoscow.com',
+      'localhost',
+      '127.0.0.1',
+      'lk.fhmoscow.com',
+    ],
     proxy: proxyConfig,
   },
   preview: {
     host: '0.0.0.0',
-    allowedHosts: ['pulse.fhmoscow.com', 'localhost', '127.0.0.1', 'lk.fhmoscow.com'],
+    allowedHosts: [
+      'pulse.fhmoscow.com',
+      'localhost',
+      '127.0.0.1',
+      'lk.fhmoscow.com',
+    ],
     // Vite Preview supports proxy since v5; mirror dev proxy for parity
     proxy: proxyConfig,
   },
