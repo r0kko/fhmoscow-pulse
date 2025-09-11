@@ -3,6 +3,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { incRateLimited } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
+import { isRateLimitEnabled } from '../config/featureFlags.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
@@ -14,17 +15,18 @@ function regKey(req) {
 }
 
 /**
- * Rate limiter for registration endpoints.
- * Defaults increased; still protective for abuse.
+ * Rate limiter for registration endpoints — disabled by default.
+ * Expect upstream protection (edge) and observability instead.
  */
+const enabled = isRateLimitEnabled('registration');
 const windowMs = parseInt(process.env.REGISTRATION_RATE_WINDOW_MS || '3600000');
 const max = parseInt(process.env.REGISTRATION_RATE_MAX || '30');
 const store =
-  process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
+  enabled && process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
     ? new RedisRateLimitStore({ prefix: 'rate:registration' })
     : undefined;
 
-export default rateLimit({
+const middleware = rateLimit({
   windowMs,
   max,
   standardHeaders: true,
@@ -33,7 +35,8 @@ export default rateLimit({
   store,
   skip: (req) => {
     const method = (req.method || 'POST').toUpperCase();
-    return method === 'OPTIONS' || method === 'HEAD';
+    if (method === 'OPTIONS' || method === 'HEAD') return true;
+    return !enabled; // fully skip when disabled
   },
   handler: (req, res, _next, options) => {
     incRateLimited('registration');
@@ -44,3 +47,7 @@ export default rateLimit({
     });
   },
 });
+
+export default enabled
+  ? middleware
+  : (_req, _res, next) => next();

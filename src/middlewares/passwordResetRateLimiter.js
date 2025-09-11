@@ -3,6 +3,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { incRateLimited } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
+import { isRateLimitEnabled } from '../config/featureFlags.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
@@ -13,16 +14,17 @@ function resetKey(req) {
   return `ip:${ipKey}|email:${email || 'unknown'}`;
 }
 
+const enabled = isRateLimitEnabled('password_reset');
 const windowMs = parseInt(
   process.env.PASSWORD_RESET_RATE_WINDOW_MS || '3600000'
 );
 const max = parseInt(process.env.PASSWORD_RESET_RATE_MAX || '30');
 const store =
-  process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
+  enabled && process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
     ? new RedisRateLimitStore({ prefix: 'rate:password_reset' })
     : undefined;
 
-export default rateLimit({
+const middleware = rateLimit({
   windowMs,
   max,
   standardHeaders: true,
@@ -31,7 +33,8 @@ export default rateLimit({
   store,
   skip: (req) => {
     const method = (req.method || 'POST').toUpperCase();
-    return method === 'OPTIONS' || method === 'HEAD';
+    if (method === 'OPTIONS' || method === 'HEAD') return true;
+    return !enabled; // fully skip when disabled
   },
   handler: (req, res, _next, options) => {
     incRateLimited('password_reset');
@@ -42,3 +45,7 @@ export default rateLimit({
     });
   },
 });
+
+export default enabled
+  ? middleware
+  : (_req, _res, next) => next();

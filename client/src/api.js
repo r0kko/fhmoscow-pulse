@@ -1,12 +1,41 @@
 import { translateError } from './errors.js';
 
 import { clearAuth } from './auth.js';
-export const API_BASE = (
-  (typeof import.meta !== 'undefined' &&
-    import.meta.env &&
-    import.meta.env.VITE_API_BASE) ||
-  'http://localhost:3000'
-).replace(/\/+$/, '');
+
+// Resolve API base URL with a strong preference for same-origin to avoid
+// cross-host redirects (which can drop POST bodies or strip credentials),
+// especially when an upstream CDN/WAF issues 30x to a canonical host.
+function resolveApiBase() {
+  const envBase =
+    (typeof import.meta !== 'undefined' &&
+      import.meta.env &&
+      import.meta.env.VITE_API_BASE) || null;
+
+  // In browsers, prefer relative /api unless an absolute URL targets the
+  // current origin. This prevents 301/302 during refresh calls that can turn
+  // POST into GET and cause re-login loops.
+  if (typeof window !== 'undefined') {
+    try {
+      if (!envBase) return '/api';
+      // If configured as relative, keep as-is
+      if (/^\//.test(envBase)) return envBase.replace(/\/+$/, '');
+      const u = new URL(envBase);
+      const loc = window.location;
+      const sameHost =
+        u.hostname === loc.hostname && String(u.port || '') === (loc.port || '');
+      if (sameHost) return u.origin.replace(/\/+$/, '');
+      // Different host — avoid potential redirect/CORS pitfalls
+      return '/api';
+    } catch (_) {
+      return '/api';
+    }
+  }
+
+  // Non-browser (tests/build tools): fall back to env or localhost
+  return (envBase || 'http://localhost:3000').replace(/\/+$/, '');
+}
+
+export const API_BASE = resolveApiBase();
 
 let accessToken = null;
 let refreshPromise = null;
@@ -211,6 +240,29 @@ async function refreshToken() {
         });
         t2.cancelTimeout?.();
         data = await res.json().catch(() => ({}));
+      }
+      // If misconfigured API_BASE causes a 404/405 after an upstream 30x redirect,
+      // fall back once to same-origin /api to avoid refresh loops.
+      if (
+        !res.ok &&
+        typeof window !== 'undefined' &&
+        /^https?:/i.test(API_BASE) &&
+        (res.status === 404 || res.status === 405 || data?.error === 'not_found')
+      ) {
+        try {
+          const t3 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
+          res = await fetch(`/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers,
+            body: '{}',
+            signal: t3.signal,
+          });
+          t3.cancelTimeout?.();
+          data = await res.json().catch(() => ({}));
+        } catch (_) {
+          /* ignore */
+        }
       }
       if (res.ok && data.access_token) {
         setAccessToken(data.access_token);

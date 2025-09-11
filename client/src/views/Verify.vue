@@ -27,10 +27,8 @@ async function verify() {
     return;
   }
   try {
-    const api = (
-      import.meta.env?.VITE_API_BASE || 'http://localhost:3000'
-    ).replace(/\/+$/, '');
-    const res = await fetch(`${api}/verify?t=${encodeURIComponent(t)}`, {
+    const { API_BASE } = await import('../api.js');
+    const res = await fetch(`${API_BASE}/verify?t=${encodeURIComponent(t)}`, {
       credentials: 'include',
     });
     const json = await res.json().catch(() => ({}));

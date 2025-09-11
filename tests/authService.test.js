@@ -105,23 +105,19 @@ test('verifyCredentials throws for bad password', async () => {
   );
 });
 
-test('verifyCredentials increments attempts and applies temporary lockout', async () => {
+test('verifyCredentials without lockout keeps returning invalid_credentials (UX mode)', async () => {
   const inactive = { id: 'i' };
   findStatusMock.mockResolvedValue(inactive);
   findOneMock.mockResolvedValue(user);
   compareMock.mockResolvedValue(false);
   user.status_id = undefined;
 
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 12; i++) {
     await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow(
       'invalid_credentials'
     );
   }
-
-  await expect(authService.verifyCredentials('a', 'b')).rejects.toThrow(
-    'account_locked'
-  );
-  // Temporary lockout should not change persistent user status
+  // No persistent status changes expected
   expect(updateMock).not.toHaveBeenCalled();
 });
 

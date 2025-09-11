@@ -3,6 +3,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { incRateLimited } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
+import { isRateLimitEnabled } from '../config/featureFlags.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
@@ -14,18 +15,19 @@ function clientKey(req) {
 }
 
 /**
- * Global rate limiter middleware to mitigate denial-of-service attacks.
- * Defaults increased significantly. Tunable via env vars.
+ * Global rate limiter — disabled by default for better UX.
+ * Expect DDoS/throttle at the edge (CDN/WAF). Can be re‑enabled via env.
  */
+const enabled = isRateLimitEnabled('global');
 const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
 const max = parseInt(process.env.RATE_LIMIT_MAX || '1200');
 
 const store =
-  process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
+  enabled && process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
     ? new RedisRateLimitStore({ prefix: 'rate:global' })
     : undefined;
 
-export default rateLimit({
+const middleware = rateLimit({
   windowMs,
   max,
   standardHeaders: true,
@@ -57,6 +59,10 @@ export default rateLimit({
       return true;
     // Avoid hammering API docs if enabled
     if (p.startsWith('/api-docs')) return true;
-    return false;
+    return !enabled; // fully skip when disabled
   },
 });
+
+export default enabled
+  ? middleware
+  : (_req, _res, next) => next();

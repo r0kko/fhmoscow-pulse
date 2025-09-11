@@ -14,7 +14,7 @@
 - Swagger documentation available at `/api-docs`
 - Docker and docker-compose setup for local development
 - CI builds and publishes Docker images to GitHub Container Registry
-- Redis-backed login attempt tracking
+- Optional Redis-backed login attempt tracking (disabled by default)
 - ESLint and Prettier for code quality
 - Jest unit tests
 - Admin panel for managing users and roles (create, edit, block)
@@ -98,6 +98,14 @@ DADATA_SECRET=your_dadata_secret
 # RATE_LIMIT_WINDOW_MS=60000
 # RATE_LIMIT_MAX=1200
 # RATE_LIMIT_USE_REDIS=true
+#
+# Rate limiting and lockout feature flags (API-side)
+# RATE_LIMIT_ENABLED=false                   # global default; OFF improves UX
+# RATE_LIMIT_GLOBAL_ENABLED=true             # override for global limiter
+# RATE_LIMIT_LOGIN_ENABLED=true              # override for /auth/login
+# RATE_LIMIT_REGISTRATION_ENABLED=true       # override for registration
+# RATE_LIMIT_PASSWORD_RESET_ENABLED=true     # override for password reset
+# AUTH_LOCKOUT_ENABLED=false                 # temporary account lock after attempts
 # ALLOWED_ORIGINS=http://localhost:5173,http://example.com
 # BASE_URL=https://pulse.fhmoscow.com
 # COOKIE_DOMAIN=pulse.fhmoscow.com
