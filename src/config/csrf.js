@@ -1,6 +1,6 @@
 import lusca from 'lusca';
 
-import { isSecureEnv, cookieSameSite, cookieDomain } from './security.js';
+import { isSecureEnv, cookieSameSite, csrfCookieDomain } from './security.js';
 
 // Use a dedicated cookie name to avoid collisions with legacy/app cookies
 const CSRF_COOKIE_NAME = process.env.CSRF_COOKIE_NAME || 'XSRF-TOKEN-API';
@@ -13,7 +13,8 @@ const csrfOptions = {
     options: {
       sameSite: cookieSameSite(),
       secure: isSecureEnv(),
-      domain: cookieDomain(),
+      // Keep host-only by default for robustness; override via CSRF_COOKIE_DOMAIN
+      domain: csrfCookieDomain(),
       path: '/',
       // Opt-in to partitioned cookies to improve cross-site delivery in modern browsers
       // (effective only when Secure and SameSite=None)

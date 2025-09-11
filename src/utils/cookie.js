@@ -74,5 +74,37 @@ export function clearRefreshCookie(res) {
   const options = buildCookieOptions(res);
   // ensure we don't set maxAge when clearing
   delete options.maxAge;
-  res.clearCookie(COOKIE_NAME, options);
+  // Try multiple variants to cover historical path/domain attributes
+  const variants = [];
+  const base = { ...options };
+  const baseNoDomain = { ...base };
+  delete baseNoDomain.domain;
+  const baseNoPartition = { ...base };
+  delete baseNoPartition.partitioned;
+  const baseNoDomainNoPartition = { ...baseNoDomain };
+  delete baseNoDomainNoPartition.partitioned;
+  // Variant for exact current host as cookie domain
+  let hostDomain;
+  try {
+    const req = res?.req;
+    const xf = req?.headers?.['x-forwarded-host'];
+    const raw = (Array.isArray(xf) ? xf[0] : xf) || req?.headers?.host || '';
+    hostDomain = String(raw).split(',')[0].trim().replace(/:\d+$/, '');
+  } catch (_) {
+    hostDomain = undefined;
+  }
+
+  // Path variants
+  const paths = ['/', '/api'];
+  for (const p of paths) {
+    variants.push({ ...base, path: p });
+    variants.push({ ...baseNoDomain, path: p });
+    variants.push({ ...baseNoPartition, path: p });
+    variants.push({ ...baseNoDomainNoPartition, path: p });
+    if (hostDomain) variants.push({ ...base, path: p, domain: hostDomain });
+  }
+  // Issue clear for all variants
+  for (const v of variants) {
+    res.clearCookie(COOKIE_NAME, v);
+  }
 }

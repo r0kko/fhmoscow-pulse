@@ -179,4 +179,58 @@ export default {
       return sendError(res, err, 401);
     }
   },
+
+  /* GET /auth/cookie-cleanup */
+  async cookieCleanup(req, res) {
+    // Best-effort cleanup of legacy/broken cookies
+    try {
+      // Refresh token variants
+      try {
+        clearRefreshCookie(res);
+      } catch (_) {
+        /* */
+      }
+      // CSRF cookies (both names, multiple paths/domains)
+      const names = ['XSRF-TOKEN-API', 'XSRF-TOKEN'];
+      const domain = process.env.COOKIE_DOMAIN || undefined;
+      let hostDomain;
+      try {
+        const xf = req?.headers?.['x-forwarded-host'];
+        const raw =
+          (Array.isArray(xf) ? xf[0] : xf) || req?.headers?.host || '';
+        hostDomain = String(raw).split(',')[0].trim().replace(/:\d+$/, '');
+      } catch (_) {
+        hostDomain = undefined;
+      }
+      const variants = [
+        { path: '/', domain },
+        { path: '/', domain: undefined },
+        { path: '/api', domain },
+        { path: '/api', domain: undefined },
+        ...(hostDomain
+          ? [
+              { path: '/', domain: hostDomain },
+              { path: '/api', domain: hostDomain },
+            ]
+          : []),
+      ];
+      for (const name of names) {
+        for (const v of variants) {
+          res.clearCookie(name, { ...v, secure: true, sameSite: 'none' });
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+    // Avoid cache as we are sending Set-Cookie
+    if (typeof res?.set === 'function') {
+      res.set(
+        'Cache-Control',
+        'no-store, no-cache, must-revalidate, max-age=0'
+      );
+      res.set('Pragma', 'no-cache');
+    }
+    if (typeof res?.vary === 'function') res.vary('Cookie');
+    return res.json({ ok: true });
+  },
 };

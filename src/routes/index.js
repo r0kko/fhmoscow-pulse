@@ -4,6 +4,11 @@ import { isReady, isSyncing } from '../config/readiness.js';
 import auth from '../middlewares/auth.js';
 import requireActive from '../middlewares/requireActive.js';
 import csrf from '../config/csrf.js';
+import {
+  isSecureEnv,
+  cookieSameSite,
+  csrfCookieDomain,
+} from '../config/security.js';
 import { issueCsrfHmac } from '../utils/csrfHmac.js';
 import { getRuntimeStates } from '../config/metrics.js';
 
@@ -170,7 +175,28 @@ router.get('/csrf-token', csrf, (req, res) => {
     res.vary('Cookie');
     res.vary('Origin');
   }
-  const json = { csrfToken: req.csrfToken() };
+  const token = req.csrfToken();
+  // Also set a secondary, legacy-compatible cookie name to reduce client-side
+  // mismatch during gradual rollouts.
+  try {
+    const opts = {
+      sameSite: cookieSameSite(),
+      secure: isSecureEnv(),
+      domain: csrfCookieDomain(),
+      path: '/',
+    };
+    // partitioned works only with Secure & SameSite=None; set when applicable
+    const part =
+      isSecureEnv() &&
+      String(process.env.COOKIE_PARTITIONED || 'true').toLowerCase() === 'true';
+    if (part && String(opts.sameSite).toLowerCase() === 'none') {
+      opts.partitioned = true;
+    }
+    res.cookie('XSRF-TOKEN', token, opts);
+  } catch (_) {
+    /* noop */
+  }
+  const json = { csrfToken: token };
   try {
     json.csrfHmac = issueCsrfHmac(req);
   } catch (_e) {

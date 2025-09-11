@@ -32,7 +32,15 @@ export async function refreshFromCookie() {
     auth.roles = data.roles || [];
     auth.mustChangePassword = false;
   } catch (_) {
-    // ignore errors
+    // Ask server to clean up legacy/broken cookies (best-effort)
+    try {
+      await apiFetch('/auth/cookie-cleanup', {
+        method: 'GET',
+        redirectOn401: false,
+      });
+    } catch (_) {
+      /* ignore */
+    }
   }
 }
 

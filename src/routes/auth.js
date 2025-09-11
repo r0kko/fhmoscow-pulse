@@ -123,4 +123,15 @@ router.post(
  */
 router.get('/password-policy', passwordPolicyController.get);
 
+/**
+ * @swagger
+ * /auth/cookie-cleanup:
+ *   get:
+ *     summary: Clear legacy/broken auth and CSRF cookies
+ *     responses:
+ *       200:
+ *         description: Cookies cleared (best-effort)
+ */
+router.get('/cookie-cleanup', authController.cookieCleanup);
+
 export default router;

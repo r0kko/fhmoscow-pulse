@@ -2,10 +2,7 @@ import csrf from '../config/csrf.js';
 import { verifyCsrfHmac } from '../utils/csrfHmac.js';
 import { incCsrfAccepted, incCsrfRejected } from '../config/metrics.js';
 
-const EXEMPT_PATHS = ['/csrf-token', '/auth/refresh'];
-if (String(process.env.CSRF_EXEMPT_LOGIN || '').toLowerCase() === 'true') {
-  EXEMPT_PATHS.push('/auth/login');
-}
+const EXEMPT_PATHS = ['/csrf-token', '/auth/refresh', '/auth/login'];
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -35,9 +32,23 @@ export default function csrfMiddleware(req, res, next) {
   // If client provides a valid stateless, HMAC-signed token in header, accept it.
   // This avoids reliance on third-party cookies (Safari/ITP, some corporate browsers).
   try {
-    const headerToken = req.get('X-XSRF-TOKEN') || req.get('x-xsrf-token');
+    const headerToken =
+      req.get('X-XSRF-TOKEN') ||
+      req.get('x-xsrf-token') ||
+      req.get('X-CSRF-TOKEN') ||
+      req.get('x-csrf-token') ||
+      req.get('X-CSRFToken') ||
+      req.get('x-csrftoken');
     if (headerToken && verifyCsrfHmac(headerToken, req)) {
       incCsrfAccepted('hmac');
+      return next();
+    }
+    // Legacy double-submit cookie support: accept if header equals either
+    // XSRF cookie variant set previously by the app or older clients.
+    const c1 = req.cookies?.['XSRF-TOKEN-API'];
+    const c2 = req.cookies?.['XSRF-TOKEN'];
+    if (headerToken && (headerToken === c1 || headerToken === c2)) {
+      incCsrfAccepted('double_submit_legacy');
       return next();
     }
   } catch (_e) {

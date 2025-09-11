@@ -21,4 +21,11 @@ export function cookieDomain() {
   return process.env.COOKIE_DOMAIN || undefined;
 }
 
-export default { isSecureEnv, cookieSameSite, cookieDomain };
+// Separate override for CSRF cookie domain. Best practice is to keep CSRF
+// cookies host-only to avoid cross-site collisions; set only if you know you
+// need a wider domain.
+export function csrfCookieDomain() {
+  return process.env.CSRF_COOKIE_DOMAIN || undefined;
+}
+
+export default { isSecureEnv, cookieSameSite, cookieDomain, csrfCookieDomain };

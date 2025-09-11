@@ -138,6 +138,12 @@ export async function initCsrf() {
         } catch (_) {
           if (typeof window !== 'undefined') window.__csrfHmac = data.csrfHmac;
         }
+        // Proactive re-prime before HMAC expiry to avoid EBADCSRFTOKEN
+        try {
+          scheduleCsrfReprime(data.csrfHmac);
+        } catch (_) {
+          /* ignore */
+        }
       }
     } catch (_) {
       /* ignore parsing errors */
@@ -145,6 +151,35 @@ export async function initCsrf() {
   } catch (_) {
     // ignore network failures
   }
+}
+
+function parseCsrfHmacExp(token) {
+  try {
+    const [body] = String(token || '').split('.');
+    if (!body) return 0;
+    const json = atob(body.replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(json);
+    return (payload && payload.exp ? payload.exp : 0) * 1000;
+  } catch (_) {
+    return 0;
+  }
+}
+
+let csrfTimerId = null;
+function scheduleCsrfReprime(token) {
+  if (csrfTimerId) {
+    clearTimeout(csrfTimerId);
+    csrfTimerId = null;
+  }
+  const expMs = parseCsrfHmacExp(token);
+  if (!expMs) return;
+  const now = Date.now();
+  // refresh 5 minutes before expiry (min 10s, max 12h)
+  let delay = Math.max(10000, expMs - now - 5 * 60 * 1000);
+  delay = Math.min(delay, 12 * 60 * 60 * 1000);
+  csrfTimerId = setTimeout(() => {
+    initCsrf().catch(() => {});
+  }, delay);
 }
 
 function decodeJwt(token) {
@@ -209,7 +244,10 @@ async function refreshToken() {
     try {
       let headers = { 'Content-Type': 'application/json' };
       let xsrf = getXsrfToken();
-      if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
+      if (xsrf && shouldSendXsrf('POST')) {
+        headers['X-XSRF-TOKEN'] = xsrf;
+        headers['X-CSRF-TOKEN'] = xsrf;
+      }
       const t1 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
       let res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
@@ -231,7 +269,10 @@ async function refreshToken() {
         } catch (_) {}
         headers = { 'Content-Type': 'application/json' };
         xsrf = getXsrfToken();
-        if (xsrf && shouldSendXsrf('POST')) headers['X-XSRF-TOKEN'] = xsrf;
+        if (xsrf && shouldSendXsrf('POST')) {
+          headers['X-XSRF-TOKEN'] = xsrf;
+          headers['X-CSRF-TOKEN'] = xsrf;
+        }
         const t2 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
         res = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
@@ -302,6 +343,28 @@ if (typeof window !== 'undefined') {
       if (document.visibilityState === 'visible') kickIfNearExpiry();
     });
     window.addEventListener('online', () => kickIfNearExpiry());
+    // Also re-prime CSRF HMAC if it's near expiry when tab becomes visible
+    const kickCsrfIfNearExpiry = () => {
+      try {
+        let token = null;
+        if (typeof sessionStorage !== 'undefined') {
+          token = sessionStorage.getItem('csrfHmac');
+        } else if (typeof window !== 'undefined') {
+          token = window.__csrfHmac || null;
+        }
+        if (!token) return;
+        const exp = parseCsrfHmacExp(token);
+        if (!exp) return;
+        const now = Date.now();
+        if (exp - now < 5 * 60 * 1000) initCsrf().catch(() => {});
+      } catch (_) {
+        /* ignore */
+      }
+    };
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') kickCsrfIfNearExpiry();
+    });
+    window.addEventListener('online', () => kickCsrfIfNearExpiry());
   } catch (_) {
     /* ignore */
   }
@@ -323,6 +386,7 @@ export async function apiFetch(path, options = {}) {
   const xsrf = getXsrfToken();
   if (xsrf && shouldSendXsrf(opts.method)) {
     opts.headers['X-XSRF-TOKEN'] = xsrf;
+    opts.headers['X-CSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
     opts.headers['Authorization'] = `Bearer ${accessToken}`;
@@ -446,6 +510,7 @@ export async function apiFetchForm(path, form, options = {}) {
   const xsrf = getXsrfToken();
   if (xsrf && shouldSendXsrf(opts.method || 'POST')) {
     opts.headers['X-XSRF-TOKEN'] = xsrf;
+    opts.headers['X-CSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
     opts.headers['Authorization'] = `Bearer ${accessToken}`;
@@ -565,6 +630,7 @@ export async function apiFetchBlob(path, options = {}) {
   const xsrf = getXsrfToken();
   if (xsrf && shouldSendXsrf(opts.method)) {
     opts.headers['X-XSRF-TOKEN'] = xsrf;
+    opts.headers['X-CSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
     opts.headers['Authorization'] = `Bearer ${accessToken}`;
@@ -699,8 +765,10 @@ export function apiUpload(path, form, { onProgress } = {}) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE}${path}`);
     xhr.withCredentials = true;
-    if (xsrf && shouldSendXsrf('POST'))
+    if (xsrf && shouldSendXsrf('POST')) {
       xhr.setRequestHeader('X-XSRF-TOKEN', xsrf);
+      xhr.setRequestHeader('X-CSRF-TOKEN', xsrf);
+    }
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.onload = () => {
       let data = {};
