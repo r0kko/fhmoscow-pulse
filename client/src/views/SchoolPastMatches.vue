@@ -353,8 +353,8 @@ function onChangePageSize(val) {
           <template v-else>
             <MatchesDayTiles
               :items="paginated"
-              :showScoreAsColumn="true"
-              sortDirection="desc"
+              :show-score-as-column="true"
+              sort-direction="desc"
             />
             <p v-if="!filtered.length" class="mb-0">Нет матчей.</p>
             <PageNav

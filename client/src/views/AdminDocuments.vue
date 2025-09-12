@@ -443,8 +443,8 @@ function canDelete(doc) {
           { key: 'signatures', label: 'Типы подписей' },
           { key: 'contracts', label: 'Заключение договоров' },
         ]"
-        @change="setTab"
         justify="between"
+        @change="setTab"
       />
     </div>
 
@@ -840,9 +840,9 @@ function canDelete(doc) {
               <div class="form-check ms-sm-2">
                 <input
                   id="withoutContract"
+                  v-model="contractFilters.withoutContract"
                   class="form-check-input"
                   type="checkbox"
-                  v-model="contractFilters.withoutContract"
                 />
                 <label class="form-check-label" for="withoutContract"
                   >Без договора</label
@@ -873,8 +873,8 @@ function canDelete(doc) {
                   <td>
                     <template v-if="u.contract">
                       <span
-                        class="badge text-bg-secondary me-2"
                         v-if="u.contract.number"
+                        class="badge text-bg-secondary me-2"
                         >№ {{ u.contract.number }}</span
                       >
                       <span class="text-muted">{{
@@ -884,9 +884,9 @@ function canDelete(doc) {
                     <button
                       v-else
                       class="btn btn-sm btn-primary"
-                      @click="openContractPrecheck(u)"
                       :aria-label="`Сформировать договор для ${u.lastName} ${u.firstName}`"
                       title="Формирование договора"
+                      @click="openContractPrecheck(u)"
                     >
                       Сформировать договор
                     </button>
@@ -919,7 +919,7 @@ function canDelete(doc) {
                   Подпись: <strong>{{ u.signType?.name || '—' }}</strong>
                 </p>
                 <div v-if="u.contract" class="d-flex align-items-center gap-2">
-                  <span class="badge text-bg-secondary" v-if="u.contract.number"
+                  <span v-if="u.contract.number" class="badge text-bg-secondary"
                     >№ {{ u.contract.number }}</span
                   >
                   <span class="text-muted small">{{
@@ -929,9 +929,9 @@ function canDelete(doc) {
                 <button
                   v-else
                   class="btn btn-sm btn-primary w-100"
-                  @click="openContractPrecheck(u)"
                   :aria-label="`Сформировать договор для ${u.lastName} ${u.firstName}`"
                   title="Формирование договора"
+                  @click="openContractPrecheck(u)"
                 >
                   Сформировать договор
                 </button>

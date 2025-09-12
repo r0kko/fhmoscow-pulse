@@ -273,8 +273,8 @@ defineExpose({ open });
                       v-if="!precheck.checks.documents?.snils"
                       type="button"
                       class="btn btn-link btn-sm p-0 ms-2 align-baseline"
-                      @click="goToEditUserSnils"
                       aria-label="Добавить СНИЛС"
+                      @click="goToEditUserSnils"
                     >
                       Добавить
                     </button>

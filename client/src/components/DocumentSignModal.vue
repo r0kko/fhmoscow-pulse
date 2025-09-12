@@ -140,12 +140,12 @@ defineExpose({ open });
             type="button"
             class="btn-close"
             :disabled="sending"
-            @click="close"
             aria-label="Close"
+            @click="close"
           ></button>
         </div>
         <div class="modal-body">
-          <p class="mb-2" v-if="doc">
+          <p v-if="doc" class="mb-2">
             Документ: <strong>{{ doc.name }}</strong>
           </p>
           <p v-if="props.userEmail" class="text-muted small mb-3">

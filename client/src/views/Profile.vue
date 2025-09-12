@@ -465,9 +465,9 @@ function onBankChangeCreated(doc) {
                       v-if="bankAccount && hasSimpleESign"
                       type="button"
                       class="btn btn-sm btn-outline-secondary"
-                      @click="openChangeBank"
                       aria-label="Изменить банковские реквизиты"
                       title="Изменить"
+                      @click="openChangeBank"
                     >
                       <i class="bi bi-pencil" aria-hidden="true"></i>
                     </button>

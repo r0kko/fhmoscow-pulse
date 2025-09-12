@@ -147,8 +147,8 @@ defineExpose({ open, close });
             type="button"
             class="btn-close"
             :disabled="loading"
-            @click="close"
             aria-label="Close"
+            @click="close"
           ></button>
         </div>
         <div class="modal-body">
@@ -162,12 +162,12 @@ defineExpose({ open, close });
               id="accNumber"
               class="form-control"
               :value="number"
-              @input="onNumberInput"
               inputmode="numeric"
               pattern="[0-9]*"
               maxlength="20"
               placeholder="20 цифр"
               autocomplete="off"
+              @input="onNumberInput"
             />
             <div class="form-text">Введите 20-значный номер счёта</div>
           </div>
@@ -178,13 +178,13 @@ defineExpose({ open, close });
               id="accBic"
               class="form-control"
               :value="bic"
-              @input="onBicInput"
-              @change="validateBic"
               inputmode="numeric"
               pattern="[0-9]*"
               maxlength="9"
               placeholder="9 цифр"
               autocomplete="off"
+              @input="onBicInput"
+              @change="validateBic"
             />
             <div class="form-text">Введите БИК банка (9 цифр)</div>
             <div v-if="bicChecking" class="small text-muted mt-1">

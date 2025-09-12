@@ -73,7 +73,7 @@ function formatSignedAt(sign) {
 </script>
 
 <template>
-  <div class="container py-5" id="main" tabindex="-1">
+  <div id="main" class="container py-5" tabindex="-1">
     <div class="row justify-content-center">
       <div class="col-md-8 col-lg-7 col-xl-6">
         <div class="card section-card tile p-3 p-md-4">

@@ -486,7 +486,7 @@ function resetDraft() {
 
           <template v-else>
             <div v-show="activeTab === 'home'">
-              <MatchesDayTiles :items="paginatedHome" mobileStyle="divider" />
+              <MatchesDayTiles :items="paginatedHome" mobile-style="divider" />
               <p v-if="!filteredHome.length" class="mb-0">
                 Нет домашних матчей.
               </p>
@@ -499,7 +499,7 @@ function resetDraft() {
               />
             </div>
             <div v-show="activeTab === 'away'">
-              <MatchesDayTiles :items="paginatedAway" mobileStyle="divider" />
+              <MatchesDayTiles :items="paginatedAway" mobile-style="divider" />
               <p v-if="!filteredAway.length" class="mb-0">
                 Нет матчей на выезде.
               </p>

@@ -461,10 +461,10 @@ watch(filteredDocuments, () => {
                         <button
                           type="button"
                           class="btn btn-sm btn-outline-secondary"
+                          aria-label="Скопировать ИНН"
                           @click="
                             copyToClipboard(current.inn, 'ИНН скопирован')
                           "
-                          aria-label="Скопировать ИНН"
                         >
                           <i class="bi bi-clipboard" aria-hidden="true"></i>
                         </button>
@@ -531,8 +531,8 @@ watch(filteredDocuments, () => {
                       <div class="col-6 col-sm-auto">
                         <button
                           class="btn btn-outline-secondary w-100"
-                          @click="openFilters"
                           aria-label="Открыть фильтры"
+                          @click="openFilters"
                         >
                           <i class="bi bi-funnel" aria-hidden="true"></i>
                           <span class="visually-hidden">Фильтры</span>
@@ -578,7 +578,6 @@ watch(filteredDocuments, () => {
                               >
                                 <button
                                   class="btn btn-sm btn-brand"
-                                  @click.stop="openSignDialog(d)"
                                   :disabled="
                                     current?.alias !== 'SIMPLE_ELECTRONIC'
                                   "
@@ -587,6 +586,7 @@ watch(filteredDocuments, () => {
                                       ? 'Выберите простую электронную подпись вверху, чтобы подписывать документы онлайн'
                                       : 'Подписать документ'
                                   "
+                                  @click.stop="openSignDialog(d)"
                                 >
                                   Подписать
                                 </button>
@@ -652,7 +652,6 @@ watch(filteredDocuments, () => {
                             >
                               <button
                                 class="btn btn-sm btn-brand"
-                                @click.stop="openSignDialog(d)"
                                 :disabled="
                                   current?.alias !== 'SIMPLE_ELECTRONIC'
                                 "
@@ -661,6 +660,7 @@ watch(filteredDocuments, () => {
                                     ? 'Выберите простую электронную подпись вверху, чтобы подписывать документы онлайн'
                                     : 'Подписать документ'
                                 "
+                                @click.stop="openSignDialog(d)"
                               >
                                 Подписать
                               </button>
@@ -746,8 +746,8 @@ watch(filteredDocuments, () => {
                         type="button"
                         class="btn btn-brand"
                         :disabled="loadingAlias || confirming"
-                        @click="choose(t.alias)"
                         :aria-label="`Выбрать способ: ${t.name}`"
+                        @click="choose(t.alias)"
                       >
                         <span
                           v-if="loadingAlias === t.alias"
@@ -785,10 +785,10 @@ watch(filteredDocuments, () => {
                     pattern="[0-9]*"
                     autocomplete="one-time-code"
                     maxlength="6"
+                    aria-describedby="codeHelp"
                     @keyup.enter="
                       code.length === 6 && !confirming ? submit() : null
                     "
-                    aria-describedby="codeHelp"
                   />
                   <div id="codeHelp" class="form-text">
                     Введите 6-значный код подтверждения
