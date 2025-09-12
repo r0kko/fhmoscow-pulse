@@ -100,6 +100,10 @@ import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
 import GameViolation from './gameViolation.js';
 import GamePenalty from './gamePenalty.js';
+import EquipmentType from './equipmentType.js';
+import EquipmentManufacturer from './equipmentManufacturer.js';
+import EquipmentSize from './equipmentSize.js';
+import Equipment from './equipment.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -463,6 +467,24 @@ DocumentUserSign.belongsTo(User, { foreignKey: 'user_id' });
 SignType.hasMany(DocumentUserSign, { foreignKey: 'sign_type_id' });
 DocumentUserSign.belongsTo(SignType, { foreignKey: 'sign_type_id' });
 
+/* equipment */
+EquipmentType.hasMany(Equipment, { foreignKey: 'type_id' });
+Equipment.belongsTo(EquipmentType, { foreignKey: 'type_id' });
+EquipmentManufacturer.hasMany(Equipment, { foreignKey: 'manufacturer_id' });
+Equipment.belongsTo(EquipmentManufacturer, { foreignKey: 'manufacturer_id' });
+EquipmentSize.hasMany(Equipment, { foreignKey: 'size_id' });
+Equipment.belongsTo(EquipmentSize, { foreignKey: 'size_id' });
+User.hasMany(Equipment, { foreignKey: 'owner_id', as: 'OwnedEquipment' });
+Equipment.belongsTo(User, { foreignKey: 'owner_id', as: 'Owner' });
+Document.hasMany(Equipment, {
+  foreignKey: 'assignment_document_id',
+  as: 'AssignedEquipment',
+});
+Equipment.belongsTo(Document, {
+  foreignKey: 'assignment_document_id',
+  as: 'AssignmentDocument',
+});
+
 /* справочники */
 DocumentType.hasMany(Passport, { foreignKey: 'document_type_id' });
 Passport.belongsTo(DocumentType, { foreignKey: 'document_type_id' });
@@ -661,4 +683,8 @@ export {
   NormativeGroupType,
   NormativeResult,
   NormativeTicket,
+  Equipment,
+  EquipmentType,
+  EquipmentManufacturer,
+  EquipmentSize,
 };

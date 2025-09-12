@@ -25,6 +25,7 @@ import {
 import fileService from './fileService.js';
 import emailService from './emailService.js';
 import buildBankDetailsChangePdf from './docBuilders/bankDetailsChange.js';
+import buildEquipmentTransferPdf from './docBuilders/equipmentTransfer.js';
 
 function formatDateHuman(date) {
   if (!date) return '«__» __________ ____ г.';
@@ -2357,6 +2358,31 @@ async function signWithCode(user, documentId, code) {
       // ignore non-critical attachment errors
     }
   }
+  if (after?.DocumentType?.alias === 'EQUIPMENT_TRANSFER') {
+    // Mark equipment as issued to the recipient
+    try {
+      let payload = {};
+      try {
+        payload = after.description ? JSON.parse(after.description) : {};
+      } catch {
+        payload = {};
+      }
+      const eqId = payload?.equipment_id || null;
+      if (eqId) {
+        const { Equipment } = await import('../models/index.js');
+        const item = await Equipment.findByPk(eqId);
+        if (item) {
+          await item.update({
+            owner_id: after.recipient_id,
+            assignment_document_id: after.id,
+            updated_by: user.id,
+          });
+        }
+      }
+    } catch (_e) {
+      /* non-fatal */
+    }
+  }
 }
 
 async function regenerateSigned(documentId, actorId) {
@@ -2415,6 +2441,18 @@ async function regenerateSigned(documentId, actorId) {
       changes = {};
     }
     pdf = await buildBankDetailsChangePdf(doc.recipient, changes, metaCommon);
+  } else if (doc.DocumentType.alias === 'EQUIPMENT_TRANSFER') {
+    let payload = {};
+    try {
+      payload = doc.description ? JSON.parse(doc.description) : {};
+    } catch {
+      payload = {};
+    }
+    pdf = await buildEquipmentTransferPdf(
+      doc.recipient,
+      payload?.equipment || {},
+      metaCommon
+    );
   } else {
     pdf = await createPdfBuffer(doc.name);
   }
@@ -2607,6 +2645,23 @@ async function regenerate(documentId, actorId) {
       documentDate: doc.document_date,
       esign,
     });
+  } else if (doc.DocumentType.alias === 'EQUIPMENT_TRANSFER') {
+    let payload = {};
+    try {
+      payload = doc.description ? JSON.parse(doc.description) : {};
+    } catch {
+      payload = {};
+    }
+    pdf = await buildEquipmentTransferPdf(
+      doc.recipient,
+      payload?.equipment || {},
+      {
+        docId: doc.id,
+        number: doc.number,
+        documentDate: doc.document_date,
+        esign,
+      }
+    );
   } else {
     pdf = await createPdfBuffer(doc.name);
   }

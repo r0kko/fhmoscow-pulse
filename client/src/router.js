@@ -47,6 +47,7 @@ import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
 import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
 import AdminMatch from './views/AdminMatch.vue';
 import AdminSystemOps from './views/AdminSystemOps.vue';
+import AdminEquipment from './views/AdminEquipment.vue';
 import Qualification from './views/Qualification.vue';
 import PasswordReset from './views/PasswordReset.vue';
 import ChangePassword from './views/ChangePassword.vue';
@@ -66,6 +67,11 @@ const routes = [
     path: '/',
     component: Home,
     meta: { requiresAuth: true, fluid: true, title: 'Главная' },
+  },
+  {
+    path: '/admin/equipment',
+    component: AdminEquipment,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Экипировка' },
   },
   {
     path: '/verify',

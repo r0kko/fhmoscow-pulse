@@ -69,6 +69,7 @@ import adminOpsRouter from './adminOps.js';
 import reportsRouter from './reports.js';
 import verifyRouter from './verify.js';
 import shortLinksRouter from './shortLinks.js';
+import equipmentRouter from './equipment.js';
 
 const router = express.Router();
 
@@ -129,6 +130,7 @@ router.use('/admin-ops', adminOpsRouter);
 router.use('/reports', reportsRouter);
 router.use('/v', shortLinksRouter);
 router.use('/verify', verifyRouter);
+router.use('/equipment', equipmentRouter);
 
 /**
  * @swagger

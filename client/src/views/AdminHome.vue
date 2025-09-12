@@ -19,6 +19,7 @@ const refereeSections = [
     icon: 'bi-calendar-week',
     to: '/admin/referee-availability',
   },
+  { title: 'Экипировка', icon: 'bi-tshirt', to: '/admin/equipment' },
 ];
 
 const sportsSections = [
