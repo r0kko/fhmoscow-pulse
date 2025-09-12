@@ -25,6 +25,7 @@ export default {
     restoreMocks: true,
     collectCoverage: true,
     coverageDirectory: 'coverage',
+    coverageReporters: ['json-summary', 'text', 'lcov'],
     coveragePathIgnorePatterns: [
         '<rootDir>/src/externalModels/',
         '<rootDir>/src/migrations/',
