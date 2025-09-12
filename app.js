@@ -18,9 +18,10 @@ import logger from './logger.js';
 import { httpMetricsMiddleware } from './src/config/metrics.js';
 
 const app = express();
-// Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-For
-// Ensure your edge sanitizes these headers
-app.set('trust proxy', true);
+// Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-*
+// Use a bounded number of hops to reduce spoofing risk if edge misconfigures.
+const TRUST_PROXY_HOPS = parseInt(process.env.TRUST_PROXY_HOPS || '2', 10);
+app.set('trust proxy', TRUST_PROXY_HOPS);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -87,8 +88,9 @@ app.use(
     frameguard: false,
     // Avoid duplicate referrer policy
     referrerPolicy: false,
-    // Avoid duplicating X-Content-Type-Options
-    noSniff: false,
+    // Keep X-Content-Type-Options for safer MIME sniffing
+    // (duplication with edge is harmless but beneficial if edge misses it)
+    noSniff: true,
     // Disable legacy IE headers and Adobe policy header (often duplicated upstream)
     ieNoOpen: false,
     permittedCrossDomainPolicies: false,

@@ -5,12 +5,20 @@ import { UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import {
   signAccessToken,
-  signRefreshToken,
+  signRefreshTokenWithJti,
   verifyRefreshToken,
+  decodeJwt,
 } from '../utils/jwt.js';
 import { LOGIN_MAX_ATTEMPTS } from '../config/auth.js';
 import { isLockoutEnabled } from '../config/featureFlags.js';
+import { incRefreshReuse, incSecurityEvent } from '../config/metrics.js';
 
+import {
+  rememberIssued,
+  markUsed,
+  isUsed,
+  currentJti,
+} from './refreshStore.js';
 import * as attempts from './loginAttempts.js';
 import * as lockout from './accountLockout.js';
 
@@ -61,7 +69,23 @@ async function verifyCredentials(phone, password) {
 
 function issueTokens(user) {
   const accessToken = signAccessToken(user);
-  const refreshToken = signRefreshToken(user);
+  // generate refresh with jti
+  const jtiToken = signRefreshTokenWithJti(user, undefined);
+  const refreshToken = jtiToken; // function returns token string
+  // best-effort: remember current jti for this version
+  try {
+    const payload = decodeJwt(refreshToken);
+    if (payload?.jti && payload?.sub && payload?.ver != null) {
+      void rememberIssued({
+        sub: payload.sub,
+        ver: payload.ver,
+        jti: payload.jti,
+        exp: payload.exp,
+      });
+    }
+  } catch (_e) {
+    /* noop */
+  }
   return { accessToken, refreshToken };
 }
 
@@ -73,12 +97,68 @@ async function rotateTokens(refreshToken) {
 
   // Reject if token version was rotated already
   if (typeof payload.ver !== 'number' || payload.ver !== user.token_version) {
+    // If this jti was already used earlier, treat as reuse attempt
+    try {
+      if (
+        payload?.jti &&
+        (await isUsed({ sub: payload.sub, ver: payload.ver, jti: payload.jti }))
+      ) {
+        // Security response: bump version again to invalidate any issued since, optional lock
+        try {
+          await user.increment('token_version');
+        } catch (_e) {
+          /* noop */
+        }
+        try {
+          incRefreshReuse('detected');
+          incSecurityEvent('reuse');
+        } catch (_e) {
+          /* noop */
+        }
+        if (isLockoutEnabled()) {
+          try {
+            await lockout.lock(user.id);
+            incSecurityEvent('lockout');
+          } catch (_e) {
+            /* noop */
+          }
+        }
+        const err = new ServiceError('token_reuse_detected', 401);
+        throw err;
+      }
+    } catch (_e) {
+      /* noop */
+    }
     throw new ServiceError('invalid_token', 401);
   }
 
   const inactive = await UserStatus.findOne({ where: { alias: 'INACTIVE' } });
   if (inactive && user.status_id === inactive.id) {
     throw new ServiceError('account_locked', 401);
+  }
+
+  // Mark provided refresh as used (single-use semantics)
+  try {
+    if (payload?.jti)
+      await markUsed({
+        sub: payload.sub,
+        ver: payload.ver,
+        jti: payload.jti,
+        exp: payload.exp,
+      });
+  } catch (_e) {
+    /* noop */
+  }
+
+  // Optional integrity check: ensure provided jti matches remembered current
+  try {
+    const cur = await currentJti({ sub: payload.sub, ver: payload.ver });
+    if (cur && payload?.jti && cur !== payload.jti) {
+      // State loss or parallel rotation — record security event but proceed
+      incSecurityEvent('state_loss');
+    }
+  } catch (_e) {
+    /* noop */
   }
 
   // Rotate version to invalidate previous refresh token

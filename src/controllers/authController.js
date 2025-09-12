@@ -8,8 +8,11 @@ import {
 } from '../config/metrics.js';
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
-import { setRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
-import { COOKIE_NAME } from '../config/auth.js';
+import {
+  setRefreshCookie,
+  clearRefreshCookie,
+  getRefreshTokenCandidates,
+} from '../utils/cookie.js';
 import { UserStatus } from '../models/index.js';
 import { sendError } from '../utils/api.js';
 import { isStaffOnly } from '../utils/roles.js';
@@ -48,7 +51,10 @@ export default {
         );
         res.set('Pragma', 'no-cache');
       }
-      if (typeof res?.vary === 'function') res.vary('Cookie');
+      if (typeof res?.vary === 'function') {
+        res.vary('Cookie');
+        res.vary('Origin');
+      }
       setRefreshCookie(res, refreshToken);
 
       const extra = {};
@@ -101,7 +107,10 @@ export default {
       );
       res.set('Pragma', 'no-cache');
     }
-    if (typeof res?.vary === 'function') res.vary('Cookie');
+    if (typeof res?.vary === 'function') {
+      res.vary('Cookie');
+      res.vary('Origin');
+    }
     clearRefreshCookie(res);
     return res.status(200).json({ message: 'Logged out' });
   },
@@ -134,15 +143,30 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Only accept refresh token from secure HTTP-only cookie
-    const token = req.cookies?.[COOKIE_NAME];
-    if (!token) {
+    // Only accept refresh token from secure HTTP-only cookie. Some browsers may
+    // send multiple cookies with the same name from different paths/domains
+    // (legacy/broken leftovers). Collect all candidates and select a valid one.
+    const candidates = getRefreshTokenCandidates(req);
+    if (!Array.isArray(candidates) || candidates.length === 0) {
       return res.status(401).json({ error: 'Отсутствует токен обновления' });
     }
 
     try {
-      const { user, accessToken, refreshToken } =
-        await authService.rotateTokens(token);
+      let result = null;
+      let lastErr = null;
+      for (const c of candidates) {
+        try {
+          // Try each candidate until one succeeds
+          // rotateTokens verifies signature, type and version
+
+          result = await authService.rotateTokens(c);
+          break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      if (!result) throw lastErr || new Error('invalid_token');
+      const { user, accessToken, refreshToken } = result;
       incAuthRefresh('success');
       incTokenIssued('access');
       incTokenIssued('refresh');
@@ -159,7 +183,18 @@ export default {
         );
         res.set('Pragma', 'no-cache');
       }
-      if (typeof res?.vary === 'function') res.vary('Cookie');
+      if (typeof res?.vary === 'function') {
+        res.vary('Cookie');
+        res.vary('Origin');
+      }
+      // Hint client to run legacy cookie cleanup if multiple variants were seen
+      try {
+        if (Array.isArray(candidates) && candidates.length > 1) {
+          res.set('X-Auth-Cookie-Cleanup', '1');
+        }
+      } catch (_) {
+        /* noop */
+      }
       setRefreshCookie(res, refreshToken);
 
       return res.json({

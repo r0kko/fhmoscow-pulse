@@ -28,6 +28,10 @@ jest.unstable_mockModule('../src/utils/cookie.js', () => ({
   __esModule: true,
   setRefreshCookie: setRefreshCookieMock,
   clearRefreshCookie: clearRefreshCookieMock,
+  getRefreshTokenCandidates: (req) => {
+    const val = req?.cookies?.refresh_token;
+    return val ? [val] : [];
+  },
 }));
 
 const signAccessTokenMock = jest.fn(() => 'access');

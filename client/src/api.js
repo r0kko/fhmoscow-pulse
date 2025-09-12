@@ -312,6 +312,19 @@ async function refreshToken() {
       if (res.ok && data.access_token) {
         setAccessToken(data.access_token);
         setRefreshFailed(false);
+        try {
+          const hint =
+            res.headers?.get && res.headers.get('X-Auth-Cookie-Cleanup');
+          if (hint === '1') {
+            // Fire-and-forget cleanup to remove legacy/broken cookie variants
+            apiFetch('/auth/cookie-cleanup', {
+              method: 'GET',
+              redirectOn401: false,
+            }).catch(() => {});
+          }
+        } catch (_) {
+          /* ignore */
+        }
         return true;
       }
     } catch (_err) {

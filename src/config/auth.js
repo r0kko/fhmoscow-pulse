@@ -4,6 +4,22 @@ export const JWT_ALG = process.env.JWT_ALG || 'HS256';
 export const JWT_SECRET = process.env.JWT_SECRET;
 export const JWT_ISS = process.env.JWT_ISS || 'fhmoscow-pulse';
 export const JWT_AUD = process.env.JWT_AUD || 'web';
+// Optional asymmetric keys support (RS*/ES*/EdDSA)
+export const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY || undefined;
+export const JWT_KID = process.env.JWT_KID || undefined;
+export const JWT_PUBLIC_KEYS = (() => {
+  try {
+    const raw = process.env.JWT_PUBLIC_KEYS || '';
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((x) => ({ kid: String(x.kid || ''), key: String(x.key || '') }))
+      .filter((x) => x.kid && x.key);
+  } catch {
+    return [];
+  }
+})();
 
 import safeRegex from 'safe-regex';
 

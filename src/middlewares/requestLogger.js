@@ -17,6 +17,22 @@ const SENSITIVE_KEYS = [
   'access_token',
   'token',
   'code',
+  // Personal identifiers
+  'snils',
+  'inn',
+  'passport',
+  'passport_series',
+  'passport_number',
+  'issuing_authority',
+  'issuing_authority_code',
+  // Banking
+  'bank_account',
+  'bank_card',
+  'card_number',
+  'account',
+  'iban',
+  'bic',
+  'swift',
 ];
 
 function isReadonlyDbError(err) {
@@ -32,6 +48,10 @@ function isReadonlyDbError(err) {
  */
 export default function requestLogger(req, res, next) {
   const start = process.hrtime.bigint();
+  const MAX_BODY_BYTES = parseInt(
+    process.env.LOG_REQUEST_BODY_MAX_BYTES || '16384',
+    10
+  );
 
   function redact(value) {
     if (Array.isArray(value)) return value.map((v) => redact(v));
@@ -70,6 +90,18 @@ export default function requestLogger(req, res, next) {
       let bodyClone = null;
       if (req.body && typeof req.body === 'object') {
         bodyClone = redact(req.body);
+        try {
+          // Enforce max body size for durability
+          const asJson = JSON.stringify(bodyClone);
+          if (asJson && asJson.length > MAX_BODY_BYTES) {
+            bodyClone = {
+              truncated: true,
+              approx_size_bytes: asJson.length,
+            };
+          }
+        } catch (_) {
+          /* noop */
+        }
         try {
           if (
             bodyClone &&

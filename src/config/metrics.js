@@ -36,6 +36,8 @@ let rateLimitedTotal = null;
 let csrfAcceptedTotal = null;
 let csrfRejectedTotal = null;
 let httpErrorCodeTotal = null;
+let refreshReuseDetected = null;
+let securityEvents = null;
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -197,6 +199,18 @@ async function ensureInit() {
       name: 'csrf_rejected_total',
       help: 'CSRF checks rejected grouped by reason',
       labelNames: ['reason'], // cookie_missing_or_mismatch|hmac_error|other
+      registers: [register],
+    });
+    refreshReuseDetected = new client.Counter({
+      name: 'refresh_reuse_detected_total',
+      help: 'Detected refresh token reuse attempts',
+      labelNames: ['result'], // detected|error
+      registers: [register],
+    });
+    securityEvents = new client.Counter({
+      name: 'security_events_total',
+      help: 'Security events grouped by type',
+      labelNames: ['type'], // reuse|lockout|ip_mismatch|state_loss
       registers: [register],
     });
     httpErrorCodeTotal = new client.Counter({
@@ -588,6 +602,24 @@ export function incHttpErrorCode(code = 'error', status = 0) {
   try {
     const s = String(status || 0);
     httpErrorCodeTotal.inc({ code: String(code), status: s });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incRefreshReuse(result = 'detected') {
+  if (!metricsAvailable) return;
+  try {
+    refreshReuseDetected.inc({ result });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incSecurityEvent(type = 'reuse') {
+  if (!metricsAvailable) return;
+  try {
+    securityEvents.inc({ type });
   } catch (_e) {
     /* noop */
   }

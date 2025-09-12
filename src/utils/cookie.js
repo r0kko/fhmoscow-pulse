@@ -108,3 +108,60 @@ export function clearRefreshCookie(res) {
     res.clearCookie(COOKIE_NAME, v);
   }
 }
+
+/**
+ * Extract all cookie values for a given name from raw Cookie header.
+ * cookie-parser collapses duplicates, but browsers may send multiple cookies
+ * with the same name from different paths/domains. We need all candidates to
+ * robustly disambiguate refresh_token in presence of legacy/broken cookies.
+ *
+ * @param {import('express').Request} req
+ * @param {string} name
+ * @returns {string[]} array of candidate values in header order (deduped)
+ */
+export function getCookieCandidates(req, name) {
+  try {
+    const header = req?.headers?.cookie || '';
+    if (!header || typeof header !== 'string') return [];
+    const target = String(name || '').trim();
+    if (!target) return [];
+    const parts = header.split(';');
+    const out = [];
+    const seen = new Set();
+    for (const p of parts) {
+      const [k, ...rest] = p.split('=');
+      if (!k || rest.length === 0) continue;
+      const key = k.trim();
+      if (key !== target) continue;
+      const rawVal = rest.join('=').trim();
+      // Do not decode JWT dots, but safely decode percent-encodings if present
+      let val = rawVal;
+      try {
+        // Only decode if it looks URL-encoded
+        if (/%[0-9A-Fa-f]{2}/.test(rawVal)) {
+          val = decodeURIComponent(rawVal);
+        }
+      } catch (_) {
+        // keep raw on decode failure
+        val = rawVal;
+      }
+      if (!seen.has(val)) {
+        seen.add(val);
+        out.push(val);
+      }
+    }
+    return out;
+  } catch (_e) {
+    return [];
+  }
+}
+
+/**
+ * Convenience helper: return refresh_token candidates from request.
+ *
+ * @param {import('express').Request} req
+ * @returns {string[]}
+ */
+export function getRefreshTokenCandidates(req) {
+  return getCookieCandidates(req, COOKIE_NAME);
+}

@@ -2,9 +2,9 @@ import csrf from '../config/csrf.js';
 import { verifyCsrfHmac } from '../utils/csrfHmac.js';
 import { incCsrfAccepted, incCsrfRejected } from '../config/metrics.js';
 
-// Keep CSRF disabled for token fetch and refresh endpoints only.
-// Do NOT exempt /auth/login: tests and policy require CSRF on login.
-const EXEMPT_PATHS = ['/csrf-token', '/auth/refresh'];
+// Keep CSRF disabled for token fetch endpoint only.
+// Do NOT exempt /auth/login or /auth/refresh: both require CSRF protection.
+const EXEMPT_PATHS = ['/csrf-token'];
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
