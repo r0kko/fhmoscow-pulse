@@ -16,7 +16,8 @@ afterEach(() => {
   if (saved.AUTH_LOCKOUT_ENABLED === undefined)
     delete process.env.AUTH_LOCKOUT_ENABLED;
   else process.env.AUTH_LOCKOUT_ENABLED = saved.AUTH_LOCKOUT_ENABLED;
-  if (saved.RATE_LIMIT_ENABLED === undefined) delete process.env.RATE_LIMIT_ENABLED;
+  if (saved.RATE_LIMIT_ENABLED === undefined)
+    delete process.env.RATE_LIMIT_ENABLED;
   else process.env.RATE_LIMIT_ENABLED = saved.RATE_LIMIT_ENABLED;
   if (saved.RATE_LIMIT_LOGIN_ENABLED === undefined)
     delete process.env.RATE_LIMIT_LOGIN_ENABLED;

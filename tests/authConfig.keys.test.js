@@ -28,4 +28,3 @@ test('JWT_PUBLIC_KEYS falls back to [] on invalid JSON', async () => {
   const mod = await import('../src/config/auth.js');
   expect(mod.JWT_PUBLIC_KEYS).toEqual([]);
 });
-
