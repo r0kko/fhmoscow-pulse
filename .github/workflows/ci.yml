@@ -43,7 +43,7 @@ jobs:
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
 
-      - name: Lint
+      - name: Lint (API)
         run: npm run lint
 
       - name: Check formatting
@@ -52,18 +52,24 @@ jobs:
       - name: Validate Grafana dashboards
         run: npm run validate:dashboards
 
-      - name: Run tests
+      - name: Run server tests
         env:
           CI: true
-        run: npm test -- --runInBand
+        run: npm run test:server:ci
 
       - name: Install client dependencies
         working-directory: client
         run: npm ci
 
-      - name: Lint client
+      - name: Lint (Client)
         working-directory: client
         run: npm run lint
+
+      - name: Run client unit tests
+        working-directory: client
+        env:
+          CI: true
+        run: npm test
 
       - name: Build client
         working-directory: client

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
@@ -20,6 +21,12 @@ const proxyConfig = {
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '#tests': fileURLToPath(new URL('./tests', import.meta.url)),
+    },
+  },
   server: {
     host: '0.0.0.0',
     allowedHosts: [
@@ -40,5 +47,23 @@ export default defineConfig({
     ],
     // Vite Preview supports proxy since v5; mirror dev proxy for parity
     proxy: proxyConfig,
+  },
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    setupFiles: './tests/setup/vitest.setup.js',
+    include: ['tests/**/*.{test,spec}.{js,ts}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: '../coverage/client',
+      include: ['src/**/*.{js,vue}'],
+      thresholds: {
+        statements: 80,
+        branches: 60,
+        functions: 75,
+        lines: 80,
+      },
+    },
   },
 });

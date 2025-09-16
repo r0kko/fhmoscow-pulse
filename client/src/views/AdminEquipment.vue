@@ -314,8 +314,8 @@ async function issueConfirm() {
               <label class="form-label" for="flt-type">Тип</label>
               <select
                 id="flt-type"
-                class="form-select"
                 v-model="filters.type_id"
+                class="form-select"
               >
                 <option value="">Все типы</option>
                 <option v-for="t in types" :key="t.value" :value="t.value">
@@ -327,8 +327,8 @@ async function issueConfirm() {
               <label class="form-label" for="flt-mfr">Производитель</label>
               <select
                 id="flt-mfr"
-                class="form-select"
                 v-model="filters.manufacturer_id"
+                class="form-select"
               >
                 <option value="">Все производители</option>
                 <option
@@ -344,8 +344,8 @@ async function issueConfirm() {
               <label class="form-label" for="flt-size">Размер</label>
               <select
                 id="flt-size"
-                class="form-select"
                 v-model="filters.size_id"
+                class="form-select"
               >
                 <option value="">Все размеры</option>
                 <option v-for="s in sizes" :key="s.value" :value="s.value">
@@ -357,8 +357,8 @@ async function issueConfirm() {
               <label class="form-label" for="flt-status">Статус</label>
               <select
                 id="flt-status"
-                class="form-select"
                 v-model="filters.status"
+                class="form-select"
               >
                 <option value="">Все</option>
                 <option value="free">Свободна</option>
@@ -370,11 +370,11 @@ async function issueConfirm() {
               <label class="form-label" for="flt-number">Номер</label>
               <input
                 id="flt-number"
+                v-model.number="filters.number"
                 type="number"
                 min="1"
                 max="300"
                 class="form-control"
-                v-model.number="filters.number"
                 placeholder="№"
               />
             </div>
@@ -382,8 +382,8 @@ async function issueConfirm() {
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="resetFilters"
                 title="Сбросить фильтры"
+                @click="resetFilters"
               >
                 <i class="bi bi-x-circle" aria-hidden="true"></i>
                 <span class="visually-hidden">Сбросить фильтры</span>
@@ -478,9 +478,9 @@ async function issueConfirm() {
             >
             <select
               id="pageSize"
+              v-model.number="pageSize"
               class="form-select form-select-sm"
               style="width: auto"
-              v-model.number="pageSize"
             >
               <option :value="10">10</option>
               <option :value="20">20</option>
@@ -513,7 +513,7 @@ async function issueConfirm() {
             </div>
             <div class="mb-3">
               <label class="form-label">Тип</label>
-              <select class="form-select" v-model="form.type_id">
+              <select v-model="form.type_id" class="form-select">
                 <option value="" disabled>Выберите тип</option>
                 <option v-for="t in types" :key="t.value" :value="t.value">
                   {{ t.label }}
@@ -525,7 +525,7 @@ async function issueConfirm() {
             </div>
             <div class="mb-3">
               <label class="form-label">Производитель</label>
-              <select class="form-select" v-model="form.manufacturer_id">
+              <select v-model="form.manufacturer_id" class="form-select">
                 <option value="" disabled>Выберите производителя</option>
                 <option
                   v-for="m in manufacturers"
@@ -544,7 +544,7 @@ async function issueConfirm() {
             </div>
             <div class="mb-3">
               <label class="form-label">Размер</label>
-              <select class="form-select" v-model="form.size_id">
+              <select v-model="form.size_id" class="form-select">
                 <option value="" disabled>Выберите размер</option>
                 <option v-for="s in sizes" :key="s.value" :value="s.value">
                   {{ s.label }}
@@ -557,11 +557,11 @@ async function issueConfirm() {
             <div class="mb-3">
               <label class="form-label">Номер</label>
               <input
+                v-model.number="form.number"
                 type="number"
                 min="1"
                 max="300"
                 class="form-control"
-                v-model.number="form.number"
               />
               <div v-if="fieldErrors.number" class="invalid-feedback d-block">
                 {{ fieldErrors.number }}
@@ -620,14 +620,14 @@ async function issueConfirm() {
           <div class="input-group mb-2">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input
+              v-model.trim="userQuery"
               type="text"
               class="form-control"
               placeholder="Фамилия, имя, email или телефон"
-              v-model.trim="userQuery"
             />
           </div>
           <div class="mb-3">
-            <select class="form-select" size="6" v-model="userSelected">
+            <select v-model="userSelected" class="form-select" size="6">
               <option v-for="u in userOptions" :key="u.id" :value="u.id">
                 {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }} —
                 {{ u.email || u.phone || '' }}

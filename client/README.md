@@ -1,5 +1,42 @@
-# Vue 3 + Vite
+# Клиентское приложение (Vue 3 + Vite)
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+SPA пользовательского кабинета расположена в каталоге `client/` и построена на Vue 3 с Vite. Архитектура, компоненты и UX-паттерны описаны в `UX_GUIDELINES.md` — перед внесением изменений сверяйтесь с этим документом, чтобы сохранять единый дизайн-код.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Быстрый старт
+
+```bash
+npm install
+npm run dev
+```
+
+По умолчанию приложение поднимается на `http://localhost:5173` и проксирует API на `http://localhost:3000`. Параметр `VITE_API_PROXY_TARGET` позволяет переопределить целевой API при разработке.
+
+## Контроль качества
+
+| Команда                 | Назначение                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `npm run lint`          | Проверка ESLint (Vue recommended + корпоративные правила порядка атрибутов). |
+| `npm run lint:fix`      | Автоисправления допустимых ошибок.                                           |
+| `npm run test`          | Юнит-тесты на Vitest + Testing Library, окружение `happy-dom`.               |
+| `npm run test:watch`    | Непрерывный режим запуска тестов.                                            |
+| `npm run test:coverage` | Отчет о покрытии в `../coverage/client` (LCOV + текст).                      |
+| `npm run build`         | Продакшен-сборка, идентичная pipeline.                                       |
+
+Vitest автоматически подключает `tests/setup/vitest.setup.js`: здесь очищается localStorage/sessionStorage и подключается `@testing-library/jest-dom`. При необходимости добавляйте туда глобальные моки (например, `matchMedia`).
+
+## Структура каталогов
+
+- `src/` — исходники приложения (компоненты, роутер, утилиты, стили бренда).
+- `tests/unit/` — юнит-тесты компонентов/утилит. Новые тест-кейсы размещайте рядом по смыслу, использующий `@`-алиас для импорта из `src/`.
+- `tests/setup/` — глобальные настройки Vitest/Testing Library.
+- `public/` — статические ассеты, попадающие в сборку без обработки Vite.
+
+## UI/UX рекомендации
+
+- Состояния загрузки и ошибки должны отображаться согласно шаблонам из `components/EmptyState.vue` и `components/BrandSpinner.vue`.
+- Для форм используйте валидаторы и подсказки из существующих компонентов (например, `PasswordChecklist`, `InlineError`).
+- Все интерактивные элементы обязаны иметь доступные подписи (`aria-*`, `title`) и проходить проверку через `@testing-library/vue`.
+
+## Интеграция в CI/CD
+
+GitHub Actions и GitLab CI устанавливают зависимости, запускают `npm run lint` и `npm run test` (Vitest) после сборки API. При локальной разработке перед коммитом рекомендуется прогонять `npm run lint`, `npm run test` и `npm run build` для предотвращения регрессий.

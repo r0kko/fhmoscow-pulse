@@ -327,10 +327,11 @@ if (isExternalDbAvailable()) {
 
 ## Quality checks
 
-- Prettier, ESLint, and Jest are available as npm scripts:
+- Prettier, ESLint, Jest, and Vitest are available as npm scripts:
   - `npm run format:check` verifies formatting; `npm run format` writes.
-  - `npm run lint` runs ESLint; `npm run lint:fix` applies fixes.
-  - `npm test` runs the test suite with coverage.
+  - `npm run lint` / `npm run lint:fix` check the API; `npm run lint:client` checks the SPA or run both via `npm run lint:all`.
+  - `npm test` (alias for `npm run test:server`) runs Jest; `npm run test:client` runs Vitest; `npm run test:all` executes both.
+  - Coverage: `npm run test:coverage` (Jest) and `npm run test:client:coverage` (Vitest) produce LCOV under `coverage/`.
 
 ## Согласования матчей (Match Agreements)
 
@@ -403,6 +404,7 @@ npm run format      # format with Prettier
 
 ```bash
 npm test
+npm run test:client
 npm run test:coverage
 ```
 
@@ -427,7 +429,7 @@ MIT
 
 ### Frontend development
 
-A Vue 3 application lives in the `client` directory. During development you can start it manually or rely on Docker Compose:
+A Vue 3 single-page app lives in the `client` directory. During development you can start it manually or rely on Docker Compose:
 
 ```bash
 cd client
@@ -435,7 +437,14 @@ npm install
 npm run dev
 ```
 
-Running `docker-compose up` will also build the frontend image and serve it on port `5173`.
+Quality gates mirror the backend:
+
+- `npm run lint` / `npm run lint:fix` — ESLint (Vue recommended rules + Prettier).
+- `npm run test` — Vitest unit tests (headless `happy-dom`).
+- `npm run test:coverage` — coverage report (stored in `coverage/client`).
+- `npm run build` — production build, same entrypoint used in CI/CD.
+
+Running `docker-compose up` also builds the frontend image and serves it on port `5173`.
 - Admin · Documents/Contracts
   - Contracts tab now supports search and filters (signature type, status, only with contract) for faster navigation.
   - Creating a referee contract sets status to “AWAITING_SIGNATURE” immediately and emails the recipient.
