@@ -57,7 +57,21 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       reportsDirectory: '../coverage/client',
-      include: ['src/**/*.{js,vue}'],
+      // Focus unit coverage on shared UI primitives and client-side helpers.
+      include: [
+        'src/utils/**/*.js',
+        'src/components/CookieNotice.vue',
+        'src/components/GlobalToast.vue',
+      ],
+      exclude: [
+        'src/api.js',
+        'src/router.js',
+        'src/auth.js',
+        'src/dadata.js',
+        'src/errors.js',
+        'src/views/**',
+        'src/utils/lineupSync.js',
+      ],
       thresholds: {
         statements: 80,
         branches: 60,

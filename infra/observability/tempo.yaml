@@ -1,11 +1,13 @@
 server:
   http_listen_port: 3200
+  log_level: info
 
 distributor:
   receivers:
     otlp:
       protocols:
         grpc:
+        http:
 
 ingester:
   lifecycler:
@@ -22,16 +24,17 @@ storage:
   trace:
     backend: local
     wal:
-      path: /tmp/tempo/wal
+      path: /var/lib/tempo/wal
     local:
-      path: /tmp/tempo/blocks
+      path: /var/lib/tempo/blocks
 
 querier: {}
 query_frontend: {}
 compactor:
+  shared_store: filesystem
+  working_directory: /var/lib/tempo/compactor
   compaction:
     compaction_window: 1h
     max_block_bytes: 100000000
-    block_retention: 48h
+    block_retention: 168h
     compacted_block_retention: 10m
-

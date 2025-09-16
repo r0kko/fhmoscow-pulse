@@ -75,6 +75,7 @@ function makeReqRes({
   method = 'GET',
   path = '/x',
   routePath = undefined,
+  baseUrl = '',
   status = 200,
   reqLen = 0,
   resLen = 0,
@@ -83,6 +84,7 @@ function makeReqRes({
   const req = {
     method,
     path,
+    baseUrl,
     route: routePath ? { path: routePath } : undefined,
     get: (h) =>
       h?.toLowerCase() === 'content-length' ? String(reqLen) : undefined,
@@ -154,5 +156,55 @@ describe('httpMetricsMiddleware', () => {
     const fivexx = objects['http_requests_5xx_total'];
     // No 5xx increments expected
     expect(fivexx.calls.length).toBeGreaterThanOrEqual(0);
+  });
+
+  test('normalizes route labels and keeps unmatched low-cardinality', async () => {
+    await metricsText();
+    const mw = httpMetricsMiddleware();
+    const total = objects['http_requests_total'];
+    const before = total.calls.length;
+
+    const { req, res, handlers } = makeReqRes({
+      method: 'get',
+      path: '/players/42',
+      baseUrl: '/players',
+      routePath: '/:id',
+      status: 200,
+    });
+    mw(req, res, () => {});
+    handlers.finish?.();
+
+    const after = total.calls.slice(before);
+    expect(after.some((c) => c.labels?.route === '/players/:id')).toBe(true);
+
+    const unmatchedBefore = total.calls.length;
+    const unmatchedReq = makeReqRes({
+      method: 'get',
+      path: '/totally/custom/path/123',
+      status: 200,
+    });
+    mw(unmatchedReq.req, unmatchedReq.res, () => {});
+    unmatchedReq.handlers.finish?.();
+    const unmatchedCalls = total.calls.slice(unmatchedBefore);
+    expect(unmatchedCalls.every((c) => c.labels?.route === 'unmatched')).toBe(
+      true
+    );
+  });
+
+  test('marks inflight complete on aborted connections', async () => {
+    await metricsText();
+    const inflight = objects['http_server_in_flight_requests'];
+    const before = inflight.calls.length;
+    const mw = httpMetricsMiddleware();
+    const { req, res, handlers } = makeReqRes({
+      method: 'get',
+      path: '/abort-me',
+      routePath: '/abort-me',
+      status: 200,
+    });
+    mw(req, res, () => {});
+    handlers.close?.();
+    const newCalls = inflight.calls.slice(before);
+    expect(newCalls.some((c) => c.type === 'dec')).toBe(true);
   });
 });

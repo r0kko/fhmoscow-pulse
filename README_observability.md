@@ -7,12 +7,13 @@ Overview
  - Access logs: JSON structured via morgan; correlated by `req_id` and `service`.
 
 Stack layout
-- File: `infra/observability/docker-compose.observability.yml` — runs Grafana, Loki, Prometheus.
+- File: `infra/observability/docker-compose.observability.yml` — runs Grafana, Loki, Promtail, Prometheus, Alertmanager, and Tempo for local-only observability.
 - File: `infra/observability/prometheus.yml` — scrapes the API at `host.docker.internal:3000/metrics`.
+- File: `infra/observability/loki-config.yml` — single-binary Loki config with on-disk storage and 7-day retention.
 - Folder: `infra/observability/grafana/*` — datasources + starter dashboard provisioning.
 - Optional: `docker-compose.loki-logging.yml` — adds Loki logging driver to app/client containers.
 - File: `infra/observability/promtail-config.yml` — parses Docker logs and JSON access/app logs; promotes `level` and `type` as Loki labels.
- - File: `infra/observability/tempo.yaml` — Tempo config (OTLP gRPC) for distributed traces.
+- File: `infra/observability/tempo.yaml` — Tempo config (OTLP gRPC) for distributed traces.
 
 Quick start (now runs with your project)
 1) Start the whole project (app + DB + observability):
@@ -20,6 +21,8 @@ Quick start (now runs with your project)
    - Grafana: http://localhost:3001 (default admin/admin; change immediately!)
    - Prometheus: http://localhost:9090 | Alertmanager: http://localhost:9093
    - Loki API: http://localhost:3100 | cAdvisor: http://localhost:8081
+   - Tempo traces API: http://localhost:3200 (UI & API) | Promtail metrics available on the Docker network at http://promtail:9080/metrics
+   - Metrics/logs/traces survive container restarts via named volumes (`prometheus-data`, `loki-data`, `tempo-data`, `promtail-data`). Run `docker compose down -v` only when you intentionally want a clean slate.
 
 2) Expose metrics and probes (already available):
    - API metrics: http://localhost:3000/metrics
@@ -37,11 +40,19 @@ Quick start (now runs with your project)
 4) Traces (Tempo + OpenTelemetry):
    - Enable in env: `OTEL_ENABLED=true`, `OTEL_SERVICE_NAME=api`, `OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317`.
    - Explore → Tempo to browse traces; logs include `trace_id` to pivot between logs and traces.
+   - Tempo listens for OTLP over gRPC (4317) and HTTP (4318) by default — point whichever exporter your SDK supports at the internal service URL.
+
+Persistence & retention
+- Prometheus keeps local metrics for 30 days (45 days in `docker-compose.prod.yml`). Adjust the `--storage.tsdb.retention.time` flag in the compose files if you need a different window.
+- Loki retains logs for 7 days via `infra/observability/loki-config.yml`. Update `limits_config.retention_period` to change the policy. Log positions are stored on the `promtail-data` volume to avoid duplicates on restarts.
+- Tempo stores trace blocks and WAL data on `tempo-data` and keeps traces for 7 days (`compactor -> block_retention`). Increase the retention window only if the disk budget allows it.
+- `npm run obs:down` stops the local observability stack but keeps the volumes. Use `docker compose -f infra/observability/docker-compose.observability.yml down -v` only when you want to wipe stored metrics/logs/traces.
 
 Notes
 - macOS/Windows: `host.docker.internal` resolves from containers to the host. On Linux, set `loki-url` to the host IP or run all services in one compose project/network.
 - Security: change Grafana admin password via `GRAFANA_ADMIN_PASSWORD` env or UI.
 - Labels: logs include `service`, `env`, `container_name`, and env `NODE_ENV`, `VERSION`.
+- Prometheus scrapes Grafana, Loki, Tempo, Promtail, and Alertmanager metrics. Keep those ports internal in production and rely on the compose defaults (only Grafana is published).
 - Metrics endpoint: prefer to protect `/metrics` with basic auth in environments where the API port is exposed. Set `METRICS_USER` and `METRICS_PASS`. Prometheus inside Docker network scrapes internally without auth.
 
 Performance and cAdvisor tuning
@@ -67,6 +78,7 @@ Production (docker-compose.prod.yml)
 - Stack included: Loki, Promtail, Prometheus, Alertmanager, Grafana, Tempo, cAdvisor, Node Exporter, Postgres/Redis exporters, Blackbox exporter.
 - App/client публикуются только через Nginx (80/443). Grafana вынесена на отдельный порт 3001.
 - Prometheus/Alertmanager/Loki/Tempo не публикуются наружу (доступ только внутри Docker‑сети).
+- Метрики, логи и трейсы сохраняются в именованных volume (`prometheus-data`, `loki-data`, `tempo-data`, `promtail-data`) и переживают рестарты контейнеров и хостов.
 - DB 5432 публикуется — доступ ограничивайте файерволом.
 - Metrics protection: в production `/metrics` требует Basic Auth — установите `METRICS_USER`/`METRICS_PASS` в `.env`.
 - Nginx hardening: см. `infra/nginx/security.conf.example` (deny `/metrics` + заголовки безопасности).

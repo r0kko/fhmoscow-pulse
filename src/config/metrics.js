@@ -252,31 +252,84 @@ async function ensureInit() {
   }
 }
 
+function normalizeRouteLabel(label) {
+  if (!label) return '/';
+  if (Array.isArray(label)) {
+    const first = label.find((entry) => typeof entry === 'string' && entry);
+    label = first || label[0] || '';
+  }
+  const raw = String(label || '');
+  if (!raw) return '/';
+  let cleaned = raw.replace(/\/{2,}/g, '/');
+  if (!cleaned.startsWith('/')) cleaned = `/${cleaned}`;
+  if (cleaned.length > 1 && cleaned.endsWith('/')) {
+    cleaned = cleaned.replace(/\/+$/, '');
+    if (cleaned === '') cleaned = '/';
+  }
+  return cleaned || '/';
+}
+
+function resolveRouteLabel(req) {
+  const base =
+    typeof req.baseUrl === 'string' && req.baseUrl !== '/'
+      ? req.baseUrl
+      : req.baseUrl === '/'
+        ? '/'
+        : '';
+  let path = req.route?.path;
+  if (Array.isArray(path)) {
+    path =
+      path.find((entry) => typeof entry === 'string' && entry.length > 0) ||
+      path[0];
+  }
+  if (typeof path === 'string') {
+    if (path === '/' || path === '') {
+      return base || '/';
+    }
+    const prefix = base && base !== '/' ? base : base === '/' ? '' : '';
+    const needsSlash = prefix && !path.startsWith('/');
+    const combined = `${prefix}${needsSlash ? '/' : ''}${path}`;
+    return normalizeRouteLabel(combined);
+  }
+  if (base) return normalizeRouteLabel(base);
+  return 'unmatched';
+}
+
 // Express middleware to record per-request metrics
 export function httpMetricsMiddleware() {
   return (req, res, next) => {
     const start = process.hrtime.bigint();
-    // Route will be computed on finish using req.route when available
+    const method = (req.method || 'GET').toUpperCase();
+    const route = resolveRouteLabel(req);
+    let inflightTracked = false;
 
-    // In-flight start
     try {
       if (metricsAvailable) {
-        const method = (req.method || 'GET').toUpperCase();
-        const route = req.route?.path || req.path || 'unmatched';
         httpRequestsInflight.inc({ method, route });
+        inflightTracked = true;
       }
     } catch {
       /* ignore metric errors */
     }
 
-    res.once('finish', () => {
+    let completed = false;
+    const finalize = (aborted = false) => {
+      if (completed) return;
+      completed = true;
+
+      if (inflightTracked) {
+        try {
+          httpRequestsInflight.dec({ method, route });
+        } catch {
+          /* ignore */
+        }
+      }
+
       if (!metricsAvailable) return;
       try {
-        // Avoid self-scrape noise
         if (req.path === '/metrics') return;
-        const method = (req.method || 'GET').toUpperCase();
-        const route = req.route?.path || req.path || 'unmatched';
-        const status = String(res.statusCode || 0);
+        const statusCode = res.statusCode || (aborted ? 499 : 0);
+        const status = String(statusCode);
         const durSec =
           Number((process.hrtime.bigint() - start) / 1_000_000n) / 1000;
         httpRequestDuration.observe({ method, route, status }, durSec);
@@ -284,22 +337,23 @@ export function httpMetricsMiddleware() {
         if (status.startsWith('5')) {
           httpRequests5xx.inc({ route });
         }
-        // Request/response sizes from headers if present
-        const reqLen = Number(req.get('content-length') || 0);
-        if (reqLen > 0) httpRequestSize.observe({ method, route }, reqLen);
-        const resLen = Number(res.getHeader('content-length') || 0);
-        if (resLen > 0)
-          httpResponseSize.observe({ method, route, status }, resLen);
-        // Decrement inflight
-        try {
-          httpRequestsInflight.dec({ method, route });
-        } catch {
-          /* ignore */
+        if (!aborted) {
+          const reqLen = Number(req.get('content-length') || 0);
+          if (reqLen > 0) {
+            httpRequestSize.observe({ method, route }, reqLen);
+          }
+          const resLen = Number(res.getHeader('content-length') || 0);
+          if (resLen > 0) {
+            httpResponseSize.observe({ method, route, status }, resLen);
+          }
         }
       } catch {
         /* ignore metric errors */
       }
-    });
+    };
+
+    res.once('finish', () => finalize(false));
+    res.once('close', () => finalize(true));
     next();
   };
 }

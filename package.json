@@ -7,7 +7,7 @@
   "scripts": {
     "format": "prettier --cache --write \"./{src,client,tests,routes,controllers,services,models,public,scripts}/**/*.{js,jsx,ts,tsx,vue,json,css,md}\"",
     "format:check": "prettier --cache --check \"./{src,client,tests,routes,controllers,services,models,public,scripts}/**/*.{js,jsx,ts,tsx,vue,json,css,md}\"",
-    "verify": "npm run lint:ci && npm run format:check && npm run test:ci",
+    "verify": "npm run lint:ci && npm run format:check && npm run test:coverage",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "lint:client": "npm --prefix client run lint",
@@ -18,7 +18,7 @@
     "migrate:undo": "sequelize-cli db:migrate:undo:all",
     "migration:create": "sequelize-cli migration:generate --name",
     "obs:annotate": "node ./scripts/annotateRelease.js",
-    "obs:down": "docker compose -f infra/observability/docker-compose.observability.yml down -v",
+    "obs:down": "docker compose -f infra/observability/docker-compose.observability.yml down",
     "obs:status": "docker compose -f infra/observability/docker-compose.observability.yml ps",
     "obs:up": "docker compose -f infra/observability/docker-compose.observability.yml up -d",
     "seed:create": "sequelize-cli seed:generate --name",

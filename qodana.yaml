@@ -25,4 +25,4 @@ failureConditions:
     high: 0
     critical: 0
 
-linter: jetbrains/qodana-js:2024.3
+linter: jetbrains/qodana-js:2025.2
