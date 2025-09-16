@@ -104,7 +104,22 @@ services:
   loki:
     image: grafana/loki:2.9.8
     container_name: loki
-    command: ["-config.file=/etc/loki/config.yml"]
+    user: "0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        set -euo pipefail;
+        mkdir -p /var/lib/loki/chunks /var/lib/loki/index /var/lib/loki/cache /var/lib/loki/rules /var/lib/loki/compactor;
+        LOKI_UID=$$(id -u loki 2>/dev/null || echo 10001);
+        LOKI_GID=$$(id -g loki 2>/dev/null || echo 10001);
+        chown -R "$$LOKI_UID":"$$LOKI_GID" /var/lib/loki;
+        if command -v su-exec >/dev/null 2>&1; then
+          exec su-exec "$$LOKI_UID":"$$LOKI_GID" /usr/bin/loki -config.file=/etc/loki/config.yml;
+        elif command -v gosu >/dev/null 2>&1; then
+          exec gosu "$$LOKI_UID":"$$LOKI_GID" /usr/bin/loki -config.file=/etc/loki/config.yml;
+        else
+          exec /usr/bin/loki -config.file=/etc/loki/config.yml;
+        fi
     ports:
       - "127.0.0.1:3100:3100"
     networks:
@@ -225,7 +240,22 @@ services:
   tempo:
     image: grafana/tempo:2.5.0
     container_name: tempo
-    command: ["-config.file=/etc/tempo.yaml"]
+    user: "0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        set -euo pipefail;
+        mkdir -p /var/lib/tempo/wal /var/lib/tempo/blocks /var/lib/tempo/compactor;
+        TEMPO_UID=$$(id -u tempo 2>/dev/null || echo 10001);
+        TEMPO_GID=$$(id -g tempo 2>/dev/null || echo 10001);
+        chown -R "$$TEMPO_UID":"$$TEMPO_GID" /var/lib/tempo;
+        if command -v su-exec >/dev/null 2>&1; then
+          exec su-exec "$$TEMPO_UID":"$$TEMPO_GID" /tempo -config.file=/etc/tempo.yaml;
+        elif command -v gosu >/dev/null 2>&1; then
+          exec gosu "$$TEMPO_UID":"$$TEMPO_GID" /tempo -config.file=/etc/tempo.yaml;
+        else
+          exec /tempo -config.file=/etc/tempo.yaml;
+        fi
     ports:
       - "127.0.0.1:3200:3200" # HTTP API (Grafana queries)
     volumes:
@@ -282,7 +312,8 @@ services:
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($|/)'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)'
+      - '--collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$'
     networks:
       - backend
     restart: unless-stopped

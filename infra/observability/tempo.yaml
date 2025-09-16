@@ -31,8 +31,9 @@ storage:
 querier: {}
 query_frontend: {}
 compactor:
-  shared_store: filesystem
-  working_directory: /var/lib/tempo/compactor
+  ring:
+    kvstore:
+      store: inmemory
   compaction:
     compaction_window: 1h
     max_block_bytes: 100000000
