@@ -213,10 +213,10 @@ services:
       - backend
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "wget -qO- http://127.0.0.1:3000/api/health | grep -q '\\"database\\":\\"ok\\"'",
-        ]
+        - CMD-SHELL
+        - >-
+          wget -qO- http://127.0.0.1:3000/api/health |
+          grep -q '"database":"ok"'
       interval: 30s
       timeout: 5s
       retries: 5
