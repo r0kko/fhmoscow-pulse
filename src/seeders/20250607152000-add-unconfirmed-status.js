@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,7 +14,7 @@ module.exports = {
       'user_statuses',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Email unconfirmed',
           alias: 'EMAIL_UNCONFIRMED',
           created_at: now,

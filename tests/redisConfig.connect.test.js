@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* global process */
 import { expect, jest, test } from '@jest/globals';
 
 test('connectRedis marks cache up on success', async () => {
@@ -22,7 +21,7 @@ test('connectRedis marks cache up on success', async () => {
   // Metrics setCacheUp is invoked via dynamic import; not asserted here due to isolation
 });
 
-test('connectRedis logs error, marks cache down and exits on failure', async () => {
+test('connectRedis logs error and surfaces failure', async () => {
   jest.resetModules();
   const connect = jest.fn(async () => {
     throw new Error('fail');
@@ -38,11 +37,12 @@ test('connectRedis logs error, marks cache down and exits on failure', async () 
     __esModule: true,
     default: logger,
   }));
-  const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
   const mod = await import('../src/config/redis.js');
-  await mod.connectRedis();
-  expect(logger.error).toHaveBeenCalled();
-  // Metrics setCacheUp is invoked via dynamic import; not asserted here due to isolation
-  expect(exitSpy).toHaveBeenCalledWith(1);
-  exitSpy.mockRestore();
+  await expect(mod.connectRedis()).rejects.toThrow(
+    'Unable to connect to Redis'
+  );
+  expect(logger.error).toHaveBeenCalledWith(
+    '❌ Unable to connect to Redis:',
+    expect.any(Error)
+  );
 });

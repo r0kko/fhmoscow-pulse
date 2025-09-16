@@ -42,8 +42,7 @@ let securityEvents = null;
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
   try {
-    const mod = await import('prom-client');
-    client = mod;
+    client = await import('prom-client');
     register = new client.Registry();
     // Default metrics
     client.collectDefaultMetrics({

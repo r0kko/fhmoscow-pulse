@@ -5,13 +5,15 @@
   "main": "bin/www.js",
   "private": true,
   "scripts": {
-    "format": "prettier --write \"./{src,client,tests,routes,controllers,services,models,public,scripts}/**/*.{js,jsx,ts,tsx,vue,json,css,md}\"",
-    "format:check": "prettier --check \"./{src,client,tests,routes,controllers,services,models,public,scripts}/**/*.{js,jsx,ts,tsx,vue,json,css,md}\"",
-    "lint": "eslint .",
+    "format": "prettier --cache --write \"./{src,client,tests,routes,controllers,services,models,public,scripts}/**/*.{js,jsx,ts,tsx,vue,json,css,md}\"",
+    "format:check": "prettier --cache --check \"./{src,client,tests,routes,controllers,services,models,public,scripts}/**/*.{js,jsx,ts,tsx,vue,json,css,md}\"",
+    "verify": "npm run lint:ci && npm run format:check && npm run test:ci",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "lint:client": "npm --prefix client run lint",
     "lint:client:fix": "npm --prefix client run lint:fix",
-    "lint:all": "npm run lint && npm run lint:client",
+    "lint:ci": "npm run lint && npm run lint:client",
+    "lint:all": "npm run lint:ci",
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo:all",
     "migration:create": "sequelize-cli migration:generate --name",
@@ -23,7 +25,7 @@
     "start": "node ./bin/www",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:server": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:server:ci": "jest --maxWorkers=4",
+    "test:server:ci": "NODE_OPTIONS=--experimental-vm-modules jest --maxWorkers=4",
     "test:server:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --coverageReporters=text-summary",
     "test:client": "npm --prefix client run test",
     "test:client:watch": "npm --prefix client run test:watch",
@@ -31,7 +33,8 @@
     "test:all": "npm run test:server && npm run test:client",
     "test:ci": "npm run test:server:ci && npm run test:client",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
-    "validate:dashboards": "node scripts/validate-dashboards.mjs"
+    "validate:dashboards": "node scripts/validate-dashboards.mjs",
+    "qodana:scan": "npx qodana scan --results-dir .qodana --cache-dir .cache/qodana"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",
@@ -87,10 +90,12 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-n": "^17.23.0",
     "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-security": "^2.1.1",
     "globals": "^16.4.0",
-    "semver": "^7.7.2",
     "jest": "^30.1.3",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "semver": "^7.7.2"
   }
 }

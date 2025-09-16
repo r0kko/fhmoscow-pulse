@@ -31,7 +31,13 @@ const { seedJobMetrics } = await import('../src/config/metrics.js');
 
 const debug = debugLib('fhmoscow-pulse:server');
 
-validateEnv();
+try {
+  validateEnv();
+} catch (err) {
+  console.error(err?.message || err);
+  process.exitCode = 1;
+  throw err;
+}
 
 // Set build info metric once at startup
 (async () => {
@@ -165,7 +171,10 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       }
     }
   })();
-})();
+})().catch((err) => {
+  console.error('Server bootstrap failed:', err?.message || err);
+  process.exitCode = 1;
+});
 
 server.on('error', onError);
 server.on('listening', onListening);
@@ -185,7 +194,7 @@ async function shutdown(signal) {
   try {
     await closeRedis();
   } catch {}
-  process.exit(0);
+  process.exitCode = 0;
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
@@ -225,12 +234,12 @@ function onError(error) {
   switch (error.code) {
     case 'EACCES':
       console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
+      process.exitCode = 1;
+      return;
     case 'EADDRINUSE':
       console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
+      process.exitCode = 1;
+      return;
     default:
       throw error;
   }

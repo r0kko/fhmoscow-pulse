@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -21,7 +21,7 @@ module.exports = {
 
     await queryInterface.bulkInsert('medical_certificates', [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         user_id: user.id,
         inn: '7707083893',
         organization: 'Городская поликлиника №1',

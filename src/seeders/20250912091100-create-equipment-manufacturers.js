@@ -1,13 +1,13 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const rows = [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'ZEDO',
         alias: 'ZEDO',
         created_at: now,

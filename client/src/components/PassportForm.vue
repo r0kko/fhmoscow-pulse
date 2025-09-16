@@ -271,10 +271,15 @@ defineExpose({ validate });
             <li
               v-for="s in suggestions"
               :key="s.value"
-              class="list-group-item list-group-item-action"
-              @mousedown.prevent="applySuggestion(s)"
+              class="list-group-item p-0"
             >
-              {{ s.value }}
+              <button
+                type="button"
+                class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                @mousedown.prevent="applySuggestion(s)"
+              >
+                {{ s.value }}
+              </button>
             </li>
           </ul>
         </div>
@@ -426,10 +431,15 @@ defineExpose({ validate });
           <li
             v-for="s in suggestions"
             :key="s.value"
-            class="list-group-item list-group-item-action"
-            @mousedown.prevent="applySuggestion(s)"
+            class="list-group-item p-0"
           >
-            {{ s.value }}
+            <button
+              type="button"
+              class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+              @mousedown.prevent="applySuggestion(s)"
+            >
+              {{ s.value }}
+            </button>
           </li>
         </ul>
       </div>

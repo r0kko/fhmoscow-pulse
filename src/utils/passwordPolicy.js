@@ -64,8 +64,7 @@ export function validatePassword(password) {
   const lower = password.toLowerCase();
   if (COMMON_WEAK.has(lower)) return false;
   if (isAllSameChar(password)) return false;
-  if (isSimpleSequence(password)) return false;
-  return true;
+  return !isSimpleSequence(password);
 }
 
 export function assertPassword(password) {

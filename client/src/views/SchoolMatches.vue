@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch, reactive } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { RouterLink } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';

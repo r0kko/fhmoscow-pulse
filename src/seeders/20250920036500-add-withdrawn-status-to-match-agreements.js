@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
@@ -13,7 +13,7 @@ module.exports = {
       'match_agreement_statuses',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Отозвано',
           alias: 'WITHDRAWN',
           created_at: now,

@@ -7,6 +7,14 @@ import { buildVerifyToken } from '../utils/verifyDocHmac.js';
 
 const memoryStore = new Map();
 
+function secureCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 function base62(n) {
   const alphabet =
     '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -49,7 +57,7 @@ export async function getOrCreateForToken(token) {
       if (rec.expiresAt <= now) memoryStore.delete(code);
     }
     for (const [code, rec] of memoryStore) {
-      if (rec.token === token) {
+      if (secureCompare(rec.token, token)) {
         return code;
       }
     }
@@ -68,7 +76,9 @@ export async function getOrCreateForToken(token) {
   // DB backend
   try {
     const existing = await ShortLink.findOne({ where: { token } });
-    if (existing && existing.expires_at > new Date()) return existing.code;
+    if (existing && existing.expires_at > new Date()) {
+      return existing.code;
+    }
   } catch (e) {
     if (/relation\s+"short_links"\s+does not exist/i.test(String(e?.message))) {
       logger.warn('ShortLink table missing; falling back to memory backend');

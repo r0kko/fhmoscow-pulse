@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,28 +14,28 @@ module.exports = {
       'ticket_statuses',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Создан',
           alias: 'CREATED',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'В работе',
           alias: 'IN_PROGRESS',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Подтвержден',
           alias: 'CONFIRMED',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Отклонен',
           alias: 'REJECTED',
           created_at: now,

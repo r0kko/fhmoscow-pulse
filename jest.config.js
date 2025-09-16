@@ -15,6 +15,11 @@ export default {
         '<rootDir>/build',
     ],
 
+    moduleNameMapper: {
+        '^@aws-sdk/client-s3$': '<rootDir>/tests/stubs/awsClientS3.js',
+        '^@aws-sdk/s3-request-presigner$': '<rootDir>/tests/stubs/awsS3Presigner.js',
+    },
+
     roots: ['<rootDir>/src', '<rootDir>/tests'],
 
     // Coverage is collected from files touched by tests (default)

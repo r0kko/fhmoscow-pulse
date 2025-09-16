@@ -1,7 +1,7 @@
-// Flat ESLint config for the client (Vue 3) with Prettier integration
 import vue from 'eslint-plugin-vue';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
+import vueA11y from 'eslint-plugin-vuejs-accessibility';
 
 const browserGlobals = {
   window: true,
@@ -31,6 +31,7 @@ export default [
   },
   // Vue SFC rules
   ...vue.configs['flat/recommended'],
+  ...vueA11y.configs['flat/recommended'],
   // Disable stylistic rules that conflict with Prettier
   prettierConfig,
   // Project rules
@@ -41,11 +42,21 @@ export default [
       sourceType: 'module',
       globals: browserGlobals,
     },
-    plugins: { vue, prettier: prettierPlugin },
+    plugins: { vue, prettier: prettierPlugin, 'vuejs-accessibility': vueA11y },
     rules: {
       // Vue relaxations for this project
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'off',
+
+      // Accessibility: enforce interaction best practices first; form label
+      // hygiene will be migrated gradually across legacy components.
+      'vuejs-accessibility/form-control-has-label': 'off',
+      'vuejs-accessibility/label-has-for': 'off',
+      'vuejs-accessibility/no-static-element-interactions': 'error',
+      'vuejs-accessibility/interactive-supports-focus': 'error',
+      'vuejs-accessibility/click-events-have-key-events': 'error',
+      'vuejs-accessibility/no-autofocus': 'error',
+      'vuejs-accessibility/no-redundant-roles': 'error',
 
       // Enforce Prettier formatting via ESLint
       'prettier/prettier': 'error',

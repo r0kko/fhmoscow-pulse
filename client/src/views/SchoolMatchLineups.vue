@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { RouterLink, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import { useToast } from '../utils/toast.js';
@@ -992,8 +992,7 @@ const hasChanges = computed(() => {
       .slice(0, 2)
       .join(',');
     if (savedAs1 !== uiAs1) return true;
-    if (savedAs2 !== uiAs2) return true;
-    return false;
+    return savedAs2 !== uiAs2;
   }
 
   // Single protocol leadership

@@ -4,20 +4,20 @@ import User from '../models/user.js';
 import { UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import {
+  decodeJwt,
   signAccessToken,
   signRefreshTokenWithJti,
   verifyRefreshToken,
-  decodeJwt,
 } from '../utils/jwt.js';
 import { LOGIN_MAX_ATTEMPTS } from '../config/auth.js';
 import { isLockoutEnabled } from '../config/featureFlags.js';
 import { incRefreshReuse, incSecurityEvent } from '../config/metrics.js';
 
 import {
-  rememberIssued,
-  markUsed,
-  isUsed,
   currentJti,
+  isUsed,
+  markUsed,
+  rememberIssued,
 } from './refreshStore.js';
 import * as attempts from './loginAttempts.js';
 import * as lockout from './accountLockout.js';
@@ -70,8 +70,7 @@ async function verifyCredentials(phone, password) {
 function issueTokens(user) {
   const accessToken = signAccessToken(user);
   // generate refresh with jti
-  const jtiToken = signRefreshTokenWithJti(user, undefined);
-  const refreshToken = jtiToken; // function returns token string
+  const refreshToken = signRefreshTokenWithJti(user, undefined); // function returns token string
   // best-effort: remember current jti for this version
   try {
     const payload = decodeJwt(refreshToken);
@@ -123,8 +122,7 @@ async function rotateTokens(refreshToken) {
             /* noop */
           }
         }
-        const err = new ServiceError('token_reuse_detected', 401);
-        throw err;
+        throw new ServiceError('token_reuse_detected', 401);
       }
     } catch (_e) {
       /* noop */

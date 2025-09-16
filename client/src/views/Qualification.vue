@@ -246,11 +246,10 @@ function openContactModal(c) {
           <div class="card section-card tile fade-in shadow-sm h-100">
             <div class="card-body p-0">
               <h2 class="h5 mb-0 px-3 pt-3">Команда курса</h2>
-              <div
+              <button
                 v-if="responsibleContact"
-                class="d-flex align-items-center p-3 cursor-pointer"
-                role="button"
-                tabindex="0"
+                type="button"
+                class="d-flex align-items-center w-100 text-start btn btn-link tile-button p-3"
                 @click="openContactModal(responsibleContact)"
               >
                 <div
@@ -265,14 +264,13 @@ function openContactModal(c) {
                     {{ responsibleContact.title }}
                   </div>
                 </div>
-              </div>
+              </button>
               <template v-if="responsibleContact">
                 <hr class="my-0 mx-3" />
               </template>
-              <div
-                class="d-flex align-items-center p-3 cursor-pointer"
-                role="button"
-                tabindex="0"
+              <button
+                type="button"
+                class="d-flex align-items-center w-100 text-start btn btn-link tile-button p-3"
                 @click="openContactModal(olenin)"
               >
                 <div
@@ -287,7 +285,7 @@ function openContactModal(c) {
                     {{ olenin.title }}
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>

@@ -27,12 +27,10 @@ const filteredSorted = computed(() => {
       String(it?.violation?.id || '') !== String(props.reasonId)
     )
       return false;
-    if (
+    return !(
       props.minutesValue != null &&
       Number(it?.minutes_value ?? NaN) !== Number(props.minutesValue)
-    )
-      return false;
-    return true;
+    );
   });
   return arr.sort((a, b) => {
     const ap = computePeriodOf(a);

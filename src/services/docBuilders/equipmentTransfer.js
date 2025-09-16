@@ -15,7 +15,6 @@ function fio(user) {
     .join(' ');
 }
 
-/* istanbul ignore next */
 export default async function buildEquipmentTransferPdf(
   user,
   equipment = {},

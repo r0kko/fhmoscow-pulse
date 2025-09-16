@@ -1,13 +1,19 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useToast } from '../utils/toast.js';
 
 const { toasts, hideToast } = useToast();
 const hasToasts = computed(() => toasts.length > 0);
 
-function onKeydown(e, id) {
-  if (e.key === 'Escape') hideToast(id);
+function handleKeydown(e) {
+  if (e.key === 'Escape' && toasts.length) {
+    const last = toasts[toasts.length - 1];
+    hideToast(last.id);
+  }
 }
+
+onMounted(() => window.addEventListener('keydown', handleKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown));
 </script>
 
 <template>
@@ -24,8 +30,6 @@ function onKeydown(e, id) {
       class="toast show"
       :class="`text-bg-${t.variant}`"
       role="status"
-      tabindex="0"
-      @keydown="(e) => onKeydown(e, t.id)"
     >
       <div class="d-flex align-items-center">
         <div class="toast-body">{{ t.message }}</div>

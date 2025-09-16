@@ -37,14 +37,18 @@ const schema = Joi.object({
 export default function validateEnv() {
   const { error } = schema.validate(process.env);
   if (error) {
-    console.error(`Invalid environment configuration: ${error.message}`);
-    process.exit(1);
+    const err = new Error(
+      `Invalid environment configuration: ${error.message}`
+    );
+    err.code = 'ENV_INVALID';
+    throw err;
   }
   if (
     process.env.S3_BUCKET &&
     (!process.env.S3_ACCESS_KEY || !process.env.S3_SECRET_KEY)
   ) {
-    console.error('S3 configuration requires access and secret keys');
-    process.exit(1);
+    const err = new Error('S3 configuration requires access and secret keys');
+    err.code = 'ENV_INVALID';
+    throw err;
   }
 }

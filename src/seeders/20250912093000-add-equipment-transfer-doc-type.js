@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -12,7 +12,7 @@ module.exports = {
     if (existing && existing[0] && existing[0].id) return;
     await queryInterface.bulkInsert('document_types', [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Акт передачи экипировки',
         alias: 'EQUIPMENT_TRANSFER',
         generated: true,

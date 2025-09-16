@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -15,7 +15,7 @@ module.exports = {
     const items = [];
     if (!existing.has('PENDING'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Ожидает решения',
         alias: 'PENDING',
         created_at: now,
@@ -23,7 +23,7 @@ module.exports = {
       });
     if (!existing.has('ACCEPTED'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Согласовано',
         alias: 'ACCEPTED',
         created_at: now,
@@ -31,7 +31,7 @@ module.exports = {
       });
     if (!existing.has('DECLINED'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Отклонено',
         alias: 'DECLINED',
         created_at: now,
@@ -39,7 +39,7 @@ module.exports = {
       });
     if (!existing.has('SUPERSEDED'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Заменено',
         alias: 'SUPERSEDED',
         created_at: now,

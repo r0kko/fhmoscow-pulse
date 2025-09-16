@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -13,7 +13,7 @@ module.exports = {
       'normative_zones',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Зеленая',
           alias: 'GREEN',
           color: 'green',
@@ -21,7 +21,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Желтая',
           alias: 'YELLOW',
           color: 'yellow',
@@ -29,7 +29,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Красная',
           alias: 'RED',
           color: 'red',

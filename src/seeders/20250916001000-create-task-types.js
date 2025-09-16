@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,7 +14,7 @@ module.exports = {
       'task_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Зарегистрироваться как самозанятый или ИП',
           alias: 'SELF_EMPLOYMENT_REGISTRATION',
           created_at: now,

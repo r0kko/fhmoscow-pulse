@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,7 +14,7 @@ module.exports = {
       'ticket_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Изменение банковских реквизитов',
           alias: 'BANK_DETAILS_UPDATE',
           created_at: now,

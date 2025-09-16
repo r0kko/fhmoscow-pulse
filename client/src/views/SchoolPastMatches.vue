@@ -1,7 +1,6 @@
 <script setup>
-import { ref, onMounted, computed, watch, reactive } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { RouterLink } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api.js';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
@@ -69,8 +68,7 @@ async function load() {
       ? `&season_id=${encodeURIComponent(selectedSeason.value)}`
       : '';
     const res = await apiFetch(`/matches/past?source=local&all=true${params}`);
-    const list = Array.isArray(res.matches) ? res.matches : [];
-    matches.value = list;
+    matches.value = Array.isArray(res.matches) ? res.matches : [];
     resetFilters();
   } catch (e) {
     error.value = e.message || 'Не удалось загрузить данные';

@@ -1,7 +1,7 @@
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
 import { utcToMoscow } from '../utils/time.js';
-import { Match, Team, User, GameStatus } from '../models/index.js';
+import { GameStatus, Match, Team, User } from '../models/index.js';
 import { rescheduleExternalGameDate } from '../services/rescheduleExternalService.js';
 
 async function ensureParticipant(userId, match) {
@@ -28,8 +28,7 @@ function parseDateOnly(dateStr) {
   // Compute the UTC timestamp that corresponds to MSK midnight of the selected date.
   // We construct UTC midnight then subtract MSK offset (handled by moscowToUtc on a MSK date).
   // Simpler: build a Date that represents MSK midnight via UTC fields minus offset.
-  const mskMidnightUtc = new Date(Date.UTC(y, mo - 1, d) - 3 * 60 * 60 * 1000);
-  return mskMidnightUtc;
+  return new Date(Date.UTC(y, mo - 1, d) - 3 * 60 * 60 * 1000);
 }
 
 export async function reschedulePostponedMatch({ matchId, date, actorId }) {

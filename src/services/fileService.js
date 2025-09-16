@@ -1,9 +1,9 @@
 import path from 'path';
 
 import {
-  PutObjectCommand,
-  GetObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
@@ -285,7 +285,7 @@ async function uploadDocument(file, actorId) {
     console.error('S3 upload failed', err);
     throw new ServiceError('s3_upload_failed');
   }
-  const dbFile = await File.create({
+  return await File.create({
     key,
     original_name: file.originalname,
     mime_type: file.mimetype,
@@ -293,7 +293,6 @@ async function uploadDocument(file, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  return dbFile;
 }
 
 async function removeFile(id) {
@@ -332,7 +331,7 @@ async function saveGeneratedPdf(buffer, name, actorId) {
     console.error('S3 upload failed', err);
     throw new ServiceError('s3_upload_failed');
   }
-  const file = await File.create({
+  return await File.create({
     key,
     original_name: name,
     mime_type: 'application/pdf',
@@ -340,7 +339,6 @@ async function saveGeneratedPdf(buffer, name, actorId) {
     created_by: actorId,
     updated_by: actorId,
   });
-  return file;
 }
 
 export default {

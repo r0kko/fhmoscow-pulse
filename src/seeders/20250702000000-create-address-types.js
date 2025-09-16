@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,14 +14,14 @@ module.exports = {
       'address_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Адрес регистрации',
           alias: 'REGISTRATION',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Адрес проживания',
           alias: 'RESIDENCE',
           created_at: now,

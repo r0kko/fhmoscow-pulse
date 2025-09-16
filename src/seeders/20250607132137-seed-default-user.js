@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -38,7 +38,7 @@ module.exports = {
       { type: Sequelize.QueryTypes.SELECT }
     );
 
-    const userId = uuidv4();
+    const userId = randomUUID();
 
     await queryInterface.bulkInsert('users', [
       {
@@ -60,7 +60,7 @@ module.exports = {
 
     await queryInterface.bulkInsert('user_roles', [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         user_id: userId,
         role_id: role.id,
         created_at: now,

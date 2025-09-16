@@ -128,7 +128,6 @@ async function login() {
               placeholder="+7 (___) ___-__-__"
               autocomplete="tel"
               inputmode="numeric"
-              autofocus
               required
               @input="onPhoneInput"
               @keydown="onPhoneKeydown"

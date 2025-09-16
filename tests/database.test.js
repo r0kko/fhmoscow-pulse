@@ -43,13 +43,16 @@ test('connectToDatabase authenticates', async () => {
   expect(authenticateMock).toHaveBeenCalled();
 });
 
-test('connectToDatabase exits on failure', async () => {
+test('connectToDatabase surfaces failure', async () => {
   authenticateMock.mockRejectedValueOnce(new Error('fail'));
 
-  const exitMock = jest.spyOn(process, 'exit').mockImplementation(() => {});
-  await connectToDatabase();
-  expect(exitMock).toHaveBeenCalledWith(1);
-  exitMock.mockRestore();
+  await expect(connectToDatabase()).rejects.toThrow(
+    'Unable to connect to database'
+  );
+  expect(errorMock).toHaveBeenCalledWith(
+    '❌ Unable to connect to DB:',
+    expect.any(Error)
+  );
 });
 
 test('closeDatabase closes connection', async () => {

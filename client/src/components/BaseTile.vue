@@ -30,9 +30,11 @@ const hrefLike = computed(() => {
     (/^https?:\/\//i.test(t) || t.startsWith('#') || /^mailto:|^tel:/i.test(t))
   );
 });
-const componentTag = computed(() =>
-  isLink.value ? (hrefLike.value ? 'a' : RouterLink) : 'div'
-);
+const componentTag = computed(() => {
+  if (isLink.value) return hrefLike.value ? 'a' : RouterLink;
+  if (props.role === 'button') return 'button';
+  return 'div';
+});
 const linkAttrs = computed(() => {
   if (!isLink.value) return {};
   if (hrefLike.value) {
@@ -46,7 +48,9 @@ const linkAttrs = computed(() => {
   }
   return { to: props.to, replace: props.replace || undefined };
 });
-const tileRole = computed(() => (isLink.value ? null : props.role || 'group'));
+const tileRole = computed(() =>
+  isLink.value || componentTag.value === 'button' ? null : props.role || 'group'
+);
 </script>
 
 <template>
@@ -57,8 +61,9 @@ const tileRole = computed(() => (isLink.value ? null : props.role || 'group'));
     :class="[props.section ? 'section-card' : null, props.extraClass]"
     :aria-label="props.ariaLabel || null"
     :aria-disabled="props.disabled ? 'true' : null"
-    :tabindex="isLink ? null : 0"
+    :tabindex="componentTag === 'button' || isLink ? null : 0"
     :role="tileRole"
+    :type="componentTag === 'button' ? 'button' : null"
   >
     <slot />
   </component>

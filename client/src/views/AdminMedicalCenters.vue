@@ -359,10 +359,15 @@ async function removeCenter(center) {
                   <li
                     v-for="s in addrSuggestions"
                     :key="s.value"
-                    class="list-group-item list-group-item-action"
-                    @mousedown.prevent="applyAddrSuggestion(s)"
+                    class="list-group-item p-0"
                   >
-                    {{ s.value }}
+                    <button
+                      type="button"
+                      class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                      @mousedown.prevent="applyAddrSuggestion(s)"
+                    >
+                      {{ s.value }}
+                    </button>
                   </li>
                 </ul>
               </div>

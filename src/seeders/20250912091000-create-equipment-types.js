@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -10,7 +10,7 @@ module.exports = {
       { name: 'Свитер линейного судьи', alias: 'LINESMAN_SWEATER' },
     ];
     const rows = items.map((it) => ({
-      id: uuidv4(),
+      id: randomUUID(),
       name: it.name,
       alias: it.alias,
       created_at: now,

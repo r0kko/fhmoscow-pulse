@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-import { Op, literal } from 'sequelize';
+import { literal, Op } from 'sequelize';
 
 import logger from '../../logger.js';
 
@@ -296,7 +296,7 @@ export async function reconcileWindow({
   const start = new Date(now.getTime() - Math.max(0, daysBack) * 86400000);
   const end = new Date(now.getTime() + Math.max(0, daysAhead) * 86400000);
 
-  const matches = await Match.findAll({
+  let finalMatches = await Match.findAll({
     attributes: ['id', 'external_id', 'date_start'],
     where: {
       external_id: { [Op.ne]: null },
@@ -305,18 +305,15 @@ export async function reconcileWindow({
     order: [['date_start', 'ASC']],
     limit: Math.max(1, Number(limit) || 400),
   });
-  let finalMatches = matches;
   if (!finalMatches.length) {
-    const includeNoDate = DEFAULT_PENALTY_INCLUDE_NO_DATE;
-    if (includeNoDate) {
+    if (DEFAULT_PENALTY_INCLUDE_NO_DATE) {
       const noDateLimit = Math.max(1, DEFAULT_PENALTY_NO_DATE_LIMIT);
-      const noDate = await Match.findAll({
+      finalMatches = await Match.findAll({
         attributes: ['id', 'external_id', 'date_start'],
         where: { external_id: { [Op.ne]: null }, date_start: null },
         order: [['updatedAt', 'DESC']],
         limit: noDateLimit,
       });
-      finalMatches = noDate;
     }
   }
   if (!finalMatches.length) return { processed: 0, updated: 0, deleted: 0 };

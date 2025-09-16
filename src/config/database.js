@@ -92,7 +92,9 @@ export async function connectToDatabase() {
     } catch {
       /* ignore */
     }
-    process.exit(1);
+    const err = new Error('Unable to connect to database');
+    err.cause = error;
+    throw err;
   }
 }
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -18,5 +17,6 @@ for (const f of readdirSync(dir)) {
   }
 }
 
-if (failed) process.exit(1);
-
+if (failed) {
+  process.exitCode = 1;
+}

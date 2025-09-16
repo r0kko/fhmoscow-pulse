@@ -1,48 +1,48 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const roles = [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Admin',
         alias: 'ADMIN',
         created_at: now,
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Referee',
         alias: 'REFEREE',
         created_at: now,
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Судья в бригаде',
         alias: 'BRIGADE_REFEREE',
         created_at: now,
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Специалист по судейству (судьи в поле)',
         alias: 'FIELD_REFEREE_SPECIALIST',
         created_at: now,
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Специалист по судейству (судьи в бригаде)',
         alias: 'BRIGADE_REFEREE_SPECIALIST',
         created_at: now,
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Сотрудник спортивной школы',
         alias: 'SPORT_SCHOOL_STAFF',
         created_at: now,

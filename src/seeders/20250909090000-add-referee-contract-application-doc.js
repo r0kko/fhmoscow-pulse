@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,7 +14,7 @@ module.exports = {
       'document_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Заявление о присоединении к условиям договора оказания услуг по судейству',
           alias: 'REFEREE_CONTRACT_APPLICATION',
           generated: true,

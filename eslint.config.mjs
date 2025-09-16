@@ -2,6 +2,8 @@ import js from '@eslint/js';
 import globals from 'globals';
 import prettier from 'eslint-config-prettier';
 import eslintPluginImport from 'eslint-plugin-import';
+import eslintPluginN from 'eslint-plugin-n';
+import eslintPluginSecurity from 'eslint-plugin-security';
 
 /**
  * Flat config, best practices for Node.js
@@ -13,10 +15,15 @@ export default [
     ignores: ['client/**'],
   },
   js.configs.recommended,
+  eslintPluginN.configs['flat/recommended'],
   prettier,
   {
     files: ['**/*.{js,mjs,cjs}'],
-    plugins: { import: eslintPluginImport },
+    plugins: {
+      import: eslintPluginImport,
+      n: eslintPluginN,
+      security: eslintPluginSecurity,
+    },
     languageOptions: {
       globals: {
         ...globals.node,
@@ -60,12 +67,38 @@ export default [
       // Some ESM packages expose only export maps; resolver can be flaky in CI. Ignore 'uuid'.
       'import/no-unresolved': ['error', { ignore: ['^uuid$'] }],
       'import/no-extraneous-dependencies': 'error',
+      'n/no-process-exit': 'error',
+      'n/no-missing-require': 'off',
+      'n/no-unsupported-features/node-builtins': [
+        'error',
+        { version: '>=20.0.0', ignores: ['fetch', 'structuredClone'] },
+      ],
+      'n/no-unsupported-features/es-builtins': [
+        'error',
+        { version: '>=20.0.0' },
+      ],
+      'n/no-unsupported-features/es-syntax': [
+        'error',
+        { version: '>=20.0.0' },
+      ],
+      'security/detect-object-injection': 'off',
+      'security/detect-unsafe-regex': 'error',
+      'security/detect-new-buffer': 'error',
+      'security/detect-no-csrf-before-method-override': 'error',
+      'security/detect-possible-timing-attacks': 'error',
+      'security/detect-eval-with-expression': 'error',
+      'security/detect-non-literal-regexp': 'off',
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-child-process': 'off',
     },
     settings: {
       'import/resolver': {
         node: {
           extensions: ['.js', '.json', '.mjs', '.cjs', '.jsx', '.ts', '.tsx'],
         },
+      },
+      node: {
+        version: '>=20.0.0',
       },
     },
     ignores: [

@@ -1,16 +1,15 @@
 import { Op } from 'sequelize';
 
-import { SignType, UserSignType, User, Role, Inn } from '../models/index.js';
+import { Inn, Role, SignType, User, UserSignType } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailVerificationService from './emailVerificationService.js';
 import documentService from './documentService.js';
 
 async function list() {
-  const types = await SignType.findAll({
+  return await SignType.findAll({
     attributes: ['id', 'name', 'alias'],
   });
-  return types;
 }
 
 async function getByUser(userId) {

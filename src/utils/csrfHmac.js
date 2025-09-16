@@ -76,8 +76,7 @@ export function verifyCsrfHmac(token, req) {
     if (now < payload.iat - 5) return false; // not before
     if (now > payload.exp) return false; // expired
     const reqOrigin = req.get && (req.get('Origin') || req.get('origin'));
-    if (payload.ori && reqOrigin && payload.ori !== reqOrigin) return false;
-    return true;
+    return !(payload.ori && reqOrigin && payload.ori !== reqOrigin);
   } catch (_e) {
     return false;
   }

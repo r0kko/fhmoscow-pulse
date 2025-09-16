@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,28 +14,28 @@ module.exports = {
       'taxation_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'ИП (упрощенная система налогообложения)',
           alias: 'IP_USN',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'ИП (налог на профессиональный доход)',
           alias: 'IP_NPD',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Плательщик налога на профессиональный доход',
           alias: 'NPD',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Физическое лицо',
           alias: 'PERSON',
           created_at: now,

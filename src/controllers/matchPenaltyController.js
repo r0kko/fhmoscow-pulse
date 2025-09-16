@@ -3,16 +3,16 @@ import { Op } from 'sequelize';
 import { reconcileForMatch } from '../services/gamePenaltySyncService.js';
 import {
   GamePenalty,
-  Player,
   GameViolation,
-  PenaltyMinutes,
   Match,
+  PenaltyMinutes,
+  Player,
+  Season,
+  Team,
   TeamPlayer,
   Tournament,
   TournamentType,
-  Season,
 } from '../models/index.js';
-import { Team } from '../models/index.js';
 import playerMapper from '../mappers/playerMapper.js';
 import {
   GameEvent as ExtGameEvent,
@@ -94,7 +94,7 @@ export async function list(req, res, next) {
         .json({ error: 'penalties_disabled_out_of_season' });
     }
     const perLenSec = (isDouble ? 18 : 20) * 60;
-    const items = rows.map((r) => {
+    const visible = rows.map((r) => {
       const teamId = r.penalty_player_id
         ? playerTeam.get(r.penalty_player_id) || null
         : null;
@@ -142,9 +142,6 @@ export async function list(req, res, next) {
         minutes_value: minutesValue,
       };
     });
-
-    // No side-based filtering: show both teams to authorized users
-    const visible = items;
 
     // Lazy backfill for missing minutes: fetch from external and upsert local mapping + attach to response
     try {

@@ -1,13 +1,13 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const sizes = [46, 48, 50, 52, 54, 56, 58];
     const rows = sizes.map((s) => ({
-      id: uuidv4(),
+      id: randomUUID(),
       name: String(s),
       alias: `SIZE_${s}`,
       created_at: now,

@@ -334,10 +334,15 @@ const selectedSexName = computed(() => {
                   <li
                     v-for="s in suggestions.last_name"
                     :key="s.value"
-                    class="list-group-item list-group-item-action"
-                    @mousedown.prevent="applySuggestion(s)"
+                    class="list-group-item p-0"
                   >
-                    {{ s.data.surname }}
+                    <button
+                      type="button"
+                      class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                      @mousedown.prevent="applySuggestion(s)"
+                    >
+                      {{ s.data.surname }}
+                    </button>
                   </li>
                 </ul>
               </div>
@@ -363,10 +368,15 @@ const selectedSexName = computed(() => {
                   <li
                     v-for="s in suggestions.first_name"
                     :key="s.value"
-                    class="list-group-item list-group-item-action"
-                    @mousedown.prevent="applySuggestion(s)"
+                    class="list-group-item p-0"
                   >
-                    {{ s.data.name }}
+                    <button
+                      type="button"
+                      class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                      @mousedown.prevent="applySuggestion(s)"
+                    >
+                      {{ s.data.name }}
+                    </button>
                   </li>
                 </ul>
               </div>
@@ -389,10 +399,15 @@ const selectedSexName = computed(() => {
                   <li
                     v-for="s in suggestions.patronymic"
                     :key="s.value"
-                    class="list-group-item list-group-item-action"
-                    @mousedown.prevent="applySuggestion(s)"
+                    class="list-group-item p-0"
                   >
-                    {{ s.data.patronymic }}
+                    <button
+                      type="button"
+                      class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                      @mousedown.prevent="applySuggestion(s)"
+                    >
+                      {{ s.data.patronymic }}
+                    </button>
                   </li>
                 </ul>
               </div>
@@ -516,10 +531,15 @@ const selectedSexName = computed(() => {
                 <li
                   v-for="s in suggestions.last_name"
                   :key="s.value"
-                  class="list-group-item list-group-item-action"
-                  @mousedown.prevent="applySuggestion(s)"
+                  class="list-group-item p-0"
                 >
-                  {{ s.data.surname }}
+                  <button
+                    type="button"
+                    class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.data.surname }}
+                  </button>
                 </li>
               </ul>
             </div>
@@ -545,10 +565,15 @@ const selectedSexName = computed(() => {
                 <li
                   v-for="s in suggestions.first_name"
                   :key="s.value"
-                  class="list-group-item list-group-item-action"
-                  @mousedown.prevent="applySuggestion(s)"
+                  class="list-group-item p-0"
                 >
-                  {{ s.data.name }}
+                  <button
+                    type="button"
+                    class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.data.name }}
+                  </button>
                 </li>
               </ul>
             </div>
@@ -571,10 +596,15 @@ const selectedSexName = computed(() => {
                 <li
                   v-for="s in suggestions.patronymic"
                   :key="s.value"
-                  class="list-group-item list-group-item-action"
-                  @mousedown.prevent="applySuggestion(s)"
+                  class="list-group-item p-0"
                 >
-                  {{ s.data.patronymic }}
+                  <button
+                    type="button"
+                    class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                    @mousedown.prevent="applySuggestion(s)"
+                  >
+                    {{ s.data.patronymic }}
+                  </button>
                 </li>
               </ul>
             </div>

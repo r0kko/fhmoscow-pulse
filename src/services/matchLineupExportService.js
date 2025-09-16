@@ -1,15 +1,15 @@
 import PDFDocument from 'pdfkit-table';
 
-import { applyFonts, applyFirstPageHeader, applyFooter } from '../utils/pdf.js';
+import { applyFirstPageHeader, applyFonts, applyFooter } from '../utils/pdf.js';
 import { PDF_STYLE } from '../config/pdf.js';
 import {
   Match,
-  Team,
-  Tournament,
-  TournamentType,
   Stage,
-  TournamentGroup,
+  Team,
   Tour,
+  Tournament,
+  TournamentGroup,
+  TournamentType,
 } from '../models/index.js';
 import { formatFio } from '../utils/format.js';
 
@@ -630,7 +630,7 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
           ]
         : []),
     ];
-    const endRepsY = drawTable(
+    doc.y = drawTable(
       doc,
       { x: left, y: doc.y, columns: repCols, rows: repRows },
       {
@@ -639,7 +639,6 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
         zebra: false,
       }
     );
-    doc.y = endRepsY;
 
     // Signature line: "Подпись ____   Дата ____   Фамилия И.О." (ФИО показываем только если главный тренер заявлен)
     const headCoachShort = (() => {
@@ -1208,7 +1207,7 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
             ]
           : []),
       ];
-      const endRepsY = drawTable(
+      doc.y = drawTable(
         doc,
         { x: left, y: doc.y, columns: repCols, rows: repRows },
         {
@@ -1217,7 +1216,6 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
           zebra: false,
         }
       );
-      doc.y = endRepsY;
       // Signature line
       const headCoachShort = (() => {
         const selectedOnly = (staffPool || []).filter((s) => s.selected);

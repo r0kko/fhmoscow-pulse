@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,21 +14,21 @@ module.exports = {
       'task_statuses',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'В ожидании',
           alias: 'PENDING',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'В работе',
           alias: 'IN_PROGRESS',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Завершена',
           alias: 'COMPLETED',
           created_at: now,

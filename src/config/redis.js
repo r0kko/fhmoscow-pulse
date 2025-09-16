@@ -24,7 +24,9 @@ export async function connectRedis() {
   } catch (err) {
     logger.error('❌ Unable to connect to Redis:', err);
     import('./metrics.js').then((m) => m.setCacheUp?.(false)).catch(() => {});
-    process.exit(1);
+    const error = new Error('Unable to connect to Redis');
+    error.cause = err;
+    throw error;
   }
 }
 

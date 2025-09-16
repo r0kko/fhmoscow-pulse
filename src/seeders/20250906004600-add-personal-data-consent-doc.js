@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,7 +14,7 @@ module.exports = {
       'document_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Согласие на обработку персональных данных',
           alias: 'PERSONAL_DATA_CONSENT',
           generated: true,

@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -19,7 +19,7 @@ module.exports = {
     const items = [];
     if (!existing.has('HOME_PROPOSAL'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Предложение команды-хозяина',
         alias: 'HOME_PROPOSAL',
         created_at: now,
@@ -27,7 +27,7 @@ module.exports = {
       });
     if (!existing.has('AWAY_APPROVAL'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Согласование командой-гостем',
         alias: 'AWAY_APPROVAL',
         created_at: now,
@@ -35,7 +35,7 @@ module.exports = {
       });
     if (!existing.has('AWAY_COUNTER'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Встречное предложение команды-гостя',
         alias: 'AWAY_COUNTER',
         created_at: now,
@@ -43,7 +43,7 @@ module.exports = {
       });
     if (!existing.has('HOME_APPROVAL'))
       items.push({
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Согласование командой хозяев',
         alias: 'HOME_APPROVAL',
         created_at: now,

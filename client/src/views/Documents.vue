@@ -210,6 +210,20 @@ function downloadFile(d) {
   }
 }
 
+function cardInteractionBindings(doc) {
+  return {
+    role: 'button',
+    tabindex: 0,
+    onClick: () => downloadFile(doc),
+    onKeydown: (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        downloadFile(doc);
+      }
+    },
+  };
+}
+
 const statusBadge = computed(() => (alias) => {
   switch (alias) {
     case 'SIGNED':
@@ -628,10 +642,7 @@ watch(filteredDocuments, () => {
                         :key="d.id"
                         class="card mb-2"
                         :class="{ 'table-row-click': d.file }"
-                        role="button"
-                        :tabindex="d.file ? 0 : -1"
-                        @click="d.file ? downloadFile(d) : null"
-                        @keydown.enter="d.file ? downloadFile(d) : null"
+                        v-bind="d.file ? cardInteractionBindings(d) : {}"
                       >
                         <div class="card-body">
                           <h3 class="h6 mb-1">{{ d.name }}</h3>

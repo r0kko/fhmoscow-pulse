@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,21 +14,21 @@ module.exports = {
       'document_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Паспорт гражданина',
           alias: 'CIVIL',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Заграничный паспорт',
           alias: 'FOREIGN',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Вид на жительство',
           alias: 'RESIDENCE_PERMIT',
           created_at: now,

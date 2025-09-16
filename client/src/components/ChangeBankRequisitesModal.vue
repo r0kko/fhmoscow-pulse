@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api.js';
 import { isValidAccountNumber } from '../utils/bank.js';
@@ -45,17 +45,15 @@ function close() {
 }
 
 function onNumberInput(e) {
-  const digits = String(e.target.value || '')
+  number.value = String(e.target.value || '')
     .replace(/\D+/g, '')
     .slice(0, 20);
-  number.value = digits;
 }
 
 function onBicInput(e) {
-  const digits = String(e.target.value || '')
+  bic.value = String(e.target.value || '')
     .replace(/\D+/g, '')
     .slice(0, 9);
-  bic.value = digits;
 }
 
 async function nextStep() {
@@ -73,8 +71,7 @@ async function validateBic() {
   if (bic.value.length !== 9) return;
   bicChecking.value = true;
   try {
-    const res = await findBankByBic(bic.value);
-    bank.value = res;
+    bank.value = await findBankByBic(bic.value);
   } catch (_) {
     bank.value = null;
   } finally {

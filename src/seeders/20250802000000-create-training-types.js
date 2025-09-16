@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -10,7 +10,7 @@ module.exports = {
     });
     const types = [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'ОФП',
         alias: 'OFP',
         default_capacity: 20,
@@ -20,7 +20,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Ледовая подготовка',
         alias: 'ICE',
         default_capacity: 20,
@@ -30,7 +30,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Нормативы • лёд',
         alias: 'NORM_ICE',
         default_capacity: 20,
@@ -40,7 +40,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Нормативы • ОФП',
         alias: 'NORM_OFP',
         default_capacity: 20,
@@ -50,7 +50,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Нормативы • Зал',
         alias: 'NORM_HALL',
         default_capacity: 20,
@@ -60,7 +60,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Семинар',
         alias: 'SEMINAR',
         default_capacity: 20,
@@ -70,7 +70,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Вебинар (онлайн)',
         alias: 'WEBINAR',
         default_capacity: 20,
@@ -80,7 +80,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Тестирование по курсу',
         alias: 'COURSE_TEST',
         default_capacity: 20,
@@ -90,7 +90,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Тестирование по ледовой подготовке',
         alias: 'ICE_TEST',
         default_capacity: 20,
@@ -100,7 +100,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Тестирование по Правлам',
         alias: 'RULES_TEST',
         default_capacity: 20,
@@ -110,7 +110,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Тестирование по Регламенту',
         alias: 'REGULATIONS_TEST',
         default_capacity: 20,
@@ -144,7 +144,7 @@ module.exports = {
     const now = new Date();
     await queryInterface.bulkInsert('training_types', [
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Ледовая подготовка',
         alias: 'ICE',
         default_capacity: 20,
@@ -154,7 +154,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Основы физической подготовки',
         alias: 'BASIC_FIT',
         default_capacity: 20,
@@ -164,7 +164,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: uuidv4(),
+        id: randomUUID(),
         name: 'Теоретическая подготовка',
         alias: 'THEORY',
         default_capacity: 20,

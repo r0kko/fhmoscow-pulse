@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -13,7 +13,7 @@ module.exports = {
       'measurement_units',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Минуты и секунды',
           alias: 'MIN_SEC',
           fractional: false,
@@ -21,7 +21,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Секунды',
           alias: 'SECONDS',
           fractional: true,
@@ -29,7 +29,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Повторения',
           alias: 'REPS',
           fractional: false,
@@ -37,7 +37,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Отрезки',
           alias: 'SEGMENTS',
           fractional: false,

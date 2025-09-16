@@ -96,7 +96,6 @@ async function submit() {
             placeholder="Текущий пароль"
             autocomplete="current-password"
             :required="true"
-            autofocus
           />
           <PasswordInput
             id="password"

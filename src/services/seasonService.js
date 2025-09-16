@@ -19,14 +19,13 @@ async function create(data, actorId) {
   if (data.active) {
     await Season.update({ active: false }, { where: { active: true } });
   }
-  const season = await Season.create({
+  return await Season.create({
     name: data.name,
     alias: generateAlias(data.name),
     active: Boolean(data.active),
     created_by: actorId,
     updated_by: actorId,
   });
-  return season;
 }
 
 async function update(id, data, actorId) {

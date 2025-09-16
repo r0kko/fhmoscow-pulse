@@ -622,10 +622,15 @@ defineExpose({ refresh });
                     <li
                       v-for="u in userSuggestions"
                       :key="u.id"
-                      class="list-group-item list-group-item-action"
-                      @mousedown.prevent="selectUser(u)"
+                      class="list-group-item p-0"
                     >
-                      {{ u.last_name }} {{ u.first_name }}
+                      <button
+                        type="button"
+                        class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
+                        @mousedown.prevent="selectUser(u)"
+                      >
+                        {{ u.last_name }} {{ u.first_name }}
+                      </button>
                     </li>
                   </ul>
                 </div>

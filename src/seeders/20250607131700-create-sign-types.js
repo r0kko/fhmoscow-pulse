@@ -2,7 +2,7 @@
 
 /** @type {import('sequelize-cli').Migration} */
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -19,21 +19,21 @@ module.exports = {
       'sign_types',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Собственноручная',
           alias: 'HANDWRITTEN',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Через Контур.Сайн',
           alias: 'KONTUR_SIGN',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Простая электронная подпись',
           alias: 'SIMPLE_ELECTRONIC',
           created_at: now,

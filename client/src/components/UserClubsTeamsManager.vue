@@ -188,13 +188,8 @@ function onConfirm() {
           <div v-else-if="!links.clubs.length" class="alert alert-info mb-0">
             Клубы не привязаны
           </div>
-          <ul v-else class="stack-list list-unstyled mb-0" role="list">
-            <li
-              v-for="c in links.clubs"
-              :key="c.id"
-              class="stack-item"
-              role="listitem"
-            >
+          <ul v-else class="stack-list list-unstyled mb-0">
+            <li v-for="c in links.clubs" :key="c.id" class="stack-item">
               <div
                 class="fw-semibold me-2 flex-grow-1 club-name"
                 :title="c.name"
@@ -231,13 +226,8 @@ function onConfirm() {
           <div v-else-if="!links.teams.length" class="alert alert-info mb-0">
             Команды не привязаны
           </div>
-          <ul v-else class="stack-list list-unstyled mb-0" role="list">
-            <li
-              v-for="t in links.teams"
-              :key="t.id"
-              class="stack-item"
-              role="listitem"
-            >
+          <ul v-else class="stack-list list-unstyled mb-0">
+            <li v-for="t in links.teams" :key="t.id" class="stack-item">
               <div
                 class="fw-semibold me-2 flex-grow-1 team-name"
                 :title="t.name"

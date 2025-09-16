@@ -479,19 +479,17 @@ watch(activeTab, () => updateQuery());
               class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2"
             >
               <div class="d-flex flex-wrap align-items-center gap-1">
-                <span
+                <button
                   v-for="chip in filterChips"
                   :key="chip.key"
-                  class="badge bg-light text-muted border"
-                  role="button"
-                  tabindex="0"
+                  type="button"
+                  class="badge bg-light text-muted border d-inline-flex align-items-center gap-1"
                   :aria-label="`Удалить фильтр ${chip.label}`"
                   @click="clearChip(chip.key)"
-                  @keydown.enter.prevent="clearChip(chip.key)"
                 >
                   {{ chip.label }}
-                  <i class="bi bi-x-lg ms-1" aria-hidden="true"></i>
-                </span>
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
               </div>
               <button
                 type="button"
@@ -603,12 +601,13 @@ watch(activeTab, () => updateQuery());
             <RouterLink to="/admin">Администрирование</RouterLink>
           </li>
           <li class="breadcrumb-item">
-            <a
-              role="button"
-              class="text-decoration-none"
-              @click.prevent="backToTournamentsList"
-              >Турниры</a
+            <button
+              type="button"
+              class="btn btn-link p-0 align-baseline text-decoration-none"
+              @click="backToTournamentsList"
             >
+              Турниры
+            </button>
           </li>
           <!-- Tournament crumb: active when no deeper selection; clickable otherwise -->
           <li
@@ -619,17 +618,18 @@ watch(activeTab, () => updateQuery());
             {{ detailTournament.name }}
           </li>
           <li v-else class="breadcrumb-item">
-            <a
-              role="button"
-              class="text-decoration-none"
-              @click.prevent="
+            <button
+              type="button"
+              class="btn btn-link p-0 align-baseline text-decoration-none"
+              @click="
                 (() => {
                   detailStage = null;
                   detailGroup = null;
                 })()
               "
-              >{{ detailTournament.name }}</a
             >
+              {{ detailTournament.name }}
+            </button>
           </li>
           <!-- Stage crumb: show name if exists; active only when group is not selected -->
           <li
@@ -644,17 +644,17 @@ watch(activeTab, () => updateQuery());
             }}
           </li>
           <li v-else-if="detailStage && detailGroup" class="breadcrumb-item">
-            <a
-              role="button"
-              class="text-decoration-none"
-              @click.prevent="backToTournamentStages"
+            <button
+              type="button"
+              class="btn btn-link p-0 align-baseline text-decoration-none"
+              @click="backToTournamentStages"
             >
               Этап:
               {{
                 detailStage.name ||
                 '#' + (detailStage.external_id || detailStage.id)
               }}
-            </a>
+            </button>
           </li>
           <!-- Group crumb: active only as the last crumb -->
           <li

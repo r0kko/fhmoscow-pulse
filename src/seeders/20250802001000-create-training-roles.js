@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -9,7 +9,7 @@ module.exports = {
       'training_roles',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Участник',
           alias: 'PARTICIPANT',
           for_camp: true,
@@ -17,7 +17,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Тренер',
           alias: 'COACH',
           for_camp: true,
@@ -25,7 +25,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Ответственный за инвентарь',
           alias: 'EQUIPMENT_MANAGER',
           for_camp: true,
@@ -33,7 +33,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Слушатель',
           alias: 'LISTENER',
           for_camp: false,
@@ -41,7 +41,7 @@ module.exports = {
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Преподаватель',
           alias: 'TEACHER',
           for_camp: false,

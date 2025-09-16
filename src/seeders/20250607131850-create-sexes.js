@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = {
   async up(queryInterface) {
@@ -14,14 +14,14 @@ module.exports = {
       'sexes',
       [
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Мужской',
           alias: 'MALE',
           created_at: now,
           updated_at: now,
         },
         {
-          id: uuidv4(),
+          id: randomUUID(),
           name: 'Женский',
           alias: 'FEMALE',
           created_at: now,

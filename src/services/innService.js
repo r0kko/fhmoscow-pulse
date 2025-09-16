@@ -12,13 +12,12 @@ async function getByUser(userId) {
 async function create(userId, number, actorId) {
   const existing = await Inn.findOne({ where: { number } });
   if (existing) throw new ServiceError('inn_exists');
-  const inn = await Inn.create({
+  return await Inn.create({
     user_id: userId,
     number,
     created_by: actorId,
     updated_by: actorId,
   });
-  return inn;
 }
 
 async function update(userId, number, actorId) {
