@@ -3,6 +3,8 @@ name: CI
 permissions:
   contents: read
   packages: write
+  pull-requests: write
+  security-events: write
 
 on:
   push:
@@ -37,39 +39,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
       - name: Clear Jest cache
         run: npx jest --clearCache || true
 
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
 
-      - name: Lint (API)
-        run: npm run lint
-
-      - name: Check formatting
-        run: npm run format:check
-
       - name: Validate Grafana dashboards
         run: npm run validate:dashboards
 
-      - name: Run server tests
+      - name: Quality checks (lint, prettier, tests)
         env:
           CI: true
-        run: npm run test:server:ci
-
-      - name: Install client dependencies
-        working-directory: client
-        run: npm ci
-
-      - name: Lint (Client)
-        working-directory: client
-        run: npm run lint
-
-      - name: Run client unit tests
-        working-directory: client
-        env:
-          CI: true
-        run: npm test
+        run: npm run verify
 
       - name: Build client
         working-directory: client
@@ -107,3 +93,30 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}-client:latest
             ghcr.io/${{ github.repository }}-client:${{ github.sha }}
+
+  qodana:
+    name: Qodana Code Quality
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@v2024.3.4
+        with:
+          cache-default-branch-only: true
+          use-caches: true
+          pr-mode: ${{ github.event_name == 'pull_request' }}
+          upload-result: true
+          results-dir: ${{ runner.temp }}/qodana
+
+      - name: Upload Qodana artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qodana-report
+          path: ${{ runner.temp }}/qodana

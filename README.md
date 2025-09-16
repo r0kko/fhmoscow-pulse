@@ -327,11 +327,11 @@ if (isExternalDbAvailable()) {
 
 ## Quality checks
 
-- Prettier, ESLint, Jest, and Vitest are available as npm scripts:
-  - `npm run format:check` verifies formatting; `npm run format` writes.
-  - `npm run lint` / `npm run lint:fix` check the API; `npm run lint:client` checks the SPA or run both via `npm run lint:all`.
-  - `npm test` (alias for `npm run test:server`) runs Jest; `npm run test:client` runs Vitest; `npm run test:all` executes both.
-  - Coverage: `npm run test:coverage` (Jest) and `npm run test:client:coverage` (Vitest) produce LCOV under `coverage/`.
+- `npm run verify` executes ESLint for API and SPA, runs the Prettier check, then executes Jest and Vitest in CI mode. Run it locally before opening a PR.
+- `npm run lint:ci` covers both workspaces; use `npm run lint:fix` and `npm run lint:client:fix` for autofix.
+- `npm run format` writes formatting changes, while `npm run format:check` validates without touching files.
+- `npm run test:ci` runs both suites; `npm run test:coverage` and `npm run test:client:coverage` generate coverage under `coverage/` and `client/coverage/` respectively.
+- `npm run qodana:scan` downloads the Qodana CLI (via `npx`) and produces a local HTML/SARIF report under `.qodana/`. Use it to reproduce CI findings.
 
 ## Согласования матчей (Match Agreements)
 
@@ -392,13 +392,16 @@ npm ci
 npm start
 ```
 
-### Lint and format
+### Lint, format, and test
 
 ```bash
-npm run lint        # check
-npm run lint:fix    # fix issues
-npm run format      # format with Prettier
+npm run verify      # lint API + SPA, check Prettier, run Jest & Vitest
+npm run lint:fix    # auto-fix API lint warnings
+npm run lint:client:fix
+npm run format      # apply Prettier formatting
 ```
+
+Run `npm run qodana:scan` to launch the JetBrains Qodana container locally; results land in `.qodana/index.html` and `.qodana/qodana.sarif.json` for sharing or import into IDEs.
 
 ### Running tests
 
