@@ -43,7 +43,7 @@ async function save() {
       body: JSON.stringify(payload),
     });
     showToast('Доступ отправлен на email пользователя');
-    router.push(`/admin/users/${data.user.id}`);
+    await router.push(`/admin/users/${data.user.id}`);
   } catch (e) {
     const msg = e?.message || 'Ошибка при создании пользователя';
     showToast(msg);
@@ -68,8 +68,8 @@ async function save() {
   }
 }
 
-function close() {
-  router.push('/admin/users');
+async function close() {
+  await router.push('/admin/users');
 }
 
 // global toast via useToast()

@@ -281,9 +281,9 @@ async function ensureDisabledComputed(clubId, season) {
             <div class="mb-3">
               <TabSelector
                 :tabs="
-                  group.seasons.map((season) => ({
-                    key: season.id,
-                    label: season.name,
+                  group.seasons.map(({ id, name }) => ({
+                    key: id,
+                    label: name,
                   }))
                 "
                 :model-value="selectedSeasonByClub[group.club.id]"

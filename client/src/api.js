@@ -399,6 +399,22 @@ if (typeof window !== 'undefined') {
   }
 }
 
+function createHttpError({
+  status,
+  data,
+  reqId,
+  fallbackCode = null,
+  message,
+}) {
+  const baseMessage =
+    message || translateError(data?.error) || `Ошибка запроса, код ${status}`;
+  const fullMessage = reqId ? `${baseMessage} (id: ${reqId})` : baseMessage;
+  const err = new Error(fullMessage);
+  err.code = data?.error || fallbackCode;
+  if (reqId) err.requestId = reqId;
+  return err;
+}
+
 export async function apiFetch(path, options = {}) {
   const {
     redirectOn401 = true,
@@ -506,22 +522,18 @@ export async function apiFetch(path, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    let message =
-      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-    if (reqId) message += ` (id: ${reqId})`;
-    const err = new Error(message);
-    err.code = data.error || null;
-    if (reqId) err.requestId = reqId;
-    throw err;
+    throw createHttpError({
+      status: res.status,
+      data,
+      reqId,
+    });
   }
   if (!res.ok) {
-    let message =
-      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-    if (reqId) message += ` (id: ${reqId})`;
-    const err = new Error(message);
-    err.code = data.error || null;
-    if (reqId) err.requestId = reqId;
-    throw err;
+    throw createHttpError({
+      status: res.status,
+      data,
+      reqId,
+    });
   }
   return data;
 }

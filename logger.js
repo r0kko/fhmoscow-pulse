@@ -53,7 +53,7 @@ const logger = createLogger({
 /* eslint-disable security/detect-unsafe-regex */
 // Pattern is anchored and uses bounded character classes to avoid catastrophic backtracking
 const combinedLineRe =
-  /^(\S+)\s+\S+\s+\S+\s+\[[^\u005d]+\]\s+"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+([^\s"]+)\s+HTTP\/[0-9.]+"\s+(\d{3})\s+\S+\s+"[^"]*"\s+"([^"]*)"(?:\s+(\d+)ms)?$/;
+  /^(\S+)\s+\S+\s+\S+\s+\[[^\x5d]+\]\s+"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+([^\s"]+)\s+HTTP\/[0-9.]+"\s+(\d{3})\s+\S+\s+"[^"]*"\s+"([^"]*)"(?:\s+(\d+)ms)?$/;
 /* eslint-enable security/detect-unsafe-regex */
 
 consoleTransport._stream = {
@@ -74,10 +74,15 @@ consoleTransport._stream = {
         (async () => {
           const { default: Log } = await import('./src/models/log.js');
           await Log.create(payload);
-        })().catch((err) => {
-          // Keep two args to satisfy unit expectations
-          logger.warn('DB log persistence failed:', err?.message || String(err));
-        }).finally(() => cb && cb());
+        })()
+          .catch((err) => {
+            // Keep two args to satisfy unit expectations
+            logger.warn(
+              'DB log persistence failed:',
+              err?.message || String(err)
+            );
+          })
+          .finally(() => cb && cb());
         return;
       }
     } catch (_e) {
