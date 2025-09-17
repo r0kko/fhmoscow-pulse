@@ -370,6 +370,10 @@ export async function withJobMetrics(job, fn) {
   } catch (_e) {
     /* ignore */
   }
+  const finishJobRun =
+    jobLogSvc && typeof jobLogSvc.finishJobRun === 'function'
+      ? jobLogSvc.finishJobRun.bind(jobLogSvc)
+      : null;
   if (metricsAvailable) {
     jobInProgress.set({ job }, 1);
     jobLastRun.set({ job }, Math.floor(start / 1000));
@@ -384,8 +388,8 @@ export async function withJobMetrics(job, fn) {
       jobInProgress.set({ job }, 0);
     }
     try {
-      if (jobLogSvc?.finishJobRun)
-        await jobLogSvc.finishJobRun(runId, {
+      if (finishJobRun)
+        await finishJobRun(runId, {
           status: 'SUCCESS',
           durationMs: Date.now() - start,
         });
@@ -401,8 +405,8 @@ export async function withJobMetrics(job, fn) {
       jobInProgress.set({ job }, 0);
     }
     try {
-      if (jobLogSvc?.finishJobRun)
-        await jobLogSvc.finishJobRun(runId, {
+      if (finishJobRun)
+        await finishJobRun(runId, {
           status: 'ERROR',
           durationMs: Date.now() - start,
           error: err?.stack || err?.message || String(err),

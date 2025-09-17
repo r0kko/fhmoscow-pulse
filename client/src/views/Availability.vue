@@ -252,7 +252,7 @@ async function load() {
   }
 }
 
-async function saveDay(d, opts = {}) {
+async function saveDay(d) {
   if (invalidCount.value > 0) return;
   error.value = '';
   pendingByDate.value.add(d.date);

@@ -456,7 +456,7 @@ export async function updateScheduleAndLock({
   // Local transaction: update match and supersede any pending agreements
   await sequelize.transaction(async (tx) => {
     // Ensure game status is SCHEDULED after admin assignment
-    let scheduledStatusId = null;
+    let scheduledStatusId;
     try {
       const scheduled = await GameStatus.findOne({
         where: { alias: 'SCHEDULED' },

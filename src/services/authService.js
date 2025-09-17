@@ -97,35 +97,40 @@ async function rotateTokens(refreshToken) {
   // Reject if token version was rotated already
   if (typeof payload.ver !== 'number' || payload.ver !== user.token_version) {
     // If this jti was already used earlier, treat as reuse attempt
-    try {
-      if (
-        payload?.jti &&
-        (await isUsed({ sub: payload.sub, ver: payload.ver, jti: payload.jti }))
-      ) {
-        // Security response: bump version again to invalidate any issued since, optional lock
-        try {
-          await user.increment('token_version');
-        } catch (_e) {
-          /* noop */
-        }
-        try {
-          incRefreshReuse('detected');
-          incSecurityEvent('reuse');
-        } catch (_e) {
-          /* noop */
-        }
-        if (isLockoutEnabled()) {
-          try {
-            await lockout.lock(user.id);
-            incSecurityEvent('lockout');
-          } catch (_e) {
-            /* noop */
-          }
-        }
-        throw new ServiceError('token_reuse_detected', 401);
+    let reuseDetected = false;
+    if (payload?.jti) {
+      try {
+        reuseDetected = await isUsed({
+          sub: payload.sub,
+          ver: payload.ver,
+          jti: payload.jti,
+        });
+      } catch (_e) {
+        reuseDetected = false;
       }
-    } catch (_e) {
-      /* noop */
+    }
+    if (reuseDetected) {
+      // Security response: bump version again to invalidate any issued since, optional lock
+      try {
+        await user.increment('token_version');
+      } catch (_e) {
+        /* noop */
+      }
+      try {
+        incRefreshReuse('detected');
+        incSecurityEvent('reuse');
+      } catch (_e) {
+        /* noop */
+      }
+      if (isLockoutEnabled()) {
+        try {
+          await lockout.lock(user.id);
+          incSecurityEvent('lockout');
+        } catch (_e) {
+          /* noop */
+        }
+      }
+      throw new ServiceError('token_reuse_detected', 401);
     }
     throw new ServiceError('invalid_token', 401);
   }

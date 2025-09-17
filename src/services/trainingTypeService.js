@@ -25,7 +25,7 @@ async function getById(id, forCamp) {
 }
 
 async function create(data, actorId, forCamp) {
-  const type = await TrainingType.create({
+  return TrainingType.create({
     name: data.name,
     alias: generateAlias(data.name),
     default_capacity: data.default_capacity,
@@ -34,7 +34,6 @@ async function create(data, actorId, forCamp) {
     created_by: actorId,
     updated_by: actorId,
   });
-  return type;
 }
 
 async function update(id, data, actorId, forCamp) {

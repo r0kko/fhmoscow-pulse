@@ -341,7 +341,6 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
       background,
       primaryColor,
       primarySize,
-      _secondarySize,
     } = PDF_STYLE.infoBox;
     // Slightly increase horizontal inset inside the box
     const insetX = padX + 2;
@@ -1401,7 +1400,6 @@ async function exportRepresentativesPdf(matchId, teamId, actorId, opts = {}) {
     background: bg2,
     primaryColor: pc2,
     primarySize: ps2,
-    secondarySize: _ss2,
   } = PDF_STYLE.infoBox;
   // Slightly increase horizontal inset inside the box
   const insetX2 = padX2 + 2;

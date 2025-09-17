@@ -705,9 +705,6 @@ const groupedRoster = computed(() => {
     const v = p.match_number ?? p.number;
     return Number.isFinite(v) ? v : 999;
   };
-  const isGK = (p) =>
-    (p.match_role?.name || p.role?.name || '').toLowerCase() ===
-    gkName.toLowerCase();
   const groups = new Map();
   for (const p of list) {
     const key = p.match_role?.name || p.role?.name || 'Без амплуа';
@@ -1050,7 +1047,7 @@ async function load() {
 }
 
 let saveNext = false;
-async function save(force = false) {
+async function save() {
   if (!data.value) return;
   if (saving.value) {
     saveNext = true;
@@ -1729,7 +1726,6 @@ async function toggleStaff(row) {
 
 // Staff save, analogous to players
 const staffHasChanges = computed(() => {
-  const current = new Map((staff.value || []).map((r) => [r.team_staff_id, r]));
   for (const r of staff.value || []) {
     const selSaved = Boolean(r.selected);
     const selUi = staffSelected.value.has(r.team_staff_id);

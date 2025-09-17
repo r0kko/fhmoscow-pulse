@@ -145,7 +145,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-  if (showExams.value) loadExams();
+  if (showExams.value) await loadExams();
   ticketModal = new Modal(ticketModalRef.value);
 });
 

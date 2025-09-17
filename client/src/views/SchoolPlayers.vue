@@ -280,7 +280,12 @@ async function ensureDisabledComputed(clubId, season) {
             <h2 class="h5 mb-2">{{ group.club.name }}</h2>
             <div class="mb-3">
               <TabSelector
-                :tabs="group.seasons.map((s) => ({ key: s.id, label: s.name }))"
+                :tabs="
+                  group.seasons.map((season) => ({
+                    key: season.id,
+                    label: season.name,
+                  }))
+                "
                 :model-value="selectedSeasonByClub[group.club.id]"
                 :nav-fill="true"
                 justify="start"
@@ -296,19 +301,22 @@ async function ensureDisabledComputed(clubId, season) {
               Пока нет доступных команд.
             </div>
             <div>
-              <template v-for="s in group.seasons" :key="s.id">
-                <template v-if="selectedSeasonByClub[group.club.id] === s.id">
+              <template v-for="season in group.seasons" :key="season.id">
+                <template
+                  v-if="selectedSeasonByClub[group.club.id] === season.id"
+                >
                   <TeamTiles
-                    :season="s"
+                    :season="season"
                     :club-id="group.club.id"
                     :link-to-roster="false"
                     :disabled-team-ids="
-                      disabledByKey[keyFor(group.club.id, s.id)] || new Set()
+                      disabledByKey[keyFor(group.club.id, season.id)] ||
+                      new Set()
                     "
                     intercept
                     @open="openRosterIfEligible"
                   />
-                  <div v-if="!s.teams?.length" class="text-muted">
+                  <div v-if="!season.teams?.length" class="text-muted">
                     Нет данных.
                   </div>
                 </template>

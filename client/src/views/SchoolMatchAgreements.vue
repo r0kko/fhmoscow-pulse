@@ -226,10 +226,12 @@ async function loadAll() {
 async function submitProposal(parentId = null) {
   submitting.value = true;
   error.value = '';
+  if (!isParticipant.value) {
+    error.value = 'Недоступно: вы не участник этого матча';
+    submitting.value = false;
+    return;
+  }
   try {
-    if (!isParticipant.value) {
-      throw new Error('Недоступно: вы не участник этого матча');
-    }
     const body = {
       ground_id: groundId.value,
       date_start: buildDateStartUtc(),
@@ -250,10 +252,12 @@ async function submitProposal(parentId = null) {
 async function approve(agreementId) {
   submitting.value = true;
   error.value = '';
+  if (!isParticipant.value) {
+    error.value = 'Недоступно: вы не участник этого матча';
+    submitting.value = false;
+    return;
+  }
   try {
-    if (!isParticipant.value) {
-      throw new Error('Недоступно: вы не участник этого матча');
-    }
     await apiFetch(
       `/matches/${route.params.id}/agreements/${agreementId}/approve`,
       { method: 'POST' }
@@ -277,10 +281,12 @@ function confirmDecline(agreementId) {
 async function decline(agreementId) {
   submitting.value = true;
   error.value = '';
+  if (!isParticipant.value) {
+    error.value = 'Недоступно: вы не участник этого матча';
+    submitting.value = false;
+    return;
+  }
   try {
-    if (!isParticipant.value) {
-      throw new Error('Недоступно: вы не участник этого матча');
-    }
     await apiFetch(
       `/matches/${route.params.id}/agreements/${agreementId}/decline`,
       { method: 'POST' }
@@ -296,10 +302,12 @@ async function decline(agreementId) {
 async function withdraw(agreementId) {
   submitting.value = true;
   error.value = '';
+  if (!isParticipant.value) {
+    error.value = 'Недоступно: вы не участник этого матча';
+    submitting.value = false;
+    return;
+  }
   try {
-    if (!isParticipant.value) {
-      throw new Error('Недоступно: вы не участник этого матча');
-    }
     await apiFetch(
       `/matches/${route.params.id}/agreements/${agreementId}/withdraw`,
       { method: 'POST' }

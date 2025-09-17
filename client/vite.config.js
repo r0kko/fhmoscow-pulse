@@ -53,6 +53,7 @@ export default defineConfig({
     globals: true,
     setupFiles: './tests/setup/vitest.setup.js',
     include: ['tests/**/*.{test,spec}.{js,ts}'],
+    exclude: ['tests/e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

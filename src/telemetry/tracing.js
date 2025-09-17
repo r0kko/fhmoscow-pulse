@@ -16,7 +16,9 @@ export async function initTracing() {
     const { OTLPTraceExporter } = await import(
       '@opentelemetry/exporter-trace-otlp-grpc'
     );
-    const { Resource } = await import('@opentelemetry/resources');
+    const { resourceFromAttributes, defaultResource } = await import(
+      '@opentelemetry/resources'
+    );
     const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } =
       await import('@opentelemetry/semantic-conventions');
     const { getNodeAutoInstrumentations } = await import(
@@ -29,11 +31,16 @@ export async function initTracing() {
       process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://tempo:4317';
 
     const exporter = new OTLPTraceExporter({ url: undefined, endpoint });
+    const baseResource =
+      typeof defaultResource === 'function'
+        ? defaultResource()
+        : resourceFromAttributes({});
+    const serviceResource = resourceFromAttributes({
+      [SEMRESATTRS_SERVICE_NAME]: serviceName,
+      [SEMRESATTRS_SERVICE_VERSION]: version,
+    });
     const sdk = new NodeSDK({
-      resource: new Resource({
-        [SEMRESATTRS_SERVICE_NAME]: serviceName,
-        [SEMRESATTRS_SERVICE_VERSION]: version,
-      }),
+      resource: baseResource.merge(serviceResource),
       traceExporter: exporter,
       instrumentations: [
         getNodeAutoInstrumentations({

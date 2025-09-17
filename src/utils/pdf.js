@@ -317,8 +317,7 @@ export async function applyESignStamp(doc, info) {
     const maxTextWidth = Math.max(w1, w2, w3, w4);
     // Compute QR size bounds by height and remaining width in the inner box
     const qrMaxByHeight = Math.max(24, innerHeight);
-    const widthBudget = Math.max(16, innerWidth - qrGap - maxTextWidth);
-    const qrMaxByWidth = widthBudget;
+    const qrMaxByWidth = Math.max(16, innerWidth - qrGap - maxTextWidth);
     const qrMin = Math.max(28, PDF_META?.qrMinSize || 40);
     // Target an aesthetically balanced ratio of the inner box
     const rawRatio = Number.isFinite(PDF_META?.qrIdealRatio)
@@ -348,8 +347,10 @@ export async function applyESignStamp(doc, info) {
       const idealByInner2 = Math.floor(
         Math.min(innerWidth, innerHeight) * ratio
       );
-      const qrw = widthBudget2;
-      qrSize = Math.max(qrMin, Math.min(qrMaxByHeight, qrw, idealByInner2));
+      qrSize = Math.max(
+        qrMin,
+        Math.min(qrMaxByHeight, widthBudget2, idealByInner2)
+      );
       // Restore size to 8 for drawing; spacing will adapt
       try {
         doc.fontSize(8);
@@ -442,17 +443,31 @@ export async function applyESignStamp(doc, info) {
   } catch {
     QR = null;
   }
+  const qrCreate = typeof QR?.create === 'function' ? QR.create : null;
+  const qrToDataURL = typeof QR?.toDataURL === 'function' ? QR.toDataURL : null;
   // Prefer vector modules to avoid raster blurring when scaling/printing
   let drewVector = false;
   let wantRasterFallback = false;
-  if (QR?.create) {
+  const drawQrFallbackOutline = () => {
+    try {
+      doc
+        .save()
+        .lineWidth(0.6)
+        .rect(qrX, qrY, qrSize, qrSize)
+        .stroke(BRAND_BLUE)
+        .restore();
+    } catch {
+      /* noop */
+    }
+  };
+  if (qrCreate) {
     try {
       const levels = ['H', 'Q', 'M', 'L'];
       let chosen = null;
       let chosenMeta = null;
       for (const lvl of levels) {
         try {
-          const qrObj = QR.create(payload, { errorCorrectionLevel: lvl });
+          const qrObj = qrCreate(payload, { errorCorrectionLevel: lvl });
           const count = qrObj.modules.size;
           const data = qrObj.modules.data; // boolean-flat array size*size
           const quietModules = Math.max(2, PDF_META?.qrQuietZoneModules || 4);
@@ -499,7 +514,7 @@ export async function applyESignStamp(doc, info) {
     }
   }
   if (!drewVector) {
-    if (QR?.toDataURL) {
+    if (qrToDataURL) {
       try {
         // Attempt raster with adaptive ECC if vector was rejected due to density
         const levels = wantRasterFallback ? ['M', 'L'] : ['H', 'Q', 'M', 'L'];
@@ -508,7 +523,7 @@ export async function applyESignStamp(doc, info) {
         const marginModules = Math.max(0, PDF_META?.qrQuietZoneModules || 4);
         for (const lvl of levels) {
           try {
-            dataUrl = await QR.toDataURL(payload, {
+            dataUrl = await qrToDataURL(payload, {
               errorCorrectionLevel: lvl,
               margin: marginModules,
               width: qrSize,
@@ -519,27 +534,16 @@ export async function applyESignStamp(doc, info) {
             /* try next level */
           }
         }
-        if (!dataUrl) throw new Error('qrcode.toDataURL failed');
-        doc.image(dataUrl, qrX, qrY, { width: qrSize, height: qrSize });
+        if (dataUrl) {
+          doc.image(dataUrl, qrX, qrY, { width: qrSize, height: qrSize });
+        } else {
+          drawQrFallbackOutline();
+        }
       } catch {
-        doc
-          .save()
-          .lineWidth(0.6)
-          .rect(qrX, qrY, qrSize, qrSize)
-          .stroke(BRAND_BLUE)
-          .restore();
+        drawQrFallbackOutline();
       }
     } else {
-      try {
-        doc
-          .save()
-          .lineWidth(0.6)
-          .rect(qrX, qrY, qrSize, qrSize)
-          .stroke(BRAND_BLUE)
-          .restore();
-      } catch {
-        /* noop */
-      }
+      drawQrFallbackOutline();
     }
   }
   // Text content — brand blue (layout synced with QR height)
@@ -558,8 +562,7 @@ export async function applyESignStamp(doc, info) {
     const remaining = Math.max(0, qrSize - totalText);
     const gap = Math.floor(remaining / 3);
     const rem = remaining - gap * 3;
-    const blockTop = qrY + Math.floor(rem / 2);
-    const line1Y = blockTop;
+    const line1Y = qrY + Math.floor(rem / 2);
     const line2Y = line1Y + textH + gap;
     const line3Y = line2Y + textH + gap;
     const line4Y = line3Y + textH + gap;

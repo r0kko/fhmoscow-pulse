@@ -293,8 +293,10 @@ function onChangePageSize(val) {
             >
               <span v-if="selectedSeason" class="chip">
                 {{
-                  seasons.find((s) => String(s.id) === String(selectedSeason))
-                    ?.name || 'Сезон'
+                  seasons.find(
+                    (seasonOption) =>
+                      String(seasonOption.id) === String(selectedSeason)
+                  )?.name || 'Сезон'
                 }}
                 <button
                   type="button"

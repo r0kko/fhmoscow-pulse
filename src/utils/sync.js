@@ -16,11 +16,11 @@ export function statusFilters(col = 'object_status') {
  * Ensure that archived records from an external source are present locally
  * as soft-deleted rows, so they get stable IDs for relations/UI.
  *
- * @param {Model} LocalModel Sequelize model
+ * @param {import('sequelize').ModelStatic<any>} LocalModel Sequelize model
  * @param {Array<Object>} extArchived external records with numeric `id`
  * @param {Function} mapFn mapping ext -> partial local fields (excluding external_id)
  * @param {string|UUID|null} actorId audit user id
- * @param {Transaction} [transaction] optional transaction
+ * @param {import('sequelize').Transaction} [transaction] optional transaction
  * @returns {Promise<number>} number of created soft-deleted rows
  */
 export async function ensureArchivedImported(

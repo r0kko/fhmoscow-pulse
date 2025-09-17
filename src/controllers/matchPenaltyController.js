@@ -229,7 +229,7 @@ export async function list(req, res, next) {
     // Backfill sides for team penalties without mapped player using external team_id
     try {
       const needSide = visible.filter(
-        (x) => (!x.side || x.side == null) && x.team_penalty && x.external_id
+        (x) => x.side == null && x.team_penalty && x.external_id
       );
       if (needSide.length && (match.team1_id || match.team2_id)) {
         const teamRows = await Team.findAll({

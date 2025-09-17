@@ -370,54 +370,64 @@ async function openTrainingModal(training = null) {
 
 async function saveTraining() {
   trainingSaveLoading.value = true;
-  try {
-    // Базовая валидация формы для предотвращения 400
-    trainingFormError.value = '';
-    const tt = selectedTrainingType.value;
-    if (!trainingForm.value.type_id) {
-      throw new Error('Укажите тип мероприятия');
+  trainingFormError.value = '';
+  const tt = selectedTrainingType.value;
+  const fail = (message) => {
+    trainingFormError.value = message;
+    trainingSaveLoading.value = false;
+  };
+  if (!trainingForm.value.type_id) {
+    fail('Укажите тип мероприятия');
+    return;
+  }
+  if (!trainingForm.value.start_at) {
+    fail('Укажите дату и время начала');
+    return;
+  }
+  if (!trainingForm.value.end_at) {
+    fail('Укажите дату и время окончания');
+    return;
+  }
+  const startISO = fromDateTimeLocal(trainingForm.value.start_at);
+  const endISO = fromDateTimeLocal(trainingForm.value.end_at);
+  if (!startISO || !endISO || new Date(endISO) <= new Date(startISO)) {
+    fail('Время окончания должно быть позже начала');
+    return;
+  }
+  if (tt?.online) {
+    if (!trainingForm.value.url) {
+      fail('Укажите ссылку для онлайн‑мероприятия');
+      return;
     }
-    if (!trainingForm.value.start_at) {
-      throw new Error('Укажите дату и время начала');
-    }
-    if (!trainingForm.value.end_at) {
-      throw new Error('Укажите дату и время окончания');
-    }
-    const startISO = fromDateTimeLocal(trainingForm.value.start_at);
-    const endISO = fromDateTimeLocal(trainingForm.value.end_at);
-    if (!startISO || !endISO || new Date(endISO) <= new Date(startISO)) {
-      throw new Error('Время окончания должно быть позже начала');
-    }
-    if (tt?.online) {
-      if (!trainingForm.value.url)
-        throw new Error('Укажите ссылку для онлайн‑мероприятия');
-    } else {
-      if (!trainingForm.value.ground_id) throw new Error('Выберите площадку');
-    }
+  } else if (!trainingForm.value.ground_id) {
+    fail('Выберите площадку');
+    return;
+  }
 
-    const method = editingTraining.value ? 'PUT' : 'POST';
-    const url = editingTraining.value
-      ? `/course-trainings/${editingTraining.value.id}`
-      : '/course-trainings';
-    const courseIds = Array.isArray(trainingForm.value.courses)
-      ? trainingForm.value.courses.filter(
-          (id) => typeof id === 'string' && id.length > 0
-        )
-      : [];
-    const capacityValue =
-      trainingForm.value.capacity === '' || trainingForm.value.capacity === null
-        ? undefined
-        : trainingForm.value.capacity;
-    const body = {
-      type_id: trainingForm.value.type_id,
-      start_at: startISO,
-      end_at: endISO,
-      capacity: capacityValue,
-      courses: courseIds,
-      ...(selectedTrainingType.value?.online
-        ? { url: trainingForm.value.url || undefined }
-        : { ground_id: trainingForm.value.ground_id || undefined }),
-    };
+  const method = editingTraining.value ? 'PUT' : 'POST';
+  const url = editingTraining.value
+    ? `/course-trainings/${editingTraining.value.id}`
+    : '/course-trainings';
+  const courseIds = Array.isArray(trainingForm.value.courses)
+    ? trainingForm.value.courses.filter(
+        (id) => typeof id === 'string' && id.length > 0
+      )
+    : [];
+  const capacityValue =
+    trainingForm.value.capacity === '' || trainingForm.value.capacity === null
+      ? undefined
+      : trainingForm.value.capacity;
+  const body = {
+    type_id: trainingForm.value.type_id,
+    start_at: startISO,
+    end_at: endISO,
+    capacity: capacityValue,
+    courses: courseIds,
+    ...(selectedTrainingType.value?.online
+      ? { url: trainingForm.value.url || undefined }
+      : { ground_id: trainingForm.value.ground_id || undefined }),
+  };
+  try {
     await apiFetch(url, {
       method,
       body: JSON.stringify(body),
@@ -425,7 +435,7 @@ async function saveTraining() {
     trainingModal.hide();
     await loadTrainingsAdmin();
   } catch (e) {
-    trainingFormError.value = e.message;
+    trainingFormError.value = e.message || 'Не удалось сохранить мероприятие';
   } finally {
     trainingSaveLoading.value = false;
   }

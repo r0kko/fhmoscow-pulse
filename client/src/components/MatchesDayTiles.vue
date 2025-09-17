@@ -48,11 +48,6 @@ function formatTime(dateStr) {
   return formatMskTimeShort(dateStr, { placeholder: '—:—' });
 }
 
-function rowClass(m) {
-  // Row background states removed per new UX (use status pill instead)
-  return '';
-}
-
 // Compute UI-facing status combining schedule state and time proximity
 function computeUiStatus(m) {
   const alias = (m?.status?.alias || '').toUpperCase();

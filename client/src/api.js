@@ -118,6 +118,22 @@ function shouldSendXsrf(method) {
   return !(m === 'GET' || m === 'HEAD' || m === 'OPTIONS');
 }
 
+async function readJsonSafe(res) {
+  if (!res?.clone) return null;
+  try {
+    return await res.clone().json();
+  } catch (_e) {
+    return null;
+  }
+}
+
+function buildApiError(message, code = null, reqId) {
+  const err = new Error(message);
+  if (code) err.code = code;
+  if (reqId) err.requestId = reqId;
+  return err;
+}
+
 export async function initCsrf() {
   try {
     const t = withTimeout(undefined, DEFAULT_CSRF_TIMEOUT_MS);
@@ -662,32 +678,24 @@ export async function apiFetchBlob(path, options = {}) {
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 429) {
-    try {
-      const data = await res.clone().json();
-      const retryAfter = Number(
-        res.headers?.get && res.headers.get('Retry-After')
-      );
-      const method = (opts.method || 'GET').toUpperCase();
-      if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
-        const secs =
-          !Number.isNaN(retryAfter) && retryAfter > 0
-            ? Math.min(5, Math.ceil(retryAfter))
-            : 2;
-        await new Promise((r) => setTimeout(r, secs * 1000));
-        return apiFetchBlob(path, { ...options, _429Retried: true });
-      }
-      let message = translateError(data.error) || 'Слишком много запросов';
-      if (!Number.isNaN(retryAfter) && retryAfter > 0) {
-        const secs = Math.max(1, Math.ceil(retryAfter));
-        message = `${message}. Повторите через ${secs} с.`;
-      }
-      const err = new Error(message);
-      err.code = data.error || 'rate_limited';
-      if (reqId) err.requestId = reqId;
-      throw err;
-    } catch (_) {
-      throw new Error(`Ошибка запроса, код ${res.status}`);
+    const data = await readJsonSafe(res);
+    const retryAfterHeader = res.headers?.get && res.headers.get('Retry-After');
+    const retryAfter = Number(retryAfterHeader);
+    const method = (opts.method || 'GET').toUpperCase();
+    if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
+      const secs =
+        !Number.isNaN(retryAfter) && retryAfter > 0
+          ? Math.min(5, Math.ceil(retryAfter))
+          : 2;
+      await new Promise((r) => setTimeout(r, secs * 1000));
+      return apiFetchBlob(path, { ...options, _429Retried: true });
     }
+    let message = translateError(data?.error) || 'Слишком много запросов';
+    if (!Number.isNaN(retryAfter) && retryAfter > 0) {
+      const secs = Math.max(1, Math.ceil(retryAfter));
+      message = `${message}. Повторите через ${secs} с.`;
+    }
+    throw buildApiError(message, data?.error || 'rate_limited', reqId);
   }
   if (res.status === 403) {
     try {
@@ -740,33 +748,18 @@ export async function apiFetchBlob(path, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    // Try to extract API error code for friendly message
-    try {
-      const data = await res.clone().json();
-      let message =
-        translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-      if (reqId) message += ` (id: ${reqId})`;
-      const err = new Error(message);
-      err.code = data.error || null;
-      if (reqId) err.requestId = reqId;
-      throw err;
-    } catch (_) {
-      throw new Error(`Ошибка запроса, код ${res.status}`);
-    }
+    const data = await readJsonSafe(res);
+    let message =
+      translateError(data?.error) || `Ошибка запроса, код ${res.status}`;
+    if (reqId) message += ` (id: ${reqId})`;
+    throw buildApiError(message, data?.error || null, reqId);
   }
   if (!res.ok) {
-    try {
-      const data = await res.clone().json();
-      let message =
-        translateError(data.error) || `Ошибка запроса, код ${res.status}`;
-      if (reqId) message += ` (id: ${reqId})`;
-      const err = new Error(message);
-      err.code = data.error || null;
-      if (reqId) err.requestId = reqId;
-      throw err;
-    } catch (_) {
-      throw new Error(`Ошибка запроса, код ${res.status}`);
-    }
+    const data = await readJsonSafe(res);
+    let message =
+      translateError(data?.error) || `Ошибка запроса, код ${res.status}`;
+    if (reqId) message += ` (id: ${reqId})`;
+    throw buildApiError(message, data?.error || null, reqId);
   }
   return res.blob();
 }

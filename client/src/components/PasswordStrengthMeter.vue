@@ -5,6 +5,11 @@
         class="progress-bar"
         :class="strengthClass"
         :style="{ width: strengthPercent + '%' }"
+        role="progressbar"
+        aria-label="Надёжность пароля"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-valuenow="Math.round(strengthPercent)"
       ></div>
     </div>
     <small class="text-muted password-strength-label">{{

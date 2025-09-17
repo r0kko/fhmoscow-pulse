@@ -16,21 +16,19 @@ import {
 
 /* ---------- key management ------------------------------------------------ */
 function getSigningOptions() {
-  const alg = JWT_ALG;
   // If asymmetric: require private key
-  if (/^(RS|ES|EdDSA)/.test(alg)) {
+  if (/^(RS|ES|EdDSA)/.test(JWT_ALG)) {
     if (!JWT_PRIVATE_KEY) throw new Error('Missing JWT_PRIVATE_KEY');
-    return { key: JWT_PRIVATE_KEY, alg, kid: JWT_KID || 'k1' };
+    return { key: JWT_PRIVATE_KEY, alg: JWT_ALG, kid: JWT_KID || 'k1' };
   }
   // Symmetric HS*
   if (!JWT_SECRET) throw new Error('Missing JWT_SECRET');
-  return { key: JWT_SECRET, alg, kid: JWT_KID || undefined };
+  return { key: JWT_SECRET, alg: JWT_ALG, kid: JWT_KID || undefined };
 }
 
 function getVerifyKey(headerKid) {
-  const alg = JWT_ALG;
   // Asymmetric: pick by kid
-  if (/^(RS|ES|EdDSA)/.test(alg)) {
+  if (/^(RS|ES|EdDSA)/.test(JWT_ALG)) {
     if (Array.isArray(JWT_PUBLIC_KEYS) && JWT_PUBLIC_KEYS.length) {
       const found =
         JWT_PUBLIC_KEYS.find((k) => k.kid === headerKid) || JWT_PUBLIC_KEYS[0];

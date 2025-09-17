@@ -151,25 +151,44 @@ export default {
       return res.status(401).json({ error: 'Отсутствует токен обновления' });
     }
 
-    try {
-      let result = null;
-      let lastErr = null;
-      for (const c of candidates) {
-        try {
-          // Try each candidate until one succeeds
-          // rotateTokens verifies signature, type and version
-
-          result = await authService.rotateTokens(c);
-          break;
-        } catch (err) {
-          lastErr = err;
-        }
+    const markInvalid = () => {
+      try {
+        incAuthRefresh('invalid');
+      } catch (_e) {
+        /* noop */
       }
-      if (!result) throw lastErr || new Error('invalid_token');
+    };
+    let result = null;
+    let lastErr = null;
+    for (const c of candidates) {
+      try {
+        // Try each candidate until one succeeds
+        // rotateTokens verifies signature, type and version
+        result = await authService.rotateTokens(c);
+        break;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    if (!result) {
+      markInvalid();
+      return sendError(res, lastErr || new Error('invalid_token'), 401);
+    }
+    const markSuccess = () => {
+      try {
+        incAuthRefresh('success');
+      } catch (_e) {
+        /* noop */
+      }
+    };
+    try {
       const { user, accessToken, refreshToken } = result;
-      incAuthRefresh('success');
-      incTokenIssued('access');
-      incTokenIssued('refresh');
+      try {
+        incTokenIssued('access');
+        incTokenIssued('refresh');
+      } catch (_e) {
+        /* noop */
+      }
       const roles = (await user.getRoles({ attributes: ['alias'] })).map(
         (r) => r.alias
       );
@@ -196,7 +215,7 @@ export default {
         /* noop */
       }
       setRefreshCookie(res, refreshToken);
-
+      markSuccess();
       return res.json({
         access_token: accessToken,
         user: userMapper.toPublic(user),
@@ -206,11 +225,7 @@ export default {
         },
       });
     } catch (err) {
-      try {
-        incAuthRefresh('invalid');
-      } catch (_e) {
-        /* noop */
-      }
+      markInvalid();
       return sendError(res, err, 401);
     }
   },

@@ -26,6 +26,29 @@ const props = defineProps({
   onToggleCaptain: { type: Function, default: null },
   onToggleAssistant: { type: Function, default: null },
 });
+
+const isKeeperBothSelected = (player) =>
+  props.isPlayerGk(player) &&
+  props.gkCount === 3 &&
+  (props.editedBoth[player.team_player_id] ?? player.squad_both ?? false);
+
+const getSquadSelectValue = (player) => {
+  if (isKeeperBothSelected(player)) {
+    return 'both';
+  }
+  const base =
+    props.editedSquad[player.team_player_id] ?? player.squad_no ?? '';
+  return String(base);
+};
+
+const isSquadSelectionValid = (player) => {
+  if (isKeeperBothSelected(player)) {
+    return true;
+  }
+  const value =
+    props.editedSquad[player.team_player_id] ?? player.squad_no ?? null;
+  return value === 1 || value === 2;
+};
 </script>
 
 <template>
@@ -145,41 +168,12 @@ const props = defineProps({
                   <select
                     class="form-select form-select-sm"
                     :disabled="!canEdit || !selected.has(p.team_player_id)"
-                    :value="
-                      (function () {
-                        if (isPlayerGk(p) && gkCount === 3) {
-                          return (editedBoth[p.team_player_id] ??
-                            p.squad_both ??
-                            false)
-                            ? 'both'
-                            : String(
-                                editedSquad[p.team_player_id] ??
-                                  p.squad_no ??
-                                  ''
-                              );
-                        }
-                        return String(
-                          editedSquad[p.team_player_id] ?? p.squad_no ?? ''
-                        );
-                      })()
-                    "
+                    :value="getSquadSelectValue(p)"
                     aria-label="Состав (1/2/оба)"
                     :class="{
                       'is-invalid':
                         selected.has(p.team_player_id) &&
-                        !(function () {
-                          if (
-                            isPlayerGk(p) &&
-                            gkCount === 3 &&
-                            (editedBoth[p.team_player_id] ??
-                              p.squad_both ??
-                              false)
-                          )
-                            return true;
-                          const v =
-                            editedSquad[p.team_player_id] ?? p.squad_no ?? null;
-                          return v === 1 || v === 2;
-                        })(),
+                        !isSquadSelectionValid(p),
                     }"
                     @change="(e) => onSquadChange && onSquadChange(p, e)"
                   >
@@ -193,18 +187,7 @@ const props = defineProps({
                   <div
                     v-if="
                       selected.has(p.team_player_id) &&
-                      !(
-                        isPlayerGk(p) &&
-                        (editedBoth[p.team_player_id] ?? p.squad_both ?? false)
-                      ) &&
-                      !(
-                        (editedSquad[p.team_player_id] ??
-                          p.squad_no ??
-                          null) === 1 ||
-                        (editedSquad[p.team_player_id] ??
-                          p.squad_no ??
-                          null) === 2
-                      )
+                      !isSquadSelectionValid(p)
                     "
                     class="invalid-feedback d-block"
                   >

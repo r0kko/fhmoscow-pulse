@@ -146,7 +146,6 @@ export default async function buildEquipmentTransferPdf(
     const savedY = doc.y;
 
     // measure wrapped value height
-    let innerH = 0;
     try {
       doc.font(isHeader ? fonts.bold : fonts.regular);
     } catch {
@@ -155,7 +154,7 @@ export default async function buildEquipmentTransferPdf(
     doc.x = contentStart;
     doc.y = y + padY;
     doc.text(valueText || ' ', { width: maxValueWidth });
-    innerH = doc.y - (y + padY);
+    const innerH = doc.y - (y + padY);
     // restore cursor
     doc.x = savedX;
     doc.y = savedY;

@@ -2,7 +2,8 @@ import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
 import { utcToMoscow } from '../utils/time.js';
 import { GameStatus, Match, Team, User } from '../models/index.js';
-import { rescheduleExternalGameDate } from '../services/rescheduleExternalService.js';
+
+import { rescheduleExternalGameDate } from './rescheduleExternalService.js';
 
 async function ensureParticipant(userId, match) {
   const user = await User.findByPk(userId, { include: [Team] });

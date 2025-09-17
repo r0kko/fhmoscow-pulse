@@ -58,6 +58,16 @@ function fio(user) {
     .join(' ');
 }
 
+function parseJsonSafe(value, fallback = {}) {
+  if (!value) return fallback;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch (_e) {
+    return fallback;
+  }
+}
+
 /* istanbul ignore next */
 async function buildPersonalDataConsentPdf(user, meta = {}) {
   const chunks = [];
@@ -1507,120 +1517,6 @@ async function buildRefereeContractApplicationPdf(user, meta = {}) {
           .replace(/\s+/g, ' ')
           .trim()
       : v;
-  const NBSP = '\u00A0';
-  const protectTypography = (s) =>
-    typeof s === 'string'
-      ? s
-          .replace(/\b([ВвКкСсУуОоИи])\s/g, `$1${NBSP}`)
-          .replace(/\s№\s*/g, `${NBSP}№ `)
-      : s;
-  const _seg = (text, bold = false) => ({
-    text: protectTypography(text ?? ''),
-    bold,
-  });
-
-  const _tokenize = (text) =>
-    (text || '').split(/(\s+)/).filter((t) => t.length > 0);
-  const _measure = (doc, fonts, token, bold) => {
-    const prev = doc._font;
-    try {
-      doc.font(bold ? fonts.bold : fonts.regular);
-    } catch {
-      /* noop */
-    }
-    const w = doc.widthOfString(token);
-    if (prev) {
-      try {
-        doc.font(prev.name || prev);
-      } catch {
-        /* noop */
-      }
-    }
-    return w;
-  };
-  const _layoutJustifiedStyledParagraph = (doc, fonts, segments, width) => {
-    const startX = doc.page.margins.left;
-    let y = doc.y;
-    const lines = [];
-    let line = [];
-    let lineWidth = 0;
-    const isStretchableSpace = (t) => t === ' ';
-    const pushLine = () => {
-      while (line.length && /^\s+$/.test(line[line.length - 1].text))
-        line.pop();
-      lines.push({ items: line, width: lineWidth });
-      line = [];
-      lineWidth = 0;
-    };
-    const styledTokens = [];
-    segments.forEach((s) => {
-      _tokenize(s.text).forEach((t) =>
-        styledTokens.push({ text: t, bold: s.bold })
-      );
-    });
-    let i = 0;
-    while (i < styledTokens.length) {
-      const { text, bold } = styledTokens[i];
-      const isWs = /^\s+$/.test(text);
-      if (isWs && (!line.length || /^\s+$/.test(line[line.length - 1]?.text))) {
-        i++;
-        continue;
-      }
-      const tokenWidth = _measure(doc, fonts, text, bold);
-      const maxWidth = width;
-      const remaining = maxWidth - lineWidth;
-      if (tokenWidth <= remaining || (!line.length && tokenWidth <= maxWidth)) {
-        line.push({ text, bold, width: tokenWidth });
-        lineWidth += tokenWidth;
-        i++;
-      } else if (line.length) {
-        pushLine();
-      } else {
-        let cut = 1;
-        let part = text.slice(0, cut);
-        let partWidth = _measure(doc, fonts, part + '-', bold);
-        while (cut < text.length && partWidth <= maxWidth) {
-          cut++;
-          part = text.slice(0, cut);
-          partWidth = _measure(doc, fonts, part + '-', bold);
-        }
-        cut = Math.max(1, cut - 1);
-        part = text.slice(0, cut);
-        partWidth = _measure(doc, fonts, part + '-', bold);
-        const rest = text.slice(cut);
-        line.push({ text: part + '-', bold, width: partWidth });
-        lineWidth += partWidth;
-        pushLine();
-        styledTokens[i] = { text: rest, bold };
-      }
-    }
-    if (line.length) pushLine();
-    const lineHeight = doc.currentLineHeight(true);
-    lines.forEach((ln, idx) => {
-      const last = idx === lines.length - 1;
-      let x = startX;
-      const totalWidth = ln.items.reduce((s, it) => s + it.width, 0);
-      const extra = Math.max(0, width - totalWidth);
-      const stretchPoints = !last
-        ? ln.items.filter((it) => isStretchableSpace(it.text)).length
-        : 0;
-      const extraPerSpace = stretchPoints > 0 ? extra / stretchPoints : 0;
-      ln.items.forEach((it) => {
-        try {
-          doc.font(it.bold ? fonts.bold : fonts.regular);
-        } catch {
-          /* noop */
-        }
-        doc.text(it.text, x, y, { lineBreak: false });
-        x +=
-          it.width + (isStretchableSpace(it.text) && !last ? extraPerSpace : 0);
-      });
-      y += lineHeight;
-    });
-    doc.x = startX;
-    doc.y = y;
-  };
-
   // Header
   doc.font(fonts.regular);
   applyFirstPageHeader(doc);
@@ -2290,12 +2186,7 @@ async function signWithCode(user, documentId, code) {
   });
   if (after?.DocumentType?.alias === 'BANK_DETAILS_CHANGE') {
     // Apply bank changes automatically and attach signed file to ticket if present
-    let changes = {};
-    try {
-      changes = after.description ? JSON.parse(after.description) : {};
-    } catch {
-      changes = {};
-    }
+    const changes = parseJsonSafe(after.description);
     try {
       // Replace current bank account for the user with new requisites using service API
       const bankAccountService = (await import('./bankAccountService.js'))
@@ -2361,12 +2252,7 @@ async function signWithCode(user, documentId, code) {
   if (after?.DocumentType?.alias === 'EQUIPMENT_TRANSFER') {
     // Mark equipment as issued to the recipient
     try {
-      let payload = {};
-      try {
-        payload = after.description ? JSON.parse(after.description) : {};
-      } catch {
-        payload = {};
-      }
+      const payload = parseJsonSafe(after.description);
       const eqId = payload?.equipment_id || null;
       if (eqId) {
         const { Equipment } = await import('../models/index.js');
@@ -2434,20 +2320,10 @@ async function regenerateSigned(documentId, actorId) {
   } else if (doc.DocumentType.alias === 'REFEREE_CONTRACT_APPLICATION') {
     pdf = await buildRefereeContractApplicationPdf(doc.recipient, metaCommon);
   } else if (doc.DocumentType.alias === 'BANK_DETAILS_CHANGE') {
-    let changes = {};
-    try {
-      changes = doc.description ? JSON.parse(doc.description) : {};
-    } catch {
-      changes = {};
-    }
+    const changes = parseJsonSafe(doc.description);
     pdf = await buildBankDetailsChangePdf(doc.recipient, changes, metaCommon);
   } else if (doc.DocumentType.alias === 'EQUIPMENT_TRANSFER') {
-    let payload = {};
-    try {
-      payload = doc.description ? JSON.parse(doc.description) : {};
-    } catch {
-      payload = {};
-    }
+    const payload = parseJsonSafe(doc.description);
     pdf = await buildEquipmentTransferPdf(
       doc.recipient,
       payload?.equipment || {},
@@ -2866,16 +2742,17 @@ export default {
     if (!status) throw new ServiceError('document_status_not_found', 500);
 
     // Guard: only one contract per user (best-effort to support test mocks)
-    try {
-      const exists = await (Document.findOne
-        ? Document.findOne({
-            where: { recipient_id: user.id, document_type_id: docType.id },
-          })
-        : null);
-      if (exists) throw new ServiceError('document_exists', 400);
-    } catch {
-      /* noop */
+    let existing = null;
+    if (Document.findOne) {
+      try {
+        existing = await Document.findOne({
+          where: { recipient_id: user.id, document_type_id: docType.id },
+        });
+      } catch {
+        existing = null;
+      }
     }
+    if (existing) throw new ServiceError('document_exists', 400);
 
     const signTypeId = userSign?.SignType?.id || simpleSignType?.id;
     if (!signTypeId) throw new ServiceError('sign_type_not_found', 500);
