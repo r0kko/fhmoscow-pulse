@@ -4,10 +4,15 @@ import '@testing-library/jest-dom/vitest';
 // Optionally start MSW for integration tests that hit network
 // Importing conditionally to avoid overhead for simple unit tests
 if (process.env.MSW === '1') {
-  const { server } = await import('../mocks/server.js');
-  beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
-  afterEach(() => server.resetHandlers());
-  afterAll(() => server.close());
+  import('../mocks/server.js')
+    .then(({ server }) => {
+      beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
+      afterEach(() => server.resetHandlers());
+      afterAll(() => server.close());
+    })
+    .catch((err) => {
+      console.error('MSW bootstrap failed', err);
+    });
 }
 
 // Silence noisy console.error logs in tests unless explicitly asserted
