@@ -437,14 +437,26 @@ export async function applyESignStamp(doc, info) {
       }
     }
   })();
-  let QR;
+  let qrModule;
   try {
-    QR = await import('qrcode');
+    qrModule = await import('qrcode');
   } catch {
-    QR = null;
+    qrModule = null;
   }
-  const qrCreate = typeof QR?.create === 'function' ? QR.create : null;
-  const qrToDataURL = typeof QR?.toDataURL === 'function' ? QR.toDataURL : null;
+  const qrNamespace =
+    qrModule && typeof qrModule === 'object'
+      ? typeof qrModule.default === 'object' && qrModule.default
+        ? qrModule.default
+        : qrModule
+      : null;
+  const qrCreate =
+    qrNamespace && typeof qrNamespace.create === 'function'
+      ? qrNamespace.create
+      : null;
+  const qrToDataURL =
+    qrNamespace && typeof qrNamespace.toDataURL === 'function'
+      ? qrNamespace.toDataURL
+      : null;
   // Prefer vector modules to avoid raster blurring when scaling/printing
   let drewVector = false;
   let wantRasterFallback = false;

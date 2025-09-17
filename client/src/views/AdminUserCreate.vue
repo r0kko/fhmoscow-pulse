@@ -22,9 +22,7 @@ const formRef = ref(null);
 const loading = ref(false);
 const { showToast } = useToast();
 
-onMounted(() => {
-  loadSexes();
-});
+onMounted(loadSexes);
 
 async function loadSexes() {
   try {

@@ -53,7 +53,7 @@ const logger = createLogger({
 /* eslint-disable security/detect-unsafe-regex */
 // Pattern is anchored and uses bounded character classes to avoid catastrophic backtracking
 const combinedLineRe =
-  /^(\S+)\s+\S+\s+\S+\s+\[[^\]]+\]\s+"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+([^\s"]+)\s+HTTP\/[0-9.]+"\s+(\d{3})\s+\S+\s+"[^"]*"\s+"([^"]*)"(?:\s+(\d+)ms)?$/;
+  /^(\S+)\s+\S+\s+\S+\s+\[[^\u005d]+\]\s+"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+([^\s"]+)\s+HTTP\/[0-9.]+"\s+(\d{3})\s+\S+\s+"[^"]*"\s+"([^"]*)"(?:\s+(\d+)ms)?$/;
 /* eslint-enable security/detect-unsafe-regex */
 
 consoleTransport._stream = {

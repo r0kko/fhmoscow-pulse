@@ -437,7 +437,7 @@ async function saveStep() {
     }
     await apiFetch('/profile/complete', { method: 'POST' });
     auth.user.status = 'AWAITING_CONFIRMATION';
-    router.push('/');
+    await router.push('/');
   } catch (e) {
     error.value = e.message;
   } finally {

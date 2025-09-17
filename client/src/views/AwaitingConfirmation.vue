@@ -14,7 +14,7 @@ async function checkStatus() {
   try {
     await fetchCurrentUser();
     if (auth.user?.status !== 'AWAITING_CONFIRMATION') {
-      router.push('/');
+      await router.push('/');
     }
   } catch (_) {
     // ignore errors
@@ -28,12 +28,14 @@ async function logout() {
     clearAuth();
   });
   await initCsrf().catch(() => {});
-  router.push('/login');
+  await router.push('/login');
 }
 
 onMounted(() => {
-  checkStatus();
-  intervalId = setInterval(checkStatus, 30000);
+  void checkStatus();
+  intervalId = setInterval(() => {
+    void checkStatus();
+  }, 30000);
 });
 
 onUnmounted(() => {

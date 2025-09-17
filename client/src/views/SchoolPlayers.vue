@@ -191,7 +191,7 @@ async function openRosterIfEligible(payload) {
     const staffTotal = Number(staffRes?.total || 0);
     if (playersTotal === 0 && staffTotal === 0) return; // block navigation
 
-    router.push({
+    await router.push({
       path: `/school-players/season/${payload.seasonId}/year/${payload.teamYear}`,
       query: { club_id: payload.clubId, team_id: payload.teamId },
     });

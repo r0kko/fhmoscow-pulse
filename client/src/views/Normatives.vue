@@ -40,11 +40,11 @@ function applyTooltips() {
   });
 }
 
-onMounted(() => {
+onMounted(async () => {
   modal = new Modal(modalRef.value);
   seasonCanvas = new Offcanvas(seasonRef.value);
   uploadModal = new Modal(uploadModalRef.value);
-  loadSeasons();
+  await loadSeasons();
 });
 
 watch(filterSeason, load);
@@ -69,7 +69,7 @@ async function loadSeasons() {
     seasons.value = [];
     filterSeason.value = '';
   } finally {
-    load();
+    await load();
   }
 }
 

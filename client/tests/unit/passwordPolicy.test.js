@@ -1,4 +1,4 @@
-import { evaluatePassword } from '../../src/utils/passwordPolicy.js';
+import { evaluatePassword } from '@/utils/passwordPolicy.js';
 
 describe('passwordPolicy.evaluatePassword', () => {
   it('flags weak common passwords', () => {

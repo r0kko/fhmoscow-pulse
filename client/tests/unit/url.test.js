@@ -1,4 +1,4 @@
-import { withHttp } from '../../src/utils/url.js';
+import { withHttp } from '@/utils/url.js';
 
 describe('withHttp', () => {
   it('returns as-is for http/https', () => {

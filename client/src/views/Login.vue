@@ -72,21 +72,21 @@ async function login() {
     auth.user = data.user;
     auth.roles = data.roles || [];
     auth.mustChangePassword = !!data.must_change_password;
+    let destination = '/';
     if (auth.mustChangePassword) {
-      router.push('/change-password');
+      destination = '/change-password';
     } else if (
       data.awaiting_confirmation ||
       auth.user.status === 'AWAITING_CONFIRMATION'
     ) {
-      router.push('/awaiting-confirmation');
+      destination = '/awaiting-confirmation';
     } else if (
       auth.user.status &&
       auth.user.status.startsWith('REGISTRATION_STEP')
     ) {
-      router.push('/complete-profile');
-    } else {
-      router.push('/');
+      destination = '/complete-profile';
     }
+    await router.push(destination);
   } catch (err) {
     error.value = err.message || 'Ошибка авторизации';
   } finally {

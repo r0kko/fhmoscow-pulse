@@ -87,7 +87,7 @@ async function finish() {
     });
     showToast('Посещаемость отмечена');
     await loadData();
-    router.push('/camps');
+    await router.push('/camps');
   } catch (e) {
     alert(e.message);
   }

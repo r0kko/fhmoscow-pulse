@@ -1211,7 +1211,7 @@ async function save() {
     saving.value = false;
     if (saveNext) {
       saveNext = false;
-      save(false);
+      await save(false);
     }
   }
 }
@@ -1223,7 +1223,7 @@ function scheduleAutoSave() {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    save(false);
+    void save(false);
   }, 400);
 }
 

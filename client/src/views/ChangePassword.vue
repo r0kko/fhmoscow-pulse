@@ -67,7 +67,7 @@ async function submit() {
     auth.user = data.user;
     auth.roles = data.roles || [];
     auth.mustChangePassword = false;
-    router.push('/');
+    await router.push('/');
   } catch (e) {
     error.value = e.message || 'Не удалось изменить пароль';
   } finally {

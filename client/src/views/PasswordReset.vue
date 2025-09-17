@@ -82,7 +82,7 @@ async function finish() {
         password: password.value,
       }),
     });
-    router.push('/login');
+    await router.push('/login');
   } catch (err) {
     error.value = err.message || 'Ошибка';
   } finally {

@@ -162,7 +162,7 @@ onMounted(async () => {
     scheduleForm.value.dtLocal = toDateTimeLocal(match.value?.date_start);
     scheduleForm.value.groundId = match.value?.ground_details?.id || '';
     // Load staff and grounds lazily
-    loadAux();
+    void loadAux();
   } catch (e) {
     error.value = e.message || 'Ошибка загрузки данных';
   } finally {

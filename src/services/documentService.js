@@ -2474,6 +2474,18 @@ async function regenerate(documentId, actorId) {
   ) {
     throw new ServiceError('document_status_invalid', 400);
   }
+  const parseDocDescription = (fallback = {}) => {
+    if (!doc.description) return { ...fallback };
+    try {
+      const parsed = JSON.parse(doc.description);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch {
+      /* noop */
+    }
+    return { ...fallback };
+  };
   let pdf;
   const esign =
     doc.DocumentStatus?.alias === 'SIGNED'
@@ -2509,12 +2521,7 @@ async function regenerate(documentId, actorId) {
       esign,
     });
   } else if (doc.DocumentType.alias === 'BANK_DETAILS_CHANGE') {
-    let changes = {};
-    try {
-      changes = doc.description ? JSON.parse(doc.description) : {};
-    } catch {
-      changes = {};
-    }
+    const changes = parseDocDescription();
     pdf = await buildBankDetailsChangePdf(doc.recipient, changes, {
       docId: doc.id,
       number: doc.number,
@@ -2522,12 +2529,7 @@ async function regenerate(documentId, actorId) {
       esign,
     });
   } else if (doc.DocumentType.alias === 'EQUIPMENT_TRANSFER') {
-    let payload = {};
-    try {
-      payload = doc.description ? JSON.parse(doc.description) : {};
-    } catch {
-      payload = {};
-    }
+    const payload = parseDocDescription();
     pdf = await buildEquipmentTransferPdf(
       doc.recipient,
       payload?.equipment || {},

@@ -341,6 +341,8 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
       background,
       primaryColor,
       primarySize,
+      secondaryColor,
+      secondarySize,
     } = PDF_STYLE.infoBox;
     // Slightly increase horizontal inset inside the box
     const insetX = padX + 2;
@@ -423,9 +425,9 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
       textY = doc.y + lineGap;
     };
     renderLine('team', teamLine, regular, primarySize, primaryColor);
-    renderLine('trophy', compLine, regular, primarySize, primaryColor);
+    renderLine('trophy', compLine, regular, secondarySize, secondaryColor);
     // Composed match/date/tour/teams line
-    renderLine('calendar', matchLine, regular, primarySize, primaryColor);
+    renderLine('calendar', matchLine, regular, secondarySize, secondaryColor);
     // Move cursor below box and caption
     doc.y = boxStartY + boxH;
     doc.fillColor('#000000');
@@ -918,7 +920,8 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
         background,
         primaryColor,
         primarySize,
-        _secondarySize,
+        secondaryColor,
+        secondarySize,
       } = PDF_STYLE.infoBox;
       const insetX = padX + 2;
       const textX = boxX + insetX;
@@ -992,9 +995,9 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
         textY = doc.y + lineGap;
       };
       renderLine('team', teamLine, regular, primarySize, primaryColor);
-      renderLine('trophy', compLine, regular, primarySize, primaryColor);
+      renderLine('trophy', compLine, regular, secondarySize, secondaryColor);
       // Composed match/date/tour/teams line
-      renderLine('calendar', matchLine, regular, primarySize, primaryColor);
+      renderLine('calendar', matchLine, regular, secondarySize, secondaryColor);
       doc.y = boxStartY + boxH;
       doc.fillColor('#000000');
       doc.moveDown(0.6);
@@ -1400,6 +1403,8 @@ async function exportRepresentativesPdf(matchId, teamId, actorId, opts = {}) {
     background: bg2,
     primaryColor: pc2,
     primarySize: ps2,
+    secondaryColor: sc2,
+    secondarySize: ss2,
   } = PDF_STYLE.infoBox;
   // Slightly increase horizontal inset inside the box
   const insetX2 = padX2 + 2;
@@ -1482,10 +1487,10 @@ async function exportRepresentativesPdf(matchId, teamId, actorId, opts = {}) {
     textY2 = doc.y + lineGap2;
   };
   renderLine2('team', teamLine2, regular, ps2, pc2);
-  renderLine2('trophy', compLine2, regular, ps2, pc2);
+  renderLine2('trophy', compLine2, regular, ss2, sc2);
   // One compact labeled handwriting line: "Матч и дата: ________"
   // Composed match/date/tour/teams line
-  renderLine2('calendar', matchLine2, regular, ps2, pc2);
+  renderLine2('calendar', matchLine2, regular, ss2, sc2);
   // Below box
   doc.y = boxStartY2 + boxH2;
   doc.fillColor('#000000');

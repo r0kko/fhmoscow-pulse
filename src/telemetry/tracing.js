@@ -19,8 +19,6 @@ export async function initTracing() {
     const { resourceFromAttributes, defaultResource } = await import(
       '@opentelemetry/resources'
     );
-    const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } =
-      await import('@opentelemetry/semantic-conventions');
     const { getNodeAutoInstrumentations } = await import(
       '@opentelemetry/auto-instrumentations-node'
     );
@@ -36,8 +34,8 @@ export async function initTracing() {
         ? defaultResource()
         : resourceFromAttributes({});
     const serviceResource = resourceFromAttributes({
-      [SEMRESATTRS_SERVICE_NAME]: serviceName,
-      [SEMRESATTRS_SERVICE_VERSION]: version,
+      'service.name': serviceName,
+      'service.version': version,
     });
     const sdk = new NodeSDK({
       resource: baseResource.merge(serviceResource),

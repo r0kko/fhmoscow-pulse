@@ -13,7 +13,7 @@ const form = ref({ vehicle: '', number: '' });
 const errors = ref({});
 
 const plateRegex =
-  /^[ABEKMHOPCTYXАВЕКМНОРСТУХ]{1}\d{3}[ABEKMHOPCTYXАВЕКМНОРСТУХ]{2}\d{2,3}$/;
+  /^[ABEKMHOPCTYXАВЕКМНОРСТУХ]\d{3}[ABEKMHOPCTYXАВЕКМНОРСТУХ]{2}\d{2,3}$/;
 
 function open() {
   form.value = { vehicle: '', number: '' };

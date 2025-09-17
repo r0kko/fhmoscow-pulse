@@ -46,7 +46,7 @@ onMounted(async () => {
     try {
       await fetchCurrentUser();
     } catch (e) {
-      logout();
+      await logout();
     }
   }
 });
@@ -56,6 +56,6 @@ async function logout() {
     clearAuth();
   });
   await initCsrf().catch(() => {});
-  router.push('/login');
+  await router.push('/login');
 }
 </script>

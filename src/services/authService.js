@@ -4,7 +4,6 @@ import User from '../models/user.js';
 import { UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import {
-  decodeJwt,
   signAccessToken,
   signRefreshTokenWithJti,
   verifyRefreshToken,
@@ -73,7 +72,7 @@ function issueTokens(user) {
   const refreshToken = signRefreshTokenWithJti(user, undefined); // function returns token string
   // best-effort: remember current jti for this version
   try {
-    const payload = decodeJwt(refreshToken);
+    const payload = verifyRefreshToken(refreshToken);
     if (payload?.jti && payload?.sub && payload?.ver != null) {
       void rememberIssued({
         sub: payload.sub,

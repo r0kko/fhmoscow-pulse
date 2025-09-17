@@ -5,6 +5,55 @@ import { Match, MatchBroadcastLink } from '../models/index.js';
 import { extractFirstUrl } from '../utils/url.js';
 import sequelize from '../config/database.js';
 
+async function syncBroadcastLinks({
+  matchId,
+  desired,
+  locals,
+  actorId,
+  transaction,
+}) {
+  const byPos = new Map(locals.map((l) => [l.position, l]));
+  const seen = new Set();
+  let updated = 0;
+  let deleted = 0;
+
+  for (const d of desired) {
+    seen.add(d.position);
+    const local = byPos.get(d.position);
+    if (!local) {
+      await MatchBroadcastLink.create(
+        {
+          match_id: matchId,
+          position: d.position,
+          url: d.url,
+          created_by: actorId,
+          updated_by: actorId,
+        },
+        { transaction }
+      );
+      updated += 1;
+      continue;
+    }
+    if (local.deletedAt) {
+      await local.restore({ transaction });
+    }
+    if (local.url !== d.url) {
+      await local.update({ url: d.url, updated_by: actorId }, { transaction });
+      updated += 1;
+    }
+  }
+
+  for (const [pos, local] of byPos.entries()) {
+    if (!seen.has(pos) && !local.deletedAt) {
+      await local.update({ updated_by: actorId }, { transaction });
+      await local.destroy({ transaction });
+      deleted += 1;
+    }
+  }
+
+  return { updated, deleted };
+}
+
 export async function reconcileForMatch(matchId, actorId = null, tx = null) {
   const m = await Match.findByPk(matchId, {
     attributes: ['id', 'external_id'],
@@ -28,38 +77,13 @@ export async function reconcileForMatch(matchId, actorId = null, tx = null) {
     paranoid: false,
     transaction: tx,
   });
-  const byPos = new Map(locals.map((l) => [l.position, l]));
-  const seen = new Set();
-  for (const d of desired) {
-    seen.add(d.position);
-    const local = byPos.get(d.position);
-    if (!local) {
-      await MatchBroadcastLink.create(
-        {
-          match_id: matchId,
-          position: d.position,
-          url: d.url,
-          created_by: actorId,
-          updated_by: actorId,
-        },
-        { transaction: tx }
-      );
-      continue;
-    }
-    if (local.deletedAt) await local.restore({ transaction: tx });
-    if (local.url !== d.url) {
-      await local.update(
-        { url: d.url, updated_by: actorId },
-        { transaction: tx }
-      );
-    }
-  }
-  for (const [pos, local] of byPos.entries()) {
-    if (!seen.has(pos) && !local.deletedAt) {
-      await local.update({ updated_by: actorId }, { transaction: tx });
-      await local.destroy({ transaction: tx });
-    }
-  }
+  await syncBroadcastLinks({
+    matchId,
+    desired,
+    locals,
+    actorId,
+    transaction: tx,
+  });
   return { ok: true };
 }
 
@@ -128,41 +152,15 @@ export async function reconcileWindow({
           ].filter((x) => !!x.url)
         : [];
       const locals = linksByMatch.get(m.id) || [];
-      const byPos = new Map(locals.map((l) => [l.position, l]));
-      const seen = new Set();
-      for (const d of desired) {
-        seen.add(d.position);
-        const local = byPos.get(d.position);
-        if (!local) {
-          await MatchBroadcastLink.create(
-            {
-              match_id: m.id,
-              position: d.position,
-              url: d.url,
-              created_by: actorId,
-              updated_by: actorId,
-            },
-            { transaction: tx }
-          );
-          updated += 1;
-          continue;
-        }
-        if (local.deletedAt) await local.restore({ transaction: tx });
-        if (local.url !== d.url) {
-          await local.update(
-            { url: d.url, updated_by: actorId },
-            { transaction: tx }
-          );
-          updated += 1;
-        }
-      }
-      for (const [pos, local] of byPos.entries()) {
-        if (!seen.has(pos) && !local.deletedAt) {
-          await local.update({ updated_by: actorId }, { transaction: tx });
-          await local.destroy({ transaction: tx });
-          deleted += 1;
-        }
-      }
+      const result = await syncBroadcastLinks({
+        matchId: m.id,
+        desired,
+        locals,
+        actorId,
+        transaction: tx,
+      });
+      updated += result.updated;
+      deleted += result.deleted;
     }
   });
 

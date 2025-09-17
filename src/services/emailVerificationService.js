@@ -13,6 +13,25 @@ function generateCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
 
+async function validateCodeOrThrow(user, code) {
+  const rec = await EmailCode.findOne({
+    where: {
+      user_id: user.id,
+      code,
+      expires_at: { [Op.gt]: new Date() },
+    },
+  });
+  if (rec) {
+    attempts.clear(user.id);
+    return;
+  }
+  const count = attempts.markFailed(user.id);
+  if (count >= 5) {
+    throw new ServiceError('too_many_attempts');
+  }
+  throw new ServiceError('invalid_code');
+}
+
 export async function sendCode(user, type = 'verify', context = {}) {
   const code = generateCode();
   const expires = new Date(Date.now() + 15 * 60 * 1000);
@@ -35,21 +54,7 @@ export async function sendCode(user, type = 'verify', context = {}) {
 }
 
 export async function verifyCode(user, code, statusAlias = 'ACTIVE') {
-  const rec = await EmailCode.findOne({
-    where: {
-      user_id: user.id,
-      code,
-      expires_at: { [Op.gt]: new Date() },
-    },
-  });
-  if (!rec) {
-    const count = attempts.markFailed(user.id);
-    if (count >= 5) {
-      throw new ServiceError('too_many_attempts');
-    }
-    throw new ServiceError('invalid_code');
-  }
-  attempts.clear(user.id);
+  await validateCodeOrThrow(user, code);
   const status = await UserStatus.findOne({ where: { alias: statusAlias } });
   if (!status) throw new ServiceError('status_not_found', 404);
   await Promise.all([
@@ -59,21 +64,7 @@ export async function verifyCode(user, code, statusAlias = 'ACTIVE') {
 }
 
 export async function verifyCodeOnly(user, code) {
-  const rec = await EmailCode.findOne({
-    where: {
-      user_id: user.id,
-      code,
-      expires_at: { [Op.gt]: new Date() },
-    },
-  });
-  if (!rec) {
-    const count = attempts.markFailed(user.id);
-    if (count >= 5) {
-      throw new ServiceError('too_many_attempts');
-    }
-    throw new ServiceError('invalid_code');
-  }
-  attempts.clear(user.id);
+  await validateCodeOrThrow(user, code);
   await EmailCode.destroy({ where: { user_id: user.id } });
 }
 

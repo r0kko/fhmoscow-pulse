@@ -142,7 +142,7 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
 
   // Kick initial full sync with retry/backoff so container restarts don't miss it
   setReady(true); // API becomes ready as soon as core services are up
-  (async () => {
+  void (async () => {
     const delay = (ms) => new Promise((r) => setTimeout(r, ms));
     // Fixed policy: attempt for ~10 minutes with exponential backoff
     const maxAttempts = 12;

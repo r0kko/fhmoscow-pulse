@@ -364,7 +364,7 @@ if (typeof window !== 'undefined') {
     const expMs = payload.exp * 1000;
     if (expMs - now < 90 * 1000) {
       // less than 90s left — refresh now
-      refreshToken();
+      void refreshToken();
     }
   };
   try {

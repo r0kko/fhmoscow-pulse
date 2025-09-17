@@ -1,6 +1,13 @@
 import { Vehicle } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
+function normalizeCount(result) {
+  if (Array.isArray(result)) {
+    return result.reduce((acc, item) => acc + Number(item?.count || 0), 0);
+  }
+  return Number(result || 0);
+}
+
 async function listForUser(userId) {
   return Vehicle.findAll({
     where: { user_id: userId },
@@ -9,7 +16,9 @@ async function listForUser(userId) {
 }
 
 async function createForUser(userId, data, actorId) {
-  const count = await Vehicle.count({ where: { user_id: userId } });
+  const count = normalizeCount(
+    await Vehicle.count({ where: { user_id: userId } })
+  );
   if (count >= 3) throw new ServiceError('vehicle_limit');
   const payload = {
     user_id: userId,

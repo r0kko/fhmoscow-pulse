@@ -127,7 +127,7 @@ async function finish() {
     setAuthToken(data.access_token);
     auth.user = data.user;
     auth.roles = data.roles || [];
-    router.push('/complete-profile');
+    await router.push('/complete-profile');
   } catch (err) {
     error.value = err.message || 'Ошибка регистрации';
   } finally {
