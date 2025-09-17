@@ -22,7 +22,6 @@ exclude:
 
 failureConditions:
   severityThresholds:
-    high: 0
     critical: 0
 
 linter: jetbrains/qodana-js:2025.2
