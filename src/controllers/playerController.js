@@ -12,6 +12,172 @@ import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
 
 export default {
+  async gallery(req, res) {
+    try {
+      const {
+        page = '1',
+        limit = '40',
+        search,
+        q,
+        club_id,
+        team_id,
+        mine,
+        season_id,
+        require_contract,
+        require_photo,
+        without_photo,
+        photo_filter,
+        team_birth_year,
+      } = req.query;
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = (scope.allowedClubIds || []).map((id) =>
+        String(id)
+      );
+      const allowedTeamIds = (scope.allowedTeamIds || []).map((id) =>
+        String(id)
+      );
+      const requestedClubId = club_id ? String(club_id) : null;
+      const requestedTeamId = team_id ? String(team_id) : null;
+
+      const useScopedAccess = !isAdmin || mine === 'true';
+      let clubIds = [];
+      let teamIds = [];
+
+      if (useScopedAccess) {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return res.status(403).json({ error: 'Доступ запрещён' });
+        }
+        if (requestedClubId) {
+          if (!allowedClubIds.includes(requestedClubId)) {
+            return res.status(403).json({ error: 'Доступ запрещён' });
+          }
+          clubIds = [requestedClubId];
+        } else {
+          clubIds = [...allowedClubIds];
+        }
+        if (requestedTeamId) {
+          if (!allowedTeamIds.includes(requestedTeamId)) {
+            return res.status(403).json({ error: 'Доступ запрещён' });
+          }
+          teamIds = [requestedTeamId];
+        } else {
+          teamIds = [...allowedTeamIds];
+        }
+      } else {
+        if (requestedClubId) clubIds = [requestedClubId];
+        if (requestedTeamId) teamIds = [requestedTeamId];
+      }
+
+      const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 40));
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+
+      const seasonIds = season_id
+        ? String(season_id)
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean)
+        : [];
+      const teamBirthYears = team_birth_year
+        ? String(team_birth_year)
+            .split(',')
+            .map((val) => val.trim())
+            .filter(Boolean)
+        : [];
+      const normalizedPhotoFilter = (photo_filter || '').toLowerCase();
+      const requirePhotoFlag =
+        require_photo === 'true' || normalizedPhotoFilter === 'with';
+      const requirePhotoMissingFlag =
+        without_photo === 'true' || normalizedPhotoFilter === 'without';
+      if (requirePhotoFlag && requirePhotoMissingFlag) {
+        return res
+          .status(400)
+          .json({ error: 'Некорректный фильтр фотографий' });
+      }
+      const result = await playerService.listForGallery({
+        page: pageNum,
+        limit: limitNum,
+        search: search || q || undefined,
+        clubIds,
+        teamIds,
+        seasonIds,
+        requireActiveClub: require_contract !== 'false',
+        requirePhoto: requirePhotoFlag,
+        requirePhotoMissing: requirePhotoMissingFlag,
+        teamBirthYears,
+      });
+
+      const players = result.rows.map(playerMapper.toPublic);
+      const total = Number(result.count || 0);
+      const perPage = Number(result.pageSize || limitNum);
+      const totalPages = perPage ? Math.ceil(total / perPage) : 0;
+      const currentPage = Math.min(
+        result.page || pageNum,
+        totalPages || pageNum
+      );
+
+      return res.json({
+        players,
+        total,
+        page: currentPage,
+        per_page: perPage,
+        total_pages: totalPages,
+      });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async galleryFilters(req, res) {
+    try {
+      const { mine, club_id } = req.query;
+      const scope = req.access || {};
+      const isAdmin = Boolean(scope.isAdmin);
+      const allowedClubIds = (scope.allowedClubIds || []).map((id) =>
+        String(id)
+      );
+      const allowedTeamIds = (scope.allowedTeamIds || []).map((id) =>
+        String(id)
+      );
+      const requestedClubId = club_id ? String(club_id) : null;
+
+      const respondForbidden = () =>
+        res.status(403).json({ error: 'Доступ запрещён' });
+
+      if (!isAdmin || mine === 'true') {
+        if (!allowedClubIds.length && !allowedTeamIds.length) {
+          return respondForbidden();
+        }
+        if (requestedClubId && !allowedClubIds.includes(requestedClubId)) {
+          return respondForbidden();
+        }
+        const payload = await playerService.listGalleryFilters({
+          clubIds: allowedClubIds,
+          teamIds: allowedTeamIds,
+          filterClubId: requestedClubId || undefined,
+        });
+        return res.json(payload);
+      }
+
+      const scopedClubIds = (scope.allowedClubIds || []).map((id) =>
+        String(id)
+      );
+      if (
+        requestedClubId &&
+        scopedClubIds.length &&
+        !scopedClubIds.includes(requestedClubId)
+      ) {
+        return respondForbidden();
+      }
+      const payload = await playerService.listGalleryFilters({
+        clubIds: scopedClubIds,
+        teamIds: allowedTeamIds,
+        filterClubId: requestedClubId || undefined,
+      });
+      return res.json(payload);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async seasonSummary(req, res) {
     try {
       const { mine, club_id } = req.query;

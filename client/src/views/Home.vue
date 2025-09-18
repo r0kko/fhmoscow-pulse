@@ -112,6 +112,11 @@ const schoolSections = computed(() =>
                 to: '/school-players',
               },
               {
+                title: 'Фотографии игроков',
+                icon: 'bi-camera',
+                to: '/school-players/photos',
+              },
+              {
                 title: 'Стадионы',
                 icon: 'bi-geo-alt',
                 to: '/school-grounds',

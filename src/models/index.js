@@ -22,6 +22,7 @@ import BankAccount from './bankAccount.js';
 import Vehicle from './vehicle.js';
 import MedicalCertificate from './medicalCertificate.js';
 import File from './file.js';
+import ExtFile from './extFile.js';
 import MedicalCertificateType from './medicalCertificateType.js';
 import MedicalCertificateFile from './medicalCertificateFile.js';
 import TaxationType from './taxationType.js';
@@ -136,6 +137,14 @@ Ground.belongsToMany(Team, { through: GroundTeam, foreignKey: 'ground_id' });
 Team.belongsToMany(Ground, { through: GroundTeam, foreignKey: 'team_id' });
 
 /* players and memberships */
+ExtFile.hasMany(Player, {
+  foreignKey: 'photo_ext_file_id',
+  as: 'PlayersWithPhoto',
+});
+Player.belongsTo(ExtFile, {
+  foreignKey: 'photo_ext_file_id',
+  as: 'Photo',
+});
 Player.belongsToMany(Team, { through: TeamPlayer, foreignKey: 'player_id' });
 Team.belongsToMany(Player, { through: TeamPlayer, foreignKey: 'team_id' });
 Team.hasMany(TeamPlayer, { foreignKey: 'team_id' });
@@ -620,6 +629,7 @@ export {
   TrainingRefereeGroup,
   TrainingCourse,
   File,
+  ExtFile,
   MedicalCertificateType,
   MedicalCertificateFile,
   MedicalCenter,

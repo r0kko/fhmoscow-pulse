@@ -15,6 +15,20 @@ router.get(
   controller.list
 );
 router.get(
+  '/gallery',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.gallery
+);
+router.get(
+  '/gallery/filters',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.galleryFilters
+);
+router.get(
   '/facets',
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),

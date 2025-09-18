@@ -76,6 +76,19 @@ describe('edgeFade directive', () => {
     expect(el.classList.contains('show-right-fade')).toBe(false);
   });
 
+  it('updates fades when content metrics change', () => {
+    const el = createMockElement({
+      scrollWidth: 600,
+      clientWidth: 200,
+      scrollLeft: 0,
+    });
+    edgeFade.mounted(el);
+    el.scrollLeft = 450;
+    edgeFade.updated(el);
+    expect(el.classList.contains('show-left-fade')).toBe(true);
+    expect(el.classList.contains('show-right-fade')).toBe(false);
+  });
+
   it('removes listeners on unmount', () => {
     const el = createMockElement({
       scrollWidth: 500,

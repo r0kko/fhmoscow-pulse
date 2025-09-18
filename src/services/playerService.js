@@ -4,6 +4,7 @@ import { QueryTypes } from 'sequelize';
 import {
   Club,
   ClubPlayer,
+  ExtFile,
   Player,
   PlayerRole,
   Season,
@@ -19,6 +20,21 @@ import {
 import sequelize from '../config/database.js';
 import logger from '../../logger.js';
 import { ensureArchivedImported, statusFilters } from '../utils/sync.js';
+
+import { syncExtFiles } from './extFileService.js';
+
+async function resolveSeasonIds(explicitIds = []) {
+  const normalized = (explicitIds || [])
+    .map((id) => String(id).trim())
+    .filter(Boolean);
+  if (normalized.length) return normalized;
+
+  const activeSeasons = await Season.findAll({
+    attributes: ['id'],
+    where: { active: true },
+  });
+  return activeSeasons.map((season) => season.id);
+}
 
 async function syncExternal(actorId = null) {
   // 1) Roles (no object_status on external)
@@ -88,6 +104,29 @@ async function syncExternal(actorId = null) {
     extActive = await ExtPlayer.findAll();
     extArchived = [];
   }
+  const photoIdSet = new Set();
+  for (const player of [...extActive, ...extArchived]) {
+    const raw = player?.photo_id;
+    if (raw === null || raw === undefined) continue;
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric)) photoIdSet.add(numeric);
+  }
+  let extFileStats = {
+    upserts: 0,
+    restored: 0,
+    createdArchived: 0,
+    softDeletedArchived: 0,
+    softDeletedMissing: 0,
+  };
+  let extFileIdByExternalId = new Map();
+  if (photoIdSet.size) {
+    const result = await syncExtFiles({
+      actorId,
+      externalIds: Array.from(photoIdSet),
+    });
+    extFileStats = result.stats;
+    extFileIdByExternalId = result.idByExternalId;
+  }
   const playerActiveIds = extActive.map((p) => p.id);
   const playerArchivedIds = extArchived.map((p) => p.id);
   const playerKnownIds = Array.from(
@@ -118,6 +157,10 @@ async function syncExternal(actorId = null) {
 
     for (const p of extActive) {
       const local = localByExt.get(p.id);
+      const photoExtFileId =
+        p.photo_id === null || p.photo_id === undefined
+          ? null
+          : extFileIdByExternalId.get(Number(p.photo_id)) || null;
       const desired = {
         surname: p.surname,
         name: p.name,
@@ -126,6 +169,7 @@ async function syncExternal(actorId = null) {
         grip: p.grip,
         height: p.height,
         weight: p.weight,
+        photo_ext_file_id: photoExtFileId,
       };
       if (!local) {
         await Player.create(
@@ -156,6 +200,8 @@ async function syncExternal(actorId = null) {
       if (!equal(local.grip, desired.grip)) updates.grip = desired.grip;
       if (!equal(local.height, desired.height)) updates.height = desired.height;
       if (!equal(local.weight, desired.weight)) updates.weight = desired.weight;
+      if (!equal(local.photo_ext_file_id, desired.photo_ext_file_id))
+        updates.photo_ext_file_id = desired.photo_ext_file_id;
       if (Object.keys(updates).length) {
         updates.updated_by = actorId;
         await local.update(updates, { transaction: tx });
@@ -176,6 +222,10 @@ async function syncExternal(actorId = null) {
         grip: p.grip,
         height: p.height,
         weight: p.weight,
+        photo_ext_file_id:
+          p.photo_id === null || p.photo_id === undefined
+            ? null
+            : extFileIdByExternalId.get(Number(p.photo_id)) || null,
       }),
       actorId,
       tx
@@ -555,6 +605,15 @@ async function syncExternal(actorId = null) {
   });
 
   logger.info(
+    'Player photo files sync: upserts=%d, restored=%d, archivedCreated=%d, softDeletedArchived=%d, softDeletedMissing=%d',
+    extFileStats.upserts,
+    extFileStats.restored,
+    extFileStats.createdArchived,
+    extFileStats.softDeletedArchived,
+    extFileStats.softDeletedMissing
+  );
+
+  logger.info(
     'Player sync: players upserted=%d, softDeleted=%d (archived=%d, missing=%d); roles upserted=%d, softDeleted=%d; clubPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
     playerUpserts,
     playerSoftDeletedMissing + playerSoftDeletedArchived,
@@ -573,6 +632,13 @@ async function syncExternal(actorId = null) {
   );
 
   return {
+    ext_files: {
+      upserts: extFileStats.upserts,
+      restored: extFileStats.restored,
+      createdArchived: extFileStats.createdArchived,
+      softDeletedArchived: extFileStats.softDeletedArchived,
+      softDeletedMissing: extFileStats.softDeletedMissing,
+    },
     players: {
       upserts: playerUpserts,
       softDeletedTotal: playerSoftDeletedMissing + playerSoftDeletedArchived,
@@ -619,7 +685,24 @@ async function list(options = {}) {
     whereClause.deleted_at = { [Op.ne]: null };
   }
 
-  const include = [];
+  const include = [
+    {
+      model: ExtFile,
+      as: 'Photo',
+      required: false,
+      attributes: [
+        'id',
+        'external_id',
+        'module',
+        'name',
+        'mime_type',
+        'size',
+        'object_status',
+        'date_create',
+        'date_update',
+      ],
+    },
+  ];
   // Filter by clubs (optionally by season via through ClubPlayer)
   if ((options.clubIds && options.clubIds.length) || options.seasonId) {
     const throughWhere = {};
@@ -717,11 +800,170 @@ async function list(options = {}) {
   });
 }
 
+async function listForGallery(options = {}) {
+  const page = Math.max(1, parseInt(options.page || 1, 10));
+  const limit = Math.max(1, Math.min(100, parseInt(options.limit || 40, 10)));
+  const offset = (page - 1) * limit;
+
+  const whereClause = {};
+  if (options.search) {
+    const term = `%${options.search}%`;
+    whereClause[Op.or] = [
+      { surname: { [Op.iLike]: term } },
+      { name: { [Op.iLike]: term } },
+      { patronymic: { [Op.iLike]: term } },
+    ];
+  }
+
+  if (options.requirePhoto) {
+    whereClause.photo_ext_file_id = { [Op.ne]: null };
+  } else if (options.requirePhotoMissing) {
+    whereClause.photo_ext_file_id = { [Op.is]: null };
+  }
+
+  const seasonIds = await resolveSeasonIds(options.seasonIds);
+  const teamBirthYears = (options.teamBirthYears || [])
+    .map((year) => parseInt(year, 10))
+    .filter((year) => Number.isFinite(year));
+
+  const include = [
+    {
+      model: ExtFile,
+      as: 'Photo',
+      required: Boolean(options.requirePhoto),
+      attributes: [
+        'id',
+        'external_id',
+        'module',
+        'name',
+        'mime_type',
+        'size',
+        'object_status',
+        'date_create',
+        'date_update',
+      ],
+    },
+    {
+      model: Club,
+      as: 'Clubs',
+      attributes: ['id', 'name', 'external_id'],
+      through: {
+        attributes: ['season_id'],
+        where: seasonIds.length
+          ? { season_id: { [Op.in]: seasonIds } }
+          : undefined,
+      },
+      required: Boolean(options.requireActiveClub),
+      where: options.clubIds?.length
+        ? { id: { [Op.in]: options.clubIds } }
+        : undefined,
+    },
+    {
+      model: Team,
+      as: 'Teams',
+      attributes: ['id', 'name', 'external_id', 'birth_year'],
+      through: {
+        attributes: ['season_id'],
+        where: seasonIds.length
+          ? { season_id: { [Op.in]: seasonIds } }
+          : undefined,
+      },
+      required: Boolean(options.teamIds?.length || teamBirthYears.length),
+      where: {
+        ...(options.teamIds?.length
+          ? { id: { [Op.in]: options.teamIds } }
+          : {}),
+        ...(teamBirthYears.length
+          ? { birth_year: { [Op.in]: teamBirthYears } }
+          : {}),
+      },
+    },
+  ];
+
+  const membershipClauses = [];
+  const clubIds = options.clubIds?.filter(Boolean) || [];
+  const requireActiveClub = Boolean(options.requireActiveClub);
+  if (clubIds.length || seasonIds.length || requireActiveClub) {
+    const parts = ['cp.player_id = "Player"."id"', 'cp.deleted_at IS NULL'];
+    if (clubIds.length) {
+      const list = clubIds.map((id) => sequelize.escape(id)).join(', ');
+      parts.push(`cp.club_id IN (${list})`);
+    }
+    if (seasonIds.length) {
+      const list = seasonIds.map((id) => sequelize.escape(id)).join(', ');
+      parts.push(`cp.season_id IN (${list})`);
+    } else if (requireActiveClub) {
+      parts.push('cp.season_id IS NOT NULL');
+    }
+    membershipClauses.push(
+      sequelize.literal(`EXISTS (
+        SELECT 1 FROM club_players cp
+        WHERE ${parts.join(' AND ')}
+      )`)
+    );
+  }
+  const teamIds = options.teamIds?.filter(Boolean) || [];
+  if (teamIds.length || teamBirthYears.length) {
+    const parts = ['tp.player_id = "Player"."id"', 'tp.deleted_at IS NULL'];
+    if (teamIds.length) {
+      const list = teamIds.map((id) => sequelize.escape(id)).join(', ');
+      parts.push(`tp.team_id IN (${list})`);
+    }
+    if (seasonIds.length) {
+      const list = seasonIds.map((id) => sequelize.escape(id)).join(', ');
+      parts.push(`tp.season_id IN (${list})`);
+    }
+    let joinClause = '';
+    if (teamBirthYears.length) {
+      const yearsList = teamBirthYears
+        .map((year) => sequelize.escape(year))
+        .join(', ');
+      joinClause = 'JOIN teams tt ON tt.id = tp.team_id AND tt.deleted_at IS NULL';
+      parts.push(`tt.birth_year IN (${yearsList})`);
+    }
+    membershipClauses.push(
+      sequelize.literal(`EXISTS (
+        SELECT 1
+        FROM team_players tp
+        ${joinClause}
+        WHERE ${parts.join(' AND ')}
+      )`)
+    );
+  }
+  if (membershipClauses.length) {
+    whereClause[Op.and] = [
+      ...(whereClause[Op.and] || []),
+      { [Op.or]: membershipClauses },
+    ];
+  }
+
+  const result = await Player.findAndCountAll({
+    where: whereClause,
+    include,
+    distinct: true,
+    order: [
+      ['surname', 'ASC'],
+      ['name', 'ASC'],
+    ],
+    limit,
+    offset,
+  });
+
+  return { ...result, page, pageSize: limit };
+}
+
 async function listAll() {
   return Player.findAll({
     order: [
       ['surname', 'ASC'],
       ['name', 'ASC'],
+    ],
+    include: [
+      {
+        model: ExtFile,
+        as: 'Photo',
+        required: false,
+      },
     ],
   });
 }
@@ -837,7 +1079,106 @@ async function facets(options = {}) {
   };
 }
 
-export default { syncExternal, list, listAll, facets };
+async function listGalleryFilters(options = {}) {
+  const seasonIds = await resolveSeasonIds(options.seasonIds);
+  const teamIds = options.teamIds?.filter(Boolean) || [];
+  let clubScopeIds = options.clubIds?.filter(Boolean) || [];
+  if (!clubScopeIds.length && teamIds.length) {
+    const teams = await Team.findAll({
+      attributes: ['club_id'],
+      where: { id: { [Op.in]: teamIds } },
+    });
+    clubScopeIds = Array.from(
+      new Set(teams.map((team) => team.club_id).filter(Boolean))
+    );
+  }
+
+  const replacements = {};
+  if (seasonIds.length) replacements.seasonIds = seasonIds;
+  if (clubScopeIds.length) replacements.clubIds = clubScopeIds;
+  if (teamIds.length) replacements.teamIds = teamIds;
+  if (options.filterClubId) replacements.filterClubId = options.filterClubId;
+
+  const seasonClause = seasonIds.length ? 'AND cp.season_id IN (:seasonIds)' : '';
+  const clubScopeClause = clubScopeIds.length
+    ? 'AND c.id IN (:clubIds)'
+    : '';
+  const teamScopeClause = teamIds.length
+    ? `AND EXISTS (
+        SELECT 1
+        FROM team_players tp_scope
+        WHERE tp_scope.club_player_id = cp.id
+          AND tp_scope.deleted_at IS NULL
+          AND tp_scope.team_id IN (:teamIds)
+      )`
+    : '';
+
+  const clubsSql = `
+    SELECT DISTINCT c.id, c.name
+    FROM clubs c
+    JOIN club_players cp ON cp.club_id = c.id
+    WHERE cp.deleted_at IS NULL
+      AND c.deleted_at IS NULL
+      ${seasonClause}
+      ${clubScopeClause}
+      ${teamScopeClause}
+    ORDER BY c.name ASC
+  `;
+
+  const clubs = await sequelize
+    .query(clubsSql, {
+      replacements,
+      type: QueryTypes.SELECT,
+    })
+    .catch(() => []);
+
+  const teamSeasonClause = seasonIds.length ? 'AND tp.season_id IN (:seasonIds)' : '';
+  const teamClubScopeClause = clubScopeIds.length
+    ? 'AND t.club_id IN (:clubIds)'
+    : '';
+  const specificClubClause = options.filterClubId
+    ? 'AND t.club_id = :filterClubId'
+    : '';
+  const specificTeamsClause = teamIds.length ? 'AND tp.team_id IN (:teamIds)' : '';
+
+  const teamYearsSql = `
+    SELECT DISTINCT t.birth_year AS birth_year
+    FROM teams t
+    JOIN team_players tp ON tp.team_id = t.id
+    WHERE tp.deleted_at IS NULL
+      AND t.deleted_at IS NULL
+      AND t.birth_year IS NOT NULL
+      ${teamSeasonClause}
+      ${teamClubScopeClause}
+      ${specificClubClause}
+      ${specificTeamsClause}
+    ORDER BY t.birth_year DESC
+  `;
+
+  const teamYears = await sequelize
+    .query(teamYearsSql, {
+      replacements,
+      type: QueryTypes.SELECT,
+    })
+    .catch(() => []);
+
+  return {
+    clubs: clubs.map((club) => ({ id: club.id, name: club.name })),
+    team_birth_years: teamYears
+      .map((row) => (row.birth_year == null ? null : Number(row.birth_year)))
+      .filter((year) => Number.isFinite(year))
+      .sort((a, b) => b - a),
+  };
+}
+
+export default {
+  syncExternal,
+  list,
+  listAll,
+  facets,
+  listForGallery,
+  listGalleryFilters,
+};
 
 /**
  * Aggregate player counts by birth year for each season, optionally scoped to specific clubs.

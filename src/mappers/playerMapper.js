@@ -1,3 +1,7 @@
+import {
+  buildExtFilePublicUrlCandidates,
+} from '../config/extFiles.js';
+
 import teamMapper from './teamMapper.js';
 import clubMapper from './clubMapper.js';
 
@@ -23,6 +27,30 @@ export default {
       weight: player.weight || null,
       grip: player.grip || null,
     };
+    if (player.Photo) {
+      const photo = player.Photo;
+      const candidates = buildExtFilePublicUrlCandidates(photo);
+      const url = candidates.length ? candidates[0] : null;
+      out.photo = {
+        id: photo.id,
+        external_id: photo.external_id,
+        module: photo.module || null,
+        name: photo.name || null,
+        mime_type: photo.mime_type || null,
+        size: photo.size ?? null,
+        object_status: photo.object_status || null,
+        date_create: photo.date_create || null,
+        date_update: photo.date_update || null,
+        url,
+        urls: candidates,
+      };
+      out.photo_url = url;
+      out.photo_url_candidates = candidates;
+    } else {
+      out.photo = null;
+      out.photo_url = null;
+      out.photo_url_candidates = [];
+    }
     if (player.Teams) {
       out.teams = player.Teams.map((t) => teamMapper.toPublic(t));
     }

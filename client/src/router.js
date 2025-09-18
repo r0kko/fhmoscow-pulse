@@ -31,6 +31,7 @@ import SchoolMatchReferees from './views/SchoolMatchReferees.vue';
 import SchoolMatchAppeals from './views/SchoolMatchAppeals.vue';
 import SchoolPlayers from './views/SchoolPlayers.vue';
 import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
+import SchoolPlayerPhotos from './views/SchoolPlayerPhotos.vue';
 import SchoolHome from './views/SchoolHome.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
@@ -375,6 +376,15 @@ const routes = [
       requiresAuth: true,
       requiresStaff: true,
       title: 'Команды и составы',
+    },
+  },
+  {
+    path: '/school-players/photos',
+    component: SchoolPlayerPhotos,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Фотографии игроков',
     },
   },
   {

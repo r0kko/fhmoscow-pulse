@@ -26,6 +26,8 @@ const schema = Joi.object({
   S3_ACCESS_KEY: Joi.string().optional(),
   S3_SECRET_KEY: Joi.string().optional(),
   BASE_URL: Joi.string().optional(),
+  EXT_FILES_PUBLIC_BASE_URL: Joi.string().uri().optional(),
+  EXT_FILES_MODULE_MAP: Joi.string().optional(),
   VERIFY_HMAC_SECRET: Joi.string().optional(),
   SSL_CERT_PATH: Joi.string().optional(),
   SSL_KEY_PATH: Joi.string().optional(),

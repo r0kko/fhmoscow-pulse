@@ -64,11 +64,12 @@ function isDisabled(team) {
 </script>
 
 <template>
-  <div class="row g-3">
+  <div class="team-tiles" role="list">
     <div
       v-for="t in labeledTeams"
       :key="t.team_id + '-' + t.display_label"
-      class="col-12 col-md-6 col-lg-3 team-tile-col"
+      class="team-tiles__item"
+      role="listitem"
     >
       <BaseTile
         :to="
@@ -85,6 +86,9 @@ function isDisabled(team) {
         :extra-class="[
           'h-100',
           'fade-in',
+          'w-100',
+          'team-tile-card',
+          'text-start',
           {
             'text-muted disabled-card':
               (!props.linkToRoster && !props.intercept) || isDisabled(t),
@@ -100,7 +104,7 @@ function isDisabled(team) {
             {{ t.team_name }}
           </div>
           <div
-            class="card-text text-muted small mb-2 d-flex align-items-center flex-wrap gap-3"
+            class="card-text team-tile-meta text-muted small mb-2 d-flex align-items-center flex-wrap gap-3"
           >
             <span class="d-inline-flex align-items-center gap-1">
               <i class="bi bi-people text-brand" aria-hidden="true"></i>
@@ -146,15 +150,23 @@ function isDisabled(team) {
 </template>
 
 <style scoped>
-.team-tile-col {
-  min-width: 0;
-  width: 100%;
+.team-tiles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
 }
-@media (max-width: 767.98px) {
-  .team-tile-col {
-    flex: 0 0 100% !important;
-    max-width: 100% !important;
-  }
+.team-tiles__item {
+  width: 100%;
+  min-width: 0; /* allow long names to wrap without forcing extra width */
+}
+.team-tile-card {
+  text-align: left;
+}
+.team-tile-card .card-body {
+  text-align: left;
+}
+.team-tile-meta {
+  justify-content: flex-start;
 }
 .disabled-card {
   cursor: default;

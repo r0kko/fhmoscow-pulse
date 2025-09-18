@@ -19,6 +19,7 @@ Player.init(
     grip: { type: DataTypes.STRING(255) },
     height: { type: DataTypes.INTEGER },
     weight: { type: DataTypes.INTEGER },
+    photo_ext_file_id: { type: DataTypes.UUID },
   },
   {
     sequelize,

@@ -54,6 +54,16 @@ describe('utils/pageSize', () => {
     expect(() => savePageSize('t', 10)).not.toThrow();
     setItemSpy.mockRestore();
   });
+
+  it('returns default when storage access fails', () => {
+    const getItemSpy = vi
+      .spyOn(localStorage, 'getItem')
+      .mockImplementation(() => {
+        throw new Error('blocked');
+      });
+    expect(loadPageSize('table', 25)).toBe(25);
+    getItemSpy.mockRestore();
+  });
 });
 
 describe('utils/bank', () => {
@@ -91,6 +101,12 @@ describe('utils/personal', () => {
     expect(isValidSnils(invalidSnils)).toBe(false);
     expect(formatSnils(validSnils)).toBe('112-233-445 95');
   });
+
+  it('supports edge-case SNILS values and partial formatting', () => {
+    expect(isValidSnils('00000000004')).toBe(true); // below checksum threshold
+    expect(formatSnils('123')).toBe('123-');
+    expect(formatSnils('12345')).toBe('123-45');
+  });
 });
 
 describe('utils/plural', () => {
@@ -114,6 +130,8 @@ describe('utils/roles', () => {
     expect(isBrigadeRefereeOnly(['BRIGADE_REFEREE', 'REFEREE'])).toBe(false);
     expect(isStaffOnly(['SPORT_SCHOOL_STAFF'])).toBe(true);
     expect(isStaffOnly(['SPORT_SCHOOL_STAFF', 'ADMIN'])).toBe(false);
+    expect(isStaffOnly(['ADMIN'])).toBe(false);
+    expect(isStaffOnly()).toBe(false);
   });
 });
 
@@ -122,9 +140,11 @@ describe('utils/time', () => {
 
   it('formats and parses minute-second strings', () => {
     expect(formatMinutesSeconds(125)).toBe('02:05');
+    expect(formatMinutesSeconds(null)).toBe('');
     expect(parseMinutesSeconds('02:05')).toBe(125);
     expect(parseMinutesSeconds('205')).toBe(125);
     expect(parseMinutesSeconds('invalid')).toBeNull();
+    expect(parseMinutesSeconds('04:75')).toBeNull();
   });
 
   it('normalizes Moscow-local dates and times', () => {
@@ -133,14 +153,23 @@ describe('utils/time', () => {
     expect(fromDateTimeLocal('2024-05-01T18:30')).toBe(
       '2024-05-01T15:30:00.000Z'
     );
+    expect(toDayKey()).toBeNull();
+    expect(toDateTimeLocal()).toBe('');
+    expect(fromDateTimeLocal('')).toBe('');
   });
 
   it('detects midnight and formats UI-friendly values', () => {
     expect(isMskMidnight('2024-05-01T00:00:00+03:00')).toBe(true);
     expect(isMskMidnight('2024-05-01T01:00:00+03:00')).toBe(false);
+    expect(isMskMidnight('not-a-date')).toBe(false);
+    expect(isMskMidnight('2024-05-01T00:00:00+03:00', 'Invalid/Zone')).toBe(
+      false
+    );
     expect(formatMskTimeShort('2024-05-01T00:00:00+03:00')).toBe('—:—');
     expect(formatMskTimeShort(iso)).toBe('18:30');
+    expect(formatMskTimeShort('not-a-date', { placeholder: '??' })).toBe('??');
     expect(formatMskDateLong(iso)).toMatch(/1 мая/i);
+    expect(formatMskDateLong('bad-date')).toBe('');
     expect(formatKickoff(iso)).toMatchObject({ time: '18:30' });
   });
 });
