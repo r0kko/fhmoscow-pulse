@@ -24,7 +24,7 @@
     "validate:dashboards": "node scripts/validate-dashboards.mjs"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.887.0",
+    "@aws-sdk/client-s3": "^3.892.0",
     "@aws-sdk/s3-request-presigner": "^3.887.0",
     "@jest/globals": "^30.1.2",
     "@opentelemetry/api": "^1.9.0",
