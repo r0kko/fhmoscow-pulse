@@ -9,6 +9,10 @@ function normalizeDate(val) {
   return val ? new Date(val) : null;
 }
 
+function normalizeStatus(val) {
+  return typeof val === 'string' ? val.trim().toLowerCase() : null;
+}
+
 function equal(a, b) {
   if (a == null && b == null) return true;
   if (a instanceof Date || b instanceof Date) {
@@ -28,7 +32,7 @@ export async function syncExtFiles({
     : null;
   const uniqueIds = scopeIds ? Array.from(new Set(scopeIds)) : null;
 
-  const { ACTIVE, ARCHIVE } = statusFilters('object_status');
+  const { ACTIVE_OR_NEW, ARCHIVE } = statusFilters('object_status');
   const buildWhere = (statusWhere) => {
     if (!uniqueIds || uniqueIds.length === 0) return statusWhere;
     return {
@@ -36,22 +40,35 @@ export async function syncExtFiles({
     };
   };
 
-  let [extActive, extArchived] = await Promise.all([
-    ExtFileExternal.findAll({ where: buildWhere(ACTIVE) }),
+  let [extActiveOrNew, extArchived] = await Promise.all([
+    ExtFileExternal.findAll({ where: buildWhere(ACTIVE_OR_NEW) }),
     ExtFileExternal.findAll({ where: buildWhere(ARCHIVE) }),
   ]);
 
-  if (extActive.length === 0 && extArchived.length === 0) {
+  if (extActiveOrNew.length === 0 && extArchived.length === 0) {
     const fallbackWhere =
       uniqueIds && uniqueIds.length
         ? { id: { [Op.in]: uniqueIds } }
         : undefined;
-    extActive = await ExtFileExternal.findAll({ where: fallbackWhere });
-    extArchived = [];
+    const fallbackRows = await ExtFileExternal.findAll({
+      where: fallbackWhere,
+    });
+    const hasStatusValues = fallbackRows.some((row) =>
+      normalizeStatus(row.object_status)
+    );
+    const hasRecognizedStatuses = fallbackRows.some((row) => {
+      const status = normalizeStatus(row.object_status);
+      return status === 'active' || status === 'new' || status === 'archive';
+    });
+
+    if (!hasStatusValues || hasRecognizedStatuses) {
+      extActiveOrNew = fallbackRows;
+      extArchived = [];
+    }
   }
 
   const knownIdsSet = new Set(
-    [...extActive, ...extArchived].map((file) => file.id)
+    [...extActiveOrNew, ...extArchived].map((file) => file.id)
   );
   const knownIds = Array.from(knownIdsSet);
 
@@ -68,9 +85,26 @@ export async function syncExtFiles({
   let softDeletedArchived = 0;
   let softDeletedMissing = 0;
   let createdArchived = 0;
+  let softDeletedByStatus = 0;
+
+  const pendingStatusIds =
+    uniqueIds && uniqueIds.length
+      ? uniqueIds.filter((id) => !knownIdsSet.has(id))
+      : [];
+
+  const extStatusExcluded = pendingStatusIds.length
+    ? (
+        await ExtFileExternal.findAll({
+          where: { id: { [Op.in]: pendingStatusIds } },
+        })
+      ).filter((file) => {
+        const status = normalizeStatus(file.object_status);
+        return status !== 'active' && status !== 'new' && status !== 'archive';
+      })
+    : [];
 
   await sequelize.transaction(async (tx) => {
-    for (const file of extActive) {
+    for (const file of extActiveOrNew) {
       const local = localByExternalId.get(file.id);
       const desired = {
         module: file.module || null,
@@ -155,6 +189,22 @@ export async function syncExtFiles({
       softDeletedArchived += archCnt;
     }
 
+    if (extStatusExcluded.length) {
+      const excludedIds = extStatusExcluded.map((f) => f.id);
+      const [inactiveCnt] = await ExtFile.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.in]: excludedIds },
+            deletedAt: null,
+          },
+          paranoid: false,
+          transaction: tx,
+        }
+      );
+      softDeletedByStatus += inactiveCnt;
+    }
+
     if (!uniqueIds || uniqueIds.length === 0) {
       const [missCnt] = await ExtFile.update(
         { deletedAt: new Date(), updated_by: actorId },
@@ -189,6 +239,7 @@ export async function syncExtFiles({
       createdArchived,
       softDeletedArchived,
       softDeletedMissing,
+      softDeletedByStatus,
     },
     idByExternalId,
   };

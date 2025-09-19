@@ -3,8 +3,11 @@ import { statusFilters, ensureArchivedImported } from '../src/utils/sync.js';
 
 describe('statusFilters', () => {
   test('provides case/trim tolerant filters', () => {
-    const { ACTIVE, ARCHIVE } = statusFilters('object_status');
+    const { ACTIVE, NEW, ACTIVE_OR_NEW, ARCHIVE } =
+      statusFilters('object_status');
     expect(ACTIVE).toBeDefined();
+    expect(NEW).toBeDefined();
+    expect(ACTIVE_OR_NEW).toBeDefined();
     expect(ARCHIVE).toBeDefined();
   });
 

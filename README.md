@@ -308,7 +308,7 @@ Integration with the legacy MariaDB is handled via Sequelize models placed in `s
 Service `teamService.syncExternal()` imports active teams from the external DB and
 soft‑deletes local teams that no longer exist externally:
 
-- Active only: pulls records where `object_status = 'active'`.
+- Active/new only: pulls records where `object_status` is `'active'` or `'new'`.
 - Missing externally: if a local `external_id` is not found in the external set,
   it is soft‑deleted locally (`deleted_at` set).
 - Archived externally: records with `object_status = 'archive'` are treated the
@@ -365,7 +365,7 @@ Endpoints:
 Grounds are synced from external Stadiums. Only minimal fields are imported for
 new entries: `external_id` and `name`. Address can be added later by admins.
 
-- Active only: pulls `object_status = 'active'` and restores soft-deleted.
+- Active/new only: pulls `object_status` in `{ 'active', 'new' }` and restores soft-deleted.
 - Archived/missing: marks local records as soft-deleted.
 - Cron schedule is controlled by a single orchestrator (see below). Legacy env `GROUND_SYNC_CRON` is deprecated.
 - Manual sync: `POST /api/grounds/sync` (ADMIN).

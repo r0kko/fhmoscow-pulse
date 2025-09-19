@@ -6,9 +6,16 @@ import { fn, col as column, where, Op } from 'sequelize';
  */
 export function statusFilters(col = 'object_status') {
   const c = column(col);
+  const normalize = (value) => where(fn('LOWER', fn('TRIM', c)), value);
+  const ACTIVE = normalize('active');
+  const NEW = normalize('new');
+  const ARCHIVE = normalize('archive');
+
   return {
-    ACTIVE: where(fn('LOWER', fn('TRIM', c)), 'active'),
-    ARCHIVE: where(fn('LOWER', fn('TRIM', c)), 'archive'),
+    ACTIVE,
+    NEW,
+    ACTIVE_OR_NEW: { [Op.or]: [ACTIVE, NEW] },
+    ARCHIVE,
   };
 }
 

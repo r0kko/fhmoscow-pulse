@@ -15,12 +15,13 @@ export async function runPlayerSync() {
       try {
         const stats = await playerService.syncExternal();
         logger.info(
-          'Player photo files sync completed: upserted=%d, restored=%d, archivedCreated=%d, softDeletedArchived=%d, softDeletedMissing=%d',
+          'Player photo files sync completed: upserted=%d, restored=%d, archivedCreated=%d, softDeletedArchived=%d, softDeletedMissing=%d, softDeletedByStatus=%d',
           stats.ext_files?.upserts ?? 0,
           stats.ext_files?.restored ?? 0,
           stats.ext_files?.createdArchived ?? 0,
           stats.ext_files?.softDeletedArchived ?? 0,
-          stats.ext_files?.softDeletedMissing ?? 0
+          stats.ext_files?.softDeletedMissing ?? 0,
+          stats.ext_files?.softDeletedByStatus ?? 0
         );
         logger.info(
           'Player sync completed: players(upserted=%d, softDeleted=%d); roles(upserted=%d, softDeleted=%d); clubPlayers(upserted=%d, softDeleted=%d); teamPlayers(upserted=%d, softDeleted=%d)',

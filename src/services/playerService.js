@@ -608,12 +608,13 @@ async function syncExternal(actorId = null) {
   });
 
   logger.info(
-    'Player photo files sync: upserts=%d, restored=%d, archivedCreated=%d, softDeletedArchived=%d, softDeletedMissing=%d',
+    'Player photo files sync: upserts=%d, restored=%d, archivedCreated=%d, softDeletedArchived=%d, softDeletedMissing=%d, softDeletedByStatus=%d',
     extFileStats.upserts,
     extFileStats.restored,
     extFileStats.createdArchived,
     extFileStats.softDeletedArchived,
-    extFileStats.softDeletedMissing
+    extFileStats.softDeletedMissing,
+    extFileStats.softDeletedByStatus
   );
 
   logger.info(
@@ -641,6 +642,7 @@ async function syncExternal(actorId = null) {
       createdArchived: extFileStats.createdArchived,
       softDeletedArchived: extFileStats.softDeletedArchived,
       softDeletedMissing: extFileStats.softDeletedMissing,
+      softDeletedByStatus: extFileStats.softDeletedByStatus,
     },
     players: {
       upserts: playerUpserts,
