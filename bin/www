@@ -28,6 +28,7 @@ const { default: startMatchAgreementReminderCron } = await import('../src/jobs/m
 const { default: startExternalDbWatchCron } = await import('../src/jobs/externalDbWatchCron.js');
 const { setReady, setSyncing } = await import('../src/config/readiness.js');
 const { seedJobMetrics } = await import('../src/config/metrics.js');
+const { startEmailWorker, stopEmailWorker } = await import('../src/services/emailService.js');
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -67,6 +68,7 @@ app.set('port', port);
 /**
  * Create HTTP or HTTPS server.
  */
+let stopEmailQueue = async () => {};
 let server;
 if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   try {
@@ -93,6 +95,19 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
 (async () => {
   await connectToDatabase();
   await connectRedis();
+  try {
+    const maybeStop = await startEmailWorker();
+    if (typeof maybeStop === 'function') {
+      stopEmailQueue = maybeStop;
+    } else if (typeof stopEmailWorker === 'function') {
+      stopEmailQueue = stopEmailWorker;
+    }
+  } catch (err) {
+    console.warn(
+      'Email worker failed to start:',
+      err?.message || err
+    );
+  }
   await connectLegacyDatabase(); // continue even if legacy DB is unreachable
   await connectExternalMariaDb(); // optional external MariaDB
 
@@ -190,6 +205,9 @@ async function shutdown(signal) {
   } catch {}
   try {
     await closeDatabase();
+  } catch {}
+  try {
+    await stopEmailQueue();
   } catch {}
   try {
     await closeRedis();

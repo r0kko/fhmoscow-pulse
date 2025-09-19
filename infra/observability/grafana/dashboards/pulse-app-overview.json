@@ -3,7 +3,7 @@
   "__requires": [],
   "title": "Pulse App Overview",
   "uid": "pulse-app-overview",
-  "version": 1,
+  "version": 2,
   "schemaVersion": 38,
   "tags": ["pulse", "app"],
   "time": {"from": "now-6h", "to": "now"},
@@ -16,7 +16,8 @@
       "gridPos": {"x": 0, "y": 0, "w": 8, "h": 4},
       "targets": [
         {"expr": "sum(increase(job_runs_total{status=\"success\"}[15m]))", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
-      ]
+      ],
+      "options": {"reduceOptions": {"calcs": ["sum"], "fields": ""}}
     },
     {
       "type": "stat",
@@ -24,40 +25,162 @@
       "gridPos": {"x": 8, "y": 0, "w": 8, "h": 4},
       "targets": [
         {"expr": "sum(increase(job_runs_total{status=\"error\"}[15m]))", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
-      ]
+      ],
+      "options": {"reduceOptions": {"calcs": ["sum"], "fields": ""}}
     },
     {
-      "type": "graph", "title": "Job duration (p95 sec)",
+      "type": "graph",
+      "title": "Job duration (p95 sec)",
       "gridPos": {"x": 16, "y": 0, "w": 8, "h": 8},
       "targets": [
         {"expr": "histogram_quantile(0.95, sum by (le, job) (rate(job_duration_seconds_bucket[5m])))", "legendFormat": "{{job}}", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
       ]
     },
     {
-      "type": "table", "title": "Last job success (per job)",
+      "type": "table",
+      "title": "Last job success (per job)",
       "gridPos": {"x": 0, "y": 4, "w": 16, "h": 8},
       "targets": [
         {"expr": "job_last_success_timestamp_seconds", "legendFormat": "{{job}}", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
       ],
-      "transformations": [ {"id": "labelsToFields", "options": {"mode": "rows"}} ]
+      "transformations": [{"id": "labelsToFields", "options": {"mode": "rows"}}]
     },
     {
-      "type": "stat", "title": "Event loop lag (sec)",
+      "type": "stat",
+      "title": "Event loop lag (sec)",
       "gridPos": {"x": 0, "y": 12, "w": 8, "h": 4},
       "targets": [
         {"expr": "avg(nodejs_eventloop_lag_seconds)", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
-      ]
+      ],
+      "options": {"reduceOptions": {"calcs": ["mean"], "fields": ""}}
     },
     {
-      "type": "stat", "title": "Process RSS (MB)",
+      "type": "stat",
+      "title": "Process RSS (MB)",
       "gridPos": {"x": 8, "y": 12, "w": 8, "h": 4},
       "targets": [
         {"expr": "avg(process_resident_memory_bytes) / 1024 / 1024", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ],
+      "options": {"reduceOptions": {"calcs": ["mean"], "fields": ""}}
+    },
+    {
+      "type": "stat",
+      "title": "Email queue depth (ready)",
+      "gridPos": {"x": 0, "y": 16, "w": 8, "h": 4},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 50},
+              {"color": "red", "value": 100}
+            ]
+          }
+        }
+      },
+      "targets": [
+        {"expr": "max(email_queue_depth{bucket=\"ready\"})", "legendFormat": "ready", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ],
+      "options": {"reduceOptions": {"calcs": ["max"], "fields": ""}}
+    },
+    {
+      "type": "stat",
+      "title": "Email DLQ size",
+      "gridPos": {"x": 8, "y": 16, "w": 8, "h": 4},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "red", "value": 10}
+            ]
+          }
+        }
+      },
+      "targets": [
+        {"expr": "max(email_queue_depth{bucket=\"dead_letter\"})", "legendFormat": "dlq", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ],
+      "options": {"reduceOptions": {"calcs": ["max"], "fields": ""}}
+    },
+    {
+      "type": "stat",
+      "title": "Scheduled emails",
+      "gridPos": {"x": 16, "y": 16, "w": 8, "h": 4},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 20},
+              {"color": "red", "value": 100}
+            ]
+          }
+        }
+      },
+      "targets": [
+        {"expr": "max(email_queue_depth{bucket=\"scheduled\"})", "legendFormat": "scheduled", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ],
+      "options": {"reduceOptions": {"calcs": ["max"], "fields": ""}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Email queue throughput",
+      "gridPos": {"x": 0, "y": 20, "w": 16, "h": 8},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "req/s",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {"expr": "sum(rate(email_queue_enqueued_total{status=\"queued\"}[5m]))", "legendFormat": "queued", "datasource": {"type": "prometheus", "uid": "Prometheus"}},
+        {"expr": "sum(rate(email_queue_enqueued_total{status=\"scheduled\"}[5m]))", "legendFormat": "scheduled", "datasource": {"type": "prometheus", "uid": "Prometheus"}},
+        {"expr": "sum(rate(email_queue_retry_total[5m]))", "legendFormat": "retries", "datasource": {"type": "prometheus", "uid": "Prometheus"}},
+        {"expr": "sum(rate(email_queue_failure_total[5m]))", "legendFormat": "failures", "datasource": {"type": "prometheus", "uid": "Prometheus"}}
       ]
     },
     {
-      "type": "logs", "title": "Recent logs (Loki)",
-      "gridPos": {"x": 0, "y": 16, "w": 24, "h": 10},
+      "type": "timeseries",
+      "title": "Email delivery latency (p95/p99 sec)",
+      "gridPos": {"x": 16, "y": 20, "w": 8, "h": 8},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 5}, {"color": "red", "value": 15}]}
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(email_delivery_duration_seconds_bucket{status=\"ok\"}[5m])))",
+          "legendFormat": "p95",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"}
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(email_delivery_duration_seconds_bucket{status=\"ok\"}[5m])))",
+          "legendFormat": "p99",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"}
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Recent logs (Loki)",
+      "gridPos": {"x": 0, "y": 28, "w": 24, "h": 10},
       "options": {"showTime": true, "dedupStrategy": "none", "wrapLogMessage": true},
       "datasource": {"type": "loki", "uid": "Loki"},
       "targets": [

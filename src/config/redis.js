@@ -5,15 +5,30 @@ const url =
   process.env.REDIS_URL ||
   `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
 let redisWritable = true;
-const client = createClient({ url });
 
-client.on('error', (err) => {
-  console.error('Redis Client Error', err);
-  if (err?.message?.includes('READONLY')) {
-    redisWritable = false;
-  }
-  import('./metrics.js').then((m) => m.setCacheUp?.(false)).catch(() => {});
-});
+function attachClientObservers(instance) {
+  instance.on('error', (err) => {
+    console.error('Redis Client Error', err);
+    if (err?.message?.includes?.('READONLY')) {
+      redisWritable = false;
+    }
+    import('./metrics.js').then((m) => m.setCacheUp?.(false)).catch(() => {});
+  });
+  instance.on('ready', () => {
+    import('./metrics.js').then((m) => m.setCacheUp?.(true)).catch(() => {});
+  });
+}
+
+const client = createClient({ url });
+attachClientObservers(client);
+
+export const redisUrl = url;
+
+export function createRedisClient(options = {}) {
+  const duplicate = createClient({ url, ...options });
+  attachClientObservers(duplicate);
+  return duplicate;
+}
 
 export async function connectRedis() {
   const { default: logger } = await import('../../logger.js');

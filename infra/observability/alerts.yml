@@ -266,3 +266,46 @@ groups:
         annotations:
           summary: "High invalid refresh ratio"
           description: ">5% invalid refresh attempts over 10m"
+
+  - name: email-delivery
+    rules:
+      - alert: EmailQueueBacklogHigh
+        expr: max(email_queue_depth{bucket="ready"}) > 100
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Email ready queue backlog high"
+          description: |
+            Ready queue depth exceeded 100 for 10 minutes.
+            Investigate stuck workers or external SMTP slowness.
+
+      - alert: EmailDeadLetterNonEmpty
+        expr: max(email_queue_depth{bucket="dead_letter"}) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Emails stuck in dead-letter queue"
+          description: |
+            Dead-letter queue contains undelivered messages. Check DLQ dashboard and logs.
+
+      - alert: EmailDeliveryFailures
+        expr: sum(rate(email_queue_failure_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Email delivery failures detected"
+          description: |
+            Email queue failures > 0 over 5 minutes. See Grafana email dashboard and SMTP logs.
+
+      - alert: EmailLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(email_delivery_duration_seconds_bucket{status="ok"}[5m]))) > 15
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Email delivery latency p95 > 15s"
+          description: |
+            Email delivery p95 latency above 15 seconds for 10 minutes. Check SMTP provider health.

@@ -1,13 +1,3 @@
-import nodemailer from 'nodemailer';
-
-import logger from '../../logger.js';
-import {
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_USER,
-  SMTP_PASS,
-  EMAIL_FROM,
-} from '../config/email.js';
 import { renderVerificationEmail } from '../templates/verificationEmail.js';
 import { renderPasswordResetEmail } from '../templates/passwordResetEmail.js';
 import { renderUserCreatedByAdminEmail } from '../templates/userCreatedByAdminEmail.js';
@@ -42,101 +32,132 @@ import { renderMatchAgreementWithdrawnEmail } from '../templates/matchAgreementW
 import { renderMatchAgreementReminderEmail } from '../templates/matchAgreementReminderEmail.js';
 import { renderMatchAgreementDailyDigestEmail } from '../templates/matchAgreementDailyDigestEmail.js';
 
-export const isEmailConfigured = Boolean(SMTP_HOST);
+import { isEmailConfigured } from './email/emailTransport.js';
+import {
+  enqueueEmail as enqueueEmailJob,
+  startEmailWorker,
+  stopEmailWorker,
+  getEmailQueueStats,
+} from './email/emailQueue.js';
 
-const transporter = isEmailConfigured
-  ? nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT),
-      // 465 = implicit TLS, 587/25 = STARTTLS
-      secure: Number(SMTP_PORT) === 465,
-      requireTLS: Number(SMTP_PORT) !== 465, // enforce STARTTLS on submission ports
-      auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-      // Connection pool + conservative timeouts to avoid long-hanging requests
-      pool: true,
-      maxConnections: 3,
-      maxMessages: 50,
-      connectionTimeout: 10_000, // 10s to establish TCP/TLS
-      greetingTimeout: 8_000, // 8s for server greeting
-      socketTimeout: 15_000, // 15s per operation
-      tls: {
-        servername: SMTP_HOST,
-        minVersion: 'TLSv1.2',
-        rejectUnauthorized: true,
-      },
-    })
-  : null;
+function sanitizeMetadata(meta = {}) {
+  return Object.entries(meta)
+    .filter(([, value]) => value !== undefined && value !== null)
+    .reduce((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {});
+}
 
-export async function sendMail(to, subject, text, html, purpose = 'generic') {
-  if (!isEmailConfigured) {
-    logger.warn('Email not configured');
-    return false;
-  }
-  const footerText =
-    '\n\nС уважением,\nкоманда АСОУ ПД Пульс.\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
-  const footerHtml =
-    '\n      <br/>\n      <p style="font-size:16px;margin:0 0 16px;">С уважением,<br/>команда АСОУ ПД Пульс</p>\n      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.</p>';
-  const finalText = `${text}${footerText}`;
-  const finalHtml = /<\/div>\s*$/.test(html)
-    ? html.replace(/<\/div>\s*$/, `${footerHtml}</div>`)
-    : `${html}${footerHtml}`;
-  try {
-    await transporter.sendMail({
-      from: EMAIL_FROM || SMTP_USER,
-      to,
-      subject,
-      text: finalText,
-      html: finalHtml,
-    });
-    logger.info('Email sent to %s', to);
-    try {
-      (await import('../config/metrics.js')).incEmailSent?.('ok', purpose);
-    } catch (_e) {
-      /* noop */
-    }
-    return true;
-  } catch (err) {
-    logger.error('Failed to send email to %s: %s', to, err.message);
-    try {
-      (await import('../config/metrics.js')).incEmailSent?.('error', purpose);
-    } catch (_e) {
-      /* noop */
-    }
-    return false;
-  }
+function userMetadata(user) {
+  if (!user || typeof user !== 'object') return {};
+  return sanitizeMetadata({
+    userId: user.id,
+    email: user.email,
+    legacyId: user.legacy_id,
+  });
+}
+
+async function queueMailFromTemplate(
+  user,
+  templateFn,
+  templateArgs,
+  purpose,
+  extraMeta = {}
+) {
+  if (!user?.email) return;
+  const { subject, text, html } = templateFn(...templateArgs);
+  const templateName = templateFn?.displayName || templateFn?.name || purpose;
+  const metadata = sanitizeMetadata({
+    template: templateName,
+    ...userMetadata(user),
+    ...extraMeta,
+  });
+  await enqueueEmailJob({
+    to: user.email,
+    subject,
+    text,
+    html,
+    purpose,
+    metadata,
+  });
+}
+
+export async function enqueueMail(envelope, options = {}) {
+  return enqueueEmailJob(envelope, options);
+}
+
+export async function sendMail(
+  to,
+  subject,
+  text,
+  html,
+  purpose = 'generic',
+  options = {}
+) {
+  const result = await enqueueMail(
+    { to, subject, text, html, purpose, metadata: options.metadata },
+    options
+  );
+  return Boolean(result.accepted || result.delivered);
 }
 
 export async function sendVerificationEmail(user, code) {
-  const { subject, text, html } = renderVerificationEmail(code);
-  await sendMail(user.email, subject, text, html, 'verification');
+  await queueMailFromTemplate(
+    user,
+    renderVerificationEmail,
+    [code],
+    'verification',
+    { code }
+  );
 }
 
 export async function sendSignTypeSelectionEmail(user, code) {
-  const { subject, text, html } = renderSignTypeSelectionEmail(code);
-  await sendMail(user.email, subject, text, html, 'sign_type');
+  await queueMailFromTemplate(
+    user,
+    renderSignTypeSelectionEmail,
+    [code],
+    'sign_type',
+    { code }
+  );
 }
 
 export async function sendPasswordResetEmail(user, code) {
-  const { subject, text, html } = renderPasswordResetEmail(code);
-  await sendMail(user.email, subject, text, html, 'password_reset');
+  await queueMailFromTemplate(
+    user,
+    renderPasswordResetEmail,
+    [code],
+    'password_reset',
+    { code }
+  );
 }
 
 export async function sendUserCreatedByAdminEmail(user, tempPassword) {
-  const { subject, text, html } = renderUserCreatedByAdminEmail(
+  await queueMailFromTemplate(
     user,
-    tempPassword
+    renderUserCreatedByAdminEmail,
+    [user, tempPassword],
+    'user_created',
+    { tempPasswordIssued: Boolean(tempPassword) }
   );
-  await sendMail(user.email, subject, text, html, 'user_created');
 }
 
 export async function sendMedicalCertificateAddedEmail(user) {
-  const { subject, text, html } = renderMedicalCertificateAddedEmail();
-  await sendMail(user.email, subject, text, html, 'medical_certificate_added');
+  await queueMailFromTemplate(
+    user,
+    renderMedicalCertificateAddedEmail,
+    [],
+    'medical_certificate_added'
+  );
 }
 
 export async function sendAccountActivatedEmail(user) {
-  const { subject, text, html } = renderAccountActivatedEmail();
-  await sendMail(user.email, subject, text, html, 'account_activated');
+  await queueMailFromTemplate(
+    user,
+    renderAccountActivatedEmail,
+    [],
+    'account_activated'
+  );
 }
 
 export async function sendTrainingRegistrationEmail(
@@ -145,23 +166,26 @@ export async function sendTrainingRegistrationEmail(
   role,
   byAdmin = false
 ) {
-  const { subject, text, html } = renderTrainingRegistrationEmail(
-    training,
-    role,
-    byAdmin
+  await queueMailFromTemplate(
+    user,
+    renderTrainingRegistrationEmail,
+    [training, role, byAdmin],
+    'training_registration',
+    sanitizeMetadata({
+      trainingId: training?.id,
+      roleId: role?.id,
+      byAdmin,
+    })
   );
-  await sendMail(user.email, subject, text, html, 'training_registration');
 }
 
 export async function sendTrainingRegistrationCancelledEmail(user, training) {
-  const { subject, text, html } =
-    renderTrainingRegistrationCancelledEmail(training);
-  await sendMail(
-    user.email,
-    subject,
-    text,
-    html,
-    'training_registration_cancelled'
+  await queueMailFromTemplate(
+    user,
+    renderTrainingRegistrationCancelledEmail,
+    [training],
+    'training_registration_cancelled',
+    { trainingId: training?.id }
   );
 }
 
@@ -169,14 +193,12 @@ export async function sendTrainingRegistrationSelfCancelledEmail(
   user,
   training
 ) {
-  const { subject, text, html } =
-    renderTrainingRegistrationSelfCancelledEmail(training);
-  await sendMail(
-    user.email,
-    subject,
-    text,
-    html,
-    'training_registration_self_cancelled'
+  await queueMailFromTemplate(
+    user,
+    renderTrainingRegistrationSelfCancelledEmail,
+    [training],
+    'training_registration_self_cancelled',
+    { trainingId: training?.id }
   );
 }
 
@@ -186,17 +208,27 @@ export async function sendTrainingRoleChangedEmail(
   role,
   byAdmin = true
 ) {
-  const { subject, text, html } = renderTrainingRoleChangedEmail(
-    training,
-    role,
-    byAdmin
+  await queueMailFromTemplate(
+    user,
+    renderTrainingRoleChangedEmail,
+    [training, role, byAdmin],
+    'training_role_changed',
+    sanitizeMetadata({
+      trainingId: training?.id,
+      roleId: role?.id,
+      byAdmin,
+    })
   );
-  await sendMail(user.email, subject, text, html, 'training_role_changed');
 }
 
 export async function sendTrainingInvitationEmail(user, training) {
-  const { subject, text, html } = renderTrainingInvitationEmail(training);
-  await sendMail(user.email, subject, text, html, 'training_invitation');
+  await queueMailFromTemplate(
+    user,
+    renderTrainingInvitationEmail,
+    [training],
+    'training_invitation',
+    { trainingId: training?.id }
+  );
 }
 
 export async function sendMedicalExamRegistrationCreatedEmail(
@@ -204,128 +236,238 @@ export async function sendMedicalExamRegistrationCreatedEmail(
   exam,
   byAdmin = false
 ) {
-  const { subject, text, html } = renderMedicalExamRegistrationCreatedEmail(
-    exam,
-    byAdmin
+  await queueMailFromTemplate(
+    user,
+    renderMedicalExamRegistrationCreatedEmail,
+    [exam, byAdmin],
+    'exam_created',
+    sanitizeMetadata({ examId: exam?.id, byAdmin })
   );
-  await sendMail(user.email, subject, text, html, 'exam_created');
 }
 
 export async function sendMedicalExamRegistrationApprovedEmail(user, exam) {
-  const { subject, text, html } =
-    renderMedicalExamRegistrationApprovedEmail(exam);
-  await sendMail(user.email, subject, text, html, 'exam_approved');
+  await queueMailFromTemplate(
+    user,
+    renderMedicalExamRegistrationApprovedEmail,
+    [exam],
+    'exam_approved',
+    { examId: exam?.id }
+  );
 }
 
 export async function sendMedicalExamRegistrationCancelledEmail(user, exam) {
-  const { subject, text, html } =
-    renderMedicalExamRegistrationCancelledEmail(exam);
-  await sendMail(user.email, subject, text, html, 'exam_cancelled');
+  await queueMailFromTemplate(
+    user,
+    renderMedicalExamRegistrationCancelledEmail,
+    [exam],
+    'exam_cancelled',
+    { examId: exam?.id }
+  );
 }
 
 export async function sendMedicalExamRegistrationSelfCancelledEmail(
   user,
   exam
 ) {
-  const { subject, text, html } =
-    renderMedicalExamRegistrationSelfCancelledEmail(exam);
-  await sendMail(user.email, subject, text, html, 'exam_self_cancelled');
+  await queueMailFromTemplate(
+    user,
+    renderMedicalExamRegistrationSelfCancelledEmail,
+    [exam],
+    'exam_self_cancelled',
+    { examId: exam?.id }
+  );
 }
 
 export async function sendMedicalExamRegistrationCompletedEmail(user, exam) {
-  const { subject, text, html } =
-    renderMedicalExamRegistrationCompletedEmail(exam);
-  await sendMail(user.email, subject, text, html, 'exam_completed');
+  await queueMailFromTemplate(
+    user,
+    renderMedicalExamRegistrationCompletedEmail,
+    [exam],
+    'exam_completed',
+    { examId: exam?.id }
+  );
 }
 
 export async function sendTicketCreatedEmail(user, ticket) {
-  const { subject, text, html } = renderTicketCreatedEmail(ticket);
-  await sendMail(user.email, subject, text, html, 'ticket_created');
+  await queueMailFromTemplate(
+    user,
+    renderTicketCreatedEmail,
+    [ticket],
+    'ticket_created',
+    { ticketId: ticket?.id }
+  );
 }
 
 export async function sendTicketStatusChangedEmail(user, ticket) {
-  const { subject, text, html } = renderTicketStatusChangedEmail(ticket);
-  await sendMail(user.email, subject, text, html, 'ticket_status_changed');
+  await queueMailFromTemplate(
+    user,
+    renderTicketStatusChangedEmail,
+    [ticket],
+    'ticket_status_changed',
+    { ticketId: ticket?.id, status: ticket?.status }
+  );
 }
 
 export async function sendNormativeResultAddedEmail(user, result) {
-  const { subject, text, html } = renderNormativeResultAddedEmail(result);
-  await sendMail(user.email, subject, text, html, 'normative_added');
+  await queueMailFromTemplate(
+    user,
+    renderNormativeResultAddedEmail,
+    [result],
+    'normative_added',
+    { resultId: result?.id }
+  );
 }
 
 export async function sendNormativeResultUpdatedEmail(user, result) {
-  const { subject, text, html } = renderNormativeResultUpdatedEmail(result);
-  await sendMail(user.email, subject, text, html, 'normative_updated');
+  await queueMailFromTemplate(
+    user,
+    renderNormativeResultUpdatedEmail,
+    [result],
+    'normative_updated',
+    { resultId: result?.id }
+  );
 }
 
 export async function sendNormativeResultRemovedEmail(user, result) {
-  const { subject, text, html } = renderNormativeResultRemovedEmail(result);
-  await sendMail(user.email, subject, text, html, 'normative_removed');
+  await queueMailFromTemplate(
+    user,
+    renderNormativeResultRemovedEmail,
+    [result],
+    'normative_removed',
+    { resultId: result?.id }
+  );
 }
 
 export async function sendDocumentCreatedEmail(user, document) {
-  const { subject, text, html } = renderDocumentCreatedEmail(document);
-  await sendMail(user.email, subject, text, html, 'doc_created');
+  await queueMailFromTemplate(
+    user,
+    renderDocumentCreatedEmail,
+    [document],
+    'doc_created',
+    { documentId: document?.id }
+  );
 }
 
 export async function sendDocumentSignedEmail(user, document) {
-  const { subject, text, html } = renderDocumentSignedEmail(document);
-  await sendMail(user.email, subject, text, html, 'doc_signed');
+  await queueMailFromTemplate(
+    user,
+    renderDocumentSignedEmail,
+    [document],
+    'doc_signed',
+    { documentId: document?.id }
+  );
 }
 
 export async function sendDocumentRejectedEmail(user, document) {
-  const { subject, text, html } = renderDocumentRejectedEmail(document);
-  await sendMail(user.email, subject, text, html, 'doc_rejected');
+  await queueMailFromTemplate(
+    user,
+    renderDocumentRejectedEmail,
+    [document],
+    'doc_rejected',
+    { documentId: document?.id }
+  );
 }
 
 export async function sendDocumentAwaitingSignatureEmail(user, document) {
-  const { subject, text, html } =
-    renderDocumentAwaitingSignatureEmail(document);
-  await sendMail(user.email, subject, text, html, 'doc_awaiting_signature');
+  await queueMailFromTemplate(
+    user,
+    renderDocumentAwaitingSignatureEmail,
+    [document],
+    'doc_awaiting_signature',
+    { documentId: document?.id }
+  );
 }
 
 export async function sendDocumentSignCodeEmail(user, document, code) {
-  const { subject, text, html } = renderDocumentSignCodeEmail(document, code);
-  await sendMail(user.email, subject, text, html, 'doc_sign_code');
+  await queueMailFromTemplate(
+    user,
+    renderDocumentSignCodeEmail,
+    [document, code],
+    'doc_sign_code',
+    { documentId: document?.id, code }
+  );
 }
 
 export async function sendMatchAgreementProposedEmail(user, event) {
-  const { subject, text, html } = renderMatchAgreementProposedEmail(event);
-  await sendMail(user.email, subject, text, html, 'match_proposed');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementProposedEmail,
+    [event],
+    'match_proposed',
+    { agreementId: event?.id }
+  );
 }
 
 export async function sendMatchAgreementCounterProposedEmail(user, event) {
-  const { subject, text, html } =
-    renderMatchAgreementCounterProposedEmail(event);
-  await sendMail(user.email, subject, text, html, 'match_counter_proposed');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementCounterProposedEmail,
+    [event],
+    'match_counter_proposed',
+    { agreementId: event?.id }
+  );
 }
 
 export async function sendMatchAgreementApprovedEmail(user, event) {
-  const { subject, text, html } = renderMatchAgreementApprovedEmail(event);
-  await sendMail(user.email, subject, text, html, 'match_approved');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementApprovedEmail,
+    [event],
+    'match_approved',
+    { agreementId: event?.id }
+  );
 }
 
 export async function sendMatchAgreementDeclinedEmail(user, event) {
-  const { subject, text, html } = renderMatchAgreementDeclinedEmail(event);
-  await sendMail(user.email, subject, text, html, 'match_declined');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementDeclinedEmail,
+    [event],
+    'match_declined',
+    { agreementId: event?.id }
+  );
 }
 
 export async function sendMatchAgreementWithdrawnEmail(user, event) {
-  const { subject, text, html } = renderMatchAgreementWithdrawnEmail(event);
-  await sendMail(user.email, subject, text, html, 'match_withdrawn');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementWithdrawnEmail,
+    [event],
+    'match_withdrawn',
+    { agreementId: event?.id }
+  );
 }
 
 export async function sendMatchAgreementReminderEmail(user, event) {
-  const { subject, text, html } = renderMatchAgreementReminderEmail(event);
-  await sendMail(user.email, subject, text, html, 'match_reminder');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementReminderEmail,
+    [event],
+    'match_reminder',
+    { agreementId: event?.id }
+  );
 }
 
 export async function sendMatchAgreementDailyDigestEmail(user, digest) {
-  const { subject, text, html } = renderMatchAgreementDailyDigestEmail(digest);
-  await sendMail(user.email, subject, text, html, 'match_digest');
+  await queueMailFromTemplate(
+    user,
+    renderMatchAgreementDailyDigestEmail,
+    [digest],
+    'match_digest',
+    { items: Array.isArray(digest) ? digest.length : 0 }
+  );
 }
+
+export {
+  isEmailConfigured,
+  startEmailWorker,
+  stopEmailWorker,
+  getEmailQueueStats,
+};
+
 export default {
   isEmailConfigured,
+  enqueueMail,
   sendMail,
   sendVerificationEmail,
   sendSignTypeSelectionEmail,
@@ -360,4 +502,7 @@ export default {
   sendMatchAgreementWithdrawnEmail,
   sendMatchAgreementReminderEmail,
   sendMatchAgreementDailyDigestEmail,
+  startEmailWorker,
+  stopEmailWorker,
+  getEmailQueueStats,
 };

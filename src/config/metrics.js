@@ -32,6 +32,11 @@ let authLoginAttempts = null;
 let authRefreshTotal = null;
 let tokensIssued = null;
 let emailSentTotal = null;
+let emailQueuedTotal = null;
+let emailDeliveryDuration = null;
+let emailQueueDepth = null;
+let emailQueueRetryTotal = null;
+let emailQueueFailureTotal = null;
 let rateLimitedTotal = null;
 let csrfAcceptedTotal = null;
 let csrfRejectedTotal = null;
@@ -180,6 +185,37 @@ async function ensureInit() {
       name: 'email_sent_total',
       help: 'Emails sent grouped by status and purpose',
       labelNames: ['status', 'purpose'], // ok|error, e.g., verification, password_reset
+      registers: [register],
+    });
+    emailQueuedTotal = new client.Counter({
+      name: 'email_queue_enqueued_total',
+      help: 'Email jobs enqueued grouped by status and purpose',
+      labelNames: ['status', 'purpose'],
+      registers: [register],
+    });
+    emailDeliveryDuration = new client.Histogram({
+      name: 'email_delivery_duration_seconds',
+      help: 'Email delivery latency grouped by status and purpose',
+      labelNames: ['status', 'purpose'],
+      buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 60],
+      registers: [register],
+    });
+    emailQueueDepth = new client.Gauge({
+      name: 'email_queue_depth',
+      help: 'Email queue depth grouped by bucket',
+      labelNames: ['bucket'], // ready|scheduled|dead_letter
+      registers: [register],
+    });
+    emailQueueRetryTotal = new client.Counter({
+      name: 'email_queue_retry_total',
+      help: 'Email jobs retried grouped by purpose',
+      labelNames: ['purpose'],
+      registers: [register],
+    });
+    emailQueueFailureTotal = new client.Counter({
+      name: 'email_queue_failure_total',
+      help: 'Email jobs moved to DLQ grouped by purpose',
+      labelNames: ['purpose'],
       registers: [register],
     });
     rateLimitedTotal = new client.Counter({
@@ -622,6 +658,55 @@ export function incEmailSent(status, purpose = 'generic') {
   if (!metricsAvailable) return;
   try {
     emailSentTotal.inc({ status, purpose });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incEmailQueued(status = 'queued', purpose = 'generic') {
+  if (!metricsAvailable) return;
+  try {
+    emailQueuedTotal.inc({ status, purpose });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function observeEmailDelivery(
+  status = 'ok',
+  purpose = 'generic',
+  seconds = 0
+) {
+  if (!metricsAvailable) return;
+  try {
+    emailDeliveryDuration.observe({ status, purpose }, seconds);
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function setEmailQueueDepthBucket(bucket = 'ready', value = 0) {
+  if (!metricsAvailable) return;
+  try {
+    emailQueueDepth.set({ bucket }, value);
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incEmailQueueRetry(purpose = 'generic') {
+  if (!metricsAvailable) return;
+  try {
+    emailQueueRetryTotal.inc({ purpose });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incEmailQueueFailure(purpose = 'generic') {
+  if (!metricsAvailable) return;
+  try {
+    emailQueueFailureTotal.inc({ purpose });
   } catch (_e) {
     /* noop */
   }

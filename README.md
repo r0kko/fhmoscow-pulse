@@ -131,6 +131,30 @@ If the login spinner does not stop after clicking "Войти":
 `src/templates/ticketCreatedEmail.js` и `src/templates/ticketStatusChangedEmail.js`.
 Письмо об изменении статуса дополнительно включает тип обращения для удобства пользователя.
 
+### Email delivery pipeline
+
+- Письма попадают не напрямую в SMTP, а в очередь `Redis Streams` (`mail:stream:v1`).
+  В фоне работает обработчик, который забирает задания с учётом повторных попыток и
+  экспоненциальной задержки. Очередь и воркер запускаются автоматически вместе с API.
+- При недоступности Redis задание не теряется: сервис пытается отправить письмо напрямую,
+  а при сбое — логирует ошибку и увеличивает счётчик `email_queue_failure_total`.
+- Настройка ретраев и потоков производится переменными `EMAIL_QUEUE_*` (см. `.env.example`).
+  По умолчанию выполняется до пяти попыток с базовой задержкой 15 секунд и верхним пределом 5 минут.
+- Метрики Prometheus:
+  - `email_queue_enqueued_total{status,purpose}` — поставлено в очередь, запланировано или выполнено напрямую.
+  - `email_delivery_duration_seconds{status,purpose}` — время фактической доставки письма.
+  - `email_queue_depth{bucket}` — размер активной очереди (`ready`), отложенных писем (`scheduled`) и DLQ (`dead_letter`).
+  - `email_queue_retry_total{purpose}` / `email_queue_failure_total{purpose}` — ретраи и попадания в DLQ.
+- Эндпоинт `/health` дополнен блоком `email_queue` с оперативным состоянием
+  (инициализировано ли подключение, какое имя у consumer group и т. д.).
+- Созданные письма получают метаданные (ID пользователя, документ, тренировка и др.), что упрощает аудит и
+  фильтрацию логов.
+- Мониторинг:
+  - Grafana → "Pulse Email Delivery" (и соответствующие панели в "Pulse App Overview") показывают текущий бэколг, DLQ,
+    скорость обработки, ретраи и латентность доставки.
+  - Alertmanager поднимает алерты при росте очереди, появлении DLQ, частых ошибках и при p95 латентности >15 секунд
+    (`infra/observability/alerts.yml`).
+
 `PASSWORD_MIN_LENGTH`, `PASSWORD_MAX_LENGTH`, and `PASSWORD_PATTERN`
 allow customizing the password policy for user registration and password changes.
 By default passwords must be at least eight characters long, no more than 128

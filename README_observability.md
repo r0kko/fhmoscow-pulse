@@ -27,6 +27,8 @@ Quick start (now runs with your project)
 2) Expose metrics and probes (already available):
    - API metrics: http://localhost:3000/metrics
      - Optional basic auth: set `METRICS_USER` and `METRICS_PASS` env vars.
+      - Email delivery: `email_queue_depth`, `email_queue_enqueued_total`, `email_queue_retry_total`,
+        `email_queue_failure_total`, `email_delivery_duration_seconds`.
    - Health: http://localhost:3000/health
    - Liveness: http://localhost:3000/live
    - Readiness: http://localhost:3000/ready (503 until core deps up)
@@ -96,6 +98,7 @@ Operational tips
 - Prometheus scrapes every 15s by default; adjust in `prometheus.yml` as needed.
 - Provisioned dashboards:
   - Pulse → "Pulse App Overview" (jobs + logs)
+  - Pulse → "Pulse Email Delivery" (queue depth, DLQ, latency, throughput)
   - Pulse → "Pulse App HTTP" (latency, 5xx, RPS)
   - Pulse → "Pulse App HTTP (Drill)" (route/status variables, top 4xx, one-click log drill)
   - Pulse → "App Golden Signals" (RPS, errors, latency p50/p95/p99, inflight)
@@ -107,10 +110,11 @@ Operational tips
   - Pulse → "Tracing Overview" (service latency and rates by operation)
   - Pulse → "Security & CSRF Overview" (CSRF accepted/rejected, top error codes, 403/CSRF logs)
 
-Alerts (Prometheus + Alertmanager)
+- Alerts (Prometheus + Alertmanager)
 - Burn-rate SLO (99%), 5xx spikes, event loop lag, process/container memory, CPU usage.
 - CSRF: rejection ratio (>1%), EBADCSRFTOKEN spikes.
 - Auth: invalid refresh ratio (>5%); Usage: rate-limited surge.
+- Email queue: backlog >100, DLQ non-empty, delivery failures, latency p95>15s.
 - Edit rules: `infra/observability/alerts.yml`. Receivers: `infra/observability/alertmanager.yml`.
   - To integrate Slack/Telegram/Email, edit `alertmanager.yml` and recreate containers.
 

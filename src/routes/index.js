@@ -11,6 +11,7 @@ import {
 } from '../config/security.js';
 import { issueCsrfHmac } from '../utils/csrfHmac.js';
 import { getRuntimeStates } from '../config/metrics.js';
+import { getEmailQueueStats } from '../services/emailService.js';
 
 import authRouter from './auth.js';
 import usersRouter from './users.js';
@@ -151,6 +152,7 @@ router.get('/health', (_req, res) => {
     syncing: isSyncing(),
     db_up: runtime.dbUp,
     cache_up: runtime.cacheUp,
+    email_queue: getEmailQueueStats?.(),
   });
 });
 
