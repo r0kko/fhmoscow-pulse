@@ -77,7 +77,11 @@ test('adminGrid returns filtered dates and the full calendar metadata', async ()
     { json: jsonMock }
   );
 
-  expect(listForUsersMock).toHaveBeenCalledWith(['u1'], '2024-04-01', '2024-04-03');
+  expect(listForUsersMock).toHaveBeenCalledWith(
+    ['u1'],
+    '2024-04-01',
+    '2024-04-03'
+  );
 
   const payload = jsonMock.mock.calls[0][0];
   expect(payload.availableDates.at(0)).toBe('2024-04-01');

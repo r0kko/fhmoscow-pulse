@@ -58,7 +58,8 @@ async function fetchRequests({ page = currentPage.value, reset = false } = {}) {
     pendingRequestFetch = { page, reset };
     return;
   }
-  const usePageLoading = !reset && requests.value.length > 0 && page !== resolvedPage.value;
+  const usePageLoading =
+    !reset && requests.value.length > 0 && page !== resolvedPage.value;
   if (usePageLoading) {
     pageLoading.value = true;
   } else {
@@ -217,7 +218,8 @@ function statusBadge(request) {
 
 function statusMessage(request) {
   const alias = request?.status_alias;
-  if (alias === 'approved') return 'Фото подтверждено. Перенесите в основную систему.';
+  if (alias === 'approved')
+    return 'Фото подтверждено. Перенесите в основную систему.';
   if (alias === 'rejected') {
     return request?.decision_reason
       ? `Отклонено: ${request.decision_reason}`
@@ -394,11 +396,7 @@ async function submitReject() {
           </div>
 
           <template v-else>
-            <div
-              v-if="pageLoading"
-              class="text-center py-3"
-              aria-live="polite"
-            >
+            <div v-if="pageLoading" class="text-center py-3" aria-live="polite">
               <div class="spinner-border spinner-brand" role="status"></div>
             </div>
             <div v-if="isEmpty" class="alert alert-info mb-0">
@@ -444,7 +442,13 @@ async function submitReject() {
                   </div>
                   <div class="player-roster-meta">
                     <p class="player-roster-meta-line player-roster-meta-date">
-                      {{ request.player?.date_of_birth ? new Date(request.player.date_of_birth).toLocaleDateString('ru-RU') : '—' }}
+                      {{
+                        request.player?.date_of_birth
+                          ? new Date(
+                              request.player.date_of_birth
+                            ).toLocaleDateString('ru-RU')
+                          : '—'
+                      }}
                     </p>
                     <p class="player-roster-meta-line">
                       {{ playerClubsSummary(request) }}
@@ -480,7 +484,10 @@ async function submitReject() {
                       class="btn btn-outline-primary btn-sm"
                       title="Открыть карточку игрока во внешней системе"
                     >
-                      <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                      <i
+                        class="bi bi-box-arrow-up-right me-1"
+                        aria-hidden="true"
+                      ></i>
                       <span>Открыть в ФХМ</span>
                     </a>
                     <button
@@ -490,7 +497,9 @@ async function submitReject() {
                       :disabled="isProcessing(request)"
                       @click="approveRequest(request)"
                     >
-                      {{ isProcessing(request) ? 'Сохранение…' : 'Подтвердить' }}
+                      {{
+                        isProcessing(request) ? 'Сохранение…' : 'Подтвердить'
+                      }}
                     </button>
                     <button
                       v-if="hasPendingStatus(request)"

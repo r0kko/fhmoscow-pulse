@@ -66,7 +66,13 @@ function buildSearchConditions(searchTokens = []) {
     }));
 
     const fullNameCondition = whereFn(
-      fn('concat_ws', ' ', col('Owner.last_name'), col('Owner.first_name'), col('Owner.patronymic')),
+      fn(
+        'concat_ws',
+        ' ',
+        col('Owner.last_name'),
+        col('Owner.first_name'),
+        col('Owner.patronymic')
+      ),
       { [Op.iLike]: like }
     );
     orConditions.push(fullNameCondition);
@@ -165,7 +171,8 @@ function applyStatusFilter(baseWhere = {}, status) {
 }
 
 function buildOrderClause(orderBy, order) {
-  const direction = String(order || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+  const direction =
+    String(order || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
   if (orderBy === 'number') return [['number', direction]];
   if (orderBy === 'created_at') return [['createdAt', direction]];
   if (orderBy === 'updated_at') return [['updatedAt', direction]];
@@ -232,7 +239,10 @@ async function buildSummary(options = {}) {
 async function listAll(options = {}) {
   const page = Math.max(1, Number.parseInt(options.page ?? '1', 10) || 1);
   const requestedLimit = Number.parseInt(options.limit ?? '20', 10);
-  const limit = Math.min(100, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 20));
+  const limit = Math.min(
+    100,
+    Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 20)
+  );
   const offset = (page - 1) * limit;
 
   const { where: baseWhere, include } = buildBaseFilters(options, {

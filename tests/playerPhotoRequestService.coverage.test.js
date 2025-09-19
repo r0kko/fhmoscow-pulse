@@ -51,7 +51,9 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
   default: { transaction: transactionMock },
 }));
 
-const { default: service } = await import('../src/services/playerPhotoRequestService.js');
+const { default: service } = await import(
+  '../src/services/playerPhotoRequestService.js'
+);
 
 function buildFile() {
   return {
@@ -89,7 +91,11 @@ describe('playerPhotoRequestService.submit', () => {
 
     const result = await service.submit(payload);
 
-    expect(fileUploadMock).toHaveBeenCalledWith('player-1', expect.any(Object), 'admin-1');
+    expect(fileUploadMock).toHaveBeenCalledWith(
+      'player-1',
+      expect.any(Object),
+      'admin-1'
+    );
     expect(photoRequestCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         player_id: 'player-1',
@@ -103,7 +109,12 @@ describe('playerPhotoRequestService.submit', () => {
   test('throws when player not found', async () => {
     playerFindByPkMock.mockResolvedValue(null);
     await expect(
-      service.submit({ actorId: 'user', playerId: 'missing', file: buildFile(), scope: {} })
+      service.submit({
+        actorId: 'user',
+        playerId: 'missing',
+        file: buildFile(),
+        scope: {},
+      })
     ).rejects.toMatchObject({ code: 'player_not_found', status: 404 });
     expect(fileUploadMock).not.toHaveBeenCalled();
   });
@@ -126,7 +137,11 @@ describe('playerPhotoRequestService.submit', () => {
         actorId: 'staff',
         playerId: 'player-1',
         file: buildFile(),
-        scope: { isAdmin: false, allowedClubIds: ['club-1'], allowedTeamIds: [] },
+        scope: {
+          isAdmin: false,
+          allowedClubIds: ['club-1'],
+          allowedTeamIds: [],
+        },
       })
     ).rejects.toMatchObject({ code: 'photo_request_forbidden', status: 403 });
     expect(clubPlayerCountMock).toHaveBeenCalled();
@@ -136,8 +151,16 @@ describe('playerPhotoRequestService.submit', () => {
   test('propagates already existing pending request', async () => {
     photoRequestFindOneMock.mockResolvedValue({ id: 'existing' });
     await expect(
-      service.submit({ actorId: 'admin', playerId: 'player-1', file: buildFile(), scope: { isAdmin: true } })
-    ).rejects.toMatchObject({ code: 'photo_request_already_exists', status: 400 });
+      service.submit({
+        actorId: 'admin',
+        playerId: 'player-1',
+        file: buildFile(),
+        scope: { isAdmin: true },
+      })
+    ).rejects.toMatchObject({
+      code: 'photo_request_already_exists',
+      status: 400,
+    });
     expect(fileUploadMock).not.toHaveBeenCalled();
   });
 });

@@ -194,7 +194,9 @@ describe('playerController.gallery', () => {
     await controller.gallery(req, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Некорректный фильтр фотографий' });
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Некорректный фильтр фотографий',
+    });
     expect(listForGalleryMock).not.toHaveBeenCalled();
   });
 });

@@ -129,7 +129,9 @@ Team.belongsToMany(User, { through: UserTeam, foreignKey: 'team_id' });
 User.belongsToMany(Club, { through: UserClub, foreignKey: 'user_id' });
 Club.belongsToMany(User, { through: UserClub, foreignKey: 'club_id' });
 
-SportSchoolPosition.hasMany(UserClub, { foreignKey: 'sport_school_position_id' });
+SportSchoolPosition.hasMany(UserClub, {
+  foreignKey: 'sport_school_position_id',
+});
 UserClub.belongsTo(SportSchoolPosition, {
   foreignKey: 'sport_school_position_id',
   as: 'SportSchoolPosition',

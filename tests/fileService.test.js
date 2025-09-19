@@ -72,23 +72,8 @@ const { default: fileService } = await import('../src/services/fileService.js');
 
 function buildJpegBuffer(width, height) {
   const base = [
-    0xff,
-    0xd8,
-    0xff,
-    0xc0,
-    0x00,
-    0x0b,
-    0x08,
-    0x00,
-    0x02,
-    0x00,
-    0x02,
-    0x01,
-    0x01,
-    0x11,
-    0x00,
-    0xff,
-    0xd9,
+    0xff, 0xd8, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x02, 0x00, 0x02, 0x01,
+    0x01, 0x11, 0x00, 0xff, 0xd9,
   ];
   base[7] = (height >> 8) & 0xff;
   base[8] = height & 0xff;
@@ -233,13 +218,19 @@ describe('uploadPlayerPhoto', () => {
     fileCreate.mockResolvedValue({ id: 'file-photo' });
     sendMock.mockResolvedValueOnce({});
 
-    const result = await fileService.uploadPlayerPhoto('player-1', file, 'staff-1');
+    const result = await fileService.uploadPlayerPhoto(
+      'player-1',
+      file,
+      'staff-1'
+    );
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
           Bucket: 'test-bucket',
-          Key: expect.stringMatching(/^player-photos\/player-1\/uuid-123\.jpg$/),
+          Key: expect.stringMatching(
+            /^player-photos\/player-1\/uuid-123\.jpg$/
+          ),
           Body: file.buffer,
           ContentType: 'image/jpeg',
         }),

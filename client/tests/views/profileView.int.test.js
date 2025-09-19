@@ -55,7 +55,9 @@ describe('Profile View (integration)', () => {
           passport: { series: '45 67', number: '1234567890' },
         })
       ),
-      http.get('*/inns/me', () => HttpResponse.json({ inn: { number: '500100732259' } })),
+      http.get('*/inns/me', () =>
+        HttpResponse.json({ inn: { number: '500100732259' } })
+      ),
       http.get('*/taxations/me', () =>
         HttpResponse.json({ taxation: { status: 'RESIDENT' } })
       ),
@@ -163,17 +165,15 @@ describe('Profile View (integration)', () => {
 
     await screen.findByRole('heading', { name: 'Документы и данные' });
 
-    expect(
-      await screen.findByLabelText('Телефон')
-    ).toHaveValue('+7 (999) 123-45-67');
+    expect(await screen.findByLabelText('Телефон')).toHaveValue(
+      '+7 (999) 123-45-67'
+    );
     expect(await screen.findByText('45 67 1********0')).toBeInTheDocument();
     expect(await screen.findByText('500100732259')).toBeInTheDocument();
     expect(await screen.findByText('112-233-445 95')).toBeInTheDocument();
 
     await screen.findByRole('heading', { name: 'Банковские реквизиты' });
-    expect(
-      await screen.findByLabelText('Счёт')
-    ).toHaveValue('···· 2345');
+    expect(await screen.findByLabelText('Счёт')).toHaveValue('···· 2345');
     expect(await screen.findByLabelText('Банк')).toHaveValue('ПАО Банк');
     expect(
       screen.getByRole('button', { name: 'Изменить банковские реквизиты' })
@@ -191,8 +191,8 @@ describe('Profile View (integration)', () => {
         name: 'Добавить транспортное средство',
       })
     ).toBeInTheDocument();
-    const vehicleRow = await screen.findByText((content) =>
-      content.includes('Hyundai') && content.includes('А123ВС77')
+    const vehicleRow = await screen.findByText(
+      (content) => content.includes('Hyundai') && content.includes('А123ВС77')
     );
     expect(vehicleRow).toHaveTextContent('Hyundai Sonata · А123ВС77');
 

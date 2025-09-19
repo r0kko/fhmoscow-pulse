@@ -940,7 +940,8 @@ async function listForGallery(options = {}) {
       const yearsList = teamBirthYears
         .map((year) => sequelize.escape(year))
         .join(', ');
-      joinClause = 'JOIN teams tt ON tt.id = tp.team_id AND tt.deleted_at IS NULL';
+      joinClause =
+        'JOIN teams tt ON tt.id = tp.team_id AND tt.deleted_at IS NULL';
       parts.push(`tt.birth_year IN (${yearsList})`);
     }
     membershipClauses.push(
@@ -1121,10 +1122,10 @@ async function listGalleryFilters(options = {}) {
   if (teamIds.length) replacements.teamIds = teamIds;
   if (options.filterClubId) replacements.filterClubId = options.filterClubId;
 
-  const seasonClause = seasonIds.length ? 'AND cp.season_id IN (:seasonIds)' : '';
-  const clubScopeClause = clubScopeIds.length
-    ? 'AND c.id IN (:clubIds)'
+  const seasonClause = seasonIds.length
+    ? 'AND cp.season_id IN (:seasonIds)'
     : '';
+  const clubScopeClause = clubScopeIds.length ? 'AND c.id IN (:clubIds)' : '';
   const teamScopeClause = teamIds.length
     ? `AND EXISTS (
         SELECT 1
@@ -1154,14 +1155,18 @@ async function listGalleryFilters(options = {}) {
     })
     .catch(() => []);
 
-  const teamSeasonClause = seasonIds.length ? 'AND tp.season_id IN (:seasonIds)' : '';
+  const teamSeasonClause = seasonIds.length
+    ? 'AND tp.season_id IN (:seasonIds)'
+    : '';
   const teamClubScopeClause = clubScopeIds.length
     ? 'AND t.club_id IN (:clubIds)'
     : '';
   const specificClubClause = options.filterClubId
     ? 'AND t.club_id = :filterClubId'
     : '';
-  const specificTeamsClause = teamIds.length ? 'AND tp.team_id IN (:teamIds)' : '';
+  const specificTeamsClause = teamIds.length
+    ? 'AND tp.team_id IN (:teamIds)'
+    : '';
 
   const teamYearsSql = `
     SELECT DISTINCT t.birth_year AS birth_year

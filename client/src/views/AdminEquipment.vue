@@ -110,7 +110,8 @@ const totalPages = computed(() =>
 
 const hasCustomSort = computed(
   () =>
-    filters.orderBy !== DEFAULT_SORT.orderBy || filters.order !== DEFAULT_SORT.order
+    filters.orderBy !== DEFAULT_SORT.orderBy ||
+    filters.order !== DEFAULT_SORT.order
 );
 
 const hasActiveFilters = computed(() =>
@@ -231,11 +232,13 @@ const STATUS_META = {
 };
 
 function statusMeta(value) {
-  return STATUS_META[value] || {
-    label: 'Неизвестно',
-    badgeClass: 'bg-light text-muted',
-    description: '',
-  };
+  return (
+    STATUS_META[value] || {
+      label: 'Неизвестно',
+      badgeClass: 'bg-light text-muted',
+      description: '',
+    }
+  );
 }
 
 function toggleStatusFilter(nextStatus) {
@@ -296,7 +299,9 @@ function formatDateTime(iso) {
   return dateTimeFormatter.format(date);
 }
 
-const relativeFormatter = new Intl.RelativeTimeFormat('ru', { numeric: 'auto' });
+const relativeFormatter = new Intl.RelativeTimeFormat('ru', {
+  numeric: 'auto',
+});
 
 function formatRelativeTime(iso) {
   if (!iso) return '';
@@ -539,7 +544,6 @@ watch(
   persistFilters,
   { deep: true }
 );
-
 
 watch(userQuery, (value) => {
   clearTimeout(userSearchTimeout);
@@ -928,7 +932,9 @@ function documentSummary(item) {
       <div class="page-header__content flex-grow-1">
         <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
           <h1 class="h2 mb-0">Экипировка</h1>
-          <span class="page-header__total badge bg-primary-subtle text-primary-emphasis">
+          <span
+            class="page-header__total badge bg-primary-subtle text-primary-emphasis"
+          >
             Всего: {{ formatNumber(equipmentTotal) }}
           </span>
         </div>
@@ -965,12 +971,18 @@ function documentSummary(item) {
           </span>
         </div>
       </div>
-      <div class="page-header__actions d-flex flex-wrap align-items-center gap-2">
+      <div
+        class="page-header__actions d-flex flex-wrap align-items-center gap-2"
+      >
         <span
           v-if="hasActiveFilters"
           class="badge bg-info-subtle text-info-emphasis"
         >
-          {{ activeFiltersCount > 1 ? `Фильтры: ${activeFiltersCount}` : 'Фильтр активен' }}
+          {{
+            activeFiltersCount > 1
+              ? `Фильтры: ${activeFiltersCount}`
+              : 'Фильтр активен'
+          }}
         </span>
         <button type="button" class="btn btn-brand" @click="openCreate">
           <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
@@ -990,10 +1002,12 @@ function documentSummary(item) {
           class="summary-card card tile w-100 text-start"
           :class="[
             card.active ? 'summary-card--active' : null,
-            card.status ? `summary-card--${card.status}` : 'summary-card--total',
+            card.status
+              ? `summary-card--${card.status}`
+              : 'summary-card--total',
           ]"
-          @click="toggleStatusFilter(card.status)"
           :aria-pressed="card.active ? 'true' : 'false'"
+          @click="toggleStatusFilter(card.status)"
         >
           <div class="card-body">
             <p class="summary-card-label text-muted text-uppercase small mb-1">
@@ -1026,7 +1040,9 @@ function documentSummary(item) {
         </div>
       </div>
       <div class="card-body">
-        <div class="filter-toolbar-main d-flex flex-column flex-lg-row gap-3 align-items-start align-items-lg-center mb-3">
+        <div
+          class="filter-toolbar-main d-flex flex-column flex-lg-row gap-3 align-items-start align-items-lg-center mb-3"
+        >
           <div class="filter-search flex-grow-1 w-100">
             <label class="form-label" for="flt-search">Поиск</label>
             <div class="input-group input-search">
@@ -1053,7 +1069,8 @@ function documentSummary(item) {
               </button>
             </div>
             <p class="text-muted small mb-0 mt-1">
-              Поиск проводится по типу, производителю, размеру, номеру, владельцу и документу.
+              Поиск проводится по типу, производителю, размеру, номеру,
+              владельцу и документу.
             </p>
           </div>
           <div class="filter-buttons w-100">
@@ -1120,7 +1137,11 @@ function documentSummary(item) {
               title="Не удалось загрузить"
               :description="error"
             >
-              <button type="button" class="btn btn-outline-secondary" @click="loadList">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="loadList"
+              >
                 Повторить попытку
               </button>
             </EmptyState>
@@ -1138,7 +1159,9 @@ function documentSummary(item) {
             </EmptyState>
           </div>
           <template v-else>
-            <table class="table admin-table align-middle mb-0 equipment-table d-none d-lg-table">
+            <table
+              class="table admin-table align-middle mb-0 equipment-table d-none d-lg-table"
+            >
               <thead>
                 <tr>
                   <th scope="col" class="col-number">№</th>
@@ -1152,11 +1175,16 @@ function documentSummary(item) {
               </thead>
               <tbody>
                 <tr v-for="item in items" :key="item.id">
-                  <td class="text-nowrap fw-semibold">{{ item.number ?? '—' }}</td>
+                  <td class="text-nowrap fw-semibold">
+                    {{ item.number ?? '—' }}
+                  </td>
                   <td class="text-truncate" :title="item.type?.name || '—'">
                     {{ item.type?.name || '—' }}
                   </td>
-                  <td class="text-truncate" :title="item.manufacturer?.name || '—'">
+                  <td
+                    class="text-truncate"
+                    :title="item.manufacturer?.name || '—'"
+                  >
                     {{ item.manufacturer?.name || '—' }}
                   </td>
                   <td class="text-truncate" :title="item.size?.name || '—'">
@@ -1173,7 +1201,9 @@ function documentSummary(item) {
                   </td>
                   <td class="owner-cell">
                     <template v-if="item.owner">
-                      <span class="owner-cell__name">{{ ownerName(item.owner) }}</span>
+                      <span class="owner-cell__name">{{
+                        ownerName(item.owner)
+                      }}</span>
                       <span
                         v-if="ownerContact(item.owner)"
                         class="owner-cell__contact text-muted"
@@ -1207,7 +1237,10 @@ function documentSummary(item) {
                         :title="`Выдать экипировку №${item.number ?? '—'}`"
                         @click="openIssue(item)"
                       >
-                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                        <i
+                          class="bi bi-box-arrow-up-right"
+                          aria-hidden="true"
+                        ></i>
                       </button>
                       <button
                         type="button"
@@ -1226,16 +1259,16 @@ function documentSummary(item) {
             </table>
             <div class="d-lg-none">
               <div class="row g-3 equipment-mobile">
-                <div
-                  v-for="item in items"
-                  :key="item.id"
-                  class="col-12"
-                >
+                <div v-for="item in items" :key="item.id" class="col-12">
                   <article class="equipment-card card tile h-100">
                     <div class="card-body">
-                      <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+                      <div
+                        class="d-flex align-items-start justify-content-between gap-2 mb-3"
+                      >
                         <div class="text-truncate">
-                          <p class="text-muted small mb-1">№ {{ item.number ?? '—' }}</p>
+                          <p class="text-muted small mb-1">
+                            № {{ item.number ?? '—' }}
+                          </p>
                           <h3 class="h6 mb-1 text-truncate">
                             {{ item.type?.name || 'Тип не указан' }}
                           </h3>
@@ -1270,7 +1303,10 @@ function documentSummary(item) {
                             </template>
                           </dd>
                         </div>
-                        <div v-if="item.owner && ownerContact(item.owner)" class="mobile-detail">
+                        <div
+                          v-if="item.owner && ownerContact(item.owner)"
+                          class="mobile-detail"
+                        >
                           <dt>Контакты</dt>
                           <dd>{{ ownerContact(item.owner) }}</dd>
                         </div>
@@ -1294,7 +1330,10 @@ function documentSummary(item) {
                           :title="`Выдать экипировку №${item.number ?? '—'}`"
                           @click="openIssue(item)"
                         >
-                          <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                          <i
+                            class="bi bi-box-arrow-up-right me-1"
+                            aria-hidden="true"
+                          ></i>
                           Выдать
                         </button>
                         <button
@@ -1328,11 +1367,10 @@ function documentSummary(item) {
       >
         <span class="text-muted small">
           <template v-if="pageRange">
-            Страница {{ currentPage }} из {{ totalPages }} · записи {{ pageRange.start }}–{{ pageRange.end }}
+            Страница {{ currentPage }} из {{ totalPages }} · записи
+            {{ pageRange.start }}–{{ pageRange.end }}
           </template>
-          <template v-else>
-            Всего записей: {{ total }}
-          </template>
+          <template v-else> Всего записей: {{ total }} </template>
         </span>
         <PageNav
           v-model:page="currentPage"
@@ -1342,7 +1380,6 @@ function documentSummary(item) {
         />
       </div>
     </div>
-
   </div>
 
   <div ref="modalRef" class="modal fade" tabindex="-1" aria-hidden="true">
@@ -1353,7 +1390,11 @@ function documentSummary(item) {
             <h2 class="modal-title h5">
               {{ editing ? 'Редактирование экипировки' : 'Новая экипировка' }}
             </h2>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
           </div>
           <div class="modal-body">
             <div v-if="formError" class="alert alert-danger" role="alert">
@@ -1377,7 +1418,9 @@ function documentSummary(item) {
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label" for="form-manufacturer">Производитель</label>
+              <label class="form-label" for="form-manufacturer"
+                >Производитель</label
+              >
               <select
                 id="form-manufacturer"
                 v-model="form.manufacturerId"
@@ -1385,7 +1428,11 @@ function documentSummary(item) {
                 :class="{ 'is-invalid': fieldErrors.manufacturerId }"
               >
                 <option value="" disabled>Выберите производителя</option>
-                <option v-for="m in manufacturers" :key="m.value" :value="m.value">
+                <option
+                  v-for="m in manufacturers"
+                  :key="m.value"
+                  :value="m.value"
+                >
                   {{ m.label }}
                 </option>
               </select>
@@ -1453,19 +1500,33 @@ function documentSummary(item) {
     </div>
   </div>
 
-  <div ref="filtersModalRef" class="modal fade" tabindex="-1" aria-hidden="true">
+  <div
+    ref="filtersModalRef"
+    class="modal fade"
+    tabindex="-1"
+    aria-hidden="true"
+  >
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <form @submit.prevent="closeFilters">
           <div class="modal-header">
             <h2 class="modal-title h5">Фильтры</h2>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Закрыть"
+            ></button>
           </div>
           <div class="modal-body">
             <div class="row g-3">
               <div class="col-12 col-md-6">
                 <label class="form-label" for="modal-status">Статус</label>
-                <select id="modal-status" v-model="filters.status" class="form-select">
+                <select
+                  id="modal-status"
+                  v-model="filters.status"
+                  class="form-select"
+                >
                   <option value="">Все статусы</option>
                   <option value="free">Свободна</option>
                   <option value="awaiting">Ожидает подписи</option>
@@ -1474,7 +1535,11 @@ function documentSummary(item) {
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label" for="modal-type">Тип</label>
-                <select id="modal-type" v-model="filters.typeId" class="form-select">
+                <select
+                  id="modal-type"
+                  v-model="filters.typeId"
+                  class="form-select"
+                >
                   <option value="">Все типы</option>
                   <option v-for="t in types" :key="t.value" :value="t.value">
                     {{ t.label }}
@@ -1482,21 +1547,31 @@ function documentSummary(item) {
                 </select>
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label" for="modal-manufacturer">Производитель</label>
+                <label class="form-label" for="modal-manufacturer"
+                  >Производитель</label
+                >
                 <select
                   id="modal-manufacturer"
                   v-model="filters.manufacturerId"
                   class="form-select"
                 >
                   <option value="">Все производители</option>
-                  <option v-for="m in manufacturers" :key="m.value" :value="m.value">
+                  <option
+                    v-for="m in manufacturers"
+                    :key="m.value"
+                    :value="m.value"
+                  >
                     {{ m.label }}
                   </option>
                 </select>
               </div>
               <div class="col-6 col-md-3">
                 <label class="form-label" for="modal-size">Размер</label>
-                <select id="modal-size" v-model="filters.sizeId" class="form-select">
+                <select
+                  id="modal-size"
+                  v-model="filters.sizeId"
+                  class="form-select"
+                >
                   <option value="">Любой</option>
                   <option v-for="s in sizes" :key="s.value" :value="s.value">
                     {{ s.label }}
@@ -1520,8 +1595,16 @@ function documentSummary(item) {
               <div class="col-12 col-md-6">
                 <label class="form-label" for="modal-sort">Сортировка</label>
                 <div class="d-flex gap-2">
-                  <select id="modal-sort" v-model="filters.orderBy" class="form-select">
-                    <option v-for="opt in SORT_OPTIONS" :key="opt.value" :value="opt.value">
+                  <select
+                    id="modal-sort"
+                    v-model="filters.orderBy"
+                    class="form-select"
+                  >
+                    <option
+                      v-for="opt in SORT_OPTIONS"
+                      :key="opt.value"
+                      :value="opt.value"
+                    >
                       {{ opt.label }}
                     </option>
                   </select>
@@ -1543,28 +1626,37 @@ function documentSummary(item) {
                       "
                       aria-hidden="true"
                     ></i>
-                    <span class="visually-hidden">Сменить направление сортировки</span>
+                    <span class="visually-hidden"
+                      >Сменить направление сортировки</span
+                    >
                   </button>
                 </div>
               </div>
             </div>
           </div>
-          <div class="modal-footer d-flex flex-wrap gap-2 justify-content-between">
+          <div
+            class="modal-footer d-flex flex-wrap gap-2 justify-content-between"
+          >
             <button
               type="button"
               class="btn btn-link text-decoration-none"
               :disabled="!hasActiveFilters"
-              @click="resetFilters({ preserveSearch: true }); closeFilters();"
+              @click="
+                resetFilters({ preserveSearch: true });
+                closeFilters();
+              "
             >
               Сбросить
             </button>
             <div class="d-flex gap-2">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                data-bs-dismiss="modal"
+              >
                 Отмена
               </button>
-              <button type="submit" class="btn btn-brand">
-                Применить
-              </button>
+              <button type="submit" class="btn btn-brand">Применить</button>
             </div>
           </div>
         </form>
@@ -1592,7 +1684,9 @@ function documentSummary(item) {
             <div class="fw-semibold text-body mb-1">
               {{ issueTarget.type?.name || 'Тип не указан' }}
             </div>
-            <div>Производитель: {{ issueTarget.manufacturer?.name || '—' }}</div>
+            <div>
+              Производитель: {{ issueTarget.manufacturer?.name || '—' }}
+            </div>
             <div>Размер: {{ issueTarget.size?.name || '—' }}</div>
             <div>Номер: {{ issueTarget.number ?? '—' }}</div>
           </div>
@@ -1625,7 +1719,9 @@ function documentSummary(item) {
             </option>
           </select>
           <p
-            v-if="userQuery.length >= USER_SEARCH_MIN_CHARS && !userOptions.length"
+            v-if="
+              userQuery.length >= USER_SEARCH_MIN_CHARS && !userOptions.length
+            "
             class="text-muted small mt-2 mb-0"
           >
             Совпадений не найдено.
@@ -1667,8 +1763,8 @@ function documentSummary(item) {
   >
     <p class="mb-0">
       Удалить запись об экипировке
-      <strong v-if="removeTarget">№{{ removeTarget.number }}</strong>?
-      Действие нельзя отменить.
+      <strong v-if="removeTarget">№{{ removeTarget.number }}</strong
+      >? Действие нельзя отменить.
     </p>
   </ConfirmModal>
 </template>
@@ -1676,7 +1772,10 @@ function documentSummary(item) {
 <style scoped>
 .summary-card {
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   border: 1px solid var(--bs-border-color-translucent, var(--bs-border-color));
 }
 
@@ -1770,7 +1869,9 @@ function documentSummary(item) {
   color: var(--bs-secondary-color);
   background-color: var(--bs-body-bg);
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .chip:hover,

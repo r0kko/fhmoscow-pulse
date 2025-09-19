@@ -18,7 +18,12 @@ function toPlain(model) {
 function mapPosition(position) {
   if (!position) return null;
   const plain = toPlain(position);
-  return { id: plain.id, alias: plain.alias, name: plain.name, description: plain.description };
+  return {
+    id: plain.id,
+    alias: plain.alias,
+    name: plain.name,
+    description: plain.description,
+  };
 }
 
 async function getClubStructure(clubId) {
@@ -87,7 +92,8 @@ async function getClubStructure(clubId) {
     const isStaff = roles.some((role) => role.alias === 'SPORT_SCHOOL_STAFF');
     if (!isStaff) return;
     const userPublic = userMapper.toPublic(membership.User);
-    const position = positionById.get(membership.sport_school_position_id || '') || null;
+    const position =
+      positionById.get(membership.sport_school_position_id || '') || null;
     const entry = {
       user: userPublic,
       position,

@@ -42,7 +42,11 @@ describe('shortLinkService memory backend', () => {
         '../src/services/shortLinkService.js'
       );
 
-      const url = await buildShortVerifyUrl({ d: 'docX', s: 'signY', u: 'userZ' });
+      const url = await buildShortVerifyUrl({
+        d: 'docX',
+        s: 'signY',
+        u: 'userZ',
+      });
       expect(url.startsWith('https://lk.fhmoscow.com/api/v/')).toBe(true);
       const code = url.split('/').pop();
       const token = await resolveCode(code);
@@ -111,7 +115,9 @@ describe('shortLinkService db backend', () => {
   });
 
   test('falls back to memory backend when table missing', async () => {
-    const missingTableError = new Error('relation "short_links" does not exist');
+    const missingTableError = new Error(
+      'relation "short_links" does not exist'
+    );
     const findOneMock = jest.fn().mockRejectedValue(missingTableError);
 
     await jest.isolateModulesAsync(async () => {

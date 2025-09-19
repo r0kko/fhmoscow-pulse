@@ -119,7 +119,10 @@ describe('equipmentMapper', () => {
       AssignmentDocument: {
         id: 'd1',
         number: '25.01/10',
-        DocumentStatus: { alias: 'AWAITING_SIGNATURE', name: 'Ожидает подписи' },
+        DocumentStatus: {
+          alias: 'AWAITING_SIGNATURE',
+          name: 'Ожидает подписи',
+        },
       },
     };
     expect(mapper.toPublic(item)).toEqual({

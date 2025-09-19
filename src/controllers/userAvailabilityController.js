@@ -67,7 +67,9 @@ export default {
     const today = new Date();
     const rangeStart = formatDate(today);
     const rangeEndDate = new Date(today);
-    rangeEndDate.setDate(rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7);
+    rangeEndDate.setDate(
+      rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7
+    );
 
     // Roles/status filters
     const rolesParam = req.query.role;
@@ -106,7 +108,11 @@ export default {
 
     // Fetch availabilities in bulk
     const availableDates = [];
-    for (let d = new Date(rangeStart); d <= rangeEndDate; d.setDate(d.getDate() + 1)) {
+    for (
+      let d = new Date(rangeStart);
+      d <= rangeEndDate;
+      d.setDate(d.getDate() + 1)
+    ) {
       availableDates.push(formatDate(d));
     }
 

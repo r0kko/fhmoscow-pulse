@@ -105,18 +105,20 @@ describe('Home View (integration)', () => {
       },
     });
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Профиль обновлён');
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Профиль обновлён'
+    );
 
-    const upcomingList = await screen.findByLabelText('Список ближайших событий');
+    const upcomingList = await screen.findByLabelText(
+      'Список ближайших событий'
+    );
     expect(within(upcomingList).getByText('Медосмотр')).toBeInTheDocument();
     expect(within(upcomingList).getByText('Мероприятие')).toBeInTheDocument();
     expect(within(upcomingList).getByText('Тренировка')).toBeInTheDocument();
 
     expect(screen.queryByLabelText('Загрузка ближайших событий')).toBeNull();
 
-    expect(
-      screen.getByRole('link', { name: 'Семинары' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Семинары' })).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Команды и составы' })
     ).toBeInTheDocument();

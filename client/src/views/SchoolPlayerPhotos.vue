@@ -41,9 +41,7 @@ const totalPages = computed(() => {
   if (!perPage.value) return 1;
   return Math.max(1, Math.ceil(total.value / perPage.value));
 });
-const paginationDisabled = computed(
-  () => loading.value || pageLoading.value
-);
+const paginationDisabled = computed(() => loading.value || pageLoading.value);
 
 const uploadRequirementsText = `PNG или JPEG, до 5 МБ, не менее ${MIN_IMAGE_DIMENSION}×${MIN_IMAGE_DIMENSION} пикс.`;
 
@@ -70,12 +68,14 @@ function ensureUploadState(playerId) {
 }
 
 function getUploadState(playerId) {
-  return uploadStates.value[playerId] || {
-    uploading: false,
-    progress: 0,
-    error: '',
-    success: false,
-  };
+  return (
+    uploadStates.value[playerId] || {
+      uploading: false,
+      progress: 0,
+      error: '',
+      success: false,
+    }
+  );
 }
 
 function updateUploadState(playerId, patch) {
@@ -169,7 +169,8 @@ async function fetchPlayers({ page = currentPage.value, reset = false } = {}) {
     pendingPlayerFetch = { page, reset };
     return;
   }
-  const needsPageLoading = !reset && players.value.length > 0 && page !== resolvedPage.value;
+  const needsPageLoading =
+    !reset && players.value.length > 0 && page !== resolvedPage.value;
   if (needsPageLoading) {
     pageLoading.value = true;
   } else {
@@ -428,7 +429,10 @@ function loadImageDimensions(file) {
     typeof Image === 'undefined' ||
     typeof URL === 'undefined'
   ) {
-    return Promise.resolve({ width: MIN_IMAGE_DIMENSION, height: MIN_IMAGE_DIMENSION });
+    return Promise.resolve({
+      width: MIN_IMAGE_DIMENSION,
+      height: MIN_IMAGE_DIMENSION,
+    });
   }
   return new Promise((resolve, reject) => {
     try {
@@ -730,7 +734,9 @@ onBeforeUnmount(() => {
           </form>
           <div class="filters-bar mt-3">
             <div class="filters-group">
-              <label for="playerGalleryClub" class="form-label small text-muted mb-1"
+              <label
+                for="playerGalleryClub"
+                class="form-label small text-muted mb-1"
                 >Клуб</label
               >
               <select
@@ -770,7 +776,9 @@ onBeforeUnmount(() => {
               </select>
             </div>
             <div class="filters-group">
-              <label for="playerGalleryPhoto" class="form-label small text-muted mb-1"
+              <label
+                for="playerGalleryPhoto"
+                class="form-label small text-muted mb-1"
                 >Фотографии</label
               >
               <select
@@ -802,11 +810,7 @@ onBeforeUnmount(() => {
           </div>
 
           <template v-else>
-            <div
-              v-if="pageLoading"
-              class="text-center py-3"
-              aria-live="polite"
-            >
+            <div v-if="pageLoading" class="text-center py-3" aria-live="polite">
               <div class="spinner-border spinner-brand" role="status"></div>
             </div>
             <div v-if="!players.length" class="alert alert-info mb-0">
@@ -854,7 +858,10 @@ onBeforeUnmount(() => {
                     v-if="getUploadState(player.id).uploading"
                     class="upload-overlay"
                   >
-                    <div class="spinner-border spinner-brand" role="status"></div>
+                    <div
+                      class="spinner-border spinner-brand"
+                      role="status"
+                    ></div>
                     <div class="upload-progress">
                       {{ getUploadState(player.id).progress }}%
                     </div>
@@ -869,10 +876,10 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
                 <input
+                  :ref="(el) => registerFileInput(player.id, el)"
                   type="file"
                   class="visually-hidden"
                   accept="image/png,image/jpeg,image/jpg"
-                  :ref="(el) => registerFileInput(player.id, el)"
                   @change="onPhotoInputChange(player.id, $event)"
                 />
                 <div class="player-roster-body">
@@ -898,7 +905,10 @@ onBeforeUnmount(() => {
                       {{ clubYearSummary(player) }}
                     </p>
                   </div>
-                  <div v-if="photoRequestStatus(player)" class="player-roster-status">
+                  <div
+                    v-if="photoRequestStatus(player)"
+                    class="player-roster-status"
+                  >
                     <span
                       class="badge"
                       :class="`bg-${photoRequestStatus(player).variant}`"
@@ -938,10 +948,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div
-        v-if="totalPages > 1"
-        class="d-flex justify-content-center mt-4"
-      >
+      <div v-if="totalPages > 1" class="d-flex justify-content-center mt-4">
         <div
           :class="{ 'pagination-disabled': paginationDisabled }"
           :aria-disabled="paginationDisabled ? 'true' : 'false'"
@@ -1024,7 +1031,9 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   cursor: pointer;
   border: 2px dashed transparent;
-  transition: border-color 0.2s ease, transform 0.2s ease,
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
     box-shadow 0.2s ease;
 }
 
@@ -1089,7 +1098,6 @@ onBeforeUnmount(() => {
   font-size: 0.95rem;
   letter-spacing: 0.03em;
 }
-
 
 .photo-hint {
   position: absolute;

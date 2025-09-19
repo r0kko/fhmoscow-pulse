@@ -103,7 +103,10 @@ test('getById returns course with relations', async () => {
   courseFindByPkMock.mockResolvedValue(expected);
   const result = await service.getById('course-1');
   expect(courseFindByPkMock).toHaveBeenCalledWith('course-1', {
-    include: [{ model: expect.anything(), as: 'Responsible' }, { model: expect.anything() }],
+    include: [
+      { model: expect.anything(), as: 'Responsible' },
+      { model: expect.anything() },
+    ],
   });
   expect(result).toBe(expected);
 });
@@ -145,7 +148,10 @@ test('update rejects on missing course or responsible', async () => {
     'course_not_found'
   );
 
-  courseFindByPkMock.mockResolvedValueOnce({ ...courseInstance, update: jest.fn() });
+  courseFindByPkMock.mockResolvedValueOnce({
+    ...courseInstance,
+    update: jest.fn(),
+  });
   userFindByPkMock.mockResolvedValueOnce(null);
   await expect(
     service.update('c1', { responsible_id: 'not-there' }, 'actor')

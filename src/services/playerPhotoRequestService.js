@@ -238,8 +238,18 @@ async function findById(id, options = {}) {
         model: Player,
         as: 'Player',
         include: [
-          { model: Club, as: 'Clubs', attributes: ['id', 'name'], through: { attributes: [] } },
-          { model: Team, as: 'Teams', attributes: ['id', 'name', 'birth_year'], through: { attributes: [] } },
+          {
+            model: Club,
+            as: 'Clubs',
+            attributes: ['id', 'name'],
+            through: { attributes: [] },
+          },
+          {
+            model: Team,
+            as: 'Teams',
+            attributes: ['id', 'name', 'birth_year'],
+            through: { attributes: [] },
+          },
           {
             model: ExtFile,
             as: 'Photo',

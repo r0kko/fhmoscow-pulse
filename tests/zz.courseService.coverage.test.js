@@ -36,7 +36,9 @@ async function loadServiceWithMocks(factory) {
       NormativeType: {},
     }));
 
-    const { default: service } = await import('../src/services/courseService.js');
+    const { default: service } = await import(
+      '../src/services/courseService.js'
+    );
     await extras(service, {
       courseMocks,
       userMocks,
@@ -91,13 +93,10 @@ test('courseService end-to-end coverage', async () => {
     };
 
     const userCourseMocks = {
-      findOne: jest
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          update: jest.fn(),
-          destroy: jest.fn(),
-        }),
+      findOne: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+        update: jest.fn(),
+        destroy: jest.fn(),
+      }),
       create: jest.fn().mockResolvedValue({ id: 'link-1' }),
     };
 
@@ -127,7 +126,11 @@ test('courseService end-to-end coverage', async () => {
         },
         'actor'
       );
-      await service.update('c1', { name: 'Updated', responsible_id: 'resp-2' }, 'actor');
+      await service.update(
+        'c1',
+        { name: 'Updated', responsible_id: 'resp-2' },
+        'actor'
+      );
       await service.remove('c1', 'actor');
       await service.setUserCourse('user-1', 'c1', 'actor');
       await service.removeUser('user-1', 'actor');
@@ -167,7 +170,9 @@ test('courseService end-to-end coverage', async () => {
     };
 
     const extras = async (service) => {
-      await expect(service.getById('absent')).rejects.toThrow('course_not_found');
+      await expect(service.getById('absent')).rejects.toThrow(
+        'course_not_found'
+      );
       await expect(service.update('missing', {}, 'actor')).rejects.toThrow(
         'course_not_found'
       );

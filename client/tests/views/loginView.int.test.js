@@ -2,14 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { http, HttpResponse } from 'msw';
 import { nextTick } from 'vue';
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginView from '../../src/views/Login.vue';
 import { auth } from '../../src/auth.js';
 import { setupMsw } from '../utils/msw.js';
@@ -29,7 +22,10 @@ function createRouterInstance() {
     routes: [
       { path: '/', component: { template: '<div>home</div>' } },
       { path: '/login', component: LoginView },
-      { path: '/change-password', component: { template: '<div>change</div>' } },
+      {
+        path: '/change-password',
+        component: { template: '<div>change</div>' },
+      },
       {
         path: '/awaiting-confirmation',
         component: { template: '<div>await</div>' },
@@ -108,10 +104,7 @@ describe('Login View (integration)', () => {
     vi.useFakeTimers();
     server.use(
       http.post('*/auth/login', async () =>
-        HttpResponse.json(
-          { error: 'invalid_credentials' },
-          { status: 400 }
-        )
+        HttpResponse.json({ error: 'invalid_credentials' }, { status: 400 })
       )
     );
 

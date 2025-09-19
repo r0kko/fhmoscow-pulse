@@ -16,10 +16,12 @@ export default {
     }
 
     if (club.UserClub) {
-      const membership = typeof club.UserClub.get === 'function'
-        ? club.UserClub.get({ plain: true })
-        : club.UserClub;
-      out.sport_school_position_id = membership.sport_school_position_id || null;
+      const membership =
+        typeof club.UserClub.get === 'function'
+          ? club.UserClub.get({ plain: true })
+          : club.UserClub;
+      out.sport_school_position_id =
+        membership.sport_school_position_id || null;
       if (membership.SportSchoolPosition) {
         const position = membership.SportSchoolPosition;
         out.sport_school_position_name = position.name;

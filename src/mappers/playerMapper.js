@@ -1,6 +1,4 @@
-import {
-  buildExtFilePublicUrlCandidates,
-} from '../config/extFiles.js';
+import { buildExtFilePublicUrlCandidates } from '../config/extFiles.js';
 
 import teamMapper from './teamMapper.js';
 import clubMapper from './clubMapper.js';

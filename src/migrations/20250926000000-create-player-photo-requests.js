@@ -60,9 +60,24 @@ module.exports = {
     const statuses = await queryInterface.bulkInsert(
       'player_photo_request_statuses',
       [
-        { alias: 'pending', name: 'На модерации', created_at: now, updated_at: now },
-        { alias: 'approved', name: 'Подтверждено', created_at: now, updated_at: now },
-        { alias: 'rejected', name: 'Отклонено', created_at: now, updated_at: now },
+        {
+          alias: 'pending',
+          name: 'На модерации',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          alias: 'approved',
+          name: 'Подтверждено',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          alias: 'rejected',
+          name: 'Отклонено',
+          created_at: now,
+          updated_at: now,
+        },
       ],
       { returning: true }
     );
@@ -72,12 +87,15 @@ module.exports = {
       : null;
     if (!pendingStatus) {
       const [rows] = await queryInterface.sequelize.query(
-        'SELECT id, alias FROM player_photo_request_statuses WHERE alias = \'pending\' LIMIT 1'
+        'SELECT id, alias FROM player_photo_request_statuses WHERE alias = :alias LIMIT 1',
+        { replacements: { alias: 'pending' } }
       );
       pendingStatus = Array.isArray(rows) && rows.length ? rows[0] : null;
     }
     if (!pendingStatus) {
-      throw new Error('Failed to insert pending status for player photo requests');
+      throw new Error(
+        'Failed to insert pending status for player photo requests'
+      );
     }
 
     if (!hasRequestsTable) {

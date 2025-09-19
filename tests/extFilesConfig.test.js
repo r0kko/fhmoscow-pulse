@@ -1,4 +1,11 @@
-import { afterAll, afterEach, describe, expect, jest, test } from '@jest/globals';
+import {
+  afterAll,
+  afterEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from '@jest/globals';
 
 const originalBase = process.env.EXT_FILES_PUBLIC_BASE_URL;
 const originalMap = process.env.EXT_FILES_MODULE_MAP;
@@ -19,8 +26,7 @@ describe('extFiles config helpers', () => {
   });
 
   test('buildExtFilePublicUrl combines base, module path, and external id filename', async () => {
-    process.env.EXT_FILES_PUBLIC_BASE_URL =
-      'https://cdn.example.com/base/';
+    process.env.EXT_FILES_PUBLIC_BASE_URL = 'https://cdn.example.com/base/';
     process.env.EXT_FILES_MODULE_MAP = 'playerPhoto=person/player/photo';
     const { buildExtFilePublicUrl } = await loadHelpers();
     const url = buildExtFilePublicUrl({
@@ -56,9 +62,7 @@ describe('extFiles config helpers', () => {
       mime_type: 'image/jpeg',
       name: '',
     });
-    expect(url).toBe(
-      'https://cdn.example.com/person/player/photo/56752.jpeg'
-    );
+    expect(url).toBe('https://cdn.example.com/person/player/photo/56752.jpeg');
   });
 
   test('returns null when base url is missing', async () => {

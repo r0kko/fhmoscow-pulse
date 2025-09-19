@@ -42,7 +42,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 
 const svcMod = await import('../src/services/clubUserService.js');
 const service = svcMod.default;
-const { listClubUsers, addClubUser, removeClubUser, updateClubUserPosition } = svcMod;
+const { listClubUsers, addClubUser, removeClubUser, updateClubUserPosition } =
+  svcMod;
 
 function makeUserInst() {
   return {
@@ -70,14 +71,19 @@ describe('clubUserService.listUserClubs', () => {
 
   test('returns clubs with membership metadata', async () => {
     const setDataValue = jest.fn();
-    userClubFindAllMock.mockResolvedValue([{
-      id: 'uc1',
-      Club: { id: 'c1', name: 'Club 1', setDataValue },
-      SportSchoolPosition: { id: 'pos1', name: 'Директор' },
-    }]);
+    userClubFindAllMock.mockResolvedValue([
+      {
+        id: 'uc1',
+        Club: { id: 'c1', name: 'Club 1', setDataValue },
+        SportSchoolPosition: { id: 'pos1', name: 'Директор' },
+      },
+    ]);
     const result = await service.listUserClubs('u1');
     expect(result).toHaveLength(1);
-    expect(setDataValue).toHaveBeenCalledWith('UserClub', expect.objectContaining({ id: 'uc1' }));
+    expect(setDataValue).toHaveBeenCalledWith(
+      'UserClub',
+      expect.objectContaining({ id: 'uc1' })
+    );
     expect(userFindByPkMock).not.toHaveBeenCalled();
   });
 });

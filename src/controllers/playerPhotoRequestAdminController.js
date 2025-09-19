@@ -68,8 +68,14 @@ async function enrichWithDownloadUrl(request) {
 export default {
   async list(req, res) {
     try {
-      const { status = 'pending', page, limit, search, club_id, team_id } =
-        req.query || {};
+      const {
+        status = 'pending',
+        page,
+        limit,
+        search,
+        club_id,
+        team_id,
+      } = req.query || {};
       const clubIds = parseIds(club_id);
       const teamIds = parseIds(team_id);
       const result = await playerPhotoRequestService.list({

@@ -46,11 +46,7 @@ function toPublic(item) {
       : null,
     document_id: assignment_document_id || null,
     document,
-    status: Owner
-      ? 'issued'
-      : assignment_document_id
-        ? 'awaiting'
-        : 'free',
+    status: Owner ? 'issued' : assignment_document_id ? 'awaiting' : 'free',
     created_at: createdAt ? new Date(createdAt).toISOString() : null,
     updated_at: updatedAt ? new Date(updatedAt).toISOString() : null,
   };

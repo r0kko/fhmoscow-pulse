@@ -87,9 +87,7 @@ export function setupServer(...initialHandlers) {
       globalThis.fetch = async (input, init = {}) => {
         const normalised = normaliseInput(input, baseOrigin);
         const request =
-          input instanceof Request
-            ? input
-            : new Request(normalised, init);
+          input instanceof Request ? input : new Request(normalised, init);
         const url = new URL(request.url, baseOrigin);
         const method = request.method.toUpperCase();
         const handler = handlers.find((h) => h.matches(url, method));
@@ -126,4 +124,3 @@ export function setupServer(...initialHandlers) {
     events,
   };
 }
-

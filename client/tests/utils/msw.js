@@ -20,4 +20,3 @@ export function setupMsw(options = {}) {
 
   return server;
 }
-

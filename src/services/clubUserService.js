@@ -1,4 +1,11 @@
-import { User, Club, UserClub, Team, UserTeam, SportSchoolPosition } from '../models/index.js';
+import {
+  User,
+  Club,
+  UserClub,
+  Team,
+  UserTeam,
+  SportSchoolPosition,
+} from '../models/index.js';
 import sequelize from '../config/database.js';
 import ServiceError from '../errors/ServiceError.js';
 
@@ -47,7 +54,10 @@ async function addUserClub(userId, clubId, actorId, options = {}) {
       paranoid: false,
       transaction: tx,
     });
-    const hasPosition = Object.prototype.hasOwnProperty.call(options, 'positionId');
+    const hasPosition = Object.prototype.hasOwnProperty.call(
+      options,
+      'positionId'
+    );
     if (existingClubLink) {
       if (existingClubLink.deletedAt)
         await existingClubLink.restore({ transaction: tx });
@@ -57,7 +67,8 @@ async function addUserClub(userId, clubId, actorId, options = {}) {
       await existingClubLink.update(updates, { transaction: tx });
     } else {
       const through = { created_by: actorId, updated_by: actorId };
-      if (hasPosition) through.sport_school_position_id = options.positionId || null;
+      if (hasPosition)
+        through.sport_school_position_id = options.positionId || null;
       await user.addClub(club, {
         through,
         transaction: tx,
@@ -122,7 +133,12 @@ async function removeUserClub(userId, clubId, actorId = null) {
   });
 }
 
-async function updateClubUserPosition(clubId, userId, positionId, actorId = null) {
+async function updateClubUserPosition(
+  clubId,
+  userId,
+  positionId,
+  actorId = null
+) {
   const link = await UserClub.findOne({
     where: { club_id: clubId, user_id: userId },
   });
@@ -137,7 +153,12 @@ async function updateClubUserPosition(clubId, userId, positionId, actorId = null
   return link;
 }
 
-export default { listUserClubs, addUserClub, removeUserClub, updateClubUserPosition };
+export default {
+  listUserClubs,
+  addUserClub,
+  removeUserClub,
+  updateClubUserPosition,
+};
 
 // New helpers for club-centric staff management
 async function listClubUsers(clubId) {

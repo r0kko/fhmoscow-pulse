@@ -1,12 +1,5 @@
 <script setup>
-import {
-  ref,
-  reactive,
-  computed,
-  watch,
-  onMounted,
-  onUnmounted,
-} from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 
@@ -305,9 +298,12 @@ async function confirmDetachAction() {
   confirmDetach.loading = true;
   try {
     if (confirmDetach.scope === 'club') {
-      await apiFetch(`/clubs/${selectedClubId.value}/staff/${confirmDetach.id}`, {
-        method: 'DELETE',
-      });
+      await apiFetch(
+        `/clubs/${selectedClubId.value}/staff/${confirmDetach.id}`,
+        {
+          method: 'DELETE',
+        }
+      );
       await loadStructure(selectedClubId.value);
       showToast('Сотрудник откреплён от клуба', 'success');
     } else if (confirmDetach.scope === 'team' && teamManage.team?.id) {
@@ -409,7 +405,7 @@ watch(selectedClubId, (id) => {
                   aria-describedby="club-search"
                 />
               </div>
-              <div class="flex-grow-1 overflow-auto" v-edge-fade>
+              <div v-edge-fade class="flex-grow-1 overflow-auto">
                 <div v-if="clubList.loading" class="text-muted py-3">
                   Загрузка...
                 </div>
@@ -435,7 +431,7 @@ watch(selectedClubId, (id) => {
                 :total-pages="totalClubPages"
                 :page-size="clubList.pageSize"
                 @update:page="(val) => (clubList.page = val)"
-                @update:pageSize="(val) => (clubList.pageSize = val)"
+                @update:page-size="(val) => (clubList.pageSize = val)"
               />
             </div>
           </div>
@@ -443,16 +439,17 @@ watch(selectedClubId, (id) => {
 
         <div class="col-12 col-lg-8">
           <div v-if="structure.loading" class="card tile shadow-sm h-100">
-            <div class="card-body d-flex align-items-center justify-content-center">
+            <div
+              class="card-body d-flex align-items-center justify-content-center"
+            >
               <div class="text-muted">Загрузка структуры клуба...</div>
             </div>
           </div>
 
-          <div
-            v-else-if="!selectedClub"
-            class="card tile shadow-sm h-100"
-          >
-            <div class="card-body d-flex align-items-center justify-content-center">
+          <div v-else-if="!selectedClub" class="card tile shadow-sm h-100">
+            <div
+              class="card-body d-flex align-items-center justify-content-center"
+            >
               <div class="text-center text-muted">
                 Выберите клуб, чтобы увидеть структуру спортивной школы
               </div>
@@ -462,16 +459,21 @@ watch(selectedClubId, (id) => {
           <div v-else class="d-flex flex-column gap-3">
             <div class="card tile shadow-sm">
               <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+                <div
+                  class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3"
+                >
                   <div>
                     <h2 class="card-title h5 mb-1">Сотрудники клуба</h2>
                     <p class="text-muted mb-0">{{ selectedClub.name }}</p>
                   </div>
-                  <button class="btn btn-brand mt-2 mt-md-0" @click="openAddStaffModal">
+                  <button
+                    class="btn btn-brand mt-2 mt-md-0"
+                    @click="openAddStaffModal"
+                  >
                     Добавить сотрудника
                   </button>
                 </div>
-                <div class="table-responsive" v-edge-fade>
+                <div v-edge-fade class="table-responsive">
                   <table class="table admin-table align-middle mb-0">
                     <thead>
                       <tr>
@@ -492,14 +494,18 @@ watch(selectedClubId, (id) => {
                             {{ row.last_name }} {{ row.first_name }}
                             {{ row.patronymic }}
                           </div>
-                          <div class="text-muted small">{{ row.email || row.phone }}</div>
+                          <div class="text-muted small">
+                            {{ row.email || row.phone }}
+                          </div>
                         </td>
                         <td>
                           <select
                             class="form-select form-select-sm"
                             :value="row.positionId"
                             :disabled="positionSaving[row.id]"
-                            @change="changeStaffPosition(row.id, $event.target.value)"
+                            @change="
+                              changeStaffPosition(row.id, $event.target.value)
+                            "
                           >
                             <option
                               v-for="opt in positionOptions"
@@ -533,11 +539,15 @@ watch(selectedClubId, (id) => {
 
             <div class="card tile shadow-sm">
               <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+                <div
+                  class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3"
+                >
                   <h2 class="card-title h5 mb-0">Команды клуба</h2>
-                  <div class="text-muted small">Редактируйте состав сотрудников по каждой команде</div>
+                  <div class="text-muted small">
+                    Редактируйте состав сотрудников по каждой команде
+                  </div>
                 </div>
-                <div class="table-responsive" v-edge-fade>
+                <div v-edge-fade class="table-responsive">
                   <table class="table admin-table align-middle mb-0">
                     <thead>
                       <tr>
@@ -562,7 +572,10 @@ watch(selectedClubId, (id) => {
                           </div>
                         </td>
                         <td>
-                          <div v-if="!team.staff.length" class="text-muted small">
+                          <div
+                            v-if="!team.staff.length"
+                            class="text-muted small"
+                          >
                             Сотрудники не назначены
                           </div>
                           <ul v-else class="list-unstyled mb-0">
@@ -583,8 +596,7 @@ watch(selectedClubId, (id) => {
                         <td class="text-end">
                           <button
                             class="btn btn-sm btn-outline-brand"
-                            @click="openManageTeam(team)
-                            "
+                            @click="openManageTeam(team)"
                           >
                             Назначить сотрудников
                           </button>
@@ -639,10 +651,7 @@ watch(selectedClubId, (id) => {
                 Найти
               </button>
             </div>
-            <select
-              v-model="addStaff.selectedUserId"
-              class="form-select mb-3"
-            >
+            <select v-model="addStaff.selectedUserId" class="form-select mb-3">
               <option value="">— Выберите сотрудника —</option>
               <option
                 v-for="opt in addStaff.options"
@@ -653,10 +662,7 @@ watch(selectedClubId, (id) => {
               </option>
             </select>
             <label class="form-label">Должность</label>
-            <select
-              v-model="addStaff.selectedPositionId"
-              class="form-select"
-            >
+            <select v-model="addStaff.selectedPositionId" class="form-select">
               <option
                 v-for="opt in positionOptions"
                 :key="opt.value || 'none'"
@@ -716,12 +722,12 @@ watch(selectedClubId, (id) => {
             />
           </div>
           <div class="modal-body">
-            <div v-if="teamManage.loading" class="text-muted">
-              Загрузка...
-            </div>
+            <div v-if="teamManage.loading" class="text-muted">Загрузка...</div>
             <div v-else>
               <div class="input-group mb-3" style="max-width: 420px">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <span class="input-group-text"
+                  ><i class="bi bi-search"></i
+                ></span>
                 <input
                   v-model="teamManage.attach.q"
                   type="search"
@@ -765,7 +771,7 @@ watch(selectedClubId, (id) => {
                   Прикрепить
                 </button>
               </div>
-              <div class="table-responsive" v-edge-fade>
+              <div v-edge-fade class="table-responsive">
                 <table class="table admin-table align-middle mb-0">
                   <thead>
                     <tr>
@@ -788,7 +794,10 @@ watch(selectedClubId, (id) => {
                         <div class="text-muted small">
                           {{ user.email || user.phone }}
                         </div>
-                        <div v-if="user.club_position_name" class="text-muted small">
+                        <div
+                          v-if="user.club_position_name"
+                          class="text-muted small"
+                        >
                           Должность: {{ user.club_position_name }}
                         </div>
                       </td>

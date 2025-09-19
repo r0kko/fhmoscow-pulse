@@ -113,7 +113,10 @@ test('listGroups uses q alias', async () => {
 test('listStages forwards filters and maps rows', async () => {
   listStagesMock.mockResolvedValue({ rows: [{ id: 's1' }], count: 3 });
   const res = mockRes();
-  await controller.listStages({ query: { page: '3', limit: '7', status: 'ACTIVE' } }, res);
+  await controller.listStages(
+    { query: { page: '3', limit: '7', status: 'ACTIVE' } },
+    res
+  );
   expect(listStagesMock).toHaveBeenCalledWith({
     page: 3,
     limit: 7,

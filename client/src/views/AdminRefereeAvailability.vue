@@ -59,9 +59,7 @@ const activeFiltersCount = computed(() => {
   return count;
 });
 
-const modalSelectedDatesSize = computed(
-  () => modalSelectedDates.value.size
-);
+const modalSelectedDatesSize = computed(() => modalSelectedDates.value.size);
 const modalStatusDisabled = computed(
   () => availableDates.value.length > 0 && modalSelectedDates.value.size === 0
 );
@@ -322,9 +320,7 @@ const filtersSummary = computed(() => {
   if (dateFilterActive.value) {
     const ordered = orderedDatesFromSet(selectedDates.value);
     if (ordered.length) {
-      const labels = ordered
-        .slice(0, 3)
-        .map((d) => shortDateLabel(d) || d);
+      const labels = ordered.slice(0, 3).map((d) => shortDateLabel(d) || d);
       if (ordered.length > 3) {
         labels.push(`+${ordered.length - 3}`);
       }
@@ -617,9 +613,7 @@ const filtersSummary = computed(() => {
                   {{ availableDates.length }}. Статусы применяются к отмеченным
                   датам.
                 </template>
-                <template v-else>
-                  Нет доступных дат для фильтрации.
-                </template>
+                <template v-else> Нет доступных дат для фильтрации. </template>
               </div>
             </div>
             <div class="mb-0">

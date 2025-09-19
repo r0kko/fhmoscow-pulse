@@ -23,9 +23,6 @@ module.exports = {
       'user_clubs',
       'user_clubs_sport_school_position_id_idx'
     );
-    await queryInterface.removeColumn(
-      'user_clubs',
-      'sport_school_position_id'
-    );
+    await queryInterface.removeColumn('user_clubs', 'sport_school_position_id');
   },
 };

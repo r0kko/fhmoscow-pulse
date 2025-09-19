@@ -66,8 +66,8 @@ module.exports = {
       );
 
       const [[pendingRow]] = await queryInterface.sequelize.query(
-        'SELECT id FROM player_photo_request_statuses WHERE alias = \'pending\' LIMIT 1',
-        { transaction }
+        'SELECT id FROM player_photo_request_statuses WHERE alias = :alias LIMIT 1',
+        { transaction, replacements: { alias: 'pending' } }
       );
       const pendingId = pendingRow?.id;
       if (!pendingId) {
@@ -156,8 +156,13 @@ module.exports = {
       const hasLegacyStatus = Array.isArray(columns) && columns.length > 0;
 
       if (!hasLegacyStatus) {
+        const enumValues = ['pending', 'approved', 'rejected']
+          .map((value) => queryInterface.sequelize.escape(value))
+          .join(', ');
         await queryInterface.sequelize.query(
-          'CREATE TYPE enum_player_photo_requests_status AS ENUM (\'pending\', \'approved\', \'rejected\')',
+          'CREATE TYPE enum_player_photo_requests_status AS ENUM (' +
+            enumValues +
+            ')',
           { transaction }
         );
         await queryInterface.sequelize.query(

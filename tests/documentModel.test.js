@@ -33,7 +33,9 @@ Object.assign(sequelize.models, {
   UserSignType: UserSignTypeMock,
 });
 
-const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+const consoleErrorSpy = jest
+  .spyOn(console, 'error')
+  .mockImplementation(() => {});
 
 afterAll(() => {
   consoleErrorSpy.mockRestore();
