@@ -407,7 +407,6 @@ async function submitReject() {
                 v-for="request in requests"
                 :key="request.id"
                 class="player-roster-item shadow-sm"
-                role="article"
               >
                 <div class="player-roster-photo has-photo">
                   <img

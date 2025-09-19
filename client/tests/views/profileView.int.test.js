@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { http, HttpResponse } from 'msw';
-import { defineComponent, h } from 'vue';
+import { h } from 'vue';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import ProfileView from '../../src/views/Profile.vue';
 import { auth } from '../../src/auth.js';
@@ -10,7 +10,7 @@ import { setupMsw } from '../utils/msw.js';
 const server = setupMsw();
 
 function createExposeStub(name, { props = {}, emits = [] } = {}) {
-  return defineComponent({
+  return {
     name,
     props,
     emits,
@@ -18,7 +18,7 @@ function createExposeStub(name, { props = {}, emits = [] } = {}) {
       expose({ open: () => {} });
       return () => h('div', { 'data-testid': name });
     },
-  });
+  };
 }
 
 function createRouterInstance() {
@@ -117,7 +117,7 @@ describe('Profile View (integration)', () => {
     router.push('/profile');
     await router.isReady();
 
-    const InfoFieldStub = defineComponent({
+    const InfoFieldStub = {
       props: {
         id: { type: String, required: true },
         label: { type: String, required: true },
@@ -142,7 +142,7 @@ describe('Profile View (integration)', () => {
                 }),
           ]);
       },
-    });
+    };
 
     render(ProfileView, {
       global: {
