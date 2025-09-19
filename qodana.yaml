@@ -22,4 +22,4 @@ failureConditions:
   severityThresholds:
     critical: 0
 
-linter: jetbrains/qodana-js:2025.2
+linter: jetbrains/qodana-js:2025.1
