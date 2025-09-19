@@ -14,6 +14,12 @@ const pendingByDate = ref(new Set());
 // Confirmation modal for switching to FREE under limited lock
 const confirmFree = ref({ visible: false, day: null, loading: false });
 
+const instructionsExpanded = ref(false);
+const instructionsContentId = 'availability-guidance-panel';
+const reduceMotion = ref(false);
+let motionMediaQuery;
+let handleMotionPreferenceChange;
+
 const statuses = [
   {
     value: 'FREE',
@@ -34,6 +40,85 @@ const statuses = [
     icon: 'bi-slash-circle',
   },
 ];
+
+function toggleInstructions() {
+  instructionsExpanded.value = !instructionsExpanded.value;
+}
+
+function setCollapseTransition(el) {
+  const heightDuration = reduceMotion.value ? 0 : 220;
+  const opacityDuration = reduceMotion.value ? 0 : 180;
+  el.style.transition = `height ${heightDuration}ms ease, opacity ${opacityDuration}ms ease`;
+  el.style.overflow = 'hidden';
+}
+
+function resetCollapseStyles(el) {
+  el.style.transition = '';
+  el.style.height = '';
+  el.style.opacity = '';
+  el.style.overflow = '';
+}
+
+function setupMotionPreference() {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const syncPreference = (event) => {
+    reduceMotion.value = event.matches;
+  };
+  handleMotionPreferenceChange = syncPreference;
+  reduceMotion.value = motionMediaQuery.matches;
+  if (motionMediaQuery.addEventListener) {
+    motionMediaQuery.addEventListener('change', syncPreference);
+  } else {
+    motionMediaQuery.addListener(syncPreference);
+  }
+}
+
+function teardownMotionPreference() {
+  if (!motionMediaQuery || !handleMotionPreferenceChange) return;
+  if (motionMediaQuery.removeEventListener) {
+    motionMediaQuery.removeEventListener(
+      'change',
+      handleMotionPreferenceChange
+    );
+  } else {
+    motionMediaQuery.removeListener(handleMotionPreferenceChange);
+  }
+  motionMediaQuery = undefined;
+  handleMotionPreferenceChange = undefined;
+}
+
+const collapseTransition = {
+  onBeforeEnter(el) {
+    setCollapseTransition(el);
+    el.style.height = '0';
+    el.style.opacity = '0';
+  },
+  onEnter(el) {
+    requestAnimationFrame(() => {
+      el.style.height = `${el.scrollHeight}px`;
+      el.style.opacity = '1';
+    });
+  },
+  onAfterEnter(el) {
+    resetCollapseStyles(el);
+  },
+  onBeforeLeave(el) {
+    setCollapseTransition(el);
+    el.style.height = `${el.scrollHeight}px`;
+    el.style.opacity = '1';
+    void el.offsetHeight;
+  },
+  onLeave(el) {
+    requestAnimationFrame(() => {
+      el.style.height = '0';
+      el.style.opacity = '0';
+    });
+  },
+  onAfterLeave(el) {
+    resetCollapseStyles(el);
+  },
+};
 
 function cloneDays(list) {
   return (list || []).map((d) => ({ ...d }));
@@ -87,6 +172,13 @@ function isValidPartial(d) {
 const invalidCount = computed(
   () => days.value.filter((d) => !isValidPartial(d)).length
 );
+
+watch(invalidCount, (current, previous) => {
+  const prevVal = previous ?? 0;
+  if (prevVal === 0 && current > 0 && !instructionsExpanded.value) {
+    instructionsExpanded.value = true;
+  }
+});
 
 // Week grouping (ISO week number) using Moscow midnight for date boundaries
 function toMoscowMidnight(dateStr) {
@@ -362,8 +454,11 @@ watch(
 
 onMounted(() => {
   load();
+  setupMotionPreference();
 });
-onBeforeUnmount(() => {});
+onBeforeUnmount(() => {
+  teardownMotionPreference();
+});
 </script>
 
 <template>
@@ -396,52 +491,79 @@ onBeforeUnmount(() => {});
 
       <div v-else class="training-schedule">
         <!-- Intro tile (separate card) -->
-        <div class="card section-card tile fade-in shadow-sm mb-3">
-          <div class="card-body">
-            <h2 class="h6 mb-2">
-              <i
-                class="bi bi-info-circle text-brand me-2"
-                aria-hidden="true"
-              ></i>
-              Отметьте вашу готовность работать
-            </h2>
-            <p class="text-muted small mb-2">
-              На каждый день укажите статус. Для частичной готовности выберите
-              «До» или «После» и задайте время.
-            </p>
-            <ul class="list-unstyled small mb-0">
-              <li class="d-flex align-items-center mb-1">
+        <div
+          class="card section-card tile fade-in shadow-sm mb-3 instructions-card"
+          :class="{ 'is-open': instructionsExpanded }"
+        >
+          <div class="card-header bg-white border-0 p-0">
+            <button
+              type="button"
+              class="instructions-toggle"
+              :aria-controls="instructionsContentId"
+              :aria-expanded="instructionsExpanded ? 'true' : 'false'"
+              @click="toggleInstructions"
+            >
+              <span class="d-flex align-items-center">
                 <i
-                  class="bi bi-check-circle text-success me-2"
+                  class="bi bi-info-circle text-brand me-2"
                   aria-hidden="true"
                 ></i>
-                <span>Свободен — готовы весь день.</span>
-              </li>
-              <li class="d-flex align-items-center mb-1">
-                <i class="bi bi-clock text-warning me-2" aria-hidden="true"></i>
-                <span>Частично — «До» или «После» + время.</span>
-              </li>
-              <li class="d-flex align-items-center mb-1">
-                <i
-                  class="bi bi-slash-circle text-secondary me-2"
-                  aria-hidden="true"
-                ></i>
-                <span>Занят — недоступны в этот день.</span>
-              </li>
-              <li class="d-flex align-items-start">
-                <i class="bi bi-lock me-2" aria-hidden="true"></i>
-                <span>Заблокированные дни недоступны для редактирования.</span>
-              </li>
-              <li class="d-flex align-items-start">
-                <i class="bi bi-hourglass-split me-2" aria-hidden="true"></i>
-                <span
-                  >За 96 часов можно только изменить занятость на "Свободен".
-                  Сотрудники отдела организации судейства будут уведомлены
-                  автоматически.</span
-                >
-              </li>
-            </ul>
+                <span class="toggle-title" role="heading" aria-level="2">
+                  Отметьте вашу готовность работать
+                </span>
+              </span>
+              <i class="bi bi-chevron-down toggle-icon" aria-hidden="true"></i>
+            </button>
           </div>
+          <Transition v-bind="collapseTransition">
+            <div
+              v-show="instructionsExpanded"
+              :id="instructionsContentId"
+              class="card-body pt-0 instructions-body"
+            >
+              <p class="text-muted small mb-3">
+                На каждый день укажите статус. Для частичной готовности выберите
+                «До» или «После» и задайте время.
+              </p>
+              <ul class="list-unstyled small mb-0">
+                <li class="d-flex align-items-center mb-2">
+                  <i
+                    class="bi bi-check-circle text-success me-2"
+                    aria-hidden="true"
+                  ></i>
+                  <span>Свободен — готовы весь день.</span>
+                </li>
+                <li class="d-flex align-items-center mb-2">
+                  <i
+                    class="bi bi-clock text-warning me-2"
+                    aria-hidden="true"
+                  ></i>
+                  <span>Частично — «До» или «После» + время.</span>
+                </li>
+                <li class="d-flex align-items-center mb-2">
+                  <i
+                    class="bi bi-slash-circle text-secondary me-2"
+                    aria-hidden="true"
+                  ></i>
+                  <span>Занят — недоступны в этот день.</span>
+                </li>
+                <li class="d-flex align-items-start mb-2">
+                  <i class="bi bi-lock me-2" aria-hidden="true"></i>
+                  <span
+                    >Заблокированные дни недоступны для редактирования.</span
+                  >
+                </li>
+                <li class="d-flex align-items-start">
+                  <i class="bi bi-hourglass-split me-2" aria-hidden="true"></i>
+                  <span>
+                    За 96 часов можно только изменить занятость на «Свободен».
+                    Сотрудники отдела организации судейства будут уведомлены
+                    автоматически.
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </Transition>
         </div>
 
         <!-- Validation hint (shown only when useful) -->
@@ -716,6 +838,67 @@ onBeforeUnmount(() => {});
 <style scoped>
 .modal .btn-brand {
   min-width: 6rem;
+}
+.instructions-card .card-header {
+  background: #fff;
+  padding: 0;
+}
+.instructions-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.instructions-toggle:hover {
+  background-color: rgba(13, 110, 253, 0.04);
+}
+.instructions-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.35);
+}
+.instructions-card.is-open .instructions-toggle {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px solid #e9ecef;
+}
+.toggle-title {
+  font-size: 1rem;
+}
+@media (min-width: 576px) {
+  .toggle-title {
+    font-size: 1.05rem;
+  }
+}
+.instructions-body {
+  padding: 1rem 1.25rem 1.25rem;
+}
+.instructions-body li {
+  line-height: 1.4;
+}
+.instructions-card .toggle-icon {
+  transition: transform 0.2s ease;
+  font-size: 1.25rem;
+}
+.instructions-card.is-open .toggle-icon {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .instructions-toggle {
+    transition: none;
+  }
+  .instructions-card .toggle-icon {
+    transition: none;
+  }
 }
 .schedule-day {
   padding-bottom: 1rem;

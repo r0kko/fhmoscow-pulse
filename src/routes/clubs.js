@@ -5,7 +5,10 @@ import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/clubController.js';
 import accessScope from '../middlewares/accessScope.js';
 import clubStaffController from '../controllers/clubStaffController.js';
-import { addClubStaffRules } from '../validators/clubStaffValidators.js';
+import {
+  addClubStaffRules,
+  updateClubStaffPositionRules,
+} from '../validators/clubStaffValidators.js';
 import validate from '../middlewares/validate.js';
 
 const router = express.Router();
@@ -26,6 +29,21 @@ router.get(
   controller.list
 );
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);
+
+/**
+ * @swagger
+ * /clubs/{id}/sport-school-structure:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Detailed structure of sport school staff for a club
+ */
+router.get(
+  '/:id/sport-school-structure',
+  auth,
+  authorize('ADMIN'),
+  clubStaffController.structure
+);
 
 /**
  * @swagger
@@ -51,6 +69,22 @@ router.post(
   addClubStaffRules,
   validate,
   clubStaffController.add
+);
+/**
+ * @swagger
+ * /clubs/{id}/staff/{userId}:
+ *   patch:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Update staff position within a club
+ */
+router.patch(
+  '/:id/staff/:userId',
+  auth,
+  authorize('ADMIN'),
+  updateClubStaffPositionRules,
+  validate,
+  clubStaffController.updatePosition
 );
 /**
  * @swagger

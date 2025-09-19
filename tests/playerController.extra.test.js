@@ -42,11 +42,50 @@ jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
 // Models to support mapping paths
 const playerRoleFindAll = jest.fn();
 const clubPlayerFindAll = jest.fn();
-jest.unstable_mockModule('../src/models/index.js', () => ({
-  __esModule: true,
-  PlayerRole: { findAll: playerRoleFindAll },
-  ClubPlayer: { findAll: clubPlayerFindAll },
-}));
+
+const buildModelStub = () => ({
+  findByPk: jest.fn(),
+  findAll: jest.fn(),
+  findOne: jest.fn(),
+  count: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  destroy: jest.fn(),
+});
+
+const modelsMock = { __esModule: true };
+Object.defineProperty(modelsMock, 'PlayerRole', {
+  value: { findAll: playerRoleFindAll },
+  enumerable: true,
+});
+Object.defineProperty(modelsMock, 'ClubPlayer', {
+  value: { findAll: clubPlayerFindAll },
+  enumerable: true,
+});
+
+[
+  'File',
+  'Player',
+  'PlayerPhotoRequest',
+  'PlayerPhotoRequestStatus',
+  'Club',
+  'Team',
+  'ExtFile',
+  'TeamPlayer',
+  'User',
+  'MedicalCertificate',
+  'MedicalCertificateFile',
+  'MedicalCertificateType',
+  'Ticket',
+  'TicketFile',
+].forEach((name) => {
+  Object.defineProperty(modelsMock, name, {
+    value: buildModelStub(),
+    enumerable: true,
+  });
+});
+
+jest.unstable_mockModule('../src/models/index.js', () => modelsMock);
 
 const { default: controller } = await import(
   '../src/controllers/playerController.js'

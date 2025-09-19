@@ -10,15 +10,29 @@ export default {
       type_id,
       manufacturer_id,
       size_id,
+      status,
+      number,
+      orderBy,
+      order,
+      search,
     } = req.query;
-    const { rows, count } = await equipmentService.listAll({
+    const { rows, count, summary } = await equipmentService.listAll({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
       type_id,
       manufacturer_id,
       size_id,
+      status,
+      number,
+      orderBy,
+      order,
+      search,
     });
-    return res.json({ items: mapper.toPublicArray(rows), total: count });
+    return res.json({
+      items: mapper.toPublicArray(rows),
+      total: count,
+      summary,
+    });
   },
 
   async get(req, res) {

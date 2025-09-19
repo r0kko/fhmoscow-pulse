@@ -50,6 +50,11 @@ const systemSections = computed(() => {
       to: '/admin/sport-schools',
     });
     items.push({
+      title: 'Фото игроков',
+      icon: 'bi-person-bounding-box',
+      to: '/admin/player-photo-requests',
+    });
+    items.push({
       title: 'Синхронизация',
       icon: 'bi-arrow-repeat',
       to: '/admin/system-ops',

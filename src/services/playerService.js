@@ -5,7 +5,10 @@ import {
   Club,
   ClubPlayer,
   ExtFile,
+  File,
   Player,
+  PlayerPhotoRequest,
+  PlayerPhotoRequestStatus,
   PlayerRole,
   Season,
   Team,
@@ -877,6 +880,25 @@ async function listForGallery(options = {}) {
           ? { birth_year: { [Op.in]: teamBirthYears } }
           : {}),
       },
+    },
+    {
+      model: PlayerPhotoRequest,
+      as: 'PhotoRequests',
+      required: false,
+      separate: true,
+      limit: 1,
+      order: [['created_at', 'DESC']],
+      include: [
+        {
+          model: File,
+          as: 'File',
+          attributes: ['id', 'original_name', 'mime_type', 'size'],
+        },
+        {
+          model: PlayerPhotoRequestStatus,
+          as: 'Status',
+        },
+      ],
     },
   ];
 

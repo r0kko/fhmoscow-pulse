@@ -7,6 +7,7 @@ import Modal from 'bootstrap/js/dist/modal';
 
 const loading = ref(true);
 const error = ref('');
+const availableDates = ref([]);
 const dates = ref([]);
 const users = ref([]);
 const search = ref('');
@@ -15,38 +16,55 @@ const roleOptions = [
   { value: 'BRIGADE_REFEREE', label: 'Судья в бригаде' },
 ];
 const selectedRoles = ref(new Set(roleOptions.map((r) => r.value)));
+const selectedDates = ref(new Set());
 const page = ref(1);
 const pageSize = ref(25);
+
 // Advanced filters state
-const filterDate = ref(''); // YYYY-MM-DD
 const filterFree = ref(false);
 const filterBusy = ref(false);
 const filterPartialEnabled = ref(false);
 const filterPartialMode = ref(''); // 'BEFORE' | 'AFTER' | ''
 const filterPartialTime = ref(''); // HH:MM
+
 // Filters modal state
 const filtersModalRef = ref(null);
 let filtersModal = null;
 const modalSelectedRoles = ref(new Set());
-const modalFilterDate = ref('');
+const modalSelectedDates = ref(new Set());
 const modalFilterFree = ref(false);
 const modalFilterBusy = ref(false);
 const modalFilterPartialEnabled = ref(false);
 const modalFilterPartialMode = ref('');
 const modalFilterPartialTime = ref('');
 
+const roleFilterActive = computed(
+  () => selectedRoles.value.size !== roleOptions.length
+);
+const dateFilterActive = computed(() => {
+  if (!availableDates.value.length) return false;
+  return (
+    selectedDates.value.size > 0 &&
+    selectedDates.value.size < availableDates.value.length
+  );
+});
+const statusFilterActive = computed(
+  () => filterFree.value || filterBusy.value || filterPartialEnabled.value
+);
 const activeFiltersCount = computed(() => {
   let count = 0;
-  // roles different from default (both selected)
-  if (selectedRoles.value.size !== roleOptions.length) count++;
-  if (filterDate.value) count++;
-  if (filterFree.value || filterBusy.value || filterPartialEnabled.value)
-    count++;
+  if (roleFilterActive.value) count++;
+  if (dateFilterActive.value) count++;
+  if (statusFilterActive.value) count++;
   return count;
 });
 
-// Modal-only helpers
-const isModalDateSelected = computed(() => !!modalFilterDate.value);
+const modalSelectedDatesSize = computed(
+  () => modalSelectedDates.value.size
+);
+const modalStatusDisabled = computed(
+  () => availableDates.value.length > 0 && modalSelectedDates.value.size === 0
+);
 
 function shortDateLabel(dateStr) {
   const d = new Date(dateStr);
@@ -57,9 +75,34 @@ function shortDateLabel(dateStr) {
   });
   return text.replace('.', '').replace(',', '');
 }
+function longDateLabel(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: 'long',
+  });
+}
 
 function nameOf(u) {
   return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
+}
+function initialLetter(value) {
+  if (!value) return '';
+  const trimmed = String(value).trim();
+  if (!trimmed) return '';
+  return trimmed.charAt(0).toUpperCase();
+}
+function initialWithDot(value) {
+  const letter = initialLetter(value);
+  return letter ? `${letter}.` : '';
+}
+function surnameWithInitials(u) {
+  const last = u.last_name || '';
+  const initials = [initialWithDot(u.first_name), initialWithDot(u.patronymic)]
+    .filter(Boolean)
+    .join(' ');
+  const formatted = [last, initials].filter(Boolean).join(' ');
+  return formatted || nameOf(u) || '—';
 }
 
 function statusIcon(cell) {
@@ -81,35 +124,51 @@ function statusTitle(cell) {
 
 function formatHm(t) {
   if (!t) return '';
-  // Expect formats HH:MM or HH:MM:SS — return HH:MM
   const m = String(t).match(/^(\d{2}:\d{2})/);
   return m ? m[1] : String(t);
 }
 
 const hasData = computed(() => users.value.length > 0);
 
+function orderedDatesFromSet(set) {
+  if (!set?.size) return [];
+  if (availableDates.value.length) {
+    return availableDates.value.filter((d) => set.has(d));
+  }
+  return Array.from(set).sort();
+}
+function activeDateKeys() {
+  return dates.value.length ? dates.value : availableDates.value;
+}
+
 function matchesAdvanced(u) {
-  const date = filterDate.value;
-  const anyStatus =
-    filterFree.value || filterBusy.value || filterPartialEnabled.value;
-  if (!date || !anyStatus) return true;
-  const c = u.availability?.[date];
-  if (!c?.preset) return false;
-  if (filterFree.value && c.status === 'FREE') return true;
-  if (filterBusy.value && c.status === 'BUSY') return true;
-  if (filterPartialEnabled.value && c.status === 'PARTIAL') {
-    if (!filterPartialMode.value) return true;
-    if (filterPartialMode.value === 'BEFORE') {
-      if (!c.to_time) return false;
-      return filterPartialTime.value
-        ? formatHm(c.to_time) === formatHm(filterPartialTime.value)
-        : true;
-    }
-    if (filterPartialMode.value === 'AFTER') {
-      if (!c.from_time) return false;
-      return filterPartialTime.value
-        ? formatHm(c.from_time) === formatHm(filterPartialTime.value)
-        : true;
+  if (!statusFilterActive.value) return true;
+  const keys = activeDateKeys();
+  if (!keys.length) return true;
+
+  for (const date of keys) {
+    const c = u.availability?.[date];
+    if (!c?.preset) continue;
+    if (filterFree.value && c.status === 'FREE') return true;
+    if (filterBusy.value && c.status === 'BUSY') return true;
+    if (filterPartialEnabled.value && c.status === 'PARTIAL') {
+      if (!filterPartialMode.value) return true;
+      if (
+        filterPartialMode.value === 'BEFORE' &&
+        c.to_time &&
+        (!filterPartialTime.value ||
+          formatHm(c.to_time) === formatHm(filterPartialTime.value))
+      ) {
+        return true;
+      }
+      if (
+        filterPartialMode.value === 'AFTER' &&
+        c.from_time &&
+        (!filterPartialTime.value ||
+          formatHm(c.from_time) === formatHm(filterPartialTime.value))
+      ) {
+        return true;
+      }
     }
   }
   return false;
@@ -125,8 +184,7 @@ const filteredUsers = computed(() => {
   if (term) {
     list = list.filter((u) => nameOf(u).toLowerCase().includes(term));
   }
-  list = list.filter((u) => matchesAdvanced(u));
-  return list;
+  return list.filter((u) => matchesAdvanced(u));
 });
 
 const totalPages = computed(() =>
@@ -143,11 +201,26 @@ async function load() {
   try {
     const params = new URLSearchParams();
     selectedRoles.value.forEach((r) => params.append('role', r));
+
+    const selectedDateList = orderedDatesFromSet(selectedDates.value);
+    const shouldSendDates =
+      selectedDateList.length &&
+      (!availableDates.value.length ||
+        selectedDateList.length < availableDates.value.length);
+
+    if (shouldSendDates) {
+      selectedDateList.forEach((d) => params.append('date', d));
+    }
+
     const res = await apiFetch(
       `/availabilities/admin-grid?${params.toString()}`
     );
-    dates.value = res.dates || [];
+    availableDates.value = res.availableDates || res.dates || [];
+    const nextDates =
+      res.dates && res.dates.length ? res.dates : availableDates.value;
+    dates.value = nextDates;
     users.value = res.users || [];
+    selectedDates.value = new Set(nextDates);
     page.value = 1;
   } catch (e) {
     error.value = e?.message || 'Не удалось загрузить данные';
@@ -163,7 +236,11 @@ onMounted(() => {
 
 function prepareFilters() {
   modalSelectedRoles.value = new Set(selectedRoles.value);
-  modalFilterDate.value = filterDate.value;
+  const baseDates =
+    selectedDates.value.size > 0
+      ? orderedDatesFromSet(selectedDates.value)
+      : activeDateKeys();
+  modalSelectedDates.value = new Set(baseDates);
   modalFilterFree.value = filterFree.value;
   modalFilterBusy.value = filterBusy.value;
   modalFilterPartialEnabled.value = filterPartialEnabled.value;
@@ -171,13 +248,37 @@ function prepareFilters() {
   modalFilterPartialTime.value = filterPartialTime.value;
 }
 function toggleModalRole(val) {
-  const set = modalSelectedRoles.value;
-  if (set.has(val)) set.delete(val);
-  else set.add(val);
+  const next = new Set(modalSelectedRoles.value);
+  if (next.has(val)) next.delete(val);
+  else next.add(val);
+  modalSelectedRoles.value = next;
+}
+function toggleModalDate(date) {
+  const next = new Set(modalSelectedDates.value);
+  if (next.has(date)) next.delete(date);
+  else next.add(date);
+  modalSelectedDates.value = next;
+}
+function selectAllModalDates() {
+  modalSelectedDates.value = new Set(availableDates.value);
+}
+function clearModalDates() {
+  modalSelectedDates.value = new Set();
+  modalFilterFree.value = false;
+  modalFilterBusy.value = false;
+  modalFilterPartialEnabled.value = false;
+  modalFilterPartialMode.value = '';
+  modalFilterPartialTime.value = '';
+}
+function handleModalPartialToggle() {
+  if (!modalFilterPartialEnabled.value) {
+    modalFilterPartialMode.value = '';
+    modalFilterPartialTime.value = '';
+  }
 }
 function resetModalFilters() {
   modalSelectedRoles.value = new Set(roleOptions.map((r) => r.value));
-  modalFilterDate.value = '';
+  modalSelectedDates.value = new Set(availableDates.value);
   modalFilterFree.value = false;
   modalFilterBusy.value = false;
   modalFilterPartialEnabled.value = false;
@@ -186,16 +287,75 @@ function resetModalFilters() {
 }
 function applyFilters() {
   selectedRoles.value = new Set(modalSelectedRoles.value);
-  filterDate.value = modalFilterDate.value;
+
+  const ordered = orderedDatesFromSet(modalSelectedDates.value);
+  selectedDates.value = new Set(
+    ordered.length ? ordered : availableDates.value
+  );
+
   filterFree.value = modalFilterFree.value;
   filterBusy.value = modalFilterBusy.value;
   filterPartialEnabled.value = modalFilterPartialEnabled.value;
-  filterPartialMode.value = modalFilterPartialMode.value;
-  filterPartialTime.value = modalFilterPartialTime.value;
+  if (modalFilterPartialEnabled.value) {
+    filterPartialMode.value = modalFilterPartialMode.value;
+    filterPartialTime.value = modalFilterPartialTime.value;
+  } else {
+    filterPartialMode.value = '';
+    filterPartialTime.value = '';
+  }
+
   page.value = 1;
   load();
   filtersModal?.hide();
 }
+
+const filtersSummary = computed(() => {
+  const items = [];
+  if (roleFilterActive.value) {
+    const labels = roleOptions
+      .filter((opt) => selectedRoles.value.has(opt.value))
+      .map((opt) => opt.label);
+    if (labels.length) {
+      items.push({ key: 'roles', text: `Роли: ${labels.join(', ')}` });
+    }
+  }
+  if (dateFilterActive.value) {
+    const ordered = orderedDatesFromSet(selectedDates.value);
+    if (ordered.length) {
+      const labels = ordered
+        .slice(0, 3)
+        .map((d) => shortDateLabel(d) || d);
+      if (ordered.length > 3) {
+        labels.push(`+${ordered.length - 3}`);
+      }
+      items.push({ key: 'dates', text: `Даты: ${labels.join(', ')}` });
+    }
+  }
+  if (statusFilterActive.value) {
+    const parts = [];
+    if (filterFree.value) parts.push('Свободен');
+    if (filterBusy.value) parts.push('Занят');
+    if (filterPartialEnabled.value) {
+      if (filterPartialMode.value === 'BEFORE') {
+        const time = filterPartialTime.value
+          ? formatHm(filterPartialTime.value)
+          : '';
+        parts.push(`Частично (до${time ? ` ${time}` : ''})`);
+      } else if (filterPartialMode.value === 'AFTER') {
+        const time = filterPartialTime.value
+          ? formatHm(filterPartialTime.value)
+          : '';
+        parts.push(`Частично (после${time ? ` ${time}` : ''})`);
+      } else {
+        parts.push('Частично');
+      }
+    }
+    if (parts.length) {
+      items.push({ key: 'status', text: `Статусы: ${parts.join(', ')}` });
+    }
+  }
+  return items;
+});
 </script>
 
 <template>
@@ -267,6 +427,19 @@ function applyFilters() {
               </button>
             </div>
           </div>
+          <div
+            v-if="filtersSummary.length"
+            class="filter-summary small text-muted mb-3 d-flex flex-wrap align-items-center gap-2"
+          >
+            <span class="text-muted">Фильтры:</span>
+            <span
+              v-for="item in filtersSummary"
+              :key="item.key"
+              class="badge rounded-pill bg-light text-secondary"
+            >
+              {{ item.text }}
+            </span>
+          </div>
           <div v-if="!hasData" class="text-muted">
             Нет данных для отображения.
           </div>
@@ -277,16 +450,29 @@ function applyFilters() {
             >
               <thead>
                 <tr>
-                  <th class="sticky-col" style="min-width: 16rem">Судья</th>
-                  <th v-for="d in dates" :key="d" class="text-center">
+                  <th class="sticky-col">Судья</th>
+                  <th
+                    v-for="d in dates"
+                    :key="d"
+                    class="text-center"
+                    :title="longDateLabel(d)"
+                    :aria-label="longDateLabel(d)"
+                  >
                     {{ shortDateLabel(d) }}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="u in pagedUsers" :key="u.id">
-                  <td class="fio-col sticky-col">
-                    {{ nameOf(u) }}
+                  <td
+                    class="fio-col sticky-col"
+                    :title="nameOf(u)"
+                    :aria-label="nameOf(u)"
+                  >
+                    <span class="fio-full">{{ nameOf(u) }}</span>
+                    <span class="fio-short" aria-hidden="true">
+                      {{ surnameWithInitials(u) }}
+                    </span>
                   </td>
                   <td
                     v-for="d in dates"
@@ -387,26 +573,53 @@ function applyFilters() {
               </div>
             </div>
             <div class="mb-3">
-              <label for="filter-date" class="form-label">Дата</label>
-              <div class="input-group">
-                <input
-                  id="filter-date"
-                  v-model="modalFilterDate"
-                  type="date"
-                  class="form-control"
-                />
+              <label class="form-label">Даты</label>
+              <div class="date-pills" role="group" aria-label="Выбор дат">
                 <button
-                  class="btn btn-outline-secondary"
+                  v-for="d in availableDates"
+                  :key="d"
                   type="button"
-                  :disabled="!modalFilterDate"
-                  title="Очистить дату"
-                  @click="modalFilterDate = ''"
+                  class="date-pill"
+                  :class="{ 'is-selected': modalSelectedDates.has(d) }"
+                  :aria-pressed="modalSelectedDates.has(d)"
+                  :aria-label="longDateLabel(d)"
+                  :title="longDateLabel(d)"
+                  @click="toggleModalDate(d)"
                 >
-                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                  <span class="date-pill-main">{{ shortDateLabel(d) }}</span>
+                  <span class="date-pill-sub">{{ longDateLabel(d) }}</span>
+                </button>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  :disabled="
+                    !availableDates.length ||
+                    modalSelectedDatesSize === availableDates.length
+                  "
+                  @click="selectAllModalDates"
+                >
+                  Выбрать все
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  :disabled="!modalSelectedDatesSize"
+                  @click="clearModalDates"
+                >
+                  Очистить
                 </button>
               </div>
               <div class="form-text">
-                Для фильтрации по статусу выберите дату.
+                <template v-if="availableDates.length">
+                  Выбрано: {{ modalSelectedDatesSize }} из
+                  {{ availableDates.length }}. Статусы применяются к отмеченным
+                  датам.
+                </template>
+                <template v-else>
+                  Нет доступных дат для фильтрации.
+                </template>
               </div>
             </div>
             <div class="mb-0">
@@ -419,8 +632,8 @@ function applyFilters() {
                       v-model="modalFilterFree"
                       class="form-check-input"
                       type="checkbox"
-                      :disabled="!isModalDateSelected"
-                      :title="!isModalDateSelected ? 'Выберите дату' : ''"
+                      :disabled="modalStatusDisabled"
+                      :title="modalStatusDisabled ? 'Выберите даты' : ''"
                     />
                     <label for="st-free" class="form-check-label"
                       >Свободен</label
@@ -432,8 +645,8 @@ function applyFilters() {
                       v-model="modalFilterBusy"
                       class="form-check-input"
                       type="checkbox"
-                      :disabled="!isModalDateSelected"
-                      :title="!isModalDateSelected ? 'Выберите дату' : ''"
+                      :disabled="modalStatusDisabled"
+                      :title="modalStatusDisabled ? 'Выберите даты' : ''"
                     />
                     <label for="st-busy" class="form-check-label">Занят</label>
                   </div>
@@ -445,15 +658,16 @@ function applyFilters() {
                       v-model="modalFilterPartialEnabled"
                       class="form-check-input"
                       type="checkbox"
-                      :disabled="!isModalDateSelected"
-                      :title="!isModalDateSelected ? 'Выберите дату' : ''"
+                      :disabled="modalStatusDisabled"
+                      :title="modalStatusDisabled ? 'Выберите даты' : ''"
+                      @change="handleModalPartialToggle"
                     />
                     <label for="st-partial" class="form-check-label"
                       >Частично свободен</label
                     >
                   </div>
                   <div
-                    v-if="modalFilterPartialEnabled"
+                    v-if="modalFilterPartialEnabled && !modalStatusDisabled"
                     class="partial-options d-flex align-items-center gap-2 ms-4"
                   >
                     <div
@@ -467,6 +681,9 @@ function applyFilters() {
                         type="radio"
                         class="btn-check"
                         value="BEFORE"
+                        :disabled="
+                          !modalFilterPartialEnabled || modalStatusDisabled
+                        "
                       />
                       <label class="btn btn-outline-secondary" for="pm-before"
                         >До</label
@@ -477,6 +694,9 @@ function applyFilters() {
                         type="radio"
                         class="btn-check"
                         value="AFTER"
+                        :disabled="
+                          !modalFilterPartialEnabled || modalStatusDisabled
+                        "
                       />
                       <label class="btn btn-outline-secondary" for="pm-after"
                         >После</label
@@ -494,6 +714,9 @@ function applyFilters() {
                         type="time"
                         step="300"
                         class="form-control"
+                        :disabled="
+                          !modalFilterPartialEnabled || modalStatusDisabled
+                        "
                       />
                     </div>
                   </div>
@@ -509,7 +732,13 @@ function applyFilters() {
             >
               Сбросить
             </button>
-            <button type="submit" class="btn btn-brand">Применить</button>
+            <button
+              type="submit"
+              class="btn btn-brand"
+              :disabled="modalStatusDisabled"
+            >
+              Применить
+            </button>
           </div>
         </form>
       </div>
@@ -534,6 +763,7 @@ function applyFilters() {
   background: #fff;
   z-index: 2;
   border-right: 2px solid var(--border-subtle);
+  min-width: 15rem;
 }
 .partial-cell {
   /* keep subtle highlight without overpowering */
@@ -543,10 +773,96 @@ function applyFilters() {
   font-size: 0.75rem; /* smaller than .small to avoid wrapping */
   line-height: 1.1;
 }
+.fio-col {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.fio-full {
+  display: inline;
+}
+.fio-short {
+  display: none;
+}
+.filter-summary .badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+}
+.date-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.date-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  line-height: 1.2;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.12));
+  background: var(--surface-subtle, #f8f9fb);
+  color: var(--bs-gray-700, #495057);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 6.5rem;
+}
+.date-pill .date-pill-main {
+  font-weight: 600;
+}
+.date-pill .date-pill-sub {
+  font-size: 0.75rem;
+  color: var(--bs-gray-600, #6c757d);
+}
+.date-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand-primary, var(--bs-primary));
+  color: var(--brand-primary, var(--bs-primary));
+  background: var(--surface-elevated, #ffffff);
+}
+.date-pill:focus-visible {
+  outline: 3px solid rgba(15, 23, 42, 0.3);
+  outline-offset: 2px;
+}
+.date-pill.is-selected {
+  background: var(--brand-primary, var(--bs-primary));
+  border-color: var(--brand-primary, var(--bs-primary));
+  color: #fff;
+  box-shadow: 0 0.5rem 1.25rem rgba(15, 23, 42, 0.18);
+}
+.date-pill.is-selected .date-pill-sub {
+  color: rgba(255, 255, 255, 0.85);
+}
 /* Keep the toolbar compact and aligned */
 .toolbar .input-group > .btn {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+}
+@media (max-width: 767.98px) {
+  .fio-full {
+    display: none;
+  }
+  .fio-short {
+    display: inline;
+  }
+  .sticky-col {
+    min-width: 11.5rem;
+  }
+}
+@media (max-width: 479.98px) {
+  .date-pill {
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: auto;
+    text-align: left;
+  }
+  .sticky-col {
+    min-width: 6.75rem !important;
+  }
 }
 /* Keep selector and time on one line on small screens */
 @media (max-width: 575.98px) {
@@ -560,6 +876,9 @@ function applyFilters() {
   .partial-options .input-group {
     flex: 1 1 auto;
     min-width: 8rem;
+  }
+  .sticky-col {
+    min-width: 9rem;
   }
 }
 /* Small screens: tighten paddings a bit */

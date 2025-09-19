@@ -37,12 +37,6 @@ import MenuTile from '../components/MenuTile.vue';
               :replace="true"
             />
             <MenuTile
-              title="Фотографии игроков"
-              icon="bi-camera"
-              to="/school-players/photos"
-              :replace="true"
-            />
-            <MenuTile
               title="Стадионы"
               icon="bi-geo-alt"
               to="/school-grounds"

@@ -79,6 +79,8 @@ import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
 import Player from './player.js';
 import PlayerRole from './playerRole.js';
+import PlayerPhotoRequest from './playerPhotoRequest.js';
+import PlayerPhotoRequestStatus from './playerPhotoRequestStatus.js';
 import ClubPlayer from './clubPlayer.js';
 import TeamPlayer from './teamPlayer.js';
 import AvailabilityType from './availabilityType.js';
@@ -105,6 +107,7 @@ import EquipmentType from './equipmentType.js';
 import EquipmentManufacturer from './equipmentManufacturer.js';
 import EquipmentSize from './equipmentSize.js';
 import Equipment from './equipment.js';
+import SportSchoolPosition from './sportSchoolPosition.js';
 
 /* 1-ко-многим: статус → пользователи */
 UserStatus.hasMany(User, { foreignKey: 'status_id' });
@@ -126,6 +129,16 @@ Team.belongsToMany(User, { through: UserTeam, foreignKey: 'team_id' });
 User.belongsToMany(Club, { through: UserClub, foreignKey: 'user_id' });
 Club.belongsToMany(User, { through: UserClub, foreignKey: 'club_id' });
 
+SportSchoolPosition.hasMany(UserClub, { foreignKey: 'sport_school_position_id' });
+UserClub.belongsTo(SportSchoolPosition, {
+  foreignKey: 'sport_school_position_id',
+  as: 'SportSchoolPosition',
+});
+User.hasMany(UserClub, { foreignKey: 'user_id' });
+UserClub.belongsTo(User, { foreignKey: 'user_id' });
+Club.hasMany(UserClub, { foreignKey: 'club_id' });
+UserClub.belongsTo(Club, { foreignKey: 'club_id' });
+
 /* clubs ↔ teams */
 Club.hasMany(Team, { foreignKey: 'club_id' });
 Team.belongsTo(Club, { foreignKey: 'club_id' });
@@ -144,6 +157,38 @@ ExtFile.hasMany(Player, {
 Player.belongsTo(ExtFile, {
   foreignKey: 'photo_ext_file_id',
   as: 'Photo',
+});
+Player.hasMany(PlayerPhotoRequest, {
+  foreignKey: 'player_id',
+  as: 'PhotoRequests',
+});
+PlayerPhotoRequest.belongsTo(Player, {
+  foreignKey: 'player_id',
+  as: 'Player',
+});
+PlayerPhotoRequestStatus.hasMany(PlayerPhotoRequest, {
+  foreignKey: 'status_id',
+  as: 'Requests',
+});
+PlayerPhotoRequest.belongsTo(PlayerPhotoRequestStatus, {
+  foreignKey: 'status_id',
+  as: 'Status',
+});
+File.hasMany(PlayerPhotoRequest, {
+  foreignKey: 'file_id',
+  as: 'PlayerPhotoRequests',
+});
+PlayerPhotoRequest.belongsTo(File, {
+  foreignKey: 'file_id',
+  as: 'File',
+});
+User.hasMany(PlayerPhotoRequest, {
+  foreignKey: 'reviewed_by',
+  as: 'ReviewedPlayerPhotoRequests',
+});
+PlayerPhotoRequest.belongsTo(User, {
+  foreignKey: 'reviewed_by',
+  as: 'ReviewedBy',
 });
 Player.belongsToMany(Team, { through: TeamPlayer, foreignKey: 'player_id' });
 Team.belongsToMany(Player, { through: TeamPlayer, foreignKey: 'team_id' });
@@ -665,6 +710,8 @@ export {
   Club,
   Player,
   PlayerRole,
+  PlayerPhotoRequest,
+  PlayerPhotoRequestStatus,
   ClubPlayer,
   TeamPlayer,
   MatchPlayer,
@@ -693,6 +740,7 @@ export {
   NormativeGroupType,
   NormativeResult,
   NormativeTicket,
+  SportSchoolPosition,
   Equipment,
   EquipmentType,
   EquipmentManufacturer,

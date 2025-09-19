@@ -4,6 +4,7 @@ import { beforeEach, expect, jest, test, describe } from '@jest/globals';
 const userFindByPkMock = jest.fn();
 const clubFindByPkMock = jest.fn();
 const userClubFindOneMock = jest.fn();
+const userClubFindAllMock = jest.fn();
 const teamFindAllMock = jest.fn();
 const userTeamFindOneMock = jest.fn();
 
@@ -18,6 +19,7 @@ beforeEach(() => {
   userFindByPkMock.mockReset();
   clubFindByPkMock.mockReset();
   userClubFindOneMock.mockReset();
+  userClubFindAllMock.mockReset();
   teamFindAllMock.mockReset();
   userTeamFindOneMock.mockReset();
   transactionMock.mockClear();
@@ -32,14 +34,15 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   User: { findByPk: userFindByPkMock },
   Club: { findByPk: clubFindByPkMock, ...clubModelStub },
-  UserClub: { findOne: userClubFindOneMock },
+  UserClub: { findOne: userClubFindOneMock, findAll: userClubFindAllMock },
   Team: { findAll: teamFindAllMock, ...teamModelStub },
   UserTeam: { findOne: userTeamFindOneMock },
+  SportSchoolPosition: {},
 }));
 
 const svcMod = await import('../src/services/clubUserService.js');
 const service = svcMod.default;
-const { listClubUsers, addClubUser, removeClubUser } = svcMod;
+const { listClubUsers, addClubUser, removeClubUser, updateClubUserPosition } = svcMod;
 
 function makeUserInst() {
   return {
@@ -52,14 +55,30 @@ function makeUserInst() {
 
 describe('clubUserService.listUserClubs', () => {
   test('throws when user not found', async () => {
+    userClubFindAllMock.mockResolvedValue([]);
     userFindByPkMock.mockResolvedValue(null);
     await expect(service.listUserClubs('u1')).rejects.toThrow('user_not_found');
   });
 
   test('returns empty array when no clubs', async () => {
-    userFindByPkMock.mockResolvedValue({ Clubs: undefined });
+    userClubFindAllMock.mockResolvedValue([]);
+    userFindByPkMock.mockResolvedValue({ id: 'u1' });
     const res = await service.listUserClubs('u1');
     expect(res).toEqual([]);
+    expect(userFindByPkMock).toHaveBeenCalled();
+  });
+
+  test('returns clubs with membership metadata', async () => {
+    const setDataValue = jest.fn();
+    userClubFindAllMock.mockResolvedValue([{
+      id: 'uc1',
+      Club: { id: 'c1', name: 'Club 1', setDataValue },
+      SportSchoolPosition: { id: 'pos1', name: 'Директор' },
+    }]);
+    const result = await service.listUserClubs('u1');
+    expect(result).toHaveLength(1);
+    expect(setDataValue).toHaveBeenCalledWith('UserClub', expect.objectContaining({ id: 'uc1' }));
+    expect(userFindByPkMock).not.toHaveBeenCalled();
   });
 });
 
@@ -86,6 +105,25 @@ describe('clubUserService.addUserClub/removeUserClub', () => {
     );
     // Two teams attached
     expect(u.addTeam).toHaveBeenCalledTimes(2);
+  });
+
+  test('addUserClub persists position when provided', async () => {
+    const u = makeUserInst();
+    userFindByPkMock.mockResolvedValue(u);
+    clubFindByPkMock.mockResolvedValue({ id: 'c1' });
+    userClubFindOneMock.mockResolvedValue(null);
+    teamFindAllMock.mockResolvedValue([]);
+
+    await service.addUserClub('u1', 'c1', 'actor', { positionId: 'pos1' });
+    expect(u.addClub).toHaveBeenCalledWith(
+      { id: 'c1' },
+      expect.objectContaining({
+        through: expect.objectContaining({
+          sport_school_position_id: 'pos1',
+        }),
+        transaction: expect.any(Object),
+      })
+    );
   });
 
   test('addUserClub restores soft-deleted links', async () => {
@@ -196,5 +234,22 @@ describe('club-centric helpers', () => {
     expect(u.addClub).toHaveBeenCalled();
     await removeClubUser('c1', 'u1', 'actor');
     expect(u.removeClub).toHaveBeenCalled();
+  });
+
+  test('updateClubUserPosition updates membership', async () => {
+    const updateMock = jest.fn();
+    userClubFindOneMock.mockResolvedValue({ update: updateMock });
+    await updateClubUserPosition('c1', 'u1', 'pos1', 'actor');
+    expect(updateMock).toHaveBeenCalledWith(
+      { sport_school_position_id: 'pos1', updated_by: 'actor' },
+      expect.objectContaining({ returning: false })
+    );
+  });
+
+  test('updateClubUserPosition throws when link missing', async () => {
+    userClubFindOneMock.mockResolvedValue(null);
+    await expect(
+      updateClubUserPosition('c1', 'u1', 'pos1', 'actor')
+    ).rejects.toThrow('club_staff_link_not_found');
   });
 });

@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, fn, col, where as whereFn } from 'sequelize';
 
 import {
   Equipment,
@@ -20,60 +20,246 @@ import buildEquipmentTransferPdf from './docBuilders/equipmentTransfer.js';
 import * as emailService from './emailService.js';
 import fileService from './fileService.js';
 
-async function listAll(options = {}) {
-  const page = Math.max(1, parseInt(options.page || 1, 10));
-  const limit = Math.max(1, parseInt(options.limit || 20, 10));
-  const offset = (page - 1) * limit;
+const SEARCH_TOKEN_LIMIT = 5;
+const SEARCHABLE_ASSOC_COLUMNS = [
+  '$EquipmentType.name$',
+  '$EquipmentManufacturer.name$',
+  '$EquipmentSize.name$',
+  '$AssignmentDocument.number$',
+  '$Owner.last_name$',
+  '$Owner.first_name$',
+  '$Owner.patronymic$',
+  '$Owner.email$',
+];
 
-  const where = {};
-  if (options.type_id) where.type_id = options.type_id;
-  if (options.manufacturer_id) where.manufacturer_id = options.manufacturer_id;
-  if (options.size_id) where.size_id = options.size_id;
-  if (options.number) {
-    const n = parseInt(options.number, 10);
-    if (Number.isFinite(n)) where.number = n;
+function normalizeEquipmentNumber(input, { required = false } = {}) {
+  if (input == null || input === '') {
+    if (required) throw new ServiceError('invalid_equipment_number', 400);
+    return null;
   }
-  if (options.status === 'issued') where.owner_id = { [Op.ne]: null };
-  if (options.status === 'free') {
-    where.owner_id = null;
-    where.assignment_document_id = null;
+  const parsed = Number.parseInt(String(input).trim(), 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 999) {
+    throw new ServiceError('invalid_equipment_number', 400);
   }
-  if (options.status === 'awaiting') {
-    where.owner_id = null;
-    where.assignment_document_id = { [Op.ne]: null };
-  }
+  return parsed;
+}
 
-  const include = [
-    { model: EquipmentType },
-    { model: EquipmentManufacturer },
-    { model: EquipmentSize },
+function escapeSearchTerm(term = '') {
+  return term.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+function tokenizeSearch(searchInput = '') {
+  return searchInput
+    .trim()
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, SEARCH_TOKEN_LIMIT);
+}
+
+function buildSearchConditions(searchTokens = []) {
+  if (!searchTokens.length) return [];
+  return searchTokens.map((token) => {
+    const sanitized = escapeSearchTerm(token);
+    const like = `%${sanitized}%`;
+    const orConditions = SEARCHABLE_ASSOC_COLUMNS.map((column) => ({
+      [column]: { [Op.iLike]: like },
+    }));
+
+    const fullNameCondition = whereFn(
+      fn('concat_ws', ' ', col('Owner.last_name'), col('Owner.first_name'), col('Owner.patronymic')),
+      { [Op.iLike]: like }
+    );
+    orConditions.push(fullNameCondition);
+
+    const numeric = Number.parseInt(token, 10);
+    if (Number.isFinite(numeric)) {
+      orConditions.push({ number: numeric });
+    }
+
+    return { [Op.or]: orConditions };
+  });
+}
+
+function buildInclude({ minimal = false } = {}) {
+  const baseAttributes = minimal ? [] : ['id', 'name'];
+  return [
+    {
+      model: EquipmentType,
+      attributes: baseAttributes,
+      required: false,
+    },
+    {
+      model: EquipmentManufacturer,
+      attributes: baseAttributes,
+      required: false,
+    },
+    {
+      model: EquipmentSize,
+      attributes: baseAttributes,
+      required: false,
+    },
+    {
+      model: Document,
+      as: 'AssignmentDocument',
+      attributes: minimal ? [] : ['id', 'number'],
+      required: false,
+      include: [
+        {
+          model: DocumentStatus,
+          attributes: minimal ? [] : ['alias', 'name'],
+          required: false,
+        },
+      ],
+    },
     {
       model: User,
       as: 'Owner',
-      attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+      attributes: minimal
+        ? []
+        : ['id', 'last_name', 'first_name', 'patronymic', 'email', 'phone'],
+      required: false,
     },
   ];
+}
 
-  // Sorting
-  const order = [];
-  const orderDir =
-    String(options.order || 'ASC').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-  if (options.orderBy === 'number') {
-    order.push(['number', orderDir]);
-  } else if (options.orderBy === 'created_at') {
-    order.push(['createdAt', orderDir]);
-  } else {
-    order.push([EquipmentType, 'name', 'ASC']);
-    order.push(['number', 'ASC']);
+function buildBaseFilters(options = {}, { minimal = false } = {}) {
+  const where = {};
+  const include = buildInclude({ minimal });
+
+  if (options.type_id) where.type_id = options.type_id;
+  if (options.manufacturer_id) where.manufacturer_id = options.manufacturer_id;
+  if (options.size_id) where.size_id = options.size_id;
+
+  if (options.number) {
+    const number = Number.parseInt(options.number, 10);
+    if (Number.isFinite(number) && number >= 1 && number <= 999) {
+      where.number = number;
+    }
   }
 
-  return Equipment.findAndCountAll({
-    where,
-    include,
-    limit,
-    offset,
-    order,
+  const tokens = tokenizeSearch(options.search || '');
+  if (tokens.length) {
+    const searchConditions = buildSearchConditions(tokens);
+    if (searchConditions.length) {
+      if (!where[Op.and]) where[Op.and] = [];
+      where[Op.and].push(...searchConditions);
+    }
+  }
+
+  return { where, include };
+}
+
+function applyStatusFilter(baseWhere = {}, status) {
+  const where = { ...baseWhere };
+  if (!status) return where;
+  if (status === 'issued') {
+    where.owner_id = { [Op.ne]: null };
+  } else if (status === 'awaiting') {
+    where.owner_id = null;
+    where.assignment_document_id = { [Op.ne]: null };
+  } else if (status === 'free') {
+    where.owner_id = null;
+    where.assignment_document_id = null;
+  }
+  return where;
+}
+
+function buildOrderClause(orderBy, order) {
+  const direction = String(order || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+  if (orderBy === 'number') return [['number', direction]];
+  if (orderBy === 'created_at') return [['createdAt', direction]];
+  if (orderBy === 'updated_at') return [['updatedAt', direction]];
+  return [
+    [EquipmentType, 'name', 'ASC'],
+    ['number', 'ASC'],
+  ];
+}
+
+async function buildSummary(options = {}) {
+  async function countByStatus(status) {
+    const { where, include } = buildBaseFilters(options, { minimal: true });
+    return Equipment.count({
+      where: applyStatusFilter(where, status),
+      include,
+      distinct: true,
+      col: 'id',
+    });
+  }
+
+  const [free, awaiting, issued] = await Promise.all([
+    countByStatus('free'),
+    countByStatus('awaiting'),
+    countByStatus('issued'),
+  ]);
+
+  const { where: baseWhere, include } = buildBaseFilters(options, {
+    minimal: true,
   });
+
+  const [lastUpdated, lastCreated] = await Promise.all([
+    Equipment.findOne({
+      where: baseWhere,
+      include,
+      order: [['updatedAt', 'DESC']],
+      attributes: ['updatedAt'],
+      paranoid: true,
+      subQuery: false,
+    }),
+    Equipment.findOne({
+      where: baseWhere,
+      include,
+      order: [['createdAt', 'DESC']],
+      attributes: ['createdAt'],
+      paranoid: true,
+      subQuery: false,
+    }),
+  ]);
+
+  return {
+    total: free + awaiting + issued,
+    free,
+    awaiting,
+    issued,
+    lastUpdatedAt: lastUpdated?.updatedAt
+      ? new Date(lastUpdated.updatedAt).toISOString()
+      : null,
+    lastCreatedAt: lastCreated?.createdAt
+      ? new Date(lastCreated.createdAt).toISOString()
+      : null,
+  };
+}
+
+async function listAll(options = {}) {
+  const page = Math.max(1, Number.parseInt(options.page ?? '1', 10) || 1);
+  const requestedLimit = Number.parseInt(options.limit ?? '20', 10);
+  const limit = Math.min(100, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 20));
+  const offset = (page - 1) * limit;
+
+  const { where: baseWhere, include } = buildBaseFilters(options, {
+    minimal: false,
+  });
+  const where = applyStatusFilter(baseWhere, options.status);
+  const order = buildOrderClause(options.orderBy, options.order);
+
+  const [result, summary] = await Promise.all([
+    Equipment.findAndCountAll({
+      where,
+      include,
+      limit,
+      offset,
+      order,
+      distinct: true,
+      col: 'id',
+      subQuery: false,
+    }),
+    buildSummary(options),
+  ]);
+
+  return {
+    rows: result.rows,
+    count: result.count,
+    summary,
+  };
 }
 
 async function getById(id) {
@@ -89,7 +275,7 @@ async function create(data, actorId) {
     type_id: data.type_id,
     manufacturer_id: data.manufacturer_id,
     size_id: data.size_id,
-    number: data.number,
+    number: normalizeEquipmentNumber(data.number, { required: true }),
     created_by: actorId,
     updated_by: actorId,
   };
@@ -100,7 +286,14 @@ async function create(data, actorId) {
 async function update(id, data, actorId) {
   const item = await Equipment.findByPk(id);
   if (!item) throw new ServiceError('equipment_not_found', 404);
-  await item.update({ ...data, updated_by: actorId });
+  const updatePayload = { ...data, updated_by: actorId };
+  if (Object.hasOwn(updatePayload, 'number')) {
+    updatePayload.number = normalizeEquipmentNumber(updatePayload.number, {
+      required: false,
+    });
+    if (updatePayload.number == null) delete updatePayload.number;
+  }
+  await item.update(updatePayload);
   return getById(item.id);
 }
 

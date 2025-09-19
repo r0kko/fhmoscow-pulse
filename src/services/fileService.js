@@ -20,9 +20,30 @@ import {
   TicketFile,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import { getImageDimensions } from '../utils/imageDimensions.js';
 
 function isTestEnvWithoutS3() {
   return Boolean(process.env.JEST_WORKER_ID) && !process.env.S3_BUCKET;
+}
+
+const PLAYER_PHOTO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
+const PLAYER_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const PLAYER_PHOTO_MIN_DIMENSION = 800; // px
+const PLAYER_PHOTO_EXTENSION_BY_TYPE = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+};
+
+function resolvePlayerPhotoExtension(file) {
+  const originalExt = file?.originalname
+    ? path.extname(file.originalname).toLowerCase()
+    : '';
+  if (['.png', '.jpg', '.jpeg'].includes(originalExt)) {
+    return originalExt === '.jpeg' ? '.jpg' : originalExt;
+  }
+  const fromMime = PLAYER_PHOTO_EXTENSION_BY_TYPE[file?.mimetype];
+  return fromMime || '.jpg';
 }
 
 async function uploadForCertificate(certId, file, typeAlias, actorId) {
@@ -295,6 +316,60 @@ async function uploadDocument(file, actorId) {
   });
 }
 
+async function uploadPlayerPhoto(playerId, file, actorId) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  if (!file) {
+    throw new ServiceError('file_required', 400);
+  }
+  if (!PLAYER_PHOTO_ALLOWED_TYPES.includes(file.mimetype)) {
+    throw new ServiceError('invalid_file_type', 400);
+  }
+  if (file.size > PLAYER_PHOTO_MAX_SIZE) {
+    throw new ServiceError('file_too_large', 400);
+  }
+  const dimensions = getImageDimensions(file.buffer);
+  if (!dimensions) {
+    throw new ServiceError('invalid_file_type', 400);
+  }
+  const { width, height } = dimensions;
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width < PLAYER_PHOTO_MIN_DIMENSION ||
+    height < PLAYER_PHOTO_MIN_DIMENSION
+  ) {
+    throw new ServiceError('image_too_small', 400);
+  }
+  const ext = resolvePlayerPhotoExtension(file);
+  const safePlayerId = String(playerId || '')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, 64);
+  const key = `player-photos/${safePlayerId || 'unknown'}/${uuidv4()}${ext}`;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: getS3Bucket(),
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+  } catch (err) {
+    console.error('S3 upload failed', err);
+    throw new ServiceError('s3_upload_failed');
+  }
+  return await File.create({
+    key,
+    original_name: file.originalname || `player-photo${ext}`,
+    mime_type: file.mimetype,
+    size: file.size,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+}
+
 async function removeFile(id) {
   const file = await File.findByPk(id);
   if (!file) return;
@@ -351,6 +426,7 @@ export default {
   listForTicket,
   removeTicketFile,
   uploadDocument,
+  uploadPlayerPhoto,
   removeFile,
   saveGeneratedPdf,
 };

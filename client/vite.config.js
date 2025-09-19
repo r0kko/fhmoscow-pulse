@@ -22,10 +22,28 @@ const proxyConfig = {
 export default defineConfig({
   plugins: [vue()],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '#tests': fileURLToPath(new URL('./tests', import.meta.url)),
-    },
+    alias: [
+      {
+        find: '@',
+        replacement: fileURLToPath(new URL('./src', import.meta.url)),
+      },
+      {
+        find: '#tests',
+        replacement: fileURLToPath(new URL('./tests', import.meta.url)),
+      },
+      {
+        find: /^msw$/,
+        replacement: fileURLToPath(
+          new URL('./tests/vendor/msw.js', import.meta.url)
+        ),
+      },
+      {
+        find: /^msw\/node$/,
+        replacement: fileURLToPath(
+          new URL('./tests/vendor/msw-node.js', import.meta.url)
+        ),
+      },
+    ],
   },
   server: {
     host: '0.0.0.0',
@@ -63,6 +81,15 @@ export default defineConfig({
         'src/utils/**/*.js',
         'src/components/CookieNotice.vue',
         'src/components/GlobalToast.vue',
+        'src/components/InlineError.vue',
+        'src/components/NavBar.vue',
+        'src/components/PasswordInput.vue',
+        'src/components/PasswordStrengthMeter.vue',
+        'src/components/Pagination.vue',
+        'src/components/EmptyState.vue',
+        'src/components/BaseTile.vue',
+        'src/components/MenuTile.vue',
+        'src/components/UpcomingEventCard.vue',
       ],
       exclude: [
         'src/api.js',

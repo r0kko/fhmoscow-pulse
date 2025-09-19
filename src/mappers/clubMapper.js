@@ -14,6 +14,18 @@ export default {
     if (club.Grounds) {
       out.grounds = club.Grounds.map((g) => ({ id: g.id, name: g.name }));
     }
+
+    if (club.UserClub) {
+      const membership = typeof club.UserClub.get === 'function'
+        ? club.UserClub.get({ plain: true })
+        : club.UserClub;
+      out.sport_school_position_id = membership.sport_school_position_id || null;
+      if (membership.SportSchoolPosition) {
+        const position = membership.SportSchoolPosition;
+        out.sport_school_position_name = position.name;
+        out.sport_school_position_alias = position.alias;
+      }
+    }
     return out;
   },
 };

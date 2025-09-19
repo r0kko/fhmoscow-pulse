@@ -42,6 +42,7 @@ import AdminDocuments from './views/AdminDocuments.vue';
 import AdminNormatives from './views/AdminNormatives.vue';
 import Tickets from './views/Tickets.vue';
 import AdminTickets from './views/AdminTickets.vue';
+import AdminPlayerPhotoRequests from './views/AdminPlayerPhotoRequests.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
 import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
@@ -181,6 +182,15 @@ const routes = [
     path: '/admin/system-ops',
     component: AdminSystemOps,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Синхронизация' },
+  },
+  {
+    path: '/admin/player-photo-requests',
+    component: AdminPlayerPhotoRequests,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Фото игроков',
+    },
   },
   {
     path: '/admin/referee-availability',

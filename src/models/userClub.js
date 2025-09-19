@@ -11,6 +11,7 @@ UserClub.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    sport_school_position_id: { type: DataTypes.UUID, allowNull: true },
   },
   {
     sequelize,

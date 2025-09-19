@@ -4,6 +4,7 @@ import {
 
 import teamMapper from './teamMapper.js';
 import clubMapper from './clubMapper.js';
+import playerPhotoRequestMapper from './playerPhotoRequestMapper.js';
 
 function buildFullName(player) {
   return [player.surname, player.name, player.patronymic]
@@ -56,6 +57,16 @@ export default {
     }
     if (player.Clubs) {
       out.clubs = player.Clubs.map((c) => clubMapper.toPublic(c));
+    }
+    if (Array.isArray(player.PhotoRequests) && player.PhotoRequests.length) {
+      const request = player.PhotoRequests[0];
+      const mappedRequest = playerPhotoRequestMapper.toPublic(request);
+      if (mappedRequest) {
+        delete mappedRequest.player;
+      }
+      out.photo_request = mappedRequest || null;
+    } else {
+      out.photo_request = null;
     }
     return out;
   },

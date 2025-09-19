@@ -91,41 +91,47 @@ const workSections = computed(() => {
 });
 
 // Раздел управления спортивной школой — формируется только для роли сотрудника СШ
-const schoolSections = computed(() =>
-  isStaff.value
-    ? [
-        {
-          title: 'Ближайшие матчи',
-          icon: 'bi-calendar-event',
-          to: '/school-matches',
-        },
-        ...(canSeePlayers.value
-          ? [
-              {
-                title: 'Прошедшие матчи',
-                icon: 'bi-clock-history',
-                to: '/school-matches/past',
-              },
-              {
-                title: 'Команды и составы',
-                icon: 'bi-people',
-                to: '/school-players',
-              },
-              {
-                title: 'Фотографии игроков',
-                icon: 'bi-camera',
-                to: '/school-players/photos',
-              },
-              {
-                title: 'Стадионы',
-                icon: 'bi-geo-alt',
-                to: '/school-grounds',
-              },
-            ]
-          : []),
-      ]
-    : []
-);
+const schoolSections = computed(() => {
+  if (!isStaff.value) return [];
+  const sections = [
+    {
+      title: 'Ближайшие матчи',
+      icon: 'bi-calendar-event',
+      to: '/school-matches',
+    },
+  ];
+  if (canSeePlayers.value) {
+    sections.push(
+      {
+        title: 'Прошедшие матчи',
+        icon: 'bi-clock-history',
+        to: '/school-matches/past',
+      },
+      {
+        title: 'Команды и составы',
+        icon: 'bi-people',
+        to: '/school-players',
+      },
+      {
+        title: 'Стадионы',
+        icon: 'bi-geo-alt',
+        to: '/school-grounds',
+      }
+    );
+  }
+  return sections;
+});
+
+const mediaSections = computed(() => {
+  if (!isStaff.value || !canSeePlayers.value) return [];
+  return [
+    {
+      title: 'Фотографии игроков',
+      icon: 'bi-camera',
+      to: '/school-players/photos',
+    },
+  ];
+});
 
 const docsSections = computed(() => {
   const list = [
@@ -308,6 +314,25 @@ async function loadUpcoming() {
           <div v-edge-fade class="scroll-container">
             <MenuTile
               v-for="item in schoolSections"
+              :key="item.title"
+              :title="item.title"
+              :icon="item.icon"
+              :to="item.to"
+              :placeholder="!item.to"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="mediaSections.length > 0"
+        class="card section-card mb-2 menu-section"
+      >
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">Управление медиа и контентом</h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="item in mediaSections"
               :key="item.title"
               :title="item.title"
               :icon="item.icon"

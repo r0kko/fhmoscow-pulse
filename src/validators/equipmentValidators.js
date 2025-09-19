@@ -7,7 +7,7 @@ export const equipmentCreateRules = [
     .withMessage('invalid_equipment_manufacturer'),
   body('size_id').isUUID().withMessage('invalid_equipment_size'),
   body('number')
-    .isInt({ min: 1, max: 300 })
+    .isInt({ min: 1, max: 999 })
     .withMessage('invalid_equipment_number'),
 ];
 
@@ -20,7 +20,7 @@ export const equipmentUpdateRules = [
   body('size_id').optional().isUUID().withMessage('invalid_equipment_size'),
   body('number')
     .optional()
-    .isInt({ min: 1, max: 300 })
+    .isInt({ min: 1, max: 999 })
     .withMessage('invalid_equipment_number'),
 ];
 

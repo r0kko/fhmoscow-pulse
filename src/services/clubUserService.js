@@ -1,15 +1,39 @@
-import { User, Club, UserClub, Team, UserTeam } from '../models/index.js';
+import { User, Club, UserClub, Team, UserTeam, SportSchoolPosition } from '../models/index.js';
 import sequelize from '../config/database.js';
 import ServiceError from '../errors/ServiceError.js';
 
 async function listUserClubs(userId, withTeams = false) {
-  const include = withTeams ? [{ model: Club, include: [Team] }] : [Club];
-  const user = await User.findByPk(userId, { include });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  return user.Clubs || [];
+  const clubInclude = {
+    model: Club,
+    include: [],
+  };
+  if (withTeams) clubInclude.include.push(Team);
+  const memberships = await UserClub.findAll({
+    where: { user_id: userId },
+    include: [
+      clubInclude,
+      { model: SportSchoolPosition, as: 'SportSchoolPosition' },
+    ],
+    order: [['created_at', 'ASC']],
+  });
+  if (memberships.length === 0) {
+    const user = await User.findByPk(userId);
+    if (!user) throw new ServiceError('user_not_found', 404);
+    return [];
+  }
+  return memberships
+    .map((membership) => {
+      const club = membership.Club;
+      if (!club) return null;
+      if (typeof club.setDataValue === 'function')
+        club.setDataValue('UserClub', membership);
+      else club.UserClub = membership;
+      return club;
+    })
+    .filter(Boolean);
 }
 
-async function addUserClub(userId, clubId, actorId) {
+async function addUserClub(userId, clubId, actorId, options = {}) {
   const [user, club] = await Promise.all([
     User.findByPk(userId),
     Club.findByPk(clubId),
@@ -23,16 +47,19 @@ async function addUserClub(userId, clubId, actorId) {
       paranoid: false,
       transaction: tx,
     });
+    const hasPosition = Object.prototype.hasOwnProperty.call(options, 'positionId');
     if (existingClubLink) {
       if (existingClubLink.deletedAt)
         await existingClubLink.restore({ transaction: tx });
-      await existingClubLink.update(
-        { updated_by: actorId },
-        { transaction: tx }
-      );
+      const updates = { updated_by: actorId };
+      if (hasPosition)
+        updates.sport_school_position_id = options.positionId || null;
+      await existingClubLink.update(updates, { transaction: tx });
     } else {
+      const through = { created_by: actorId, updated_by: actorId };
+      if (hasPosition) through.sport_school_position_id = options.positionId || null;
       await user.addClub(club, {
-        through: { created_by: actorId, updated_by: actorId },
+        through,
         transaction: tx,
       });
     }
@@ -95,7 +122,22 @@ async function removeUserClub(userId, clubId, actorId = null) {
   });
 }
 
-export default { listUserClubs, addUserClub, removeUserClub };
+async function updateClubUserPosition(clubId, userId, positionId, actorId = null) {
+  const link = await UserClub.findOne({
+    where: { club_id: clubId, user_id: userId },
+  });
+  if (!link) throw new ServiceError('club_staff_link_not_found', 404);
+  await link.update(
+    {
+      sport_school_position_id: positionId || null,
+      updated_by: actorId,
+    },
+    { returning: false }
+  );
+  return link;
+}
+
+export default { listUserClubs, addUserClub, removeUserClub, updateClubUserPosition };
 
 // New helpers for club-centric staff management
 async function listClubUsers(clubId) {
@@ -103,7 +145,7 @@ async function listClubUsers(clubId) {
     include: [
       {
         model: User,
-        through: { attributes: [] },
+        through: { attributes: ['sport_school_position_id'] },
         required: false,
       },
     ],
@@ -113,9 +155,9 @@ async function listClubUsers(clubId) {
   return club.Users || [];
 }
 
-async function addClubUser(clubId, userId, actorId) {
+async function addClubUser(clubId, userId, actorId, options = {}) {
   // Delegate to user->club to preserve side effects (auto-attach teams)
-  return addUserClub(userId, clubId, actorId);
+  return addUserClub(userId, clubId, actorId, options);
 }
 
 async function removeClubUser(clubId, userId, actorId = null) {
@@ -123,4 +165,4 @@ async function removeClubUser(clubId, userId, actorId = null) {
   return removeUserClub(userId, clubId, actorId);
 }
 
-export { listClubUsers, addClubUser, removeClubUser };
+export { listClubUsers, addClubUser, removeClubUser, updateClubUserPosition };

@@ -70,6 +70,33 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 
 const { default: fileService } = await import('../src/services/fileService.js');
 
+function buildJpegBuffer(width, height) {
+  const base = [
+    0xff,
+    0xd8,
+    0xff,
+    0xc0,
+    0x00,
+    0x0b,
+    0x08,
+    0x00,
+    0x02,
+    0x00,
+    0x02,
+    0x01,
+    0x01,
+    0x11,
+    0x00,
+    0xff,
+    0xd9,
+  ];
+  base[7] = (height >> 8) & 0xff;
+  base[8] = height & 0xff;
+  base[9] = (width >> 8) & 0xff;
+  base[10] = width & 0xff;
+  return Buffer.from(base);
+}
+
 beforeAll(() => {
   process.env.S3_BUCKET = 'test-bucket';
 });
@@ -190,6 +217,139 @@ describe('uploadForCertificate', () => {
     await expect(
       fileService.uploadForCertificate('cert1', file, 'bad', 'actor')
     ).rejects.toMatchObject({ code: 'type_not_found', status: 400 });
+  });
+});
+
+describe('uploadPlayerPhoto', () => {
+  const baseBuffer = buildJpegBuffer(900, 900);
+  const file = {
+    originalname: 'player.jpg',
+    mimetype: 'image/jpeg',
+    size: baseBuffer.length,
+    buffer: baseBuffer,
+  };
+
+  test('stores player photo when validation passes', async () => {
+    fileCreate.mockResolvedValue({ id: 'file-photo' });
+    sendMock.mockResolvedValueOnce({});
+
+    const result = await fileService.uploadPlayerPhoto('player-1', file, 'staff-1');
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Bucket: 'test-bucket',
+          Key: expect.stringMatching(/^player-photos\/player-1\/uuid-123\.jpg$/),
+          Body: file.buffer,
+          ContentType: 'image/jpeg',
+        }),
+      })
+    );
+    expect(fileCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringMatching(/^player-photos\/player-1\/uuid-123\.jpg$/),
+        original_name: 'player.jpg',
+        mime_type: 'image/jpeg',
+        size: file.size,
+        created_by: 'staff-1',
+        updated_by: 'staff-1',
+      })
+    );
+    expect(result).toEqual({ id: 'file-photo' });
+  });
+
+  test('normalizes jpeg extension to jpg in storage key', async () => {
+    fileCreate.mockResolvedValue({ id: 'file-photo' });
+    sendMock.mockResolvedValueOnce({});
+
+    const jpegFile = {
+      ...file,
+      originalname: 'portrait.jpeg',
+    };
+
+    await fileService.uploadPlayerPhoto('player-1', jpegFile, 'staff-1');
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Key: expect.stringMatching(/\.jpg$/),
+        }),
+      })
+    );
+    expect(fileCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        original_name: 'portrait.jpeg',
+      })
+    );
+  });
+
+  test('falls back to mime-based extension when original name lacks one', async () => {
+    fileCreate.mockResolvedValue({ id: 'file-photo' });
+    sendMock.mockResolvedValueOnce({});
+
+    const noExtFile = {
+      ...file,
+      originalname: 'avatar',
+    };
+
+    await fileService.uploadPlayerPhoto('player-2', noExtFile, 'staff-2');
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Key: expect.stringMatching(/player-photos\/player-2\/uuid-123\.jpg$/),
+        }),
+      })
+    );
+  });
+
+  test('rejects photos below minimal dimensions', async () => {
+    const tinyBuffer = buildJpegBuffer(400, 799);
+    const smallFile = {
+      ...file,
+      size: tinyBuffer.length,
+      buffer: tinyBuffer,
+    };
+
+    await expect(
+      fileService.uploadPlayerPhoto('p1', smallFile, 'staff')
+    ).rejects.toMatchObject({ code: 'image_too_small', status: 400 });
+  });
+
+  test('rejects when dimensions cannot be detected', async () => {
+    const brokenFile = {
+      ...file,
+      buffer: Buffer.from('not-an-image'),
+      size: 20,
+    };
+
+    await expect(
+      fileService.uploadPlayerPhoto('p1', brokenFile, 'staff')
+    ).rejects.toMatchObject({ code: 'invalid_file_type', status: 400 });
+  });
+
+  test('rejects when file is too large', async () => {
+    const largeFile = {
+      ...file,
+      size: 6 * 1024 * 1024,
+    };
+
+    await expect(
+      fileService.uploadPlayerPhoto('p1', largeFile, 'staff')
+    ).rejects.toMatchObject({ code: 'file_too_large', status: 400 });
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects when mime type is not allowed', async () => {
+    const wrongType = {
+      ...file,
+      mimetype: 'image/gif',
+    };
+
+    await expect(
+      fileService.uploadPlayerPhoto('p1', wrongType, 'staff')
+    ).rejects.toMatchObject({ code: 'invalid_file_type', status: 400 });
+    expect(sendMock).not.toHaveBeenCalled();
   });
 });
 

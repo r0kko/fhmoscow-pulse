@@ -70,6 +70,7 @@ import reportsRouter from './reports.js';
 import verifyRouter from './verify.js';
 import shortLinksRouter from './shortLinks.js';
 import equipmentRouter from './equipment.js';
+import playerPhotoRequestsRouter from './playerPhotoRequests.js';
 
 const router = express.Router();
 
@@ -123,6 +124,7 @@ router.use('/clubs', clubsRouter);
 router.use('/matches', matchesRouter);
 router.use('/tournaments', tournamentsRouter);
 router.use('/players', playersRouter);
+router.use('/player-photo-requests', playerPhotoRequestsRouter);
 router.use('/staff', staffRouter);
 router.use('/sport-schools', sportSchoolsRouter);
 router.use('/metrics', metricsRouter);

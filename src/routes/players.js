@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
@@ -6,6 +7,7 @@ import controller from '../controllers/playerController.js';
 import accessScope from '../middlewares/accessScope.js';
 
 const router = express.Router();
+const upload = multer();
 
 router.get(
   '/',
@@ -66,6 +68,15 @@ router.get(
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
   controller.roles
+);
+
+router.post(
+  '/:id/photo-request',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  upload.single('file'),
+  controller.submitPhotoRequest
 );
 
 export default router;

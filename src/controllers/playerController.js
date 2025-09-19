@@ -10,6 +10,8 @@ import playerMapper from '../mappers/playerMapper.js';
 import { sendError } from '../utils/api.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import playerPhotoRequestService from '../services/playerPhotoRequestService.js';
+import playerPhotoRequestMapper from '../mappers/playerPhotoRequestMapper.js';
 
 export default {
   async gallery(req, res) {
@@ -606,6 +608,22 @@ export default {
         roleId: req.body?.role_id || null,
       });
       return res.json({ ok: true, updated });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async submitPhotoRequest(req, res) {
+    try {
+      const scope = req.access || {};
+      const request = await playerPhotoRequestService.submit({
+        actorId: req.user?.id || null,
+        playerId: req.params.id,
+        file: req.file,
+        scope,
+      });
+      return res.status(201).json({
+        request: playerPhotoRequestMapper.toPublic(request),
+      });
     } catch (err) {
       return sendError(res, err);
     }
