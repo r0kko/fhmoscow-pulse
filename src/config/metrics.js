@@ -1,6 +1,8 @@
 // Lightweight integration with Prometheus via prom-client (optional).
 // Falls back to no-op if prom-client is not available at runtime.
 
+import { QueryTypes } from 'sequelize';
+
 let client = null;
 let register = null;
 let metricsAvailable = false;
@@ -43,6 +45,63 @@ let csrfRejectedTotal = null;
 let httpErrorCodeTotal = null;
 let refreshReuseDetected = null;
 let securityEvents = null;
+let businessUsersTotal = null;
+let businessDocumentsTotal = null;
+let businessDocumentsPending = null;
+let businessMatchesUpcoming = null;
+let businessTrainingsUpcoming = null;
+let businessDocumentsOverdue = null;
+
+let businessCollectorTimer = null;
+let businessCollectorStarted = false;
+let businessCollectorRunning = false;
+const businessUserStatusLabels = new Map();
+const businessDocumentStatusLabels = new Map();
+const businessMatchWindowLabels = new Map();
+const businessTrainingWindowLabels = new Map();
+const businessDocumentOverdueLabels = new Map();
+
+function safeMetricLabel(value, fallback = 'unknown') {
+  const base = String(value ?? '').trim();
+  if (!base) return fallback;
+  const slug = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug || fallback;
+}
+
+function buildLabelKey(labels) {
+  const keys = Object.keys(labels).sort();
+  const normalized = {};
+  for (const key of keys) normalized[key] = labels[key];
+  return JSON.stringify(normalized);
+}
+
+function setGaugeSeries(gauge, memo, series) {
+  if (!gauge) return;
+  const next = new Map();
+  for (const { labels, value } of series) {
+    const key = buildLabelKey(labels);
+    next.set(key, labels);
+    try {
+      gauge.set(labels, Number.isFinite(value) ? value : 0);
+    } catch (_e) {
+      /* ignore gauge write errors */
+    }
+  }
+  for (const [key, labels] of memo.entries()) {
+    if (!next.has(key)) {
+      try {
+        gauge.set(labels, 0);
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+  }
+  memo.clear();
+  for (const [key, labels] of next.entries()) memo.set(key, labels);
+}
 
 async function ensureInit() {
   if (metricsAvailable || register !== null) return;
@@ -252,6 +311,41 @@ async function ensureInit() {
       name: 'http_error_code_total',
       help: 'Application error responses grouped by code and status class',
       labelNames: ['code', 'status'], // e.g., EBADCSRFTOKEN, unauthorized, 403, 401
+      registers: [register],
+    });
+    businessUsersTotal = new client.Gauge({
+      name: 'business_users_total',
+      help: 'User counts grouped by status',
+      labelNames: ['status', 'status_label'],
+      registers: [register],
+    });
+    businessDocumentsTotal = new client.Gauge({
+      name: 'business_documents_total',
+      help: 'Document counts grouped by status',
+      labelNames: ['status', 'status_label'],
+      registers: [register],
+    });
+    businessDocumentsPending = new client.Gauge({
+      name: 'business_documents_pending_total',
+      help: 'Documents pending signature or approval',
+      registers: [register],
+    });
+    businessDocumentsOverdue = new client.Gauge({
+      name: 'business_documents_overdue_total',
+      help: 'Pending documents breaching SLA buckets',
+      labelNames: ['bucket'],
+      registers: [register],
+    });
+    businessMatchesUpcoming = new client.Gauge({
+      name: 'business_matches_upcoming_total',
+      help: 'Matches grouped by scheduling window',
+      labelNames: ['window'],
+      registers: [register],
+    });
+    businessTrainingsUpcoming = new client.Gauge({
+      name: 'business_trainings_upcoming_total',
+      help: 'Training sessions grouped by scheduling window',
+      labelNames: ['window'],
       registers: [register],
     });
 
@@ -618,7 +712,13 @@ export function startSequelizePoolCollector(sequelize) {
   if (interval?.unref) interval.unref();
 }
 
-export default { withJobMetrics, metricsText, seedJobMetrics, getJobStats };
+export default {
+  withJobMetrics,
+  metricsText,
+  seedJobMetrics,
+  getJobStats,
+  startBusinessMetricsCollector,
+};
 
 export function getRuntimeStates() {
   return {
@@ -765,4 +865,244 @@ export function incSecurityEvent(type = 'reuse') {
   } catch (_e) {
     /* noop */
   }
+}
+
+async function collectBusinessMetrics() {
+  if (businessCollectorRunning) return;
+  await ensureInit();
+  if (!metricsAvailable) return;
+  businessCollectorRunning = true;
+  try {
+    const [{ default: sequelize }] = await Promise.all([
+      import('./database.js'),
+    ]);
+
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    const tomorrowStart = new Date(dayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const nextSeven = new Date(dayStart);
+    nextSeven.setDate(nextSeven.getDate() + 7);
+    const threshold3d = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const threshold7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const finalDocumentAliases = new Set([
+      'SIGNED',
+      'ARCHIVED',
+      'CANCELLED',
+      'CANCELED',
+      'ANNULLED',
+      'DECLINED',
+      'REJECTED',
+    ]);
+
+    const userStatusRows = await sequelize.query(
+      `
+        SELECT COALESCE(us.alias, 'UNKNOWN') AS status_alias,
+               COALESCE(us.name, COALESCE(us.alias, 'Unknown')) AS status_label,
+               COUNT(u.id)::bigint AS count
+          FROM users u
+          LEFT JOIN user_statuses us ON u.status_id = us.id
+         WHERE u.deleted_at IS NULL
+         GROUP BY status_alias, status_label
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+    const userSeries = [];
+    let userTotal = 0;
+    for (const row of userStatusRows) {
+      const count = Number(row?.count || 0);
+      userTotal += count;
+      const label = safeMetricLabel(row?.status_alias);
+      userSeries.push({
+        labels: {
+          status: label,
+          status_label: String(row?.status_label || row?.status_alias || 'Unknown'),
+        },
+        value: count,
+      });
+    }
+    userSeries.push({
+      labels: { status: 'total', status_label: 'Total' },
+      value: userTotal,
+    });
+    setGaugeSeries(businessUsersTotal, businessUserStatusLabels, userSeries);
+
+    const documentStatusRows = await sequelize.query(
+      `
+        SELECT COALESCE(ds.alias, 'UNKNOWN') AS status_alias,
+               COALESCE(ds.name, COALESCE(ds.alias, 'Unknown')) AS status_label,
+               COUNT(d.id)::bigint AS count
+          FROM documents d
+          LEFT JOIN document_statuses ds ON d.status_id = ds.id
+         WHERE d.deleted_at IS NULL
+         GROUP BY status_alias, status_label
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+    const documentSeries = [];
+    let documentsPending = 0;
+    let documentsTotal = 0;
+    for (const row of documentStatusRows) {
+      const count = Number(row?.count || 0);
+      documentsTotal += count;
+      const alias = String(row?.status_alias || 'UNKNOWN');
+      if (!finalDocumentAliases.has(alias)) documentsPending += count;
+      documentSeries.push({
+        labels: {
+          status: safeMetricLabel(alias),
+          status_label: String(row?.status_label || alias),
+        },
+        value: count,
+      });
+    }
+    documentSeries.push({
+      labels: { status: 'total', status_label: 'Total' },
+      value: documentsTotal,
+    });
+    setGaugeSeries(businessDocumentsTotal, businessDocumentStatusLabels, documentSeries);
+    if (businessDocumentsPending) {
+      try {
+        businessDocumentsPending.set(documentsPending);
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+
+    const [documentOverdueRow] = await sequelize.query(
+      `
+        SELECT
+          SUM(
+            CASE
+              WHEN d.document_date < :threshold3d
+                   AND (ds.alias IS NULL OR ds.alias NOT IN (:finalStatuses))
+              THEN 1 ELSE 0
+            END
+          )::bigint AS gt3,
+          SUM(
+            CASE
+              WHEN d.document_date < :threshold7d
+                   AND (ds.alias IS NULL OR ds.alias NOT IN (:finalStatuses))
+              THEN 1 ELSE 0
+            END
+          )::bigint AS gt7
+        FROM documents d
+        LEFT JOIN document_statuses ds ON d.status_id = ds.id
+       WHERE d.deleted_at IS NULL
+      `,
+      {
+        replacements: {
+          threshold3d,
+          threshold7d,
+          finalStatuses: Array.from(finalDocumentAliases),
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    setGaugeSeries(businessDocumentsOverdue, businessDocumentOverdueLabels, [
+      { labels: { bucket: 'gt_3d' }, value: Number(documentOverdueRow?.gt3 || 0) },
+      { labels: { bucket: 'gt_7d' }, value: Number(documentOverdueRow?.gt7 || 0) },
+    ]);
+
+    const [matchCounts] = await sequelize.query(
+      `
+        SELECT
+          SUM(CASE WHEN m.date_start >= :dayStart AND m.date_start < :dayEnd THEN 1 ELSE 0 END)::bigint AS today,
+          SUM(CASE WHEN m.date_start >= :tomorrow AND m.date_start < :nextSeven THEN 1 ELSE 0 END)::bigint AS next7,
+          SUM(CASE WHEN m.date_start >= :nextSeven THEN 1 ELSE 0 END)::bigint AS beyond7,
+          SUM(CASE WHEN m.date_start IS NULL OR m.ground_id IS NULL THEN 1 ELSE 0 END)::bigint AS unscheduled,
+          SUM(CASE WHEN m.date_start < :now AND (gs.alias IS NULL OR gs.alias NOT IN ('FINISHED','CANCELLED','CANCELED','ARCHIVED')) THEN 1 ELSE 0 END)::bigint AS overdue
+        FROM matches m
+        LEFT JOIN game_statuses gs ON m.game_status_id = gs.id
+       WHERE m.deleted_at IS NULL
+      `,
+      {
+        replacements: {
+          dayStart,
+          dayEnd,
+          tomorrow: tomorrowStart,
+          nextSeven,
+          now,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const matchSeries = [
+      { labels: { window: 'today' }, value: Number(matchCounts?.today || 0) },
+      { labels: { window: 'next_7d' }, value: Number(matchCounts?.next7 || 0) },
+      { labels: { window: 'beyond_7d' }, value: Number(matchCounts?.beyond7 || 0) },
+      { labels: { window: 'unscheduled' }, value: Number(matchCounts?.unscheduled || 0) },
+      { labels: { window: 'overdue' }, value: Number(matchCounts?.overdue || 0) },
+    ];
+    const matchesTotal = matchSeries.reduce((acc, entry) => acc + entry.value, 0);
+    matchSeries.push({ labels: { window: 'total' }, value: matchesTotal });
+    setGaugeSeries(businessMatchesUpcoming, businessMatchWindowLabels, matchSeries);
+
+    const [trainingCounts] = await sequelize.query(
+      `
+        SELECT
+          SUM(CASE WHEN t.start_at >= :dayStart AND t.start_at < :dayEnd THEN 1 ELSE 0 END)::bigint AS today,
+          SUM(CASE WHEN t.start_at >= :tomorrow AND t.start_at < :nextSeven THEN 1 ELSE 0 END)::bigint AS next7,
+          SUM(CASE WHEN t.start_at >= :now THEN 1 ELSE 0 END)::bigint AS future,
+          SUM(CASE WHEN t.start_at < :now AND COALESCE(t.attendance_marked, false) = false THEN 1 ELSE 0 END)::bigint AS needs_attendance
+        FROM trainings t
+       WHERE t.deleted_at IS NULL
+      `,
+      {
+        replacements: { dayStart, dayEnd, tomorrow: tomorrowStart, nextSeven, now },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const trainingSeries = [
+      { labels: { window: 'today' }, value: Number(trainingCounts?.today || 0) },
+      { labels: { window: 'next_7d' }, value: Number(trainingCounts?.next7 || 0) },
+      { labels: { window: 'future' }, value: Number(trainingCounts?.future || 0) },
+      {
+        labels: { window: 'needs_attendance' },
+        value: Number(trainingCounts?.needs_attendance || 0),
+      },
+    ];
+    trainingSeries.push({
+      labels: { window: 'total' },
+      value: Number(trainingCounts?.future || 0),
+    });
+    setGaugeSeries(
+      businessTrainingsUpcoming,
+      businessTrainingWindowLabels,
+      trainingSeries
+    );
+  } catch (err) {
+    try {
+      const { default: logger } = await import('../../logger.js');
+      logger?.warn?.(
+        'Business metrics collection failed: %s',
+        err?.message || err
+      );
+    } catch (_logErr) {
+      /* ignore logging errors */
+    }
+  } finally {
+    businessCollectorRunning = false;
+  }
+}
+
+export async function startBusinessMetricsCollector() {
+  if (businessCollectorStarted) return;
+  businessCollectorStarted = true;
+  await ensureInit();
+  if (!metricsAvailable) return;
+  const refreshMs = Math.max(
+    30_000,
+    Number(process.env.BUSINESS_METRICS_REFRESH_MS || 60_000)
+  );
+  await collectBusinessMetrics();
+  businessCollectorTimer = setInterval(() => {
+    collectBusinessMetrics().catch(() => {});
+  }, refreshMs);
+  if (businessCollectorTimer?.unref) businessCollectorTimer.unref();
 }

@@ -1,0 +1,328 @@
+{
+  "title": "Pulse Observability Portal",
+  "uid": "pulse-observability-portal",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["pulse", "executive"],
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "timepicker": {
+    "refresh_intervals": ["30s", "1m", "5m", "15m", "30m", "1h"],
+    "time_options": ["6h", "12h", "24h", "2d", "7d"]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Availability (30m)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 98.5 },
+              { "color": "green", "value": 99.5 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "(1 - slo:availability:error_ratio:30m) * 100",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "HTTP 5xx (5m avg)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "req/s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.1 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{route!\"/metrics\",status=~\"5..\"}[5m]))",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Pending documents",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 25 },
+              { "color": "red", "value": 75 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "business_documents_pending_total",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Matches today",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 10 },
+              { "color": "red", "value": 25 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "business_matches_upcoming_total{window=\"today\"}",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error ratio (SLO burn)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right" },
+        "tooltip": { "mode": "multi" },
+        "showPoints": "never"
+      },
+      "targets": [
+        {
+          "expr": "slo:availability:error_ratio:5m",
+          "legendFormat": "5m",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "slo:availability:error_ratio:30m",
+          "legendFormat": "30m",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        },
+        {
+          "expr": "slo:availability:error_ratio:6h",
+          "legendFormat": "6h",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Documents overdue (SLA buckets)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" },
+        "stacking": { "group": "A", "mode": "normal" }
+      },
+      "targets": [
+        {
+          "expr": "business_documents_overdue_total",
+          "legendFormat": "{{bucket}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "User portfolio",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      },
+      "targets": [
+        {
+          "expr": "business_users_total",
+          "instant": true,
+          "format": "table",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        {
+          "id": "filterFieldsByName",
+          "options": { "include": { "names": ["status_label", "Value"] } }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": { "status_label": "Status", "Value": "Users" },
+            "indexByName": { "Users": 1, "Status": 0 }
+          }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Document pipeline",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      },
+      "targets": [
+        {
+          "expr": "business_documents_total",
+          "instant": true,
+          "format": "table",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        {
+          "id": "filterFieldsByName",
+          "options": { "include": { "names": ["status_label", "Value"] } }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": { "status_label": "Status", "Value": "Documents" },
+            "indexByName": { "Documents": 1, "Status": 0 }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Match schedule outlook",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" },
+        "stacking": { "group": "matches", "mode": "normal" }
+      },
+      "targets": [
+        {
+          "expr": "business_matches_upcoming_total",
+          "legendFormat": "{{window}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Training readiness",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" },
+        "stacking": { "group": "training", "mode": "normal" }
+      },
+      "targets": [
+        {
+          "expr": "business_trainings_upcoming_total",
+          "legendFormat": "{{window}}",
+          "datasource": { "type": "prometheus", "uid": "Prometheus" }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "title": "Navigation",
+      "mode": "markdown",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 6 },
+      "options": {
+        "content": "### Quick links\n- [App Golden Signals](d/pulse-app-gs/app-golden-signals)\n- [HTTP Drill-down](d/pulse-app-http-drill/app-http-drill)\n- [Business Operations](d/pulse-business-ops/pulse-business-operations)\n- [Runtime & Infrastructure](d/infra-overview/infra-overview)\n- [Security & CSRF](d/pulse-security/security-overview)\n- [Tracing Overview](d/pulse-tracing/tracing-overview)"
+      }
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Dashboards",
+      "asDropdown": true,
+      "tags": ["pulse"],
+      "icon": "dashboard"
+    }
+  ]
+}

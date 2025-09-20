@@ -9,6 +9,14 @@
   "time": {"from": "now-6h", "to": "now"},
   "timepicker": {"refresh_intervals": ["5s","10s","30s","1m","5m"]},
   "refresh": "30s",
+  "links": [
+    {
+      "type": "dashboard",
+      "title": "Observability Portal",
+      "icon": "home",
+      "dashboardUid": "pulse-observability-portal"
+    }
+  ],
   "panels": [
     {
       "type": "stat",
@@ -178,9 +186,90 @@
       ]
     },
     {
+      "type": "stat",
+      "title": "Pending documents",
+      "gridPos": {"x": 0, "y": 28, "w": 8, "h": 4},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 25},
+              {"color": "red", "value": 75}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": ""},
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {"expr": "business_documents_pending_total", "instant": true, "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Matches overdue",
+      "gridPos": {"x": 8, "y": 28, "w": 8, "h": 4},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 3},
+              {"color": "red", "value": 10}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": ""},
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {"expr": "business_matches_upcoming_total{window=\"overdue\"}", "instant": true, "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Trainings need attendance",
+      "gridPos": {"x": 16, "y": 28, "w": 8, "h": 4},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 2},
+              {"color": "red", "value": 6}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": ""},
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value"
+      },
+      "targets": [
+        {"expr": "business_trainings_upcoming_total{window=\"needs_attendance\"}", "instant": true, "datasource": {"type": "prometheus", "uid": "Prometheus"}}
+      ]
+    },
+    {
       "type": "logs",
       "title": "Recent logs (Loki)",
-      "gridPos": {"x": 0, "y": 28, "w": 24, "h": 10},
+      "gridPos": {"x": 0, "y": 32, "w": 24, "h": 10},
       "options": {"showTime": true, "dedupStrategy": "none", "wrapLogMessage": true},
       "datasource": {"type": "loki", "uid": "Loki"},
       "targets": [

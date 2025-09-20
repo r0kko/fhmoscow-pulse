@@ -1,9 +1,8 @@
 import express from 'express';
-import { Op, Sequelize } from 'sequelize';
+import { Op } from 'sequelize';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
-import Log from '../models/log.js';
 import JobLog from '../models/jobLog.js';
 
 const router = express.Router();
@@ -61,68 +60,20 @@ router.get('/job-runs.csv', auth, authorize('ADMIN'), async (req, res) => {
   return sendCsv(res, `job-runs-last-${days}-days.csv`, headers, data);
 });
 
-// GET /reports/http-errors.csv?days=7 — aggregated by path+status
-router.get('/http-errors.csv', auth, authorize('ADMIN'), async (req, res) => {
-  const days = Math.min(Math.max(parseInt(req.query?.days || '7', 10), 1), 90);
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  // Use raw query for percentile if available; otherwise fallback to avg/max
-  const sequelize = Log.sequelize;
-  const supportsPercentile = true; // Postgres
-  let rows;
-  if (supportsPercentile) {
-    rows = await sequelize.query(
-      `
-        SELECT path,
-               status_code,
-               COUNT(*) as count,
-               ROUND(PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY response_time) ::numeric, 0) as p95_ms,
-               ROUND(AVG(response_time)::numeric, 0) as avg_ms,
-               MAX(response_time) as max_ms
-          FROM logs
-         WHERE created_at >= :since AND status_code >= 400
-         GROUP BY path, status_code
-         ORDER BY count DESC
-         LIMIT 5000
-      `,
-      { replacements: { since }, type: Sequelize.QueryTypes.SELECT }
-    );
-  } else {
-    rows = await Log.findAll({
-      attributes: [
-        'path',
-        'status_code',
-        [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
-        [Sequelize.fn('AVG', Sequelize.col('response_time')), 'avg_ms'],
-        [Sequelize.fn('MAX', Sequelize.col('response_time')), 'max_ms'],
-      ],
-      where: {
-        created_at: { [Op.gte]: since },
-        status_code: { [Op.gte]: 400 },
-      },
-      group: ['path', 'status_code'],
-      order: [[Sequelize.literal('count'), 'DESC']],
-      limit: 5000,
-      raw: true,
-    });
-    rows = rows.map((r) => ({ ...r, p95_ms: null }));
-  }
-  const headers = [
-    'path',
-    'status_code',
-    'count',
-    'p95_ms',
-    'avg_ms',
-    'max_ms',
-  ];
-  const data = rows.map((r) => [
-    r.path,
-    r.status_code,
-    r.count,
-    r.p95_ms ?? '',
-    r.avg_ms ?? '',
-    r.max_ms ?? '',
-  ]);
-  return sendCsv(res, `http-errors-last-${days}-days.csv`, headers, data);
+// GET /reports/http-errors.csv — endpoint retired in favour of Grafana dashboards
+router.get('/http-errors.csv', auth, authorize('ADMIN'), (req, res) => {
+  const grafanaUrl =
+    process.env.GRAFANA_HTTP_ERRORS_DASHBOARD ||
+    (process.env.GRAFANA_URL
+      ? `${process.env.GRAFANA_URL.replace(/\/+$/, '')}/d/pulse-app-http-drill/app-http-drill`
+      : null);
+  if (grafanaUrl) res.setHeader('Location', grafanaUrl);
+  return res.status(410).json({
+    error: 'report_deprecated',
+    detail:
+      'Экспорт HTTP-ошибок перенесён в Grafana. Используйте соответствующий дашборд.',
+    grafana_url: grafanaUrl,
+  });
 });
 
 export default router;

@@ -57,6 +57,12 @@ Notes
 - Prometheus scrapes Grafana, Loki, Tempo, Promtail, and Alertmanager metrics. Keep those ports internal in production and rely on the compose defaults (only Grafana is published).
 - Metrics endpoint: prefer to protect `/metrics` with basic auth in environments where the API port is exposed. Set `METRICS_USER` and `METRICS_PASS`. Prometheus inside Docker network scrapes internally without auth.
 
+Business KPIs & collector
+- The API exposes business gauges published every minute (configurable via `BUSINESS_METRICS_REFRESH_MS`).
+- Metrics include `business_users_total{status,*}`, `business_documents_total{status,*}`, backlog gauges (`business_documents_pending_total`, `business_documents_overdue_total`), and scheduling health (`business_matches_upcoming_total`, `business_trainings_upcoming_total`).
+- Grafana dashboards "Pulse Observability Portal" and "Pulse Business Operations" surface these KPIs alongside navigation shortcuts for support and product teams.
+- The collector runs lazily after app bootstrap (skipped under `NODE_ENV=test`) and is resilient to transient database outages (errors are logged, series stay at last value).
+
 Performance and cAdvisor tuning
 - cAdvisor is pinned (dev and prod) and launched with conservative flags:
   - `--docker_only=true`, `--housekeeping_interval=30s`
@@ -97,6 +103,8 @@ Operational tips
 - Keep log volume reasonable by structuring messages and avoiding high-cardinality labels.
 - Prometheus scrapes every 15s by default; adjust in `prometheus.yml` as needed.
 - Provisioned dashboards:
+  - Pulse → "Pulse Observability Portal" (executive summary + navigation)
+  - Pulse → "Pulse Business Operations" (business KPIs, backlog health)
   - Pulse → "Pulse App Overview" (jobs + logs)
   - Pulse → "Pulse Email Delivery" (queue depth, DLQ, latency, throughput)
   - Pulse → "Pulse App HTTP" (latency, 5xx, RPS)
@@ -125,8 +133,8 @@ Release annotations (Grafana)
 - Add annotation: `npm run obs:annotate -- "Deploy <short-sha>"`
 - CSV reports (admin-only)
   - Job runs: `GET /reports/job-runs.csv?days=30`
-  - HTTP errors aggregated by path/status: `GET /reports/http-errors.csv?days=7`
-  - UI shortcuts: Admin → Системные операции → buttons “Экспорт запусков …”, “Экспорт ошибок …”
+ - HTTP errors: Grafana dashboard `Pulse App HTTP (Drill)` (`/d/pulse-app-http-drill/app-http-drill`)
+  - UI shortcuts: Admin → Системные операции → кнопки “Экспорт запусков …”, “HTTP ошибки (Grafana)”
 
 Deep drill UX
 - Dashboard variables (route/status/code) allow slicing panels and the logs panel updates accordingly.

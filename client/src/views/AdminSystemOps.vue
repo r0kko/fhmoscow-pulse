@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch, API_BASE } from '../api.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
@@ -31,10 +31,40 @@ const reports = {
   jobRuns(days = 30) {
     return `${API_BASE}/reports/job-runs.csv?days=${days}`;
   },
-  httpErrors(days = 7) {
-    return `${API_BASE}/reports/http-errors.csv?days=${days}`;
-  },
 };
+
+function resolveGrafanaBase() {
+  const raw =
+    (typeof import.meta !== 'undefined' &&
+      import.meta.env &&
+      import.meta.env.VITE_GRAFANA_URL) ||
+    '';
+  if (!raw) return '';
+  try {
+    const base = raw.startsWith('http')
+      ? new URL(raw)
+      : new URL(raw, 'http://localhost');
+    const origin = `${base.protocol}//${base.host}`;
+    const pathname = base.pathname.replace(/\/+$/, '');
+    return `${origin}${pathname}`.replace(/\/+$/, '');
+  } catch (_e) {
+    return raw.replace(/\/+$/, '');
+  }
+}
+
+const grafanaHttpErrorsLink = computed(() => {
+  const direct =
+    (typeof import.meta !== 'undefined' &&
+      import.meta.env &&
+      import.meta.env.VITE_GRAFANA_HTTP_ERRORS_DASHBOARD) ||
+    '';
+  if (direct) return direct;
+  const base = resolveGrafanaBase();
+  if (!base) return '';
+  const path =
+    '/d/pulse-app-http-drill/app-http-drill?var-status=5xx&from=now-7d&to=now';
+  return `${base}${path}`;
+});
 
 async function load() {
   loading.value = true;
@@ -394,13 +424,22 @@ onUnmounted(() => {
                     Экспорт запусков (30 дн)
                   </a>
                   <a
+                    v-if="grafanaHttpErrorsLink"
                     class="btn btn-sm btn-outline-secondary"
-                    :href="reports.httpErrors(7)"
+                    :href="grafanaHttpErrorsLink"
                     target="_blank"
                     rel="noopener"
                   >
-                    Экспорт ошибок (7 дн)
+                    HTTP ошибки (Grafana)
                   </a>
+                  <span
+                    v-else
+                    class="btn btn-sm btn-outline-secondary disabled"
+                    tabindex="-1"
+                    role="status"
+                  >
+                    Grafana не настроена
+                  </span>
                 </div>
               </div>
 

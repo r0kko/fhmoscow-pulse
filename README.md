@@ -9,7 +9,7 @@
 - JSON Web Token authentication and refresh tokens
 - Access token kept only in memory and refreshed on startup when a refresh cookie is present
 - Security headers using `helmet`
-- Request/response logging persisted to the `logs` table
+- Request/response audit logging emitted to stdout (Loki/Grafana); no DB writes
 - Structured JSON access logs (stdout) with correlation id
 - Swagger documentation available at `/api-docs`
 - Docker and docker-compose setup for local development
@@ -249,6 +249,9 @@ For a simple but powerful local stack with dashboards, log search, and metrics:
 - Quick start: `npm run obs:up` → Grafana at `http://localhost:3001`.
 - Details and setup (including Loki logging driver override): see `README_observability.md`.
   - Note: cAdvisor is pinned and tuned to reduce noisy logs and CPU usage. Its logs are intentionally excluded from Loki.
+- Dashboards:
+  - `Pulse Observability Portal` — executive landing with SLO, business KPI highlights, and navigation shortcuts.
+  - `Pulse Business Operations` — user/doc backlogs, match/trainings health, and curated logs for support teams.
 - Probes and metrics:
   - Liveness: `GET /live`
   - Readiness: `GET /ready`
@@ -314,7 +317,8 @@ Optional Nginx fallback: see `infra/nginx/conf.d/maintenance.conf.example` to se
 ### Operational reports (admin-only)
 
 - CSV export of job runs: `GET /reports/job-runs.csv?days=30`
-- CSV aggregate of HTTP errors by path/status: `GET /reports/http-errors.csv?days=7`
+- HTTP errors: Grafana dashboard `Pulse App HTTP (Drill)` (`/d/pulse-app-http-drill/app-http-drill`)
+- Live KPIs & backlog health: Grafana dashboards `Pulse Observability Portal` and `Pulse Business Operations`
 
 ## External MariaDB models
 

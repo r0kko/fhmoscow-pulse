@@ -1,19 +1,8 @@
-import { expect, jest, test } from '@jest/globals';
+import { expect, jest, test, beforeEach } from '@jest/globals';
 
-const createMock = jest.fn();
-const uuidMock = jest.fn(() => 'id');
-const onFinishedMock = jest.fn((res, cb) => cb());
+const infoMock = jest.fn();
 const warnMock = jest.fn();
-
-jest.unstable_mockModule('../src/models/log.js', () => ({
-  __esModule: true,
-  default: { create: createMock },
-}));
-
-jest.unstable_mockModule('uuid', () => ({
-  __esModule: true,
-  v4: uuidMock,
-}));
+const onFinishedMock = jest.fn((res, cb) => cb());
 
 jest.unstable_mockModule('on-finished', () => ({
   __esModule: true,
@@ -22,15 +11,23 @@ jest.unstable_mockModule('on-finished', () => ({
 
 jest.unstable_mockModule('../logger.js', () => ({
   __esModule: true,
-  default: { warn: warnMock },
+  default: {
+    info: infoMock,
+    warn: warnMock,
+  },
 }));
 
 const { default: requestLogger } = await import(
   '../src/middlewares/requestLogger.js'
 );
 
-test('persists log entry on finish', async () => {
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+test('emits structured audit log on finish', async () => {
   const req = {
+    id: 'req-1',
     method: 'GET',
     originalUrl: '/x',
     ip: '::1',
@@ -38,15 +35,14 @@ test('persists log entry on finish', async () => {
     body: { foo: 'bar' },
   };
   const res = { statusCode: 200, locals: { body: 'ok' } };
-  const next = jest.fn();
 
-  await requestLogger(req, res, next);
+  await requestLogger(req, res, () => {});
 
-  expect(next).toHaveBeenCalled();
   expect(onFinishedMock).toHaveBeenCalledWith(res, expect.any(Function));
-  expect(createMock).toHaveBeenCalledWith(
+  expect(infoMock).toHaveBeenCalledWith(
+    'http.audit',
     expect.objectContaining({
-      id: 'id',
+      req_id: 'req-1',
       method: 'GET',
       path: '/x',
       status_code: 200,
@@ -54,33 +50,32 @@ test('persists log entry on finish', async () => {
       user_agent: 'ua',
       request_body: { foo: 'bar' },
       response_body: 'ok',
-    }),
-    { logging: false }
+    })
   );
 });
 
-test('omits sensitive fields from request body', async () => {
+test('omits sensitive fields and keeps original body intact', async () => {
+  const body = { foo: 'bar', password: 'secret', refresh_token: 'r' };
   const req = {
     method: 'POST',
     originalUrl: '/login',
     ip: '::1',
     get: () => 'ua',
-    body: { foo: 'bar', password: 'secret', refresh_token: 'r' },
+    body,
   };
   const res = { statusCode: 200, locals: {} };
 
   await requestLogger(req, res, () => {});
 
-  expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ request_body: { foo: 'bar' } }),
-    { logging: false }
+  expect(infoMock).toHaveBeenCalledWith(
+    'http.audit',
+    expect.objectContaining({ request_body: { foo: 'bar' } })
   );
-  expect(req.body.password).toBe('secret');
-  expect(req.body.refresh_token).toBe('r');
+  expect(body.password).toBe('secret');
+  expect(body.refresh_token).toBe('r');
 });
 
 test('stores null when only sensitive fields present', async () => {
-  createMock.mockClear();
   const req = {
     method: 'POST',
     originalUrl: '/login',
@@ -92,14 +87,16 @@ test('stores null when only sensitive fields present', async () => {
 
   await requestLogger(req, res, () => {});
 
-  expect(createMock).toHaveBeenCalledWith(
-    expect.objectContaining({ request_body: null }),
-    { logging: false }
+  expect(infoMock).toHaveBeenCalledWith(
+    'http.audit',
+    expect.objectContaining({ request_body: null })
   );
 });
 
-test('logs warning when create fails', async () => {
-  createMock.mockRejectedValueOnce(new Error('fail'));
+test('logs warning when audit emission fails', async () => {
+  infoMock.mockImplementationOnce(() => {
+    throw new Error('fail');
+  });
   const req = {
     method: 'GET',
     originalUrl: '/x',
@@ -111,5 +108,8 @@ test('logs warning when create fails', async () => {
 
   await requestLogger(req, res, () => {});
 
-  expect(warnMock).toHaveBeenCalled();
+  expect(warnMock).toHaveBeenCalledWith(
+    'Failed to emit http audit log: %s',
+    'fail'
+  );
 });

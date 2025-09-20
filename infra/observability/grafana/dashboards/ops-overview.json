@@ -6,6 +6,14 @@
   "tags": ["pulse", "ops"],
   "time": {"from": "now-6h", "to": "now"},
   "refresh": "30s",
+  "links": [
+    {
+      "type": "dashboard",
+      "title": "Observability Portal",
+      "icon": "home",
+      "dashboardUid": "pulse-observability-portal"
+    }
+  ],
   "panels": [
     {"type": "stat", "title": "API Ready", "gridPos": {"x":0,"y":0,"w":4,"h":4},
       "targets":[{"expr":"max(app_ready)", "datasource": {"type":"prometheus","uid":"Prometheus"}}],
@@ -29,7 +37,17 @@
     {"type": "graph", "title": "HTTP 5xx rate", "gridPos": {"x":12,"y":4,"w":12,"h":8},
       "targets":[{"expr":"sum(rate(http_requests_total{status=~\"5..\"}[5m]))", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
     },
-    {"type": "logs", "title": "Recent errors (Loki)", "gridPos": {"x":0,"y":12,"w":24,"h":10},
+    {"type": "timeseries", "title": "Pending documents trend", "gridPos": {"x":0,"y":12,"w":12,"h":8},
+      "fieldConfig": {"defaults": {"unit": "none", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+      "options": {"legend": {"displayMode": "hidden"}, "tooltip": {"mode": "multi"}, "showPoints": "never"},
+      "targets":[{"expr":"business_documents_pending_total", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "timeseries", "title": "Matches overdue", "gridPos": {"x":12,"y":12,"w":12,"h":8},
+      "fieldConfig": {"defaults": {"unit": "none", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+      "options": {"legend": {"displayMode": "hidden"}, "tooltip": {"mode": "multi"}, "showPoints": "never"},
+      "targets":[{"expr":"business_matches_upcoming_total{window=\"overdue\"}", "datasource": {"type":"prometheus","uid":"Prometheus"}}]
+    },
+    {"type": "logs", "title": "Recent errors (Loki)", "gridPos": {"x":0,"y":20,"w":24,"h":10},
       "options":{"showTime":true,"dedupStrategy":"none","wrapLogMessage":true},
       "datasource":{"type":"loki","uid":"Loki"},
       "targets":[{"expr":"{service=\"api\",level=\"error\"}"}]

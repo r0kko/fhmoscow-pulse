@@ -15,7 +15,10 @@ import swaggerSpec from './src/docs/swagger.js';
 import { ALLOWED_ORIGINS } from './src/config/cors.js';
 import { sendError } from './src/utils/api.js';
 import logger from './logger.js';
-import { httpMetricsMiddleware } from './src/config/metrics.js';
+import {
+  httpMetricsMiddleware,
+  startBusinessMetricsCollector,
+} from './src/config/metrics.js';
 
 const app = express();
 // Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-*
@@ -108,6 +111,14 @@ app.use(session);
 app.use(csrfMiddleware);
 // Record per-request metrics (latency and totals)
 app.use(httpMetricsMiddleware());
+if (process.env.NODE_ENV !== 'test') {
+  startBusinessMetricsCollector().catch((err) => {
+    logger.warn(
+      'Business metrics collector failed to start: %s',
+      err?.message || err
+    );
+  });
+}
 app.use(requestLogger);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
