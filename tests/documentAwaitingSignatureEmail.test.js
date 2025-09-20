@@ -4,7 +4,10 @@ import { renderDocumentAwaitingSignatureEmail } from '../src/templates/documentA
 describe('renderDocumentAwaitingSignatureEmail', () => {
   const baseDoc = { name: 'Док', number: '1' };
   const cases = [
-    { alias: 'HANDWRITTEN', phrase: 'ожидаем Вас в офисе' },
+    {
+      alias: 'HANDWRITTEN',
+      phrase: 'Пожалуйста, подъезжайте в офис в будние дни с 10:00 до 17:00',
+    },
     { alias: 'KONTUR_SIGN', phrase: 'СКБ Контур' },
     { alias: 'SIMPLE_ELECTRONIC', phrase: 'Войдите в систему' },
   ];

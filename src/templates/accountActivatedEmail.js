@@ -1,18 +1,20 @@
+import { buildEmail, paragraph, button } from './email/index.js';
+
 export function renderAccountActivatedEmail() {
   const subject = 'Учетная запись активирована';
-  const text =
-    'Здравствуйте!\n\n' +
-    'Администратор подтвердил вашу учетную запись в системе АСОУ ПД Пульс. ' +
-    'Теперь вы можете войти в личный кабинет и использовать все функции сервиса.';
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">
-        Администратор подтвердил вашу учетную запись в системе <strong>АСОУ ПД Пульс</strong>.
-      </p>
-      <p style="font-size:16px;margin:0 0 16px;">Теперь вы можете войти в личный кабинет и использовать все функции сервиса.</p>
-    </div>`;
-  return { subject, text, html };
+  const previewText = 'Ваш доступ в личный кабинет АСОУ ПД Пульс включен.';
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      'Администратор подтвердил вашу учетную запись в системе <strong>АСОУ ПД Пульс</strong>. Теперь вы можете войти в личный кабинет и использовать все функции сервиса.',
+      { html: true }
+    ),
+    button('Перейти в личный кабинет', `${baseUrl}`, { fullWidth: false }),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderAccountActivatedEmail };

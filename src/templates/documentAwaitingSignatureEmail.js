@@ -1,32 +1,42 @@
-export function renderDocumentAwaitingSignatureEmail(document) {
-  const subject = `Документ №${document.number} ожидает подписи`;
-  const baseText = `Документ "${document.name}" (№${document.number}) ожидает вашей подписи.`;
+import { buildEmail, paragraph, infoGrid, button } from './email/index.js';
 
-  let actionText;
-  switch (document.SignType?.alias) {
+function resolveAction(signTypeAlias) {
+  switch (signTypeAlias) {
     case 'HANDWRITTEN':
-      actionText =
-        'Мы ожидаем Вас в офисе в будние дни с 10:00 до 17:00 ежедневно.';
-      break;
+      return 'Пожалуйста, подъезжайте в офис в будние дни с 10:00 до 17:00 для подписания документа.';
     case 'KONTUR_SIGN':
-      actionText = 'Перейдите в систему СКБ Контур для подписания документа.';
-      break;
+      return 'Перейдите в систему СКБ Контур, чтобы подписать документ.';
     case 'SIMPLE_ELECTRONIC':
     default:
-      actionText = 'Войдите в систему для подписания.';
-      break;
+      return 'Войдите в систему и подпишите документ с помощью кода подтверждения.';
   }
+}
 
-  const text = `${baseText} ${actionText}`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">
-        Документ <strong>${document.name}</strong> (№${document.number}) ожидает вашей подписи.
-      </p>
-      <p style="font-size:16px;margin:0;">${actionText}</p>
-    </div>`;
-  return { subject, text, html };
+export function renderDocumentAwaitingSignatureEmail(document) {
+  const name = document?.name || 'Документ';
+  const number = document?.number ? `№${document.number}` : '';
+  const subject = `${name} ${number} ожидает подписи`;
+  const previewText = `${name} ${number} ожидает вашей подписи.`;
+  const actionMessage = resolveAction(document?.SignType?.alias);
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+  const docUrl = document?.id
+    ? `${baseUrl}/documents/${document.id}`
+    : `${baseUrl}/documents`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      `Документ <strong>${name}</strong> ${number} ожидает вашей подписи.`,
+      { html: true }
+    ),
+    paragraph(actionMessage),
+    document?.SignType?.name
+      ? infoGrid([{ label: 'Тип подписи', value: document.SignType.name }])
+      : null,
+    button('Открыть документ', docUrl),
+  ].filter(Boolean);
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderDocumentAwaitingSignatureEmail };

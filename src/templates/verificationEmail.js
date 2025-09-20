@@ -1,18 +1,22 @@
+import { buildEmail, paragraph, code as codeBlock } from './email/index.js';
+
 export function renderVerificationEmail(code) {
+  const cleanCode = String(code || '').trim();
   const subject = 'Подтверждение электронной почты';
-  const text =
-    'Здравствуйте!\n' +
-    'Для подтверждения адреса электронной почты используйте код: ' +
-    code +
-    '\nКод действует 15 минут.';
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">Для подтверждения адреса электронной почты используйте код:</p>
-      <p style="font-size:24px;font-weight:bold;letter-spacing:4px;margin:0 0 16px;">${code}</p>
-      <p style="font-size:14px;margin:0 0 16px;">Код действует 15&nbsp;минут.</p>
-    </div>`;
-  return { subject, text, html };
+  const previewText = `Код подтверждения: ${cleanCode}`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      'Для подтверждения адреса электронной почты используйте код ниже.'
+    ),
+    codeBlock(cleanCode, { label: 'Код подтверждения' }),
+    paragraph(
+      'Код действует 15 минут. Если вы не запрашивали подтверждение, пожалуйста, проигнорируйте это письмо.'
+    ),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderVerificationEmail };

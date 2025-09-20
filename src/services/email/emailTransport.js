@@ -11,11 +11,6 @@ import {
   EMAIL_FROM,
 } from '../../config/email.js';
 
-const TEXT_FOOTER =
-  '\n\nС уважением,\nкоманда АСОУ ПД Пульс.\nЕсли вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.';
-const HTML_FOOTER =
-  '\n      <br/>\n      <p style="font-size:16px;margin:0 0 16px;">С уважением,<br/>команда АСОУ ПД Пульс</p>\n      <p style="font-size:12px;color:#777;margin:0;">Если вы считаете это ошибкой, обратитесь к сотруднику отдела организации судейства.</p>';
-
 export const isEmailConfigured = Boolean(SMTP_HOST);
 
 let transporterPromise = null;
@@ -68,12 +63,7 @@ async function getTransporter() {
 }
 
 function appendFooters(text = '', html = '') {
-  const finalText = `${text}${TEXT_FOOTER}`;
-  const hasTrailingDiv = /<\/div>\s*$/.test(html);
-  const finalHtml = hasTrailingDiv
-    ? html.replace(/<\/div>\s*$/, `${HTML_FOOTER}</div>`)
-    : `${html}${HTML_FOOTER}`;
-  return { finalText, finalHtml };
+  return { finalText: text, finalHtml: html };
 }
 
 async function recordDeliveryMetrics(status, purpose, latencyMs) {

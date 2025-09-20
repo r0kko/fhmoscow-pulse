@@ -1,21 +1,35 @@
+import {
+  buildEmail,
+  paragraph,
+  code as codeBlock,
+  button,
+} from './email/index.js';
+
 export function renderDocumentSignCodeEmail(document, code) {
-  const subject = `Подтвердите подписание документа №${document.number}`;
-  const baseText =
-    'Здравствуйте!\n' +
-    `Вы запросили подписание документа "${document.name}" (№${document.number}).\n` +
-    `Для подтверждения подписи используйте код: ${code}\n` +
-    'Код действует 15 минут.';
-  const html = `
-    <div style='font-family: Arial, sans-serif; color: #333;'>
-      <p style='font-size:16px;margin:0 0 16px;'>Здравствуйте!</p>
-      <p style='font-size:16px;margin:0 0 8px;'>
-        Вы запросили подписание документа <strong>${document.name}</strong> (№${document.number}).
-      </p>
-      <p style='font-size:16px;margin:0 0 8px;'>Для подтверждения подписи используйте код:</p>
-      <p style='font-size:24px;font-weight:bold;letter-spacing:4px;margin:0 0 8px;'>${code}</p>
-      <p style='font-size:14px;margin:0'>Код действует 15&nbsp;минут.</p>
-    </div>`;
-  return { subject, text: baseText, html };
+  const name = document?.name || 'Документ';
+  const number = document?.number ? `№${document.number}` : '';
+  const subject = `Подтвердите подписание ${number || 'документа'}`;
+  const previewText = `Код для подписи ${number || name}: ${code}`;
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+  const docUrl = document?.id
+    ? `${baseUrl}/documents/${document.id}`
+    : `${baseUrl}/documents`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      `Вы запросили подписание документа <strong>${name}</strong> ${number}.`,
+      { html: true }
+    ),
+    paragraph('Для подтверждения подписи введите код ниже.'),
+    codeBlock(String(code || '').trim(), { label: 'Код подтверждения' }),
+    paragraph(
+      'Код действует 15 минут. Если вы не инициировали подписание, отмените запрос и сообщите администратору.'
+    ),
+    button('Открыть документ', docUrl),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderDocumentSignCodeEmail };

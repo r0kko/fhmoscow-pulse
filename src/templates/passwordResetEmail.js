@@ -1,18 +1,20 @@
+import { buildEmail, paragraph, code as codeBlock } from './email/index.js';
+
 export function renderPasswordResetEmail(code) {
+  const cleanCode = String(code || '').trim();
   const subject = 'Сброс пароля';
-  const text =
-    'Здравствуйте!\n' +
-    'Для сброса пароля используйте код: ' +
-    code +
-    '\nКод действует 15 минут.';
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">Для сброса пароля используйте код:</p>
-      <p style="font-size:24px;font-weight:bold;letter-spacing:4px;margin:0 0 16px;">${code}</p>
-      <p style="font-size:14px;margin:0 0 16px;">Код действует 15&nbsp;минут.</p>
-    </div>`;
-  return { subject, text, html };
+  const previewText = `Код для сброса пароля: ${cleanCode}`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph('Для сброса пароля введите код, указанный ниже.'),
+    codeBlock(cleanCode, { label: 'Код для сброса' }),
+    paragraph(
+      'Код действует 15 минут. Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.'
+    ),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderPasswordResetEmail };

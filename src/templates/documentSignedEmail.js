@@ -1,14 +1,25 @@
+import { buildEmail, paragraph, button } from './email/index.js';
+
 export function renderDocumentSignedEmail(document) {
-  const subject = `Документ №${document.number} подписан`;
-  const text = `Документ "${document.name}" (№${document.number}) подписан.`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0;">
-        Документ <strong>${document.name}</strong> (№${document.number}) подписан.
-      </p>
-    </div>`;
-  return { subject, text, html };
+  const name = document?.name || 'Документ';
+  const number = document?.number ? `№${document.number}` : '';
+  const subject = `${name} ${number} подписан`;
+  const previewText = `${name} ${number} успешно подписан.`;
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+  const docUrl = document?.id
+    ? `${baseUrl}/documents/${document.id}`
+    : `${baseUrl}/documents`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      `Документ <strong>${name}</strong> ${number} подписан и доступен для просмотра в системе.`,
+      { html: true }
+    ),
+    button('Посмотреть документ', docUrl),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderDocumentSignedEmail };

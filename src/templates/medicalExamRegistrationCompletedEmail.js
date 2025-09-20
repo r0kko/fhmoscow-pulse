@@ -1,24 +1,24 @@
+import { buildMedicalExamEmail } from './helpers/medicalExamEmail.js';
+import { paragraph } from './email/index.js';
+
 export function renderMedicalExamRegistrationCompletedEmail(exam) {
-  const date = new Date(exam.start_at)
-    .toLocaleString('ru-RU', {
-      timeZone: 'Europe/Moscow',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    .replace(',', '');
-  const subject = 'Медицинский осмотр завершен';
-  const text = `Медицинский осмотр ${date} отмечен как завершенный.`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">
-        Медицинский осмотр ${date} (МСК) отмечен как завершенный.
-      </p>
-    </div>`;
-  return { subject, text, html };
+  const subject = 'Медицинский осмотр завершён';
+  const previewText = 'Ваш медицинский осмотр завершён.';
+  const intro = 'Медицинский осмотр завершён и результат сохранён в системе.';
+
+  const extraBlocks = [
+    paragraph(
+      'Спасибо, что прошли медицинский осмотр. Если требуется повторный визит, вы получите отдельное уведомление.'
+    ),
+  ];
+
+  return buildMedicalExamEmail({
+    subject,
+    previewText,
+    intro,
+    exam,
+    extraBlocks,
+  });
 }
 
 export default { renderMedicalExamRegistrationCompletedEmail };

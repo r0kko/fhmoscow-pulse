@@ -702,8 +702,8 @@ describe('emailTransport', () => {
         from: 'noreply@test',
         to: 'person@test',
         subject: 'Subject',
-        text: expect.stringContaining('С уважением'),
-        html: expect.stringContaining('С уважением'),
+        text: 'Body',
+        html: '<div>Body</div>',
         headers: expect.objectContaining({
           'X-Email-Purpose': 'verification',
           'X-Email-Job-Id': 'job-1',

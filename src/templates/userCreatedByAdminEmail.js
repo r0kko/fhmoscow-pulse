@@ -1,46 +1,42 @@
-import { escapeHtml } from '../utils/html.js';
+import { buildEmail, paragraph, infoGrid, button } from './email/index.js';
+
+function normalizePhone(phone) {
+  if (!phone) return '';
+  const trimmed = String(phone).trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
+}
 
 export function renderUserCreatedByAdminEmail(user, tempPassword) {
   const subject = 'Доступ к аккаунту АСОУ ПД Пульс';
-  const fullName = [user.first_name, user.patronymic].filter(Boolean).join(' ');
-  const greet = fullName
-    ? `Здравствуйте, ${escapeHtml(fullName)}!`
-    : 'Здравствуйте!';
-  const appUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
-  const phoneDisplay = user?.phone
-    ? user.phone.startsWith('+')
-      ? user.phone
-      : `+${user.phone}`
-    : '';
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+  const fullName = [user?.first_name, user?.patronymic]
+    .filter(Boolean)
+    .join(' ');
+  const greeting = fullName ? `Здравствуйте, ${fullName}!` : 'Здравствуйте!';
+  const phoneDisplay = normalizePhone(user?.phone);
 
-  const text =
-    `${greet}\n\n` +
-    'Для вас создана учётная запись в системе АСОУ ПД Пульс ' +
-    '(новая система управления проведением соревнований ФХМ). ' +
-    'Ниже — данные для первого входа.\n\n' +
-    `Логин (телефон): ${phoneDisplay}\n` +
-    `Временный пароль: ${tempPassword}\n\n` +
-    `Войти: ${appUrl}\n\n` +
-    'Просим Вас проверить корректность отображения и наполнения разделов, исходя из Вашей роли и задач. ' +
-    'При возникновении проблем просим обращаться к Дроботу Алексею (+7 (926) 244-22-22, WhatsApp/Telegram).';
+  const previewText =
+    'Учетная запись создана. Используйте временный пароль для первого входа.';
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">${greet}</p>
-      <p style="font-size:16px;margin:0 0 16px;">Для вас создана учётная запись в системе <strong>АСОУ ПД Пульс</strong> <span style="color:#6b7280;">(новая система управления проведением соревнований ФХМ)</span>. Ниже — данные для первого входа.</p>
-      <p style="font-size:16px;margin:0 0 8px;">Логин (телефон): <span style="font-family:ui-monospace,Menlo,monospace;background:#f3f4f6;padding:4px 6px;border-radius:6px;white-space:nowrap;">${escapeHtml(
-        phoneDisplay
-      )}</span></p>
-      <p style="font-size:16px;margin:0 0 16px;">Временный пароль: <span style="font-family:ui-monospace,Menlo,monospace;background:#f3f4f6;padding:4px 6px;border-radius:6px;white-space:nowrap;">${escapeHtml(
-        tempPassword
-      )}</span></p>
-      <p style="font-size:16px;margin:0 0 16px;">
-        <a href="${appUrl}" target="_blank" style="display:inline-block;background:#0F62FE;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;font-weight:600;">Перейти в личный кабинет</a>
-      </p>
-      <p style="font-size:16px;margin:0 0 16px;">Просим Вас проверить корректность отображения и наполнения разделов, исходя из Вашей роли и задач. При возникновении проблем просим обращаться к Дроботу Алексею (<a href="tel:+79262442222" style="color:inherit;text-decoration:none;">+7 (926) 244-22-22</a>, WhatsApp/Telegram).</p>
-    </div>`;
+  const blocks = [
+    paragraph(greeting),
+    paragraph(
+      'Для вас создана учётная запись в системе <strong>АСОУ ПД Пульс</strong> (новая система управления соревнованиями ФХМ). Ниже — данные для первого входа.',
+      { html: true }
+    ),
+    infoGrid([
+      { label: 'Логин (телефон)', value: phoneDisplay },
+      { label: 'Временный пароль', value: tempPassword },
+    ]),
+    button('Перейти в личный кабинет', baseUrl),
+    paragraph(
+      'Проверьте, пожалуйста, что разделы в личном кабинете соответствуют вашей роли и задачам. При возникновении вопросов обращайтесь к Дроботу Алексею (<a href="tel:+79262442222">+7 (926) 244-22-22</a>, WhatsApp/Telegram).',
+      { html: true }
+    ),
+  ];
 
-  return { subject, text, html };
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderUserCreatedByAdminEmail };

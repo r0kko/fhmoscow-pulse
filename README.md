@@ -154,6 +154,10 @@ If the login spinner does not stop after clicking "Войти":
     скорость обработки, ретраи и латентность доставки.
   - Alertmanager поднимает алерты при росте очереди, появлении DLQ, частых ошибках и при p95 латентности >15 секунд
     (`infra/observability/alerts.yml`).
+- Темизация: переменная окружения `EMAIL_BRAND_NAME` позволяет задать отображаемое в шапке писем название бренда; стили
+  и компоненты верстки собраны в `src/templates/email/*`.
+- Контакт поддержки: переменная `EMAIL_SUPPORT_CONTACT` задаёт адрес службы поддержки, который автоматически подставляется
+  в футер всех писем в формате mailto-ссылки.
 
 `PASSWORD_MIN_LENGTH`, `PASSWORD_MAX_LENGTH`, and `PASSWORD_PATTERN`
 allow customizing the password policy for user registration and password changes.

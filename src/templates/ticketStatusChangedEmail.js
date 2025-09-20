@@ -1,16 +1,36 @@
+import { buildEmail, paragraph, infoGrid, button } from './email/index.js';
+
 export function renderTicketStatusChangedEmail(ticket) {
-  const status = ticket.TicketStatus?.name || '';
-  const type = ticket.TicketType?.name || '';
   const subject = 'Статус обращения обновлён';
-  const text = `Статус вашего обращения ${ticket.number} (${type}) изменён на: ${status}.`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">
-        Статус вашего обращения <strong>${ticket.number}</strong> (${type}) изменён на: ${status}.
-      </p>
-    </div>`;
-  return { subject, text, html };
+  const previewText =
+    `Обращение ${ticket?.number || ''}: новый статус ${ticket?.TicketStatus?.name || ''}`.trim();
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+  const ticketUrl = ticket?.id
+    ? `${baseUrl}/tickets/${ticket.id}`
+    : `${baseUrl}/tickets`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      `Статус вашего обращения <strong>${ticket?.number || '—'}</strong>${
+        ticket?.TicketType?.name ? ` (${ticket.TicketType.name})` : ''
+      } изменён на: <strong>${ticket?.TicketStatus?.name || '—'}</strong>.`,
+      { html: true }
+    ),
+    infoGrid(
+      [
+        ticket?.TicketStatus?.name
+          ? { label: 'Текущий статус', value: ticket.TicketStatus.name }
+          : null,
+        ticket?.assigned_to
+          ? { label: 'Исполнитель', value: ticket.assigned_to }
+          : null,
+      ].filter(Boolean)
+    ),
+    button('Открыть обращение', ticketUrl),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderTicketStatusChangedEmail };

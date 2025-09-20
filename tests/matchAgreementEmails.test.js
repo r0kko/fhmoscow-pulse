@@ -32,28 +32,29 @@ test('counter-proposed email renders', () => {
   const { subject, text, html } =
     renderMatchAgreementCounterProposedEmail(base);
   expect(subject).toMatch(/Контр-заявка/);
-  expect(text).toContain('Стадион');
+  expect(text).toContain('Площадка: Stadium');
   expect(html).toContain('контр-заявка');
+  expect(text).toContain('support@fhmoscow.com');
 });
 
 test('approved email renders', () => {
   const { subject, text, html } = renderMatchAgreementApprovedEmail(base);
   expect(subject).toMatch(/Матч согласован/);
   expect(text).toContain('Место и время матча согласованы');
-  expect(html).toContain('Матч:');
+  expect(html).toContain('Матч</td>');
 });
 
 test('declined email renders', () => {
   const { subject, text, html } = renderMatchAgreementDeclinedEmail(base);
   expect(subject).toMatch(/Заявка отклонена/);
-  expect(text).toContain('Заявка на согласование матча была отклонена');
+  expect(text).toContain('Заявка на согласование отклонена');
   expect(html).toContain('отклонена');
 });
 
 test('withdrawn email renders', () => {
   const { subject, text, html } = renderMatchAgreementWithdrawnEmail(base);
   expect(subject).toMatch(/Заявка отозвана/);
-  expect(text).toContain('заявка на согласование матча была отозвана');
+  expect(text).toContain('Инициатор отозвал заявку на согласование матча');
   expect(html).toContain('отозвана');
 });
 

@@ -74,8 +74,12 @@ test('business metrics collector populates gauges from aggregated queries', asyn
   metrics.observeDbQuery('SELECT', 12);
 
   const text = await metrics.metricsText();
-  expect(text).toMatch(/business_users_total\{status="active",status_label="Active"} 10/);
-  expect(text).toMatch(/business_users_total\{status="total",status_label="Total"} 12/);
+  expect(text).toMatch(
+    /business_users_total\{status="active",status_label="Active"} 10/
+  );
+  expect(text).toMatch(
+    /business_users_total\{status="total",status_label="Total"} 12/
+  );
   expect(text).toMatch(/business_documents_pending_total 5/);
   expect(text).toMatch(/business_documents_overdue_total\{bucket="gt_3d"} 3/);
   expect(text).toMatch(/business_matches_upcoming_total\{window="total"} 5/);

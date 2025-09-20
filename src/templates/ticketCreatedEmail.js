@@ -1,16 +1,39 @@
+import { buildEmail, paragraph, infoGrid, button } from './email/index.js';
+
 export function renderTicketCreatedEmail(ticket) {
-  const status = ticket.TicketStatus?.name || '';
-  const type = ticket.TicketType?.name || '';
   const subject = 'Обращение создано';
-  const text = `Ваше обращение ${ticket.number} (${type}) успешно создано. Текущий статус: ${status}.`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <p style="font-size:16px;margin:0 0 16px;">Здравствуйте!</p>
-      <p style="font-size:16px;margin:0 0 16px;">
-        Ваше обращение <strong>${ticket.number}</strong> (${type}) успешно создано. Текущий статус: ${status}.
-      </p>
-    </div>`;
-  return { subject, text, html };
+  const previewText =
+    `Обращение ${ticket?.number || ''} создано. Статус: ${ticket?.TicketStatus?.name || ''}`.trim();
+  const baseUrl = process.env.BASE_URL || 'https://lk.fhmoscow.com';
+  const ticketUrl = ticket?.id
+    ? `${baseUrl}/tickets/${ticket.id}`
+    : `${baseUrl}/tickets`;
+
+  const blocks = [
+    paragraph('Здравствуйте!'),
+    paragraph(
+      `Ваше обращение <strong>${ticket?.number || '—'}</strong>${
+        ticket?.TicketType?.name ? ` (${ticket.TicketType.name})` : ''
+      } успешно создано.`,
+      { html: true }
+    ),
+    infoGrid(
+      [
+        ticket?.TicketType?.name
+          ? { label: 'Тип', value: ticket.TicketType.name }
+          : null,
+        ticket?.TicketStatus?.name
+          ? { label: 'Статус', value: ticket.TicketStatus.name }
+          : null,
+        ticket?.priority
+          ? { label: 'Приоритет', value: ticket.priority }
+          : null,
+      ].filter(Boolean)
+    ),
+    button('Открыть обращение', ticketUrl),
+  ];
+
+  return buildEmail({ subject, previewText, blocks });
 }
 
 export default { renderTicketCreatedEmail };

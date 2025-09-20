@@ -921,7 +921,9 @@ async function collectBusinessMetrics() {
       userSeries.push({
         labels: {
           status: label,
-          status_label: String(row?.status_label || row?.status_alias || 'Unknown'),
+          status_label: String(
+            row?.status_label || row?.status_alias || 'Unknown'
+          ),
         },
         value: count,
       });
@@ -965,7 +967,11 @@ async function collectBusinessMetrics() {
       labels: { status: 'total', status_label: 'Total' },
       value: documentsTotal,
     });
-    setGaugeSeries(businessDocumentsTotal, businessDocumentStatusLabels, documentSeries);
+    setGaugeSeries(
+      businessDocumentsTotal,
+      businessDocumentStatusLabels,
+      documentSeries
+    );
     if (businessDocumentsPending) {
       try {
         businessDocumentsPending.set(documentsPending);
@@ -1005,8 +1011,14 @@ async function collectBusinessMetrics() {
       }
     );
     setGaugeSeries(businessDocumentsOverdue, businessDocumentOverdueLabels, [
-      { labels: { bucket: 'gt_3d' }, value: Number(documentOverdueRow?.gt3 || 0) },
-      { labels: { bucket: 'gt_7d' }, value: Number(documentOverdueRow?.gt7 || 0) },
+      {
+        labels: { bucket: 'gt_3d' },
+        value: Number(documentOverdueRow?.gt3 || 0),
+      },
+      {
+        labels: { bucket: 'gt_7d' },
+        value: Number(documentOverdueRow?.gt7 || 0),
+      },
     ]);
 
     const [matchCounts] = await sequelize.query(
@@ -1035,13 +1047,29 @@ async function collectBusinessMetrics() {
     const matchSeries = [
       { labels: { window: 'today' }, value: Number(matchCounts?.today || 0) },
       { labels: { window: 'next_7d' }, value: Number(matchCounts?.next7 || 0) },
-      { labels: { window: 'beyond_7d' }, value: Number(matchCounts?.beyond7 || 0) },
-      { labels: { window: 'unscheduled' }, value: Number(matchCounts?.unscheduled || 0) },
-      { labels: { window: 'overdue' }, value: Number(matchCounts?.overdue || 0) },
+      {
+        labels: { window: 'beyond_7d' },
+        value: Number(matchCounts?.beyond7 || 0),
+      },
+      {
+        labels: { window: 'unscheduled' },
+        value: Number(matchCounts?.unscheduled || 0),
+      },
+      {
+        labels: { window: 'overdue' },
+        value: Number(matchCounts?.overdue || 0),
+      },
     ];
-    const matchesTotal = matchSeries.reduce((acc, entry) => acc + entry.value, 0);
+    const matchesTotal = matchSeries.reduce(
+      (acc, entry) => acc + entry.value,
+      0
+    );
     matchSeries.push({ labels: { window: 'total' }, value: matchesTotal });
-    setGaugeSeries(businessMatchesUpcoming, businessMatchWindowLabels, matchSeries);
+    setGaugeSeries(
+      businessMatchesUpcoming,
+      businessMatchWindowLabels,
+      matchSeries
+    );
 
     const [trainingCounts] = await sequelize.query(
       `
@@ -1054,14 +1082,29 @@ async function collectBusinessMetrics() {
        WHERE t.deleted_at IS NULL
       `,
       {
-        replacements: { dayStart, dayEnd, tomorrow: tomorrowStart, nextSeven, now },
+        replacements: {
+          dayStart,
+          dayEnd,
+          tomorrow: tomorrowStart,
+          nextSeven,
+          now,
+        },
         type: QueryTypes.SELECT,
       }
     );
     const trainingSeries = [
-      { labels: { window: 'today' }, value: Number(trainingCounts?.today || 0) },
-      { labels: { window: 'next_7d' }, value: Number(trainingCounts?.next7 || 0) },
-      { labels: { window: 'future' }, value: Number(trainingCounts?.future || 0) },
+      {
+        labels: { window: 'today' },
+        value: Number(trainingCounts?.today || 0),
+      },
+      {
+        labels: { window: 'next_7d' },
+        value: Number(trainingCounts?.next7 || 0),
+      },
+      {
+        labels: { window: 'future' },
+        value: Number(trainingCounts?.future || 0),
+      },
       {
         labels: { window: 'needs_attendance' },
         value: Number(trainingCounts?.needs_attendance || 0),

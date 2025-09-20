@@ -113,10 +113,7 @@ export default function requestLogger(req, res, next) {
 
     let requestBody = null;
     if (req.body && typeof req.body === 'object') {
-      requestBody = clampJsonBytes(
-        redact(req.body),
-        DEFAULT_MAX_BODY_BYTES
-      );
+      requestBody = clampJsonBytes(redact(req.body), DEFAULT_MAX_BODY_BYTES);
       requestBody = normalizeObjectOrNull(requestBody);
     }
 
@@ -152,7 +149,10 @@ export default function requestLogger(req, res, next) {
 
     attachTrace(payload);
 
-    if (res.locals?.observability && typeof res.locals.observability === 'object') {
+    if (
+      res.locals?.observability &&
+      typeof res.locals.observability === 'object'
+    ) {
       try {
         payload.tags = redact(res.locals.observability);
       } catch (_e) {

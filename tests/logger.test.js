@@ -3,8 +3,8 @@ import { expect, test } from '@jest/globals';
 const { default: logger } = await import('../logger.js');
 
 test('logger exposes console transport', () => {
-  const consoleTransport = logger.transports.find((transport) =>
-    typeof transport?.log === 'function'
+  const consoleTransport = logger.transports.find(
+    (transport) => typeof transport?.log === 'function'
   );
   expect(consoleTransport).toBeDefined();
 });
