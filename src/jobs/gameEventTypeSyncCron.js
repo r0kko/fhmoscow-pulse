@@ -4,6 +4,7 @@ import gameEventTypeService from '../services/gameEventTypeService.js';
 import logger from '../../logger.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 let running = false;
 
@@ -16,9 +17,22 @@ export async function runGameEventTypeSync() {
       running = true;
       await withJobMetrics('gameEventTypeSync', async () => {
         try {
-          const stats = await gameEventTypeService.syncExternal();
+          const { mode, cursor, outcome } = await runWithSyncState(
+            'gameEventTypeSync',
+            async ({ mode }) => {
+              const stats = await gameEventTypeService.syncExternal({ mode });
+              return {
+                cursor: stats.cursor,
+                stats,
+                fullSync: stats.fullSync === true,
+              };
+            }
+          );
+          const stats = outcome?.stats || { upserts: 0, softDeleted: 0 };
           logger.info(
-            'GameEventType sync completed: upserted=%d, softDeleted=%d',
+            'GameEventType sync completed (mode=%s, cursor=%s): upserted=%d, softDeleted=%d',
+            mode,
+            cursor ? new Date(cursor).toISOString() : 'n/a',
             stats.upserts,
             stats.softDeleted
           );

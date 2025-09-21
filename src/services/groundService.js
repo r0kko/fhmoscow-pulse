@@ -5,7 +5,13 @@ import sequelize from '../config/database.js';
 import { Stadium as ExtStadium } from '../externalModels/index.js';
 import logger from '../../logger.js';
 import ServiceError from '../errors/ServiceError.js';
-import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
+import {
+  statusFilters,
+  ensureArchivedImported,
+  buildSinceClause,
+  maxTimestamp,
+  normalizeSyncOptions,
+} from '../utils/sync.js';
 
 import * as dadataService from './dadataService.js';
 
@@ -168,7 +174,8 @@ export default {
   create,
   update,
   remove,
-  async syncExternal(actorId = null) {
+  async syncExternal(options = {}) {
+    const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
     // Preflight: ensure DB schema supports empty address and external_id
     try {
       const qi = Ground.sequelize?.getQueryInterface?.();
@@ -203,14 +210,24 @@ export default {
 
     // ACTIVE and ARCHIVE, tolerant to case/whitespace in external DB
     const { ACTIVE, ARCHIVE } = statusFilters('object_status');
+    const sinceClause = buildSinceClause(since, ['update_date', 'create_date']);
+    const attributes = ['id', 'name', 'update_date', 'create_date'];
+
+    const activeWhere =
+      !fullResync && sinceClause ? { [Op.and]: [ACTIVE, sinceClause] } : ACTIVE;
+    const archiveWhere =
+      !fullResync && sinceClause
+        ? { [Op.and]: [ARCHIVE, sinceClause] }
+        : ARCHIVE;
 
     let [extActive, extArchived] = await Promise.all([
-      ExtStadium.findAll({ where: ACTIVE }),
-      ExtStadium.findAll({ where: ARCHIVE }),
+      ExtStadium.findAll({ where: activeWhere, attributes }),
+      ExtStadium.findAll({ where: archiveWhere, attributes }),
     ]);
-    // Fallback: when object_status is missing/unused, treat all stadiums as ACTIVE
-    if (extActive.length === 0 && extArchived.length === 0) {
-      extActive = await ExtStadium.findAll();
+
+    // Fallback: when full resync and external returns nothing, treat all stadiums as ACTIVE
+    if (fullResync && extActive.length === 0 && extArchived.length === 0) {
+      extActive = await ExtStadium.findAll({ attributes });
       extArchived = [];
     }
     const activeIds = extActive.map((s) => s.id);
@@ -221,88 +238,107 @@ export default {
     let affectedArchived = 0;
     let affectedMissing = 0;
 
-    await Ground.sequelize.transaction(async (tx) => {
-      // Load existing grounds for known external IDs
-      const locals = knownIds.length
-        ? await Ground.findAll({
-            where: { external_id: { [Op.in]: knownIds } },
-            paranoid: false,
-            transaction: tx,
-          })
-        : [];
-      const localByExt = new Map(locals.map((g) => [g.external_id, g]));
+    if (knownIds.length) {
+      await Ground.sequelize.transaction(async (tx) => {
+        // Load existing grounds for known external IDs
+        const locals = knownIds.length
+          ? await Ground.findAll({
+              where: { external_id: { [Op.in]: knownIds } },
+              paranoid: false,
+              transaction: tx,
+            })
+          : [];
+        const localByExt = new Map(locals.map((g) => [g.external_id, g]));
 
-      for (const s of extActive) {
-        const existing = localByExt.get(s.id);
-        if (!existing) {
-          await Ground.create(
+        for (const s of extActive) {
+          const existing = localByExt.get(s.id);
+          if (!existing) {
+            await Ground.create(
+              {
+                external_id: s.id,
+                name: s.name,
+                created_by: actorId,
+                updated_by: actorId,
+              },
+              { transaction: tx }
+            );
+            upserts += 1;
+            continue;
+          }
+          let changed = false;
+          if (existing.deletedAt) {
+            await existing.restore({ transaction: tx });
+            changed = true;
+          }
+          const updates = {};
+          if (existing.name !== s.name) updates.name = s.name;
+          if (Object.keys(updates).length) {
+            updates.updated_by = actorId;
+            await existing.update(updates, { transaction: tx });
+            changed = true;
+          }
+          if (changed) upserts += 1;
+        }
+
+        // Ensure archived external grounds exist locally (soft-deleted) to stabilize IDs
+        await ensureArchivedImported(
+          Ground,
+          extArchived,
+          (s) => ({ name: s.name }),
+          actorId,
+          tx
+        );
+
+        // Soft-delete explicitly archived
+        if (archivedIds.length) {
+          const [archCnt] = await Ground.update(
+            { deletedAt: new Date(), updated_by: actorId },
             {
-              external_id: s.id,
-              name: s.name,
-              created_by: actorId,
-              updated_by: actorId,
-            },
-            { transaction: tx }
+              where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
+              transaction: tx,
+              paranoid: false,
+            }
           );
-          upserts += 1;
-          continue;
+          affectedArchived = archCnt;
         }
-        let changed = false;
-        if (existing.deletedAt) {
-          await existing.restore({ transaction: tx });
-          changed = true;
-        }
-        const updates = {};
-        if (existing.name !== s.name) updates.name = s.name;
-        if (Object.keys(updates).length) {
-          updates.updated_by = actorId;
-          await existing.update(updates, { transaction: tx });
-          changed = true;
-        }
-        if (changed) upserts += 1;
-      }
 
-      // Ensure archived external grounds exist locally (soft-deleted) to stabilize IDs
-      await ensureArchivedImported(
-        Ground,
-        extArchived,
-        (s) => ({ name: s.name }),
-        actorId,
-        tx
-      );
+        if (fullResync) {
+          const [missCnt] = await Ground.update(
+            { deletedAt: new Date(), updated_by: actorId },
+            {
+              where: {
+                external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
+                deletedAt: null,
+              },
+              transaction: tx,
+              paranoid: false,
+            }
+          );
+          affectedMissing = missCnt;
+        }
+      });
+    }
 
-      // Soft-delete explicitly archived
-      const [archCnt] = await Ground.update(
+    if (fullResync && knownIds.length === 0) {
+      const [missCnt] = await Ground.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
-          where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
-          transaction: tx,
+          where: { deletedAt: null, external_id: { [Op.ne]: null } },
           paranoid: false,
         }
       );
-      affectedArchived = archCnt;
-
-      // Soft-delete missing among known (not ACTIVE and not ARCHIVE)
-      // Guard against empty knownIds to avoid mass soft-delete if external returns nothing
-      if (knownIds.length) {
-        const [missCnt] = await Ground.update(
-          { deletedAt: new Date(), updated_by: actorId },
-          {
-            where: {
-              external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
-              deletedAt: null,
-            },
-            transaction: tx,
-            paranoid: false,
-          }
-        );
-        affectedMissing = missCnt;
-      }
-    });
+      affectedMissing = missCnt;
+    }
 
     const softDeletedTotal = affectedArchived + affectedMissing;
+    const cursor = maxTimestamp(
+      [...extActive, ...extArchived],
+      ['update_date', 'create_date']
+    );
     logger.info(
-      'Ground sync: upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+      'Ground sync (mode=%s, cursor=%s): upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+      mode,
+      cursor ? cursor.toISOString() : 'n/a',
       upserts,
       softDeletedTotal,
       affectedArchived,
@@ -314,6 +350,9 @@ export default {
       softDeletedTotal,
       softDeletedArchived: affectedArchived,
       softDeletedMissing: affectedMissing,
+      cursor,
+      mode,
+      fullSync: fullResync,
     };
   },
 };

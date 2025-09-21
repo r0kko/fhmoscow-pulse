@@ -3,8 +3,10 @@ import { Op } from 'sequelize';
 import { GameViolation } from '../models/index.js';
 import { GameViolation as ExtGameViolation } from '../externalModels/index.js';
 import logger from '../../logger.js';
+import { normalizeSyncOptions } from '../utils/sync.js';
 
-async function syncExternal(actorId = null) {
+async function syncExternal(options = {}) {
+  const { actorId, mode, fullResync } = normalizeSyncOptions(options);
   const extRows = await ExtGameViolation.findAll();
   const extIds = extRows.map((x) => x.id);
 
@@ -52,7 +54,7 @@ async function syncExternal(actorId = null) {
       }
     }
 
-    if (extIds.length) {
+    if (fullResync && extIds.length) {
       const [softCnt] = await GameViolation.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -69,11 +71,12 @@ async function syncExternal(actorId = null) {
   });
 
   logger.info(
-    'GameViolation sync: upserted=%d, softDeleted=%d',
+    'GameViolation sync (mode=%s): upserted=%d, softDeleted=%d',
+    mode,
     upserts,
     softDeleted
   );
-  return { upserts, softDeleted };
+  return { upserts, softDeleted, mode, cursor: null, fullSync: fullResync };
 }
 
 export default { syncExternal };

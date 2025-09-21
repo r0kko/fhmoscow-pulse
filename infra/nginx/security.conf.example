@@ -14,8 +14,12 @@ add_header X-XSS-Protection "1; mode=block";
 # HSTS (enable only if all traffic is HTTPS and subdomains covered)
 # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-# Optionally restrict Swagger UI in production (uncomment to enable)
+# Optionally restrict Swagger UI in production (uncomment to override defaults)
 # location /api-docs {
-#   allow 127.0.0.1;  # or your office IP/CIDR
+#   allow 127.0.0.1;
+#   allow ::1;
+#   allow 10.0.0.0/8;
+#   allow 172.16.0.0/12;
+#   allow 192.168.0.0/16;
 #   deny all;
 # }

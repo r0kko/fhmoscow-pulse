@@ -1,5 +1,11 @@
 import { describe, expect, test } from '@jest/globals';
-import { statusFilters, ensureArchivedImported } from '../src/utils/sync.js';
+import {
+  statusFilters,
+  ensureArchivedImported,
+  buildSinceClause,
+  normalizeSyncOptions,
+} from '../src/utils/sync.js';
+import { Op } from 'sequelize';
 
 describe('statusFilters', () => {
   test('provides case/trim tolerant filters', () => {
@@ -45,5 +51,54 @@ describe('statusFilters', () => {
       null
     );
     expect(created).toBe(0);
+  });
+});
+
+describe('buildSinceClause', () => {
+  test('returns null when since is falsy', () => {
+    expect(buildSinceClause(null)).toBeNull();
+    expect(buildSinceClause(undefined)).toBeNull();
+  });
+
+  test('produces OR clause for provided fields', () => {
+    const since = new Date('2024-01-01T00:00:00Z');
+    const clause = buildSinceClause(since, ['updated_at', 'created_at']);
+    expect(clause).toHaveProperty([Op.or]);
+    const ors = clause[Op.or];
+    expect(Array.isArray(ors)).toBe(true);
+    expect(ors).toHaveLength(2);
+    expect(ors[0]).toHaveProperty('updated_at');
+    expect(ors[1]).toHaveProperty('created_at');
+  });
+});
+
+describe('normalizeSyncOptions', () => {
+  test('coerces primitive actor id to full options', () => {
+    const normalized = normalizeSyncOptions('actor-1');
+    expect(normalized.actorId).toBe('actor-1');
+    expect(normalized.mode).toBe('full');
+    expect(normalized.fullResync).toBe(true);
+  });
+
+  test('respects incremental mode when since is supplied', () => {
+    const since = new Date('2024-01-02T00:00:00Z');
+    const normalized = normalizeSyncOptions({
+      actorId: 'admin',
+      mode: 'incremental',
+      since,
+    });
+    expect(normalized.actorId).toBe('admin');
+    expect(normalized.mode).toBe('incremental');
+    expect(normalized.since?.toISOString()).toBe(since.toISOString());
+    expect(normalized.fullResync).toBe(false);
+  });
+
+  test('falls back to full sync when since is invalid', () => {
+    const normalized = normalizeSyncOptions({
+      mode: 'incremental',
+      since: 'oops',
+    });
+    expect(normalized.mode).toBe('full');
+    expect(normalized.fullResync).toBe(true);
   });
 });

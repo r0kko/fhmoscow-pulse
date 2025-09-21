@@ -3,6 +3,7 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import { getJobStats } from '../config/metrics.js';
+import { getSyncStates } from '../services/syncStateService.js';
 // Lazy-load job modules inside handlers to avoid heavy imports during test bootstrap
 import JobLog from '../models/jobLog.js';
 import { buildJobLockKey, forceDeleteLock } from '../utils/redisLock.js';
@@ -31,6 +32,7 @@ router.get('/sync/status', auth, authorize('ADMIN'), async (_req, res) => {
       'gameEventDeletionSync',
     ];
     const stats = await getJobStats(jobs);
+    const states = await getSyncStates(jobs);
     // Return latest job logs (per job) for context
     let logs = [];
     try {
@@ -58,7 +60,12 @@ router.get('/sync/status', auth, authorize('ADMIN'), async (_req, res) => {
     } catch {
       /* empty */
     }
-    return res.json({ jobs: stats, running: { syncAll: running }, logs });
+    return res.json({
+      jobs: stats,
+      states,
+      running: { syncAll: running },
+      logs,
+    });
   } catch (err) {
     return res
       .status(500)
@@ -89,6 +96,7 @@ router.post('/sync/run', auth, authorize('ADMIN'), async (_req, res) => {
 router.get('/taxation/status', auth, authorize('ADMIN'), async (_req, res) => {
   try {
     const stats = await getJobStats(['taxation']);
+    const states = await getSyncStates(['taxation']);
     let running = false;
     try {
       const mod = await import('../jobs/taxationCron.js');
@@ -96,7 +104,7 @@ router.get('/taxation/status', auth, authorize('ADMIN'), async (_req, res) => {
     } catch {
       /* empty */
     }
-    return res.json({ jobs: stats, running: { taxation: running } });
+    return res.json({ jobs: stats, states, running: { taxation: running } });
   } catch (err) {
     return res
       .status(500)

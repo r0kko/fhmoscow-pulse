@@ -4,6 +4,7 @@ import teamService from '../services/teamService.js';
 import logger from '../../logger.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 let running = false;
 
@@ -13,9 +14,22 @@ export async function runTeamSync() {
     running = true;
     await withJobMetrics('teamSync', async () => {
       try {
-        const stats = await teamService.syncExternal();
+        const { mode, cursor, outcome } = await runWithSyncState(
+          'teamSync',
+          async ({ mode, since }) => {
+            const stats = await teamService.syncExternal({ mode, since });
+            return {
+              cursor: stats.cursor,
+              stats,
+              fullSync: stats.fullSync === true,
+            };
+          }
+        );
+        const stats = outcome?.stats || { upserts: 0, softDeletedTotal: 0 };
         logger.info(
-          'Team sync completed: upserted=%d, softDeleted=%d',
+          'Team sync completed (mode=%s, cursor=%s): upserted=%d, softDeleted=%d',
+          mode,
+          cursor ? new Date(cursor).toISOString() : 'n/a',
           stats.upserts,
           stats.softDeletedTotal
         );

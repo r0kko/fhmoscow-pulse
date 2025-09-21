@@ -1,8 +1,8 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import swaggerUi from 'swagger-ui-express';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
 
 import csrfMiddleware from './src/middlewares/csrf.js';
 import session from './src/config/session.js';
@@ -11,7 +11,6 @@ import requestLogger from './src/middlewares/requestLogger.js';
 import requestId from './src/middlewares/requestId.js';
 import rateLimiter from './src/middlewares/rateLimiter.js';
 import accessLog from './src/middlewares/accessLog.js';
-import swaggerSpec from './src/docs/swagger.js';
 import { ALLOWED_ORIGINS } from './src/config/cors.js';
 import { sendError } from './src/utils/api.js';
 import logger from './logger.js';
@@ -19,6 +18,8 @@ import {
   httpMetricsMiddleware,
   startBusinessMetricsCollector,
 } from './src/config/metrics.js';
+import swaggerSpec from './src/docs/swagger.js';
+import apiDocsGuard from './src/middlewares/apiDocsGuard.js';
 
 const app = express();
 // Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-*
@@ -121,7 +122,7 @@ if (process.env.NODE_ENV !== 'test') {
 }
 app.use(requestLogger);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', apiDocsGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/', indexRouter);
 

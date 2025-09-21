@@ -17,71 +17,99 @@ import {
 } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
 import logger from '../../logger.js';
-import { ensureArchivedImported, statusFilters } from '../utils/sync.js';
+import {
+  ensureArchivedImported,
+  statusFilters,
+  buildSinceClause,
+  maxTimestamp,
+  normalizeSyncOptions,
+} from '../utils/sync.js';
 
-async function syncExternal(actorId = null) {
+async function syncExternal(options = {}) {
+  const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
+  const sinceClause = buildSinceClause(since);
+  const cursorSources = [];
   // 1) Staff categories
-  const extCategories = await ExtStaffCategory.findAll();
+  let extCategories = await ExtStaffCategory.findAll({
+    where: !fullResync && sinceClause ? sinceClause : undefined,
+  });
+  if (fullResync && extCategories.length === 0) {
+    extCategories = await ExtStaffCategory.findAll();
+  }
+  cursorSources.push(...extCategories);
   const catExtIds = extCategories.map((x) => x.id);
   let categoryUpserts = 0;
   let categorySoftDeleted = 0;
-  await sequelize.transaction(async (tx) => {
-    const locals = catExtIds.length
-      ? await StaffCategory.findAll({
-          where: { external_id: { [Op.in]: catExtIds } },
-          paranoid: false,
-          transaction: tx,
-        })
-      : [];
-    const localByExt = new Map(locals.map((l) => [l.external_id, l]));
-    for (const c of extCategories) {
-      const local = localByExt.get(c.id);
-      const desired = { name: c.name || null };
-      if (!local) {
-        await StaffCategory.create(
+  if (fullResync || catExtIds.length) {
+    await sequelize.transaction(async (tx) => {
+      const locals = catExtIds.length
+        ? await StaffCategory.findAll({
+            where: { external_id: { [Op.in]: catExtIds } },
+            paranoid: false,
+            transaction: tx,
+          })
+        : [];
+      const localByExt = new Map(locals.map((l) => [l.external_id, l]));
+      for (const c of extCategories) {
+        const local = localByExt.get(c.id);
+        const desired = { name: c.name || null };
+        if (!local) {
+          await StaffCategory.create(
+            {
+              external_id: c.id,
+              ...desired,
+              created_by: actorId,
+              updated_by: actorId,
+            },
+            { transaction: tx }
+          );
+          categoryUpserts += 1;
+          continue;
+        }
+        if (local.deletedAt) {
+          await local.restore({ transaction: tx });
+          categoryUpserts += 1;
+        }
+        const updates = {};
+        if (local.name !== desired.name) updates.name = desired.name;
+        if (Object.keys(updates).length) {
+          updates.updated_by = actorId;
+          await local.update(updates, { transaction: tx });
+          categoryUpserts += 1;
+        }
+      }
+      if (fullResync) {
+        const [softCnt] = await StaffCategory.update(
+          { deletedAt: new Date(), updated_by: actorId },
           {
-            external_id: c.id,
-            ...desired,
-            created_by: actorId,
-            updated_by: actorId,
-          },
-          { transaction: tx }
+            where: {
+              external_id: { [Op.notIn]: catExtIds, [Op.ne]: null },
+              deletedAt: null,
+            },
+            transaction: tx,
+            paranoid: false,
+          }
         );
-        categoryUpserts += 1;
-        continue;
+        categorySoftDeleted = softCnt;
       }
-      if (local.deletedAt) {
-        await local.restore({ transaction: tx });
-        categoryUpserts += 1;
-      }
-      const updates = {};
-      if (local.name !== desired.name) updates.name = desired.name;
-      if (Object.keys(updates).length) {
-        updates.updated_by = actorId;
-        await local.update(updates, { transaction: tx });
-        categoryUpserts += 1;
-      }
-    }
-    const [softCnt] = await StaffCategory.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: {
-          external_id: { [Op.notIn]: catExtIds, [Op.ne]: null },
-          deletedAt: null,
-        },
-        transaction: tx,
-        paranoid: false,
-      }
-    );
-    categorySoftDeleted = softCnt;
-  });
+    });
+  }
 
   // 2) Staff (respect object_status)
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
-  const [extActive, extArchived] = await Promise.all([
-    ExtStaff.findAll({ where: ACTIVE }),
-    ExtStaff.findAll({ where: ARCHIVE }),
+  const activeWhere =
+    !fullResync && sinceClause ? { [Op.and]: [ACTIVE, sinceClause] } : ACTIVE;
+  const archiveWhere =
+    !fullResync && sinceClause ? { [Op.and]: [ARCHIVE, sinceClause] } : ARCHIVE;
+  let [extActive, extArchived] = await Promise.all([
+    ExtStaff.findAll({ where: activeWhere }),
+    ExtStaff.findAll({ where: archiveWhere }),
   ]);
+  if (fullResync && extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtStaff.findAll({ where: ACTIVE });
+    extArchived = await ExtStaff.findAll({ where: ARCHIVE });
+  }
+  cursorSources.push(...extActive, ...extArchived);
   const staffActiveIds = extActive.map((s) => s.id);
   const staffArchivedIds = extArchived.map((s) => s.id);
   const staffKnownIds = Array.from(
@@ -165,17 +193,22 @@ async function syncExternal(actorId = null) {
       tx
     );
 
-    const [archCnt] = await Staff.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: { external_id: { [Op.in]: staffArchivedIds }, deletedAt: null },
-        transaction: tx,
-        paranoid: false,
-      }
-    );
-    staffSoftDeletedArchived = archCnt;
+    if (staffArchivedIds.length) {
+      const [archCnt] = await Staff.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.in]: staffArchivedIds },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      staffSoftDeletedArchived = archCnt;
+    }
 
-    if (staffKnownIds.length) {
+    if (fullResync && staffKnownIds.length) {
       const [missCnt] = await Staff.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -202,6 +235,7 @@ async function syncExternal(actorId = null) {
     clubStaffRows = await ExtClubStaff.findAll();
     clubStaffArchived = [];
   }
+  cursorSources.push(...clubStaffRows, ...clubStaffArchived);
   const { ACTIVE: TS_ACTIVE, ARCHIVE: TS_ARCHIVE } =
     statusFilters('object_status');
   let [teamStaffRows, teamStaffArchived] = await Promise.all([
@@ -212,6 +246,7 @@ async function syncExternal(actorId = null) {
     teamStaffRows = await ExtTeamStaff.findAll();
     teamStaffArchived = [];
   }
+  cursorSources.push(...teamStaffRows, ...teamStaffArchived);
 
   const extClubIds = Array.from(
     new Set(
@@ -407,7 +442,7 @@ async function syncExternal(actorId = null) {
     }
 
     // Soft-delete missing
-    if (clubStaffKnownIds.length) {
+    if (fullResync && clubStaffKnownIds.length) {
       const [missCnt] = await ClubStaff.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -527,7 +562,7 @@ async function syncExternal(actorId = null) {
     }
 
     // Soft-delete missing
-    if (teamStaffKnownIds.length) {
+    if (fullResync && teamStaffKnownIds.length) {
       const [missCnt] = await TeamStaff.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -543,8 +578,12 @@ async function syncExternal(actorId = null) {
     }
   });
 
+  const cursor = maxTimestamp(cursorSources);
+
   logger.info(
-    'Staff sync: staff upserted=%d, softDeleted=%d (archived=%d, missing=%d); categories upserted=%d, softDeleted=%d; clubStaff upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamStaff upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    'Staff sync (mode=%s, cursor=%s): staff upserted=%d, softDeleted=%d (archived=%d, missing=%d); categories upserted=%d, softDeleted=%d; clubStaff upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamStaff upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    mode,
+    cursor ? cursor.toISOString() : 'n/a',
     staffUpserts,
     staffSoftDeletedMissing + staffSoftDeletedArchived,
     staffSoftDeletedArchived,
@@ -586,6 +625,9 @@ async function syncExternal(actorId = null) {
       softDeletedArchived: teamStaffSoftDeletedArchived,
       softDeletedMissing: teamStaffSoftDeletedMissing,
     },
+    mode,
+    cursor,
+    fullSync: fullResync,
   };
 }
 

@@ -4,6 +4,7 @@ import groundService from '../services/groundService.js';
 import logger from '../../logger.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 let running = false;
 
@@ -13,13 +14,31 @@ export async function runGroundSync() {
     running = true;
     await withJobMetrics('groundSync', async () => {
       try {
-        const result = await groundService.syncExternal();
+        const { mode, cursor, outcome } = await runWithSyncState(
+          'groundSync',
+          async ({ mode, since }) => {
+            const stats = await groundService.syncExternal({ mode, since });
+            return {
+              cursor: stats.cursor,
+              stats,
+              fullSync: stats.fullSync === true,
+            };
+          }
+        );
+        const stats = outcome?.stats || {
+          upserts: 0,
+          softDeletedTotal: 0,
+          softDeletedArchived: 0,
+          softDeletedMissing: 0,
+        };
         logger.info(
-          'Ground sync completed: upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
-          result.upserts,
-          result.softDeletedTotal,
-          result.softDeletedArchived,
-          result.softDeletedMissing
+          'Ground sync completed (mode=%s, cursor=%s): upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+          mode,
+          cursor ? new Date(cursor).toISOString() : 'n/a',
+          stats.upserts,
+          stats.softDeletedTotal,
+          stats.softDeletedArchived,
+          stats.softDeletedMissing
         );
       } catch (err) {
         logger.error('Ground sync failed: %s', err.stack || err);

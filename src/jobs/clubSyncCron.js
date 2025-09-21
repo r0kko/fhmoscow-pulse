@@ -4,6 +4,7 @@ import clubService from '../services/clubService.js';
 import logger from '../../logger.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 let running = false;
 
@@ -13,9 +14,27 @@ export async function runClubSync() {
     running = true;
     await withJobMetrics('clubSync', async () => {
       try {
-        const stats = await clubService.syncExternal();
+        const { mode, cursor, outcome } = await runWithSyncState(
+          'clubSync',
+          async ({ mode, since }) => {
+            const stats = await clubService.syncExternal({ mode, since });
+            return {
+              cursor: stats.cursor,
+              stats,
+              fullSync: stats.fullSync === true,
+            };
+          }
+        );
+        const stats = outcome?.stats || {
+          upserts: 0,
+          softDeletedTotal: 0,
+          softDeletedArchived: 0,
+          softDeletedMissing: 0,
+        };
         logger.info(
-          'Club sync completed: upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+          'Club sync completed (mode=%s, cursor=%s): upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+          mode,
+          cursor ? new Date(cursor).toISOString() : 'n/a',
           stats.upserts,
           stats.softDeletedTotal,
           stats.softDeletedArchived,

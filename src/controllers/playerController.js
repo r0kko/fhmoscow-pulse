@@ -10,6 +10,7 @@ import playerMapper from '../mappers/playerMapper.js';
 import { sendError } from '../utils/api.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 import playerPhotoRequestService from '../services/playerPhotoRequestService.js';
 import playerPhotoRequestMapper from '../mappers/playerPhotoRequestMapper.js';
 
@@ -533,20 +534,102 @@ export default {
       }
       // keep related entities in sync first
       let payload = null;
+      const requestedMode = String(
+        req.body?.mode || req.query?.mode || ''
+      ).toLowerCase();
+      const modeOverride =
+        requestedMode === 'full'
+          ? 'full'
+          : requestedMode === 'incremental'
+            ? 'incremental'
+            : null;
       await withRedisLock(
         buildJobLockKey('playerSync'),
         60 * 60_000,
         async () => {
           await withJobMetrics('playerSync_manual', async () => {
-            const clubStats = await clubService.syncExternal(req.user?.id);
-            const teamStats = await teamService.syncExternal(req.user?.id);
-            const stats = await playerService.syncExternal(req.user?.id);
+            const clubRun = await runWithSyncState(
+              'clubSync',
+              async ({ mode, since }) => {
+                const stats = await clubService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const teamRun = await runWithSyncState(
+              'teamSync',
+              async ({ mode, since }) => {
+                const stats = await teamService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const playerRun = await runWithSyncState(
+              'playerSync',
+              async ({ mode, since }) => {
+                const stats = await playerService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const clubStats = clubRun.outcome?.stats || {};
+            const teamStats = teamRun.outcome?.stats || {};
+            const playerStats = playerRun.outcome?.stats || {};
             const { rows, count } = await playerService.list({
               page: 1,
               limit: 100,
             });
             payload = {
-              stats: { clubs: clubStats, teams: teamStats, ...stats },
+              stats: {
+                clubs: clubStats,
+                teams: teamStats,
+                players: playerStats.players || playerStats,
+                ext_files: playerStats.ext_files,
+                player_roles: playerStats.player_roles,
+                club_players: playerStats.club_players,
+                team_players: playerStats.team_players,
+              },
+              modes: {
+                clubs: clubRun.mode,
+                teams: teamRun.mode,
+                players: playerRun.mode,
+              },
+              cursors: {
+                clubs: clubRun.cursor ? clubRun.cursor.toISOString() : null,
+                teams: teamRun.cursor ? teamRun.cursor.toISOString() : null,
+                players: playerRun.cursor
+                  ? playerRun.cursor.toISOString()
+                  : null,
+              },
+              states: {
+                clubs: clubRun.state,
+                teams: teamRun.state,
+                players: playerRun.state,
+              },
               players: rows.map(playerMapper.toPublic),
               total: count,
             };

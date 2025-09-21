@@ -11,7 +11,7 @@
 - Security headers using `helmet`
 - Request/response audit logging emitted to stdout (Loki/Grafana); no DB writes
 - Structured JSON access logs (stdout) with correlation id
-- Swagger documentation available at `/api-docs`
+- Swagger documentation available at `/api-docs` (loopback/private networks only by default)
 - Docker and docker-compose setup for local development
 - CI builds and publishes Docker images to GitHub Container Registry
 - Optional Redis-backed login attempt tracking (disabled by default)
@@ -112,6 +112,12 @@ DADATA_SECRET=your_dadata_secret
 # SSL_CERT_PATH=/etc/ssl/pulse/fullchain.pem
 # SSL_KEY_PATH=/etc/ssl/pulse/privkey.pem
 
+### API documentation access
+
+- `/api-docs` responds only to loopback and RFC1918/IPv6-local clients by default to avoid exposing Swagger on the public Internet.
+- Set `API_DOCS_ACCESS=public` for short-term troubleshooting or `API_DOCS_ACCESS=disabled` to turn the route off entirely.
+- `API_DOCS_ALLOWLIST` accepts comma-separated IPv4/IPv6 addresses or CIDR blocks for dedicated bastions or VPN ranges.
+
 ### Troubleshooting: login spinner under CDN/proxy
 
 If the login spinner does not stop after clicking "Войти":
@@ -182,7 +188,7 @@ directly.
 docker-compose up --build
 ```
 
-The API will be available at `http://localhost:3000` and Swagger docs at `http://localhost:3000/api-docs`.
+The API will be available at `http://localhost:3000` and Swagger docs at `http://localhost:3000/api-docs` (accessible from the host running the stack).
 The frontend will be served at `http://localhost:5173`.
 Docker logs for all containers can be viewed at `http://localhost:8080` via [Dozzle](https://github.com/amir20/dozzle).
 

@@ -28,7 +28,11 @@ import sequelize from '../config/database.js';
 import { moscowToUtc, utcToMoscow } from '../utils/time.js';
 import { extractFirstUrl } from '../utils/url.js';
 import logger from '../../logger.js';
-import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
+import {
+  statusFilters,
+  ensureArchivedImported,
+  normalizeSyncOptions,
+} from '../utils/sync.js';
 import { GameStatus } from '../models/index.js';
 import { computeTechnicalWinner } from '../utils/technical.js';
 
@@ -41,7 +45,7 @@ function emptyStats() {
   };
 }
 
-async function syncTypes(actorId = null) {
+async function syncTypes(actorId = null, { fullResync } = {}) {
   const stats = emptyStats();
   // Respect object_status on external tournament types
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
@@ -131,18 +135,21 @@ async function syncTypes(actorId = null) {
     stats.upserts += createdArchived;
 
     // Soft-delete explicitly archived
-    const [archCnt] = await TournamentType.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
-        paranoid: false,
-        transaction: tx,
-      }
-    );
-    stats.softDeletedArchived = archCnt;
+    if (archivedIds.length) {
+      const [archCnt] = await TournamentType.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
+          paranoid: false,
+          transaction: tx,
+        }
+      );
+      stats.softDeletedArchived = archCnt;
+      stats.softDeletedTotal += archCnt;
+    }
 
     // Soft delete missing (not in ACTIVE or ARCHIVE)
-    if (knownIds.length) {
+    if (fullResync && knownIds.length) {
       const [missCnt] = await TournamentType.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -155,14 +162,13 @@ async function syncTypes(actorId = null) {
         }
       );
       stats.softDeletedMissing = missCnt;
+      stats.softDeletedTotal += missCnt;
     }
-    stats.softDeletedTotal =
-      stats.softDeletedArchived + stats.softDeletedMissing;
   });
   return stats;
 }
 
-async function syncTournaments(actorId = null) {
+async function syncTournaments(actorId = null, { fullResync } = {}) {
   const stats = emptyStats();
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
   let [extActive, extArchived] = await Promise.all([
@@ -272,17 +278,20 @@ async function syncTournaments(actorId = null) {
     );
     stats.upserts += createdArchived;
 
-    const [archCnt] = await Tournament.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
-        paranoid: false,
-        transaction: tx,
-      }
-    );
-    stats.softDeletedArchived = archCnt;
+    if (archivedIds.length) {
+      const [archCnt] = await Tournament.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
+          paranoid: false,
+          transaction: tx,
+        }
+      );
+      stats.softDeletedArchived = archCnt;
+      stats.softDeletedTotal += archCnt;
+    }
 
-    if (knownIds.length) {
+    if (fullResync && knownIds.length) {
       const [missCnt] = await Tournament.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -295,9 +304,8 @@ async function syncTournaments(actorId = null) {
         }
       );
       stats.softDeletedMissing = missCnt;
+      stats.softDeletedTotal += missCnt;
     }
-    stats.softDeletedTotal =
-      stats.softDeletedArchived + stats.softDeletedMissing;
   });
   return stats;
 }
@@ -624,17 +632,21 @@ async function syncTournamentTeams(actorId = null) {
   return stats;
 }
 
-async function syncExternal(actorId = null) {
+async function syncExternal(options = {}) {
+  const { actorId, mode, fullResync } = normalizeSyncOptions(options);
   try {
-    const typeStats = await syncTypes(actorId);
-    const tournamentStats = await syncTournaments(actorId);
-    const stageStats = await syncStages(actorId);
-    const groupStats = await syncGroups(actorId);
-    const ttStats = await syncTournamentTeams(actorId);
-    const tourStats = await syncTours(actorId);
-    const gameStats = await syncGames(actorId);
+    const typeStats = await syncTypes(actorId, { fullResync });
+    const tournamentStats = await syncTournaments(actorId, { fullResync });
+    const stageStats = await syncStages(actorId, { fullResync });
+    const groupStats = await syncGroups(actorId, { fullResync });
+    const ttStats = await syncTournamentTeams(actorId, { fullResync });
+    const tourStats = await syncTours(actorId, { fullResync });
+    const gameStats = await syncGames(actorId, { fullResync });
+    const cursor = new Date();
     logger.info(
-      'Tournament sync: types(upserted=%d, softDeleted=%d); tournaments(upserted=%d, softDeleted=%d); stages(upserted=%d, softDeleted=%d); groups(upserted=%d, softDeleted=%d); tournamentTeams(upserted=%d, softDeleted=%d); tours(upserted=%d, softDeleted=%d); games(upserted=%d, softDeleted=%d)',
+      'Tournament sync (mode=%s, cursor=%s): types(upserted=%d, softDeleted=%d); tournaments(upserted=%d, softDeleted=%d); stages(upserted=%d, softDeleted=%d); groups(upserted=%d, softDeleted=%d); tournamentTeams(upserted=%d, softDeleted=%d); tours(upserted=%d, softDeleted=%d); games(upserted=%d, softDeleted=%d)',
+      mode,
+      cursor.toISOString(),
       typeStats.upserts,
       typeStats.softDeletedTotal,
       tournamentStats.upserts,
@@ -658,6 +670,9 @@ async function syncExternal(actorId = null) {
       tournament_teams: ttStats,
       tours: tourStats,
       games: gameStats,
+      mode,
+      cursor,
+      fullSync: fullResync,
     };
   } catch (err) {
     logger.error('Tournament sync failed: %s', err.stack || err);

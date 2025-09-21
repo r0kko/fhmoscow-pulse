@@ -5,6 +5,7 @@ import clubMapper from '../mappers/clubMapper.js';
 import { sendError } from '../utils/api.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 export default {
   async list(req, res) {
@@ -70,20 +71,48 @@ export default {
         return res.status(503).json({ error: 'external_unavailable' });
       }
       let result = null;
+      const requestedMode = String(
+        req.body?.mode || req.query?.mode || ''
+      ).toLowerCase();
+      const modeOverride =
+        requestedMode === 'full'
+          ? 'full'
+          : requestedMode === 'incremental'
+            ? 'incremental'
+            : null;
       await withRedisLock(
         buildJobLockKey('clubSync'),
         30 * 60_000,
         async () => {
           await withJobMetrics('clubSync_manual', async () => {
-            const stats = await clubService.syncExternal(req.user?.id);
+            const { mode, cursor, state, outcome } = await runWithSyncState(
+              'clubSync',
+              async ({ mode, since }) => {
+                const stats = await clubService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const stats = outcome?.stats || {};
             const { rows, count } = await clubService.list({
               page: 1,
               limit: 100,
             });
             result = {
+              mode,
+              cursor: cursor ? cursor.toISOString() : null,
               stats,
               clubs: rows.map(clubMapper.toPublic),
               total: count,
+              state,
             };
           });
         },

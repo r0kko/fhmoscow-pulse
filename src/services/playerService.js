@@ -22,7 +22,13 @@ import {
 } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
 import logger from '../../logger.js';
-import { ensureArchivedImported, statusFilters } from '../utils/sync.js';
+import {
+  ensureArchivedImported,
+  statusFilters,
+  buildSinceClause,
+  maxTimestamp,
+  normalizeSyncOptions,
+} from '../utils/sync.js';
 
 import { syncExtFiles } from './extFileService.js';
 
@@ -39,7 +45,10 @@ async function resolveSeasonIds(explicitIds = []) {
   return activeSeasons.map((season) => season.id);
 }
 
-async function syncExternal(actorId = null) {
+async function syncExternal(options = {}) {
+  const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
+  const sinceClause = buildSinceClause(since);
+  const cursorSources = [];
   // 1) Roles (no object_status on external)
   const extRoles = await ExtTeamPlayerRole.findAll();
   const roleExtIds = extRoles.map((r) => r.id);
@@ -82,31 +91,38 @@ async function syncExternal(actorId = null) {
         roleUpserts += 1;
       }
     }
-    const [softCnt] = await PlayerRole.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: {
-          external_id: { [Op.notIn]: roleExtIds, [Op.ne]: null },
-          deletedAt: null,
-        },
-        transaction: tx,
-        paranoid: false,
-      }
-    );
-    roleSoftDeleted = softCnt;
+    if (fullResync) {
+      const [softCnt] = await PlayerRole.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.notIn]: roleExtIds, [Op.ne]: null },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      roleSoftDeleted = softCnt;
+    }
   });
 
   // 2) Players (respect object_status === 'archive')
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
+  const activeWhere =
+    !fullResync && sinceClause ? { [Op.and]: [ACTIVE, sinceClause] } : ACTIVE;
+  const archiveWhere =
+    !fullResync && sinceClause ? { [Op.and]: [ARCHIVE, sinceClause] } : ARCHIVE;
   let [extActive, extArchived] = await Promise.all([
-    ExtPlayer.findAll({ where: ACTIVE }),
-    ExtPlayer.findAll({ where: ARCHIVE }),
+    ExtPlayer.findAll({ where: activeWhere }),
+    ExtPlayer.findAll({ where: archiveWhere }),
   ]);
   // Fallback: if external table returns nothing for status, treat all as ACTIVE
-  if (extActive.length === 0 && extArchived.length === 0) {
-    extActive = await ExtPlayer.findAll();
+  if (fullResync && extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtPlayer.findAll({ where: ACTIVE });
     extArchived = [];
   }
+  cursorSources.push(...extActive, ...extArchived);
   const photoIdSet = new Set();
   for (const player of [...extActive, ...extArchived]) {
     const raw = player?.photo_id;
@@ -235,18 +251,23 @@ async function syncExternal(actorId = null) {
     );
 
     // Soft-delete ARCHIVE
-    const [archCnt] = await Player.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: { external_id: { [Op.in]: playerArchivedIds }, deletedAt: null },
-        transaction: tx,
-        paranoid: false,
-      }
-    );
-    playerSoftDeletedArchived = archCnt;
+    if (playerArchivedIds.length) {
+      const [archCnt] = await Player.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.in]: playerArchivedIds },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      playerSoftDeletedArchived = archCnt;
+    }
 
     // Soft-delete missing (not ACTIVE or ARCHIVE)
-    if (playerKnownIds.length) {
+    if (fullResync && playerKnownIds.length) {
       const [missCnt] = await Player.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -462,21 +483,23 @@ async function syncExternal(actorId = null) {
     clubPlayerUpserts += createdArchivedCp;
 
     // Soft-delete archived
-    const [archCpCnt] = await ClubPlayer.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: {
-          external_id: { [Op.in]: clubPlayerArchivedIds },
-          deletedAt: null,
-        },
-        transaction: tx,
-        paranoid: false,
-      }
-    );
-    clubPlayerSoftDeletedArchived = archCpCnt;
+    if (clubPlayerArchivedIds.length) {
+      const [archCpCnt] = await ClubPlayer.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.in]: clubPlayerArchivedIds },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      clubPlayerSoftDeletedArchived = archCpCnt;
+    }
 
     // Soft-delete missing
-    if (clubPlayerKnownIds.length) {
+    if (fullResync && clubPlayerKnownIds.length) {
       const [missCpCnt] = await ClubPlayer.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -577,21 +600,23 @@ async function syncExternal(actorId = null) {
     teamPlayerUpserts += createdArchivedTp;
 
     // Soft-delete archived
-    const [archTpCnt] = await TeamPlayer.update(
-      { deletedAt: new Date(), updated_by: actorId },
-      {
-        where: {
-          external_id: { [Op.in]: teamPlayerArchivedIds },
-          deletedAt: null,
-        },
-        transaction: tx,
-        paranoid: false,
-      }
-    );
-    teamPlayerSoftDeletedArchived = archTpCnt;
+    if (teamPlayerArchivedIds.length) {
+      const [archTpCnt] = await TeamPlayer.update(
+        { deletedAt: new Date(), updated_by: actorId },
+        {
+          where: {
+            external_id: { [Op.in]: teamPlayerArchivedIds },
+            deletedAt: null,
+          },
+          transaction: tx,
+          paranoid: false,
+        }
+      );
+      teamPlayerSoftDeletedArchived = archTpCnt;
+    }
 
     // Soft-delete missing
-    if (teamPlayerKnownIds.length) {
+    if (fullResync && teamPlayerKnownIds.length) {
       const [missTpCnt] = await TeamPlayer.update(
         { deletedAt: new Date(), updated_by: actorId },
         {
@@ -607,6 +632,8 @@ async function syncExternal(actorId = null) {
     }
   });
 
+  const cursor = maxTimestamp(cursorSources);
+
   logger.info(
     'Player photo files sync: upserts=%d, restored=%d, archivedCreated=%d, softDeletedArchived=%d, softDeletedMissing=%d, softDeletedByStatus=%d',
     extFileStats.upserts,
@@ -618,7 +645,9 @@ async function syncExternal(actorId = null) {
   );
 
   logger.info(
-    'Player sync: players upserted=%d, softDeleted=%d (archived=%d, missing=%d); roles upserted=%d, softDeleted=%d; clubPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    'Player sync (mode=%s, cursor=%s): players upserted=%d, softDeleted=%d (archived=%d, missing=%d); roles upserted=%d, softDeleted=%d; clubPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d); teamPlayers upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    mode,
+    cursor ? cursor.toISOString() : 'n/a',
     playerUpserts,
     playerSoftDeletedMissing + playerSoftDeletedArchived,
     playerSoftDeletedArchived,
@@ -665,6 +694,9 @@ async function syncExternal(actorId = null) {
       softDeletedArchived: teamPlayerSoftDeletedArchived,
       softDeletedMissing: teamPlayerSoftDeletedMissing,
     },
+    mode,
+    cursor,
+    fullSync: fullResync,
   };
 }
 

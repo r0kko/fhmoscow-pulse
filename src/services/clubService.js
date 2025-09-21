@@ -3,109 +3,138 @@ import { Op } from 'sequelize';
 import { Club } from '../models/index.js';
 import { Club as ExtClub } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
-import { statusFilters, ensureArchivedImported } from '../utils/sync.js';
+import {
+  statusFilters,
+  ensureArchivedImported,
+  buildSinceClause,
+  maxTimestamp,
+  normalizeSyncOptions,
+} from '../utils/sync.js';
 import logger from '../../logger.js';
 
-async function syncExternal(actorId = null) {
-  // Pull ACTIVE and ARCHIVE sets explicitly; tolerant to case/whitespace
+async function syncExternal(options = {}) {
+  const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
+
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
+  const sinceClause = buildSinceClause(since);
+
+  const attributes = ['id', 'short_name', 'date_update', 'date_create'];
+  const activeWhere = fullResync ? ACTIVE : { [Op.and]: [ACTIVE, sinceClause] };
+  const archiveWhere = fullResync
+    ? ARCHIVE
+    : { [Op.and]: [ARCHIVE, sinceClause] };
+
   let [extActive, extArchived] = await Promise.all([
-    ExtClub.findAll({ where: ACTIVE }),
-    ExtClub.findAll({ where: ARCHIVE }),
+    ExtClub.findAll({ where: activeWhere, attributes }),
+    ExtClub.findAll({ where: archiveWhere, attributes }),
   ]);
-  // Fallback: if external has no object_status or returns nothing, treat all rows as ACTIVE
-  if (extActive.length === 0 && extArchived.length === 0) {
-    extActive = await ExtClub.findAll();
+
+  if (fullResync && extActive.length === 0 && extArchived.length === 0) {
+    extActive = await ExtClub.findAll({ attributes });
     extArchived = [];
   }
+
   const activeIds = extActive.map((c) => c.id);
   const archivedIds = extArchived.map((c) => c.id);
   const knownIds = Array.from(new Set([...activeIds, ...archivedIds]));
 
-  let upserts = 0; // created + updated + restored
+  let upserts = 0;
   let affectedArchived = 0;
   let affectedMissing = 0;
 
-  await sequelize.transaction(async (tx) => {
-    // Load existing local records for known external IDs, including soft-deleted
-    const locals = await Club.findAll({
-      where: { external_id: { [Op.in]: knownIds } },
-      paranoid: false,
-      transaction: tx,
-    });
-    const localByExt = new Map(locals.map((l) => [l.external_id, l]));
+  if (knownIds.length) {
+    await sequelize.transaction(async (tx) => {
+      const locals = await Club.findAll({
+        where: { external_id: { [Op.in]: knownIds } },
+        paranoid: false,
+        transaction: tx,
+      });
+      const localByExt = new Map(locals.map((l) => [l.external_id, l]));
 
-    // Handle ACTIVE: create if missing, restore if soft-deleted, update only when changed
-    for (const c of extActive) {
-      const local = localByExt.get(c.id);
-      if (!local) {
-        await Club.create(
-          {
-            external_id: c.id,
-            name: c.short_name,
-            created_by: actorId,
-            updated_by: actorId,
-          },
-          { transaction: tx }
+      for (const c of extActive) {
+        const local = localByExt.get(c.id);
+        if (!local) {
+          await Club.create(
+            {
+              external_id: c.id,
+              name: c.short_name,
+              created_by: actorId,
+              updated_by: actorId,
+            },
+            { transaction: tx }
+          );
+          upserts += 1;
+          continue;
+        }
+        let changed = false;
+        if (local.deletedAt) {
+          await local.restore({ transaction: tx });
+          changed = true;
+        }
+        const updates = {};
+        if (local.name !== c.short_name) updates.name = c.short_name;
+        if (Object.keys(updates).length) {
+          updates.updated_by = actorId;
+          await local.update(updates, { transaction: tx });
+          changed = true;
+        }
+        if (changed) upserts += 1;
+      }
+
+      if (extArchived.length) {
+        await ensureArchivedImported(
+          Club,
+          extArchived,
+          (c) => ({ name: c.short_name }),
+          actorId,
+          tx
         );
-        upserts += 1;
-        continue;
       }
 
-      let changed = false;
-      if (local.deletedAt) {
-        await local.restore({ transaction: tx });
-        changed = true;
+      if (archivedIds.length) {
+        const [archCnt] = await Club.update(
+          { deletedAt: new Date(), updated_by: actorId },
+          {
+            where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
+            transaction: tx,
+            paranoid: false,
+          }
+        );
+        affectedArchived = archCnt;
       }
-      const updates = {};
-      if (local.name !== c.short_name) updates.name = c.short_name;
-      if (Object.keys(updates).length) {
-        updates.updated_by = actorId;
-        await local.update(updates, { transaction: tx });
-        changed = true;
+
+      if (fullResync) {
+        const [missCnt] = await Club.update(
+          { deletedAt: new Date(), updated_by: actorId },
+          {
+            where: {
+              external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
+              deletedAt: null,
+            },
+            transaction: tx,
+            paranoid: false,
+          }
+        );
+        affectedMissing = missCnt;
       }
-      if (changed) upserts += 1;
-    }
-
-    // Ensure archived external clubs exist locally (soft-deleted) to stabilize IDs
-    await ensureArchivedImported(
-      Club,
-      extArchived,
-      (c) => ({ name: c.short_name }),
-      actorId,
-      tx
-    );
-
-    // Handle ARCHIVE: soft-delete if currently active
-    const [archCnt] = await Club.update(
+    });
+  } else if (fullResync) {
+    // Full run with zero known ids → sweep all local records as missing
+    const [missCnt] = await Club.update(
       { deletedAt: new Date(), updated_by: actorId },
       {
-        where: { external_id: { [Op.in]: archivedIds }, deletedAt: null },
-        transaction: tx,
+        where: { deletedAt: null, external_id: { [Op.ne]: null } },
         paranoid: false,
       }
     );
-    affectedArchived = archCnt;
+    affectedMissing = missCnt;
+  }
 
-    // Treat unknown/missing externally (not in ACTIVE or ARCHIVE) as missing → soft-delete
-    if (knownIds.length) {
-      const [missCnt] = await Club.update(
-        { deletedAt: new Date(), updated_by: actorId },
-        {
-          where: {
-            external_id: { [Op.notIn]: knownIds, [Op.ne]: null },
-            deletedAt: null,
-          },
-          transaction: tx,
-          paranoid: false,
-        }
-      );
-      affectedMissing = missCnt;
-    }
-  });
   const softDeletedTotal = affectedArchived + affectedMissing;
+  const cursor = maxTimestamp([...extActive, ...extArchived]);
   logger.info(
-    'Club sync: upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    'Club sync (mode=%s): upserted=%d, softDeleted=%d (archived=%d, missing=%d)',
+    mode,
     upserts,
     softDeletedTotal,
     affectedArchived,
@@ -116,6 +145,9 @@ async function syncExternal(actorId = null) {
     softDeletedTotal,
     softDeletedArchived: affectedArchived,
     softDeletedMissing: affectedMissing,
+    cursor,
+    mode,
+    fullSync: fullResync,
   };
 }
 

@@ -1,5 +1,14 @@
 import { fn, col as column, where, Op } from 'sequelize';
 
+export function toDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value : null;
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
 /**
  * Common ACTIVE/ARCHIVE filters for external DB, tolerant to case/whitespace.
  * @param {string} col - column name holding status (default: 'object_status')
@@ -64,4 +73,79 @@ export async function ensureArchivedImported(
   return created;
 }
 
-export default { statusFilters, ensureArchivedImported };
+export function buildSinceClause(
+  since,
+  fields = ['date_update', 'date_create']
+) {
+  if (!since) return null;
+  const ts = toDate(since);
+  if (!ts) return null;
+  const clauses = fields
+    .filter((field) => typeof field === 'string' && field)
+    .map((field) => ({ [field]: { [Op.gte]: ts } }));
+  if (!clauses.length) return null;
+  return { [Op.or]: clauses };
+}
+
+export function maxTimestamp(
+  records = [],
+  fields = ['date_update', 'date_create']
+) {
+  let max = null;
+  for (const record of records) {
+    if (!record) continue;
+    for (const field of fields) {
+      const value = record[field];
+      if (!value) continue;
+      const date = toDate(value);
+      if (!date) continue;
+      if (!max || date.getTime() > max.getTime()) {
+        max = date;
+      }
+    }
+  }
+  return max;
+}
+
+export function normalizeSyncOptions(options = {}) {
+  if (options == null) {
+    return {
+      actorId: null,
+      requestedMode: 'incremental',
+      mode: 'full',
+      since: null,
+      fullResync: true,
+    };
+  }
+  if (typeof options !== 'object' || Array.isArray(options)) {
+    return {
+      actorId: options || null,
+      requestedMode: 'incremental',
+      mode: 'full',
+      since: null,
+      fullResync: true,
+    };
+  }
+  const actorId = options.actorId ?? options.userId ?? null;
+  const wantedMode = String(options.mode || 'incremental').toLowerCase();
+  const since = toDate(options.since);
+  let fullResync = wantedMode === 'full';
+  if (!since) fullResync = true;
+  const mode = fullResync ? 'full' : 'incremental';
+  return {
+    actorId,
+    requestedMode: wantedMode,
+    mode,
+    since,
+    fullResync,
+  };
+}
+
+export default {
+  statusFilters,
+  ensureArchivedImported,
+  buildSinceClause,
+  maxTimestamp,
+  normalizeSyncOptions,
+  toDate,
+};

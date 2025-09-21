@@ -96,6 +96,7 @@ import MatchAgreementType from './matchAgreementType.js';
 import MatchAgreementStatus from './matchAgreementStatus.js';
 import MatchAgreement from './matchAgreement.js';
 import JobLog from './jobLog.js';
+import SyncState from './syncState.js';
 import MatchPlayer from './matchPlayer.js';
 import MatchStaff from './matchStaff.js';
 import GameEventType from './gameEventType.js';
@@ -699,6 +700,7 @@ export {
   GameStatus,
   MatchAgreement,
   JobLog,
+  SyncState,
   MatchAgreementType,
   MatchAgreementStatus,
   Team,

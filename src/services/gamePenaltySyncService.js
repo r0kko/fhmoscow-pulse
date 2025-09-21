@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 
 import { literal, Op } from 'sequelize';
 
+import { normalizeSyncOptions } from '../utils/sync.js';
 import logger from '../../logger.js';
 
 // Resolve external event_type_id for penalties (Нарушение)
@@ -514,13 +515,21 @@ export async function reconcileWindow({
 
 // Full external sync for all penalties ("Нарушение") across all matches we know about.
 // Behavior mirrors other dictionary syncs: upsert known external rows, soft-delete missing.
-export async function syncExternal(actorId = null) {
+export async function syncExternal(options = {}) {
+  const { actorId } = normalizeSyncOptions(options);
+  const mode = 'full';
   const penaltyTypeExtId = await getExternalPenaltyTypeId();
   if (!penaltyTypeExtId) {
     logger.warn(
       'GamePenalty full sync skipped: event type "Нарушение" not found'
     );
-    return { upserts: 0, softDeleted: 0 };
+    return {
+      upserts: 0,
+      softDeleted: 0,
+      mode,
+      cursor: new Date(),
+      fullSync: true,
+    };
   }
 
   // Fetch all local matches that have an external mapping; we only sync events for those.
@@ -531,12 +540,26 @@ export async function syncExternal(actorId = null) {
     where: { external_id: { [Op.ne]: null } },
     paranoid: false,
   });
-  if (!matches.length) return { upserts: 0, softDeleted: 0 };
+  if (!matches.length)
+    return {
+      upserts: 0,
+      softDeleted: 0,
+      mode,
+      cursor: new Date(),
+      fullSync: true,
+    };
 
   const extGameIds = matches
     .map((m) => Number(m.external_id))
     .filter((x) => !Number.isNaN(x));
-  if (!extGameIds.length) return { upserts: 0, softDeleted: 0 };
+  if (!extGameIds.length)
+    return {
+      upserts: 0,
+      softDeleted: 0,
+      mode,
+      cursor: new Date(),
+      fullSync: true,
+    };
 
   // Helper: stable MD5 fingerprint over relevant external fields
   const computeFp = (r) => {
@@ -845,7 +868,8 @@ export async function syncExternal(actorId = null) {
   });
 
   logger.info(
-    'GamePenalty full sync: scanned=%d, changed=%d, upserted=%d, softDeleted=%d',
+    'GamePenalty full sync (mode=%s): scanned=%d, changed=%d, upserted=%d, softDeleted=%d',
+    mode,
     extSummary.length,
     changedOrNew.length,
     upserts,
@@ -856,6 +880,9 @@ export async function syncExternal(actorId = null) {
     softDeleted,
     scanned: extSummary.length,
     changed: changedOrNew.length,
+    mode,
+    cursor: new Date(),
+    fullSync: true,
   };
 }
 

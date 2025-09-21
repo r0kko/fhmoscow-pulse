@@ -4,6 +4,7 @@ import gameViolationService from '../services/gameViolationService.js';
 import logger from '../../logger.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 let running = false;
 
@@ -16,9 +17,22 @@ export async function runGameViolationSync() {
       running = true;
       await withJobMetrics('gameViolationSync', async () => {
         try {
-          const stats = await gameViolationService.syncExternal();
+          const { mode, cursor, outcome } = await runWithSyncState(
+            'gameViolationSync',
+            async ({ mode }) => {
+              const stats = await gameViolationService.syncExternal({ mode });
+              return {
+                cursor: stats.cursor,
+                stats,
+                fullSync: stats.fullSync === true,
+              };
+            }
+          );
+          const stats = outcome?.stats || { upserts: 0, softDeleted: 0 };
           logger.info(
-            'GameViolation sync completed: upserted=%d, softDeleted=%d',
+            'GameViolation sync completed (mode=%s, cursor=%s): upserted=%d, softDeleted=%d',
+            mode,
+            cursor ? new Date(cursor).toISOString() : 'n/a',
             stats.upserts,
             stats.softDeleted
           );

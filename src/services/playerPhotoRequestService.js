@@ -112,7 +112,7 @@ async function submit({ actorId, playerId, file, scope = {} }) {
   );
 
   try {
-    const result = await sequelize.transaction(async (tx) => {
+    return await sequelize.transaction(async (tx) => {
       const pendingStatus = await getStatusByAlias(STATUS_ALIASES.PENDING, {
         transaction: tx,
       });
@@ -129,8 +129,6 @@ async function submit({ actorId, playerId, file, scope = {} }) {
       );
       return findById(created.id, { transaction: tx });
     });
-
-    return result;
   } catch (err) {
     await fileService.removeFile(uploadedFile.id).catch(() => {});
     if (

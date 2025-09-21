@@ -6,6 +6,7 @@ import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import { sendError } from '../utils/api.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 export default {
   async list(req, res) {
@@ -91,20 +92,96 @@ export default {
       }
       // Keep related entities in sync first
       let payload = null;
+      const requestedMode = String(
+        req.body?.mode || req.query?.mode || ''
+      ).toLowerCase();
+      const modeOverride =
+        requestedMode === 'full'
+          ? 'full'
+          : requestedMode === 'incremental'
+            ? 'incremental'
+            : null;
       await withRedisLock(
         buildJobLockKey('staffSync'),
         45 * 60_000,
         async () => {
           await withJobMetrics('staffSync_manual', async () => {
-            const clubStats = await clubService.syncExternal(req.user?.id);
-            const teamStats = await teamService.syncExternal(req.user?.id);
-            const stats = await staffService.syncExternal(req.user?.id);
+            const clubRun = await runWithSyncState(
+              'clubSync',
+              async ({ mode, since }) => {
+                const stats = await clubService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const teamRun = await runWithSyncState(
+              'teamSync',
+              async ({ mode, since }) => {
+                const stats = await teamService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const staffRun = await runWithSyncState(
+              'staffSync',
+              async ({ mode, since }) => {
+                const stats = await staffService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.staff?.cursor || stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const clubStats = clubRun.outcome?.stats || {};
+            const teamStats = teamRun.outcome?.stats || {};
+            const staffStats = staffRun.outcome?.stats || {};
             const { rows, count } = await staffService.list({
               page: 1,
               limit: 100,
             });
             payload = {
-              stats: { clubs: clubStats, teams: teamStats, ...stats },
+              stats: {
+                clubs: clubStats,
+                teams: teamStats,
+                staff: staffStats.staff || staffStats,
+              },
+              modes: {
+                clubs: clubRun.mode,
+                teams: teamRun.mode,
+                staff: staffRun.mode,
+              },
+              cursors: {
+                clubs: clubRun.cursor ? clubRun.cursor.toISOString() : null,
+                teams: teamRun.cursor ? teamRun.cursor.toISOString() : null,
+                staff: staffRun.cursor ? staffRun.cursor.toISOString() : null,
+              },
+              states: {
+                clubs: clubRun.state,
+                teams: teamRun.state,
+                staff: staffRun.state,
+              },
               staff: staffMapper.toPublicArray(rows),
               total: count,
             };

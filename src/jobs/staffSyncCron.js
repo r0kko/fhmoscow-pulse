@@ -4,6 +4,7 @@ import staffService from '../services/staffService.js';
 import logger from '../../logger.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 let running = false;
 
@@ -13,9 +14,27 @@ export async function runStaffSync() {
     running = true;
     await withJobMetrics('staffSync', async () => {
       try {
-        const stats = await staffService.syncExternal();
+        const { mode, cursor, outcome } = await runWithSyncState(
+          'staffSync',
+          async ({ mode, since }) => {
+            const stats = await staffService.syncExternal({ mode, since });
+            return {
+              cursor: stats.cursor,
+              stats,
+              fullSync: stats.fullSync === true,
+            };
+          }
+        );
+        const stats = outcome?.stats || {
+          staff: { upserts: 0, softDeletedTotal: 0 },
+          staff_categories: { upserts: 0, softDeletedTotal: 0 },
+          club_staff: { upserts: 0, softDeletedTotal: 0 },
+          team_staff: { upserts: 0, softDeletedTotal: 0 },
+        };
         logger.info(
-          'Staff sync completed: staff(upserted=%d, softDeleted=%d); categories(upserted=%d, softDeleted=%d); clubStaff(upserted=%d, softDeleted=%d); teamStaff(upserted=%d, softDeleted=%d)',
+          'Staff sync completed (mode=%s, cursor=%s): staff(upserted=%d, softDeleted=%d); categories(upserted=%d, softDeleted=%d); clubStaff(upserted=%d, softDeleted=%d); teamStaff(upserted=%d, softDeleted=%d)',
+          mode,
+          cursor ? new Date(cursor).toISOString() : 'n/a',
           stats.staff.upserts,
           stats.staff.softDeletedTotal,
           stats.staff_categories.upserts,

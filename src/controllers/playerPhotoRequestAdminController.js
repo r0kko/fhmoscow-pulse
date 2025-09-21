@@ -54,10 +54,9 @@ async function enrichWithDownloadUrl(request) {
   if (!request?.File) return request;
   try {
     const filename = buildDownloadFilename(request);
-    const url = await fileService.getDownloadUrl(request.File, {
+    request.File.download_url = await fileService.getDownloadUrl(request.File, {
       filename,
     });
-    request.File.download_url = url;
   } catch (err) {
     void err;
     request.File.download_url = null;

@@ -7,6 +7,7 @@ import BrandSpinner from '../components/BrandSpinner.vue';
 const loading = ref(true);
 const error = ref('');
 const jobs = ref({});
+const jobStates = ref({});
 const running = ref({ syncAll: false });
 const triggering = ref(false);
 const notice = ref('');
@@ -75,6 +76,7 @@ async function load() {
       apiFetch('/admin-ops/taxation/status'),
     ]);
     jobs.value = syncRes.jobs || {};
+    jobStates.value = syncRes.states || {};
     running.value = syncRes.running || { syncAll: false };
     history.value = Array.isArray(syncRes.logs) ? syncRes.logs : [];
     taxJobs.value = taxRes.jobs || {};
@@ -90,6 +92,13 @@ function fmt(ts) {
   if (!ts) return '—';
   const d = new Date(ts * 1000);
   return d.toLocaleString('ru-RU', { hour12: false });
+}
+
+function fmtIso(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '—';
+  return date.toLocaleString('ru-RU', { hour12: false });
 }
 
 async function runPenaltyWindowSync() {
@@ -490,6 +499,32 @@ onUnmounted(() => {
                             jobs[name]?.in_progress ? 'Выполняется' : 'Ожидание'
                           }}
                         </span>
+                        <div
+                          v-if="jobStates[name]"
+                          class="small text-muted mt-1 text-start"
+                        >
+                          <div>
+                            режим: {{ jobStates[name]?.lastMode || '—' }}
+                          </div>
+                          <div>
+                            курсор:
+                            {{
+                              fmtIso(
+                                jobStates[name]?.lastCursor ||
+                                  jobStates[name]?.cursor
+                              )
+                            }}
+                          </div>
+                          <div>
+                            полное:
+                            {{
+                              fmtIso(
+                                jobStates[name]?.lastFullSyncAt ||
+                                  jobStates[name]?.last_full_sync_at
+                              )
+                            }}
+                          </div>
+                        </div>
                       </td>
                       <td class="d-none d-sm-table-cell">
                         {{ fmt(jobs[name]?.last_run) }}

@@ -2,6 +2,7 @@ import cron from 'node-cron';
 
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 import logger from '../../logger.js';
 import penaltyService from '../services/gamePenaltySyncService.js';
 import {
@@ -27,9 +28,23 @@ export async function runGamePenaltySync() {
             logger.warn('GamePenalty sync skipped: external DB unavailable');
             return;
           }
-          const stats = await penaltyService.syncExternal();
+          const { mode, cursor, outcome } = await runWithSyncState(
+            'gamePenaltySync',
+            async ({ mode }) => {
+              const stats = await penaltyService.syncExternal({ mode });
+              return {
+                cursor: stats.cursor,
+                stats,
+                fullSync: stats.fullSync === true,
+              };
+            },
+            { forceMode: 'full' }
+          );
+          const stats = outcome?.stats || { upserts: 0, softDeleted: 0 };
           logger.info(
-            'GamePenalty full sync completed: upserted=%d, softDeleted=%d',
+            'GamePenalty full sync completed (mode=%s, cursor=%s): upserted=%d, softDeleted=%d',
+            mode,
+            cursor ? new Date(cursor).toISOString() : 'n/a',
             stats.upserts,
             stats.softDeleted
           );

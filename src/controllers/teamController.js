@@ -5,6 +5,7 @@ import teamMapper from '../mappers/teamMapper.js';
 import { sendError } from '../utils/api.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
+import { runWithSyncState } from '../services/syncStateService.js';
 
 export default {
   async list(req, res) {
@@ -46,16 +47,63 @@ export default {
       }
       // Keep clubs in sync first to maintain relations and accurate soft-deletes
       let payload = null;
+      const requestedMode = String(
+        req.body?.mode || req.query?.mode || ''
+      ).toLowerCase();
+      const modeOverride =
+        requestedMode === 'full'
+          ? 'full'
+          : requestedMode === 'incremental'
+            ? 'incremental'
+            : null;
       await withRedisLock(
         buildJobLockKey('teamSync'),
         30 * 60_000,
         async () => {
           await withJobMetrics('teamSync_manual', async () => {
-            const clubStats = await clubService.syncExternal(req.user?.id);
-            const stats = await teamService.syncExternal(req.user?.id);
+            const clubRun = await runWithSyncState(
+              'clubSync',
+              async ({ mode, since }) => {
+                const stats = await clubService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const teamRun = await runWithSyncState(
+              'teamSync',
+              async ({ mode, since }) => {
+                const stats = await teamService.syncExternal({
+                  actorId: req.user?.id,
+                  mode,
+                  since,
+                });
+                return {
+                  cursor: stats.cursor,
+                  stats,
+                  fullSync: stats.fullSync === true,
+                };
+              },
+              modeOverride ? { forceMode: modeOverride } : undefined
+            );
+            const clubStats = clubRun.outcome?.stats || {};
+            const teamStats = teamRun.outcome?.stats || {};
             const teams = await teamService.listAll();
             payload = {
-              stats: { clubs: clubStats, teams: stats },
+              stats: { clubs: clubStats, teams: teamStats },
+              modes: { clubs: clubRun.mode, teams: teamRun.mode },
+              cursors: {
+                clubs: clubRun.cursor ? clubRun.cursor.toISOString() : null,
+                teams: teamRun.cursor ? teamRun.cursor.toISOString() : null,
+              },
+              states: { clubs: clubRun.state, teams: teamRun.state },
               teams: teams.map(teamMapper.toPublic),
             };
           });
