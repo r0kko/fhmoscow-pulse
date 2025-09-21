@@ -29,6 +29,19 @@ jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   __esModule: true,
   isExternalDbAvailable: () => externalAvailable,
 }));
+const runWithSyncStateMock = jest.fn(async (job, runner) => {
+  const outcome = await runner({ mode: 'incremental', since: null });
+  return {
+    mode: 'incremental',
+    cursor: outcome.cursor,
+    outcome,
+    state: { job },
+  };
+});
+jest.unstable_mockModule('../src/services/syncStateService.js', () => ({
+  __esModule: true,
+  runWithSyncState: (...args) => runWithSyncStateMock(...args),
+}));
 
 const { default: controller } = await import(
   '../src/controllers/staffController.js'
@@ -37,6 +50,18 @@ const { default: controller } = await import(
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
 }
+
+beforeEach(() => {
+  runWithSyncStateMock.mockReset().mockImplementation(async (job, runner) => {
+    const outcome = await runner({ mode: 'incremental', since: null });
+    return {
+      mode: 'incremental',
+      cursor: outcome.cursor,
+      outcome,
+      state: { job },
+    };
+  });
+});
 
 describe('staffController.sync', () => {
   test('returns 503 when external DB unavailable', async () => {
@@ -59,20 +84,34 @@ describe('staffController.sync', () => {
     const res = resMock();
     await controller.sync(req, res);
 
-    expect(clubSyncMock).toHaveBeenCalledWith('u1');
-    expect(teamSyncMock).toHaveBeenCalledWith('u1');
-    expect(staffSyncMock).toHaveBeenCalledWith('u1');
+    expect(clubSyncMock).toHaveBeenCalledWith({
+      actorId: 'u1',
+      mode: 'incremental',
+      since: null,
+    });
+    expect(teamSyncMock).toHaveBeenCalledWith({
+      actorId: 'u1',
+      mode: 'incremental',
+      since: null,
+    });
+    expect(staffSyncMock).toHaveBeenCalledWith({
+      actorId: 'u1',
+      mode: 'incremental',
+      since: null,
+    });
     expect(staffListMock).toHaveBeenCalledWith({ page: 1, limit: 100 });
     expect(toPublicArrayMock).toHaveBeenCalledWith([{ id: 's1' }]);
-    expect(res.json).toHaveBeenCalledWith({
-      stats: {
-        clubs: { created: 1, updated: 0 },
-        teams: { created: 5 },
-        created: 2,
-        updated: 3,
-      },
-      staff: [{ id: 's1' }],
-      total: 1,
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stats: expect.objectContaining({
+          clubs: { created: 1, updated: 0 },
+          teams: { created: 5 },
+          staff: { created: 2, updated: 3 },
+        }),
+        staff: [{ id: 's1' }],
+        total: 1,
+        modes: expect.objectContaining({ staff: 'incremental' }),
+      })
+    );
   });
 });

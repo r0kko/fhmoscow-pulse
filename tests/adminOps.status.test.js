@@ -11,9 +11,14 @@ jest.unstable_mockModule('../src/middlewares/authorize.js', () => ({
 }));
 
 const getJobStatsMock = jest.fn();
+const getSyncStatesMock = jest.fn();
 jest.unstable_mockModule('../src/config/metrics.js', () => ({
   __esModule: true,
   getJobStats: (...args) => getJobStatsMock(...args),
+}));
+jest.unstable_mockModule('../src/services/syncStateService.js', () => ({
+  __esModule: true,
+  getSyncStates: (...args) => getSyncStatesMock(...args),
 }));
 
 const jobLogFindAllMock = jest.fn();
@@ -47,6 +52,7 @@ function findRoute(path, method) {
 
 beforeEach(() => {
   getJobStatsMock.mockReset().mockResolvedValue({ ok: true });
+  getSyncStatesMock.mockReset().mockResolvedValue({});
   jobLogFindAllMock.mockReset().mockResolvedValue([]);
 });
 
@@ -60,6 +66,7 @@ test('GET /admin-ops/sync/status returns stats and running flag', async () => {
   await handler({}, res);
   expect(getJobStatsMock).toHaveBeenCalled();
   expect(captured.jobs).toBeDefined();
+  expect(captured.states).toBeDefined();
   expect(captured.running.syncAll).toBe(true);
 });
 
@@ -95,6 +102,7 @@ test('GET /admin-ops/taxation/status returns stats and running flag', async () =
   };
   await handler({}, res);
   expect(getJobStatsMock).toHaveBeenCalled();
+  expect(captured.states).toBeDefined();
   expect(captured.running.taxation).toBe(true);
 });
 

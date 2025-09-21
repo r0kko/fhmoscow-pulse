@@ -5,6 +5,16 @@ const listMock = jest.fn();
 const syncExternalMock = jest.fn();
 const facetsMock = jest.fn();
 
+const runWithSyncStateMock = jest.fn(async (job, runner) => {
+  const outcome = await runner({ mode: 'incremental', since: null });
+  return {
+    mode: 'incremental',
+    cursor: outcome.cursor,
+    outcome,
+    state: { job },
+  };
+});
+
 jest.unstable_mockModule('../src/services/playerService.js', () => ({
   __esModule: true,
   default: {
@@ -34,9 +44,14 @@ jest.unstable_mockModule('../src/mappers/playerMapper.js', () => ({
 }));
 
 // Default: external unavailable for sync tests; will be remocked as needed
+let externalAvailable = false;
 jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   __esModule: true,
-  isExternalDbAvailable: () => false,
+  isExternalDbAvailable: () => externalAvailable,
+}));
+jest.unstable_mockModule('../src/services/syncStateService.js', () => ({
+  __esModule: true,
+  runWithSyncState: (...args) => runWithSyncStateMock(...args),
 }));
 
 // Models to support mapping paths
@@ -92,7 +107,17 @@ const { default: controller } = await import(
 );
 
 beforeEach(() => {
+  externalAvailable = false;
   jest.clearAllMocks();
+  runWithSyncStateMock.mockReset().mockImplementation(async (job, runner) => {
+    const outcome = await runner({ mode: 'incremental', since: null });
+    return {
+      mode: 'incremental',
+      cursor: outcome.cursor,
+      outcome,
+      state: { job },
+    };
+  });
 });
 
 describe('playerController sync', () => {
@@ -104,52 +129,23 @@ describe('playerController sync', () => {
   });
 
   test('sync returns stats and players when external is available', async () => {
-    jest.resetModules();
-    const listMock2 = jest
-      .fn()
-      .mockResolvedValue({ rows: [{ id: 'p1' }], count: 1 });
-    const playerSyncMock2 = jest
-      .fn()
-      .mockResolvedValue({ upserted: 1, softDeleted: 0 });
-    jest.unstable_mockModule('../src/services/playerService.js', () => ({
-      __esModule: true,
-      default: { list: listMock2, syncExternal: playerSyncMock2 },
-      seasonBirthYearCounts: jest.fn().mockResolvedValue([]),
-      seasonTeamSummaries: jest.fn().mockResolvedValue([]),
-    }));
-    jest.unstable_mockModule('../src/services/teamService.js', () => ({
-      __esModule: true,
-      default: {
-        syncExternal: jest
-          .fn()
-          .mockResolvedValue({ upserted: 0, softDeleted: 0 }),
-      },
-    }));
-    jest.unstable_mockModule('../src/services/clubService.js', () => ({
-      __esModule: true,
-      default: {
-        syncExternal: jest
-          .fn()
-          .mockResolvedValue({ upserted: 0, softDeleted: 0 }),
-      },
-    }));
-    jest.unstable_mockModule('../src/mappers/playerMapper.js', () => ({
-      __esModule: true,
-      default: { toPublic: (p) => p },
-    }));
-    jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
-      __esModule: true,
-      isExternalDbAvailable: () => true,
-    }));
-    const { default: controller2 } = await import(
-      '../src/controllers/playerController.js'
-    );
+    externalAvailable = true;
+    listMock.mockResolvedValue({ rows: [{ id: 'p1' }], count: 1 });
+    syncExternalMock.mockResolvedValue({ upserted: 1, softDeleted: 0 });
     const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-    await controller2.sync({ user: { id: 'admin' } }, res);
-    expect(playerSyncMock2).toHaveBeenCalled();
-    expect(listMock2).toHaveBeenCalled();
+    await controller.sync({ user: { id: 'admin' } }, res);
+    expect(syncExternalMock).toHaveBeenCalledWith({
+      actorId: 'admin',
+      mode: 'incremental',
+      since: null,
+    });
+    expect(listMock).toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ players: [{ id: 'p1' }], total: 1 })
+      expect.objectContaining({
+        players: [{ id: 'p1' }],
+        total: 1,
+        stats: expect.any(Object),
+      })
     );
   });
 });

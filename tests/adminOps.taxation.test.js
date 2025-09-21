@@ -11,11 +11,16 @@ jest.unstable_mockModule('../src/middlewares/authorize.js', () => ({
 }));
 
 const getJobStatsMock = jest.fn();
+const getSyncStatesMock = jest.fn();
 const withJobMetricsMock = jest.fn(async (_job, fn) => await fn());
 jest.unstable_mockModule('../src/config/metrics.js', () => ({
   __esModule: true,
   getJobStats: getJobStatsMock,
   withJobMetrics: withJobMetricsMock,
+}));
+jest.unstable_mockModule('../src/services/syncStateService.js', () => ({
+  __esModule: true,
+  getSyncStates: (...args) => getSyncStatesMock(...args),
 }));
 
 // Avoid importing heavy job graph; keep coverage stable
@@ -48,6 +53,7 @@ function findRoute(path, method) {
 
 beforeEach(() => {
   getJobStatsMock.mockReset();
+  getSyncStatesMock.mockReset();
   isTaxationRunningMock.mockReset();
   runTaxationCheckMock.mockReset();
 });
@@ -56,6 +62,7 @@ test('GET /admin-ops/taxation/status returns metrics', async () => {
   getJobStatsMock.mockResolvedValue({
     taxation: { in_progress: 0, runs: { success: 1, error: 0 } },
   });
+  getSyncStatesMock.mockResolvedValue({ taxation: { lastMode: 'full' } });
   isTaxationRunningMock.mockReturnValue(false);
   const handler = findRoute('/taxation/status', 'get');
   const req = { method: 'GET' };
@@ -64,6 +71,7 @@ test('GET /admin-ops/taxation/status returns metrics', async () => {
   await handler(req, res);
   expect(json).toHaveBeenCalledWith({
     jobs: { taxation: { in_progress: 0, runs: { success: 1, error: 0 } } },
+    states: { taxation: { lastMode: 'full' } },
     running: { taxation: false },
   });
 });

@@ -63,3 +63,30 @@ test('syncExternal upserts active stadiums and soft deletes archived/missing', a
   expect(archivedCall).toBeTruthy();
   expect(archivedCall[1].where.external_id[Op.in]).toEqual([200]);
 });
+
+test('syncExternal incremental uses update_date/create_date for filters and cursor', async () => {
+  const since = new Date('2024-01-01T00:00:00Z');
+  extFindAllMock
+    .mockResolvedValueOnce([
+      {
+        id: 10,
+        name: 'Warmup Arena',
+        update_date: new Date('2024-02-01T12:00:00Z'),
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        id: 11,
+        name: 'Retired Arena',
+        create_date: new Date('2024-01-15T08:00:00Z'),
+      },
+    ]);
+  const result = await groundService.syncExternal({ mode: 'incremental', since });
+  const [activeCall, archiveCall] = extFindAllMock.mock.calls;
+  expect(activeCall[0].attributes).toEqual(
+    expect.arrayContaining(['update_date', 'create_date'])
+  );
+  expect(activeCall[0].where[Op.and]).toHaveLength(2);
+  expect(archiveCall[0].where[Op.and]).toHaveLength(2);
+  expect(result.cursor?.toISOString()).toBe('2024-02-01T12:00:00.000Z');
+});
