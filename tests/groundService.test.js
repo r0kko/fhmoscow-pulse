@@ -81,7 +81,10 @@ test('syncExternal incremental uses update_date/create_date for filters and curs
         create_date: new Date('2024-01-15T08:00:00Z'),
       },
     ]);
-  const result = await groundService.syncExternal({ mode: 'incremental', since });
+  const result = await groundService.syncExternal({
+    mode: 'incremental',
+    since,
+  });
   const [activeCall, archiveCall] = extFindAllMock.mock.calls;
   expect(activeCall[0].attributes).toEqual(
     expect.arrayContaining(['update_date', 'create_date'])
