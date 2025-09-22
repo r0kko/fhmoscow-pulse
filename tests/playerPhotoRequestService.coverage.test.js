@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { Op } from 'sequelize';
 
 const fileUploadMock = jest.fn();
 const fileRemoveMock = jest.fn();
@@ -18,6 +19,7 @@ const photoRequestFindOneMock = jest.fn();
 const photoRequestCreateMock = jest.fn();
 const photoRequestFindByPkMock = jest.fn();
 const photoRequestFindAndCountMock = jest.fn();
+const photoRequestFindAllMock = jest.fn();
 const statusFindOneMock = jest.fn();
 
 const modelsMock = {
@@ -29,6 +31,7 @@ const modelsMock = {
     create: photoRequestCreateMock,
     findByPk: photoRequestFindByPkMock,
     findAndCountAll: photoRequestFindAndCountMock,
+    findAll: photoRequestFindAllMock,
   },
   PlayerPhotoRequestStatus: { findOne: statusFindOneMock },
   Club: {},
@@ -78,6 +81,8 @@ beforeEach(() => {
   }));
   fileUploadMock.mockResolvedValue({ id: 'file-1' });
   fileRemoveMock.mockResolvedValue();
+  photoRequestFindAndCountMock.mockResolvedValue({ count: 0, rows: [] });
+  photoRequestFindAllMock.mockResolvedValue([]);
 });
 
 describe('playerPhotoRequestService.submit', () => {
@@ -104,6 +109,77 @@ describe('playerPhotoRequestService.submit', () => {
       expect.objectContaining({ transaction: txRef })
     );
     expect(result).toEqual({ id: 'req-1' });
+  });
+
+  describe('playerPhotoRequestService.list', () => {
+    test('paginates, hydrates, and applies search', async () => {
+      photoRequestFindAndCountMock.mockResolvedValue({
+        count: 2,
+        rows: [{ id: 'req-2' }, { id: 'req-1' }],
+      });
+      photoRequestFindAllMock.mockResolvedValue([
+        { id: 'req-1', marker: 'first' },
+        { id: 'req-2', marker: 'second' },
+      ]);
+
+      const result = await service.list({ search: 'Иван Петров' });
+
+      expect(photoRequestFindAndCountMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attributes: ['id'],
+          order: [['created_at', 'DESC']],
+        })
+      );
+      const where = photoRequestFindAndCountMock.mock.calls[0][0].where;
+      expect(where).toBeDefined();
+      const literalFilters =
+        where?.[Op.and]?.filter((entry) => entry && entry.val) ||
+        (where && where.val ? [where] : []);
+      const searchClause = literalFilters.find((entry) =>
+        entry.val.includes('FROM players p')
+      );
+      expect(searchClause).toBeDefined();
+      expect(searchClause.val).toContain('LOWER(COALESCE(p.surname');
+      expect(searchClause.val.toLowerCase()).toContain('%иван%');
+
+      expect(photoRequestFindAllMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { [Op.in]: ['req-2', 'req-1'] } },
+        })
+      );
+
+      expect(result.count).toBe(2);
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(25);
+      expect(result.rows.map((row) => row.id)).toEqual(['req-2', 'req-1']);
+    });
+
+    test('supports status filter and empty dataset', async () => {
+      statusFindOneMock.mockResolvedValueOnce({
+        id: 'status-pending',
+        alias: 'pending',
+      });
+      photoRequestFindAndCountMock.mockResolvedValue({ count: 0, rows: [] });
+
+      const result = await service.list({
+        status: 'pending',
+        page: 2,
+        limit: 10,
+      });
+
+      expect(photoRequestFindAndCountMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status_id: 'status-pending' },
+          limit: 10,
+          offset: 10,
+        })
+      );
+      expect(photoRequestFindAllMock).not.toHaveBeenCalled();
+      expect(result.rows).toEqual([]);
+      expect(result.count).toBe(0);
+      expect(result.page).toBe(2);
+      expect(result.pageSize).toBe(10);
+    });
   });
 
   test('throws when player not found', async () => {

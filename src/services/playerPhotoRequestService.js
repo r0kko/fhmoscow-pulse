@@ -41,6 +41,117 @@ async function getStatusByAlias(alias, options = {}) {
   return status;
 }
 
+function escapeLikePattern(value) {
+  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+function quoteLiteral(value) {
+  const str = String(value ?? '');
+  return `'${str.replace(/'/g, '\'\'')}'`;
+}
+
+function normalizeTokens(input) {
+  if (!input) return [];
+  const normalized = String(input)
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 120);
+  if (!normalized) return [];
+  const seen = new Set();
+  const tokens = normalized
+    .split(' ')
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => token.toLowerCase());
+  const result = [];
+  for (const token of tokens) {
+    if (token.length < 2 && !/^\d+$/.test(token)) continue;
+    if (seen.has(token)) continue;
+    seen.add(token);
+    result.push(token);
+  }
+  return result.slice(0, 5);
+}
+
+function buildPlayerSearchClause(rawSearch) {
+  const tokens = normalizeTokens(rawSearch);
+  if (!tokens.length) return null;
+  const clauses = tokens.map((token) => {
+    const pattern = `%${escapeLikePattern(token)}%`;
+    const escapedPattern = quoteLiteral(pattern);
+    const textComparators = ['surname', 'name', 'patronymic']
+      .map(
+        (column) =>
+          `LOWER(COALESCE(p.${column}, '')) LIKE ${escapedPattern} ESCAPE '\\'`
+      )
+      .join(' OR ');
+    const numericComparator = /^\d+$/.test(token)
+      ? ` OR CAST(p.external_id AS TEXT) LIKE ${escapedPattern} ESCAPE '\\'`
+      : '';
+    return `(${textComparators}${numericComparator})`;
+  });
+  return `EXISTS (
+    SELECT 1
+    FROM players p
+    WHERE p.id = "PlayerPhotoRequest"."player_id"
+      AND p.deleted_at IS NULL
+      AND ${clauses.join(' AND ')}
+  )`;
+}
+
+function normalizeIdList(values) {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const raw of values) {
+    if (!raw && raw !== 0) continue;
+    const trimmed = String(raw).trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+  return result;
+}
+
+function toLiteral(value) {
+  if (!value) return null;
+  if (typeof sequelize.literal === 'function') {
+    return sequelize.literal(value);
+  }
+  return { val: value };
+}
+
+function buildClubFilterClause(ids) {
+  const normalized = normalizeIdList(ids);
+  if (!normalized.length) return null;
+  const list = normalized.map((id) => quoteLiteral(id)).join(', ');
+  if (!list) return null;
+  return `EXISTS (
+    SELECT 1
+    FROM club_players cp
+    WHERE cp.player_id = "PlayerPhotoRequest"."player_id"
+      AND cp.deleted_at IS NULL
+      AND cp.club_id IN (${list})
+  )`;
+}
+
+function buildTeamFilterClause(ids) {
+  const normalized = normalizeIdList(ids);
+  if (!normalized.length) return null;
+  const list = normalized.map((id) => quoteLiteral(id)).join(', ');
+  if (!list) return null;
+  return `EXISTS (
+    SELECT 1
+    FROM team_players tp
+    WHERE tp.player_id = "PlayerPhotoRequest"."player_id"
+      AND tp.deleted_at IS NULL
+      AND tp.team_id IN (${list})
+  )`;
+}
+
 async function submit({ actorId, playerId, file, scope = {} }) {
   if (!playerId) {
     throw new ServiceError('player_id_required', 400);
@@ -148,85 +259,139 @@ async function list(options = {}) {
   const statusAlias =
     options.status && options.status !== 'all' ? options.status : null;
 
-  const playerWhere = {};
-  if (options.search) {
-    const term = `%${options.search}%`;
-    playerWhere[Op.or] = [
-      { surname: { [Op.iLike]: term } },
-      { name: { [Op.iLike]: term } },
-      { patronymic: { [Op.iLike]: term } },
-    ];
+  const filterExpressions = [];
+  if (statusAlias) {
+    const status = await getStatusByAlias(statusAlias);
+    filterExpressions.push({ status_id: status.id });
   }
 
-  const include = [
-    {
-      model: Player,
-      as: 'Player',
-      required: true,
-      where: playerWhere,
-      include: [
-        {
-          model: Club,
-          as: 'Clubs',
-          attributes: ['id', 'name'],
-          through: { attributes: [] },
-          required: Boolean(options.clubIds?.length),
-          where: options.clubIds?.length
-            ? { id: { [Op.in]: options.clubIds } }
-            : undefined,
-        },
-        {
-          model: Team,
-          as: 'Teams',
-          attributes: ['id', 'name', 'birth_year'],
-          through: { attributes: [] },
-          required: Boolean(options.teamIds?.length),
-          where: options.teamIds?.length
-            ? { id: { [Op.in]: options.teamIds } }
-            : undefined,
-        },
-        {
-          model: ExtFile,
-          as: 'Photo',
-          attributes: [
-            'id',
-            'external_id',
-            'module',
-            'name',
-            'mime_type',
-            'size',
-            'object_status',
-            'date_create',
-            'date_update',
-          ],
-          required: false,
-        },
-      ],
-    },
-    { model: File, as: 'File' },
-    {
-      model: PlayerPhotoRequestStatus,
-      as: 'Status',
-      required: true,
-      where: statusAlias ? { alias: statusAlias } : undefined,
-    },
-    {
-      model: User,
-      as: 'ReviewedBy',
-      attributes: ['id', 'first_name', 'last_name', 'patronymic'],
-    },
-  ];
+  const searchClause = buildPlayerSearchClause(options.search);
+  if (searchClause) {
+    const literal = toLiteral(searchClause);
+    if (literal) filterExpressions.push(literal);
+  }
 
-  const result = await PlayerPhotoRequest.findAndCountAll({
-    where: {},
-    include,
+  const clubClause = buildClubFilterClause(options.clubIds);
+  if (clubClause) {
+    const literal = toLiteral(clubClause);
+    if (literal) filterExpressions.push(literal);
+  }
+
+  const teamClause = buildTeamFilterClause(options.teamIds);
+  if (teamClause) {
+    const literal = toLiteral(teamClause);
+    if (literal) filterExpressions.push(literal);
+  }
+
+  let where = {};
+  if (filterExpressions.length === 1) {
+    where = filterExpressions[0];
+  } else if (filterExpressions.length > 1) {
+    where = { [Op.and]: filterExpressions };
+  }
+
+  const baseResult = await PlayerPhotoRequest.findAndCountAll({
+    attributes: ['id'],
+    where,
     order: [['created_at', 'DESC']],
     limit,
     offset,
-    distinct: true,
+    distinct: false,
+    subQuery: false,
   });
 
-  return { ...result, page, pageSize: limit };
+  const total =
+    typeof baseResult.count === 'number'
+      ? baseResult.count
+      : Array.isArray(baseResult.count)
+        ? baseResult.count.length
+        : 0;
+
+  const ids = Array.isArray(baseResult.rows)
+    ? baseResult.rows.map((row) => row.id)
+    : [];
+
+  if (!ids.length) {
+    return { rows: [], count: total, page, pageSize: limit };
+  }
+
+  const dataRows = await PlayerPhotoRequest.findAll({
+    where: { id: { [Op.in]: ids } },
+    include: [
+      {
+        model: Player,
+        as: 'Player',
+        required: true,
+        attributes: [
+          'id',
+          'external_id',
+          'surname',
+          'name',
+          'patronymic',
+          'date_of_birth',
+        ],
+        include: [
+          {
+            model: Club,
+            as: 'Clubs',
+            attributes: ['id', 'name'],
+            through: { attributes: [] },
+          },
+          {
+            model: Team,
+            as: 'Teams',
+            attributes: ['id', 'name', 'birth_year'],
+            through: { attributes: [] },
+          },
+          {
+            model: ExtFile,
+            as: 'Photo',
+            attributes: [
+              'id',
+              'external_id',
+              'module',
+              'name',
+              'mime_type',
+              'size',
+              'object_status',
+              'date_create',
+              'date_update',
+            ],
+            required: false,
+          },
+        ],
+      },
+      {
+        model: File,
+        as: 'File',
+        attributes: ['id', 'key', 'original_name', 'mime_type', 'size'],
+      },
+      {
+        model: PlayerPhotoRequestStatus,
+        as: 'Status',
+        attributes: ['id', 'alias', 'name'],
+      },
+      {
+        model: User,
+        as: 'ReviewedBy',
+        attributes: ['id', 'first_name', 'last_name', 'patronymic'],
+      },
+    ],
+  });
+
+  const orderMap = new Map(ids.map((id, index) => [String(id), index]));
+  dataRows.sort((a, b) => {
+    const aIdx = orderMap.get(String(a.id)) ?? 0;
+    const bIdx = orderMap.get(String(b.id)) ?? 0;
+    return aIdx - bIdx;
+  });
+
+  return {
+    rows: dataRows,
+    count: total,
+    page,
+    pageSize: limit,
+  };
 }
 
 async function findById(id, options = {}) {

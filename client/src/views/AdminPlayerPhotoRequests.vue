@@ -6,6 +6,9 @@ import ConfirmModal from '../components/ConfirmModal.vue';
 import Pagination from '../components/Pagination.vue';
 import { apiFetch } from '../api.js';
 
+const MIN_SEARCH_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 350;
+
 const requests = ref([]);
 const total = ref(0);
 const perPage = ref(20);
@@ -20,6 +23,7 @@ const pendingActionId = ref(null);
 
 const statusFilter = ref('pending');
 const search = ref('');
+const searchHint = ref('');
 let searchTimer = null;
 
 const rejectReason = ref('');
@@ -51,13 +55,40 @@ const paginationDisabled = computed(
 );
 
 let skipPageWatch = false;
-let pendingRequestFetch = null;
+let fetchSequence = 0;
+
+function normalizeSearchValue(raw) {
+  return String(raw || '')
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 100);
+}
+
+function isNumericSearchTerm(term) {
+  return /^\d+$/.test(term);
+}
+
+function evaluateSearch(raw) {
+  const normalized = normalizeSearchValue(raw);
+  if (!normalized) {
+    return { normalized: '', effective: '', hint: '' };
+  }
+  if (
+    isNumericSearchTerm(normalized) ||
+    normalized.length >= MIN_SEARCH_LENGTH
+  ) {
+    return { normalized, effective: normalized, hint: '' };
+  }
+  return {
+    normalized,
+    effective: '',
+    hint: `Введите минимум ${MIN_SEARCH_LENGTH} символа`,
+  };
+}
 
 async function fetchRequests({ page = currentPage.value, reset = false } = {}) {
-  if (loading.value || pageLoading.value) {
-    pendingRequestFetch = { page, reset };
-    return;
-  }
+  const fetchId = ++fetchSequence;
   const usePageLoading =
     !reset && requests.value.length > 0 && page !== resolvedPage.value;
   if (usePageLoading) {
@@ -65,6 +96,7 @@ async function fetchRequests({ page = currentPage.value, reset = false } = {}) {
   } else {
     loading.value = true;
     if (reset) requests.value = [];
+    pageLoading.value = false;
   }
   error.value = '';
   try {
@@ -72,9 +104,10 @@ async function fetchRequests({ page = currentPage.value, reset = false } = {}) {
     params.set('page', String(page));
     params.set('limit', String(perPage.value));
     if (statusFilter.value) params.set('status', statusFilter.value);
-    const query = search.value.trim();
-    if (query) params.set('search', query);
+    const { effective } = evaluateSearch(search.value);
+    if (effective) params.set('search', effective);
     const res = await apiFetch(`/player-photo-requests?${params.toString()}`);
+    if (fetchId !== fetchSequence) return;
     const list = Array.isArray(res.requests) ? res.requests : [];
     perPage.value = Number(res.per_page || perPage.value);
     total.value = Number(res.total || 0);
@@ -85,17 +118,14 @@ async function fetchRequests({ page = currentPage.value, reset = false } = {}) {
     skipPageWatch = false;
     requests.value = list;
   } catch (err) {
+    if (fetchId !== fetchSequence) return;
     error.value = err?.message || 'Не удалось загрузить заявки';
   } finally {
-    if (pageLoading.value) {
+    if (fetchId !== fetchSequence) return;
+    if (usePageLoading) {
       pageLoading.value = false;
     } else {
       loading.value = false;
-    }
-    if (pendingRequestFetch) {
-      const args = pendingRequestFetch;
-      pendingRequestFetch = null;
-      void fetchRequests(args);
     }
   }
 }
@@ -112,10 +142,12 @@ function ensureFirstPage() {
 
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
+  const { hint } = evaluateSearch(search.value);
+  searchHint.value = hint;
   searchTimer = setTimeout(() => {
     ensureFirstPage();
     void fetchRequests({ page: 1, reset: true });
-  }, 350);
+  }, SEARCH_DEBOUNCE_MS);
 }
 
 function clearSearch() {
@@ -124,6 +156,7 @@ function clearSearch() {
     searchTimer = null;
   }
   search.value = '';
+  searchHint.value = '';
   ensureFirstPage();
   void fetchRequests({ page: 1, reset: true });
 }
@@ -138,12 +171,6 @@ watch(search, onSearchInput);
 watch(currentPage, (pageValue, previous) => {
   if (skipPageWatch) return;
   if (pageValue === previous) return;
-  if (loading.value || pageLoading.value) {
-    skipPageWatch = true;
-    currentPage.value = previous;
-    skipPageWatch = false;
-    return;
-  }
   void fetchRequests({ page: pageValue });
 });
 
@@ -347,6 +374,13 @@ async function submitReject() {
                   Очистить
                 </button>
               </div>
+              <p
+                v-if="searchHint"
+                class="form-text text-muted mt-1 mb-0"
+                aria-live="polite"
+              >
+                {{ searchHint }}
+              </p>
             </div>
             <div class="filters-group">
               <label
