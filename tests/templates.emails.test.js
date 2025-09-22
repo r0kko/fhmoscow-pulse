@@ -46,8 +46,8 @@ test('match agreement daily digest email renders assign/decide sections', () => 
     tour: '1',
   };
   const { subject, html, text } = renderMatchAgreementDailyDigestEmail({
-    assign: [e],
-    decide: [e],
+    totals: { assign: 1, decide: 1 },
+    teams: [{ teamId: 't1', teamName: 'Команда 1', assign: [e], decide: [e] }],
   });
   expect(subject).toContain('Матчи на согласование');
   expect(html).toContain('Назначить время');

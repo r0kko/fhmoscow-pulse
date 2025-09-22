@@ -449,12 +449,19 @@ export async function sendMatchAgreementReminderEmail(user, event) {
 }
 
 export async function sendMatchAgreementDailyDigestEmail(user, digest) {
+  const itemCount = Array.isArray(digest?.teams)
+    ? digest.teams.reduce(
+        (acc, team) =>
+          acc + (team.assign?.length || 0) + (team.decide?.length || 0),
+        0
+      )
+    : 0;
   await queueMailFromTemplate(
     user,
     renderMatchAgreementDailyDigestEmail,
     [digest],
     'match_digest',
-    { items: Array.isArray(digest) ? digest.length : 0 }
+    { items: itemCount }
   );
 }
 

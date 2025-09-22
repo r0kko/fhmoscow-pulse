@@ -182,7 +182,17 @@ const fixtures = {
   result: { id: 'result1' },
   document: { id: 'doc1' },
   event: { id: 'event1' },
-  digest: [{ id: 'event1' }, { id: 'event2' }],
+  digest: {
+    totals: { assign: 1, decide: 1 },
+    teams: [
+      {
+        teamId: 'team1',
+        teamName: 'Команда 1',
+        assign: [{ matchId: 'match1' }],
+        decide: [{ matchId: 'match2' }],
+      },
+    ],
+  },
 };
 
 const wrapperMatrix = [
@@ -446,7 +456,7 @@ const wrapperMatrix = [
     args: [fixtures.matchDigestUser, fixtures.digest],
     templateArgs: [fixtures.digest],
     purpose: 'match_digest',
-    meta: { items: fixtures.digest.length },
+    meta: { items: 2 },
   },
 ];
 
