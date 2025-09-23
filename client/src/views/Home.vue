@@ -1,7 +1,7 @@
-<script setup>
-import { auth } from '../auth';
+<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { auth, type AuthUser } from '../auth';
 import { apiFetch } from '../api';
 import UpcomingEventCard from '../components/UpcomingEventCard.vue';
 import SkeletonBlock from '../components/SkeletonBlock.vue';
@@ -15,7 +15,52 @@ import {
   hasRole,
 } from '../utils/roles';
 
-const basePreparationSections = [
+type Nullable<T> = T | null | undefined;
+
+interface CourseResponse {
+  course: Nullable<{ id: number; title: string }>;
+}
+
+interface SportSchoolResponse {
+  has_club?: boolean;
+  has_team?: boolean;
+}
+
+interface TrainingGround {
+  address?: { result?: string };
+  yandex_url?: string;
+}
+
+interface UpcomingTraining {
+  id: string | number;
+  start_at: string;
+  ground?: TrainingGround;
+  type?: { online?: boolean };
+  url?: string;
+}
+
+interface UpcomingExam {
+  id: string | number;
+  start_at: string;
+  registration_status?: string;
+  center?: { address?: { result?: string } };
+}
+
+interface UpcomingData {
+  trainings?: UpcomingTraining[];
+  exams?: UpcomingExam[];
+}
+
+interface TileSection {
+  title: string;
+  icon: string;
+  to?: string;
+  referee?: boolean;
+  note?: string;
+  placeholder?: boolean;
+}
+
+const basePreparationSections: TileSection[] = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },
   {
     title: 'Нормативы',
@@ -26,7 +71,7 @@ const basePreparationSections = [
   { title: 'Медосмотр', icon: 'bi-heart-pulse', to: '/medical', referee: true },
 ];
 
-const baseWorkSections = [
+const baseWorkSections: TileSection[] = [
   {
     title: 'Моя занятость',
     icon: 'bi-calendar-week',
@@ -36,11 +81,10 @@ const baseWorkSections = [
   { title: 'Мои назначения', icon: 'bi-calendar-check' },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
-  // Надёжный текстовый fallback-значок рубля
   { title: 'Доходы', icon: 'ruble-icon' },
 ];
 
-const qualificationSection = {
+const qualificationSection: TileSection = {
   title: 'Семинары',
   icon: 'bi-mortarboard',
   to: '/qualification',
@@ -49,40 +93,44 @@ const qualificationSection = {
 const hasCourse = ref(false);
 const canSeePlayers = ref(false);
 const route = useRoute();
-const noticeMessage = computed(() => String(route.query.notice || ''));
+const noticeMessage = computed(() => String(route.query.notice ?? ''));
 
 onMounted(checkCourse);
 onMounted(checkSchoolLinks);
 
-async function checkCourse() {
+async function checkCourse(): Promise<void> {
   try {
-    const data = await apiFetch('/courses/me').catch((e) => {
-      if (e.message === 'Курс не назначен') return null;
-      throw e;
-    });
-    hasCourse.value = !!(data && data.course);
-  } catch (_err) {
+    const data = await apiFetch<CourseResponse>('/courses/me').catch(
+      (error) => {
+        if (error instanceof Error && error.message === 'Курс не назначен') {
+          return null;
+        }
+        throw error;
+      }
+    );
+    hasCourse.value = Boolean(data?.course);
+  } catch {
     hasCourse.value = false;
   }
 }
 
-async function checkSchoolLinks() {
+async function checkSchoolLinks(): Promise<void> {
   // Show players tile only for staff with at least one club/team
   if (!isStaff.value) {
     canSeePlayers.value = false;
     return;
   }
   try {
-    const data = await apiFetch('/users/me/sport-schools');
+    const data = await apiFetch<SportSchoolResponse>('/users/me/sport-schools');
     // Allow entry if user has clubs or teams assigned
     canSeePlayers.value = Boolean(data?.has_club || data?.has_team);
-  } catch (_err) {
+  } catch {
     // Fail closed to avoid exposing empty section
     canSeePlayers.value = false;
   }
 }
 
-const workSections = computed(() => {
+const workSections = computed<TileSection[]>(() => {
   const base = hasCourse.value
     ? [qualificationSection, ...baseWorkSections]
     : baseWorkSections;
@@ -91,7 +139,7 @@ const workSections = computed(() => {
 });
 
 // Раздел управления спортивной школой — формируется только для роли сотрудника СШ
-const schoolSections = computed(() => {
+const schoolSections = computed<TileSection[]>(() => {
   if (!isStaff.value) return [];
   const sections = [
     {
@@ -122,7 +170,7 @@ const schoolSections = computed(() => {
   return sections;
 });
 
-const mediaSections = computed(() => {
+const mediaSections = computed<TileSection[]>(() => {
   if (!isStaff.value || !canSeePlayers.value) return [];
   return [
     {
@@ -133,8 +181,8 @@ const mediaSections = computed(() => {
   ];
 });
 
-const docsSections = computed(() => {
-  const list = [
+const docsSections = computed<TileSection[]>(() => {
+  const list: TileSection[] = [
     { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
     { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
     { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' },
@@ -149,14 +197,17 @@ const isReferee = computed(() => hasRole(auth.roles, REFEREE_ROLES));
 const isStaff = computed(() => hasRole(auth.roles, STAFF_ROLES));
 const isStaffOnly = computed(() => isStaffOnlyHelper(auth.roles));
 const isBrigadeOnly = computed(() => isBrigadeRefereeOnly(auth.roles));
-const preparationSections = computed(() => {
+const preparationSections = computed<TileSection[]>(() => {
   if (isBrigadeOnly.value) return [];
-  return basePreparationSections.filter((s) => !s.referee || isReferee.value);
+  return basePreparationSections.filter(
+    (section) => !section.referee || isReferee.value
+  );
 });
 
 const shortName = computed(() => {
-  if (!auth.user) return '';
-  return [auth.user.first_name].filter(Boolean).join(' ');
+  const user = auth.user as AuthUser | null;
+  if (!user) return '';
+  return [user.first_name].filter(Boolean).join(' ');
 });
 
 const greeting = computed(() => {
@@ -167,7 +218,16 @@ const greeting = computed(() => {
   return 'Доброй ночи';
 });
 
-const upcoming = ref([]);
+interface UpcomingListItem {
+  id: string | number;
+  type: 'training' | 'exam' | 'event';
+  title: string;
+  description: string;
+  startAt: string;
+  link?: string;
+}
+
+const upcoming = ref<UpcomingListItem[]>([]);
 const loadingUpcoming = ref(true);
 const showUpcoming = computed(
   () => loadingUpcoming.value || upcoming.value.length > 0
@@ -175,61 +235,108 @@ const showUpcoming = computed(
 
 onMounted(loadUpcoming);
 
-async function loadUpcoming() {
+function mapTraining(training: UpcomingTraining): UpcomingListItem {
+  const address = training.ground?.address?.result || 'Локация уточняется';
+  return {
+    id: training.id,
+    type: 'training',
+    title: 'Тренировка',
+    description: address,
+    startAt: training.start_at,
+    link: training.ground?.yandex_url,
+  };
+}
+
+function mapExam(exam: UpcomingExam): UpcomingListItem {
+  const address = exam.center?.address?.result || 'Место проведения уточняется';
+  return {
+    id: exam.id,
+    type: 'exam',
+    title: 'Медосмотр',
+    description: `${address} · ${exam.registration_status || 'Заявка'}`,
+    startAt: exam.start_at,
+  };
+}
+
+function mapEvent(event: UpcomingTraining): UpcomingListItem {
+  const isOnline = event.type?.online;
+  const location = isOnline
+    ? 'Онлайн мероприятие'
+    : event.ground?.address?.result || 'Место встречи уточняется';
+  return {
+    id: event.id,
+    type: 'event',
+    title: 'Мероприятие',
+    description: location,
+    startAt: event.start_at,
+    link: event.url,
+  };
+}
+
+async function loadUpcoming(): Promise<void> {
   loadingUpcoming.value = true;
   try {
-    const fetches = [];
+    const fetches: Promise<UpcomingData>[] = [];
     if (!isBrigadeOnly.value) {
-      fetches.push(apiFetch('/camp-trainings/me/upcoming?limit=100'));
-      fetches.push(apiFetch('/medical-exams/me/upcoming?limit=100'));
+      fetches.push(
+        apiFetch<UpcomingData>('/camp-trainings/me/upcoming?limit=100')
+      );
+      fetches.push(
+        apiFetch<UpcomingData>('/medical-exams/me/upcoming?limit=100')
+      );
     }
     fetches.push(
-      apiFetch('/course-trainings/me/upcoming?limit=100').catch(() => ({
-        trainings: [],
-      }))
+      apiFetch<UpcomingData>('/course-trainings/me/upcoming?limit=100').catch(
+        () => ({ trainings: [] })
+      )
     );
     const results = await Promise.all(fetches);
-    const [
-      trainingData = { trainings: [] },
-      examData = { exams: [] },
-      eventData = { trainings: [] },
-    ] =
-      results.length === 3
-        ? results
-        : results.length === 2
-          ? [results[0], { exams: [] }, results[1]]
-          : [{ trainings: [] }, { exams: [] }, { trainings: [] }];
-    const trainings = (trainingData.trainings || []).map((t) => ({
-      ...t,
-      kind: 'training',
-    }));
-    const events = (eventData.trainings || []).map((e) => ({
-      ...e,
-      kind: 'event',
-    }));
-    const exams = (examData.exams || [])
-      .filter(
-        (e) =>
-          e.registration_status === 'APPROVED' ||
-          e.registration_status === 'COMPLETED'
-      )
-      .map((e) => ({
-        ...e,
-        kind: 'exam',
-      }));
-    const now = new Date();
-    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    upcoming.value = [...trainings, ...events, ...exams]
-      .filter((e) => {
-        const start = new Date(e.start_at);
-        return start >= now && start < end;
+    const [trainingData, examData, eventData] = normaliseUpcoming(results);
+    const trainingItems = trainingData.trainings?.map(mapTraining) ?? [];
+    const approvedExams = (examData.exams ?? []).filter((exam) =>
+      ['APPROVED', 'COMPLETED'].includes(exam.registration_status ?? '')
+    );
+    const examItems = approvedExams.map(mapExam);
+    const eventItems = eventData.trainings?.map(mapEvent) ?? [];
+
+    const horizonMs = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const upcomingWindow = now + horizonMs;
+
+    upcoming.value = [...trainingItems, ...eventItems, ...examItems]
+      .filter((item) => {
+        const timestamp = Date.parse(item.startAt);
+        return (
+          Number.isFinite(timestamp) &&
+          timestamp >= now &&
+          timestamp < upcomingWindow
+        );
       })
-      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
-  } catch (_err) {
+      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt))
+      .slice(0, 6);
+  } catch {
     upcoming.value = [];
   } finally {
     loadingUpcoming.value = false;
   }
+}
+
+function normaliseUpcoming(
+  results: UpcomingData[]
+): [UpcomingData, UpcomingData, UpcomingData] {
+  if (results.length === 3) {
+    const [a, b, c] = results;
+    return [a ?? { trainings: [] }, b ?? { exams: [] }, c ?? { trainings: [] }];
+  }
+  if (results.length === 2) {
+    const [a, b] = results;
+    return [a ?? { trainings: [] }, { exams: [] }, b ?? { trainings: [] }];
+  }
+  if (results.length === 1) {
+    const [a] = results;
+    return [a ?? { trainings: [] }, { exams: [] }, { trainings: [] }];
+  }
+  return [{ trainings: [] }, { exams: [] }, { trainings: [] }];
 }
 </script>
 
@@ -267,7 +374,7 @@ async function loadUpcoming() {
           >
             <UpcomingEventCard
               v-for="item in upcoming"
-              :key="item.kind + '-' + item.id"
+              :key="`${item.type}-${item.id}`"
               :event="item"
             />
           </div>

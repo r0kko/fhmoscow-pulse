@@ -1,5 +1,5 @@
 <script setup>
-import { formatMskTimeShort, formatMskDateLong } from '../utils/time.js';
+import { formatMskTimeShort, formatMskDateLong } from '../utils/time';
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

@@ -4,7 +4,7 @@ import {
   toDayKey,
   formatMskDateLong,
   formatMskTimeShort,
-} from '../utils/time.js';
+} from '../utils/time';
 import BaseTile from './BaseTile.vue';
 
 const props = defineProps({

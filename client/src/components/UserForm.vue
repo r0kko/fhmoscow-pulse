@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, watch, ref, computed } from 'vue';
-import { suggestFio, cleanFio } from '../dadata.js';
+import { suggestFio, cleanFio } from '../dadata';
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },

@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { apiFetch } from '../api';
 import Pagination from './Pagination.vue';
-import { formatMinutesSeconds } from '../utils/time.js';
+import { formatMinutesSeconds } from '../utils/time';
 
 const ledger = ref({ judges: [], groups: [] });
 const total = ref(0);

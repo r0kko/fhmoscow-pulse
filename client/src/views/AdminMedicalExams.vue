@@ -1,165 +1,182 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import PageNav from '../components/PageNav.vue';
-import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
+import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time';
 import {
   endAfterStart,
   required,
   nonNegativeNumber,
-} from '../utils/validation.js';
+} from '../utils/validation';
 import InlineError from '../components/InlineError.vue';
+import { useToast } from '../utils/toast';
+import ConfirmModal from '../components/ConfirmModal.vue';
+import { formatRussianPhone } from '../utils/personal';
+import type {
+  AdminMedicalExam,
+  AdminMedicalExamListResponse,
+  AdminMedicalCenter,
+  AdminMedicalCenterListResponse,
+} from '../types/admin';
 
-const exams = ref([]);
+interface ConfirmModalInstance {
+  open: () => void;
+}
+
+interface MedicalExamForm {
+  medical_center_id: string;
+  start_at: string;
+  end_at: string;
+  capacity: string;
+}
+
+const exams = ref<AdminMedicalExam[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
-const pageSize = ref(loadPageSize('adminMedExamsPageSize', 8));
+const pageSize = ref<number>(loadPageSize('adminMedExamsPageSize', 8));
 const isLoading = ref(false);
 const error = ref('');
 
-const centers = ref([]);
-const form = ref({
+const centers = ref<AdminMedicalCenter[]>([]);
+const form = ref<MedicalExamForm>({
   medical_center_id: '',
   start_at: '',
   end_at: '',
   capacity: '',
 });
-const editing = ref(null);
-const modalRef = ref(null);
-let modal;
+const editing = ref<AdminMedicalExam | null>(null);
+const modalRef = ref<HTMLDivElement | null>(null);
+let modal: InstanceType<typeof Modal> | null = null;
 const formError = ref('');
-// Inline validation via shared helpers
-const isCenterMissing = computed(() => !required(form.value.medical_center_id));
+
+const confirmRef = ref<ConfirmModalInstance | null>(null);
+const confirmMessage = ref('');
+let confirmAction: (() => Promise<void>) | null = null;
+
+const { showToast } = useToast();
+const router = useRouter();
+
+const isCenterMissing = computed(
+  () => !required(form.value.medical_center_id)
+);
 const isStartMissing = computed(() => !required(form.value.start_at));
 const isEndMissing = computed(() => !required(form.value.end_at));
-const isOrderInvalid = computed(
-  () => !endAfterStart(form.value.start_at || '', form.value.end_at || '')
+const isOrderInvalid = computed(() =>
+  !endAfterStart(form.value.start_at || '', form.value.end_at || '')
 );
 const isCapacityInvalid = computed(
   () => !nonNegativeNumber(form.value.capacity)
 );
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize.value))
+  Math.max(1, Math.ceil(total.value / Math.max(pageSize.value, 1)))
 );
 
-onMounted(() => {
-  modal = new Modal(modalRef.value);
-  load();
-  loadCenters();
-});
-
-onBeforeUnmount(() => {
-  try {
-    modal?.hide?.();
-    modal?.dispose?.();
-  } catch {}
-});
-
-watch(currentPage, load);
-watch(pageSize, (val) => {
-  currentPage.value = 1;
-  savePageSize('adminMedExamsPageSize', val);
-  load();
-});
-
-function formatDateTime(value) {
+function formatDateTime(value: string | null | undefined): string {
   if (!value) return '';
-  const d = new Date(value);
-  return d.toLocaleString('ru-RU', {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'short',
     timeZone: 'Europe/Moscow',
   });
 }
 
-function formatPhone(digits) {
-  if (!digits) return '';
-  let out = '+7';
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
-  if (digits.length >= 4) out += ') ';
-  if (digits.length >= 4) out += digits.slice(4, 7);
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
-  return out;
+function formatPhone(value: string | null | undefined): string {
+  return formatRussianPhone(value ?? '');
 }
 
-function toInputValue(str) {
-  return toDateTimeLocal(str);
+function toInputValue(value: string | null | undefined): string {
+  return toDateTimeLocal(value ?? '') ?? '';
 }
 
-async function loadCenters() {
+async function loadCenters(): Promise<void> {
   try {
-    const data = await apiFetch('/medical-centers?page=1&limit=100');
-    centers.value = data.centers;
-  } catch (_e) {
+    const data = await apiFetch<AdminMedicalCenterListResponse>(
+      '/medical-centers?page=1&limit=100'
+    );
+    centers.value = data.centers ?? [];
+  } catch {
     centers.value = [];
   }
 }
 
-async function load() {
+async function load(): Promise<void> {
   try {
     isLoading.value = true;
     const params = new URLSearchParams({
-      page: currentPage.value,
-      limit: pageSize.value,
+      page: String(currentPage.value),
+      limit: String(pageSize.value),
     });
-    const data = await apiFetch(`/medical-exams?${params}`);
-    exams.value = data.exams;
-    total.value = data.total;
-  } catch (e) {
-    error.value = e.message;
+    const data = await apiFetch<AdminMedicalExamListResponse>(
+      `/medical-exams?${params}`
+    );
+    exams.value = data.exams ?? [];
+    total.value = Number.isFinite(data.total) ? data.total : 0;
+    error.value = '';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось загрузить';
+    exams.value = [];
+    total.value = 0;
   } finally {
     isLoading.value = false;
   }
 }
 
-function openCreate() {
+function closeFormModal(): void {
+  modal?.hide();
+}
+
+function openCreate(): void {
   editing.value = null;
-  Object.assign(form.value, {
+  form.value = {
     medical_center_id: '',
     start_at: '',
     end_at: '',
     capacity: '',
-  });
+  };
   formError.value = '';
-  modal.show();
+  modal?.show();
 }
 
-function openEdit(exam) {
+function openEdit(exam: AdminMedicalExam): void {
   editing.value = exam;
-  form.value.medical_center_id = exam.center?.id || '';
-  form.value.start_at = toInputValue(exam.start_at);
-  form.value.end_at = toInputValue(exam.end_at);
-  form.value.capacity = exam.capacity || '';
+  form.value = {
+    medical_center_id: exam.center?.id ?? '',
+    start_at: toInputValue(exam.start_at),
+    end_at: toInputValue(exam.end_at),
+    capacity: String(exam.capacity ?? ''),
+  };
   formError.value = '';
-  modal.show();
+  modal?.show();
 }
 
-async function save() {
+async function save(): Promise<void> {
   formError.value = '';
-  const body = {
+  const payload = {
     medical_center_id: form.value.medical_center_id,
-    start_at: fromDateTimeLocal(form.value.start_at),
-    end_at: fromDateTimeLocal(form.value.end_at),
+    start_at: fromDateTimeLocal(form.value.start_at) || '',
+    end_at: fromDateTimeLocal(form.value.end_at) || '',
     capacity: form.value.capacity,
   };
-  if (!body.medical_center_id) {
+
+  if (!payload.medical_center_id) {
     formError.value = 'Выберите медицинский центр';
     return;
   }
-  if (!body.start_at) {
+  if (!payload.start_at) {
     formError.value = 'Укажите дату и время начала';
     return;
   }
-  if (!body.end_at) {
+  if (!payload.end_at) {
     formError.value = 'Укажите дату и время окончания';
     return;
   }
-  if (new Date(body.end_at) < new Date(body.start_at)) {
+  if (new Date(payload.end_at) < new Date(payload.start_at)) {
     formError.value = 'Время окончания должно быть позже начала';
     return;
   }
@@ -167,40 +184,75 @@ async function save() {
     formError.value = 'Вместимость должна быть неотрицательным числом';
     return;
   }
+
   try {
     if (editing.value) {
       await apiFetch(`/medical-exams/${editing.value.id}`, {
         method: 'PUT',
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
+      showToast('Запись обновлена');
     } else {
       await apiFetch('/medical-exams', {
         method: 'POST',
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
+      showToast('Запись добавлена');
     }
-    modal.hide();
+    closeFormModal();
     await load();
-  } catch (e) {
-    formError.value = e.message || 'Не удалось сохранить';
+  } catch (err) {
+    formError.value = err instanceof Error ? err.message : 'Не удалось сохранить';
   }
 }
 
-async function removeExam(exam) {
-  if (!confirm('Удалить запись?')) return;
-  try {
-    await apiFetch(`/medical-exams/${exam.id}`, { method: 'DELETE' });
-    await load();
-  } catch (e) {
-    alert(e.message);
-  }
+function confirmRemove(exam: AdminMedicalExam): void {
+  confirmMessage.value = 'Удалить запись медосмотра?';
+  confirmAction = async () => {
+    try {
+      await apiFetch(`/medical-exams/${exam.id}`, { method: 'DELETE' });
+      showToast('Запись удалена');
+      await load();
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : 'Не удалось удалить запись'
+      );
+    }
+  };
+  confirmRef.value?.open();
 }
 
-const router = useRouter();
+function onConfirm(): void {
+  const action = confirmAction;
+  confirmAction = null;
+  if (action) void action();
+}
 
-function openRegistrations(exam) {
+function openRegistrations(exam: AdminMedicalExam): void {
   router.push(`/admin/medical-exams/${exam.id}/registrations`);
 }
+
+onMounted(() => {
+  modal = new Modal(modalRef.value);
+  void load();
+  void loadCenters();
+});
+
+onBeforeUnmount(() => {
+  modal?.hide();
+  modal?.dispose();
+  modal = null;
+});
+
+watch(currentPage, () => {
+  void load();
+});
+
+watch(pageSize, (val) => {
+  currentPage.value = 1;
+  savePageSize('adminMedExamsPageSize', val);
+  void load();
+});
 </script>
 
 <template>
@@ -259,7 +311,7 @@ function openRegistrations(exam) {
                   <button
                     class="btn btn-sm btn-danger"
                     aria-label="Удалить запись"
-                    @click="removeExam(ex)"
+                    @click="confirmRemove(ex)"
                   >
                     <i class="bi bi-trash"></i>
                   </button>
@@ -295,7 +347,7 @@ function openRegistrations(exam) {
                 <button
                   class="btn btn-sm btn-danger"
                   aria-label="Удалить запись"
-                  @click="removeExam(ex)"
+                  @click="confirmRemove(ex)"
                 >
                   <i class="bi bi-trash"></i>
                 </button>
@@ -333,7 +385,7 @@ function openRegistrations(exam) {
               <button
                 type="button"
                 class="btn-close"
-                @click="modal.hide()"
+                @click="closeFormModal"
               ></button>
             </div>
             <div class="modal-body">
@@ -412,7 +464,7 @@ function openRegistrations(exam) {
               <button
                 type="button"
                 class="btn btn-secondary"
-                @click="modal.hide()"
+                @click="closeFormModal"
               >
                 Отмена
               </button>
@@ -423,6 +475,15 @@ function openRegistrations(exam) {
       </div>
     </div>
   </div>
+
+  <ConfirmModal
+    ref="confirmRef"
+    confirm-text="Удалить"
+    confirm-variant="danger"
+    @confirm="onConfirm"
+  >
+    <p class="mb-0">{{ confirmMessage }}</p>
+  </ConfirmModal>
 </template>
 
 <style scoped>

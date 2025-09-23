@@ -7,8 +7,8 @@ import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import InlineError from '../components/InlineError.vue';
 import TabSelector from '../components/TabSelector.vue';
-import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
-import { endAfterStart, required } from '../utils/validation.js';
+import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time';
+import { endAfterStart, required } from '../utils/validation';
 
 const activeTab = ref('assign');
 

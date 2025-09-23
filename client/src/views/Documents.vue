@@ -16,7 +16,7 @@ import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
 import PageNav from '../components/PageNav.vue';
 import DocumentSignModal from '../components/DocumentSignModal.vue';
 import { useToast } from '../utils/toast';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import BaseTile from '../components/BaseTile.vue';
 import { auth } from '../auth';
 import { hasRole, REFEREE_ROLES } from '../utils/roles';

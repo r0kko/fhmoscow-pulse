@@ -7,7 +7,7 @@ import './brand.css';
 import './mobile.css';
 import { refreshFromCookie } from './auth';
 import { initCsrf } from './api';
-import edgeFade from './utils/edgeFade.js';
+import edgeFade from './utils/edgeFade';
 
 initCsrf()
   .catch(() => {})

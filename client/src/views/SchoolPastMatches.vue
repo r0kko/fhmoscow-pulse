@@ -5,8 +5,8 @@ import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
 import PageNav from '../components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
-import { toDayKey } from '../utils/time.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
+import { toDayKey } from '../utils/time';
 
 const matches = ref([]);
 const loading = ref(false);

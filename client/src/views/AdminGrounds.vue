@@ -11,12 +11,12 @@ import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { useToast } from '../utils/toast';
 import { apiFetch } from '../api';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import PageNav from '../components/PageNav.vue';
-import { suggestAddress, cleanAddress } from '../dadata.js';
+import { suggestAddress, cleanAddress } from '../dadata';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import GroundFiltersModal from '../components/GroundFiltersModal.vue';
-import { withHttp } from '../utils/url.js';
+import { withHttp } from '../utils/url';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 

@@ -7,7 +7,7 @@ import {
   isMskMidnight,
   toDateTimeLocal,
   fromDateTimeLocal,
-} from '../utils/time.js';
+} from '../utils/time';
 import InfoItem from '../components/InfoItem.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import AgreementTimeline from '../components/AgreementTimeline.vue';

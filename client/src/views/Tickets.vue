@@ -3,7 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 
 const tickets = ref([]);
 const loading = ref(true);

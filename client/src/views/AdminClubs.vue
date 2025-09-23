@@ -5,7 +5,7 @@ import { useToast } from '../utils/toast';
 import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 
 const clubs = ref([]);
 const total = ref(0);

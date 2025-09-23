@@ -4,7 +4,7 @@ import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { useRoute, useRouter } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import { apiFetch } from '../api';
 import TabSelector from '../components/TabSelector.vue';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';

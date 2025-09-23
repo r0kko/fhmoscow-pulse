@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import { formatMinutesSeconds } from '../utils/time.js';
+import { formatMinutesSeconds } from '../utils/time';
 
 const modalRef = ref(null);
 let modal;

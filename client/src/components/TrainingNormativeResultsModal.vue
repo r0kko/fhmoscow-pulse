@@ -2,7 +2,7 @@
 import { ref, reactive, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import { formatMinutesSeconds } from '../utils/time.js';
+import { formatMinutesSeconds } from '../utils/time';
 
 const props = defineProps({
   trainingId: { type: String, required: true },

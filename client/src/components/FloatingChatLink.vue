@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { withHttp } from '../utils/url.js';
+import { withHttp } from '../utils/url';
 
 const props = defineProps({
   url: { type: String, default: '' },

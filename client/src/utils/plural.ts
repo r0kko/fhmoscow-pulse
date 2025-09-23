@@ -1,4 +1,4 @@
-export function pluralize(n, forms) {
+export function pluralize(n: number, forms: [string, string, string]): string {
   const abs = Math.abs(n);
   const lastTwo = abs % 100;
   const last = abs % 10;

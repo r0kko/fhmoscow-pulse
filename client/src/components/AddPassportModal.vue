@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { cleanPassport, suggestFmsUnit } from '../dadata.js';
+import { cleanPassport, suggestFmsUnit } from '../dadata';
 
 const props = defineProps({
   user: { type: Object, default: null },

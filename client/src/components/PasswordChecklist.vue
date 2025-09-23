@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { evaluatePassword } from '../utils/passwordPolicy.js';
+import { evaluatePassword } from '../utils/passwordPolicy';
 
 const props = defineProps({
   password: { type: String, default: '' },

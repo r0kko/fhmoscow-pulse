@@ -1,46 +1,56 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 
-const props = defineProps({
-  title: { type: String, default: 'Подтверждение' },
-  confirmText: { type: String, default: 'Подтвердить' },
-  cancelText: { type: String, default: 'Отмена' },
-  confirmVariant: { type: String, default: 'danger' },
-});
+const props = withDefaults(
+  defineProps<{
+    title?: string;
+    confirmText?: string;
+    cancelText?: string;
+    confirmVariant?: string;
+  }>(),
+  {
+    title: 'Подтверждение',
+    confirmText: 'Подтвердить',
+    cancelText: 'Отмена',
+    confirmVariant: 'danger',
+  }
+);
 
-const emit = defineEmits(['confirm', 'cancel']);
+const emit = defineEmits<{
+  (e: 'confirm'): void;
+  (e: 'cancel'): void;
+}>();
 
-const el = ref(null);
-let instance;
+const el = ref<HTMLDivElement | null>(null);
+let instance: InstanceType<typeof Modal> | null = null;
 
 onMounted(() => {
   instance = new Modal(el.value, { backdrop: 'static' });
 });
 
 onBeforeUnmount(() => {
-  try {
-    instance?.hide();
-  } catch (_) {}
-  instance = undefined;
+  instance?.hide();
+  instance?.dispose();
+  instance = null;
 });
 
-function open() {
+function open(): void {
   instance?.show();
 }
 
-function close() {
+function close(): void {
   instance?.hide();
 }
 
 defineExpose({ open, close });
 
-function onConfirm() {
+function onConfirm(): void {
   emit('confirm');
   close();
 }
 
-function onCancel() {
+function onCancel(): void {
   emit('cancel');
   close();
 }

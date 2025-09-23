@@ -6,7 +6,7 @@ import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import TeamFiltersModal from '../components/TeamFiltersModal.vue';
 import { apiFetch } from '../api';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 
 const teams = ref([]);
 const total = ref(0);

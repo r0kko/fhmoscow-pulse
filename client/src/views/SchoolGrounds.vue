@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
-import { withHttp } from '../utils/url.js';
+import { withHttp } from '../utils/url';
 import yandexLogo from '../assets/yandex-maps.svg';
 import metroIcon from '../assets/metro.svg';
 

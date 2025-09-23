@@ -11,7 +11,7 @@ import {
   fromDateTimeLocal,
   formatKickoff,
   isMskMidnight,
-} from '../utils/time.js';
+} from '../utils/time';
 import InfoItem from '../components/InfoItem.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import AgreementTimeline from '../components/AgreementTimeline.vue';

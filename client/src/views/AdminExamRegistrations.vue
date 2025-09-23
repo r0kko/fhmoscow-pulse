@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apiFetch, apiFetchBlob } from '../api';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import PageNav from '../components/PageNav.vue';
 
 const route = useRoute();

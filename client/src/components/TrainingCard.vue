@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { typeBadgeClass as badgeClass } from '../utils/training.js';
+import { typeBadgeClass as badgeClass } from '../utils/training';
 
 function shortName(u) {
   const initials = [u.first_name, u.patronymic]

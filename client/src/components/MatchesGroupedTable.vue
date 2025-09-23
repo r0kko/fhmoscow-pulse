@@ -4,7 +4,7 @@ import {
   toDayKey,
   formatMskDateLong,
   formatMskTimeShort,
-} from '../utils/time.js';
+} from '../utils/time';
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

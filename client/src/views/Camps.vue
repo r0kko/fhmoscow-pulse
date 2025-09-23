@@ -7,9 +7,9 @@ import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 import { useToast } from '../utils/toast';
 import Tooltip from 'bootstrap/js/dist/tooltip';
-import { withHttp } from '../utils/url.js';
+import { withHttp } from '../utils/url';
 import PageNav from '../components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import TabSelector from '../components/TabSelector.vue';
 
 const selectedDates = ref({});

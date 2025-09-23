@@ -1,34 +1,76 @@
-<script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 
-const props = defineProps({
-  userId: { type: String, default: null },
-  editable: { type: Boolean, default: true },
-  showOkved: { type: Boolean, default: true },
-  modalOnly: { type: Boolean, default: false },
-});
+interface TaxationType {
+  name?: string | null;
+}
 
-const taxation = ref(null);
+interface TaxationStatuses {
+  dadata: number | null;
+  fns: number | null;
+}
+
+interface TaxationRecord {
+  id?: string;
+  type?: TaxationType | null;
+  check_date?: string | null;
+  registration_date?: string | null;
+  ogrn?: string | null;
+  okved?: string | null;
+}
+
+interface TaxationResponse {
+  taxation: TaxationRecord | null;
+}
+
+interface TaxationPreview extends TaxationRecord {
+  statuses?: TaxationStatuses | null;
+}
+
+interface TaxationCheckResponse {
+  preview: TaxationPreview;
+}
+
+type CheckSource = 'all' | 'dadata' | 'fns';
+
+const props = withDefaults(
+  defineProps<{
+    userId?: string | null;
+    editable?: boolean;
+    showOkved?: boolean;
+    modalOnly?: boolean;
+  }>(),
+  {
+    userId: null,
+    editable: true,
+    showOkved: true,
+    modalOnly: false,
+  }
+);
+
+const taxation = ref<TaxationRecord | null>(null);
 const error = ref('');
 const loading = ref(false);
-const modalRef = ref(null);
-let modal;
-const preview = ref(null);
-const checkStatus = ref('');
+const modalRef = ref<HTMLDivElement | null>(null);
+let modal: InstanceType<typeof Modal> | null = null;
+const preview = ref<TaxationPreview | null>(null);
+const checkStatus = ref<'pending' | 'success' | 'error' | ''>('');
 const checkError = ref('');
-const statuses = ref({ dadata: null, fns: null });
+const statuses = ref<TaxationStatuses>({ dadata: null, fns: null });
 
-const emit = defineEmits(['saved']);
+const emit = defineEmits<{
+  (e: 'saved', taxation: TaxationRecord | null): void;
+}>();
 
-function statusIcon(code) {
+function statusIcon(code: number | null | undefined): string {
   if (code === 200) return 'bi-check-circle text-success';
   if (code) return 'bi-exclamation-circle text-danger';
   return 'bi-question-circle text-muted';
 }
 
-function statusText(code) {
+function statusText(code: number | null | undefined): string {
   if (code === 200) return 'OK';
   if (code) return 'Error';
   return '—';
@@ -38,82 +80,98 @@ const canSave = computed(
   () => statuses.value.dadata === 200 && statuses.value.fns === 200
 );
 
-function formatDate(str) {
+function formatDate(str?: string | null): string {
   if (!str) return '';
   const [y, m, d] = str.split('-');
+  if (!y || !m || !d) return str;
   return `${d}.${m}.${y}`;
 }
 
-async function load() {
+async function load(): Promise<void> {
   loading.value = true;
   error.value = '';
   try {
     const path = props.userId
       ? `/users/${props.userId}/taxation`
       : '/taxations/me';
-    const data = await apiFetch(path);
+    const data = await apiFetch<TaxationResponse>(path);
     taxation.value = data.taxation;
   } catch (e) {
     taxation.value = null;
-    error.value = e.message;
+    error.value = e instanceof Error ? e.message : String(e);
   } finally {
     loading.value = false;
   }
 }
 
-function openModal() {
-  if (!props.editable) return;
+function resetCheckState(): void {
   preview.value = null;
   checkStatus.value = '';
   checkError.value = '';
   statuses.value = { dadata: null, fns: null };
-  modal.show();
-  runCheck();
 }
 
-async function runCheck(source = 'all') {
+function openModal(): void {
+  if (!props.editable) return;
+  resetCheckState();
+  modal?.show();
+  void runCheck();
+}
+
+async function runCheck(source: CheckSource = 'all'): Promise<void> {
+  if (!props.editable) return;
   checkStatus.value = 'pending';
   const path = props.userId
     ? `/users/${props.userId}/taxation/check`
     : '/taxations/me/check';
-  const url = source && source !== 'all' ? `${path}?source=${source}` : path;
+  const url = source !== 'all' ? `${path}?source=${source}` : path;
   try {
-    const data = await apiFetch(url, { method: 'POST' });
+    const data = await apiFetch<TaxationCheckResponse>(url, { method: 'POST' });
     preview.value = data.preview;
-    statuses.value = data.preview.statuses || { dadata: null, fns: null };
+    statuses.value = data.preview.statuses ?? { dadata: null, fns: null };
     checkStatus.value = 'success';
   } catch (e) {
     checkStatus.value = 'error';
-    checkError.value = e.message;
+    checkError.value = e instanceof Error ? e.message : String(e);
   }
 }
 
-async function save() {
+async function save(): Promise<void> {
   if (!props.editable) return;
   const path = props.userId
     ? `/users/${props.userId}/taxation`
     : '/taxations/me';
   try {
-    const data = await apiFetch(path, { method: 'POST' });
+    const data = await apiFetch<TaxationResponse>(path, { method: 'POST' });
     taxation.value = data.taxation;
     emit('saved', data.taxation);
-    modal.hide();
+    modal?.hide();
   } catch (e) {
-    checkError.value = e.message;
+    checkError.value = e instanceof Error ? e.message : String(e);
   }
+}
+
+function hideModal(): void {
+  modal?.hide();
 }
 
 onMounted(() => {
   if (props.editable) {
     modal = new Modal(modalRef.value);
   }
-  load();
+  void load();
+});
+
+onBeforeUnmount(() => {
+  modal?.hide();
+  modal?.dispose();
+  modal = null;
 });
 
 watch(
   () => props.userId,
   () => {
-    load();
+    void load();
   }
 );
 
@@ -250,7 +308,7 @@ defineExpose({ openModal });
             type="button"
             class="btn-close"
             aria-label="Закрыть"
-            @click="modal.hide()"
+            @click="hideModal"
           ></button>
         </div>
         <div class="modal-body">
@@ -346,7 +404,7 @@ defineExpose({ openModal });
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="modal.hide()">
+          <button type="button" class="btn btn-secondary" @click="hideModal">
             Отмена
           </button>
           <button

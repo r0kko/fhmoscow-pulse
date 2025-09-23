@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch, apiFetchForm } from '../api';
-import { findOrganizationByInn } from '../dadata.js';
+import { findOrganizationByInn } from '../dadata';
 
 const judges = ref([]);
 const judgesLoading = ref(false);

@@ -5,9 +5,9 @@ import { apiFetch } from '../api';
 import { auth } from '../auth';
 import UserForm from '../components/UserForm.vue';
 import PassportForm from '../components/PassportForm.vue';
-import { cleanPassport, findBankByBic } from '../dadata.js';
-import { isValidInn, isValidSnils, formatSnils } from '../utils/personal.js';
-import { isValidAccountNumber } from '../utils/bank.js';
+import { cleanPassport, findBankByBic } from '../dadata';
+import { isValidInn, isValidSnils, formatSnils } from '../utils/personal';
+import { isValidAccountNumber } from '../utils/bank';
 
 function calculateValidUntil(birthDate, issueDate) {
   if (!birthDate || !issueDate) return '';

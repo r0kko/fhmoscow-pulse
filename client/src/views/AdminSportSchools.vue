@@ -6,7 +6,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import PageNav from '../components/PageNav.vue';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 
 const { showToast } = useToast();
 

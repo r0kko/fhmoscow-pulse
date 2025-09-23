@@ -3,7 +3,7 @@ import { ref, onMounted, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import Pagination from './Pagination.vue';
 import { apiFetch } from '../api';
-import { formatMinutesSeconds } from '../utils/time.js';
+import { formatMinutesSeconds } from '../utils/time';
 
 const types = ref([]);
 const total = ref(0);

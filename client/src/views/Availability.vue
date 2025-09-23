@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api';
-import { MOSCOW_TZ } from '../utils/time.js';
+import { MOSCOW_TZ } from '../utils/time';
 
 const days = ref([]);
 const original = ref([]);

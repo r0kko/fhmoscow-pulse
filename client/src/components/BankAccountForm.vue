@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import { findBankByBic } from '../dadata.js';
-import { isValidAccountNumber } from '../utils/bank.js';
+import { findBankByBic } from '../dadata';
+import { isValidAccountNumber } from '../utils/bank';
 
 const props = defineProps({ userId: { type: String, required: true } });
 

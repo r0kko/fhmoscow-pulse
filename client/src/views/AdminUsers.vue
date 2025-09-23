@@ -1,8 +1,15 @@
-<script setup>
-import { ref, onMounted, watch, computed, nextTick } from 'vue';
-import { useRouter, RouterLink } from 'vue-router';
+<script setup lang="ts">
+import {
+  ref,
+  onMounted,
+  watch,
+  computed,
+  nextTick,
+  onBeforeUnmount,
+} from 'vue';
+import { useRouter } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
 import TaxationInfo from '../components/TaxationInfo.vue';
@@ -10,14 +17,35 @@ import ConfirmModal from '../components/ConfirmModal.vue';
 import UsersFilterModal from '../components/UsersFilterModal.vue';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import TabSelector from '../components/TabSelector.vue';
+import type {
+  AdminUserSummary,
+  AdminUsersResponse,
+  AdminProfileCompletion,
+  AdminProfileCompletionResponse,
+  UserRoleOption,
+  RolesResponse,
+} from '../types/admin';
 
-const users = ref([]);
+type AdminTabKey = 'users' | 'profiles';
+type SortField = 'last_name' | 'phone' | 'email' | 'birth_date' | 'status';
+type SortOrder = 'asc' | 'desc';
+type BulkAction = 'block' | 'unblock' | 'approve';
+
+interface TaxationInfoInstance {
+  openModal: () => void;
+}
+
+interface ConfirmModalInstance {
+  open: () => void;
+}
+
+const users = ref<AdminUserSummary[]>([]);
 const total = ref(0);
 const error = ref('');
 const router = useRouter();
 
-const activeTab = ref('users');
-const completion = ref([]);
+const activeTab = ref<AdminTabKey>('users');
+const completion = ref<AdminProfileCompletion[]>([]);
 const completionLoading = ref(false);
 const completionError = ref('');
 
@@ -26,72 +54,135 @@ const search = ref('');
 const statusFilter = ref('');
 const roleFilter = ref('');
 const currentPage = ref(1);
-const pageSize = ref(loadPageSize('adminUsersPageSize', 8));
-const roles = ref([]);
-const sortField = ref('last_name');
-const sortOrder = ref('asc');
-const selected = ref(new Set());
+const pageSize = ref<number>(loadPageSize('adminUsersPageSize', 8));
+const roles = ref<UserRoleOption[]>([]);
+const sortField = ref<SortField>('last_name');
+const sortOrder = ref<SortOrder>('asc');
+const selected = ref<Set<string>>(new Set());
 
 const { showToast } = useToast();
 
-const taxModal = ref(null);
+const taxModal = ref<TaxationInfoInstance | null>(null);
 const taxUserId = ref('');
 
-// Confirm modal state
-const confirmRef = ref(null);
+const confirmRef = ref<ConfirmModalInstance | null>(null);
 const confirmTitle = ref('Подтверждение');
 const confirmMessage = ref('');
-let confirmAction = null;
+let confirmAction: (() => Promise<void>) | null = null;
 
-// Filters modal state
 const filtersOpen = ref(false);
 
-// Count only actual filters (exclude search, which is a separate control)
 const activeFiltersCount = computed(() => {
-  let c = 0;
-  if (statusFilter.value) c++;
-  if (roleFilter.value) c++;
-  return c;
+  let count = 0;
+  if (statusFilter.value) count += 1;
+  if (roleFilter.value) count += 1;
+  return count;
 });
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize.value))
+  Math.max(1, Math.ceil(total.value / Math.max(pageSize.value, 1)))
 );
 
 const anySelected = computed(() => selected.value.size > 0);
-const allSelectedOnPage = computed({
+const allSelectedOnPage = computed<boolean>({
   get() {
     return users.value.length > 0 && selected.value.size === users.value.length;
   },
-  set(val) {
+  set(val: boolean) {
     selected.value = new Set(val ? users.value.map((u) => u.id) : []);
   },
 });
 
-// Pagination visible pages handled by Pagination.vue
+type TooltipInstance = InstanceType<typeof Tooltip>;
+const tooltipInstances: TooltipInstance[] = [];
 
-async function loadRoles() {
+function disposeTooltips(): void {
+  tooltipInstances.splice(0).forEach((instance) => {
+    try {
+      instance.dispose();
+    } catch {
+      /* noop */
+    }
+  });
+}
+
+function applyTooltips(): void {
+  nextTick(() => {
+    if (typeof document === 'undefined') return;
+    disposeTooltips();
+    document
+      .querySelectorAll<HTMLElement>('[data-bs-toggle="tooltip"]')
+      .forEach((el) => {
+        tooltipInstances.push(new Tooltip(el));
+      });
+  });
+}
+
+async function loadRoles(): Promise<void> {
   try {
-    const data = await apiFetch('/roles');
-    roles.value = data.roles;
-  } catch (_e) {
+    const data = await apiFetch<RolesResponse>('/roles');
+    roles.value = data.roles ?? [];
+  } catch {
     roles.value = [];
   }
 }
 
-let searchTimeout;
+async function loadUsers(): Promise<void> {
+  error.value = '';
+  isLoading.value = true;
+  try {
+    const params = new URLSearchParams({
+      search: search.value,
+      status: statusFilter.value,
+      role: roleFilter.value,
+      page: String(currentPage.value),
+      limit: String(pageSize.value),
+      sort: sortField.value,
+      order: sortOrder.value,
+    });
+    const data = await apiFetch<AdminUsersResponse>(`/users?${params}`);
+    users.value = data.users ?? [];
+    total.value = Number.isFinite(data.total) ? data.total : 0;
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e);
+    users.value = [];
+    total.value = 0;
+  } finally {
+    isLoading.value = false;
+    applyTooltips();
+  }
+}
+
+async function loadCompletion(): Promise<void> {
+  completionError.value = '';
+  completionLoading.value = true;
+  try {
+    const data = await apiFetch<AdminProfileCompletionResponse>(
+      '/users/profile-completion'
+    );
+    completion.value = data.profiles ?? [];
+  } catch (e) {
+    completionError.value = e instanceof Error ? e.message : String(e);
+    completion.value = [];
+  } finally {
+    completionLoading.value = false;
+  }
+}
+
+// Debounced search watcher
+let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 watch(search, () => {
-  clearTimeout(searchTimeout);
+  if (searchTimeout) clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     currentPage.value = 1;
-    loadUsers();
+    void loadUsers();
     syncQuery();
   }, 300);
 });
 
 watch([sortField, sortOrder, statusFilter, roleFilter, pageSize], () => {
   currentPage.value = 1;
-  loadUsers();
+  void loadUsers();
   syncQuery();
 });
 
@@ -100,80 +191,53 @@ watch(pageSize, (val) => {
 });
 
 watch(currentPage, () => {
-  loadUsers();
+  void loadUsers();
   syncQuery();
 });
 
 watch(activeTab, (tab) => {
-  if (
-    tab === 'profiles' &&
-    completion.value.length === 0 &&
-    !completionLoading.value
-  ) {
-    loadCompletion();
+  if (tab === 'profiles' && completion.value.length === 0 && !completionLoading.value) {
+    void loadCompletion();
   }
   syncQuery();
 });
 
-async function loadUsers() {
-  try {
-    const params = new URLSearchParams({
-      search: search.value,
-      status: statusFilter.value,
-      role: roleFilter.value,
-      page: currentPage.value,
-      limit: pageSize.value,
-      sort: sortField.value,
-      order: sortOrder.value,
-    });
-    isLoading.value = true;
-    const data = await apiFetch(`/users?${params}`);
-    users.value = data.users;
-    total.value = data.total;
-  } catch (e) {
-    error.value = e.message;
-  } finally {
-    isLoading.value = false;
-  }
-  await nextTick();
-  applyTooltips();
-}
-
-async function loadCompletion() {
-  try {
-    completionLoading.value = true;
-    const data = await apiFetch('/users/profile-completion');
-    completion.value = data.profiles;
-  } catch (e) {
-    completionError.value = e.message;
-  } finally {
-    completionLoading.value = false;
-  }
-}
+watch(users, () => {
+  selected.value = new Set();
+});
 
 onMounted(() => {
-  // Initialize from URL query for shareable state
   try {
     const q = router.currentRoute.value.query;
     if (q.tab && (q.tab === 'users' || q.tab === 'profiles'))
-      activeTab.value = q.tab;
+      activeTab.value = q.tab as AdminTabKey;
     if (q.search) search.value = String(q.search);
     if (q.status) statusFilter.value = String(q.status);
     if (q.role) roleFilter.value = String(q.role);
     if (q.page) currentPage.value = Number(q.page) || 1;
     if (q.limit) pageSize.value = Number(q.limit) || pageSize.value;
-    if (q.sort) sortField.value = String(q.sort);
-    if (q.order) sortOrder.value = String(q.order) === 'desc' ? 'desc' : 'asc';
-  } catch (_) {}
+    if (q.sort && ['last_name', 'phone', 'email', 'birth_date', 'status'].includes(String(q.sort))) {
+      sortField.value = String(q.sort) as SortField;
+    }
+    if (q.order) {
+      sortOrder.value = String(q.order) === 'desc' ? 'desc' : 'asc';
+    }
+  } catch {
+    /* ignore malformed query */
+  }
 
-  loadUsers();
-  loadRoles();
-  if (activeTab.value === 'profiles') loadCompletion();
+  void loadUsers();
+  void loadRoles();
+  if (activeTab.value === 'profiles') void loadCompletion();
   applyTooltips();
 });
 
-// Keep URL query in sync without spamming history
-function syncQuery() {
+onBeforeUnmount(() => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  disposeTooltips();
+});
+
+function syncQuery(): void {
   router.replace({
     query: {
       tab: activeTab.value,
@@ -188,50 +252,50 @@ function syncQuery() {
   });
 }
 
-function applyTooltips() {
-  nextTick(() => {
-    document
-      .querySelectorAll('[data-bs-toggle="tooltip"]')
-      .forEach((el) => new Tooltip(el));
-  });
-}
-
-function openFilters() {
+function openFilters(): void {
   filtersOpen.value = true;
 }
-function onFiltersApply({ status: st, role: rl }) {
+
+function onFiltersApply({
+  status: st,
+  role: rl,
+}: {
+  status: string;
+  role: string;
+}): void {
   filtersOpen.value = false;
   statusFilter.value = st;
   roleFilter.value = rl;
   currentPage.value = 1;
-  loadUsers();
+  void loadUsers();
   syncQuery();
 }
-function onFiltersReset() {
+
+function onFiltersReset(): void {
   filtersOpen.value = false;
   resetFilters();
 }
 
-function openCreate() {
-  router.push('/admin/users/new');
+function openCreate(): void {
+  void router.push('/admin/users/new');
 }
 
-function openEdit(user) {
-  router.push(`/admin/users/${user.id}`);
+function openEdit(user: AdminUserSummary): void {
+  void router.push(`/admin/users/${user.id}`);
 }
 
-function openTaxStatus(id) {
+function openTaxStatus(id: string): void {
   taxUserId.value = id;
   nextTick(() => {
-    taxModal.value.openModal();
+    taxModal.value?.openModal();
   });
 }
 
-async function onTaxSaved() {
+async function onTaxSaved(): Promise<void> {
   await loadCompletion();
 }
 
-async function blockUser(id) {
+async function blockUser(id: string): Promise<void> {
   confirmTitle.value = 'Блокировка пользователя';
   confirmMessage.value = 'Вы уверены, что хотите заблокировать пользователя?';
   confirmAction = async () => {
@@ -240,13 +304,14 @@ async function blockUser(id) {
       showToast('Пользователь заблокирован');
       await loadUsers();
     } catch (e) {
-      showToast(e.message || 'Ошибка при блокировке');
+      const msg = e instanceof Error ? e.message : 'Ошибка при блокировке';
+      showToast(msg);
     }
   };
   confirmRef.value?.open();
 }
 
-async function unblockUser(id) {
+async function unblockUser(id: string): Promise<void> {
   confirmTitle.value = 'Разблокировка пользователя';
   confirmMessage.value = 'Подтвердите разблокировку пользователя.';
   confirmAction = async () => {
@@ -255,13 +320,14 @@ async function unblockUser(id) {
       showToast('Пользователь разблокирован');
       await loadUsers();
     } catch (e) {
-      showToast(e.message || 'Ошибка при разблокировке');
+      const msg = e instanceof Error ? e.message : 'Ошибка при разблокировке';
+      showToast(msg);
     }
   };
   confirmRef.value?.open();
 }
 
-async function approveUser(id) {
+async function approveUser(id: string): Promise<void> {
   confirmTitle.value = 'Подтверждение аккаунта';
   confirmMessage.value = 'Подтвердить пользователя и активировать аккаунт?';
   confirmAction = async () => {
@@ -270,13 +336,14 @@ async function approveUser(id) {
       showToast('Пользователь подтвержден');
       await loadUsers();
     } catch (e) {
-      showToast(e.message || 'Ошибка при подтверждении');
+      const msg = e instanceof Error ? e.message : 'Ошибка при подтверждении';
+      showToast(msg);
     }
   };
   confirmRef.value?.open();
 }
 
-function statusClass(status) {
+function statusClass(status: string): string {
   switch (status) {
     case 'ACTIVE':
       return 'bg-success';
@@ -289,7 +356,7 @@ function statusClass(status) {
   }
 }
 
-function toggleSort(field) {
+function toggleSort(field: SortField): void {
   if (sortField.value === field) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
   } else {
@@ -298,74 +365,61 @@ function toggleSort(field) {
   }
 }
 
-function formatPhone(digits) {
+function formatPhone(digits?: string | null): string {
   if (!digits) return '';
   let out = '+7';
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
+  if (digits.length > 1) out += ` (${digits.slice(1, 4)}`;
   if (digits.length >= 4) out += ') ';
   if (digits.length >= 4) out += digits.slice(4, 7);
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
+  if (digits.length >= 7) out += `-${digits.slice(7, 9)}`;
+  if (digits.length >= 9) out += `-${digits.slice(9, 11)}`;
   return out;
 }
 
-function formatDate(str) {
+function formatDate(str?: string | null): string {
   if (!str) return '';
   const [year, month, day] = str.split('-');
+  if (!year || !month || !day) return str;
   return `${day}.${month}.${year}`;
 }
 
-// global toast via useToast()
-
-async function copy(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast('Скопировано');
-  } catch (_err) {
-    showToast('Не удалось скопировать');
-  }
+function onConfirm(): void {
+  const action = confirmAction;
+  confirmAction = null;
+  if (action) void action();
 }
 
-function onConfirm() {
-  if (typeof confirmAction === 'function') confirmAction();
-}
-
-function clearSearch() {
+function clearSearch(): void {
   if (search.value) {
     search.value = '';
     currentPage.value = 1;
-    loadUsers();
+    void loadUsers();
     syncQuery();
   }
 }
 
-function resetFilters() {
+function resetFilters(): void {
   search.value = '';
   statusFilter.value = '';
   roleFilter.value = '';
   sortField.value = 'last_name';
   sortOrder.value = 'asc';
   currentPage.value = 1;
-  loadUsers();
+  void loadUsers();
   syncQuery();
 }
 
-function toggleSelected(id) {
+function toggleSelected(id: string): void {
   const set = new Set(selected.value);
   if (set.has(id)) set.delete(id);
   else set.add(id);
   selected.value = set;
 }
 
-watch(users, () => {
-  // Clear selection when page results change
-  selected.value = new Set();
-});
-
-async function bulk(action) {
+async function bulk(action: BulkAction): Promise<void> {
   if (!anySelected.value) return;
   const ids = Array.from(selected.value);
-  const messages = {
+  const messages: Record<BulkAction, { title: string; text: string }> = {
     block: {
       title: 'Блокировка пользователей',
       text: `Заблокировать выбранных пользователей (${ids.length})?`,
@@ -382,14 +436,14 @@ async function bulk(action) {
   confirmTitle.value = messages[action].title;
   confirmMessage.value = messages[action].text;
   confirmAction = async () => {
-    const endpoints = {
-      block: (id) => apiFetch(`/users/${id}/block`, { method: 'POST' }),
-      unblock: (id) => apiFetch(`/users/${id}/unblock`, { method: 'POST' }),
-      approve: (id) => apiFetch(`/users/${id}/approve`, { method: 'POST' }),
+    const endpoints: Record<BulkAction, (id: string) => Promise<unknown>> = {
+      block: (id: string) => apiFetch(`/users/${id}/block`, { method: 'POST' }),
+      unblock: (id: string) =>
+        apiFetch(`/users/${id}/unblock`, { method: 'POST' }),
+      approve: (id: string) =>
+        apiFetch(`/users/${id}/approve`, { method: 'POST' }),
     };
-    const results = await Promise.allSettled(
-      ids.map((id) => endpoints[action](id))
-    );
+    const results = await Promise.allSettled(ids.map((id) => endpoints[action](id)));
     const ok = results.filter((r) => r.status === 'fulfilled').length;
     const fail = ids.length - ok;
     showToast(

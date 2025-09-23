@@ -11,7 +11,7 @@ import { RouterLink, useRoute } from 'vue-router';
 import { apiFetch } from '../api';
 import TabSelector from '../components/TabSelector.vue';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
-import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
+import { MOSCOW_TZ, toDayKey } from '../utils/time';
 import Modal from 'bootstrap/js/dist/modal';
 
 const daysCount = 10;

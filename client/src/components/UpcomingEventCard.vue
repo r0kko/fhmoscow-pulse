@@ -1,65 +1,69 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
-import { withHttp } from '../utils/url.js';
+import { withHttp } from '../utils/url';
 
-const props = defineProps({
-  event: { type: Object, required: true },
-});
+type UpcomingEventType = 'training' | 'exam' | 'event';
 
-const isTraining = computed(() => props.event.kind === 'training');
-const isExam = computed(() => props.event.kind === 'exam');
+interface UpcomingCardEvent {
+  type: UpcomingEventType;
+  title: string;
+  description: string;
+  startAt: string;
+  link?: string;
+}
+
+const props = defineProps<{ event: UpcomingCardEvent }>();
+
 const icon = computed(() => {
-  if (isTraining.value) return 'bi-people-fill';
-  if (isExam.value) return 'bi-heart-pulse';
-  return 'bi-calendar-event';
-});
-const title = computed(() => {
-  if (isTraining.value) return 'Тренировка';
-  if (isExam.value) return 'Медосмотр';
-  return 'Мероприятие';
-});
-const isOnline = computed(
-  () =>
-    (isTraining.value || !isExam.value) &&
-    props.event.type?.online &&
-    props.event.url
-);
-const location = computed(() => {
-  if (isOnline.value) {
-    return 'Подключиться по ссылке';
+  switch (props.event.type) {
+    case 'training':
+      return 'bi-people-fill';
+    case 'exam':
+      return 'bi-heart-pulse';
+    default:
+      return 'bi-calendar-event';
   }
-  const loc = isExam.value
-    ? props.event.center?.address?.result
-    : props.event.ground?.address?.result;
-  return loc || '';
-});
-const href = computed(() => {
-  if (isOnline.value) {
-    return withHttp(props.event.url);
-  }
-  return isExam.value ? null : withHttp(props.event.ground?.yandex_url);
 });
 
-const startDate = computed(() => new Date(props.event.start_at));
-const dayNum = computed(() => startDate.value.getDate());
-const monthShort = computed(() =>
-  startDate.value
+const isExam = computed(() => props.event.type === 'exam');
+const isOnline = computed(
+  () => props.event.type !== 'exam' && Boolean(props.event.link)
+);
+
+const href = computed(() => {
+  if (isExam.value || !props.event.link) return null;
+  return withHttp(props.event.link);
+});
+
+const startDate = computed(() => new Date(props.event.startAt));
+const isValidDate = computed(() => Number.isFinite(startDate.value.getTime()));
+
+const dayNum = computed(() =>
+  isValidDate.value ? startDate.value.getDate().toString().padStart(2, '0') : '—'
+);
+
+const monthShort = computed(() => {
+  if (!isValidDate.value) return '—';
+  return startDate.value
     .toLocaleDateString('ru-RU', {
       month: 'short',
       timeZone: 'Europe/Moscow',
     })
-    .replace('.', '')
-);
-const timeShort = computed(() =>
-  startDate.value.toLocaleTimeString('ru-RU', {
+    .replace('.', '');
+});
+
+const timeShort = computed(() => {
+  if (!isValidDate.value) return '—:—';
+  return startDate.value.toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Europe/Moscow',
-  })
-);
+  });
+});
 
-function formatStart(date) {
+function formatStart(date: string): string {
   const d = new Date(date);
+  if (!Number.isFinite(d.getTime())) return 'Неизвестная дата';
   const dateStr = d.toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
@@ -80,7 +84,9 @@ function formatStart(date) {
     :href="href"
     target="_blank"
     class="text-decoration-none text-body"
-    :aria-label="`${title} — ${formatStart(event.start_at)}${location ? ', ' + location : ''}`"
+    :aria-label="`${event.title} — ${formatStart(event.startAt)}${
+      event.description ? ', ' + event.description : ''
+    }`"
   >
     <div class="card h-100 upcoming-card">
       <div class="card-body">
@@ -95,7 +101,7 @@ function formatStart(date) {
             >
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <i :class="`bi ${icon} text-brand`" aria-hidden="true"></i>
-                <span class="badge badge-brand-soft">{{ title }}</span>
+                <span class="badge badge-brand-soft">{{ event.title }}</span>
                 <span v-if="isOnline" class="badge bg-light text-muted border">
                   Онлайн
                 </span>
@@ -105,12 +111,12 @@ function formatStart(date) {
               </div>
             </div>
             <div
-              v-if="location"
+              v-if="event.description"
               class="small text-body-secondary address"
-              :title="location"
+              :title="event.description"
             >
-              <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
-              <span class="align-middle">{{ location }}</span>
+              <i v-if="!isExam" class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+              <span class="align-middle">{{ event.description }}</span>
             </div>
           </div>
         </div>

@@ -6,7 +6,7 @@ import BrandSpinner from '../components/BrandSpinner.vue';
 import PageNav from '../components/PageNav.vue';
 import TeamTiles from '../components/TeamTiles.vue';
 import { apiFetch } from '../api';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
 
 const route = useRoute();
 const router = useRouter();

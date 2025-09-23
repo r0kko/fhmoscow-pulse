@@ -5,8 +5,8 @@ import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
 import RefereeGroupAssignments from '../components/RefereeGroupAssignments.vue';
-import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time.js';
-import { endAfterStart, required } from '../utils/validation.js';
+import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time';
+import { endAfterStart, required } from '../utils/validation';
 
 import RefereeGroups from '../components/RefereeGroups.vue';
 import InlineError from '../components/InlineError.vue';

@@ -6,7 +6,7 @@ import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import { apiFetch } from '../api';
 import { apiUpload } from '../api';
-import { formatMinutesSeconds } from '../utils/time.js';
+import { formatMinutesSeconds } from '../utils/time';
 
 const groups = ref([]);
 const seasons = ref([]);

@@ -1,4 +1,6 @@
-function updateFades(el) {
+type ScrollElement = HTMLElement & { __edgeFade?: { resizeHandler: () => void } };
+
+function updateFades(el: ScrollElement): void {
   const { scrollLeft, scrollWidth, clientWidth } = el;
   const hasOverflow = scrollWidth > clientWidth + 1; // tolerance
   const atStart = scrollLeft <= 0;
@@ -15,16 +17,19 @@ function updateFades(el) {
   else el.classList.add('show-right-fade');
 }
 
-function onScroll(e) {
-  updateFades(e.currentTarget);
+function onScroll(event: Event): void {
+  const target = event.currentTarget as ScrollElement | null;
+  if (target) updateFades(target);
 }
 
-function onResize(el) {
+function onResize(el: ScrollElement): void {
   updateFades(el);
 }
 
-export default {
-  mounted(el) {
+import type { Directive } from 'vue';
+
+const edgeFadeDirective: Directive<HTMLElement, void> = {
+  mounted(el: ScrollElement): void {
     // opt-in class to enable overlays
     el.classList.add('scroll-fade');
     // initialize
@@ -35,11 +40,11 @@ export default {
     el.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', resizeHandler, { passive: true });
   },
-  updated(el) {
+  updated(el: ScrollElement): void {
     // content might have changed
     updateFades(el);
   },
-  unmounted(el) {
+  unmounted(el: ScrollElement): void {
     el.removeEventListener('scroll', onScroll);
     if (el.__edgeFade?.resizeHandler) {
       window.removeEventListener('resize', el.__edgeFade.resizeHandler);
@@ -47,3 +52,5 @@ export default {
     delete el.__edgeFade;
   },
 };
+
+export default edgeFadeDirective;

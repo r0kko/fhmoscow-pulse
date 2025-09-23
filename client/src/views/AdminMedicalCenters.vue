@@ -1,198 +1,269 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize.js';
-import { suggestAddress, cleanAddress } from '../dadata.js';
+import { loadPageSize, savePageSize } from '../utils/pageSize';
+import {
+  cleanAddress,
+  suggestAddress,
+  type AddressSuggestion,
+  type CleanAddressResult,
+} from '../dadata';
+import { useToast } from '../utils/toast';
+import ConfirmModal from '../components/ConfirmModal.vue';
+import {
+  formatRussianPhone,
+  normalizeRussianPhone,
+} from '../utils/personal';
+import type {
+  AddressSummary,
+  AdminMedicalCenter,
+  AdminMedicalCenterListResponse,
+} from '../types/admin';
 
-const centers = ref([]);
-const total = ref(0);
-const currentPage = ref(1);
-const pageSize = ref(loadPageSize('adminMedCentersPageSize', 8));
-const isLoading = ref(false);
-const error = ref('');
-
-const form = ref({
-  name: '',
-  inn: '',
-  address: { result: '' },
-  phone: '',
-  email: '',
-  website: '',
-});
-const phoneInput = ref('');
-const editing = ref(null);
-const modalRef = ref(null);
-let modal;
-const formError = ref('');
-const addrSuggestions = ref([]);
-let addrTimeout;
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize.value))
-);
-
-onMounted(() => {
-  modal = new Modal(modalRef.value);
-  load();
-});
-
-onBeforeUnmount(() => {
-  try {
-    clearTimeout(addrTimeout);
-  } catch {}
-  try {
-    modal?.hide?.();
-    modal?.dispose?.();
-  } catch {}
-});
-
-watch(currentPage, load);
-watch(pageSize, (val) => {
-  currentPage.value = 1;
-  savePageSize('adminMedCentersPageSize', val);
-  load();
-});
-
-watch(
-  () => form.value.address.result,
-  (val) => {
-    clearTimeout(addrTimeout);
-    if (!val || val.length < 3) {
-      addrSuggestions.value = [];
-      return;
-    }
-    const query = val.trim();
-    addrTimeout = setTimeout(async () => {
-      addrSuggestions.value = await suggestAddress(query);
-    }, 300);
-  }
-);
-
-function formatPhone(digits) {
-  if (!digits) return '';
-  let out = '+7';
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
-  if (digits.length >= 4) out += ') ';
-  if (digits.length >= 4) out += digits.slice(4, 7);
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
-  return out;
+interface ConfirmModalInstance {
+  open: () => void;
 }
 
-function onPhoneInput(e) {
-  let digits = e.target.value.replace(/\D/g, '');
-  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '');
-  digits = digits.slice(0, 11);
-  form.value.phone = digits;
-  phoneInput.value = formatPhone(digits);
+interface MedicalCenterForm {
+  name: string;
+  inn: string;
+  address: AddressSummary;
+  phone: string;
+  email: string;
+  website: string;
 }
 
-function onPhoneKeydown(e) {
-  if (e.key === 'Backspace' || e.key === 'Delete') {
-    e.preventDefault();
-    form.value.phone = form.value.phone.slice(0, -1);
-    phoneInput.value = formatPhone(form.value.phone);
-  }
-}
-
-function applyAddrSuggestion(s) {
-  form.value.address.result = s.value;
-  addrSuggestions.value = [];
-}
-
-async function onAddrBlur() {
-  const cleaned = await cleanAddress(form.value.address.result);
-  if (cleaned && cleaned.result) {
-    form.value.address.result = cleaned.result;
-  }
-  addrSuggestions.value = [];
-}
-
-async function load() {
-  try {
-    isLoading.value = true;
-    const params = new URLSearchParams({
-      page: currentPage.value,
-      limit: pageSize.value,
-    });
-    const data = await apiFetch(`/medical-centers?${params}`);
-    centers.value = data.centers;
-    total.value = data.total;
-  } catch (e) {
-    error.value = e.message;
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-function openCreate() {
-  editing.value = null;
-  Object.assign(form.value, {
+function createEmptyForm(): MedicalCenterForm {
+  return {
     name: '',
     inn: '',
     address: { result: '' },
     phone: '',
     email: '',
     website: '',
-  });
-  phoneInput.value = '';
-  formError.value = '';
-  addrSuggestions.value = [];
-  modal.show();
+  };
 }
 
-function openEdit(center) {
+const centers = ref<AdminMedicalCenter[]>([]);
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref<number>(loadPageSize('adminMedCentersPageSize', 8));
+const isLoading = ref(false);
+const error = ref('');
+
+const form = ref<MedicalCenterForm>(createEmptyForm());
+const phoneInput = ref('');
+const editing = ref<AdminMedicalCenter | null>(null);
+const modalRef = ref<HTMLDivElement | null>(null);
+let modal: InstanceType<typeof Modal> | null = null;
+const formError = ref('');
+const addrSuggestions = ref<AddressSuggestion[]>([]);
+let addrTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const confirmRef = ref<ConfirmModalInstance | null>(null);
+const confirmMessage = ref('');
+let confirmAction: (() => Promise<void>) | null = null;
+
+const { showToast } = useToast();
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(total.value / Math.max(pageSize.value, 1)))
+);
+
+function updatePhoneFromDigits(raw: string): void {
+  const normalized = normalizeRussianPhone(raw);
+  form.value.phone = normalized;
+  phoneInput.value = formatRussianPhone(normalized);
+}
+
+function formatPhone(value: string | null | undefined): string {
+  return formatRussianPhone(value ?? '');
+}
+
+async function load(): Promise<void> {
+  try {
+    isLoading.value = true;
+    const params = new URLSearchParams({
+      page: String(currentPage.value),
+      limit: String(pageSize.value),
+    });
+    const data = await apiFetch<AdminMedicalCenterListResponse>(
+      `/medical-centers?${params}`
+    );
+    centers.value = data.centers ?? [];
+    total.value = Number.isFinite(data.total) ? data.total : 0;
+    error.value = '';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось загрузить';
+    centers.value = [];
+    total.value = 0;
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+function closeFormModal(): void {
+  modal?.hide();
+}
+
+function resetForm(center?: AdminMedicalCenter | null): void {
+  if (center) {
+    form.value = {
+      name: center.name ?? '',
+      inn: center.inn ?? '',
+      address: { result: center.address?.result ?? '' },
+      phone: center.phone ?? '',
+      email: center.email ?? '',
+      website: center.website ?? '',
+    };
+  } else {
+    form.value = createEmptyForm();
+  }
+  updatePhoneFromDigits(form.value.phone);
+  formError.value = '';
+  addrSuggestions.value = [];
+}
+
+function openCreate(): void {
+  editing.value = null;
+  resetForm(null);
+  modal?.show();
+}
+
+function openEdit(center: AdminMedicalCenter): void {
   editing.value = center;
-  form.value.name = center.name;
-  form.value.inn = center.inn;
-  form.value.address.result = center.address ? center.address.result : '';
-  form.value.phone = center.phone || '';
-  phoneInput.value = formatPhone(center.phone || '');
-  form.value.email = center.email || '';
-  form.value.website = center.website || '';
-  formError.value = '';
-  addrSuggestions.value = [];
-  modal.show();
+  resetForm(center);
+  modal?.show();
 }
 
-async function save() {
+function applyAddrSuggestion(suggestion: AddressSuggestion): void {
+  form.value.address = { result: suggestion.value };
+  addrSuggestions.value = [];
+}
+
+async function onAddrBlur(): Promise<void> {
+  if (!form.value.address.result) {
+    addrSuggestions.value = [];
+    return;
+  }
+  try {
+    const cleaned: CleanAddressResult | null = await cleanAddress(
+      form.value.address.result
+    );
+    if (cleaned?.result) {
+      form.value.address = { result: cleaned.result };
+    }
+  } finally {
+    addrSuggestions.value = [];
+  }
+}
+
+function onPhoneInput(event: Event): void {
+  const target = event.target as HTMLInputElement | null;
+  if (!target) return;
+  updatePhoneFromDigits(target.value);
+}
+
+function onPhoneKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Backspace' && event.key !== 'Delete') return;
+  event.preventDefault();
+  form.value.phone = form.value.phone.slice(0, -1);
+  phoneInput.value = formatRussianPhone(form.value.phone);
+}
+
+async function save(): Promise<void> {
   try {
     formError.value = '';
-    const body = {
-      name: form.value.name,
-      inn: form.value.inn,
+    const payload: Record<string, unknown> = {
+      name: form.value.name.trim(),
+      inn: form.value.inn.trim(),
       phone: form.value.phone,
-      email: form.value.email,
-      website: form.value.website,
+      email: form.value.email.trim(),
+      website: form.value.website.trim(),
     };
-    if (form.value.address.result) {
-      body.address = { result: form.value.address.result };
+    const address = form.value.address.result?.trim();
+    if (address) {
+      payload.address = { result: address } satisfies AddressSummary;
     }
-    let path = '/medical-centers';
-    let method = 'POST';
-    if (editing.value) {
-      path += `/${editing.value.id}`;
-      method = 'PUT';
-    }
-    await apiFetch(path, { method, body: JSON.stringify(body) });
-    modal.hide();
+
+    const isEditing = Boolean(editing.value);
+    const endpoint = isEditing
+      ? `/medical-centers/${editing.value?.id}`
+      : '/medical-centers';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    await apiFetch(endpoint, {
+      method,
+      body: JSON.stringify(payload),
+    });
+    closeFormModal();
+    showToast(isEditing ? 'Запись обновлена' : 'Запись добавлена');
     await load();
-  } catch (e) {
-    formError.value = e.message;
+  } catch (err) {
+    formError.value = err instanceof Error ? err.message : 'Ошибка сохранения';
   }
 }
 
-async function removeCenter(center) {
-  if (!confirm('Удалить запись?')) return;
-  try {
-    await apiFetch(`/medical-centers/${center.id}`, { method: 'DELETE' });
-    await load();
-  } catch (e) {
-    alert(e.message);
-  }
+function confirmRemove(center: AdminMedicalCenter): void {
+  confirmMessage.value = `Удалить медицинский центр «${center.name}»?`;
+  confirmAction = async () => {
+    try {
+      await apiFetch(`/medical-centers/${center.id}`, { method: 'DELETE' });
+      showToast('Запись удалена');
+      await load();
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : 'Не удалось удалить запись'
+      );
+    }
+  };
+  confirmRef.value?.open();
 }
+
+function onConfirm(): void {
+  const action = confirmAction;
+  confirmAction = null;
+  if (action) void action();
+}
+
+onMounted(() => {
+  modal = new Modal(modalRef.value);
+  void load();
+});
+
+onBeforeUnmount(() => {
+  if (addrTimeout) clearTimeout(addrTimeout);
+  modal?.hide();
+  modal?.dispose();
+  modal = null;
+});
+
+watch(currentPage, () => {
+  void load();
+});
+
+watch(pageSize, (val) => {
+  currentPage.value = 1;
+  savePageSize('adminMedCentersPageSize', val);
+  void load();
+});
+
+watch(
+  () => form.value.address.result,
+  (value) => {
+    if (addrTimeout) clearTimeout(addrTimeout);
+    if (!value || value.trim().length < 3) {
+      addrSuggestions.value = [];
+      return;
+    }
+    const query = value.trim();
+    addrTimeout = setTimeout(async () => {
+      addrSuggestions.value = await suggestAddress(query);
+    }, 300);
+  }
+);
 </script>
 
 <template>
@@ -255,7 +326,7 @@ async function removeCenter(center) {
                   <button
                     class="btn btn-sm btn-danger"
                     aria-label="Удалить центр"
-                    @click="removeCenter(c)"
+                    @click="confirmRemove(c)"
                   >
                     <i class="bi bi-trash"></i>
                   </button>
@@ -284,7 +355,7 @@ async function removeCenter(center) {
                 >
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" @click="removeCenter(c)">
+                <button class="btn btn-sm btn-danger" @click="confirmRemove(c)">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -313,7 +384,7 @@ async function removeCenter(center) {
               <button
                 type="button"
                 class="btn-close"
-                @click="modal.hide()"
+                @click="closeFormModal"
               ></button>
             </div>
             <div class="modal-body">
@@ -410,7 +481,7 @@ async function removeCenter(center) {
               <button
                 type="button"
                 class="btn btn-secondary"
-                @click="modal.hide()"
+                @click="closeFormModal"
               >
                 Отмена
               </button>
@@ -420,6 +491,15 @@ async function removeCenter(center) {
         </div>
       </div>
     </div>
+
+    <ConfirmModal
+      ref="confirmRef"
+      confirm-text="Удалить"
+      confirm-variant="danger"
+      @confirm="onConfirm"
+    >
+      <p class="mb-0">{{ confirmMessage }}</p>
+    </ConfirmModal>
   </div>
 </template>
 

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { MOSCOW_TZ } from '../utils/time.js';
+import { MOSCOW_TZ } from '../utils/time';
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

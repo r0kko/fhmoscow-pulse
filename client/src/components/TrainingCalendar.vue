@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
-import { MOSCOW_TZ, toDayKey } from '../utils/time.js';
-import { withHttp } from '../utils/url.js';
+import { MOSCOW_TZ, toDayKey } from '../utils/time';
+import { withHttp } from '../utils/url';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
 

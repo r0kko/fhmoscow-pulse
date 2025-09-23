@@ -12,27 +12,26 @@ describe('UpcomingEventCard', () => {
   it('renders exam events as non-linked cards with address', () => {
     renderCard({
       id: 'exam-1',
-      kind: 'exam',
-      start_at: '2024-05-05T08:00:00+03:00',
-      registration_status: 'APPROVED',
-      center: { address: { result: 'Клиника №3' } },
+      type: 'exam',
+      title: 'Медосмотр',
+      description: 'Клиника №3 · APPROVED',
+      startAt: '2024-05-05T08:00:00+03:00',
     });
 
-    const card = screen.getByText('Медосмотр').closest('.upcoming-card');
+    const badge = screen.getByText('Медосмотр');
+    const card = badge.closest('.upcoming-card');
     expect(card?.parentElement?.tagName).toBe('DIV');
-    expect(screen.getByText('Клиника №3')).toBeInTheDocument();
-    expect(screen.getByText('Медосмотр')).toBeInTheDocument();
+    expect(screen.getByText('Клиника №3 · APPROVED')).toBeInTheDocument();
   });
 
   it('links to ground map for offline trainings', () => {
     renderCard({
       id: 'train-1',
-      kind: 'training',
-      start_at: '2024-05-06T12:30:00+03:00',
-      ground: {
-        address: { result: 'Ледовый дворец' },
-        yandex_url: 'https://maps.yandex.ru/ground',
-      },
+      type: 'training',
+      title: 'Тренировка',
+      description: 'Ледовый дворец',
+      startAt: '2024-05-06T12:30:00+03:00',
+      link: 'https://maps.yandex.ru/ground',
     });
 
     const link = screen.getByRole('link', { name: /Тренировка/ });
@@ -43,10 +42,11 @@ describe('UpcomingEventCard', () => {
   it('marks hybrid or online slots with a badge and meeting link', () => {
     renderCard({
       id: 'course-1',
-      kind: 'event',
-      start_at: '2024-05-07T09:15:00+03:00',
-      type: { online: true },
-      url: 'lk.fhmoscow.com/session',
+      type: 'event',
+      title: 'Мероприятие',
+      description: 'Подключиться по ссылке',
+      startAt: '2024-05-07T09:15:00+03:00',
+      link: 'lk.fhmoscow.com/session',
     });
 
     const link = screen.getByRole('link', { name: /Подключиться по ссылке/ });

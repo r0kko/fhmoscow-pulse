@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isValidAccountNumber } from '@/utils/bank.js';
-import { loadPageSize, savePageSize } from '@/utils/pageSize.js';
-import { evaluatePassword } from '@/utils/passwordPolicy.js';
-import { formatSnils, isValidInn, isValidSnils } from '@/utils/personal.js';
-import { pluralize } from '@/utils/plural.js';
+import { isValidAccountNumber } from '@/utils/bank';
+import { loadPageSize, savePageSize } from '@/utils/pageSize';
+import { evaluatePassword } from '@/utils/passwordPolicy';
+import {
+  formatRussianPhone,
+  formatSnils,
+  isValidInn,
+  isValidSnils,
+  normalizeRussianPhone,
+} from '@/utils/personal';
+import { pluralize } from '@/utils/plural';
 import {
   ADMIN_ROLES,
   hasRole,
@@ -21,15 +27,15 @@ import {
   parseMinutesSeconds,
   toDateTimeLocal,
   toDayKey,
-} from '@/utils/time.js';
-import { typeBadgeClass } from '@/utils/training.js';
-import { withHttp } from '@/utils/url.js';
+} from '@/utils/time';
+import { typeBadgeClass } from '@/utils/training';
+import { withHttp } from '@/utils/url';
 import {
   endAfterStart,
   nonNegativeNumber,
   required,
   validateDateRange,
-} from '@/utils/validation.js';
+} from '@/utils/validation';
 
 const validInn = '500100732259';
 const invalidInn = '123456789012';
@@ -109,9 +115,23 @@ describe('utils/personal', () => {
   });
 });
 
+describe('utils/personal phone helpers', () => {
+  it('normalizes arbitrary input to Russian phone digits', () => {
+    expect(normalizeRussianPhone('+7 (999) 111-22-33')).toBe('79991112233');
+    expect(normalizeRussianPhone('8 999 111-22-33')).toBe('79991112233');
+    expect(normalizeRussianPhone('')).toBe('');
+  });
+
+  it('formats Russian phone digits for display', () => {
+    expect(formatRussianPhone('79991112233')).toBe('+7 (999) 111-22-33');
+    expect(formatRussianPhone('7')).toBe('+7');
+    expect(formatRussianPhone(null)).toBe('');
+  });
+});
+
 describe('utils/plural', () => {
   it('returns correct plural form for Russian rules', () => {
-    const forms = ['минута', 'минуты', 'минут'];
+    const forms: [string, string, string] = ['минута', 'минуты', 'минут'];
     expect(pluralize(1, forms)).toBe('минута');
     expect(pluralize(3, forms)).toBe('минуты');
     expect(pluralize(12, forms)).toBe('минут');
@@ -153,8 +173,8 @@ describe('utils/time', () => {
     expect(fromDateTimeLocal('2024-05-01T18:30')).toBe(
       '2024-05-01T15:30:00.000Z'
     );
-    expect(toDayKey()).toBeNull();
-    expect(toDateTimeLocal()).toBe('');
+    expect(toDayKey(null)).toBeNull();
+    expect(toDateTimeLocal(null)).toBe('');
     expect(fromDateTimeLocal('')).toBe('');
   });
 
@@ -171,6 +191,7 @@ describe('utils/time', () => {
     expect(formatMskDateLong(iso)).toMatch(/1 мая/i);
     expect(formatMskDateLong('bad-date')).toBe('');
     expect(formatKickoff(iso)).toMatchObject({ time: '18:30' });
+    expect(formatKickoff(null)).toMatchObject({ time: '—:—', date: '' });
   });
 });
 
@@ -179,7 +200,7 @@ describe('utils/training', () => {
     expect(typeBadgeClass('ICE')).toBe('bg-brand');
     expect(typeBadgeClass('BASIC_FIT')).toBe('bg-success');
     expect(typeBadgeClass('UNKNOWN')).toBe('bg-secondary');
-    expect(typeBadgeClass()).toBe('bg-secondary');
+    expect(typeBadgeClass(undefined)).toBe('bg-secondary');
   });
 });
 

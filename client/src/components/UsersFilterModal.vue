@@ -1,47 +1,78 @@
-<script setup>
-import { ref, watch, onMounted } from 'vue';
+<script setup lang="ts">
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
+import type { UserRoleOption } from '../types/admin';
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  status: { type: String, default: '' },
-  role: { type: String, default: '' },
-  roles: { type: Array, default: () => [] },
-});
-const emit = defineEmits(['update:modelValue', 'apply', 'reset']);
+const props = withDefaults(
+  defineProps<{
+    modelValue?: boolean;
+    status?: string;
+    role?: string;
+    roles?: UserRoleOption[];
+  }>(),
+  {
+    modelValue: false,
+    status: '',
+    role: '',
+    roles: () => [] as UserRoleOption[],
+  }
+);
 
-const el = ref(null);
-let instance;
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'apply', payload: { status: string; role: string }): void;
+  (e: 'reset'): void;
+}>();
 
-const st = ref(props.status);
-const r = ref(props.role);
+const el = ref<HTMLDivElement | null>(null);
+let instance: InstanceType<typeof Modal> | null = null;
+let skipHiddenEmit = false;
 
-function open() {
+const st = ref<string>(props.status);
+const r = ref<string>(props.role);
+
+function open(): void {
   st.value = props.status;
   r.value = props.role;
   instance?.show();
 }
-function close() {
+
+function close(emitUpdate = false): void {
+  if (emitUpdate) {
+    skipHiddenEmit = true;
+    emit('update:modelValue', false);
+  }
   instance?.hide();
-  emit('update:modelValue', false);
 }
-function apply() {
+
+function apply(): void {
   emit('apply', { status: st.value, role: r.value });
-  close();
+  close(true);
 }
-function reset() {
+
+function reset(): void {
   st.value = '';
   r.value = '';
   emit('reset');
-  close();
+  close(true);
 }
 
 onMounted(() => {
   instance = new Modal(el.value);
   if (props.modelValue) open();
   el.value?.addEventListener('hidden.bs.modal', () => {
+    if (skipHiddenEmit) {
+      skipHiddenEmit = false;
+      return;
+    }
     emit('update:modelValue', false);
   });
+});
+
+onBeforeUnmount(() => {
+  instance?.hide();
+  instance?.dispose();
+  instance = null;
 });
 
 watch(
@@ -71,7 +102,7 @@ defineExpose({ open, close });
             type="button"
             class="btn-close"
             aria-label="Закрыть"
-            @click="close"
+            @click="close(true)"
           ></button>
         </div>
         <div class="modal-body">

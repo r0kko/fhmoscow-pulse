@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, watch, ref, computed } from 'vue';
-import { suggestFmsUnit } from '../dadata.js';
+import { suggestFmsUnit } from '../dadata';
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },

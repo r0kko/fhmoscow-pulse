@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import metroIcon from '../assets/metro.svg';
-import { pluralize } from '../utils/plural.js';
+import { pluralize } from '../utils/plural';
 
 const props = defineProps({
   exam: { type: Object, required: true },

@@ -7,6 +7,7 @@ import {
 } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NavBar from '../../src/components/NavBar.vue';
+import type { AuthUser } from '../../src/auth';
 
 vi.mock('../../src/api', async () => {
   const actual = await vi.importActual('../../src/api');
@@ -18,7 +19,6 @@ vi.mock('../../src/api', async () => {
 });
 
 import * as authModule from '../../src/auth';
-import type { AuthUser } from '../../src/auth';
 import * as apiModule from '../../src/api';
 
 const routes: RouteRecordRaw[] = [
@@ -33,7 +33,7 @@ function createTestRouter(): Router {
   });
 }
 
-function resetAuthState() {
+function resetAuthState(): void {
   authModule.auth.user = null;
   authModule.auth.roles = [];
   authModule.auth.token = null;
@@ -74,8 +74,8 @@ describe('NavBar', () => {
 
     const logoutButtons = screen.getAllByRole('button', { name: 'Выйти' });
     expect(logoutButtons.length).toBeGreaterThan(0);
-    const logoutButton = logoutButtons[0]!;
-    await fireEvent.click(logoutButton);
+    const primaryLogout = logoutButtons[0]!;
+    await fireEvent.click(primaryLogout);
 
     await waitFor(() => {
       expect(apiFetchMock).toHaveBeenCalledWith('/auth/logout', {
