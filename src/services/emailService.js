@@ -58,12 +58,7 @@ function userMetadata(user) {
   });
 }
 
-function buildTemplateDedupeKey({
-  templateName,
-  purpose,
-  user,
-  metadata,
-}) {
+function buildTemplateDedupeKey({ templateName, purpose, user, metadata }) {
   const payload = {
     template: templateName,
     purpose,
@@ -123,9 +118,7 @@ export async function sendMail(
     options
   );
   return Boolean(
-    result.accepted ||
-      result.delivered ||
-      result.reason === 'duplicate'
+    result.accepted || result.delivered || result.reason === 'duplicate'
   );
 }
 

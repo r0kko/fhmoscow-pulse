@@ -39,9 +39,7 @@ const METRICS_INTERVAL_MS = Number(
 const SCHEDULE_DRAIN_LIMIT = Number(
   process.env.EMAIL_QUEUE_SCHEDULE_DRAIN_LIMIT || 100
 );
-const DEDUPE_ENABLED = String(
-  process.env.EMAIL_QUEUE_DEDUPE_ENABLED ?? 'true'
-)
+const DEDUPE_ENABLED = String(process.env.EMAIL_QUEUE_DEDUPE_ENABLED ?? 'true')
   .toLowerCase()
   .match(/^(1|true|yes|on)$/);
 const DEDUPE_KEY_PREFIX =
@@ -147,10 +145,7 @@ function buildJob(payload, options = {}) {
   const dedupeTtlMs = Number(
     options.dedupeTtlMs || payload.dedupeTtlMs || DEDUPE_TTL_MS
   );
-  job.dedupeTtlMs = Math.max(
-    dedupeTtlMs,
-    (job.delayMs || 0) + DEDUPE_GRACE_MS
-  );
+  job.dedupeTtlMs = Math.max(dedupeTtlMs, (job.delayMs || 0) + DEDUPE_GRACE_MS);
   return job;
 }
 
