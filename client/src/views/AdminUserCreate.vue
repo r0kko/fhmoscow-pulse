@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import UserForm from '../components/UserForm.vue';
 import { useToast } from '../utils/toast.js';
 

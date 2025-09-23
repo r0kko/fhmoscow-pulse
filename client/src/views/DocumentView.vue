@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import InfoItem from '../components/InfoItem.vue';
 
 const route = useRoute();

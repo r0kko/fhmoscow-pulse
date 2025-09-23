@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 
 const props = defineProps({
   userId: { type: String, required: true },

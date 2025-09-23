@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { MOSCOW_TZ } from '../utils/time.js';
 
 const days = ref([]);

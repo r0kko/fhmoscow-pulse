@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { apiFetch } from '../api.js';
-import { auth } from '../auth.js';
+import { apiFetch } from '../api';
+import { auth } from '../auth';
 import UserForm from '../components/UserForm.vue';
 import PassportForm from '../components/PassportForm.vue';
 import { cleanPassport, findBankByBic } from '../dadata.js';

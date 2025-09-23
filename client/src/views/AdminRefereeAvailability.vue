@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
 import Modal from 'bootstrap/js/dist/modal';
 

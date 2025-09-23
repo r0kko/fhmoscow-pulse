@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import Pagination from '../components/Pagination.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 
 const MIN_SEARCH_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 350;

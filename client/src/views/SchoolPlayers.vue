@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import TeamTiles from '../components/TeamTiles.vue';
 import TabSelector from '../components/TabSelector.vue';
 

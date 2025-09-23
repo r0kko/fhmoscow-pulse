@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { suggestAddress, cleanAddress } from '../dadata.js';

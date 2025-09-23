@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { h } from 'vue';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import ProfileView from '../../src/views/Profile.vue';
-import { auth } from '../../src/auth.js';
+import { auth } from '../../src/auth';
 import { setupMsw } from '../utils/msw.js';
 
 const server = setupMsw();

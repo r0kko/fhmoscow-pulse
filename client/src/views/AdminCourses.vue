@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
 import InlineError from '../components/InlineError.vue';

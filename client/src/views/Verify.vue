@@ -27,7 +27,7 @@ async function verify() {
     return;
   }
   try {
-    const { API_BASE } = await import('../api.js');
+    const { API_BASE } = await import('../api');
     const res = await fetch(`${API_BASE}/verify?t=${encodeURIComponent(t)}`, {
       credentials: 'include',
     });

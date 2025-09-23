@@ -4,8 +4,8 @@ import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import Tooltip from 'bootstrap/js/dist/tooltip';
-import { apiFetch } from '../api.js';
-import { apiUpload } from '../api.js';
+import { apiFetch } from '../api';
+import { apiUpload } from '../api';
 import { formatMinutesSeconds } from '../utils/time.js';
 
 const groups = ref([]);

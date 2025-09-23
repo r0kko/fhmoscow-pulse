@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 
 const route = useRoute();
 const match = ref(null);

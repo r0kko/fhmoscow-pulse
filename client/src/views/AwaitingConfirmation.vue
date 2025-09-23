@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { apiFetch, initCsrf } from '../api.js';
-import { clearAuth, fetchCurrentUser, auth } from '../auth.js';
+import { apiFetch, initCsrf } from '../api';
+import { clearAuth, fetchCurrentUser, auth } from '../auth';
 const logo = '/vite.svg';
 
 const router = useRouter();

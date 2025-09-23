@@ -70,7 +70,7 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: './tests/setup/vitest.setup.js',
-    include: ['tests/**/*.{test,spec}.{js,ts}'],
+    include: ['tests/**/*.{test,spec}.{js,ts,tsx}'],
     exclude: ['tests/e2e/**'],
     coverage: {
       provider: 'v8',
@@ -78,7 +78,7 @@ export default defineConfig({
       reportsDirectory: '../coverage/client',
       // Focus unit coverage on shared UI primitives and client-side helpers.
       include: [
-        'src/utils/**/*.js',
+        'src/utils/**/*.{js,ts}',
         'src/components/CookieNotice.vue',
         'src/components/GlobalToast.vue',
         'src/components/InlineError.vue',
@@ -92,13 +92,13 @@ export default defineConfig({
         'src/components/UpcomingEventCard.vue',
       ],
       exclude: [
-        'src/api.js',
-        'src/router.js',
-        'src/auth.js',
-        'src/dadata.js',
-        'src/errors.js',
+        'src/api.{js,ts}',
+        'src/router.{js,ts}',
+        'src/auth.{js,ts}',
+        'src/dadata.{js,ts}',
+        'src/errors.{js,ts}',
         'src/views/**',
-        'src/utils/lineupSync.js',
+        'src/utils/lineupSync.{js,ts}',
       ],
       thresholds: {
         statements: 80,

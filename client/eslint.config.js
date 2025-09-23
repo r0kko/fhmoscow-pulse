@@ -2,6 +2,9 @@ import vue from 'eslint-plugin-vue';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 import vueA11y from 'eslint-plugin-vuejs-accessibility';
+import tseslintPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import vueParser from 'vue-eslint-parser';
 
 const browserGlobals = {
   window: true,
@@ -29,27 +32,29 @@ export default [
   {
     ignores: ['dist/**', 'node_modules/**'],
   },
-  // Vue SFC rules
   ...vue.configs['flat/recommended'],
   ...vueA11y.configs['flat/recommended'],
-  // Disable stylistic rules that conflict with Prettier
   prettierConfig,
-  // Project rules
   {
-    files: ['**/*.{js,vue}'],
+    files: ['**/*.vue'],
     languageOptions: {
-      ecmaVersion: 2021,
-      sourceType: 'module',
+      parser: vueParser,
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
       globals: browserGlobals,
     },
-    plugins: { vue, prettier: prettierPlugin, 'vuejs-accessibility': vueA11y },
+    plugins: {
+      vue,
+      prettier: prettierPlugin,
+      'vuejs-accessibility': vueA11y,
+      '@typescript-eslint': tseslintPlugin,
+    },
     rules: {
-      // Vue relaxations for this project
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'off',
-
-      // Accessibility: enforce interaction best practices first; form label
-      // hygiene will be migrated gradually across legacy components.
       'vuejs-accessibility/form-control-has-label': 'off',
       'vuejs-accessibility/label-has-for': 'off',
       'vuejs-accessibility/no-static-element-interactions': 'error',
@@ -57,16 +62,70 @@ export default [
       'vuejs-accessibility/click-events-have-key-events': 'error',
       'vuejs-accessibility/no-autofocus': 'error',
       'vuejs-accessibility/no-redundant-roles': 'error',
-
-      // Enforce Prettier formatting via ESLint
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', disallowTypeAnnotations: false },
+      ],
       'prettier/prettier': 'error',
     },
   },
   {
-    files: ['tests/**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.ts'],
     languageOptions: {
-      ecmaVersion: 2021,
+      parser: tsParser,
+      ecmaVersion: 'latest',
       sourceType: 'module',
+      globals: browserGlobals,
+    },
+    plugins: {
+      '@typescript-eslint': tseslintPlugin,
+      prettier: prettierPlugin,
+    },
+    rules: {
+      ...tseslintPlugin.configs.recommended.rules,
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', disallowTypeAnnotations: false },
+      ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'prettier/prettier': 'error',
+    },
+  },
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: browserGlobals,
+    },
+    plugins: {
+      prettier: prettierPlugin,
+    },
+    rules: {
+      'prettier/prettier': 'error',
+    },
+  },
+  {
+    files: ['tests/**/*.{ts,tsx,js,jsx}'],
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: { ...browserGlobals, ...vitestGlobals },
+    },
+  },
+  {
+    files: ['tests/**/*.vue'],
+    languageOptions: {
+      parser: vueParser,
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
       globals: { ...browserGlobals, ...vitestGlobals },
     },
   },

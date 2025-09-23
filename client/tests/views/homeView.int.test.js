@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HomeView from '../../src/views/Home.vue';
 import edgeFade from '../../src/utils/edgeFade.js';
-import { auth } from '../../src/auth.js';
+import { auth } from '../../src/auth';
 import { setupMsw } from '../utils/msw.js';
 
 const server = setupMsw();

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import Pagination from './Pagination.vue';
 import { formatMinutesSeconds } from '../utils/time.js';
 

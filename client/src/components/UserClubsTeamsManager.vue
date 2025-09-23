@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { useToast } from '../utils/toast.js';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import ConfirmModal from './ConfirmModal.vue';
 
 const props = defineProps({

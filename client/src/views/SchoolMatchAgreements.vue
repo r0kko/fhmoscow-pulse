@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import ContactModal from '../components/ContactModal.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import yandexLogo from '../assets/yandex-maps.svg';
 import {
   MOSCOW_TZ,

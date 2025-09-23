@@ -3,8 +3,8 @@ import { ref, watch } from 'vue';
 import CookieNotice from '../components/CookieNotice.vue';
 import PasswordInput from '../components/PasswordInput.vue';
 import { useRouter, RouterLink } from 'vue-router';
-import { apiFetch, initCsrf } from '../api.js';
-import { auth, setAuthToken } from '../auth.js';
+import { apiFetch, initCsrf } from '../api';
+import { auth, setAuthToken } from '../auth';
 const logo = '/vite.svg';
 
 const router = useRouter();

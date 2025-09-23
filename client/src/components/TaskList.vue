@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 
 const tasks = ref([]);
 const loading = ref(true);

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue';
 import PasswordChecklist from '../components/PasswordChecklist.vue';
 import PasswordInput from '../components/PasswordInput.vue';

@@ -1,9 +1,14 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import {
+  createRouter,
+  createWebHistory,
+  type NavigationGuardNext,
+  type RouteRecordRaw,
+} from 'vue-router';
 import Login from './views/Login.vue';
 import Register from './views/Register.vue';
 import ProfileWizard from './views/ProfileWizard.vue';
 import AwaitingConfirmation from './views/AwaitingConfirmation.vue';
-import { auth, clearAuth, fetchCurrentUser } from './auth.js';
+import { auth, clearAuth, fetchCurrentUser } from './auth';
 import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
 import DocumentView from './views/DocumentView.vue';
@@ -62,9 +67,9 @@ import {
   ADMIN_ROLES as adminRoles,
   REFEREE_ROLES as refereeRoles,
   STAFF_ROLES as staffRoles,
-} from './utils/roles.js';
+} from './utils/roles';
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: Home,
@@ -491,15 +496,15 @@ const router = createRouter({
   },
 });
 
-router.beforeEach(async (to, _from, next) => {
-  const isAuthenticated = !!auth.token;
+router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
+  const isAuthenticated = Boolean(auth.token);
   const roles = auth.roles;
   const isBrigadeOnly =
     roles.includes('BRIGADE_REFEREE') && !roles.includes('REFEREE');
   if (isAuthenticated && !auth.user) {
     try {
       await fetchCurrentUser();
-    } catch (_) {
+    } catch {
       clearAuth();
       return next('/login');
     }

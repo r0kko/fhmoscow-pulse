@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed, reactive } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
-import { apiFetch, apiFetchBlob } from '../api.js';
+import { apiFetch, apiFetchBlob } from '../api';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import PageNav from '../components/PageNav.vue';
 

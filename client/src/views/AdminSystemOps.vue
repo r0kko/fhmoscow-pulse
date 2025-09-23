@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch, API_BASE } from '../api.js';
+import { apiFetch, API_BASE } from '../api';
 import BrandSpinner from '../components/BrandSpinner.vue';
 
 const loading = ref(true);

@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
-import { auth, setAuthToken } from '../auth.js';
+import { apiFetch } from '../api';
+import { auth, setAuthToken } from '../auth';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue';
 import PasswordChecklist from '../components/PasswordChecklist.vue';
 import PasswordInput from '../components/PasswordInput.vue';

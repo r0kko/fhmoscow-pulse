@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { cleanVehicle } from '../dadata.js';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 
 const emit = defineEmits(['saved']);
 

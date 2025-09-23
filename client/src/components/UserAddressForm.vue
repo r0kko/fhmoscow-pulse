@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { suggestAddress, cleanAddress } from '../dadata.js';
 
 const props = defineProps({

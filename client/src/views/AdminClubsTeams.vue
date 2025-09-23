@@ -5,7 +5,7 @@ import { useToast } from '../utils/toast.js';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import PageNav from '../components/PageNav.vue';
 import TeamTiles from '../components/TeamTiles.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const route = useRoute();

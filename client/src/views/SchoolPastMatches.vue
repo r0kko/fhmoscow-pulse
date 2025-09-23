@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';

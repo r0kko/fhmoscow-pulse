@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { auth } from '../auth.js';
+import { auth } from '../auth';
 import MenuTile from '../components/MenuTile.vue';
 
 const userSections = [

@@ -3,7 +3,7 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { useToast } from '../utils/toast.js';
 import TaxationInfo from '../components/TaxationInfo.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';

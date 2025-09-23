@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiUpload } from '../api.js';
+import { apiUpload } from '../api';
 
 const props = defineProps({
   users: { type: Array, required: true },

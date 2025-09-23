@@ -1,6 +1,44 @@
 import { translateError } from './errors.js';
 
-import { clearAuth } from './auth.js';
+import { clearAuth } from './auth';
+
+type Nullable<T> = T | null | undefined;
+
+type HeadersMap = Record<string, string>;
+
+type TimeoutResult = {
+  signal?: AbortSignal;
+  cancelTimeout?: () => void;
+};
+
+export type ApiError = Error & {
+  code?: string | null;
+  requestId?: string | null;
+};
+
+interface RetryOptions {
+  _csrfRetried?: boolean;
+  _429Retried?: boolean;
+  _ddosRetried?: boolean;
+}
+
+export interface ApiFetchOptions extends RequestInit, RetryOptions {
+  redirectOn401?: boolean;
+  timeoutMs?: number;
+}
+
+type ErrorPayload = { error?: string | null };
+
+function normalizeHeaders(headers: HeadersInit | undefined): HeadersMap {
+  if (!headers) return {};
+  if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers as [string, string][]);
+  }
+  return { ...(headers as HeadersMap) };
+}
 
 // Resolve API base URL with a strong preference for same-origin to avoid
 // cross-host redirects (which can drop POST bodies or strip credentials),
@@ -28,7 +66,7 @@ function resolveApiBase() {
       if (sameHost) return u.origin.replace(/\/+$/, '');
       // Different host — avoid potential redirect/CORS pitfalls
       return '/api';
-    } catch (_) {
+    } catch {
       return '/api';
     }
   }
@@ -39,9 +77,9 @@ function resolveApiBase() {
 
 export const API_BASE = resolveApiBase();
 
-let accessToken = null;
-let refreshPromise = null;
-let refreshTimerId = null;
+let accessToken: string | null = null;
+let refreshPromise: Promise<boolean> | null = null;
+let refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 let refreshFailed =
   (typeof sessionStorage !== 'undefined' &&
     sessionStorage.getItem('refreshFailed') === '1') ||
@@ -52,8 +90,13 @@ const DEFAULT_TIMEOUT_MS = 20000; // general API
 const DEFAULT_REFRESH_TIMEOUT_MS = 12000; // token refresh
 const DEFAULT_CSRF_TIMEOUT_MS = 8000; // CSRF bootstrap
 
-function withTimeout(signal, ms = DEFAULT_TIMEOUT_MS) {
-  if (typeof AbortController === 'undefined') return { signal };
+function withTimeout(
+  signal: Nullable<AbortSignal>,
+  ms = DEFAULT_TIMEOUT_MS
+): TimeoutResult {
+  if (typeof AbortController === 'undefined') {
+    return { signal: signal ?? undefined };
+  }
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(new DOMException('TimeoutError', 'AbortError')),
@@ -62,7 +105,7 @@ function withTimeout(signal, ms = DEFAULT_TIMEOUT_MS) {
   if (signal) {
     try {
       signal.addEventListener('abort', () => controller.abort(signal.reason));
-    } catch (_) {}
+    } catch {}
   }
   return {
     signal: controller.signal,
@@ -70,7 +113,7 @@ function withTimeout(signal, ms = DEFAULT_TIMEOUT_MS) {
   };
 }
 
-function setRefreshFailed(val) {
+function setRefreshFailed(val: boolean) {
   refreshFailed = val;
   if (typeof sessionStorage !== 'undefined') {
     if (val) {
@@ -81,7 +124,7 @@ function setRefreshFailed(val) {
   }
 }
 
-function getXsrfToken() {
+function getXsrfToken(): string | null {
   if (typeof document === 'undefined') return null;
   const cookies = document.cookie.split('; ');
   // Prefer the API-specific CSRF cookie; fallback to legacy name if present
@@ -99,7 +142,7 @@ function getXsrfToken() {
     // As a last resort, check an in-memory var (non-persistent across reloads)
     if (typeof window !== 'undefined' && window.__csrfHmac)
       return window.__csrfHmac;
-  } catch (_) {}
+  } catch {}
   return null;
 }
 
@@ -108,27 +151,31 @@ function clearXsrfCookies() {
     const opts = 'Max-Age=0; path=/';
     document.cookie = `XSRF-TOKEN-API=; ${opts}`;
     document.cookie = `XSRF-TOKEN=; ${opts}`;
-  } catch (_) {
+  } catch {
     /* ignore */
   }
 }
 
-function shouldSendXsrf(method) {
+function shouldSendXsrf(method?: string) {
   const m = (method || 'GET').toUpperCase();
   return !(m === 'GET' || m === 'HEAD' || m === 'OPTIONS');
 }
 
-async function readJsonSafe(res) {
+async function readJsonSafe(res: Response): Promise<unknown> {
   if (!res?.clone) return null;
   try {
     return await res.clone().json();
-  } catch (_e) {
+  } catch {
     return null;
   }
 }
 
-function buildApiError(message, code = null, reqId) {
-  const err = new Error(message);
+function buildApiError(
+  message: string,
+  code: string | null = null,
+  reqId?: string | null
+): ApiError {
+  const err = new Error(message) as ApiError;
   if (code) err.code = code;
   if (reqId) err.requestId = reqId;
   return err;
@@ -151,38 +198,38 @@ export async function initCsrf() {
           } else if (typeof window !== 'undefined') {
             window.__csrfHmac = data.csrfHmac;
           }
-        } catch (_) {
+        } catch {
           if (typeof window !== 'undefined') window.__csrfHmac = data.csrfHmac;
         }
         // Proactive re-prime before HMAC expiry to avoid EBADCSRFTOKEN
         try {
           scheduleCsrfReprime(data.csrfHmac);
-        } catch (_) {
+        } catch {
           /* ignore */
         }
       }
-    } catch (_) {
+    } catch {
       /* ignore parsing errors */
     }
-  } catch (_) {
+  } catch {
     // ignore network failures
   }
 }
 
-function parseCsrfHmacExp(token) {
+function parseCsrfHmacExp(token: Nullable<string>) {
   try {
     const [body] = String(token || '').split('.');
     if (!body) return 0;
     const json = atob(body.replace(/-/g, '+').replace(/_/g, '/'));
     const payload = JSON.parse(json);
     return (payload && payload.exp ? payload.exp : 0) * 1000;
-  } catch (_) {
+  } catch {
     return 0;
   }
 }
 
-let csrfTimerId = null;
-function scheduleCsrfReprime(token) {
+let csrfTimerId: ReturnType<typeof setTimeout> | null = null;
+function scheduleCsrfReprime(token: Nullable<string>) {
   if (csrfTimerId) {
     clearTimeout(csrfTimerId);
     csrfTimerId = null;
@@ -198,13 +245,13 @@ function scheduleCsrfReprime(token) {
   }, delay);
 }
 
-function decodeJwt(token) {
+function decodeJwt(token: Nullable<string>): Record<string, unknown> | null {
   try {
     const [, payload] = String(token || '').split('.');
     if (!payload) return null;
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
     return JSON.parse(json);
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -217,8 +264,11 @@ function scheduleProactiveRefresh() {
   if (!accessToken) return;
   const payload = decodeJwt(accessToken);
   const now = Date.now();
-  const expMs =
-    payload && payload.exp ? payload.exp * 1000 : now + 10 * 60 * 1000;
+  const expSeconds =
+    payload && typeof (payload as { exp?: unknown }).exp === 'number'
+      ? (payload as { exp: number }).exp
+      : undefined;
+  const expMs = expSeconds ? expSeconds * 1000 : now + 10 * 60 * 1000;
   // Refresh 2 minutes before expiry (minimum 5 seconds)
   const safetyMs = 2 * 60 * 1000;
   let delay = Math.max(5000, expMs - now - safetyMs);
@@ -227,13 +277,13 @@ function scheduleProactiveRefresh() {
   refreshTimerId = setTimeout(async () => {
     try {
       await refreshToken();
-    } catch (_) {
+    } catch {
       /* ignore */
     }
   }, delay);
 }
 
-export function setAccessToken(token) {
+export function setAccessToken(token: string | null) {
   accessToken = token;
   setRefreshFailed(false);
   scheduleProactiveRefresh();
@@ -248,17 +298,17 @@ export function clearAccessToken() {
   }
 }
 
-export function getAccessToken() {
+export function getAccessToken(): string | null {
   return accessToken;
 }
 
-async function refreshToken() {
+async function refreshToken(): Promise<boolean> {
   if (refreshFailed) return false;
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
     try {
-      let headers = { 'Content-Type': 'application/json' };
+      let headers: HeadersMap = { 'Content-Type': 'application/json' };
       let xsrf = getXsrfToken();
       if (xsrf && shouldSendXsrf('POST')) {
         headers['X-XSRF-TOKEN'] = xsrf;
@@ -282,7 +332,7 @@ async function refreshToken() {
         // Re-prime CSRF then retry once
         try {
           await initCsrf();
-        } catch (_) {}
+        } catch {}
         headers = { 'Content-Type': 'application/json' };
         xsrf = getXsrfToken();
         if (xsrf && shouldSendXsrf('POST')) {
@@ -321,7 +371,7 @@ async function refreshToken() {
           });
           t3.cancelTimeout?.();
           data = await res.json().catch(() => ({}));
-        } catch (_) {
+        } catch {
           /* ignore */
         }
       }
@@ -338,12 +388,12 @@ async function refreshToken() {
               redirectOn401: false,
             }).catch(() => {});
           }
-        } catch (_) {
+        } catch {
           /* ignore */
         }
         return true;
       }
-    } catch (_err) {
+    } catch {
       // ignore
     } finally {
       refreshPromise = null;
@@ -359,9 +409,13 @@ async function refreshToken() {
 if (typeof window !== 'undefined') {
   const kickIfNearExpiry = () => {
     const payload = decodeJwt(accessToken);
-    if (!payload || !payload.exp) return;
+    const expSeconds =
+      payload && typeof (payload as { exp?: unknown }).exp === 'number'
+        ? (payload as { exp: number }).exp
+        : undefined;
+    if (!expSeconds) return;
     const now = Date.now();
-    const expMs = payload.exp * 1000;
+    const expMs = expSeconds * 1000;
     if (expMs - now < 90 * 1000) {
       // less than 90s left — refresh now
       void refreshToken();
@@ -386,7 +440,7 @@ if (typeof window !== 'undefined') {
         if (!exp) return;
         const now = Date.now();
         if (exp - now < 5 * 60 * 1000) initCsrf().catch(() => {});
-      } catch (_) {
+      } catch {
         /* ignore */
       }
     };
@@ -394,9 +448,17 @@ if (typeof window !== 'undefined') {
       if (document.visibilityState === 'visible') kickCsrfIfNearExpiry();
     });
     window.addEventListener('online', () => kickCsrfIfNearExpiry());
-  } catch (_) {
+  } catch {
     /* ignore */
   }
+}
+
+interface HttpErrorOptions {
+  status: number;
+  data?: { error?: string | null } | null;
+  reqId?: string | null;
+  fallbackCode?: string | null;
+  message?: string;
 }
 
 function createHttpError({
@@ -405,61 +467,84 @@ function createHttpError({
   reqId,
   fallbackCode = null,
   message,
-}) {
+}: HttpErrorOptions): ApiError {
   const baseMessage =
     message || translateError(data?.error) || `Ошибка запроса, код ${status}`;
   const fullMessage = reqId ? `${baseMessage} (id: ${reqId})` : baseMessage;
-  const err = new Error(fullMessage);
+  const err = new Error(fullMessage) as ApiError;
   err.code = data?.error || fallbackCode;
   if (reqId) err.requestId = reqId;
   return err;
 }
 
-export async function apiFetch(path, options = {}) {
+export async function apiFetch<T = unknown>(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<T> {
   const {
     redirectOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
     _ddosRetried = false,
-    ...rest
+    timeoutMs,
+    headers: rawHeaders,
+    signal,
+    ...init
   } = options;
-  const opts = { credentials: 'include', ...rest };
-  opts.headers = {
+
+  const headers: HeadersMap = {
     'Content-Type': 'application/json',
-    ...(opts.headers || {}),
+    ...normalizeHeaders(rawHeaders),
   };
+
+  const requestInit = init as RequestInit;
+  const method = (requestInit.method || 'GET').toUpperCase();
+
   const xsrf = getXsrfToken();
-  if (xsrf && shouldSendXsrf(opts.method)) {
-    opts.headers['X-XSRF-TOKEN'] = xsrf;
-    opts.headers['X-CSRF-TOKEN'] = xsrf;
+  if (xsrf && shouldSendXsrf(requestInit.method)) {
+    headers['X-XSRF-TOKEN'] = xsrf;
+    headers['X-CSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
-    opts.headers['Authorization'] = `Bearer ${accessToken}`;
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  let res;
+  const fetchInit: RequestInit = {
+    ...requestInit,
+    credentials: 'include',
+    headers,
+  };
+
+  let res: Response;
+  const timeout = withTimeout(
+    signal ?? undefined,
+    timeoutMs ?? DEFAULT_TIMEOUT_MS
+  );
   try {
-    const t = withTimeout(opts.signal, options.timeoutMs || DEFAULT_TIMEOUT_MS);
-    res = await fetch(`${API_BASE}${path}`, { ...opts, signal: t.signal });
-    t.cancelTimeout?.();
-  } catch (_err) {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...fetchInit,
+      signal: timeout.signal,
+    });
+  } catch (error: unknown) {
+    timeout.cancelTimeout?.();
+    const err = error instanceof Error ? error : undefined;
     const msg =
-      _err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
-    const e = new Error(msg);
-    e.code = _err?.name === 'AbortError' ? 'timeout' : 'network_error';
-    throw e;
+      err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
+    const apiError = new Error(msg) as ApiError;
+    apiError.code = err?.name === 'AbortError' ? 'timeout' : 'network_error';
+    throw apiError;
   }
+  timeout.cancelTimeout?.();
 
   const contentType =
     (res.headers?.get && res.headers.get('content-type')) || '';
-  const data = await res.json().catch(() => ({}));
-  // Graceful handling for 429 (rate limited), including upstream DDoS proxies
+  const rawData = (await res.json().catch(() => ({}))) as unknown;
+  const errorData = rawData as ErrorPayload;
+
   if (res.status === 429) {
     const retryAfter = Number(
       res.headers?.get && res.headers.get('Retry-After')
     );
-    const method = (opts.method || 'GET').toUpperCase();
-    // Auto-retry once for idempotent GET/HEAD with short backoff
     if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
       const secs =
         !Number.isNaN(retryAfter) && retryAfter > 0
@@ -468,18 +553,15 @@ export async function apiFetch(path, options = {}) {
       await new Promise((r) => setTimeout(r, secs * 1000));
       return apiFetch(path, { ...options, _429Retried: true });
     }
-    let message = translateError(data.error) || 'Слишком много запросов';
+    let message = translateError(errorData?.error) || 'Слишком много запросов';
     if (!Number.isNaN(retryAfter) && retryAfter > 0) {
       const secs = Math.max(1, Math.ceil(retryAfter));
       message = `${message}. Повторите через ${secs} с.`;
     }
-    const err = new Error(message);
-    err.code = data.error || 'rate_limited';
-    throw err;
+    throw buildApiError(message, errorData?.error || 'rate_limited');
   }
-  // DDoS/WAF challenge pages (403/503 with HTML) — retry once for idempotent calls
+
   if ((res.status === 403 || res.status === 503) && !_ddosRetried) {
-    const method = (opts.method || 'GET').toUpperCase();
     if (
       (method === 'GET' || method === 'HEAD') &&
       /text\/html|text\/plain/i.test(contentType)
@@ -488,24 +570,27 @@ export async function apiFetch(path, options = {}) {
       return apiFetch(path, { ...options, _ddosRetried: true });
     }
   }
-  // Handle CSRF mismatch: re-prime token and retry once
+
   if (
     res.status === 403 &&
-    (data?.error === 'EBADCSRFTOKEN' || data?.error === 'CSRF token mismatch')
+    (errorData?.error === 'EBADCSRFTOKEN' ||
+      errorData?.error === 'CSRF token mismatch')
   ) {
     if (!_csrfRetried) {
       try {
         await initCsrf();
-      } catch (_) {}
+      } catch {}
       return apiFetch(path, { ...options, _csrfRetried: true });
     }
     try {
       clearXsrfCookies();
       await initCsrf();
-    } catch (_) {}
+    } catch {}
     return apiFetch(path, { ...options, _csrfRetried: true });
   }
+
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
+
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
@@ -524,59 +609,90 @@ export async function apiFetch(path, options = {}) {
     }
     throw createHttpError({
       status: res.status,
-      data,
+      data: errorData,
       reqId,
     });
   }
+
   if (!res.ok) {
     throw createHttpError({
       status: res.status,
-      data,
+      data: errorData,
       reqId,
     });
   }
-  return data;
+
+  return rawData as T;
 }
 
-export async function apiFetchForm(path, form, options = {}) {
+export async function apiFetchForm<T = unknown>(
+  path: string,
+  form: FormData,
+  options: ApiFetchOptions = {}
+): Promise<T> {
   const {
     redirectOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
     _ddosRetried = false,
-    ...rest
+    timeoutMs,
+    headers: rawHeaders,
+    signal,
+    ...init
   } = options;
-  const opts = { credentials: 'include', ...rest, body: form };
-  opts.headers = { ...(opts.headers || {}) };
+
+  const headers: HeadersMap = {
+    ...normalizeHeaders(rawHeaders),
+  };
+
+  const requestInit = init as RequestInit;
+  const method = (requestInit.method || 'POST').toUpperCase();
   const xsrf = getXsrfToken();
-  if (xsrf && shouldSendXsrf(opts.method || 'POST')) {
-    opts.headers['X-XSRF-TOKEN'] = xsrf;
-    opts.headers['X-CSRF-TOKEN'] = xsrf;
+  if (xsrf && shouldSendXsrf(requestInit.method || 'POST')) {
+    headers['X-XSRF-TOKEN'] = xsrf;
+    headers['X-CSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
-    opts.headers['Authorization'] = `Bearer ${accessToken}`;
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
-  let res;
+
+  const fetchInit: RequestInit = {
+    ...requestInit,
+    method: requestInit.method ?? 'POST',
+    credentials: 'include',
+    headers,
+    body: form,
+  };
+
+  let res: Response;
+  const timeout = withTimeout(
+    signal ?? undefined,
+    timeoutMs ?? DEFAULT_TIMEOUT_MS
+  );
   try {
-    const t = withTimeout(opts.signal, options.timeoutMs || DEFAULT_TIMEOUT_MS);
-    res = await fetch(`${API_BASE}${path}`, { ...opts, signal: t.signal });
-    t.cancelTimeout?.();
-  } catch (_err) {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...fetchInit,
+      signal: timeout.signal,
+    });
+  } catch (error: unknown) {
+    timeout.cancelTimeout?.();
+    const err = error instanceof Error ? error : undefined;
     const msg =
-      _err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
-    const e = new Error(msg);
-    e.code = _err?.name === 'AbortError' ? 'timeout' : 'network_error';
-    throw e;
+      err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
+    const apiError = new Error(msg) as ApiError;
+    apiError.code = err?.name === 'AbortError' ? 'timeout' : 'network_error';
+    throw apiError;
   }
+  timeout.cancelTimeout?.();
+
   const contentType =
     (res.headers?.get && res.headers.get('content-type')) || '';
-  const data = await res.json().catch(() => ({}));
+  const rawData = (await res.json().catch(() => ({}))) as unknown;
+  const errorData = rawData as ErrorPayload;
   if (res.status === 429) {
     const retryAfter = Number(
       res.headers?.get && res.headers.get('Retry-After')
     );
-    const method = (opts.method || 'POST').toUpperCase();
-    // Allow single auto-retry only for idempotent GET/HEAD
     if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
       const secs =
         !Number.isNaN(retryAfter) && retryAfter > 0
@@ -585,18 +701,15 @@ export async function apiFetchForm(path, form, options = {}) {
       await new Promise((r) => setTimeout(r, secs * 1000));
       return apiFetchForm(path, form, { ...options, _429Retried: true });
     }
-    let message = translateError(data.error) || 'Слишком много запросов';
+    let message = translateError(errorData?.error) || 'Слишком много запросов';
     if (!Number.isNaN(retryAfter) && retryAfter > 0) {
       const secs = Math.max(1, Math.ceil(retryAfter));
       message = `${message}. Повторите через ${secs} с.`;
     }
-    const err = new Error(message);
-    err.code = data.error || 'rate_limited';
-    throw err;
+    throw buildApiError(message, errorData?.error || 'rate_limited');
   }
   // DDoS/WAF challenge (403/503 with HTML) — retry once (idempotent only)
   if ((res.status === 403 || res.status === 503) && !_ddosRetried) {
-    const method = (opts.method || 'POST').toUpperCase();
     if (
       (method === 'GET' || method === 'HEAD') &&
       /text\/html|text\/plain/i.test(contentType)
@@ -607,18 +720,19 @@ export async function apiFetchForm(path, form, options = {}) {
   }
   if (
     res.status === 403 &&
-    (data?.error === 'EBADCSRFTOKEN' || data?.error === 'CSRF token mismatch')
+    (errorData?.error === 'EBADCSRFTOKEN' ||
+      errorData?.error === 'CSRF token mismatch')
   ) {
     if (!_csrfRetried) {
       try {
         await initCsrf();
-      } catch (_) {}
+      } catch {}
       return apiFetchForm(path, form, { ...options, _csrfRetried: true });
     }
     try {
       clearXsrfCookies();
       await initCsrf();
-    } catch (_) {}
+    } catch {}
     return apiFetchForm(path, form, { ...options, _csrfRetried: true });
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
@@ -639,61 +753,82 @@ export async function apiFetchForm(path, form, options = {}) {
       window.location.href = '/login';
     }
     let message =
-      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+      translateError(errorData?.error) || `Ошибка запроса, код ${res.status}`;
     if (reqId) message += ` (id: ${reqId})`;
-    const err = new Error(message);
-    err.code = data.error || null;
-    if (reqId) err.requestId = reqId;
-    throw err;
+    throw buildApiError(message, errorData?.error || null, reqId);
   }
   if (!res.ok) {
     let message =
-      translateError(data.error) || `Ошибка запроса, код ${res.status}`;
+      translateError(errorData?.error) || `Ошибка запроса, код ${res.status}`;
     if (reqId) message += ` (id: ${reqId})`;
-    const err = new Error(message);
-    err.code = data.error || null;
-    if (reqId) err.requestId = reqId;
-    throw err;
+    throw buildApiError(message, errorData?.error || null, reqId);
   }
-  return data;
+  return rawData as T;
 }
 
-export async function apiFetchBlob(path, options = {}) {
+export async function apiFetchBlob(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<Blob> {
   const {
     redirectOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
     _ddosRetried = false,
-    ...rest
+    timeoutMs,
+    headers: rawHeaders,
+    signal,
+    ...init
   } = options;
-  const opts = { credentials: 'include', ...rest };
-  opts.headers = { ...(opts.headers || {}) };
+
+  const headers: HeadersMap = {
+    ...normalizeHeaders(rawHeaders),
+  };
+  const requestInit = init as RequestInit;
+  const method = (requestInit.method || 'GET').toUpperCase();
+
   const xsrf = getXsrfToken();
-  if (xsrf && shouldSendXsrf(opts.method)) {
-    opts.headers['X-XSRF-TOKEN'] = xsrf;
-    opts.headers['X-CSRF-TOKEN'] = xsrf;
+  if (xsrf && shouldSendXsrf(requestInit.method)) {
+    headers['X-XSRF-TOKEN'] = xsrf;
+    headers['X-CSRF-TOKEN'] = xsrf;
   }
   if (accessToken) {
-    opts.headers['Authorization'] = `Bearer ${accessToken}`;
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
-  let res;
+
+  const fetchInit: RequestInit = {
+    ...requestInit,
+    credentials: 'include',
+    headers,
+  };
+
+  let res: Response;
+  const timeout = withTimeout(
+    signal ?? undefined,
+    timeoutMs ?? DEFAULT_TIMEOUT_MS
+  );
   try {
-    const t = withTimeout(opts.signal, options.timeoutMs || DEFAULT_TIMEOUT_MS);
-    res = await fetch(`${API_BASE}${path}`, { ...opts, signal: t.signal });
-    t.cancelTimeout?.();
-  } catch (_err) {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...fetchInit,
+      signal: timeout.signal,
+    });
+  } catch (error: unknown) {
+    timeout.cancelTimeout?.();
+    const err = error instanceof Error ? error : undefined;
     const msg =
-      _err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
-    const e = new Error(msg);
-    e.code = _err?.name === 'AbortError' ? 'timeout' : 'network_error';
-    throw e;
+      err?.name === 'AbortError' ? 'Таймаут запроса' : 'Сетевая ошибка';
+    const apiError = new Error(msg) as ApiError;
+    apiError.code = err?.name === 'AbortError' ? 'timeout' : 'network_error';
+    throw apiError;
   }
+  timeout.cancelTimeout?.();
+
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
+
   if (res.status === 429) {
-    const data = await readJsonSafe(res);
+    const data = (await readJsonSafe(res)) as { error?: string | null } | null;
     const retryAfterHeader = res.headers?.get && res.headers.get('Retry-After');
     const retryAfter = Number(retryAfterHeader);
-    const method = (opts.method || 'GET').toUpperCase();
     if ((method === 'GET' || method === 'HEAD') && !_429Retried) {
       const secs =
         !Number.isNaN(retryAfter) && retryAfter > 0
@@ -709,9 +844,10 @@ export async function apiFetchBlob(path, options = {}) {
     }
     throw buildApiError(message, data?.error || 'rate_limited', reqId);
   }
+
   if (res.status === 403) {
     try {
-      const data = await res.clone().json();
+      const data = (await res.clone().json()) as ErrorPayload;
       if (
         data?.error === 'EBADCSRFTOKEN' ||
         data?.error === 'CSRF token mismatch'
@@ -719,31 +855,32 @@ export async function apiFetchBlob(path, options = {}) {
         if (!_csrfRetried) {
           try {
             await initCsrf();
-          } catch (_) {}
+          } catch {}
           return apiFetchBlob(path, { ...options, _csrfRetried: true });
         }
         try {
           clearXsrfCookies();
           await initCsrf();
-        } catch (_) {}
+        } catch {}
         return apiFetchBlob(path, { ...options, _csrfRetried: true });
       }
-    } catch (_) {
+    } catch {
       // ignore
     }
   }
-  // DDoS/WAF 403/503 with HTML payload — retry once for idempotent calls
+
   if ((res.status === 403 || res.status === 503) && !_ddosRetried) {
-    const method = (opts.method || 'GET').toUpperCase();
-    const ct = (res.headers?.get && res.headers.get('content-type')) || '';
+    const contentType =
+      (res.headers?.get && res.headers.get('content-type')) || '';
     if (
       (method === 'GET' || method === 'HEAD') &&
-      /text\/html|text\/plain/i.test(ct)
+      /text\/html|text\/plain/i.test(contentType)
     ) {
       await new Promise((r) => setTimeout(r, 2000));
       return apiFetchBlob(path, { ...options, _ddosRetried: true });
     }
   }
+
   if (res.status === 401) {
     if (path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
@@ -760,23 +897,33 @@ export async function apiFetchBlob(path, options = {}) {
     ) {
       window.location.href = '/login';
     }
-    const data = await readJsonSafe(res);
+    const data = (await readJsonSafe(res)) as { error?: string | null } | null;
     let message =
       translateError(data?.error) || `Ошибка запроса, код ${res.status}`;
     if (reqId) message += ` (id: ${reqId})`;
     throw buildApiError(message, data?.error || null, reqId);
   }
+
   if (!res.ok) {
-    const data = await readJsonSafe(res);
+    const data = (await readJsonSafe(res)) as { error?: string | null } | null;
     let message =
       translateError(data?.error) || `Ошибка запроса, код ${res.status}`;
     if (reqId) message += ` (id: ${reqId})`;
     throw buildApiError(message, data?.error || null, reqId);
   }
+
   return res.blob();
 }
 
-export function apiUpload(path, form, { onProgress } = {}) {
+interface UploadOptions {
+  onProgress?: (progress: number) => void;
+}
+
+export function apiUpload(
+  path: string,
+  form: FormData,
+  { onProgress }: UploadOptions = {}
+): Promise<unknown> {
   const xsrf = getXsrfToken();
   const token = accessToken;
   return new Promise((resolve, reject) => {
@@ -789,31 +936,38 @@ export function apiUpload(path, form, { onProgress } = {}) {
     }
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.onload = () => {
-      let data = {};
+      let data: Record<string, unknown> = {};
       try {
         data = JSON.parse(xhr.responseText);
-      } catch (e) {
+      } catch {
         /* noop */
       }
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(data);
-      } else {
-        let message =
-          translateError(data.error) || `Ошибка запроса, код ${xhr.status}`;
-        if (xhr.status === 429) {
-          const ra = parseInt(xhr.getResponseHeader('Retry-After') || '0', 10);
-          if (ra > 0)
-            message = `${translateError('rate_limited')}. Повторите через ${Math.ceil(ra)} с.`;
-        }
-        const err = new Error(message);
-        err.code = data.error || null;
-        reject(err);
+        return;
       }
+
+      const payload = data as ErrorPayload;
+      let message =
+        translateError(payload.error) || `Ошибка запроса, код ${xhr.status}`;
+      if (xhr.status === 429) {
+        const ra = parseInt(xhr.getResponseHeader('Retry-After') || '0', 10);
+        if (ra > 0) {
+          message = `${translateError('rate_limited')}. Повторите через ${Math.ceil(
+            ra
+          )} с.`;
+        }
+      }
+      const err = buildApiError(message, payload.error || null);
+      reject(err);
     };
-    xhr.onerror = () => reject(new Error('Сетевая ошибка'));
+    xhr.onerror = () =>
+      reject(buildApiError('Сетевая ошибка', 'network_error'));
     if (onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      xhr.upload.onprogress = (e: ProgressEvent<EventTarget>) => {
+        if (e.lengthComputable && e.total > 0) {
+          onProgress(e.loaded / e.total);
+        }
       };
     }
     xhr.send(form);

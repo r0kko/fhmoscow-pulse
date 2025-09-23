@@ -10,7 +10,7 @@ import {
   hasRole,
   isBrigadeRefereeOnly,
   isStaffOnly,
-} from '@/utils/roles.js';
+} from '@/utils/roles';
 import {
   formatKickoff,
   formatMinutesSeconds,

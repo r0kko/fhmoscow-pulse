@@ -2,8 +2,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 import BrandSpinner from '../components/BrandSpinner.vue';
-import { apiFetch } from '../api.js';
-import { auth } from '../auth.js';
+import { apiFetch } from '../api';
+import { auth } from '../auth';
 import UserForm from '../components/UserForm.vue';
 import AddPassportModal from '../components/AddPassportModal.vue';
 import InnSnilsForm from '../components/InnSnilsForm.vue';

@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginView from '../../src/views/Login.vue';
-import { auth } from '../../src/auth.js';
+import { auth } from '../../src/auth';
 import { setupMsw } from '../utils/msw.js';
 
 const server = setupMsw();

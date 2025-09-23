@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import Pagination from '../components/Pagination.vue';
-import { apiFetch, apiUpload } from '../api.js';
+import { apiFetch, apiUpload } from '../api';
 
 const players = ref([]);
 const total = ref(0);

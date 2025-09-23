@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch, apiFetchForm } from '../api.js';
+import { apiFetch, apiFetchForm } from '../api';
 import MedicalExamCard from '../components/MedicalExamCard.vue';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import Modal from 'bootstrap/js/dist/modal';

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import TrainingCalendar from '../components/TrainingCalendar.vue';
 import { toDayKey } from '../utils/time.js';
 import ContactModal from '../components/ContactModal.vue';

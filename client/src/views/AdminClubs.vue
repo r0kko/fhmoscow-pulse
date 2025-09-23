@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useToast } from '../utils/toast.js';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';

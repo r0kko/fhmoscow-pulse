@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiUpload } from '../api.js';
+import { apiUpload } from '../api';
 
 const emit = defineEmits(['uploaded']);
 

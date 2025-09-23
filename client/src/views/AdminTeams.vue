@@ -5,7 +5,7 @@ import { useToast } from '../utils/toast.js';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import TeamFiltersModal from '../components/TeamFiltersModal.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const teams = ref([]);

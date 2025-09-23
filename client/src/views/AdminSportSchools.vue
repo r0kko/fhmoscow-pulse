@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 
 import PageNav from '../components/PageNav.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { useToast } from '../utils/toast.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 

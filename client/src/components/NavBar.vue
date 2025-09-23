@@ -35,8 +35,8 @@
 <script setup>
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { auth, fetchCurrentUser, clearAuth } from '../auth.js';
-import { apiFetch, initCsrf } from '../api.js';
+import { auth, fetchCurrentUser, clearAuth } from '../auth';
+import { apiFetch, initCsrf } from '../api';
 
 const router = useRouter();
 const { user } = auth;

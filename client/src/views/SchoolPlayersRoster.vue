@@ -2,7 +2,7 @@
 import { onMounted, ref, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import EditPlayerRosterModal from '../components/EditPlayerRosterModal.vue';
 
 const route = useRoute();

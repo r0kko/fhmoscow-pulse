@@ -3,8 +3,8 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NavBar from '../../src/components/NavBar.vue';
 
-vi.mock('../../src/api.js', async () => {
-  const actual = await vi.importActual('../../src/api.js');
+vi.mock('../../src/api', async () => {
+  const actual = await vi.importActual('../../src/api');
   return {
     ...actual,
     apiFetch: vi.fn(() => Promise.resolve({})),
@@ -12,8 +12,8 @@ vi.mock('../../src/api.js', async () => {
   };
 });
 
-import * as authModule from '../../src/auth.js';
-import * as apiModule from '../../src/api.js';
+import * as authModule from '../../src/auth';
+import * as apiModule from '../../src/api';
 
 function createTestRouter() {
   return createRouter({

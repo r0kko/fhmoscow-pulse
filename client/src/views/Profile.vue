@@ -1,12 +1,12 @@
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import InfoField from '../components/InfoField.vue';
 import AddVehicleModal from '../components/AddVehicleModal.vue';
 import ChangeBankRequisitesModal from '../components/ChangeBankRequisitesModal.vue';
 import DocumentSignModal from '../components/DocumentSignModal.vue';
-import { auth } from '../auth.js';
+import { auth } from '../auth';
 
 const noDataPlaceholder = '—';
 

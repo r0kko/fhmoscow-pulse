@@ -8,7 +8,7 @@ import {
   reactive,
 } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import TabSelector from '../components/TabSelector.vue';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
 import { MOSCOW_TZ, toDayKey } from '../utils/time.js';

@@ -5,7 +5,7 @@ import EmptyState from '../components/EmptyState.vue';
 import { useRoute, useRouter } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import TabSelector from '../components/TabSelector.vue';
 import DocumentUploadModal from '../components/DocumentUploadModal.vue';
 import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';

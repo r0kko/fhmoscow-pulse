@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import PageNav from '../components/PageNav.vue';
 import BaseTile from '../components/BaseTile.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 
 const route = useRoute();

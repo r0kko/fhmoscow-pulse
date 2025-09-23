@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch } from './api';
 
 export async function suggestFio(query, parts) {
   if (!query) return [];

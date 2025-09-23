@@ -1,8 +1,8 @@
 <script setup>
-import { auth } from '../auth.js';
+import { auth } from '../auth';
 import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import UpcomingEventCard from '../components/UpcomingEventCard.vue';
 import SkeletonBlock from '../components/SkeletonBlock.vue';
 import MenuTile from '../components/MenuTile.vue';
@@ -13,7 +13,7 @@ import {
   isBrigadeRefereeOnly,
   isStaffOnly as isStaffOnlyHelper,
   hasRole,
-} from '../utils/roles.js';
+} from '../utils/roles';
 
 const basePreparationSections = [
   { title: 'Сборы', icon: 'bi-people-fill', to: '/camps', referee: true },

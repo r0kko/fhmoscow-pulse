@@ -8,7 +8,7 @@ import {
   watch,
 } from 'vue';
 // RouterLink not needed here; breadcrumbs component handles links
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import EmptyState from '../components/EmptyState.vue';
@@ -18,8 +18,8 @@ import DocumentSignModal from '../components/DocumentSignModal.vue';
 import { useToast } from '../utils/toast.js';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import BaseTile from '../components/BaseTile.vue';
-import { auth } from '../auth.js';
-import { hasRole, REFEREE_ROLES } from '../utils/roles.js';
+import { auth } from '../auth';
+import { hasRole, REFEREE_ROLES } from '../utils/roles';
 
 const loading = ref(true);
 const error = ref('');

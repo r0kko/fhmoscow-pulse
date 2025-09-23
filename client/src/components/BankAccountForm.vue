@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { findBankByBic } from '../dadata.js';
 import { isValidAccountNumber } from '../utils/bank.js';
 

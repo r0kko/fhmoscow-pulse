@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api.js';
+import { apiFetch } from '../api';
 import { formatKickoff, isMskMidnight } from '../utils/time.js';
 import InfoItem from '../components/InfoItem.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
