@@ -1,6 +1,9 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, type HttpHandler } from 'msw';
+import type { AuthUser } from '../../src/auth';
 
-export const handlers = [
+const activeUser: AuthUser = { id: 1, status: 'ACTIVE', first_name: 'Тест' };
+
+export const handlers: HttpHandler[] = [
   // Basic health for examples/tests
   http.get('/api/ping', () => HttpResponse.json({ ok: true })),
 
@@ -8,7 +11,7 @@ export const handlers = [
   http.post('*/auth/login', async () =>
     HttpResponse.json({
       access_token: 'login.token.stub',
-      user: { id: 1, status: 'ACTIVE' },
+      user: activeUser,
       roles: [],
       must_change_password: false,
     })
@@ -21,7 +24,7 @@ export const handlers = [
     })
   ),
   http.get('/api/auth/me', async () =>
-    HttpResponse.json({ user: { id: 1, first_name: 'Тест' }, roles: [] })
+    HttpResponse.json({ user: activeUser, roles: [] })
   ),
   http.get('/api/csrf-token', async () =>
     HttpResponse.json({ csrfHmac: 'dummy.hmac.token' })

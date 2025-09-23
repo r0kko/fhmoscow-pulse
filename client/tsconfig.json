@@ -13,7 +13,14 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "#tests/*": ["./tests/*"],
+      "msw": ["./tests/vendor/msw.js"],
+      "msw/node": ["./tests/vendor/msw-node.js"]
+    }
   },
   "include": [
     "src/**/*.ts",

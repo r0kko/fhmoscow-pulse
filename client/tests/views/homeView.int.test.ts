@@ -1,11 +1,16 @@
 import { render, screen, within } from '@testing-library/vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import {
+  createMemoryHistory,
+  createRouter,
+  type RouteRecordRaw,
+  type Router,
+} from 'vue-router';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HomeView from '../../src/views/Home.vue';
 import edgeFade from '../../src/utils/edgeFade.js';
-import { auth } from '../../src/auth';
-import { setupMsw } from '../utils/msw.js';
+import { auth, type AuthUser } from '../../src/auth';
+import { setupMsw } from '../utils/msw';
 
 const server = setupMsw();
 
@@ -16,24 +21,27 @@ function resetAuth() {
   auth.mustChangePassword = false;
 }
 
-function createRouterInstance() {
+const routes: RouteRecordRaw[] = [
+  { path: '/', component: HomeView },
+  { path: '/:pathMatch(.*)*', component: { template: '<div />' } },
+];
+
+function createRouterInstance(): Router {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: HomeView },
-      { path: '/:pathMatch(.*)*', component: { template: '<div />' } },
-    ],
+    routes,
   });
 }
 
 describe('Home View (integration)', () => {
   beforeEach(() => {
     resetAuth();
-    auth.user = {
+    const user: AuthUser = {
       id: 42,
       first_name: 'Анна',
       phone: '79991234567',
     };
+    auth.user = user;
     auth.roles = ['REFEREE', 'SPORT_SCHOOL_STAFF'];
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-05-01T06:00:00Z'));

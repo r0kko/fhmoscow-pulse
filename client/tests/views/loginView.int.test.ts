@@ -1,11 +1,16 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import {
+  createMemoryHistory,
+  createRouter,
+  type RouteRecordRaw,
+  type Router,
+} from 'vue-router';
 import { http, HttpResponse } from 'msw';
 import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginView from '../../src/views/Login.vue';
 import { auth } from '../../src/auth';
-import { setupMsw } from '../utils/msw.js';
+import { setupMsw } from '../utils/msw';
 
 const server = setupMsw();
 
@@ -16,30 +21,27 @@ function resetAuth() {
   auth.mustChangePassword = false;
 }
 
-function createRouterInstance() {
+interface JsonRequest {
+  json(): Promise<unknown>;
+}
+
+const demoRoutes: RouteRecordRaw[] = [
+  { path: '/', component: { template: '<div>home</div>' } },
+  { path: '/login', component: LoginView },
+  { path: '/change-password', component: { template: '<div>change</div>' } },
+  {
+    path: '/awaiting-confirmation',
+    component: { template: '<div>await</div>' },
+  },
+  { path: '/complete-profile', component: { template: '<div>complete</div>' } },
+  { path: '/register', component: { template: '<div>register</div>' } },
+  { path: '/password-reset', component: { template: '<div>reset</div>' } },
+];
+
+function createRouterInstance(): Router {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { template: '<div>home</div>' } },
-      { path: '/login', component: LoginView },
-      {
-        path: '/change-password',
-        component: { template: '<div>change</div>' },
-      },
-      {
-        path: '/awaiting-confirmation',
-        component: { template: '<div>await</div>' },
-      },
-      {
-        path: '/complete-profile',
-        component: { template: '<div>complete</div>' },
-      },
-      { path: '/register', component: { template: '<div>register</div>' } },
-      {
-        path: '/password-reset',
-        component: { template: '<div>reset</div>' },
-      },
-    ],
+    routes: demoRoutes,
   });
 }
 
@@ -54,18 +56,26 @@ describe('Login View (integration)', () => {
   });
 
   it('authenticates successfully and routes to the dashboard', async () => {
-    const loginSpy = vi.fn();
+    interface LoginPayload {
+      phone: string;
+      password: string;
+    }
+
+    const loginSpy = vi.fn<(payload: LoginPayload) => void>();
     server.use(
-      http.post('*/auth/login', async ({ request }) => {
-        const body = await request.json();
-        loginSpy(body);
-        return HttpResponse.json({
-          access_token: 'access.token',
-          user: { id: 10, status: 'ACTIVE', first_name: 'Анна' },
-          roles: ['REFEREE'],
-          must_change_password: false,
-        });
-      })
+      http.post(
+        '*/auth/login',
+        async ({ request }: { request: JsonRequest }) => {
+          const body = (await request.json()) as LoginPayload;
+          loginSpy(body);
+          return HttpResponse.json({
+            access_token: 'access.token',
+            user: { id: 10, status: 'ACTIVE', first_name: 'Анна' },
+            roles: ['REFEREE'],
+            must_change_password: false,
+          });
+        }
+      )
     );
 
     const router = createRouterInstance();
@@ -88,7 +98,7 @@ describe('Login View (integration)', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
 
     await waitFor(() => expect(loginSpy).toHaveBeenCalledTimes(1));
-    expect(loginSpy.mock.calls[0][0]).toMatchObject({
+    expect(loginSpy.mock.calls[0]?.[0]).toMatchObject({
       phone: '79991234567',
       password: 'Secret!23',
     });

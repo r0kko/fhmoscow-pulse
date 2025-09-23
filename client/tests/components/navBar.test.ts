@@ -1,5 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import {
+  createMemoryHistory,
+  createRouter,
+  type RouteRecordRaw,
+  type Router,
+} from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NavBar from '../../src/components/NavBar.vue';
 
@@ -13,15 +18,18 @@ vi.mock('../../src/api', async () => {
 });
 
 import * as authModule from '../../src/auth';
+import type { AuthUser } from '../../src/auth';
 import * as apiModule from '../../src/api';
 
-function createTestRouter() {
+const routes: RouteRecordRaw[] = [
+  { path: '/', component: { template: '<div>home</div>' } },
+  { path: '/login', component: { template: '<div>login</div>' } },
+];
+
+function createTestRouter(): Router {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { template: '<div>home</div>' } },
-      { path: '/login', component: { template: '<div>login</div>' } },
-    ],
+    routes,
   });
 }
 
@@ -33,17 +41,21 @@ function resetAuthState() {
 }
 
 describe('NavBar', () => {
+  const apiFetchMock = vi.mocked(apiModule.apiFetch);
+  const initCsrfMock = vi.mocked(apiModule.initCsrf);
+
   beforeEach(() => {
     resetAuthState();
     vi.clearAllMocks();
   });
 
   it('shows current user and performs logout workflow', async () => {
-    authModule.auth.user = {
+    const user: AuthUser = {
       first_name: 'Анна',
       last_name: 'Иванова',
       patronymic: 'Сергеевна',
     };
+    authModule.auth.user = user;
 
     const clearSpy = vi.spyOn(authModule, 'clearAuth');
     const router = createTestRouter();
@@ -60,11 +72,13 @@ describe('NavBar', () => {
       screen.getByText('Иванова Анна Сергеевна', { exact: false })
     ).toBeInTheDocument();
 
-    const [logoutButton] = screen.getAllByRole('button', { name: 'Выйти' });
+    const logoutButtons = screen.getAllByRole('button', { name: 'Выйти' });
+    expect(logoutButtons.length).toBeGreaterThan(0);
+    const logoutButton = logoutButtons[0]!;
     await fireEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(apiModule.apiFetch).toHaveBeenCalledWith('/auth/logout', {
+      expect(apiFetchMock).toHaveBeenCalledWith('/auth/logout', {
         method: 'POST',
       });
     });
@@ -74,7 +88,7 @@ describe('NavBar', () => {
       expect(router.currentRoute.value.fullPath).toBe('/login');
     });
 
-    expect(apiModule.initCsrf).toHaveBeenCalled();
+    expect(initCsrfMock).toHaveBeenCalled();
     clearSpy.mockRestore();
   });
 
@@ -117,7 +131,7 @@ describe('NavBar', () => {
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalled();
-      expect(apiModule.apiFetch).toHaveBeenCalledWith('/auth/logout', {
+      expect(apiFetchMock).toHaveBeenCalledWith('/auth/logout', {
         method: 'POST',
       });
     });

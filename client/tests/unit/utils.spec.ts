@@ -131,7 +131,7 @@ describe('utils/roles', () => {
     expect(isStaffOnly(['SPORT_SCHOOL_STAFF'])).toBe(true);
     expect(isStaffOnly(['SPORT_SCHOOL_STAFF', 'ADMIN'])).toBe(false);
     expect(isStaffOnly(['ADMIN'])).toBe(false);
-    expect(isStaffOnly()).toBe(false);
+    expect(isStaffOnly(undefined)).toBe(false);
   });
 });
 

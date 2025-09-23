@@ -1,41 +1,65 @@
 import { render, screen, within } from '@testing-library/vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import {
+  createMemoryHistory,
+  createRouter,
+  type RouteRecordRaw,
+  type Router,
+} from 'vue-router';
 import { http, HttpResponse } from 'msw';
-import { h } from 'vue';
+import { defineComponent, h } from 'vue';
+import type { ComponentObjectPropsOptions } from 'vue';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import ProfileView from '../../src/views/Profile.vue';
-import { auth } from '../../src/auth';
-import { setupMsw } from '../utils/msw.js';
+import { auth, type AuthUser } from '../../src/auth';
+import { setupMsw } from '../utils/msw';
+
+/* eslint-disable vue/one-component-per-file */
 
 const server = setupMsw();
 
-function createExposeStub(name, { props = {}, emits = [] } = {}) {
-  return {
+interface ExposeStubOptions {
+  props?: ComponentObjectPropsOptions;
+  emits?: string[];
+}
+
+function createExposeStub(
+  name: string,
+  { props = {}, emits = [] }: ExposeStubOptions = {}
+) {
+  const normalizedProps = (props ?? {}) as ComponentObjectPropsOptions;
+  const normalizedEmits = emits ?? [];
+  return defineComponent({
     name,
-    props,
-    emits,
-    setup(_, { expose }) {
+    props: normalizedProps,
+    emits: normalizedEmits,
+    setup(
+      _props: Record<string, unknown>,
+      { expose }: { expose: (payload: { open: () => void }) => void }
+    ) {
       expose({ open: () => {} });
       return () => h('div', { 'data-testid': name });
     },
-  };
+  });
 }
 
-function createRouterInstance() {
+const routes: RouteRecordRaw[] = [
+  { path: '/', component: { template: '<div>home</div>' } },
+  { path: '/profile', component: ProfileView },
+  { path: '/profile/doc/:slug', component: { template: '<div />' } },
+];
+
+function createRouterInstance(): Router {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { template: '<div>home</div>' } },
-      { path: '/profile', component: ProfileView },
-      { path: '/profile/doc/:slug', component: { template: '<div />' } },
-    ],
+    routes,
   });
 }
 
 describe('Profile View (integration)', () => {
   beforeEach(() => {
     auth.roles = ['REFEREE'];
-    auth.user = { id: 99, phone: '79991234567' };
+    const user: AuthUser = { id: 99, phone: '79991234567' };
+    auth.user = user;
 
     server.use(
       http.get('*/users/me', () =>
@@ -117,7 +141,7 @@ describe('Profile View (integration)', () => {
     router.push('/profile');
     await router.isReady();
 
-    const InfoFieldStub = {
+    const InfoFieldStub = defineComponent({
       props: {
         id: { type: String, required: true },
         label: { type: String, required: true },
@@ -142,7 +166,7 @@ describe('Profile View (integration)', () => {
                 }),
           ]);
       },
-    };
+    });
 
     render(ProfileView, {
       global: {
@@ -209,3 +233,5 @@ describe('Profile View (integration)', () => {
     ).toBeInTheDocument();
   });
 });
+
+/* eslint-enable vue/one-component-per-file */

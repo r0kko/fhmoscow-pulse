@@ -131,7 +131,10 @@ function getXsrfToken(): string | null {
   const names = ['XSRF-TOKEN-API', 'XSRF-TOKEN'];
   for (const name of names) {
     const row = cookies.find((c) => c.startsWith(`${name}=`));
-    if (row) return decodeURIComponent(row.split('=')[1]);
+    if (row) {
+      const [, value] = row.split('=');
+      if (value) return decodeURIComponent(value);
+    }
   }
   try {
     // Fallback to stateless HMAC token stored in sessionStorage
