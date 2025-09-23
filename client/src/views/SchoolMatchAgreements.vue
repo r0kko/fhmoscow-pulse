@@ -15,6 +15,7 @@ import {
 import InfoItem from '../components/InfoItem.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import AgreementTimeline from '../components/AgreementTimeline.vue';
+import EmptyState from '../components/EmptyState.vue';
 
 const route = useRoute();
 
@@ -23,6 +24,10 @@ const agreements = ref([]);
 const loading = ref(true);
 const error = ref('');
 
+const matchPermissions = computed(() => match.value?.permissions || null);
+const isAgreementsAllowed = computed(
+  () => matchPermissions.value?.agreements?.allowed !== false
+);
 const groups = ref([]); // grounds grouped by club (always home team grounds)
 const groundId = ref('');
 const timeStr = ref(''); // HH:MM in MSK
@@ -184,6 +189,12 @@ async function loadAll() {
   try {
     const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
+    if (!isAgreementsAllowed.value) {
+      agreements.value = [];
+      groups.value = [];
+      groundId.value = '';
+      return;
+    }
     const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
     agreements.value = (ares.agreements || []).map((a) => a);
     // Fetch available grounds only for participants (to avoid 403 and noisy UX)
@@ -398,7 +409,7 @@ async function loadContacts() {
       </div>
       <BrandSpinner v-else-if="loading" label="Загрузка" />
 
-      <template v-else>
+      <template v-else-if="isAgreementsAllowed">
         <!-- Header: Teams, datetime, meta, side marker -->
         <div class="card section-card tile fade-in shadow-sm mb-3">
           <div class="card-body">
@@ -661,6 +672,16 @@ async function loadContacts() {
         <!-- Modals -->
         <ContactModal ref="contactModalRef" />
       </template>
+
+      <div v-else class="card section-card tile fade-in shadow-sm">
+        <div class="card-body">
+          <EmptyState
+            icon="bi-lock-fill"
+            title="Доступ ограничен"
+            description="Раздел доступен сотрудникам с расширенными правами."
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>

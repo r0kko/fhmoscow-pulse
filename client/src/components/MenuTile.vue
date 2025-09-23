@@ -10,6 +10,7 @@ const props = defineProps({
   note: { type: String, default: '' },
   imageSrc: { type: String, default: '' },
   imageAlt: { type: String, default: '' },
+  locked: { type: Boolean, default: false },
 });
 </script>
 
@@ -39,9 +40,17 @@ const props = defineProps({
       <template v-else>
         <i :class="props.icon + ' icon fs-3'" aria-hidden="true"></i>
       </template>
-      <span v-if="props.note" class="tile-note text-muted small">{{
-        props.note
-      }}</span>
+      <i
+        v-if="props.locked"
+        class="bi bi-lock-fill lock-badge"
+        aria-hidden="true"
+      ></i>
+      <span v-if="props.locked" class="visually-hidden">Доступ ограничен</span>
+      <span
+        v-if="props.note && !props.locked"
+        class="tile-note text-muted small"
+        >{{ props.note }}</span
+      >
     </div>
   </BaseTile>
 </template>
@@ -52,5 +61,11 @@ const props = defineProps({
   bottom: 0.75rem;
   right: 0.75rem;
   display: inline-block;
+}
+.lock-badge {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  color: var(--bs-gray-600, #6c757d);
 }
 </style>

@@ -1,7 +1,6 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 
 import csrfMiddleware from './src/middlewares/csrf.js';
@@ -20,6 +19,11 @@ import {
 } from './src/config/metrics.js';
 import swaggerSpec from './src/docs/swagger.js';
 import apiDocsGuard from './src/middlewares/apiDocsGuard.js';
+import {
+  helmetMiddleware,
+  contentSecurityPolicyMiddleware,
+  swaggerContentSecurityPolicyMiddleware,
+} from './src/config/helmetConfig.js';
 
 const app = express();
 // Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-*
@@ -74,35 +78,11 @@ app.use(cors(corsOptions));
 // Express 5 uses path-to-regexp@^6 which is stricter about patterns like '*'.
 // Use a RegExp to match any path for CORS preflight to avoid parsing errors.
 app.options(/.*/, cors(corsOptions));
-// Align security headers with the edge (CDN/DDoS/WAF). To avoid conflicts and
-// duplicates across layers, keep most security headers at the outermost
-// terminator. Here we disable Helmet sub-middleware that would duplicate
-// headers often injected by CDNs (DDoS-Guard/Cloudflare) or nginx.
-app.use(
-  helmet({
-    // Outer TLS terminator should set HSTS
-    hsts: false,
-    // Security policy and cross-origin headers typically enforced at edge
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: false,
-    crossOriginResourcePolicy: false,
-    originAgentCluster: false,
-    // Frame policy is also set at edge; avoid conflicts (SAMEORIGIN vs DENY)
-    frameguard: false,
-    // Avoid duplicate referrer policy
-    referrerPolicy: false,
-    // Keep X-Content-Type-Options for safer MIME sniffing
-    // (duplication with edge is harmless but beneficial if edge misses it)
-    noSniff: true,
-    // Disable legacy IE headers and Adobe policy header (often duplicated upstream)
-    ieNoOpen: false,
-    permittedCrossDomainPolicies: false,
-    // DNS prefetch control often set by edge
-    dnsPrefetchControl: false,
-    // Keep hidePoweredBy (removes X-Powered-By)
-  })
-);
+// Harden HTTP security headers while allowing controlled overrides via env.
+app.use(helmetMiddleware);
+if (contentSecurityPolicyMiddleware) {
+  app.use(contentSecurityPolicyMiddleware);
+}
 app.use(requestId);
 // Lightweight structured HTTP access logs to stdout (Loki/Promtail friendly)
 app.use(accessLog());
@@ -122,7 +102,11 @@ if (process.env.NODE_ENV !== 'test') {
 }
 app.use(requestLogger);
 
-app.use('/api-docs', apiDocsGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+const swaggerMiddlewares = [apiDocsGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec)];
+if (swaggerContentSecurityPolicyMiddleware) {
+  swaggerMiddlewares.unshift(swaggerContentSecurityPolicyMiddleware);
+}
+app.use('/api-docs', ...swaggerMiddlewares);
 
 app.use('/', indexRouter);
 

@@ -8,6 +8,15 @@ const findTeamPlayerMock = jest.fn();
 const findMatchPlayerMock = jest.fn();
 const createMatchPlayerMock = jest.fn();
 const findRolesMock = jest.fn();
+const teamFindAllMock = jest.fn();
+
+function makeUser({ teams = [], roles = [], clubs = [] } = {}) {
+  return {
+    Teams: teams,
+    Roles: roles,
+    UserClubs: clubs,
+  };
+}
 
 beforeEach(() => {
   findMatchMock.mockReset();
@@ -19,6 +28,7 @@ beforeEach(() => {
   findMatchPlayerMock.mockImplementation(async () => []);
   createMatchPlayerMock.mockImplementation(async () => ({}));
   findRolesMock.mockResolvedValue([]);
+  teamFindAllMock.mockReset().mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -49,7 +59,7 @@ const buildRow = (overrides = {}) => ({
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: findMatchMock },
-  Team: {},
+  Team: { findAll: teamFindAllMock },
   User: { findByPk: findUserMock },
   TeamPlayer: { findAll: findTeamPlayerMock },
   ClubPlayer: {},
@@ -61,6 +71,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
       buildRow({ ...payload, id: `new-${payload.team_player_id}` })
     ),
   },
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
   Tournament: {},
   TournamentType: {},
   Stage: {},
@@ -107,7 +120,7 @@ describe('matchLineupService list', () => {
 
   test('throws 403 when actor not related to match', async () => {
     findMatchMock.mockResolvedValue(baseMatch());
-    findUserMock.mockResolvedValue({ Teams: [], Roles: [] });
+    findUserMock.mockResolvedValue(makeUser({ teams: [], roles: [] }));
     await expect(service.list('m1', 'actor')).rejects.toMatchObject({
       message: 'forbidden_not_match_member',
       code: 403,
@@ -116,7 +129,9 @@ describe('matchLineupService list', () => {
 
   test('returns enriched roster with revisions', async () => {
     findMatchMock.mockResolvedValue(baseMatch());
-    findUserMock.mockResolvedValue({ Teams: [{ id: 't1' }], Roles: [] });
+    findUserMock.mockResolvedValue(
+      makeUser({ teams: [{ id: 't1' }], roles: [] })
+    );
     findTeamPlayerMock
       .mockResolvedValueOnce([
         {
@@ -185,6 +200,53 @@ describe('matchLineupService list', () => {
     expect(typeof res.home_rev).toBe('string');
     expect(typeof res.away_rev).toBe('string');
     expect(res.roles).toHaveLength(2);
+    expect(res.permissions).toMatchObject({
+      lineups: { allowed: true },
+    });
+  });
+
+  test('rejects when staff accountant attempts to view', async () => {
+    findMatchMock.mockResolvedValue(baseMatch());
+    teamFindAllMock.mockResolvedValue([{ id: 't1', club_id: 'club1' }]);
+    findUserMock.mockResolvedValue(
+      makeUser({
+        teams: [{ id: 't1', club_id: 'club1' }],
+        roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+        clubs: [
+          {
+            club_id: 'club1',
+            SportSchoolPosition: { alias: 'ACCOUNTANT' },
+          },
+        ],
+      })
+    );
+
+    await expect(service.list('m1', 'accountant')).rejects.toMatchObject({
+      message: 'staff_position_restricted',
+      code: 403,
+    });
+  });
+
+  test('rejects when staff media manager attempts to view', async () => {
+    findMatchMock.mockResolvedValue(baseMatch());
+    teamFindAllMock.mockResolvedValue([{ id: 't2', club_id: 'club2' }]);
+    findUserMock.mockResolvedValue(
+      makeUser({
+        teams: [{ id: 't2', club_id: 'club2' }],
+        roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+        clubs: [
+          {
+            club_id: 'club2',
+            SportSchoolPosition: { alias: 'MEDIA_MANAGER' },
+          },
+        ],
+      })
+    );
+
+    await expect(service.list('m1', 'media')).rejects.toMatchObject({
+      message: 'staff_position_restricted',
+      code: 403,
+    });
   });
 });
 
@@ -201,16 +263,18 @@ describe('matchLineupService set', () => {
 
   test('rejects when actor is not team member nor admin', async () => {
     findMatchMock.mockResolvedValue(baseMatch());
-    findUserMock.mockResolvedValue({ Teams: [], Roles: [] });
+    findUserMock.mockResolvedValue(makeUser({ teams: [], roles: [] }));
     await expect(service.set('m1', 't1', [], 'actor')).rejects.toMatchObject({
-      message: 'forbidden_not_team_member',
+      message: 'forbidden_not_match_member',
       code: 403,
     });
   });
 
   test('rejects when selected player is not in team', async () => {
     findMatchMock.mockResolvedValue(baseMatch());
-    findUserMock.mockResolvedValue({ Teams: [{ id: 't1' }], Roles: [] });
+    findUserMock.mockResolvedValue(
+      makeUser({ teams: [{ id: 't1' }], roles: [] })
+    );
     findTeamPlayerMock.mockResolvedValue([{ id: 'tp-1' }]);
 
     await expect(
@@ -228,7 +292,9 @@ describe('matchLineupService set', () => {
 
   test('creates lineup records and returns new revision', async () => {
     findMatchMock.mockResolvedValue(baseMatch());
-    findUserMock.mockResolvedValue({ Teams: [{ id: 't1' }], Roles: [] });
+    findUserMock.mockResolvedValue(
+      makeUser({ teams: [{ id: 't1' }], roles: [] })
+    );
     findTeamPlayerMock.mockResolvedValue([{ id: 'p1' }, { id: 'p2' }]);
 
     findMatchPlayerMock
@@ -303,7 +369,9 @@ describe('matchLineupService set', () => {
         },
       })
     );
-    findUserMock.mockResolvedValue({ Teams: [{ id: 't1' }], Roles: [] });
+    findUserMock.mockResolvedValue(
+      makeUser({ teams: [{ id: 't1' }], roles: [] })
+    );
     findTeamPlayerMock.mockResolvedValue([{ id: 'p1' }, { id: 'p2' }]);
     findRolesMock.mockResolvedValue([
       { id: 'r1', name: 'Goalkeeper' },
@@ -338,6 +406,30 @@ describe('matchLineupService set', () => {
     ).rejects.toMatchObject({
       message: 'gk_both_requires_three',
       code: 400,
+    });
+  });
+
+  test('rejects accountant editing lineup', async () => {
+    findMatchMock.mockResolvedValue(baseMatch());
+    teamFindAllMock.mockResolvedValue([{ id: 't1', club_id: 'club1' }]);
+    findUserMock.mockResolvedValue(
+      makeUser({
+        teams: [{ id: 't1', club_id: 'club1' }],
+        roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+        clubs: [
+          {
+            club_id: 'club1',
+            SportSchoolPosition: { alias: 'ACCOUNTANT' },
+          },
+        ],
+      })
+    );
+
+    await expect(
+      service.set('m1', 't1', [], 'accountant')
+    ).rejects.toMatchObject({
+      message: 'staff_position_restricted',
+      code: 403,
     });
   });
 });

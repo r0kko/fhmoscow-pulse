@@ -2,12 +2,13 @@ import { expect, jest, test, beforeEach } from '@jest/globals';
 
 const findByPkMatchMock = jest.fn();
 const findByPkUserMock = jest.fn();
+const findAllTeamMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: findByPkMatchMock },
   User: { findByPk: findByPkUserMock },
-  Team: {},
+  Team: { findAll: findAllTeamMock },
   Ground: {},
   Tournament: {},
   TournamentGroup: {},
@@ -15,6 +16,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: {},
   Stage: {},
   Address: {},
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
+  MatchBroadcastLink: {},
 }));
 
 const { get: getMatch } = await import('../src/controllers/matchController.js');
@@ -22,6 +27,7 @@ const { get: getMatch } = await import('../src/controllers/matchController.js');
 beforeEach(() => {
   findByPkMatchMock.mockReset();
   findByPkUserMock.mockReset();
+  findAllTeamMock.mockReset().mockResolvedValue([]);
 });
 
 test('get sets side flags to false when user not found', async () => {

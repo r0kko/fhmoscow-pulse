@@ -118,6 +118,13 @@ DADATA_SECRET=your_dadata_secret
 - Set `API_DOCS_ACCESS=public` for short-term troubleshooting or `API_DOCS_ACCESS=disabled` to turn the route off entirely.
 - `API_DOCS_ALLOWLIST` accepts comma-separated IPv4/IPv6 addresses or CIDR blocks for dedicated bastions or VPN ranges.
 
+### HTTP security headers
+
+- The API now applies a strict Helmet profile: `Content-Security-Policy`, `X-Frame-Options=DENY`, `Strict-Transport-Security`, referrer policy, and cross-origin isolation defaults mirror modern browser baselines.
+- `SECURITY_*` environment toggles (see `.env.example`) allow relaxing individual headers when a CDN terminator already injects them. Leave them commented unless you hit a conflict.
+- Swagger UI receives a dedicated CSP that whitelists its inline assets while keeping the global policy locked down.
+- The production Nginx template adds the same headers for static/frontend responses and hides upstream `Server`/`X-Powered-By` metadata for defense in depth.
+
 ### Troubleshooting: login spinner under CDN/proxy
 
 If the login spinner does not stop after clicking "Войти":
@@ -321,7 +328,8 @@ Optional Nginx fallback: see `infra/nginx/conf.d/maintenance.conf.example` to se
 - The production Nginx site config is stored in-repo at `infra/nginx/conf.d/pulse.conf` and is mounted into the `nginx` container in `docker-compose.prod.yml`.
 - Provide TLS certificates on the host under `/etc/nginx/certs/{fullchain.pem,privkey.pem}` (mounted read‑only into the container).
 - Default routing: `/api/*` → `app:3000`; everything else → `client:4173`.
-- Security: HSTS + secure headers + deny `/metrics` from the Internet (Prometheus scrapes internally).
+- Security: strict security headers (HSTS, frame/CSP guard, referrer policy, permissions policy) and `/metrics` denied on the edge — mirrors the API defaults for parity with CDN offloading.
+- To reuse the hardened header set across hosts, copy `infra/nginx/security.conf.example` to your deployment and `include` it inside each `server` block.
 - Grafana is exposed on port `3001` directly (not via Nginx). Restrict access with your firewall.
 
 ### Operational reports (admin-only)

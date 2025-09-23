@@ -7,7 +7,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Match: { findByPk: findByPkMatchMock },
   // stubs not used in this test
   User: {},
-  Team: {},
+  Team: { findAll: jest.fn() },
   Ground: {},
   Tournament: {},
   TournamentGroup: {},
@@ -15,6 +15,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: {},
   Stage: {},
   Address: {},
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
+  MatchBroadcastLink: {},
 }));
 
 const { get: getMatch } = await import('../src/controllers/matchController.js');

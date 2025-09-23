@@ -161,7 +161,7 @@ function isRejectedRequest(player) {
 }
 
 function isUploadDisabled(player) {
-  return isPendingRequest(player) || isApprovedRequest(player);
+  return isPendingRequest(player);
 }
 
 async function fetchPlayers({ page = currentPage.value, reset = false } = {}) {
@@ -475,11 +475,9 @@ async function validateImageDimensions(file) {
 async function handleSelectedFiles(playerId, fileList) {
   const player = players.value.find((p) => p.id === playerId);
   if (!player) return;
-  if (isUploadDisabled(player)) {
+  if (isPendingRequest(player)) {
     updateUploadState(playerId, {
-      error: isApprovedRequest(player)
-        ? 'Фото уже подтверждено администратором'
-        : 'Заявка уже отправлена и ожидает проверки',
+      error: 'Заявка уже отправлена и ожидает проверки',
       success: false,
     });
     return;

@@ -8,6 +8,7 @@ const POSITIONS = [
   { alias: 'COACH', name: 'Тренер' },
   { alias: 'ADMINISTRATOR', name: 'Администратор' },
   { alias: 'ACCOUNTANT', name: 'Бухгалтер' },
+  { alias: 'MEDIA_MANAGER', name: 'Медиа-менеджер' },
 ];
 
 module.exports = {

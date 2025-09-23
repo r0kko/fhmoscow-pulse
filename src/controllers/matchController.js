@@ -1,5 +1,10 @@
 import service, { listUpcomingLocal } from '../services/matchService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
+import {
+  resolveMatchAccessContext,
+  evaluateStaffMatchRestrictions,
+  buildPermissionPayload,
+} from '../utils/matchAccess.js';
 
 async function listUpcoming(req, res, next) {
   try {
@@ -108,7 +113,6 @@ export async function get(req, res, next) {
       Tournament,
       TournamentGroup,
       Tour,
-      User,
       Season,
       Stage,
       Address,
@@ -170,16 +174,26 @@ export async function get(req, res, next) {
     });
     if (!m) return res.status(404).json({ error: 'match_not_found' });
 
-    let isHome = false;
-    let isAway = false;
+    let context = null;
+    let restrictions = null;
     try {
-      const user = await User.findByPk(req.user.id, { include: [Team] });
-      const teamIds = new Set((user?.Teams || []).map((t) => t.id));
-      isHome = teamIds.has(m.team1_id);
-      isAway = teamIds.has(m.team2_id);
-    } catch {
-      /* ignore side computation errors */
+      context = await resolveMatchAccessContext({
+        matchOrId: m,
+        userId: req.user.id,
+      });
+      restrictions = evaluateStaffMatchRestrictions(context);
+    } catch (err) {
+      if (err?.code === 'user_not_found') {
+        context = null;
+        restrictions = null;
+      } else {
+        context = null;
+        restrictions = null;
+      }
     }
+    const isHome = context?.isHome || false;
+    const isAway = context?.isAway || false;
+    const permissions = buildPermissionPayload(restrictions || {}, context);
     return res.json({
       match: {
         id: m.id,
@@ -225,6 +239,7 @@ export async function get(req, res, next) {
           .sort((a, b) => (a.position || 0) - (b.position || 0))
           .map((x) => x.url)
           .filter(Boolean),
+        permissions,
       },
     });
   } catch (e) {

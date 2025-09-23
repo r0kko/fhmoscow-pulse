@@ -7,6 +7,15 @@ const findUserMock = jest.fn();
 const findTpMock = jest.fn();
 const findMpMock = jest.fn();
 const findRolesMock = jest.fn();
+const teamFindAllMock = jest.fn();
+
+function makeUser({ teams = [], roles = [], clubs = [] } = {}) {
+  return {
+    Teams: teams,
+    Roles: roles,
+    UserClubs: clubs,
+  };
+}
 
 beforeEach(() => {
   findMatchMock.mockReset();
@@ -14,6 +23,7 @@ beforeEach(() => {
   findTpMock.mockReset();
   findMpMock.mockReset();
   findRolesMock.mockReset();
+  teamFindAllMock.mockReset().mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -27,13 +37,16 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: findMatchMock },
-  Team: {},
+  Team: { findAll: teamFindAllMock },
   User: { findByPk: findUserMock },
   TeamPlayer: { findAll: findTpMock },
   ClubPlayer: {},
   Player: {},
   PlayerRole: { findAll: findRolesMock },
   MatchPlayer: { findAll: findMpMock },
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
   Tournament: {},
   TournamentType: {},
   Stage: {},
@@ -62,7 +75,9 @@ function baseMatch() {
 
 test('list returns team revisions', async () => {
   findMatchMock.mockResolvedValue(baseMatch());
-  findUserMock.mockResolvedValue({ Teams: [{ id: 't1' }], Roles: [] });
+  findUserMock.mockResolvedValue(
+    makeUser({ teams: [{ id: 't1' }], roles: [] })
+  );
   findTpMock.mockResolvedValue([]); // for both teams
   findMpMock.mockResolvedValue([
     { team_player_id: 'a', team_id: 't1', number: 7 },
@@ -73,12 +88,15 @@ test('list returns team revisions', async () => {
   expect(res).toBeTruthy();
   expect(typeof res.home_rev).toBe('string');
   expect(typeof res.away_rev).toBe('string');
+  expect(res.permissions).toMatchObject({ lineups: { allowed: true } });
 });
 
 test('set throws conflict on mismatched if_match_rev', async () => {
   findMatchMock.mockResolvedValue(baseMatch());
   // ADMIN rights
-  findUserMock.mockResolvedValue({ Teams: [], Roles: [{ alias: 'ADMIN' }] });
+  findUserMock.mockResolvedValue(
+    makeUser({ teams: [], roles: [{ alias: 'ADMIN' }] })
+  );
   // Inside transaction, service loads current MatchPlayer rows for team
   findMpMock.mockResolvedValue([
     { team_player_id: 'x1', team_id: 't1', number: 10 },

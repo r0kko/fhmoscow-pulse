@@ -225,7 +225,10 @@ describe('playerPhotoRequestService.submit', () => {
   });
 
   test('propagates already existing pending request', async () => {
-    photoRequestFindOneMock.mockResolvedValue({ id: 'existing' });
+    photoRequestFindOneMock.mockImplementationOnce(async (query) => {
+      expect(query?.include?.[0]?.where?.alias).toBe('pending');
+      return { id: 'existing' };
+    });
     await expect(
       service.submit({
         actorId: 'admin',
@@ -238,5 +241,22 @@ describe('playerPhotoRequestService.submit', () => {
       status: 400,
     });
     expect(fileUploadMock).not.toHaveBeenCalled();
+  });
+
+  test('ignores approved photo requests when submitting a new one', async () => {
+    photoRequestFindOneMock.mockImplementationOnce(async (query) => {
+      expect(query?.include?.[0]?.where?.alias).toBe('pending');
+      return null;
+    });
+
+    await expect(
+      service.submit({
+        actorId: 'admin',
+        playerId: 'player-1',
+        file: buildFile(),
+        scope: { isAdmin: true },
+      })
+    ).resolves.toEqual({ id: 'req-1' });
+    expect(photoRequestCreateMock).toHaveBeenCalled();
   });
 });

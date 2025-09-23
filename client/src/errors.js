@@ -119,6 +119,7 @@ export const ERROR_MESSAGES = {
   // Match agreements / participation
   forbidden_not_match_member:
     'Недоступно: вы не участник этого матча. Требуется привязка к команде.',
+  staff_position_restricted: 'Недоступно для вашей должности',
   match_teams_not_set:
     'Данные о командах для этого матча ещё не установлены. Обратитесь к администратору лиги.',
   match_not_found: 'Матч не найден',

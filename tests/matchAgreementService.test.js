@@ -18,6 +18,17 @@ const sendWithdrawnMock = jest.fn();
 
 const listTeamUsersMock = jest.fn();
 
+const teamFindByPkMock = jest.fn();
+const teamFindAllMock = jest.fn();
+
+function makeUser({ teams = [], roles = [], clubs = [] } = {}) {
+  return {
+    Teams: teams,
+    Roles: roles,
+    UserClubs: clubs,
+  };
+}
+
 beforeEach(() => {
   matchFindByPkMock.mockReset();
   userFindByPkMock.mockReset();
@@ -33,6 +44,8 @@ beforeEach(() => {
   sendProposedMock.mockReset();
   sendApprovedMock.mockReset();
   listTeamUsersMock.mockReset();
+  teamFindByPkMock.mockReset();
+  teamFindAllMock.mockReset().mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -55,7 +68,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: maCreateMock,
     findByPk: maFindByPkMock,
   },
-  Team: {},
+  Team: { findByPk: teamFindByPkMock, findAll: teamFindAllMock },
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
   Club: {},
   Tournament: {},
   TournamentGroup: {},
@@ -102,7 +118,7 @@ test('create (HOME_PROPOSAL) notifies away team staff', async () => {
     TournamentGroup: { name: 'A' },
     Tour: { name: '1' },
   });
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] });
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] }));
   groundFindByPkMock.mockResolvedValue({ id: 'g1', name: 'Stadium' });
   groundTeamFindOneMock.mockResolvedValue({});
   maStatusFindOneMock.mockImplementation(({ where }) => {
@@ -161,7 +177,7 @@ test('approve notifies both sides', async () => {
     team2_id: 't2',
   });
   // actor is away
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] });
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] }));
   maStatusFindOneMock.mockImplementation(({ where }) => {
     if (where.alias === 'ACCEPTED') return Promise.resolve({ id: 'st_acc' });
     if (where.alias === 'PENDING') return Promise.resolve({ id: 'st_pen' });
@@ -218,7 +234,7 @@ test('decline notifies both teams', async () => {
     update: jest.fn().mockResolvedValue({}),
   });
   matchFindByPkMock.mockResolvedValue({ id: 'mD', date_start: future });
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] }); // actor away
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] })); // actor away
   maStatusFindOneMock.mockResolvedValue({ id: 'stD' });
   maTypeFindOneMock.mockResolvedValue({ id: 'tpD' });
   maCreateMock.mockResolvedValue({});
@@ -264,7 +280,7 @@ test('withdraw notifies opponent', async () => {
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
     update: jest.fn().mockResolvedValue({}),
   });
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] }); // actor home
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] })); // actor home
   maStatusFindOneMock.mockResolvedValue({ id: 'stW' });
   // Post-commit reads
   maFindByPkMock.mockResolvedValueOnce({
@@ -322,7 +338,7 @@ test('approve throws when match is cancelled', async () => {
     MatchAgreementStatus: { alias: 'PENDING' },
     MatchAgreementType: { alias: 'HOME_PROPOSAL' },
   });
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] });
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] }));
   await expect(service.approve('agrC', 'user_away')).rejects.toMatchObject({
     code: 'match_cancelled',
     status: 409,
@@ -350,7 +366,7 @@ test('approve reloads match to resolve side when Match include lacks team ids', 
     GameStatus: { alias: 'SCHEDULED' },
   });
   // actor is away
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] });
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] }));
   maStatusFindOneMock.mockImplementation(({ where }) => {
     if (where.alias === 'ACCEPTED') return Promise.resolve({ id: 'st_acc' });
     if (where.alias === 'PENDING') return Promise.resolve({ id: 'st_pen' });
@@ -400,7 +416,7 @@ test('approve fails with match_teams_not_set when teams are missing', async () =
     date_start: future,
     GameStatus: { alias: 'SCHEDULED' },
   });
-  userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] });
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] }));
 
   await expect(service.approve('agrZ', 'actor')).rejects.toMatchObject({
     code: 'match_teams_not_set',

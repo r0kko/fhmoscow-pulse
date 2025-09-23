@@ -1,13 +1,17 @@
 import service, {
   listAvailableGrounds,
 } from '../services/matchAgreementService.js';
-import { Match, Team, User } from '../models/index.js';
 import { listTeamUsers } from '../services/teamService.js';
 import userMapper from '../mappers/userMapper.js';
+import {
+  resolveMatchAccessContext,
+  evaluateStaffMatchRestrictions,
+  ensureParticipantOrThrow,
+} from '../utils/matchAccess.js';
 
 async function list(req, res, next) {
   try {
-    const rows = await service.list(req.params.id);
+    const rows = await service.list(req.params.id, req.user.id);
     res.json({ agreements: rows });
   } catch (e) {
     next(e);
@@ -64,20 +68,19 @@ export async function withdraw(req, res, next) {
 // Contacts of the opponent team for a given match, accessible to match participants (staff/admin)
 export async function opponentContacts(req, res, next) {
   try {
-    const match = await Match.findByPk(req.params.id, {
-      attributes: ['id', 'team1_id', 'team2_id'],
+    const context = await resolveMatchAccessContext({
+      matchOrId: req.params.id,
+      userId: req.user.id,
     });
+    const { match } = context;
     if (!match) return res.status(404).json({ error: 'match_not_found' });
-    const user = await User.findByPk(req.user.id, { include: [Team] });
-    if (!user) return res.status(404).json({ error: 'user_not_found' });
-    const teamIds = new Set((user.Teams || []).map((t) => t.id));
-    const isHome = match.team1_id && teamIds.has(match.team1_id);
-    const isAway = match.team2_id && teamIds.has(match.team2_id);
     if (!match.team1_id && !match.team2_id)
       return res.status(409).json({ error: 'match_teams_not_set' });
-    if (!isHome && !isAway)
-      return res.status(403).json({ error: 'forbidden_not_match_member' });
-    const opponentTeamId = isHome ? match.team2_id : match.team1_id;
+    ensureParticipantOrThrow(context);
+    const restrictions = evaluateStaffMatchRestrictions(context);
+    if (restrictions.agreementsBlocked)
+      return res.status(403).json({ error: 'staff_position_restricted' });
+    const opponentTeamId = context.isHome ? match.team2_id : match.team1_id;
     if (!opponentTeamId)
       return res.status(400).json({ error: 'opponent_team_not_set' });
     const users = await listTeamUsers(opponentTeamId);

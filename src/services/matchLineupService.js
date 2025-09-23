@@ -6,7 +6,6 @@ import sequelize from '../config/database.js';
 import {
   Match,
   Team,
-  User,
   TeamPlayer,
   ClubPlayer,
   Player,
@@ -18,6 +17,11 @@ import {
   TournamentGroup,
   Tour,
 } from '../models/index.js';
+import {
+  resolveMatchAccessContext,
+  evaluateStaffMatchRestrictions,
+  buildPermissionPayload,
+} from '../utils/matchAccess.js';
 
 function fullName(p) {
   return [p.surname, p.name, p.patronymic].filter(Boolean).join(' ');
@@ -31,17 +35,19 @@ function isGoalkeeperName(name) {
   );
 }
 
-async function _getActorSides(match, actorUserId) {
-  const { default: Role } = await import('../models/role.js');
-  const user = await User.findByPk(actorUserId, { include: [Team, Role] });
-  const teamIds = new Set((user?.Teams || []).map((t) => t.id));
-  const isHome = match.team1_id && teamIds.has(match.team1_id);
-  const isAway = match.team2_id && teamIds.has(match.team2_id);
-  const roles = new Set(
-    (user?.Roles || []).map((r) => (r.alias || r.name || '').toUpperCase())
-  );
-  const isAdmin = roles.has('ADMIN');
-  return { isHome, isAway, isAdmin };
+async function loadActorContext(match, actorUserId) {
+  const context = await resolveMatchAccessContext({
+    matchOrId: match,
+    userId: actorUserId,
+  });
+  const restrictions = evaluateStaffMatchRestrictions(context);
+  const isAdmin = context.isAdmin || false;
+  if (!context.isHome && !context.isAway && !isAdmin) {
+    const err = new Error('forbidden_not_match_member');
+    err.code = 403;
+    throw err;
+  }
+  return { context, restrictions, isAdmin };
 }
 
 async function _listTeamRoster(teamId, seasonId) {
@@ -94,12 +100,17 @@ async function list(matchId, actorUserId) {
     err.code = 409;
     throw err;
   }
-  const { isHome, isAway, isAdmin } = await _getActorSides(match, actorUserId);
-  if (!isHome && !isAway && !isAdmin) {
-    const err = new Error('forbidden_not_match_member');
+  const { context, restrictions, isAdmin } = await loadActorContext(
+    match,
+    actorUserId
+  );
+  const { isHome, isAway } = context;
+  if (restrictions.lineupsBlocked) {
+    const err = new Error('staff_position_restricted');
     err.code = 403;
     throw err;
   }
+  const permissions = buildPermissionPayload(restrictions, context);
 
   const [homeRoster, awayRoster, selectedRows, roles] = await Promise.all([
     match.team1_id ? _listTeamRoster(match.team1_id, match.season_id) : [],
@@ -182,6 +193,7 @@ async function list(matchId, actorUserId) {
     is_home: isHome,
     is_away: isAway,
     is_admin: isAdmin,
+    permissions,
     home_rev: homeRev,
     away_rev: awayRev,
     home: {
@@ -220,7 +232,11 @@ async function set(
     throw err;
   }
   // Check actor permissions (admin check happens at route level; here ensure team membership for staff)
-  const { isHome, isAway, isAdmin } = await _getActorSides(match, actorUserId);
+  const { context, restrictions, isAdmin } = await loadActorContext(
+    match,
+    actorUserId
+  );
+  const { isHome, isAway } = context;
   const isTeamActor =
     (teamId === match.team1_id && isHome) ||
     (teamId === match.team2_id && isAway) ||
@@ -228,6 +244,11 @@ async function set(
   // If not actor of that team, require ADMIN role at route level. Here just fail.
   if (!isTeamActor) {
     const err = new Error('forbidden_not_team_member');
+    err.code = 403;
+    throw err;
+  }
+  if (restrictions.lineupsBlocked) {
+    const err = new Error('staff_position_restricted');
     err.code = 403;
     throw err;
   }

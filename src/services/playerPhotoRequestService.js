@@ -24,6 +24,7 @@ const STATUS_ALIASES = {
 };
 
 const statusCache = new Map();
+const SQL_SINGLE_QUOTE = '\u0027';
 
 async function getStatusByAlias(alias, options = {}) {
   if (!alias) throw new ServiceError('photo_request_status_invalid', 500);
@@ -47,7 +48,8 @@ function escapeLikePattern(value) {
 
 function quoteLiteral(value) {
   const str = String(value ?? '');
-  return `'${str.replace(/'/g, '\'\'')}'`;
+  const escaped = str.replace(/'/g, SQL_SINGLE_QUOTE.repeat(2));
+  return `${SQL_SINGLE_QUOTE}${escaped}${SQL_SINGLE_QUOTE}`;
 }
 
 function normalizeTokens(input) {
@@ -205,9 +207,7 @@ async function submit({ actorId, playerId, file, scope = {} }) {
         required: true,
         attributes: ['alias'],
         where: {
-          alias: {
-            [Op.in]: [STATUS_ALIASES.PENDING, STATUS_ALIASES.APPROVED],
-          },
+          alias: STATUS_ALIASES.PENDING,
         },
       },
     ],

@@ -2,13 +2,18 @@ import { expect, jest, test, beforeEach } from '@jest/globals';
 
 const findByPkMatchMock = jest.fn();
 const findByPkUserMock = jest.fn();
+const findAllTeamMock = jest.fn();
+
+function makeUser({ teams = [], roles = [], clubs = [] } = {}) {
+  return { Teams: teams, Roles: roles, UserClubs: clubs };
+}
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: findByPkMatchMock },
   User: { findByPk: findByPkUserMock },
   // Stubs for included models (not directly called)
-  Team: {},
+  Team: { findAll: findAllTeamMock },
   Ground: {},
   Tournament: {},
   TournamentGroup: {},
@@ -16,6 +21,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: {},
   Stage: {},
   Address: {},
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
+  MatchBroadcastLink: {},
 }));
 
 const { get: getMatch } = await import('../src/controllers/matchController.js');
@@ -23,6 +32,7 @@ const { get: getMatch } = await import('../src/controllers/matchController.js');
 beforeEach(() => {
   findByPkMatchMock.mockReset();
   findByPkUserMock.mockReset();
+  findAllTeamMock.mockReset().mockResolvedValue([]);
 });
 
 test('get returns extended meta and ground details', async () => {
@@ -31,7 +41,13 @@ test('get returns extended meta and ground details', async () => {
   const next = jest.fn();
 
   // User is part of home team
-  findByPkUserMock.mockResolvedValue({ Teams: [{ id: 'home-id' }] });
+  findByPkUserMock.mockResolvedValue(
+    makeUser({ teams: [{ id: 'home-id', club_id: 'club1' }] })
+  );
+  findAllTeamMock.mockResolvedValue([
+    { id: 'home-id', club_id: 'club1' },
+    { id: 'away-id', club_id: 'club2' },
+  ]);
 
   // Match with associations resolved inline resembling Sequelize instance shape
   findByPkMatchMock.mockResolvedValue({

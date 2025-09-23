@@ -10,12 +10,21 @@ const maCountMock = jest.fn();
 const maCreateMock = jest.fn();
 const maFindByPkMock = jest.fn();
 
+const teamFindByPkMock = jest.fn();
+const teamFindAllMock = jest.fn();
+
+function makeUser({ teams = [], roles = [], clubs = [] } = {}) {
+  return {
+    Teams: teams,
+    Roles: roles,
+    UserClubs: clubs,
+  };
+}
+
 jest.unstable_mockModule('../src/config/database.js', () => ({
   __esModule: true,
   default: { transaction: async (fn) => fn({}) },
 }));
-
-const teamFindByPkMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -30,7 +39,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: maCreateMock,
     findByPk: maFindByPkMock,
   },
-  Team: { findByPk: teamFindByPkMock },
+  Team: { findByPk: teamFindByPkMock, findAll: teamFindAllMock },
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
   Club: {},
   Tournament: {},
   TournamentGroup: {},
@@ -69,6 +81,8 @@ beforeEach(() => {
   maCountMock.mockReset();
   maCreateMock.mockReset();
   maFindByPkMock.mockReset();
+  teamFindByPkMock.mockReset();
+  teamFindAllMock.mockReset().mockResolvedValue([]);
 });
 
 describe('matchAgreementService.create edge cases', () => {
@@ -80,7 +94,7 @@ describe('matchAgreementService.create edge cases', () => {
       team1_id: 't1',
       team2_id: 't2',
     });
-    userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] }); // not home
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] })); // not home
     groundFindByPkMock.mockResolvedValue({ id: 'g1' });
     await expect(
       svc.create('m1', { ground_id: 'g1', date_start: future }, 'actor')
@@ -95,7 +109,7 @@ describe('matchAgreementService.create edge cases', () => {
       team1_id: 't1',
       team2_id: 't2',
     });
-    userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] }); // home, not away
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] })); // home, not away
     groundFindByPkMock.mockResolvedValue({ id: 'g1' });
     maFindByPkMock.mockResolvedValue({
       id: 'p1',
@@ -112,7 +126,7 @@ describe('matchAgreementService.create edge cases', () => {
     ).rejects.toMatchObject({ code: 'only_away_can_counter' });
 
     // parent not pending
-    userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't2' }] }); // away now
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't2' }] })); // away now
     maFindByPkMock.mockResolvedValue({
       id: 'p1',
       match_id: 'm2',
@@ -136,7 +150,7 @@ describe('matchAgreementService.create edge cases', () => {
       team1_id: 't1',
       team2_id: 't2',
     });
-    userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] }); // home
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] })); // home
     groundFindByPkMock.mockResolvedValue({ id: 'g1' });
     groundTeamFindOneMock.mockResolvedValue({});
     maStatusFindOneMock.mockImplementation(({ where }) => {
@@ -150,6 +164,108 @@ describe('matchAgreementService.create edge cases', () => {
       svc.create('m3', { ground_id: 'g1', date_start: future }, 'actor')
     ).rejects.toMatchObject({ code: 'pending_agreement_exists' });
   });
+
+  test('staff coach cannot create agreements', async () => {
+    const future = new Date(Date.now() + 86400000).toISOString();
+    matchFindByPkMock.mockResolvedValue({
+      id: 'm_coach',
+      date_start: future,
+      team1_id: 't1',
+      team2_id: 't2',
+      schedule_locked_by_admin: false,
+      GameStatus: { alias: 'SCHEDULED' },
+      HomeTeam: { name: 'Home' },
+      AwayTeam: { name: 'Away' },
+      Tournament: { name: 'Cup', TournamentType: { double_protocol: false } },
+      TournamentGroup: { name: 'A' },
+      Tour: { name: '1' },
+      Season: { name: '2024/25', active: true },
+      Ground: { name: 'Arena', Address: {} },
+      MatchBroadcastLinks: [],
+    });
+    teamFindAllMock.mockResolvedValue([
+      { id: 't1', club_id: 'club_home' },
+      { id: 't2', club_id: 'club_away' },
+    ]);
+    userFindByPkMock.mockResolvedValue(
+      makeUser({
+        teams: [{ id: 't1', club_id: 'club_home' }],
+        roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+        clubs: [
+          {
+            club_id: 'club_home',
+            SportSchoolPosition: { alias: 'COACH' },
+          },
+        ],
+      })
+    );
+
+    await expect(
+      svc.create(
+        'm_coach',
+        { ground_id: 'g1', date_start: future },
+        'coach_user'
+      )
+    ).rejects.toMatchObject({ code: 'staff_position_restricted', status: 403 });
+  });
+});
+
+test('staff accountant cannot list agreements', async () => {
+  matchFindByPkMock.mockResolvedValue({
+    id: 'm_list',
+    team1_id: 't1',
+    team2_id: 't2',
+  });
+  teamFindAllMock.mockResolvedValue([
+    { id: 't1', club_id: 'club_home' },
+    { id: 't2', club_id: 'club_away' },
+  ]);
+  userFindByPkMock.mockResolvedValue(
+    makeUser({
+      teams: [{ id: 't1', club_id: 'club_home' }],
+      roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+      clubs: [
+        {
+          club_id: 'club_home',
+          SportSchoolPosition: { alias: 'ACCOUNTANT' },
+        },
+      ],
+    })
+  );
+
+  await expect(svc.list('m_list', 'accountant_user')).rejects.toMatchObject({
+    code: 'staff_position_restricted',
+    status: 403,
+  });
+});
+
+test('staff media manager cannot list agreements', async () => {
+  matchFindByPkMock.mockResolvedValue({
+    id: 'm_media',
+    team1_id: 't1',
+    team2_id: 't2',
+  });
+  teamFindAllMock.mockResolvedValue([
+    { id: 't1', club_id: 'club_home' },
+    { id: 't2', club_id: 'club_away' },
+  ]);
+  userFindByPkMock.mockResolvedValue(
+    makeUser({
+      teams: [{ id: 't2', club_id: 'club_away' }],
+      roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+      clubs: [
+        {
+          club_id: 'club_away',
+          SportSchoolPosition: { alias: 'MEDIA_MANAGER' },
+        },
+      ],
+    })
+  );
+
+  await expect(svc.list('m_media', 'media_user')).rejects.toMatchObject({
+    code: 'staff_position_restricted',
+    status: 403,
+  });
 });
 
 describe('listAvailableGrounds edge cases', () => {
@@ -162,7 +278,7 @@ describe('listAvailableGrounds edge cases', () => {
       team2_id: 't2',
       GameStatus: { alias: 'SCHEDULED' },
     });
-    userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] });
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] }));
     const res1 = await listAvailableGrounds('m4', 'actor');
     expect(res1.grounds.length).toBe(0);
 
@@ -174,7 +290,7 @@ describe('listAvailableGrounds edge cases', () => {
       team2_id: 't2',
       GameStatus: { alias: 'CANCELLED' },
     });
-    userFindByPkMock.mockResolvedValue({ Teams: [{ id: 't1' }] });
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] }));
     const res2 = await listAvailableGrounds('m5', 'actor');
     expect(res2.grounds.length).toBe(0);
   });

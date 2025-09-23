@@ -5,7 +5,6 @@ import ServiceError from '../errors/ServiceError.js';
 import {
   Match,
   Team,
-  User,
   Ground,
   GroundTeam,
   Club,
@@ -16,8 +15,14 @@ import {
   MatchAgreementType,
   MatchAgreementStatus,
   GameStatus,
+  User,
 } from '../models/index.js';
 import { utcToMoscow } from '../utils/time.js';
+import {
+  resolveMatchAccessContext,
+  evaluateStaffMatchRestrictions,
+  ensureParticipantOrThrow,
+} from '../utils/matchAccess.js';
 
 import externalSync from './externalMatchSyncService.js';
 import emailService from './emailService.js';
@@ -70,67 +75,18 @@ function sameMoscowDate(a, b) {
   );
 }
 
-// Access only if the user is directly linked to the team (UserTeam)
 async function ensureUserSide(userId, match) {
-  const user = await User.findByPk(userId, { include: [Team] });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  const teamIds = new Set((user.Teams || []).map((t) => t.id));
+  const context = await resolveMatchAccessContext({ matchOrId: match, userId });
+  ensureParticipantOrThrow(context);
+  return context;
+}
 
-  // Ensure we have team ids on the match object; reload minimally if missing
-  let mTeam1 = match?.team1_id;
-  let mTeam2 = match?.team2_id;
-  if (!mTeam1 || !mTeam2) {
-    try {
-      const id = typeof match === 'object' ? match?.id : match;
-      if (id) {
-        const fresh = await Match.findByPk(id, {
-          attributes: ['id', 'team1_id', 'team2_id'],
-        });
-        if (fresh) {
-          mTeam1 = fresh.team1_id ?? mTeam1 ?? null;
-          mTeam2 = fresh.team2_id ?? mTeam2 ?? null;
-        }
-      }
-    } catch {
-      /* noop */
-    }
+function assertAgreementsAllowed(context) {
+  const restrictions = evaluateStaffMatchRestrictions(context);
+  if (restrictions.agreementsBlocked) {
+    throw new ServiceError('staff_position_restricted', 403);
   }
-
-  // If teams are not set on match, surface a clear error
-  if (!mTeam1 && !mTeam2) {
-    try {
-      const { default: logger } = await import('../../logger.js');
-      logger.warn(
-        'match_teams_not_set: user=%s teams=%j, match=[id=%s] ',
-        userId,
-        Array.from(teamIds),
-        typeof match === 'object' ? match?.id : match
-      );
-    } catch {
-      /* noop */
-    }
-    throw new ServiceError('match_teams_not_set', 409);
-  }
-
-  const isHome = mTeam1 && teamIds.has(mTeam1);
-  const isAway = mTeam2 && teamIds.has(mTeam2);
-  if (!isHome && !isAway) {
-    // Add context to server logs for diagnostics (do not expose to clients)
-    try {
-      const { default: logger } = await import('../../logger.js');
-      logger.warn(
-        'forbidden_not_match_member: user=%s teams=%j, match=[home=%s, away=%s] ',
-        userId,
-        Array.from(teamIds),
-        mTeam1,
-        mTeam2
-      );
-    } catch {
-      /* noop */
-    }
-    throw new ServiceError('forbidden_not_match_member', 403);
-  }
-  return { isHome, isAway };
+  return restrictions;
 }
 
 async function anyAcceptedExists(matchId) {
@@ -157,9 +113,13 @@ async function anyPendingExists(matchId) {
   return count > 0;
 }
 
-async function list(matchId) {
-  const match = await Match.findByPk(matchId);
-  if (!match) throw new ServiceError('match_not_found', 404);
+async function list(matchId, actorId) {
+  const context = await resolveMatchAccessContext({
+    matchOrId: matchId,
+    userId: actorId,
+  });
+  ensureParticipantOrThrow(context);
+  assertAgreementsAllowed(context);
   return MatchAgreement.findAll({
     where: { match_id: matchId },
     include: [
@@ -236,7 +196,9 @@ async function create(matchId, payload, actorId) {
   if (isPast(match.date_start))
     throw new ServiceError('match_already_past', 409);
 
-  const { isHome, isAway } = await ensureUserSide(actorId, match);
+  const context = await ensureUserSide(actorId, match);
+  assertAgreementsAllowed(context);
+  const { isHome, isAway } = context;
 
   const kickoff = new Date(payload.date_start);
   if (Number.isNaN(kickoff.getTime()))
@@ -402,7 +364,9 @@ async function approve(agreementId, actorId) {
   if (agr.MatchAgreementStatus?.alias !== 'PENDING')
     throw new ServiceError('agreement_not_pending', 409);
 
-  const { isHome, isAway } = await ensureUserSide(actorId, match);
+  const context = await ensureUserSide(actorId, match);
+  assertAgreementsAllowed(context);
+  const { isHome, isAway } = context;
 
   let approvalTypeAlias = null;
   if (agr.MatchAgreementType?.alias === 'HOME_PROPOSAL') {
@@ -534,7 +498,9 @@ async function decline(agreementId, actorId) {
     if (agr.MatchAgreementStatus?.alias !== 'PENDING')
       throw new ServiceError('agreement_not_pending', 409);
 
-    const { isHome, isAway } = await ensureUserSide(actorId, match);
+    const context = await ensureUserSide(actorId, match);
+    assertAgreementsAllowed(context);
+    const { isHome, isAway } = context;
     let approvalTypeAlias = null;
     if (agr.MatchAgreementType?.alias === 'HOME_PROPOSAL') {
       if (!isAway) throw new ServiceError('only_away_can_decline_home', 403);
@@ -619,7 +585,8 @@ export default { list, create, approve, decline, withdraw };
 async function listAvailableGrounds(matchId, actorId) {
   const match = await Match.findByPk(matchId, { include: [GameStatus] });
   if (!match) throw new ServiceError('match_not_found', 404);
-  await ensureUserSide(actorId, match); // ensure participant
+  const context = await ensureUserSide(actorId, match);
+  assertAgreementsAllowed(context);
 
   const homeTeamId = match.team1_id;
   if (!homeTeamId) throw new ServiceError('team_not_set_for_match', 400);
@@ -668,7 +635,9 @@ async function withdraw(agreementId, actorId) {
     const match =
       agr.Match || (await Match.findByPk(agr.match_id, { transaction: tx }));
     ensureNotLocked(match);
-    const { isHome, isAway } = await ensureUserSide(actorId, match);
+    const context = await ensureUserSide(actorId, match);
+    assertAgreementsAllowed(context);
+    const { isHome, isAway } = context;
 
     // Only the initiator side may withdraw
     if (

@@ -56,35 +56,61 @@ const showStadiumCard = computed(() => {
   return name !== 'Согласовывается';
 });
 
-onMounted(async () => {
+async function loadAgreementsSafe() {
+  if (!agreementsAllowed.value) {
+    agreements.value = [];
+    return;
+  }
+  try {
+    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
+    agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
+  } catch (e) {
+    if (e?.code === 'staff_position_restricted') {
+      agreements.value = [];
+      return;
+    }
+    throw e;
+  }
+}
+
+async function loadPenalties() {
+  penaltiesLoading.value = true;
+  try {
+    if (penaltiesDisabled.value) {
+      penalties.value = [];
+      penaltiesError.value = '';
+      return;
+    }
+    const pres = await apiFetch(`/matches/${route.params.id}/penalties`).catch(
+      (e) => ({ items: [], _err: e })
+    );
+    penalties.value = Array.isArray(pres.items) ? pres.items : [];
+    penaltiesError.value = pres._err
+      ? pres._err.message || 'Ошибка загрузки штрафов'
+      : '';
+  } finally {
+    penaltiesLoading.value = false;
+  }
+}
+
+async function loadMatchPage() {
   loading.value = true;
+  penaltiesLoading.value = true;
   error.value = '';
   try {
     const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
-    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
-    agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
-    // Load penalties only when enabled
-    const canSeePenalties = !penaltiesDisabled.value;
-    if (canSeePenalties) {
-      const pres = await apiFetch(
-        `/matches/${route.params.id}/penalties`
-      ).catch((e) => ({ items: [], _err: e }));
-      penalties.value = Array.isArray(pres.items) ? pres.items : [];
-      penaltiesError.value = pres._err
-        ? pres._err.message || 'Ошибка загрузки штрафов'
-        : '';
-    } else {
-      penalties.value = [];
-      penaltiesError.value = '';
-    }
+    await loadAgreementsSafe();
+    await loadPenalties();
   } catch (e) {
     error.value = e.message || 'Ошибка загрузки данных';
+    penaltiesLoading.value = false;
   } finally {
     loading.value = false;
-    penaltiesLoading.value = false;
   }
-});
+}
+
+onMounted(loadMatchPage);
 
 const kickoff = computed(() => formatKickoff(match.value?.date_start));
 const kickoffHeader = computed(() => {
@@ -109,8 +135,42 @@ const isParticipant = computed(
   () => Boolean(match.value?.is_home) || Boolean(match.value?.is_away)
 );
 
+const agreementsTileDisabled = computed(
+  () => isCancelled.value || !isParticipant.value || !agreementsAllowed.value
+);
+const agreementsTileLocked = computed(() => agreementsRestricted.value);
+const agreementsTileNote = computed(() => {
+  if (isCancelled.value) return 'Отмена';
+  if (!isParticipant.value) return 'Недоступно';
+  return '';
+});
+
+const lineupsTileDisabled = computed(
+  () => isCancelled.value || !isParticipant.value || !lineupsAllowed.value
+);
+const lineupsTileLocked = computed(() => lineupsRestricted.value);
+const lineupsTileNote = computed(() => {
+  if (isCancelled.value) return 'Отмена';
+  if (!isParticipant.value) return 'Недоступно';
+  return '';
+});
+
 const penaltiesDisabled = computed(
   () => !!match.value?.double_protocol && match.value?.season_active === false
+);
+
+const matchPermissions = computed(() => match.value?.permissions || null);
+const agreementsAllowed = computed(
+  () => matchPermissions.value?.agreements?.allowed !== false
+);
+const lineupsAllowed = computed(
+  () => matchPermissions.value?.lineups?.allowed !== false
+);
+const agreementsRestricted = computed(
+  () => isParticipant.value && !agreementsAllowed.value
+);
+const lineupsRestricted = computed(
+  () => isParticipant.value && !lineupsAllowed.value
 );
 
 // No filters/tabs — timeline displays both teams side-by-side
@@ -210,12 +270,9 @@ async function submitReschedule() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: reschedDate.value }),
     });
-    const [mres, ares] = await Promise.all([
-      apiFetch(`/matches/${route.params.id}`),
-      apiFetch(`/matches/${route.params.id}/agreements`),
-    ]);
+    const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
-    agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
+    await loadAgreementsSafe();
   } catch (e) {
     reschedError.value = e.message || 'Не удалось обновить дату';
   } finally {
@@ -425,27 +482,25 @@ const statusChip = computed(() => {
               title="Согласование времени"
               icon="bi-calendar-check"
               :to="
-                isCancelled || !isParticipant
+                agreementsTileDisabled
                   ? null
                   : `/school-matches/${route.params.id}/agreements`
               "
-              :placeholder="isCancelled || !isParticipant"
-              :note="
-                isCancelled ? 'Отмена' : !isParticipant ? 'Недоступно' : ''
-              "
+              :placeholder="agreementsTileDisabled"
+              :note="agreementsTileNote"
+              :locked="agreementsTileLocked"
             />
             <MenuTile
               title="Составы на матч"
               icon="bi-people"
               :to="
-                isCancelled || !isParticipant
+                lineupsTileDisabled
                   ? null
                   : `/school-matches/${route.params.id}/lineups`
               "
-              :placeholder="isCancelled || !isParticipant"
-              :note="
-                isCancelled ? 'Отмена' : !isParticipant ? 'Недоступно' : ''
-              "
+              :placeholder="lineupsTileDisabled"
+              :note="lineupsTileNote"
+              :locked="lineupsTileLocked"
             />
             <MenuTile
               title="Судьи матча"

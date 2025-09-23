@@ -68,14 +68,10 @@ export default async function buildBankDetailsChangePdf(
   } catch {
     /* noop */
   }
-  doc.moveDown(1);
+  doc.moveDown(0.6);
   doc.fontSize(11);
 
-  // Intro
-  const intro = `Я, ${fullName}, прошу изменить мои банковские реквизиты для начисления вознаграждений.`;
-  doc.text(intro, { align: 'justify' }).moveDown(0.75);
-
-  // Section: User info (compact, as in contract application)
+  // Structured tables with bordered rows for judge info and bank details
   const bdate = user?.birth_date
     ? new Date(user.birth_date).toLocaleDateString('ru-RU')
     : '—';
@@ -94,42 +90,137 @@ export default async function buildBankDetailsChangePdf(
   ]);
   const taxationName = taxationRec?.TaxationType?.name || '—';
 
-  try {
-    doc.font(fonts.bold);
-  } catch {
-    /* noop */
-  }
-  doc.text('Сведения о судье').moveDown(0.3);
-  try {
-    doc.font(fonts.regular);
-  } catch {
-    /* noop */
-  }
-  const labelWidth = 220;
-  const startX = doc.page.margins.left;
-  const rowSimple = (label, value) => {
-    const y = doc.y;
+  const contentX = doc.page.margins.left;
+  const contentWidth =
+    doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const labelWidth = Math.min(220, Math.round(contentWidth * 0.45));
+  const valueWidth = contentWidth - labelWidth;
+
+  const drawKeyValueRow = (cursorY, { label, value, header = false }) => {
+    const padX = header ? 10 : 8;
+    const padY = header ? 6 : 5;
+    const baseHeight = header ? 20 : 18;
+    const labelText = String(label ?? '');
+    const valueText = header ? String(value ?? '') : String(value ?? '—');
+
     try {
-      doc.font(fonts.bold);
+      doc.font(header ? fonts.bold : fonts.regular).fontSize(
+        header ? 10.5 : 10
+      );
     } catch {
-      /* noop */
+      doc.fontSize(header ? 10.5 : 10);
     }
-    doc.text(label, startX, y, { width: labelWidth, lineBreak: false });
-    const colX = startX + labelWidth + 8;
-    try {
-      doc.font(fonts.regular);
-    } catch {
-      /* noop */
-    }
-    doc.text((value ?? '—').toString(), colX, y, {
-      width: doc.page.width - doc.page.margins.right - colX,
+
+    const labelBoxWidth = header
+      ? contentWidth - padX * 2
+      : Math.max(32, labelWidth - padX * 2);
+    const valueBoxWidth = Math.max(32, valueWidth - padX * 2);
+    const labelHeight = doc.heightOfString(labelText || ' ', {
+      width: labelBoxWidth,
+      align: 'left',
     });
+    const valueHeight = header
+      ? 0
+      : doc.heightOfString(valueText || '—', {
+          width: valueBoxWidth,
+          align: 'left',
+        });
+    const innerHeight = header ? labelHeight : Math.max(labelHeight, valueHeight);
+    const rowHeight = Math.max(baseHeight, Math.ceil(innerHeight + padY * 2));
+    const bottomY = cursorY + rowHeight;
+
+    if (header) {
+      try {
+        doc
+          .save()
+          .fillColor('#F2F4F7')
+          .rect(contentX, cursorY, contentWidth, rowHeight)
+          .fill()
+          .restore();
+      } catch {
+        /* noop */
+      }
+    }
+
+    try {
+      doc
+        .save()
+        .lineWidth(0.5)
+        .strokeColor('#E5E7EB')
+        .rect(contentX, cursorY, contentWidth, rowHeight)
+        .stroke();
+      if (!header) {
+        doc
+          .moveTo(contentX + labelWidth, cursorY)
+          .lineTo(contentX + labelWidth, bottomY)
+          .stroke();
+      }
+      doc.restore();
+    } catch {
+      /* noop */
+    }
+
+    const prevX = doc.x;
+    const prevY = doc.y;
+    try {
+      doc.font(header ? fonts.bold : fonts.regular).fontSize(
+        header ? 10.5 : 9.8
+      );
+    } catch {
+      doc.fontSize(header ? 10.5 : 9.8);
+    }
+    doc.fillColor('#111827');
+    if (header) {
+      doc.text(labelText, contentX + padX, cursorY + padY, {
+        width: contentWidth - padX * 2,
+        align: 'left',
+      });
+    } else {
+      doc.text(labelText, contentX + padX, cursorY + padY, {
+        width: Math.max(32, labelWidth - padX * 2),
+        align: 'left',
+      });
+      try {
+        doc.font(fonts.regular).fontSize(9.8);
+      } catch {
+        doc.fontSize(9.8);
+      }
+      doc.text(valueText || '—', contentX + labelWidth + padX, cursorY + padY, {
+        width: valueBoxWidth,
+        align: 'left',
+      });
+    }
+    doc.fillColor('black');
+    doc.x = prevX;
+    doc.y = prevY;
+    return bottomY;
   };
-  rowSimple('ФИО', fullName);
-  rowSimple('Дата рождения', bdate);
-  rowSimple('ИНН', innRec?.number || '—');
-  rowSimple('Налоговый статус', taxationName);
-  doc.moveDown(0.75);
+
+  const renderKeyValueSection = (rows, { spacingAfter = 12 } = {}) => {
+    let cursorY = doc.y;
+    rows.forEach((row) => {
+      cursorY = drawKeyValueRow(cursorY, row);
+    });
+    doc.y = cursorY + Math.max(0, spacingAfter);
+    doc.x = contentX;
+  };
+
+  try {
+    doc.font(fonts.regular).fontSize(10);
+  } catch {
+    doc.fontSize(10);
+  }
+
+  renderKeyValueSection(
+    [
+      { header: true, label: 'Сведения о судье' },
+      { label: 'ФИО', value: fullName },
+      { label: 'Дата рождения', value: bdate },
+      { label: 'ИНН', value: innRec?.number || '—' },
+      { label: 'Налоговый статус', value: taxationName },
+    ],
+    { spacingAfter: 14 }
+  );
 
   // Fetch previous bank account from DB to display old vs new
   const prev =
@@ -138,75 +229,40 @@ export default async function buildBankDetailsChangePdf(
       (() => Promise.resolve(null))
     )({ where: { user_id: user.id } })) || null;
 
-  // Two stacked blocks: Старые реквизиты, затем Новые реквизиты
-  const field = (label, value) => {
-    const y = doc.y;
-    try {
-      doc.font(fonts.bold);
-    } catch {
-      /* noop */
-    }
-    doc.text(label, startX, y, { width: labelWidth, lineBreak: false });
-    const colX = startX + labelWidth + 8;
-    try {
-      doc.font(fonts.regular);
-    } catch {
-      /* noop */
-    }
-    doc.text((value ?? '—').toString(), colX, y, {
-      width: doc.page.width - doc.page.margins.right - colX,
-    });
-  };
+  renderKeyValueSection(
+    [
+      { header: true, label: 'Старые реквизиты' },
+      { label: 'Расчётный счёт (р/с)', value: prev?.number || '—' },
+      { label: 'БИК', value: prev?.bic || '—' },
+      { label: 'Наименование банка', value: prev?.bank_name || '—' },
+      {
+        label: 'Корреспондентский счёт (к/с)',
+        value: prev?.correspondent_account || '—',
+      },
+      { label: 'ИНН банка', value: prev?.inn || '—' },
+      { label: 'КПП', value: prev?.kpp || '—' },
+      { label: 'SWIFT', value: prev?.swift || '—' },
+      { label: 'Адрес банка', value: prev?.address || '—' },
+    ],
+    { spacingAfter: 12 }
+  );
 
-  // Старые реквизиты
-  try {
-    doc.font(fonts.bold);
-  } catch {
-    /* noop */
-  }
-  doc.text('Старые реквизиты', { align: 'left' });
-  try {
-    doc.font(fonts.regular);
-  } catch {
-    /* noop */
-  }
-  doc.moveDown(0.3);
-  field('Расчётный счёт (р/с)', prev?.number || '—');
-  field('БИК', prev?.bic || '—');
-  field('Наименование банка', prev?.bank_name || '—');
-  field('Корреспондентский счёт (к/с)', prev?.correspondent_account || '—');
-  field('ИНН банка', prev?.inn || '—');
-  field('КПП', prev?.kpp || '—');
-  field('SWIFT', prev?.swift || '—');
-  field('Адрес банка', prev?.address || '—');
-  doc.moveDown(0.6);
-
-  // Новые реквизиты
-  try {
-    doc.font(fonts.bold);
-  } catch {
-    /* noop */
-  }
-  doc.text('Новые реквизиты', { align: 'left' });
-  try {
-    doc.font(fonts.regular);
-  } catch {
-    /* noop */
-  }
-  doc.moveDown(0.3);
-  field('Расчётный счёт (р/с)', changes?.number || '—');
-  field('БИК', changes?.bic || '—');
-  field('Наименование банка', changes?.bank_name || '—');
-  field('Корреспондентский счёт (к/с)', changes?.correspondent_account || '—');
-  field('ИНН банка', changes?.inn || '—');
-  field('КПП', changes?.kpp || '—');
-  field('SWIFT', changes?.swift || '—');
-  field('Адрес банка', changes?.address || '—');
-
-  doc.moveDown(1);
-  doc.text(
-    'Подтверждаю корректность указанных реквизитов и согласен(на) на их использование для выплат.',
-    { align: 'justify' }
+  renderKeyValueSection(
+    [
+      { header: true, label: 'Новые реквизиты' },
+      { label: 'Расчётный счёт (р/с)', value: changes?.number || '—' },
+      { label: 'БИК', value: changes?.bic || '—' },
+      { label: 'Наименование банка', value: changes?.bank_name || '—' },
+      {
+        label: 'Корреспондентский счёт (к/с)',
+        value: changes?.correspondent_account || '—',
+      },
+      { label: 'ИНН банка', value: changes?.inn || '—' },
+      { label: 'КПП', value: changes?.kpp || '—' },
+      { label: 'SWIFT', value: changes?.swift || '—' },
+      { label: 'Адрес банка', value: changes?.address || '—' },
+    ],
+    { spacingAfter: 12 }
   );
 
   // Footer and optional esign
