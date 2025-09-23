@@ -21,12 +21,15 @@ const stopWorkerMock = jest.fn();
 const getStatsMock = jest.fn();
 
 const loggerMock = {
+  debug: jest.fn(),
   warn: jest.fn(),
   info: jest.fn(),
   error: jest.fn(),
 };
 const sendMailMock = jest.fn();
-const createTransportMock = jest.fn(() => ({ sendMail: sendMailMock }));
+const closeTransportMock = jest.fn();
+const verifyTransportMock = jest.fn();
+const createTransportMock = jest.fn();
 const incEmailSentMock = jest.fn();
 const observeEmailDeliveryMock = jest.fn();
 
@@ -508,9 +511,17 @@ async function loadEmailService() {
 async function loadEmailTransport({ configured = true } = {}) {
   jest.resetModules();
   sendMailMock.mockReset();
-  createTransportMock.mockReset().mockReturnValue({ sendMail: sendMailMock });
+  closeTransportMock.mockReset();
+  verifyTransportMock.mockReset().mockResolvedValue();
+  createTransportMock.mockReset().mockImplementation((options) => ({
+    options,
+    sendMail: sendMailMock,
+    close: closeTransportMock,
+    verify: verifyTransportMock,
+  }));
   incEmailSentMock.mockReset();
   observeEmailDeliveryMock.mockReset();
+  loggerMock.debug.mockReset();
   loggerMock.warn.mockReset();
   loggerMock.info.mockReset();
   loggerMock.error.mockReset();
@@ -598,6 +609,19 @@ describe('emailService', () => {
     expect(ok).toBe(true);
   });
 
+  test('sendMail treats duplicate queue response as success', async () => {
+    const { mod } = await loadEmailService();
+    enqueueMock.mockResolvedValueOnce({ accepted: false, reason: 'duplicate' });
+    const ok = await mod.sendMail(
+      'dup@test',
+      'Subj',
+      'Txt',
+      '<div>html</div>',
+      'generic'
+    );
+    expect(ok).toBe(true);
+  });
+
   test('sendMail forwards options metadata to queue', async () => {
     const { mod } = await loadEmailService();
     enqueueMock.mockResolvedValueOnce({ accepted: true });
@@ -660,6 +684,7 @@ describe('emailService', () => {
       if (args[0].id) {
         expect(envelope.metadata.userId).toBe(args[0].id);
       }
+      expect(envelope.dedupeKey).toBeTruthy();
       if (meta) {
         for (const [key, value] of Object.entries(meta)) {
           expect(envelope.metadata[key]).toEqual(value);
@@ -703,8 +728,20 @@ describe('emailTransport', () => {
       expect.objectContaining({
         host: 'smtp.test',
         port: 587,
+        secure: false,
+        requireTLS: true,
         auth: { user: 'user@test', pass: 'secret' },
         pool: true,
+        maxConnections: 3,
+        maxMessages: 100,
+        connectionTimeout: 10_000,
+        greetingTimeout: 8_000,
+        socketTimeout: 15_000,
+        tls: expect.objectContaining({
+          servername: 'smtp.test',
+          minVersion: 'TLSv1.2',
+          rejectUnauthorized: true,
+        }),
       })
     );
     expect(sendMailMock).toHaveBeenCalledWith(
@@ -765,8 +802,40 @@ describe('emailTransport', () => {
         purpose: 'generic',
         jobId: 'job-err',
         error: 'SMTP down',
+        transport: expect.objectContaining({
+          host: 'smtp.test',
+          port: 587,
+        }),
       })
     );
+    resetTransportForTests();
+  });
+
+  test('annotates TLS handshake failures and resets the transport', async () => {
+    const { deliverEmail, resetTransportForTests } = await loadEmailTransport();
+    const tlsError = new Error(
+      'Client network socket disconnected before secure TLS connection was established'
+    );
+    tlsError.code = 'ESOCKET';
+    tlsError.command = 'CONN';
+    sendMailMock.mockRejectedValue(tlsError);
+
+    await expect(
+      deliverEmail({
+        id: 'job-tls',
+        to: 'person@test',
+        subject: 'Subject',
+        text: 'Body',
+        html: '<div>Body</div>',
+        purpose: 'generic',
+      })
+    ).rejects.toMatchObject({
+      message: 'Email delivery failed',
+      hint: expect.stringContaining('TLS handshake failed'),
+      details: expect.objectContaining({ reason: 'tls_handshake_failed' }),
+    });
+
+    expect(closeTransportMock).toHaveBeenCalled();
     resetTransportForTests();
   });
 });

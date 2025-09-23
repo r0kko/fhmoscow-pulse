@@ -1,5 +1,5 @@
 import os from 'node:os';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import logger from '../../../logger.js';
 import { createRedisClient } from '../../config/redis.js';
@@ -38,6 +38,19 @@ const METRICS_INTERVAL_MS = Number(
 );
 const SCHEDULE_DRAIN_LIMIT = Number(
   process.env.EMAIL_QUEUE_SCHEDULE_DRAIN_LIMIT || 100
+);
+const DEDUPE_ENABLED = String(
+  process.env.EMAIL_QUEUE_DEDUPE_ENABLED ?? 'true'
+)
+  .toLowerCase()
+  .match(/^(1|true|yes|on)$/);
+const DEDUPE_KEY_PREFIX =
+  process.env.EMAIL_QUEUE_DEDUPE_KEY || `${STREAM_KEY}:dedupe`;
+const DEDUPE_TTL_MS = Number(
+  process.env.EMAIL_QUEUE_DEDUPE_TTL_MS || 6 * 60 * 60 * 1000
+);
+const DEDUPE_GRACE_MS = Number(
+  process.env.EMAIL_QUEUE_DEDUPE_GRACE_MS || 15 * 60 * 1000
 );
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,8 +116,11 @@ async function ensureGroup() {
 function buildJob(payload, options = {}) {
   const now = Date.now();
   const purpose = payload.purpose || options.purpose || 'generic';
+  const dedupeSource =
+    payload.dedupeKey || options.dedupeKey || payload.metadata?.dedupeKey;
+  const dedupeKey = normalizeDedupeKey(dedupeSource, payload, purpose);
   const job = {
-    id: payload.id || randomUUID(),
+    id: payload.id || options.id || dedupeKey || randomUUID(),
     to: payload.to,
     subject: payload.subject,
     text: payload.text,
@@ -121,13 +137,106 @@ function buildJob(payload, options = {}) {
     ),
     createdAt: payload.createdAt || now,
     queuedAt: now,
+    dedupeKey,
   };
   const delayMs = Number(options.delayMs || payload.delayMs || 0);
   if (delayMs > 0) {
     job.availableAfter = now + delayMs;
     job.delayMs = delayMs;
   }
+  const dedupeTtlMs = Number(
+    options.dedupeTtlMs || payload.dedupeTtlMs || DEDUPE_TTL_MS
+  );
+  job.dedupeTtlMs = Math.max(
+    dedupeTtlMs,
+    (job.delayMs || 0) + DEDUPE_GRACE_MS
+  );
   return job;
+}
+
+function normalizeDedupeKey(input, payload, purpose) {
+  if (!DEDUPE_ENABLED) return null;
+  let source = input;
+  if (!source) {
+    const fallback = {
+      purpose,
+      to: payload.to,
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html,
+      metadata: payload.metadata,
+    };
+    try {
+      source = JSON.stringify(fallback);
+    } catch (_err) {
+      source = `${purpose}|${payload.to}|${payload.subject || ''}`;
+    }
+  }
+  const normalized = String(source || '').trim();
+  if (!normalized) return null;
+  return createHash('sha256').update(normalized).digest('hex');
+}
+
+function dedupeRedisKey(key) {
+  if (!key) return null;
+  return `${DEDUPE_KEY_PREFIX}:${key}`;
+}
+
+function dedupeTtlForJob(job) {
+  const base = Number(job?.dedupeTtlMs || DEDUPE_TTL_MS);
+  const futureDelay = Number(job?.availableAfter || 0) - Date.now();
+  const pendingDelay = Number(job?.delayMs || 0);
+  const required = Math.max(
+    base,
+    futureDelay > 0 ? futureDelay + DEDUPE_GRACE_MS : 0,
+    pendingDelay + DEDUPE_GRACE_MS
+  );
+  return Math.max(required, Math.max(DEDUPE_GRACE_MS, 1000));
+}
+
+async function acquireDedupeLock(job) {
+  if (!DEDUPE_ENABLED) return { acquired: true };
+  const redisKey = dedupeRedisKey(job?.dedupeKey);
+  if (!redisKey) return { acquired: true };
+  const ttl = dedupeTtlForJob(job);
+  const result = await producerClient.set(redisKey, job.id, {
+    NX: true,
+    PX: ttl,
+  });
+  if (result === null) {
+    const existingJobId = await producerClient.get(redisKey);
+    return { acquired: false, existingJobId };
+  }
+  return { acquired: true, ttl };
+}
+
+async function refreshDedupeLock(job) {
+  if (!DEDUPE_ENABLED) return;
+  const redisKey = dedupeRedisKey(job?.dedupeKey);
+  if (!redisKey) return;
+  const ttl = dedupeTtlForJob(job);
+  if (ttl > 0) {
+    await producerClient.pExpire(redisKey, ttl).catch((err) => {
+      logger.debug('Email dedupe TTL refresh failed', {
+        error: err?.message || String(err),
+        jobId: job?.id,
+      });
+    });
+  }
+}
+
+async function releaseDedupeLock(job) {
+  if (!DEDUPE_ENABLED) return;
+  const redisKey = dedupeRedisKey(job?.dedupeKey);
+  if (!redisKey) return;
+  try {
+    await producerClient.del(redisKey);
+  } catch (err) {
+    logger.debug('Email dedupe lock release failed', {
+      error: err?.message || String(err),
+      jobId: job?.id,
+    });
+  }
 }
 
 async function pushToStream(job) {
@@ -148,6 +257,7 @@ async function pushToStream(job) {
   } else {
     await producerClient.xAdd(STREAM_KEY, '*', { payload });
   }
+  await refreshDedupeLock(job);
 }
 
 async function scheduleJob(job) {
@@ -155,6 +265,7 @@ async function scheduleJob(job) {
     score: job.availableAfter,
     value: encode(job),
   });
+  await refreshDedupeLock(job);
 }
 
 async function promoteScheduled(limit = SCHEDULE_DRAIN_LIMIT) {
@@ -209,6 +320,7 @@ async function emitQueueMetrics() {
 
 async function handleSuccess(entryId, job) {
   await consumerClient.xAck(STREAM_KEY, GROUP_NAME, entryId);
+  await releaseDedupeLock(job);
   logger.debug?.('Email job acknowledged', {
     jobId: job.id,
     purpose: job.purpose,
@@ -224,6 +336,7 @@ async function moveToDlq(entryId, job, err) {
   await consumerClient.xAck(STREAM_KEY, GROUP_NAME, entryId);
   await producerClient.xAdd(DLQ_KEY, '*', { payload: encode(job) });
   incEmailQueueFailure(job.purpose || 'generic');
+  await releaseDedupeLock(job);
   logger.error('Email job moved to DLQ', {
     jobId: job.id,
     purpose: job.purpose,
@@ -245,6 +358,7 @@ async function handleFailure(entryId, job, err) {
   };
   const delayMs = computeBackoff(job.attempt);
   job.availableAfter = Date.now() + delayMs;
+  job.delayMs = delayMs;
   await consumerClient.xAck(STREAM_KEY, GROUP_NAME, entryId);
   await scheduleJob(job);
   incEmailQueueRetry(job.purpose || 'generic');
@@ -375,6 +489,22 @@ export async function enqueueEmail(payload, options = {}) {
     }
   }
   const job = buildJob(payload, { ...options, purpose });
+  const dedupe = await acquireDedupeLock(job);
+  if (!dedupe.acquired) {
+    incEmailQueued('duplicate', purpose);
+    logger.info('Email job deduplicated', {
+      jobId: job.id,
+      purpose: job.purpose,
+      to: job.to,
+      dedupe_key: job.dedupeKey,
+      existingJobId: dedupe.existingJobId,
+    });
+    return {
+      accepted: false,
+      jobId: dedupe.existingJobId || job.id,
+      reason: 'duplicate',
+    };
+  }
   if (job.availableAfter) {
     await scheduleJob(job);
     incEmailQueued('scheduled', purpose);
@@ -387,6 +517,7 @@ export async function enqueueEmail(payload, options = {}) {
     purpose: job.purpose,
     to: job.to,
     delay_ms: job.delayMs || 0,
+    dedupe_key: job.dedupeKey,
   });
   await emitQueueMetrics();
   return {

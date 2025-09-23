@@ -104,9 +104,9 @@ export default async function buildBankDetailsChangePdf(
     const valueText = header ? String(value ?? '') : String(value ?? '—');
 
     try {
-      doc.font(header ? fonts.bold : fonts.regular).fontSize(
-        header ? 10.5 : 10
-      );
+      doc
+        .font(header ? fonts.bold : fonts.regular)
+        .fontSize(header ? 10.5 : 10);
     } catch {
       doc.fontSize(header ? 10.5 : 10);
     }
@@ -125,7 +125,9 @@ export default async function buildBankDetailsChangePdf(
           width: valueBoxWidth,
           align: 'left',
         });
-    const innerHeight = header ? labelHeight : Math.max(labelHeight, valueHeight);
+    const innerHeight = header
+      ? labelHeight
+      : Math.max(labelHeight, valueHeight);
     const rowHeight = Math.max(baseHeight, Math.ceil(innerHeight + padY * 2));
     const bottomY = cursorY + rowHeight;
 
@@ -163,9 +165,9 @@ export default async function buildBankDetailsChangePdf(
     const prevX = doc.x;
     const prevY = doc.y;
     try {
-      doc.font(header ? fonts.bold : fonts.regular).fontSize(
-        header ? 10.5 : 9.8
-      );
+      doc
+        .font(header ? fonts.bold : fonts.regular)
+        .fontSize(header ? 10.5 : 9.8);
     } catch {
       doc.fontSize(header ? 10.5 : 9.8);
     }

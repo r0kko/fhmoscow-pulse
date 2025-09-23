@@ -58,6 +58,22 @@ function userMetadata(user) {
   });
 }
 
+function buildTemplateDedupeKey({
+  templateName,
+  purpose,
+  user,
+  metadata,
+}) {
+  const payload = {
+    template: templateName,
+    purpose,
+    userId: user?.id,
+    email: user?.email,
+    metadata,
+  };
+  return JSON.stringify(payload);
+}
+
 async function queueMailFromTemplate(
   user,
   templateFn,
@@ -73,6 +89,12 @@ async function queueMailFromTemplate(
     ...userMetadata(user),
     ...extraMeta,
   });
+  const dedupeKey = buildTemplateDedupeKey({
+    templateName,
+    purpose,
+    user,
+    metadata,
+  });
   await enqueueEmailJob({
     to: user.email,
     subject,
@@ -80,6 +102,7 @@ async function queueMailFromTemplate(
     html,
     purpose,
     metadata,
+    dedupeKey,
   });
 }
 
@@ -99,7 +122,11 @@ export async function sendMail(
     { to, subject, text, html, purpose, metadata: options.metadata },
     options
   );
-  return Boolean(result.accepted || result.delivered);
+  return Boolean(
+    result.accepted ||
+      result.delivered ||
+      result.reason === 'duplicate'
+  );
 }
 
 export async function sendVerificationEmail(user, code) {
