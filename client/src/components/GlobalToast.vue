@@ -1,14 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue';
-import { useToast } from '../utils/toast.js';
+import { useToast, type ToastItem } from '../utils/toast';
 
 const { toasts, hideToast } = useToast();
-const hasToasts = computed(() => toasts.length > 0);
 
-function handleKeydown(e) {
-  if (e.key === 'Escape' && toasts.length) {
-    const last = toasts[toasts.length - 1];
-    hideToast(last.id);
+const typedToasts = computed<readonly ToastItem[]>(() => toasts);
+const hasToasts = computed(() => typedToasts.value.length > 0);
+
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && typedToasts.value.length) {
+    const last = typedToasts.value[typedToasts.value.length - 1];
+    if (last) hideToast(last.id);
   }
 }
 
@@ -25,7 +27,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown));
     aria-atomic="true"
   >
     <div
-      v-for="t in toasts"
+      v-for="t in typedToasts"
       :key="t.id"
       class="toast show"
       :class="`text-bg-${t.variant}`"

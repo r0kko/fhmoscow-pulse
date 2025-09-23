@@ -1,60 +1,82 @@
-<script setup>
-import { ref, watch } from 'vue';
+<script setup lang="ts">
+import { onBeforeUnmount, ref, watch } from 'vue';
 import CookieNotice from '../components/CookieNotice.vue';
 import PasswordInput from '../components/PasswordInput.vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch, initCsrf } from '../api';
-import { auth, setAuthToken } from '../auth';
-const logo = '/vite.svg';
+import { auth, setAuthToken, type AuthUser } from '../auth';
 
-const router = useRouter();
-const phone = ref('');
-const phoneInput = ref('');
-const password = ref('');
-const error = ref('');
-const loading = ref(false);
+const logo = '/vite.svg' as const;
 
-watch(error, (val) => {
-  if (val) {
-    setTimeout(() => {
-      error.value = '';
-    }, 4000);
-  }
-});
-
-function formatPhone(digits) {
-  let out = '+7';
-  if (digits.length > 1) out += ' (' + digits.slice(1, 4);
-  if (digits.length >= 4) out += ') ';
-  if (digits.length >= 4) out += digits.slice(4, 7);
-  if (digits.length >= 7) out += '-' + digits.slice(7, 9);
-  if (digits.length >= 9) out += '-' + digits.slice(9, 11);
-  return out;
+interface LoginResponse {
+  access_token: string;
+  user: AuthUser;
+  roles?: string[];
+  must_change_password?: boolean;
+  awaiting_confirmation?: boolean;
 }
 
-function onPhoneInput(e) {
-  let digits = e.target.value.replace(/\D/g, '');
-  // Normalize Russian numbers: accept leading 7 or 8, store as 7XXXXXXXXXX
-  if (digits.length > 0) {
-    // remove a single leading 7 or 8, then re-add 7
-    digits = '7' + digits.replace(/^[78]/, '');
-  } else {
-    digits = '7';
-  }
-  digits = digits.slice(0, 11);
+const router = useRouter();
+
+const phone = ref<string>('');
+const phoneInput = ref<string>('');
+const password = ref<string>('');
+const error = ref<string>('');
+const loading = ref(false);
+
+let errorTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(error, (val) => {
+  if (!val) return;
+  if (errorTimer) clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => {
+    error.value = '';
+    errorTimer = null;
+  }, 4000);
+});
+
+onBeforeUnmount(() => {
+  if (errorTimer) clearTimeout(errorTimer);
+});
+
+function formatPhone(digits: string): string {
+  if (!digits) return '';
+  let formatted = '+7';
+  const rest = digits.slice(1);
+  if (rest.length > 0) formatted += ` (${rest.slice(0, 3)}`;
+  if (rest.length >= 3) formatted += ') ';
+  if (rest.length >= 3) formatted += rest.slice(3, 6);
+  if (rest.length >= 6) formatted += `-${rest.slice(6, 8)}`;
+  if (rest.length >= 8) formatted += `-${rest.slice(8, 10)}`;
+  return formatted;
+}
+
+function normalisePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 0) return '';
+  digits = digits.replace(/^[78]/, '7');
+  if (!digits.startsWith('7')) digits = `7${digits}`;
+  return digits.slice(0, 11);
+}
+
+function onPhoneInput(event: Event): void {
+  const target = event.target as HTMLInputElement | null;
+  const digits = normalisePhone(target?.value ?? '');
   phone.value = digits;
   phoneInput.value = formatPhone(digits);
 }
 
-function onPhoneKeydown(e) {
-  if (e.key === 'Backspace' || e.key === 'Delete') {
-    e.preventDefault();
-    phone.value = phone.value.slice(0, -1);
-    phoneInput.value = formatPhone(phone.value);
+function onPhoneKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Backspace' || event.key === 'Delete') {
+    event.preventDefault();
+    const shortenedRaw = phone.value.slice(0, -1);
+    const shortened = shortenedRaw.length <= 1 ? '' : shortenedRaw;
+    phone.value = shortened;
+    phoneInput.value = formatPhone(shortened);
   }
 }
 
-async function login() {
+async function login(): Promise<void> {
   error.value = '';
   if (phone.value.length !== 11 || !phone.value.startsWith('7')) {
     error.value = 'Неверный номер телефона';
@@ -63,7 +85,7 @@ async function login() {
   loading.value = true;
   try {
     await initCsrf();
-    const data = await apiFetch('/auth/login', {
+    const data = await apiFetch<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ phone: phone.value, password: password.value }),
       redirectOn401: false,
@@ -71,24 +93,23 @@ async function login() {
     setAuthToken(data.access_token);
     auth.user = data.user;
     auth.roles = data.roles || [];
-    auth.mustChangePassword = !!data.must_change_password;
+    auth.mustChangePassword = Boolean(data.must_change_password);
+
     let destination = '/';
     if (auth.mustChangePassword) {
       destination = '/change-password';
     } else if (
       data.awaiting_confirmation ||
-      auth.user.status === 'AWAITING_CONFIRMATION'
+      auth.user?.status === 'AWAITING_CONFIRMATION'
     ) {
       destination = '/awaiting-confirmation';
-    } else if (
-      auth.user.status &&
-      auth.user.status.startsWith('REGISTRATION_STEP')
-    ) {
+    } else if (auth.user?.status?.startsWith('REGISTRATION_STEP')) {
       destination = '/complete-profile';
     }
+
     await router.push(destination);
-  } catch (err) {
-    error.value = err.message || 'Ошибка авторизации';
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Ошибка авторизации';
   } finally {
     loading.value = false;
   }

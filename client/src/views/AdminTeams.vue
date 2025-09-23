@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import TeamFiltersModal from '../components/TeamFiltersModal.vue';

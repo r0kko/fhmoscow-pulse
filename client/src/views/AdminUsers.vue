@@ -4,7 +4,7 @@ import { useRouter, RouterLink } from 'vue-router';
 import PageNav from '../components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import { apiFetch } from '../api';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import TaxationInfo from '../components/TaxationInfo.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import UsersFilterModal from '../components/UsersFilterModal.vue';

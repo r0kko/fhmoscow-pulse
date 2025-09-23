@@ -1,17 +1,38 @@
-<script setup>
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 import BaseTile from './BaseTile.vue';
 
-const props = defineProps({
-  title: { type: String, required: true },
-  icon: { type: String, default: '' },
-  to: { type: [String, Object], default: null },
-  replace: { type: Boolean, default: false },
-  placeholder: { type: Boolean, default: false },
-  note: { type: String, default: '' },
-  imageSrc: { type: String, default: '' },
-  imageAlt: { type: String, default: '' },
-  locked: { type: Boolean, default: false },
+interface MenuTileProps {
+  title: string;
+  icon?: string;
+  to?: RouteLocationRaw | null;
+  replace?: boolean;
+  placeholder?: boolean;
+  note?: string;
+  imageSrc?: string;
+  imageAlt?: string;
+  locked?: boolean;
+}
+
+const props = withDefaults(defineProps<MenuTileProps>(), {
+  icon: '',
+  to: null,
+  replace: false,
+  placeholder: false,
+  note: '',
+  imageSrc: '',
+  imageAlt: '',
+  locked: false,
 });
+
+const extraClasses = computed(() => [
+  'menu-card',
+  'fade-in',
+  { 'placeholder-card': props.placeholder || !props.to },
+]);
+
+const accessibleLabel = computed(() => (props.to ? props.title : null));
 </script>
 
 <template>
@@ -19,13 +40,9 @@ const props = defineProps({
     :to="props.to || null"
     :replace="props.replace"
     :disabled="props.placeholder || !props.to"
-    :aria-label="props.to ? props.title : null"
+    :aria-label="accessibleLabel"
     :section="false"
-    :extra-class="[
-      'menu-card',
-      'fade-in',
-      { 'placeholder-card': props.placeholder || !props.to },
-    ]"
+    :extra-class="extraClasses"
   >
     <div class="card-body">
       <p class="card-title small mb-2">{{ props.title }}</p>

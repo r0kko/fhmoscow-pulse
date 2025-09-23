@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import { apiFetch } from '../api';
 import ConfirmModal from './ConfirmModal.vue';
 

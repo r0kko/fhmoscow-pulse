@@ -3,6 +3,7 @@
     v-if="visible"
     class="cookie-notice alert alert-info d-flex flex-column flex-sm-row align-items-center position-fixed bottom-0 start-50 translate-middle-x mb-3 fade show"
     role="alert"
+    aria-live="polite"
   >
     <span class="me-sm-3 mb-2 mb-sm-0 text-center text-sm-start flex-fill">
       Продолжая работу с сайтом, вы соглашаетесь с использованием файлов cookie
@@ -18,18 +19,28 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
+<script setup lang="ts">
+import { onMounted, ref } from 'vue';
 
+const storageKey = 'cookieConsent';
 const visible = ref(false);
 
-function accept() {
-  localStorage.setItem('cookieConsent', 'true');
+function accept(): void {
+  try {
+    localStorage.setItem(storageKey, 'true');
+  } catch {
+    /* ignore quota issues */
+  }
   visible.value = false;
 }
 
 onMounted(() => {
-  if (!localStorage.getItem('cookieConsent')) {
+  try {
+    if (!localStorage.getItem(storageKey)) {
+      visible.value = true;
+    }
+  } catch {
+    // If storage is unavailable (e.g., private mode), still surface the notice once
     visible.value = true;
   }
 });

@@ -11,50 +11,56 @@
         />
       </RouterLink>
       <div class="d-flex align-items-center ms-auto">
-        <span v-if="user" class="navbar-text me-3 d-none d-md-inline">
-          {{ user.last_name }} {{ user.first_name }} {{ user.patronymic }}
+        <span v-if="currentUser" class="navbar-text me-3 d-none d-md-inline">
+          {{ currentUser.last_name }} {{ currentUser.first_name }}
+          {{ currentUser.patronymic }}
         </span>
         <button
           class="btn btn-outline-light d-none d-md-inline"
+          type="button"
           @click="logout"
         >
           Выйти
         </button>
         <button
           class="btn btn-outline-light d-md-none"
+          type="button"
           aria-label="Выйти"
           @click="logout"
         >
-          <i class="bi bi-box-arrow-right"></i>
+          <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
         </button>
       </div>
     </div>
   </nav>
 </template>
 
-<script setup>
-import { onMounted } from 'vue';
+<script setup lang="ts">
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { auth, fetchCurrentUser, clearAuth } from '../auth';
+import { auth, fetchCurrentUser, clearAuth, type AuthUser } from '../auth';
 import { apiFetch, initCsrf } from '../api';
 
 const router = useRouter();
-const { user } = auth;
+
+const currentUser = computed<AuthUser | null>(() => auth.user);
 
 onMounted(async () => {
   if (!auth.user) {
     try {
       await fetchCurrentUser();
-    } catch (e) {
+    } catch (error) {
       await logout();
     }
   }
 });
 
-async function logout() {
-  await apiFetch('/auth/logout', { method: 'POST' }).finally(() => {
+async function logout(): Promise<void> {
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } finally {
     clearAuth();
-  });
+  }
   await initCsrf().catch(() => {});
   await router.push('/login');
 }

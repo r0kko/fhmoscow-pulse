@@ -1,56 +1,75 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
-const props = defineProps({
-  // Route location or path for tile navigation. When absent or disabled, renders as a non-link.
-  to: { type: [String, Object], default: null },
-  // When true, navigate with router.replace (no new history entry)
-  replace: { type: Boolean, default: false },
-  // When true, renders inert and with aria-disabled
-  disabled: { type: Boolean, default: false },
-  // When true, applies section styling (larger radius/padding)
-  section: { type: Boolean, default: false },
-  // Optional ARIA label for discoverability
-  ariaLabel: { type: String, default: null },
-  // Additional classes to append to the card
-  extraClass: { type: [String, Array, Object], default: '' },
-  // Optional role override when not a link (e.g., 'button' for intercept tiles)
-  role: { type: String, default: 'group' },
-  // Optional: force opening in new tab for external links
-  target: { type: String, default: null },
-  rel: { type: String, default: null },
+type ClassValue =
+  | string
+  | Record<string, boolean>
+  | Array<string | Record<string, boolean>>;
+
+type ComponentTag = 'a' | 'button' | 'div' | typeof RouterLink;
+
+interface BaseTileProps {
+  to?: RouteLocationRaw | null;
+  replace?: boolean;
+  disabled?: boolean;
+  section?: boolean;
+  ariaLabel?: string | null;
+  extraClass?: ClassValue;
+  role?: string;
+  target?: string | null;
+  rel?: string | null;
+}
+
+const props = withDefaults(defineProps<BaseTileProps>(), {
+  to: null,
+  replace: false,
+  disabled: false,
+  section: false,
+  ariaLabel: null,
+  extraClass: '',
+  role: 'group',
+  target: null,
+  rel: null,
 });
 
-const isLink = computed(() => Boolean(props.to) && !props.disabled);
-const hrefLike = computed(() => {
-  const t = props.to;
-  return (
-    typeof t === 'string' &&
-    (/^https?:\/\//i.test(t) || t.startsWith('#') || /^mailto:|^tel:/i.test(t))
-  );
+const isLink = computed<boolean>(() => Boolean(props.to) && !props.disabled);
+
+const hrefLike = computed<boolean>(() => {
+  if (typeof props.to !== 'string') return false;
+  if (/^https?:\/\//i.test(props.to)) return true;
+  if (props.to.startsWith('#')) return true;
+  return /^mailto:|^tel:/i.test(props.to);
 });
-const componentTag = computed(() => {
+
+const componentTag = computed<ComponentTag>(() => {
   if (isLink.value) return hrefLike.value ? 'a' : RouterLink;
   if (props.role === 'button') return 'button';
   return 'div';
 });
-const linkAttrs = computed(() => {
+
+const linkAttrs = computed<Record<string, unknown>>(() => {
   if (!isLink.value) return {};
-  if (hrefLike.value) {
-    const isHttp =
-      typeof props.to === 'string' && /^https?:\/\//i.test(props.to);
+
+  if (hrefLike.value && typeof props.to === 'string') {
+    const isHttp = /^https?:\/\//i.test(props.to);
     return {
       href: props.to,
-      target: props.target || (isHttp ? '_blank' : null),
-      rel: props.rel || (isHttp ? 'noopener noreferrer' : null),
+      target: props.target ?? (isHttp ? '_blank' : null),
+      rel: props.rel ?? (isHttp ? 'noopener noreferrer' : null),
     };
   }
-  return { to: props.to, replace: props.replace || undefined };
+
+  return {
+    to: props.to as RouteLocationRaw,
+    replace: props.replace || undefined,
+  };
 });
-const tileRole = computed(() =>
-  isLink.value || componentTag.value === 'button' ? null : props.role || 'group'
-);
+
+const tileRole = computed<string | null>(() => {
+  if (isLink.value || componentTag.value === 'button') return null;
+  return props.role || 'group';
+});
 </script>
 
 <template>

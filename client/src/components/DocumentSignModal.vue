@@ -2,7 +2,7 @@
 import { ref, onMounted, nextTick, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 
 const emit = defineEmits(['signed']);
 const props = defineProps({

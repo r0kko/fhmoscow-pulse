@@ -4,7 +4,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 import { isValidAccountNumber } from '../utils/bank.js';
 import { findBankByBic } from '../dadata.js';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 
 const emit = defineEmits(['created']);
 

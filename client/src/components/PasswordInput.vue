@@ -1,76 +1,91 @@
-<script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-const props = defineProps({
-  modelValue: { type: String, default: '' },
-  id: { type: String, required: true },
-  label: { type: String, required: true },
-  autocomplete: { type: String, default: 'current-password' },
-  placeholder: { type: String, default: '' },
-  required: { type: Boolean, default: false },
-  ariaInvalid: { type: [Boolean, String], default: undefined },
-  ariaDescribedby: { type: String, default: undefined },
-  disabled: { type: Boolean, default: false },
-  autofocus: { type: Boolean, default: false },
-  // optional error text (to render invalid state consistently with BS)
-  error: { type: String, default: '' },
-  // optional maximum length (align with server policy default 128)
-  maxLength: { type: Number, default: 128 },
+type Booleanish = boolean | 'true' | 'false';
+
+interface PasswordInputProps {
+  modelValue?: string;
+  id: string;
+  label: string;
+  autocomplete?: string;
+  placeholder?: string;
+  required?: boolean;
+  ariaInvalid?: Booleanish;
+  ariaDescribedby?: string;
+  disabled?: boolean;
+  autofocus?: boolean;
+  error?: string;
+  maxLength?: number;
+}
+
+const props = withDefaults(defineProps<PasswordInputProps>(), {
+  modelValue: '',
+  autocomplete: 'current-password',
+  placeholder: '',
+  required: false,
+  ariaInvalid: undefined,
+  ariaDescribedby: undefined,
+  disabled: false,
+  autofocus: false,
+  error: '',
+  maxLength: 128,
 });
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 const visible = ref(false);
-const local = ref(props.modelValue || '');
+const local = ref<string>(props.modelValue);
 const capsLock = ref(false);
-const inputEl = ref(null);
+const inputEl = ref<HTMLInputElement | null>(null);
 
 watch(
   () => props.modelValue,
-  (v) => {
-    if (v !== local.value) local.value = v || '';
+  (value) => {
+    if (value !== local.value) local.value = value ?? '';
   }
 );
 
-function onInput(e) {
-  emit('update:modelValue', e?.target?.value ?? local.value);
+function onInput(event: Event): void {
+  const target = event.target as HTMLInputElement | null;
+  const value = target?.value ?? '';
+  local.value = value;
+  emit('update:modelValue', value);
 }
 
-function onKeyEvent(e) {
-  // Detect caps lock state if available
+function onKeyEvent(event: KeyboardEvent): void {
   try {
-    const state = e?.getModifierState?.('CapsLock');
+    const state = event.getModifierState?.('CapsLock');
     if (typeof state === 'boolean') capsLock.value = state;
   } catch {
-    /* noop */
+    /* ignore modifier state errors */
   }
 }
 
-function toggleVisibility() {
+function toggleVisibility(): void {
   visible.value = !visible.value;
-  // restore caret position where possible
   const el = inputEl.value;
   if (el && typeof el.setSelectionRange === 'function') {
-    const pos = el.selectionStart;
+    const pos = el.selectionStart ?? el.value.length;
     requestAnimationFrame(() => {
       try {
         el.setSelectionRange(pos, pos);
         el.focus();
       } catch {
-        /* noop */
+        /* ignore focus errors */
       }
     });
   }
 }
 
-function onWindowKeydown(e) {
-  onKeyEvent(e);
+function onWindowKeydown(event: KeyboardEvent): void {
+  onKeyEvent(event);
 }
 
 onMounted(() => {
   if (props.autofocus) inputEl.value?.focus?.();
   window.addEventListener('keydown', onWindowKeydown);
 });
+
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onWindowKeydown);
 });

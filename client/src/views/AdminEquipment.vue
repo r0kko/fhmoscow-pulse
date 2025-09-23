@@ -9,7 +9,7 @@ import {
 } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import PageNav from '../components/PageNav.vue';

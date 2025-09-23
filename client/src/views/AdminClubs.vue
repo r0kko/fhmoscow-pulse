@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';

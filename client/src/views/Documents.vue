@@ -15,7 +15,7 @@ import EmptyState from '../components/EmptyState.vue';
 import DocumentFiltersModal from '../components/DocumentFiltersModal.vue';
 import PageNav from '../components/PageNav.vue';
 import DocumentSignModal from '../components/DocumentSignModal.vue';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import { loadPageSize, savePageSize } from '../utils/pageSize.js';
 import BaseTile from '../components/BaseTile.vue';
 import { auth } from '../auth';

@@ -5,7 +5,7 @@ import { apiFetch } from '../api';
 import TrainingCard from '../components/TrainingCard.vue';
 import metroIcon from '../assets/metro.svg';
 import yandexLogo from '../assets/yandex-maps.svg';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import Tooltip from 'bootstrap/js/dist/tooltip';
 import { withHttp } from '../utils/url.js';
 import PageNav from '../components/PageNav.vue';

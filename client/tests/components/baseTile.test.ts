@@ -1,12 +1,21 @@
 import { render, screen } from '@testing-library/vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import {
+  createMemoryHistory,
+  createRouter,
+  type RouteRecordRaw,
+  type Router,
+} from 'vue-router';
 import { describe, expect, it } from 'vitest';
 import BaseTile from '../../src/components/BaseTile.vue';
 
-async function renderWithRouter(props) {
-  const router = createRouter({
+const baseRoutes: RouteRecordRaw[] = [
+  { path: '/', component: { template: '<div />' } },
+];
+
+async function renderWithRouter(props: Record<string, unknown>) {
+  const router: Router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/', component: { template: '<div />' } }],
+    routes: baseRoutes,
   });
   router.push('/');
   await router.isReady();

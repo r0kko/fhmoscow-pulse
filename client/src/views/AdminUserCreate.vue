@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { apiFetch } from '../api';
 import UserForm from '../components/UserForm.vue';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 
 const sexes = ref([]);
 

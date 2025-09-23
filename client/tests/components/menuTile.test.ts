@@ -1,33 +1,59 @@
 import { render, screen } from '@testing-library/vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import {
+  createMemoryHistory,
+  createRouter,
+  type RouteRecordRaw,
+  type Router,
+} from 'vue-router';
 import { describe, expect, it } from 'vitest';
 import MenuTile from '../../src/components/MenuTile.vue';
 
-async function renderMenuTile(props, options = {}) {
-  const router = createRouter({
+const routes: RouteRecordRaw[] = [
+  { path: '/', component: { template: '<div />' } },
+  { path: '/profile', component: { template: '<div>Profile</div>' } },
+];
+
+interface MenuTileTestProps {
+  title: string;
+  icon?: string;
+  to?: string;
+  note?: string;
+  placeholder?: boolean;
+  imageSrc?: string;
+  imageAlt?: string;
+  locked?: boolean;
+  replace?: boolean;
+}
+
+type RenderOpts = NonNullable<Parameters<typeof render>[1]>;
+
+async function renderMenuTile(
+  props: MenuTileTestProps,
+  options: Partial<RenderOpts> = {}
+) {
+  const router: Router = createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { template: '<div />' } },
-      { path: '/profile', component: { template: '<div>Profile</div>' } },
-    ],
+    routes,
   });
   router.push('/');
   await router.isReady();
 
   const { global: globalOverrides, ...rest } = options;
   const globalConfig = {
-    plugins: [router, ...(globalOverrides?.plugins || [])],
+    plugins: [router, ...(globalOverrides?.plugins ?? [])],
     stubs: globalOverrides?.stubs,
     components: globalOverrides?.components,
     config: globalOverrides?.config,
     provide: globalOverrides?.provide,
+  } as RenderOpts['global'];
+
+  const renderOptions: RenderOpts = {
+    props: props as RenderOpts['props'],
+    global: globalConfig,
+    ...(rest as RenderOpts),
   };
 
-  const utils = render(MenuTile, {
-    props,
-    global: globalConfig,
-    ...rest,
-  });
+  const utils = render(MenuTile, renderOptions);
   return { router, ...utils };
 }
 

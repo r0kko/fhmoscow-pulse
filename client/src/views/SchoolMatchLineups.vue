@@ -4,7 +4,7 @@ import Modal from 'bootstrap/js/dist/modal';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
-import { useToast } from '../utils/toast.js';
+import { useToast } from '../utils/toast';
 import { createLineupSync } from '../utils/lineupSync.js';
 import SyncStatus from '../components/lineups/SyncStatus.vue';
 import ExportModal from '../components/lineups/ExportModal.vue';

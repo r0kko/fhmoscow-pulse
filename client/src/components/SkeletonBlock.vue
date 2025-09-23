@@ -1,9 +1,16 @@
-<script setup>
-const props = defineProps({
-  width: { type: String, default: 'clamp(14rem, 70vw, 18rem)' },
-  height: { type: String, default: '5.5rem' },
-  radius: { type: String, default: 'var(--radius-tile)' },
-  block: { type: Boolean, default: false },
+<script setup lang="ts">
+interface SkeletonBlockProps {
+  width?: string;
+  height?: string;
+  radius?: string;
+  block?: boolean;
+}
+
+const props = withDefaults(defineProps<SkeletonBlockProps>(), {
+  width: 'clamp(14rem, 70vw, 18rem)',
+  height: '5.5rem',
+  radius: 'var(--radius-tile)',
+  block: false,
 });
 </script>
 
