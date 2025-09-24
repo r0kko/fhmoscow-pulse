@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
 import { defineComponent, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import PasswordInput from '../../src/components/PasswordInput.vue';
+import PasswordInput from '@/components/PasswordInput.vue';
+
+type PasswordInputProps = InstanceType<typeof PasswordInput>['$props'];
 
 describe('PasswordInput', () => {
-  function renderModel(props = {}) {
+  function renderModel(props: Partial<PasswordInputProps> = {}) {
     const Wrapper = defineComponent({
       components: { PasswordInput },
       setup() {
@@ -60,8 +62,8 @@ describe('PasswordInput', () => {
     await fireEvent.update(input, '321');
     expect(modelSpy).toHaveBeenCalledWith('321');
 
-    const event = new Event('keydown');
-    event.getModifierState = () => true;
+    const event = new KeyboardEvent('keydown');
+    vi.spyOn(event, 'getModifierState').mockReturnValue(true);
     window.dispatchEvent(event);
 
     await screen.findByText('Включен Caps Lock');

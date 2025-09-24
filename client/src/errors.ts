@@ -69,63 +69,23 @@ export const ERROR_MESSAGES = {
   photo_request_status_invalid: 'Некорректный статус заявки',
   file_too_large: 'Файл слишком большой',
   image_too_small: 'Разрешение слишком низкое. Минимум 800×800 пикселей',
-  invalid_file_type: 'Недопустимый тип файла',
-  invalid_equipment_type: 'Некорректный тип экипировки',
-  invalid_equipment_manufacturer: 'Некорректный производитель',
-  invalid_equipment_size: 'Некорректный размер',
-  invalid_equipment_number: 'Номер должен быть от 1 до 999',
-  sign_type_not_found: 'Тип подписи не найден',
-  document_status_not_found: 'Статус документа не найден',
-  electronic_interaction_agreement_required:
-    'Не подписано заявление о присоединении к условиям договора. Попросите судью подписать его в разделе «Документы».',
-  accepted_required: 'Необходимо согласие с правилами',
-  address_not_found: 'Адрес не найден',
-  awaiting_confirmation: 'Ожидается подтверждение',
-  email_unconfirmed: 'Электронная почта не подтверждена',
-  password_change_required:
-    'Необходимо сменить пароль перед продолжением работы',
-  EBADCSRFTOKEN: 'Сессия устарела. Обновите страницу.',
-  invalid_current_password: 'Неверный текущий пароль',
-  file_required: 'Не выбран файл',
-  active_ticket_exists: 'Есть активное обращение данного типа',
-  registration_incomplete: 'Регистрация не завершена',
-  status_unknown: 'Неизвестный статус',
-  not_found: 'Не найдено',
-  document_delete_forbidden_signed_simple:
-    'Нельзя удалять документы, подписанные простой электронной подписью',
-  course_not_found: 'Курс не назначен',
-  invalid_vehicle: 'Введите корректно марку и модель',
-  invalid_number: 'Введите корректный госномер',
-  vehicle_qc1:
-    'Попробуйте ввести марку или номер иначе или оставить только марку',
-  vehicle_not_found: 'Транспортное средство не найдено',
-  vehicle_limit: 'Достигнут лимит транспортных средств',
-  // Availability
-  availability_day_locked: 'День недоступен для редактирования',
-  availability_limited_96h:
-    'За 96 часов до дня изменения ограничены: доступен только «Свободен»',
-  invalid_partial_time: 'Укажите корректное время для частичной доступности',
-  invalid_status: 'Некорректный статус',
-  // External sync / integrations
-  external_db_unavailable: 'Внешняя система недоступна. Попробуйте позже.',
-  external_sync_failed:
-    'Не удалось сохранить изменения во внешней системе. Попробуйте позже.',
-  metrics_error:
-    'Не удалось получить метрики. Попробуйте позже или обратитесь к администратору.',
-  sync_trigger_failed: 'Не удалось запустить синхронизацию. Попробуйте позже.',
-  taxation_trigger_failed: 'Не удалось запустить проверку налогообложения.',
-  job_not_restartable: 'Эту задачу нельзя перезапустить вручную.',
-  invalid_job: 'Неизвестная задача',
-  // Match agreements / participation
-  forbidden_not_match_member:
-    'Недоступно: вы не участник этого матча. Требуется привязка к команде.',
-  staff_position_restricted: 'Недоступно для вашей должности',
-  match_teams_not_set:
-    'Данные о командах для этого матча ещё не установлены. Обратитесь к администратору лиги.',
+  invalid_file_type: 'Недопустимый формат файла',
+  agreement_not_found: 'Протокол не найден',
+  agreement_already_signed: 'Протокол уже подписан',
+  agreement_signature_missing: 'Необходимо подписать документ',
   match_not_found: 'Матч не найден',
-  team_not_in_match: 'Команда не относится к этому матчу',
-  player_not_in_team: 'Некорректный список игроков для этой команды',
-  team_id_required: 'Не указана команда',
+  match_locked: 'Матч закрыт для изменений',
+  match_lineup_locked: 'Заявка на матч заблокирована',
+  match_lineup_not_found: 'Заявка не найдена',
+  match_lineup_player_exists: 'Игрок уже присутствует в заявке',
+  match_lineup_staff_exists: 'Представитель уже присутствует в заявке',
+  match_lineup_conflict: 'Состав был изменён другим пользователем',
+  team_not_found: 'Команда не найдена',
+  team_locked: 'Команда заблокирована для изменений',
+  team_player_not_found: 'Игрок команды не найден',
+  team_staff_not_found: 'Представитель команды не найден',
+  lineup_export_forbidden: 'Недостаточно прав для экспорта состава',
+  lineup_export_failed: 'Не удалось подготовить выгрузку состава',
   player_ids_must_be_array: 'Некорректный формат списка игроков',
   player_ids_must_be_array_of_strings: 'Некорректные идентификаторы игроков',
   forbidden_not_team_member:
@@ -134,7 +94,6 @@ export const ERROR_MESSAGES = {
   too_many_field_players: 'Нельзя выбрать более 20 полевых игроков',
   too_few_goalkeepers: 'Минимум 1 вратарь в заявке',
   too_few_field_players: 'Минимум 5 полевых игроков в заявке',
-  // Double protocol (составы 1 и 2)
   squad_number_required:
     'Для каждого выбранного игрока укажите состав (1 или 2)',
   too_few_or_many_goalkeepers:
@@ -151,7 +110,6 @@ export const ERROR_MESSAGES = {
     'В каждом составе нельзя выбрать более 4 тренеров',
   gk_both_requires_three:
     'Для отметки «Оба состава» необходимо выбрать минимум трёх вратарей',
-  // Leadership
   captain_required: 'Необходимо указать капитана команды',
   too_many_captains: 'Можно выбрать только одного капитана',
   too_many_assistants: 'Можно выбрать не более двух ассистентов капитана',
@@ -166,7 +124,6 @@ export const ERROR_MESSAGES = {
   staff_not_in_team: 'Некорректный представитель команды',
   match_role_required: 'Выберите амплуа для всех выбранных игроков',
   match_number_required: 'Укажите номер для всех выбранных игроков',
-  // Player roster edit (school)
   grip_required: 'Выберите хват',
   invalid_grip: 'Некорректный хват',
   invalid_height: 'Рост должен быть от 90 до 220 см',
@@ -182,9 +139,14 @@ export const ERROR_MESSAGES = {
   validation_error: 'Проверьте корректность введённых данных',
   rate_limited:
     'Слишком много запросов. Пожалуйста, подождите и попробуйте снова.',
-};
+} as const;
 
-export function translateError(code) {
+export type ErrorCode = keyof typeof ERROR_MESSAGES;
+
+export function translateError(code: string | null | undefined): string {
   if (!code) return '';
-  return ERROR_MESSAGES[code] || 'Ошибка запроса';
+  const normalized = code.trim();
+  if (!normalized) return '';
+  const key = normalized as ErrorCode;
+  return ERROR_MESSAGES[key] ?? 'Ошибка запроса';
 }

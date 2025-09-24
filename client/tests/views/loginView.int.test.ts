@@ -8,8 +8,8 @@ import {
 import { http, HttpResponse } from 'msw';
 import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import LoginView from '../../src/views/Login.vue';
-import { auth } from '../../src/auth';
+import LoginView from '@/views/Login.vue';
+import { auth } from '@/auth';
 import { setupMsw } from '../utils/msw';
 
 const server = setupMsw();

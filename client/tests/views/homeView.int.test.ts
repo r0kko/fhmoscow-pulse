@@ -7,9 +7,9 @@ import {
 } from 'vue-router';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import HomeView from '../../src/views/Home.vue';
-import edgeFade from '../../src/utils/edgeFade.js';
-import { auth, type AuthUser } from '../../src/auth';
+import HomeView from '@/views/Home.vue';
+import edgeFade from '@/utils/edgeFade';
+import { auth, type AuthUser } from '@/auth';
 import { setupMsw } from '../utils/msw';
 
 const server = setupMsw();

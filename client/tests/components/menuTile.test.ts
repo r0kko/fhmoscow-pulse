@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/vue';
+import { render, screen, type RenderOptions } from '@testing-library/vue';
 import {
   createMemoryHistory,
   createRouter,
@@ -6,30 +6,24 @@ import {
   type Router,
 } from 'vue-router';
 import { describe, expect, it } from 'vitest';
-import MenuTile from '../../src/components/MenuTile.vue';
+import MenuTile from '@/components/MenuTile.vue';
 
 const routes: RouteRecordRaw[] = [
   { path: '/', component: { template: '<div />' } },
   { path: '/profile', component: { template: '<div>Profile</div>' } },
 ];
 
-interface MenuTileTestProps {
-  title: string;
-  icon?: string;
-  to?: string;
-  note?: string;
-  placeholder?: boolean;
-  imageSrc?: string;
-  imageAlt?: string;
-  locked?: boolean;
-  replace?: boolean;
-}
+type MenuTileProps = InstanceType<typeof MenuTile>['$props'];
 
-type RenderOpts = NonNullable<Parameters<typeof render>[1]>;
+type MenuTileTestProps = Partial<MenuTileProps> & {
+  title: MenuTileProps['title'];
+};
+
+type MenuTileRenderOptions = RenderOptions<typeof MenuTile>;
 
 async function renderMenuTile(
   props: MenuTileTestProps,
-  options: Partial<RenderOpts> = {}
+  options: MenuTileRenderOptions = {}
 ) {
   const router: Router = createRouter({
     history: createMemoryHistory(),
@@ -38,19 +32,20 @@ async function renderMenuTile(
   router.push('/');
   await router.isReady();
 
-  const { global: globalOverrides, ...rest } = options;
-  const globalConfig = {
+  const { global: globalOverrides, props: extraProps, ...rest } = options;
+  const globalConfig: MenuTileRenderOptions['global'] = {
     plugins: [router, ...(globalOverrides?.plugins ?? [])],
-    stubs: globalOverrides?.stubs,
-    components: globalOverrides?.components,
-    config: globalOverrides?.config,
-    provide: globalOverrides?.provide,
-  } as RenderOpts['global'];
+  };
+  if (globalOverrides?.stubs) globalConfig.stubs = globalOverrides.stubs;
+  if (globalOverrides?.components)
+    globalConfig.components = globalOverrides.components;
+  if (globalOverrides?.config) globalConfig.config = globalOverrides.config;
+  if (globalOverrides?.provide) globalConfig.provide = globalOverrides.provide;
 
-  const renderOptions: RenderOpts = {
-    props: props as RenderOpts['props'],
+  const renderOptions: MenuTileRenderOptions = {
+    ...rest,
+    props: { ...(extraProps ?? {}), ...props },
     global: globalConfig,
-    ...(rest as RenderOpts),
   };
 
   const utils = render(MenuTile, renderOptions);

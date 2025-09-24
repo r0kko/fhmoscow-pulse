@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import UsersFilterModal from '../../src/components/UsersFilterModal.vue';
+import UsersFilterModal from '@/components/UsersFilterModal.vue';
 import { createRoleOption } from '../fixtures/admin';
 
 const modalSpies = vi.hoisted(() => {
@@ -45,7 +45,9 @@ describe('UsersFilterModal', () => {
     const applyButton = screen.getByRole('button', { name: 'Применить' });
     await fireEvent.click(applyButton);
 
-    expect(emitted('apply')).toEqual([[{ status: 'INACTIVE', role: 'MANAGER' }]]);
+    expect(emitted('apply')).toEqual([
+      [{ status: 'INACTIVE', role: 'MANAGER' }],
+    ]);
     expect(emitted('update:modelValue')).toContainEqual([false]);
     expect(modalSpies.hide).toHaveBeenCalled();
   });
@@ -73,7 +75,7 @@ describe('UsersFilterModal', () => {
 
     await rerender({ modelValue: false });
     await waitFor(() => {
-    expect(modalSpies.hide).toHaveBeenCalled();
+      expect(modalSpies.hide).toHaveBeenCalled();
     });
   });
 });

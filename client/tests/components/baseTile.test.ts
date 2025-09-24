@@ -6,7 +6,7 @@ import {
   type Router,
 } from 'vue-router';
 import { describe, expect, it } from 'vitest';
-import BaseTile from '../../src/components/BaseTile.vue';
+import BaseTile from '@/components/BaseTile.vue';
 
 const baseRoutes: RouteRecordRaw[] = [
   { path: '/', component: { template: '<div />' } },

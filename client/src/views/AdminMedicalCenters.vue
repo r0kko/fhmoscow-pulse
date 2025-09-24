@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
-import PageNav from '../components/PageNav.vue';
+import PageNav from '@/components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize';
 import {
   cleanAddress,
@@ -11,11 +11,8 @@ import {
   type CleanAddressResult,
 } from '../dadata';
 import { useToast } from '../utils/toast';
-import ConfirmModal from '../components/ConfirmModal.vue';
-import {
-  formatRussianPhone,
-  normalizeRussianPhone,
-} from '../utils/personal';
+import ConfirmModal from '@/components/ConfirmModal.vue';
+import { formatRussianPhone, normalizeRussianPhone } from '../utils/personal';
 import type {
   AddressSummary,
   AdminMedicalCenter,
@@ -185,7 +182,7 @@ async function save(): Promise<void> {
     };
     const address = form.value.address.result?.trim();
     if (address) {
-      payload.address = { result: address } satisfies AddressSummary;
+      payload['address'] = { result: address } satisfies AddressSummary;
     }
 
     const isEditing = Boolean(editing.value);

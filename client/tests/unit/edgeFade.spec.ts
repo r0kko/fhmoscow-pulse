@@ -1,32 +1,62 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import edgeFade from '@/utils/edgeFade.js';
+import edgeFade, { type ScrollElement } from '@/utils/edgeFade';
 
-function createMockElement({ scrollWidth, clientWidth, scrollLeft }) {
-  const classes = new Set();
-  const listeners = new Map();
-  return {
+type EdgeFadeDirective = {
+  mounted: (el: ScrollElement) => void;
+  updated: (el: ScrollElement) => void;
+  unmounted: (el: ScrollElement) => void;
+};
+
+const directive = edgeFade as EdgeFadeDirective;
+
+interface MockElementOptions {
+  scrollWidth: number;
+  clientWidth: number;
+  scrollLeft: number;
+}
+
+type EdgeFadeMock = ScrollElement & {
+  dispatch: (type: string) => void;
+};
+
+function createMockElement({
+  scrollWidth,
+  clientWidth,
+  scrollLeft,
+}: MockElementOptions): EdgeFadeMock {
+  const classes = new Set<string>();
+  const listeners = new Map<string, (event: Event) => void>();
+
+  const element = {
     scrollWidth,
     clientWidth,
     scrollLeft,
     classList: {
-      add: (cls) => classes.add(cls),
-      remove: (...cls) => cls.forEach((c) => classes.delete(c)),
-      contains: (cls) => classes.has(cls),
-    },
-    addEventListener: vi.fn((event, handler) => listeners.set(event, handler)),
-    removeEventListener: vi.fn((event) => listeners.delete(event)),
-    dispatch(type) {
+      add: (cls: string) => classes.add(cls),
+      remove: (...cls: string[]) => cls.forEach((c) => classes.delete(c)),
+      contains: (cls: string) => classes.has(cls),
+    } as unknown as DOMTokenList,
+    addEventListener: vi.fn((event: string, handler: EventListener) =>
+      listeners.set(event, handler)
+    ) as ScrollElement['addEventListener'],
+    removeEventListener: vi.fn((event: string) =>
+      listeners.delete(event)
+    ) as ScrollElement['removeEventListener'],
+    dispatch(type: string) {
       const handler = listeners.get(type);
-      if (handler) handler({ currentTarget: this });
+      if (handler)
+        handler({ currentTarget: this as ScrollElement } as unknown as Event);
     },
     __edgeFade: null,
-  };
+  } as unknown as EdgeFadeMock;
+
+  return element;
 }
 
 describe('edgeFade directive', () => {
-  let resizeSpy;
-  let removeResizeSpy;
+  let resizeSpy: ReturnType<typeof vi.spyOn>;
+  let removeResizeSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     resizeSpy = vi
@@ -48,7 +78,7 @@ describe('edgeFade directive', () => {
       clientWidth: 200,
       scrollLeft: 0,
     });
-    edgeFade.mounted(el);
+    directive.mounted(el);
     expect(el.classList.contains('scroll-fade')).toBe(true);
     expect(el.classList.contains('show-left-fade')).toBe(false);
     expect(el.classList.contains('show-right-fade')).toBe(false);
@@ -63,7 +93,7 @@ describe('edgeFade directive', () => {
       clientWidth: 200,
       scrollLeft: 0,
     });
-    edgeFade.mounted(el);
+    directive.mounted(el);
     expect(el.classList.contains('show-right-fade')).toBe(true);
 
     el.scrollLeft = 100;
@@ -82,9 +112,9 @@ describe('edgeFade directive', () => {
       clientWidth: 200,
       scrollLeft: 0,
     });
-    edgeFade.mounted(el);
+    directive.mounted(el);
     el.scrollLeft = 450;
-    edgeFade.updated(el);
+    directive.updated(el);
     expect(el.classList.contains('show-left-fade')).toBe(true);
     expect(el.classList.contains('show-right-fade')).toBe(false);
   });
@@ -95,9 +125,9 @@ describe('edgeFade directive', () => {
       clientWidth: 200,
       scrollLeft: 0,
     });
-    edgeFade.mounted(el);
+    directive.mounted(el);
     const resizeHandler = el.__edgeFade?.resizeHandler;
-    edgeFade.unmounted(el);
+    directive.unmounted(el);
     expect(el.removeEventListener).toHaveBeenCalledWith(
       'scroll',
       expect.any(Function)

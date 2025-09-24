@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/vue';
+import { describe, expect, it } from 'vitest';
 import { defineComponent, ref } from 'vue';
-import PasswordStrengthMeter from '../../src/components/PasswordStrengthMeter.vue';
+import PasswordStrengthMeter from '@/components/PasswordStrengthMeter.vue';
 
 const Wrapper = defineComponent({
   components: { PasswordStrengthMeter },

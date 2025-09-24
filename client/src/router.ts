@@ -509,7 +509,9 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
       return next('/login');
     }
   }
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  const meta = to.meta;
+
+  if (meta.requiresAuth && !isAuthenticated) {
     next('/login');
   } else if (
     isAuthenticated &&
@@ -517,22 +519,19 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
     to.path !== '/change-password'
   ) {
     next('/change-password');
-  } else if (
-    to.meta.requiresAdmin &&
-    !roles.some((r) => adminRoles.includes(r))
-  ) {
+  } else if (meta.requiresAdmin && !roles.some((r) => adminRoles.includes(r))) {
     next('/forbidden');
-  } else if (to.meta.requiresAdministrator && !roles.includes('ADMIN')) {
+  } else if (meta.requiresAdministrator && !roles.includes('ADMIN')) {
     next('/forbidden');
   } else if (
-    to.meta.requiresReferee &&
+    meta.requiresReferee &&
     !roles.some((r) => refereeRoles.includes(r))
   ) {
     next('/forbidden');
-  } else if (to.meta.forbidBrigade && isBrigadeOnly) {
+  } else if (meta.forbidBrigade && isBrigadeOnly) {
     next('/forbidden');
   } else if (
-    to.meta.requiresStaff &&
+    meta.requiresStaff &&
     !roles.some((r) => staffRoles.includes(r) || adminRoles.includes(r))
   ) {
     next('/forbidden');
@@ -557,8 +556,9 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
 router.afterEach((to) => {
   if (typeof document !== 'undefined') {
     const base = 'Пульс';
+    const meta = to.meta;
     document.title =
-      to.meta && to.meta.title ? `${to.meta.title} — ${base}` : base;
+      meta.title && meta.title.length > 0 ? `${meta.title} — ${base}` : base;
     // Move focus to <main> for screen reader users after route change
     // Use rAF to ensure the view is rendered
     requestAnimationFrame(() => {

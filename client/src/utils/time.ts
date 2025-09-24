@@ -7,7 +7,9 @@ export function formatMinutesSeconds(totalSeconds: unknown): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export function parseMinutesSeconds(str: string | null | undefined): number | null {
+export function parseMinutesSeconds(
+  str: string | null | undefined
+): number | null {
   if (!str) return null;
   let minutes: number;
   let seconds: number;
@@ -36,7 +38,10 @@ export function parseMinutesSeconds(str: string | null | undefined): number | nu
 export const MOSCOW_TZ = 'Europe/Moscow' as const;
 export const MOSCOW_OFFSET = '+03:00' as const;
 
-export function toDayKey(iso: string | null, timeZone: string = MOSCOW_TZ): number | null {
+export function toDayKey(
+  iso: string | null,
+  timeZone: string = MOSCOW_TZ
+): number | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
@@ -50,7 +55,10 @@ export function toDayKey(iso: string | null, timeZone: string = MOSCOW_TZ): numb
   return Date.UTC(year, month - 1, day);
 }
 
-export function toDateTimeLocal(iso: string | null, timeZone: string = MOSCOW_TZ): string {
+export function toDateTimeLocal(
+  iso: string | null,
+  timeZone: string = MOSCOW_TZ
+): string {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
@@ -73,7 +81,10 @@ export function toDateTimeLocal(iso: string | null, timeZone: string = MOSCOW_TZ
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-export function fromDateTimeLocal(value: string | null, offset: string = MOSCOW_OFFSET): string {
+export function fromDateTimeLocal(
+  value: string | null,
+  offset: string = MOSCOW_OFFSET
+): string {
   if (!value) return '';
   const date = new Date(`${value}:00${offset}`);
   if (Number.isNaN(date.getTime())) return '';
@@ -100,7 +111,10 @@ function formatParts(
   }
 }
 
-export function isMskMidnight(iso: string | null, timeZone: string = MOSCOW_TZ): boolean {
+export function isMskMidnight(
+  iso: string | null,
+  timeZone: string = MOSCOW_TZ
+): boolean {
   if (!iso) return false;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return false;
@@ -110,7 +124,7 @@ export function isMskMidnight(iso: string | null, timeZone: string = MOSCOW_TZ):
     minute: '2-digit',
     hour12: false,
   });
-  return parts.hour === '00' && parts.minute === '00';
+  return parts['hour'] === '00' && parts['minute'] === '00';
 }
 
 interface TimeFormatOptions {
@@ -130,8 +144,10 @@ export function formatMskTimeShort(
     minute: '2-digit',
     hour12: false,
   });
-  if (parts.hour === '00' && parts.minute === '00') return placeholder;
-  return `${parts.hour ?? '00'}:${parts.minute ?? '00'}`;
+  if (parts['hour'] === '00' && parts['minute'] === '00') return placeholder;
+  const hour = parts['hour'] ?? '00';
+  const minute = parts['minute'] ?? '00';
+  return `${hour}:${minute}`;
 }
 
 export function formatMskDateLong(iso: string | null): string {
@@ -147,7 +163,10 @@ export function formatMskDateLong(iso: string | null): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }
 
-export function formatKickoff(iso: string | null): { time: string; date: string } {
+export function formatKickoff(iso: string | null): {
+  time: string;
+  date: string;
+} {
   return {
     time: formatMskTimeShort(iso),
     date: formatMskDateLong(iso),

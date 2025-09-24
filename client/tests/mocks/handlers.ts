@@ -1,5 +1,5 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import type { AuthUser } from '../../src/auth';
+import type { AuthUser } from '@/auth';
 
 const activeUser: AuthUser = { id: 1, status: 'ACTIVE', first_name: 'Тест' };
 

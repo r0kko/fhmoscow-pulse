@@ -1,4 +1,6 @@
-type ScrollElement = HTMLElement & { __edgeFade?: { resizeHandler: () => void } };
+export type ScrollElement = HTMLElement & {
+  __edgeFade?: { resizeHandler: () => void };
+};
 
 function updateFades(el: ScrollElement): void {
   const { scrollLeft, scrollWidth, clientWidth } = el;

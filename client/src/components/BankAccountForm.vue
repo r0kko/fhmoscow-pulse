@@ -1,111 +1,216 @@
-<script setup>
-import { ref, onMounted } from 'vue';
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
+import type { ApiError } from '../api';
 import { findBankByBic } from '../dadata';
+import type { BankSuggestion } from '../dadata';
 import { isValidAccountNumber } from '../utils/bank';
 
-const props = defineProps({ userId: { type: String, required: true } });
+type BootstrapModalInstance = InstanceType<typeof Modal> & {
+  dispose?: () => void;
+};
 
-const account = ref(null);
+interface BankDetails {
+  bank_name: string;
+  correspondent_account?: string | null;
+  swift?: string | null;
+  inn?: string | null;
+  kpp?: string | null;
+  address?: string | null;
+}
+
+interface BankAccount extends BankDetails {
+  number: string;
+  bic: string;
+}
+
+interface BankAccountResponse {
+  account: BankAccount | null;
+}
+
+interface BankFormState {
+  number: string;
+  bic: string;
+}
+
+type CheckStatus = '' | 'pending' | 'found' | 'not_found';
+
+const props = defineProps<{ userId: string }>();
+
+const account = ref<BankAccount | null>(null);
+const bank = ref<BankDetails | null>(null);
 const error = ref('');
-const modalRef = ref(null);
-let modal;
-const form = ref({ number: '', bic: '' });
-const bank = ref(null);
-const checkStatus = ref('');
+const checkStatus = ref<CheckStatus>('');
+const form = reactive<BankFormState>({ number: '', bic: '' });
+const modalRef = ref<HTMLDivElement | null>(null);
+const modalInstance = ref<BootstrapModalInstance | null>(null);
 
 onMounted(() => {
-  modal = new Modal(modalRef.value);
-  loadAccount();
+  if (modalRef.value) {
+    modalInstance.value = new Modal(modalRef.value);
+  }
+  void loadAccount();
 });
 
-async function loadAccount() {
+onBeforeUnmount(() => {
+  const instance = modalInstance.value;
+  instance?.hide();
+  instance?.dispose?.();
+  modalInstance.value = null;
+});
+
+function toMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'string' && err) return err;
+  return 'Неизвестная ошибка';
+}
+
+function isBankNotFound(err: unknown): boolean {
+  if (!err) return false;
+  if (typeof err === 'string') return err === 'bank_account_not_found';
+  if (err instanceof Error) {
+    const apiErr = err as ApiError;
+    return (
+      apiErr.message === 'bank_account_not_found' ||
+      apiErr.code === 'bank_account_not_found'
+    );
+  }
+  if (typeof (err as { code?: string }).code === 'string') {
+    return (err as { code?: string }).code === 'bank_account_not_found';
+  }
+  return false;
+}
+
+function extractDetails(source: BankAccount | null): BankDetails | null {
+  if (!source) return null;
+  return {
+    bank_name: source.bank_name,
+    correspondent_account: source.correspondent_account ?? null,
+    swift: source.swift ?? null,
+    inn: source.inn ?? null,
+    kpp: source.kpp ?? null,
+    address: source.address ?? null,
+  };
+}
+
+function mapSuggestion(suggestion: BankSuggestion): BankDetails {
+  const data = suggestion.data ?? {};
+  return {
+    bank_name: suggestion.value ?? '',
+    correspondent_account: data.correspondent_account ?? null,
+    swift: data.swift ?? null,
+    inn: data.inn ?? null,
+    kpp: data.kpp ?? null,
+    address: data.address?.unrestricted_value ?? null,
+  };
+}
+
+async function loadAccount(): Promise<void> {
   try {
-    const { account: acc } = await apiFetch(
+    const response = await apiFetch<BankAccountResponse>(
       `/users/${props.userId}/bank-account`
     );
-    account.value = acc;
+    account.value = response.account;
+    bank.value = extractDetails(account.value);
     error.value = '';
-  } catch (e) {
-    if (e.message === 'bank_account_not_found') {
+    checkStatus.value = account.value ? 'found' : '';
+  } catch (err) {
+    if (isBankNotFound(err)) {
       account.value = null;
+      bank.value = null;
       error.value = '';
-    } else {
-      error.value = e.message;
+      checkStatus.value = '';
+      return;
     }
-  }
-}
-
-function open() {
-  if (account.value) {
-    form.value.number = account.value.number;
-    form.value.bic = account.value.bic;
-    bank.value = { ...account.value };
-    checkStatus.value = 'found';
-  } else {
-    form.value.number = '';
-    form.value.bic = '';
+    account.value = null;
     bank.value = null;
+    error.value = toMessage(err);
     checkStatus.value = '';
   }
-  error.value = '';
-  modal.show();
 }
 
-async function checkBank() {
+function resetLookup(): void {
+  bank.value = null;
+  checkStatus.value = '';
+}
+
+function open(): void {
+  if (account.value) {
+    form.number = account.value.number;
+    form.bic = account.value.bic;
+    bank.value = extractDetails(account.value);
+    checkStatus.value = bank.value ? 'found' : '';
+  } else {
+    form.number = '';
+    form.bic = '';
+    resetLookup();
+  }
+  error.value = '';
+  modalInstance.value?.show();
+}
+
+async function checkBank(): Promise<void> {
+  const bic = form.bic.replace(/\s+/g, '').trim();
+  if (!bic) {
+    resetLookup();
+    return;
+  }
   checkStatus.value = 'pending';
   bank.value = null;
-  const res = await findBankByBic(form.value.bic);
-  if (res) {
-    bank.value = {
-      bank_name: res.value,
-      correspondent_account: res.data.correspondent_account,
-      swift: res.data.swift,
-      inn: res.data.inn,
-      kpp: res.data.kpp,
-      address: res.data.address?.unrestricted_value,
-    };
+  const suggestion = await findBankByBic(bic);
+  if (suggestion) {
+    bank.value = mapSuggestion(suggestion);
     checkStatus.value = 'found';
   } else {
     checkStatus.value = 'not_found';
   }
 }
 
-async function save() {
-  if (!isValidAccountNumber(form.value.number, form.value.bic)) {
+function sanitizeForm(): BankFormState {
+  return {
+    number: form.number.replace(/\s+/g, '').trim(),
+    bic: form.bic.replace(/\s+/g, '').trim(),
+  };
+}
+
+async function save(): Promise<void> {
+  const payload = sanitizeForm();
+  if (!isValidAccountNumber(payload.number, payload.bic)) {
     error.value = 'Неверный счёт или БИК';
     return;
   }
-  const payload = { number: form.value.number, bic: form.value.bic };
+  error.value = '';
   try {
-    let res;
-    if (account.value) {
-      res = await apiFetch(`/users/${props.userId}/bank-account`, {
-        method: 'PUT',
+    const method = account.value ? 'PUT' : 'POST';
+    const response = await apiFetch<BankAccountResponse>(
+      `/users/${props.userId}/bank-account`,
+      {
+        method,
         body: JSON.stringify(payload),
-      });
-    } else {
-      res = await apiFetch(`/users/${props.userId}/bank-account`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    }
-    account.value = res.account;
-    modal.hide();
-  } catch (e) {
-    error.value = e.message;
+      }
+    );
+    account.value = response.account;
+    bank.value = extractDetails(account.value);
+    checkStatus.value = account.value ? 'found' : '';
+    form.number = payload.number;
+    form.bic = payload.bic;
+    modalInstance.value?.hide();
+  } catch (err) {
+    error.value = toMessage(err);
   }
 }
 
-async function removeAccount() {
-  if (!confirm('Удалить счёт?')) return;
+async function removeAccount(): Promise<void> {
+  const confirmFn = typeof window !== 'undefined' ? window.confirm : undefined;
+  if (confirmFn && !confirmFn('Удалить счёт?')) return;
   try {
     await apiFetch(`/users/${props.userId}/bank-account`, { method: 'DELETE' });
     account.value = null;
-    modal.hide();
-  } catch (e) {
-    error.value = e.message;
+    resetLookup();
+    modalInstance.value?.hide();
+  } catch (err) {
+    error.value = toMessage(err);
   }
 }
 </script>
@@ -249,7 +354,7 @@ async function removeAccount() {
               type="button"
               class="btn-close"
               aria-label="Закрыть"
-              @click="modal.hide()"
+              @click="modalInstance?.hide()"
             ></button>
           </div>
           <div class="modal-body">
@@ -366,7 +471,7 @@ async function removeAccount() {
             <button
               type="button"
               class="btn btn-secondary"
-              @click="modal.hide()"
+              @click="modalInstance?.hide()"
             >
               Отмена
             </button>

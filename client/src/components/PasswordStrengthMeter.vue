@@ -1,45 +1,23 @@
-<template>
-  <div>
-    <div class="progress" style="height: 6px">
-      <div
-        class="progress-bar"
-        :class="strengthClass"
-        :style="{ width: strengthPercent + '%' }"
-        role="progressbar"
-        aria-label="Надёжность пароля"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :aria-valuenow="Math.round(strengthPercent)"
-      ></div>
-    </div>
-    <small class="text-muted password-strength-label">{{
-      strengthLabel
-    }}</small>
-  </div>
-</template>
-
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 
-const props = defineProps({
-  password: {
-    type: String,
-    default: '',
-  },
+type PasswordStrengthProps = {
+  password?: string;
+};
+
+const props = withDefaults(defineProps<PasswordStrengthProps>(), {
+  password: '',
 });
 
-const strength = computed(() => {
+const strength = computed<number>(() => {
   const val = props.password || '';
   let score = 0;
-  // Базовые требования политики: длина и наличие цифр/букв
-  if (val.length >= 8) score++;
-  if (/[A-Za-z]/.test(val)) score++;
-  if (/[0-9]/.test(val)) score++;
-  // Доп. очки за верхний регистр/спецсимволы/длину
-  if (/[A-Z]/.test(val)) score++;
-  if (/[^A-Za-z0-9]/.test(val)) score++;
-  if (val.length >= 12) score++;
-  // Нормируем в диапазон 0..5
+  if (val.length >= 8) score += 1;
+  if (/[A-Za-z]/.test(val)) score += 1;
+  if (/[0-9]/.test(val)) score += 1;
+  if (/[A-Z]/.test(val)) score += 1;
+  if (/[^A-Za-z0-9]/.test(val)) score += 1;
+  if (val.length >= 12) score += 1;
   return Math.min(score, 5);
 });
 
@@ -59,6 +37,26 @@ const strengthClass = computed(() => {
   return 'bg-success';
 });
 </script>
+
+<template>
+  <div>
+    <div class="progress" style="height: 6px">
+      <div
+        class="progress-bar"
+        :class="strengthClass"
+        :style="{ width: strengthPercent + '%' }"
+        role="progressbar"
+        aria-label="Надёжность пароля"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-valuenow="Math.round(strengthPercent)"
+      ></div>
+    </div>
+    <small class="text-muted password-strength-label">
+      {{ strengthLabel }}
+    </small>
+  </div>
+</template>
 
 <style scoped>
 .password-strength-label {

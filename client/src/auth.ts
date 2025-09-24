@@ -5,6 +5,7 @@ export interface AuthUser {
   id?: number;
   first_name?: string;
   last_name?: string;
+  patronymic?: string;
   phone?: string;
   email?: string;
   status?: string;

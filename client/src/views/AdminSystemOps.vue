@@ -38,7 +38,7 @@ function resolveGrafanaBase() {
   const raw =
     (typeof import.meta !== 'undefined' &&
       import.meta.env &&
-      import.meta.env.VITE_GRAFANA_URL) ||
+      import.meta.env['VITE_GRAFANA_URL']) ||
     '';
   if (!raw) return '';
   try {
@@ -57,7 +57,7 @@ const grafanaHttpErrorsLink = computed(() => {
   const direct =
     (typeof import.meta !== 'undefined' &&
       import.meta.env &&
-      import.meta.env.VITE_GRAFANA_HTTP_ERRORS_DASHBOARD) ||
+      import.meta.env['VITE_GRAFANA_HTTP_ERRORS_DASHBOARD']) ||
     '';
   if (direct) return direct;
   const base = resolveGrafanaBase();

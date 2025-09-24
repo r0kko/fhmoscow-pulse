@@ -28,7 +28,10 @@ export function isValidSnils(value: string): boolean {
   const control = Number.parseInt(digits.slice(9), 10);
   if (Number.parseInt(numberPart, 10) <= 1001998) return true;
   const numbers = numberPart.split('').map((char) => Number(char));
-  const sum = numbers.reduce((acc, digit, index) => acc + digit * (9 - index), 0);
+  const sum = numbers.reduce(
+    (acc, digit, index) => acc + digit * (9 - index),
+    0
+  );
   let check: number;
   if (sum < 100) check = sum;
   else if (sum === 100 || sum === 101) check = 0;
@@ -50,7 +53,9 @@ export function formatSnils(digits: string): string {
 
 const RUSSIAN_COUNTRY_CODE = '7';
 
-export function normalizeRussianPhone(input: string | null | undefined): string {
+export function normalizeRussianPhone(
+  input: string | null | undefined
+): string {
   let digits = (input ?? '').replace(/\D/g, '');
   if (!digits) return '';
 

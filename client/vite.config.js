@@ -34,13 +34,13 @@ export default defineConfig({
       {
         find: /^msw$/,
         replacement: fileURLToPath(
-          new URL('./tests/vendor/msw.js', import.meta.url)
+          new URL('./tests/vendor/msw.ts', import.meta.url)
         ),
       },
       {
         find: /^msw\/node$/,
         replacement: fileURLToPath(
-          new URL('./tests/vendor/msw-node.js', import.meta.url)
+          new URL('./tests/vendor/msw-node.ts', import.meta.url)
         ),
       },
     ],
@@ -69,8 +69,8 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
-    setupFiles: './tests/setup/vitest.setup.js',
-    include: ['tests/**/*.{test,spec}.{js,ts,tsx}'],
+    setupFiles: './tests/setup/vitest.setup.ts',
+    include: ['tests/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['tests/e2e/**'],
     coverage: {
       provider: 'v8',
@@ -78,7 +78,7 @@ export default defineConfig({
       reportsDirectory: '../coverage/client',
       // Focus unit coverage on shared UI primitives and client-side helpers.
       include: [
-        'src/utils/**/*.{js,ts}',
+        'src/utils/**/*.ts',
         'src/components/CookieNotice.vue',
         'src/components/GlobalToast.vue',
         'src/components/InlineError.vue',
@@ -92,13 +92,13 @@ export default defineConfig({
         'src/components/UpcomingEventCard.vue',
       ],
       exclude: [
-        'src/api.{js,ts}',
-        'src/router.{js,ts}',
-        'src/auth.{js,ts}',
-        'src/dadata.{js,ts}',
-        'src/errors.{js,ts}',
+        'src/api.ts',
+        'src/router.ts',
+        'src/auth.ts',
+        'src/dadata.ts',
+        'src/errors.ts',
         'src/views/**',
-        'src/utils/lineupSync.{js,ts}',
+        'src/utils/lineupSync.ts',
       ],
       thresholds: {
         statements: 80,

@@ -1,26 +1,47 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 
-const props = defineProps({
-  modelValue: { type: [String, Number], default: '' },
-  tabs: { type: Array, default: () => [] }, // [{ key, label, subLabel?, disabled? }]
-  navFill: { type: Boolean, default: true },
-  justify: { type: String, default: 'between' }, // '', 'between', 'center', 'start', 'end'
-  ariaLabel: { type: String, default: '' },
-});
+type TabKey = string | number;
 
-const emit = defineEmits(['update:modelValue', 'change']);
+interface TabDefinition {
+  key: TabKey;
+  label: string;
+  subLabel?: string;
+  badge?: number | string;
+  disabled?: boolean;
+}
+
+type JustifyOption = '' | 'between' | 'center' | 'start' | 'end';
+
+const props = defineProps<{
+  modelValue?: TabKey;
+  tabs?: TabDefinition[];
+  navFill?: boolean;
+  justify?: JustifyOption;
+  ariaLabel?: string;
+}>();
+
+const emit = defineEmits<{
+  'update:modelValue': [value: TabKey];
+  change: [value: TabKey];
+}>();
+
+const currentValue = computed<TabKey>(() => props.modelValue ?? '');
+const tabItems = computed<TabDefinition[]>(() => props.tabs ?? []);
+const navFill = computed<boolean>(() => props.navFill ?? true);
+const justify = computed<JustifyOption>(() => props.justify ?? 'between');
+const ariaLabelText = computed(() => props.ariaLabel ?? '');
 
 const navClass = computed(() => {
-  const cls = [];
-  if (props.navFill) cls.push('nav-fill');
-  if (props.justify) cls.push(`justify-content-${props.justify}`);
-  return cls.join(' ');
+  const classes: string[] = [];
+  if (navFill.value) classes.push('nav-fill');
+  if (justify.value) classes.push(`justify-content-${justify.value}`);
+  return classes.join(' ');
 });
 
-function selectTab(key, disabled) {
+function selectTab(key: TabKey, disabled?: boolean): void {
   if (disabled) return;
-  if (key === props.modelValue) return;
+  if (key === currentValue.value) return;
   emit('update:modelValue', key);
   emit('change', key);
 }
@@ -32,16 +53,16 @@ function selectTab(key, disabled) {
     class="nav nav-pills tab-selector"
     :class="navClass"
     role="tablist"
-    :aria-label="ariaLabel || null"
+    :aria-label="ariaLabelText || undefined"
   >
-    <li v-for="t in tabs" :key="String(t.key)" class="nav-item">
+    <li v-for="t in tabItems" :key="String(t.key)" class="nav-item">
       <button
         type="button"
         class="nav-link"
-        :class="{ active: modelValue === t.key, disabled: t.disabled }"
+        :class="{ active: currentValue === t.key, disabled: t.disabled }"
         role="tab"
-        :aria-selected="modelValue === t.key"
-        :aria-disabled="t.disabled ? 'true' : null"
+        :aria-selected="currentValue === t.key"
+        :aria-disabled="t.disabled ? 'true' : undefined"
         @click="selectTab(t.key, t.disabled)"
         @keydown.enter="selectTab(t.key, t.disabled)"
       >

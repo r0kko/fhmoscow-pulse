@@ -54,7 +54,9 @@ function isSimpleSequence(value: string): boolean {
   });
 }
 
-export function evaluatePassword(password: string | null | undefined): PasswordEvaluation {
+export function evaluatePassword(
+  password: string | null | undefined
+): PasswordEvaluation {
   const value = String(password ?? '');
   const lower = value.toLowerCase();
   const hasLetter = /[A-Za-z]/.test(value);

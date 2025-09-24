@@ -1,8 +1,14 @@
-<script setup>
-const props = defineProps({
-  icon: { type: String, default: 'bi-info-circle' },
-  title: { type: String, default: 'Нет данных' },
-  description: { type: String, default: '' },
+<script setup lang="ts">
+type EmptyStateProps = {
+  icon?: string;
+  title?: string;
+  description?: string;
+};
+
+const props = withDefaults(defineProps<EmptyStateProps>(), {
+  icon: 'bi-info-circle',
+  title: 'Нет данных',
+  description: '',
 });
 </script>
 

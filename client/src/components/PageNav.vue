@@ -1,20 +1,33 @@
-<script setup>
+<script setup lang="ts">
 import Pagination from './Pagination.vue';
 
-const props = defineProps({
-  page: { type: Number, required: true },
-  totalPages: { type: Number, required: true },
-  pageSize: { type: Number, required: true },
-  sizes: { type: Array, default: () => [5, 10, 20] },
-  small: { type: Boolean, default: true },
-});
-const emit = defineEmits(['update:page', 'update:pageSize']);
+type PageNavProps = {
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  sizes?: number[];
+  small?: boolean;
+};
 
-function updatePage(p) {
-  emit('update:page', p);
+const props = withDefaults(defineProps<PageNavProps>(), {
+  sizes: () => [5, 10, 20],
+  small: true,
+});
+
+const emit = defineEmits<{
+  'update:page': [value: number];
+  'update:pageSize': [value: number];
+}>();
+
+function updatePage(page: number): void {
+  emit('update:page', page);
 }
-function updatePageSize(e) {
-  const val = Number(e.target.value);
+
+function updatePageSize(event: Event): void {
+  const target = event.target as HTMLSelectElement | null;
+  if (!target) return;
+  const val = Number(target.value);
+  if (Number.isNaN(val)) return;
   emit('update:pageSize', val);
 }
 </script>

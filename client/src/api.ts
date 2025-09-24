@@ -1,4 +1,4 @@
-import { translateError } from './errors.js';
+import { translateError } from './errors';
 
 import { clearAuth } from './auth';
 
@@ -47,7 +47,7 @@ function resolveApiBase() {
   const envBase =
     (typeof import.meta !== 'undefined' &&
       import.meta.env &&
-      import.meta.env.VITE_API_BASE) ||
+      import.meta.env['VITE_API_BASE']) ||
     null;
 
   // In browsers, prefer relative /api unless an absolute URL targets the
@@ -95,7 +95,7 @@ function withTimeout(
   ms = DEFAULT_TIMEOUT_MS
 ): TimeoutResult {
   if (typeof AbortController === 'undefined') {
-    return { signal: signal ?? undefined };
+    return signal ? { signal } : {};
   }
   const controller = new AbortController();
   const timer = setTimeout(
@@ -111,6 +111,16 @@ function withTimeout(
     signal: controller.signal,
     cancelTimeout: () => clearTimeout(timer),
   };
+}
+
+function applySignal<T extends RequestInit>(
+  init: T,
+  signal: Nullable<AbortSignal>
+): T {
+  if (signal) {
+    init.signal = signal;
+  }
+  return init;
 }
 
 function setRefreshFailed(val: boolean) {
@@ -187,10 +197,10 @@ function buildApiError(
 export async function initCsrf() {
   try {
     const t = withTimeout(undefined, DEFAULT_CSRF_TIMEOUT_MS);
-    const res = await fetch(`${API_BASE}/csrf-token`, {
-      credentials: 'include',
-      signal: t.signal,
-    });
+    const res = await fetch(
+      `${API_BASE}/csrf-token`,
+      applySignal({ credentials: 'include' }, t.signal)
+    );
     t.cancelTimeout?.();
     try {
       const data = await res.clone().json();
@@ -318,13 +328,18 @@ async function refreshToken(): Promise<boolean> {
         headers['X-CSRF-TOKEN'] = xsrf;
       }
       const t1 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
-      let res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-        headers,
-        body: '{}',
-        signal: t1.signal,
-      });
+      let res = await fetch(
+        `${API_BASE}/auth/refresh`,
+        applySignal(
+          {
+            method: 'POST',
+            credentials: 'include',
+            headers,
+            body: '{}',
+          },
+          t1.signal
+        )
+      );
       t1.cancelTimeout?.();
       let data = await res.json().catch(() => ({}));
       if (
@@ -343,13 +358,18 @@ async function refreshToken(): Promise<boolean> {
           headers['X-CSRF-TOKEN'] = xsrf;
         }
         const t2 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
-        res = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-          headers,
-          body: '{}',
-          signal: t2.signal,
-        });
+        res = await fetch(
+          `${API_BASE}/auth/refresh`,
+          applySignal(
+            {
+              method: 'POST',
+              credentials: 'include',
+              headers,
+              body: '{}',
+            },
+            t2.signal
+          )
+        );
         t2.cancelTimeout?.();
         data = await res.json().catch(() => ({}));
       }
@@ -365,13 +385,18 @@ async function refreshToken(): Promise<boolean> {
       ) {
         try {
           const t3 = withTimeout(undefined, DEFAULT_REFRESH_TIMEOUT_MS);
-          res = await fetch(`/api/auth/refresh`, {
-            method: 'POST',
-            credentials: 'include',
-            headers,
-            body: '{}',
-            signal: t3.signal,
-          });
+          res = await fetch(
+            `/api/auth/refresh`,
+            applySignal(
+              {
+                method: 'POST',
+                credentials: 'include',
+                headers,
+                body: '{}',
+              },
+              t3.signal
+            )
+          );
           t3.cancelTimeout?.();
           data = await res.json().catch(() => ({}));
         } catch {
@@ -524,10 +549,10 @@ export async function apiFetch<T = unknown>(
     timeoutMs ?? DEFAULT_TIMEOUT_MS
   );
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...fetchInit,
-      signal: timeout.signal,
-    });
+    res = await fetch(
+      `${API_BASE}${path}`,
+      applySignal({ ...fetchInit }, timeout.signal)
+    );
   } catch (error: unknown) {
     timeout.cancelTimeout?.();
     const err = error instanceof Error ? error : undefined;
@@ -673,10 +698,10 @@ export async function apiFetchForm<T = unknown>(
     timeoutMs ?? DEFAULT_TIMEOUT_MS
   );
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...fetchInit,
-      signal: timeout.signal,
-    });
+    res = await fetch(
+      `${API_BASE}${path}`,
+      applySignal({ ...fetchInit }, timeout.signal)
+    );
   } catch (error: unknown) {
     timeout.cancelTimeout?.();
     const err = error instanceof Error ? error : undefined;
@@ -811,10 +836,10 @@ export async function apiFetchBlob(
     timeoutMs ?? DEFAULT_TIMEOUT_MS
   );
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...fetchInit,
-      signal: timeout.signal,
-    });
+    res = await fetch(
+      `${API_BASE}${path}`,
+      applySignal({ ...fetchInit }, timeout.signal)
+    );
   } catch (error: unknown) {
     timeout.cancelTimeout?.();
     const err = error instanceof Error ? error : undefined;

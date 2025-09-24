@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { UpcomingCardEvent } from '@/types/upcoming';
 import { withHttp } from '../utils/url';
-
-type UpcomingEventType = 'training' | 'exam' | 'event';
-
-interface UpcomingCardEvent {
-  type: UpcomingEventType;
-  title: string;
-  description: string;
-  startAt: string;
-  link?: string;
-}
 
 const props = defineProps<{ event: UpcomingCardEvent }>();
 
@@ -26,9 +17,7 @@ const icon = computed(() => {
 });
 
 const isExam = computed(() => props.event.type === 'exam');
-const isOnline = computed(
-  () => props.event.type !== 'exam' && Boolean(props.event.link)
-);
+const isOnline = computed(() => props.event.isOnline === true);
 
 const href = computed(() => {
   if (isExam.value || !props.event.link) return null;
@@ -39,7 +28,9 @@ const startDate = computed(() => new Date(props.event.startAt));
 const isValidDate = computed(() => Number.isFinite(startDate.value.getTime()));
 
 const dayNum = computed(() =>
-  isValidDate.value ? startDate.value.getDate().toString().padStart(2, '0') : '—'
+  isValidDate.value
+    ? startDate.value.getDate().toString().padStart(2, '0')
+    : '—'
 );
 
 const monthShort = computed(() => {
@@ -115,7 +106,11 @@ function formatStart(date: string): string {
               class="small text-body-secondary address"
               :title="event.description"
             >
-              <i v-if="!isExam" class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+              <i
+                v-if="!isExam"
+                class="bi bi-geo-alt me-1"
+                aria-hidden="true"
+              ></i>
               <span class="align-middle">{{ event.description }}</span>
             </div>
           </div>

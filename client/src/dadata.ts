@@ -7,7 +7,7 @@ type SuggestPart = 'SURNAME' | 'NAME' | 'PATRONYMIC';
 type FmsFilter = string;
 
 type VehicleQualityCode = 0 | 1 | 2 | number;
-	export interface DadataSuggestion<T = Record<string, unknown>> {
+export interface DadataSuggestion<T = Record<string, unknown>> {
   value: string;
   unrestricted_value?: string | null;
   data?: T;
@@ -47,7 +47,7 @@ export interface FioSuggestionData {
 
 export type FioSuggestion = DadataSuggestion<FioSuggestionData>;
 
-export interface CleanFioResult extends FioSuggestionData {}
+export type CleanFioResult = FioSuggestionData;
 
 export async function suggestFio(
   query: Nullable<string>,
@@ -56,7 +56,7 @@ export async function suggestFio(
   if (!hasQuery(query)) return SUGGESTION_FALLBACK;
   try {
     const body: Record<string, unknown> = { query: query.trim() };
-    if (parts.length) body.parts = parts;
+    if (parts.length) body['parts'] = parts;
     const { suggestions = SUGGESTION_FALLBACK } = await postJson<
       DadataSuggestResponse<FioSuggestionData>
     >('/dadata/suggest-fio', body);
@@ -96,7 +96,7 @@ export async function suggestFmsUnit(
   if (!hasQuery(query)) return SUGGESTION_FALLBACK as FmsUnitSuggestion[];
   try {
     const body: Record<string, unknown> = { query: query.trim() };
-    if (filters.length) body.filters = filters;
+    if (filters.length) body['filters'] = filters;
     const { suggestions = [] } = await postJson<
       DadataSuggestResponse<FmsUnitData>
     >('/dadata/suggest-fms-unit', body);
@@ -117,9 +117,10 @@ export async function cleanPassport(
 ): Promise<CleanPassportResult | null> {
   if (!hasQuery(passport)) return null;
   try {
-    const { result } = await postJson<
-      DadataCleanResponse<CleanPassportResult>
-    >('/dadata/clean-passport', { passport: passport.trim() });
+    const { result } = await postJson<DadataCleanResponse<CleanPassportResult>>(
+      '/dadata/clean-passport',
+      { passport: passport.trim() }
+    );
     return result ?? null;
   } catch {
     return null;
@@ -162,9 +163,10 @@ export async function cleanAddress(
 ): Promise<CleanAddressResult | null> {
   if (!hasQuery(address)) return null;
   try {
-    const { result } = await postJson<
-      DadataCleanResponse<CleanAddressResult>
-    >('/dadata/clean-address', { address: address.trim() });
+    const { result } = await postJson<DadataCleanResponse<CleanAddressResult>>(
+      '/dadata/clean-address',
+      { address: address.trim() }
+    );
     return result ?? null;
   } catch {
     return null;
@@ -212,9 +214,9 @@ export async function findOrganizationByInn(
 ): Promise<OrganizationSuggestion | null> {
   if (!hasQuery(inn)) return null;
   try {
-    const { organization } = await postJson<
-      { organization: OrganizationSuggestion | null }
-    >('/dadata/find-organization', { inn: inn.trim() });
+    const { organization } = await postJson<{
+      organization: OrganizationSuggestion | null;
+    }>('/dadata/find-organization', { inn: inn.trim() });
     return organization ?? null;
   } catch {
     return null;
@@ -231,9 +233,10 @@ export async function cleanVehicle(
 ): Promise<CleanVehicleResult | null> {
   if (!hasQuery(vehicle)) return null;
   try {
-    const { result } = await postJson<
-      DadataCleanResponse<CleanVehicleResult>
-    >('/dadata/clean-vehicle', { vehicle: vehicle.trim() });
+    const { result } = await postJson<DadataCleanResponse<CleanVehicleResult>>(
+      '/dadata/clean-vehicle',
+      { vehicle: vehicle.trim() }
+    );
     return result ?? null;
   } catch {
     return null;

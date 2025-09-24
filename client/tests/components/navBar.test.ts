@@ -6,11 +6,11 @@ import {
   type Router,
 } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import NavBar from '../../src/components/NavBar.vue';
-import type { AuthUser } from '../../src/auth';
+import NavBar from '@/components/NavBar.vue';
+import type { AuthUser } from '@/auth';
 
-vi.mock('../../src/api', async () => {
-  const actual = await vi.importActual('../../src/api');
+vi.mock('@/api', async () => {
+  const actual = await vi.importActual('@/api');
   return {
     ...actual,
     apiFetch: vi.fn(() => Promise.resolve({})),
@@ -18,8 +18,8 @@ vi.mock('../../src/api', async () => {
   };
 });
 
-import * as authModule from '../../src/auth';
-import * as apiModule from '../../src/api';
+import * as authModule from '@/auth';
+import * as apiModule from '@/api';
 
 const routes: RouteRecordRaw[] = [
   { path: '/', component: { template: '<div>home</div>' } },

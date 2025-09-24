@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/vue';
+import { beforeEach, describe, expect, it } from 'vitest';
 import CookieNotice from '@/components/CookieNotice.vue';
 
 describe('CookieNotice', () => {

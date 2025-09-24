@@ -9,8 +9,8 @@ import { http, HttpResponse } from 'msw';
 import { defineComponent, h } from 'vue';
 import type { ComponentObjectPropsOptions } from 'vue';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import ProfileView from '../../src/views/Profile.vue';
-import { auth, type AuthUser } from '../../src/auth';
+import ProfileView from '@/views/Profile.vue';
+import { auth, type AuthUser } from '@/auth';
 import { setupMsw } from '../utils/msw';
 
 /* eslint-disable vue/one-component-per-file */

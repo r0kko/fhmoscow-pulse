@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
-import { createLineupSync } from '../utils/lineupSync.js';
+import { createLineupSync } from '../utils/lineupSync';
 import SyncStatus from '../components/lineups/SyncStatus.vue';
 import ExportModal from '../components/lineups/ExportModal.vue';
 import StaffList from '../components/lineups/StaffList.vue';

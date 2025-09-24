@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { evaluatePassword } from '@/utils/passwordPolicy';
 
 describe('passwordPolicy.evaluatePassword', () => {

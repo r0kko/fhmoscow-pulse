@@ -4,7 +4,9 @@ const CHECKSUM_COEFFICIENTS = [
 
 export function isValidAccountNumber(account: string, bic: string): boolean {
   if (!/^\d{20}$/.test(account) || !/^\d{9}$/.test(bic)) return false;
-  const digits = (bic.slice(-3) + account).split('').map((char) => Number(char));
+  const digits = (bic.slice(-3) + account)
+    .split('')
+    .map((char) => Number(char));
   const sum = digits.reduce((acc, digit, index) => {
     const coefficient =
       CHECKSUM_COEFFICIENTS[index % CHECKSUM_COEFFICIENTS.length] ?? 0;

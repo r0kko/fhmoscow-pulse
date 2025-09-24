@@ -8,15 +8,15 @@ import {
   onBeforeUnmount,
 } from 'vue';
 import { useRouter } from 'vue-router';
-import PageNav from '../components/PageNav.vue';
+import PageNav from '@/components/PageNav.vue';
 import { loadPageSize, savePageSize } from '../utils/pageSize';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
-import TaxationInfo from '../components/TaxationInfo.vue';
-import ConfirmModal from '../components/ConfirmModal.vue';
-import UsersFilterModal from '../components/UsersFilterModal.vue';
+import TaxationInfo from '@/components/TaxationInfo.vue';
+import ConfirmModal from '@/components/ConfirmModal.vue';
+import UsersFilterModal from '@/components/UsersFilterModal.vue';
 import Tooltip from 'bootstrap/js/dist/tooltip';
-import TabSelector from '../components/TabSelector.vue';
+import TabSelector from '@/components/TabSelector.vue';
 import type {
   AdminUserSummary,
   AdminUsersResponse,
@@ -196,7 +196,11 @@ watch(currentPage, () => {
 });
 
 watch(activeTab, (tab) => {
-  if (tab === 'profiles' && completion.value.length === 0 && !completionLoading.value) {
+  if (
+    tab === 'profiles' &&
+    completion.value.length === 0 &&
+    !completionLoading.value
+  ) {
     void loadCompletion();
   }
   syncQuery();
@@ -208,19 +212,39 @@ watch(users, () => {
 
 onMounted(() => {
   try {
-    const q = router.currentRoute.value.query;
-    if (q.tab && (q.tab === 'users' || q.tab === 'profiles'))
-      activeTab.value = q.tab as AdminTabKey;
-    if (q.search) search.value = String(q.search);
-    if (q.status) statusFilter.value = String(q.status);
-    if (q.role) roleFilter.value = String(q.role);
-    if (q.page) currentPage.value = Number(q.page) || 1;
-    if (q.limit) pageSize.value = Number(q.limit) || pageSize.value;
-    if (q.sort && ['last_name', 'phone', 'email', 'birth_date', 'status'].includes(String(q.sort))) {
-      sortField.value = String(q.sort) as SortField;
+    const query = router.currentRoute.value.query;
+    const tab = query['tab'];
+    if (typeof tab === 'string' && (tab === 'users' || tab === 'profiles')) {
+      activeTab.value = tab;
     }
-    if (q.order) {
-      sortOrder.value = String(q.order) === 'desc' ? 'desc' : 'asc';
+    const searchParam = query['search'];
+    if (typeof searchParam === 'string') search.value = searchParam;
+    const statusParam = query['status'];
+    if (typeof statusParam === 'string') statusFilter.value = statusParam;
+    const roleParam = query['role'];
+    if (typeof roleParam === 'string') roleFilter.value = roleParam;
+    const pageParam = query['page'];
+    if (typeof pageParam === 'string') {
+      const parsed = Number(pageParam);
+      if (Number.isFinite(parsed) && parsed > 0) currentPage.value = parsed;
+    }
+    const limitParam = query['limit'];
+    if (typeof limitParam === 'string') {
+      const parsed = Number(limitParam);
+      if (Number.isFinite(parsed) && parsed > 0) pageSize.value = parsed;
+    }
+    const sortParam = query['sort'];
+    if (
+      typeof sortParam === 'string' &&
+      ['last_name', 'phone', 'email', 'birth_date', 'status'].includes(
+        sortParam
+      )
+    ) {
+      sortField.value = sortParam as SortField;
+    }
+    const orderParam = query['order'];
+    if (typeof orderParam === 'string') {
+      sortOrder.value = orderParam === 'desc' ? 'desc' : 'asc';
     }
   } catch {
     /* ignore malformed query */
@@ -443,7 +467,9 @@ async function bulk(action: BulkAction): Promise<void> {
       approve: (id: string) =>
         apiFetch(`/users/${id}/approve`, { method: 'POST' }),
     };
-    const results = await Promise.allSettled(ids.map((id) => endpoints[action](id)));
+    const results = await Promise.allSettled(
+      ids.map((id) => endpoints[action](id))
+    );
     const ok = results.filter((r) => r.status === 'fulfilled').length;
     const fail = ids.length - ok;
     showToast(

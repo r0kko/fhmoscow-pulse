@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
 import GlobalToast from '@/components/GlobalToast.vue';
-import { useToast } from '@/utils/toast.js';
+import { useToast } from '@/utils/toast';
 
 describe('GlobalToast', () => {
   beforeEach(() => {

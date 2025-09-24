@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/vue';
 import { describe, expect, it } from 'vitest';
-import InlineError from '../../src/components/InlineError.vue';
+import InlineError from '@/components/InlineError.vue';
 
 describe('InlineError', () => {
   it('renders message and exposes alert semantics', async () => {

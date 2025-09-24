@@ -4,7 +4,7 @@ import type {
   AdminMedicalCenter,
   AdminMedicalExam,
   UserRoleOption,
-} from '../../src/types/admin';
+} from '@/types/admin';
 
 let userSequence = 0;
 

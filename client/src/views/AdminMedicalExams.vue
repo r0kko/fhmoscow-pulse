@@ -4,16 +4,16 @@ import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 import { loadPageSize, savePageSize } from '../utils/pageSize';
-import PageNav from '../components/PageNav.vue';
+import PageNav from '@/components/PageNav.vue';
 import { toDateTimeLocal, fromDateTimeLocal } from '../utils/time';
 import {
   endAfterStart,
   required,
   nonNegativeNumber,
 } from '../utils/validation';
-import InlineError from '../components/InlineError.vue';
+import InlineError from '@/components/InlineError.vue';
 import { useToast } from '../utils/toast';
-import ConfirmModal from '../components/ConfirmModal.vue';
+import ConfirmModal from '@/components/ConfirmModal.vue';
 import { formatRussianPhone } from '../utils/personal';
 import type {
   AdminMedicalExam,
@@ -59,13 +59,11 @@ let confirmAction: (() => Promise<void>) | null = null;
 const { showToast } = useToast();
 const router = useRouter();
 
-const isCenterMissing = computed(
-  () => !required(form.value.medical_center_id)
-);
+const isCenterMissing = computed(() => !required(form.value.medical_center_id));
 const isStartMissing = computed(() => !required(form.value.start_at));
 const isEndMissing = computed(() => !required(form.value.end_at));
-const isOrderInvalid = computed(() =>
-  !endAfterStart(form.value.start_at || '', form.value.end_at || '')
+const isOrderInvalid = computed(
+  () => !endAfterStart(form.value.start_at || '', form.value.end_at || '')
 );
 const isCapacityInvalid = computed(
   () => !nonNegativeNumber(form.value.capacity)
@@ -202,7 +200,8 @@ async function save(): Promise<void> {
     closeFormModal();
     await load();
   } catch (err) {
-    formError.value = err instanceof Error ? err.message : 'Не удалось сохранить';
+    formError.value =
+      err instanceof Error ? err.message : 'Не удалось сохранить';
   }
 }
 

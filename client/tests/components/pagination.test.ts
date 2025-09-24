@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/vue';
 import { describe, expect, it, vi } from 'vitest';
-import Pagination from '../../src/components/Pagination.vue';
+import Pagination from '@/components/Pagination.vue';
+
+type PaginationProps = InstanceType<typeof Pagination>['$props'];
 
 describe('Pagination', () => {
   it('renders full range when total pages are small', () => {
@@ -10,7 +12,7 @@ describe('Pagination', () => {
         modelValue: 2,
         totalPages: 3,
         'onUpdate:modelValue': spy,
-      },
+      } as PaginationProps,
     });
 
     const pages = screen.getAllByRole('button', { name: /\d/ });
@@ -25,7 +27,7 @@ describe('Pagination', () => {
         modelValue: 5,
         totalPages: 10,
         'onUpdate:modelValue': vi.fn(),
-      },
+      } as PaginationProps,
     });
 
     expect(screen.getAllByText('…')).toHaveLength(2);
@@ -41,7 +43,7 @@ describe('Pagination', () => {
         modelValue: 2,
         totalPages: 5,
         'onUpdate:modelValue': spy,
-      },
+      } as PaginationProps,
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'След' }));
@@ -60,7 +62,7 @@ describe('Pagination', () => {
         modelValue: 1,
         totalPages: 1,
         'onUpdate:modelValue': vi.fn(),
-      },
+      } as PaginationProps,
     });
 
     expect(screen.getByRole('button', { name: 'Пред' })).toBeDisabled();

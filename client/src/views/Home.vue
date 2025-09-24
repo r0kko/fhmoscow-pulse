@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import type { UpcomingListItem } from '@/types/upcoming';
 import { auth, type AuthUser } from '../auth';
 import { apiFetch } from '../api';
 import UpcomingEventCard from '../components/UpcomingEventCard.vue';
@@ -93,7 +94,7 @@ const qualificationSection: TileSection = {
 const hasCourse = ref(false);
 const canSeePlayers = ref(false);
 const route = useRoute();
-const noticeMessage = computed(() => String(route.query.notice ?? ''));
+const noticeMessage = computed(() => String(route.query['notice'] ?? ''));
 
 onMounted(checkCourse);
 onMounted(checkSchoolLinks);
@@ -218,15 +219,6 @@ const greeting = computed(() => {
   return 'Доброй ночи';
 });
 
-interface UpcomingListItem {
-  id: string | number;
-  type: 'training' | 'exam' | 'event';
-  title: string;
-  description: string;
-  startAt: string;
-  link?: string;
-}
-
 const upcoming = ref<UpcomingListItem[]>([]);
 const loadingUpcoming = ref(true);
 const showUpcoming = computed(
@@ -243,7 +235,8 @@ function mapTraining(training: UpcomingTraining): UpcomingListItem {
     title: 'Тренировка',
     description: address,
     startAt: training.start_at,
-    link: training.ground?.yandex_url,
+    link: training.ground?.yandex_url ?? null,
+    isOnline: false,
   };
 }
 
@@ -255,6 +248,7 @@ function mapExam(exam: UpcomingExam): UpcomingListItem {
     title: 'Медосмотр',
     description: `${address} · ${exam.registration_status || 'Заявка'}`,
     startAt: exam.start_at,
+    isOnline: false,
   };
 }
 
@@ -269,7 +263,8 @@ function mapEvent(event: UpcomingTraining): UpcomingListItem {
     title: 'Мероприятие',
     description: location,
     startAt: event.start_at,
-    link: event.url,
+    link: event.url ?? null,
+    isOnline: Boolean(isOnline),
   };
 }
 
@@ -392,7 +387,7 @@ function normaliseUpcoming(
               :key="item.title"
               :title="item.title"
               :icon="item.icon"
-              :to="item.to"
+              :to="item.to ?? null"
               :placeholder="!item.to"
             />
           </div>
@@ -408,7 +403,7 @@ function normaliseUpcoming(
               :key="item.title"
               :title="item.title"
               :icon="item.icon"
-              :to="item.to"
+              :to="item.to ?? null"
               :placeholder="!item.to"
             />
           </div>
@@ -424,7 +419,7 @@ function normaliseUpcoming(
               :key="item.title"
               :title="item.title"
               :icon="item.icon"
-              :to="item.to"
+              :to="item.to ?? null"
               :placeholder="!item.to"
             />
           </div>
@@ -443,7 +438,7 @@ function normaliseUpcoming(
               :key="item.title"
               :title="item.title"
               :icon="item.icon"
-              :to="item.to"
+              :to="item.to ?? null"
               :placeholder="!item.to"
             />
           </div>
@@ -459,7 +454,7 @@ function normaliseUpcoming(
               :key="item.title"
               :title="item.title"
               :icon="item.icon"
-              :to="item.to"
+              :to="item.to ?? null"
               :placeholder="!item.to"
             />
           </div>

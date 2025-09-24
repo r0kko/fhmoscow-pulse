@@ -1,4 +1,10 @@
-export type TrainingAlias = 'ICE' | 'BASIC_FIT' | 'THEORY' | string | null | undefined;
+export type TrainingAlias =
+  | 'ICE'
+  | 'BASIC_FIT'
+  | 'THEORY'
+  | string
+  | null
+  | undefined;
 
 export function typeBadgeClass(alias: TrainingAlias): string {
   if (!alias) return 'bg-secondary';

@@ -1,10 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import {
-  toDayKey,
-  formatMskDateLong,
-  formatMskTimeShort,
-} from '../utils/time';
+import { toDayKey, formatMskDateLong, formatMskTimeShort } from '../utils/time';
 import BaseTile from './BaseTile.vue';
 
 const props = defineProps({

@@ -1,7 +1,6 @@
-/// <reference types="vite/client" />
+import type { DefineComponent } from 'vue';
 
 declare module '*.vue' {
-  import type { DefineComponent } from 'vue';
   const component: DefineComponent<
     Record<string, unknown>,
     Record<string, unknown>,
@@ -11,7 +10,6 @@ declare module '*.vue' {
 }
 
 declare module '@/components/*' {
-  import type { DefineComponent } from 'vue';
   const component: DefineComponent<
     Record<string, unknown>,
     Record<string, unknown>,
@@ -21,7 +19,6 @@ declare module '@/components/*' {
 }
 
 declare module '@/views/*' {
-  import type { DefineComponent } from 'vue';
   const component: DefineComponent<
     Record<string, unknown>,
     Record<string, unknown>,

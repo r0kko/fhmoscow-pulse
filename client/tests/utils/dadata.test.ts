@@ -40,7 +40,9 @@ describe('dadata helpers', () => {
   });
 
   it('cleans address values and normalizes errors', async () => {
-    apiFetchMock.mockResolvedValueOnce({ result: { result: 'Россия, Москва' } });
+    apiFetchMock.mockResolvedValueOnce({
+      result: { result: 'Россия, Москва' },
+    });
     expect(await cleanAddress('Москва')).toEqual({ result: 'Россия, Москва' });
 
     apiFetchMock.mockRejectedValueOnce(new Error('fail'));
