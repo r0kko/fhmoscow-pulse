@@ -40,7 +40,7 @@ const accessibleLabel = computed(() => (props.to ? props.title : null));
     :to="props.to || null"
     :replace="props.replace"
     :disabled="props.placeholder || !props.to"
-    :aria-label="accessibleLabel"
+    :ariaLabel="accessibleLabel"
     :section="false"
     :extra-class="extraClasses"
   >

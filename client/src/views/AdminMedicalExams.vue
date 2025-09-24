@@ -73,6 +73,11 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / Math.max(pageSize.value, 1)))
 );
 
+const modalBackdropAttrs = Object.freeze({
+  'data-bs-backdrop': 'static',
+  'data-bs-keyboard': 'false',
+} as const);
+
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
@@ -371,8 +376,7 @@ watch(pageSize, (val) => {
       tabindex="-1"
       role="dialog"
       aria-modal="true"
-      data-bs-backdrop="static"
-      data-bs-keyboard="false"
+      v-bind="modalBackdropAttrs"
     >
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">

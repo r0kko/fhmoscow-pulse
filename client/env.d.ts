@@ -2,4 +2,5 @@
 /// <reference path="./src/env.d.ts" />
 /// <reference path="./src/types/globals.d.ts" />
 /// <reference path="./src/types/router.d.ts" />
+/// <reference path="./src/types/directives.d.ts" />
 /* eslint-enable @typescript-eslint/triple-slash-reference */

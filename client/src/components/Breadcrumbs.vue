@@ -1,17 +1,29 @@
-<script setup>
-import { RouterLink } from 'vue-router';
+<script setup lang="ts">
+import { computed } from 'vue';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
-const props = defineProps({
-  // items: [{ label: string, to?: string | object, disabled?: boolean }]
-  // When item.disabled === true, treat item as non-interactive, even if `to` is provided
-  items: { type: Array, required: true },
-  // aria-label for the <nav>
-  ariaLabel: { type: String, default: 'breadcrumb' },
+interface BreadcrumbItem {
+  label: string;
+  to?: RouteLocationRaw;
+  disabled?: boolean;
+}
+
+interface BreadcrumbsProps {
+  items: readonly BreadcrumbItem[];
+  ariaLabel?: string;
+}
+
+const props = withDefaults(defineProps<BreadcrumbsProps>(), {
+  ariaLabel: 'breadcrumb',
 });
 
-function isLast(idx) {
-  return idx === (props.items?.length || 0) - 1;
+const lastIndex = computed(() => props.items.length - 1);
+
+function isLast(idx: number): boolean {
+  return idx === lastIndex.value;
 }
+
+const linkMicrodata = Object.freeze({ itemprop: 'item' });
 </script>
 
 <template>
@@ -29,14 +41,14 @@ function isLast(idx) {
           active: isLast(idx),
           disabled: !isLast(idx) && item?.disabled,
         }"
-        :aria-current="isLast(idx) ? 'page' : null"
-        :aria-disabled="!isLast(idx) && item?.disabled ? 'true' : null"
+        :aria-current="isLast(idx) ? 'page' : undefined"
+        :aria-disabled="!isLast(idx) && item?.disabled ? 'true' : undefined"
         itemprop="itemListElement"
         itemscope
         itemtype="https://schema.org/ListItem"
       >
         <template v-if="!isLast(idx) && item.to && !item.disabled">
-          <RouterLink :to="item.to" itemprop="item">
+          <RouterLink :to="item.to" v-bind="linkMicrodata">
             <span itemprop="name">{{ item.label }}</span>
           </RouterLink>
         </template>

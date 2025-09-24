@@ -96,6 +96,10 @@ const allSelectedOnPage = computed<boolean>({
 type TooltipInstance = InstanceType<typeof Tooltip>;
 const tooltipInstances: TooltipInstance[] = [];
 
+const tooltipAttrs = Object.freeze({
+  'data-bs-toggle': 'tooltip',
+  'data-bs-placement': 'bottom',
+} as const);
 function disposeTooltips(): void {
   tooltipInstances.splice(0).forEach((instance) => {
     try {
@@ -521,8 +525,7 @@ async function bulk(action: BulkAction): Promise<void> {
                 type="button"
                 class="btn btn-outline-secondary"
                 :disabled="!anySelected"
-                data-bs-toggle="tooltip"
-                data-bs-placement="bottom"
+                v-bind="tooltipAttrs"
                 title="Заблокировать выбранных"
                 @click="bulk('block')"
               >
@@ -532,8 +535,7 @@ async function bulk(action: BulkAction): Promise<void> {
                 type="button"
                 class="btn btn-outline-secondary"
                 :disabled="!anySelected"
-                data-bs-toggle="tooltip"
-                data-bs-placement="bottom"
+                v-bind="tooltipAttrs"
                 title="Разблокировать выбранных"
                 @click="bulk('unblock')"
               >
@@ -543,8 +545,7 @@ async function bulk(action: BulkAction): Promise<void> {
                 type="button"
                 class="btn btn-outline-secondary"
                 :disabled="!anySelected"
-                data-bs-toggle="tooltip"
-                data-bs-placement="bottom"
+                v-bind="tooltipAttrs"
                 title="Подтвердить выбранных"
                 @click="bulk('approve')"
               >
@@ -798,7 +799,7 @@ async function bulk(action: BulkAction): Promise<void> {
                     <button
                       class="btn btn-sm btn-secondary me-2"
                       aria-label="Редактировать пользователя"
-                      data-bs-toggle="tooltip"
+                      v-bind="tooltipAttrs"
                       title="Редактировать"
                       @click="openEdit(u)"
                     >
@@ -808,7 +809,7 @@ async function bulk(action: BulkAction): Promise<void> {
                       v-if="u.status === 'ACTIVE'"
                       class="btn btn-sm btn-danger me-2"
                       aria-label="Заблокировать пользователя"
-                      data-bs-toggle="tooltip"
+                      v-bind="tooltipAttrs"
                       title="Заблокировать"
                       @click="blockUser(u.id)"
                     >
@@ -818,7 +819,7 @@ async function bulk(action: BulkAction): Promise<void> {
                       v-if="u.status === 'INACTIVE'"
                       class="btn btn-sm btn-success me-2"
                       aria-label="Разблокировать пользователя"
-                      data-bs-toggle="tooltip"
+                      v-bind="tooltipAttrs"
                       title="Разблокировать"
                       @click="unblockUser(u.id)"
                     >
@@ -828,7 +829,7 @@ async function bulk(action: BulkAction): Promise<void> {
                       v-if="u.status === 'AWAITING_CONFIRMATION'"
                       class="btn btn-sm btn-success"
                       aria-label="Подтвердить пользователя"
-                      data-bs-toggle="tooltip"
+                      v-bind="tooltipAttrs"
                       title="Подтвердить"
                       @click="approveUser(u.id)"
                     >

@@ -1,9 +1,17 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from '@jest/globals';
 
-import {
-  formatStaffPositionList,
-  getStaffPositionLabel,
-} from '../client/src/utils/staffAccess.js';
+import { loadTsModule } from './utils/loadTsModule.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const staffModule = loadTsModule(
+  path.resolve(__dirname, '../client/src/utils/staffAccess.ts')
+);
+
+const { formatStaffPositionList, getStaffPositionLabel } = staffModule;
 
 describe('getStaffPositionLabel', () => {
   test('returns localized label for supported positions', () => {

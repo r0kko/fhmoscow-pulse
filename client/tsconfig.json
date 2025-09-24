@@ -13,40 +13,20 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
-    "lib": [
-      "ESNext",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "noEmit": true,
-    "types": [
-      "vite/client",
-      "vitest/globals",
-      "@testing-library/jest-dom"
-    ],
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/components/*": [
-        "./src/components/*"
-      ],
-      "@/views/*": [
-        "./src/views/*"
-      ],
-      "#tests/*": [
-        "./tests/*"
-      ],
-      "msw": [
-        "./tests/vendor/msw.ts"
-      ],
-      "msw/node": [
-        "./tests/vendor/msw-node.ts"
-      ]
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/views/*": ["./src/views/*"],
+      "#tests/*": ["./tests/*"],
+      "msw": ["./tests/vendor/msw.ts"],
+      "msw/node": ["./tests/vendor/msw-node.ts"]
     }
   },
   "include": [
@@ -59,13 +39,17 @@
     "tests/**/*.tsx",
     "tests/**/*.d.ts"
   ],
-  "exclude": [
-    "dist",
-    "node_modules"
-  ],
+  "exclude": ["dist", "node_modules"],
   "references": [
     {
       "path": "./tsconfig.node.json"
     }
-  ]
+  ],
+  "vueCompilerOptions": {
+    "strictTemplates": true,
+    "directives": {
+      "edge-fade": {},
+      "edgeFade": {}
+    }
+  }
 }

@@ -1,8 +1,17 @@
-<script setup>
-const props = defineProps({
-  label: { type: String, default: 'Загрузка' },
-  small: { type: Boolean, default: false },
+<script setup lang="ts">
+import { toRefs } from 'vue';
+
+interface BrandSpinnerProps {
+  label?: string;
+  small?: boolean;
+}
+
+const props = withDefaults(defineProps<BrandSpinnerProps>(), {
+  label: 'Загрузка',
+  small: false,
 });
+
+const { label, small } = toRefs(props);
 </script>
 
 <template>
