@@ -45,6 +45,16 @@ describe('BaseTile', () => {
     expect(link.className).toContain('custom-class');
   });
 
+  it('supports named router destinations via object syntax', async () => {
+    await renderWithRouter({
+      to: { path: '/' },
+      ariaLabel: 'Домой',
+    });
+
+    const link = screen.getByRole('link', { name: 'Домой' });
+    expect(link).toHaveAttribute('href', '/');
+  });
+
   it('defaults external links to open in a new tab securely', async () => {
     render(BaseTile, {
       props: {
@@ -63,6 +73,59 @@ describe('BaseTile', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  it('honors explicit target and rel overrides for link-like destinations', () => {
+    render(BaseTile, {
+      props: {
+        to: 'tel:+79991112233',
+        ariaLabel: 'Позвонить',
+        target: '_self',
+        rel: 'nofollow',
+      },
+      slots: {
+        default: '<span>Позвонить</span>',
+      },
+    });
+
+    const link = screen.getByRole('link', { name: 'Позвонить' });
+    expect(link).toHaveAttribute('href', 'tel:+79991112233');
+    expect(link).toHaveAttribute('target', '_self');
+    expect(link).toHaveAttribute('rel', 'nofollow');
+  });
+
+  it('renders mailto and hash destinations without forcing new tab', () => {
+    const { unmount } = render(BaseTile, {
+      props: {
+        to: 'mailto:support@fhmoscow.com',
+        ariaLabel: 'Написать в поддержку',
+      },
+      slots: {
+        default: '<span>Связаться</span>',
+      },
+    });
+
+    const mailLink = screen.getByRole('link', { name: 'Написать в поддержку' });
+    expect(mailLink).toHaveAttribute('href', 'mailto:support@fhmoscow.com');
+    expect(mailLink).not.toHaveAttribute('target');
+    expect(mailLink).not.toHaveAttribute('rel');
+
+    unmount();
+
+    render(BaseTile, {
+      props: {
+        to: '#details',
+        ariaLabel: 'Перейти к деталям',
+      },
+      slots: {
+        default: '<span>Подробнее</span>',
+      },
+    });
+
+    const anchorLink = screen.getByRole('link', { name: 'Перейти к деталям' });
+    expect(anchorLink).toHaveAttribute('href', '#details');
+    expect(anchorLink).not.toHaveAttribute('target');
+    expect(anchorLink).not.toHaveAttribute('rel');
+  });
+
   it('renders as an inert group when disabled or missing destination', () => {
     render(BaseTile, {
       props: {
@@ -79,5 +142,40 @@ describe('BaseTile', () => {
     expect(region).toHaveAttribute('aria-disabled', 'true');
     expect(region).toHaveAttribute('role', 'group');
     expect(region).toHaveAttribute('tabindex', '0');
+  });
+
+  it('switches to button semantics when requested', () => {
+    render(BaseTile, {
+      props: {
+        role: 'button',
+        ariaLabel: 'Открыть модальное окно',
+      },
+      slots: {
+        default: '<span>Открыть</span>',
+      },
+    });
+
+    const button = screen.getByRole('button', {
+      name: 'Открыть модальное окно',
+    });
+    expect(button.tagName).toBe('BUTTON');
+    expect(button).toHaveAttribute('type', 'button');
+    expect(button).not.toHaveAttribute('role');
+    expect(button).not.toHaveAttribute('tabindex');
+  });
+
+  it('falls back to default group role when custom role is empty', () => {
+    render(BaseTile, {
+      props: {
+        role: '',
+        ariaLabel: 'Статичный блок',
+      },
+      slots: {
+        default: '<span>Контент</span>',
+      },
+    });
+
+    const region = screen.getByText('Контент').closest('.card');
+    expect(region).toHaveAttribute('role', 'group');
   });
 });

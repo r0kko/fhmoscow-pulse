@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import Pagination from '@/components/Pagination.vue';
 
@@ -34,6 +35,59 @@ describe('Pagination', () => {
     const pageButtons = screen.getAllByRole('button', { name: /\d/ });
     expect(pageButtons[0]).toHaveTextContent('1');
     expect(pageButtons[pageButtons.length - 1]).toHaveTextContent('10');
+  });
+
+  it('omits leading ellipsis when the active page is near the start', () => {
+    render(Pagination, {
+      props: {
+        modelValue: 2,
+        totalPages: 10,
+        'onUpdate:modelValue': vi.fn(),
+      } as PaginationProps,
+    });
+
+    expect(screen.getAllByText('…')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /\d/ })[1]).toHaveTextContent(
+      '2'
+    );
+  });
+
+  it('omits trailing ellipsis when the active page is near the end', () => {
+    render(Pagination, {
+      props: {
+        modelValue: 9,
+        totalPages: 10,
+        'onUpdate:modelValue': vi.fn(),
+      } as PaginationProps,
+    });
+
+    const ellipses = screen.getAllByText('…');
+    expect(ellipses).toHaveLength(1);
+    const nextItem = ellipses[0].parentElement?.nextElementSibling;
+    expect(nextItem?.textContent).toContain('8');
+    expect(
+      screen.getAllByRole('button', { name: /\d/ }).pop()
+    ).toHaveTextContent('10');
+  });
+
+  it('guards against ellipsis activation in event handlers', () => {
+    const wrapper = mount(Pagination, {
+      props: {
+        modelValue: 5,
+        totalPages: 10,
+      } as PaginationProps,
+    });
+
+    const vm = wrapper.vm as unknown as {
+      setPage: (page: number | '...') => void;
+    };
+    vm.setPage('...');
+    expect(wrapper.emitted()['update:modelValue']).toBeFalsy();
+
+    vm.setPage(6);
+    expect(wrapper.emitted()['update:modelValue']?.[0]).toEqual([6]);
+
+    wrapper.unmount();
   });
 
   it('emits updates when navigating forward and backward', async () => {

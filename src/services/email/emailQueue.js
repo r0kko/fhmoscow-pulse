@@ -591,3 +591,40 @@ export function getEmailQueueStats() {
     consumerName,
   };
 }
+
+function resetStateForTests() {
+  loops = [];
+  initialized = false;
+  running = false;
+  metricsInterval = undefined;
+  producerClient = undefined;
+  consumerClient = undefined;
+  schedulerClient = undefined;
+  consumerName = `${os.hostname?.() || 'worker'}:${process.pid}`;
+}
+
+function setClientsForTests({ producer, consumer, scheduler } = {}) {
+  if (producer !== undefined) producerClient = producer;
+  if (consumer !== undefined) consumerClient = consumer;
+  if (scheduler !== undefined) schedulerClient = scheduler;
+}
+
+export const __testables = {
+  encode,
+  decode,
+  computeBackoff,
+  buildJob,
+  normalizeDedupeKey,
+  dedupeRedisKey,
+  dedupeTtlForJob,
+  wait,
+  acquireDedupeLock,
+  resetStateForTests,
+  setClientsForTests,
+  setInitializedForTests(value = false) {
+    initialized = Boolean(value);
+  },
+  setRunningForTests(value = false) {
+    running = Boolean(value);
+  },
+};

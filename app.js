@@ -34,7 +34,7 @@ app.set('trust proxy', TRUST_PROXY_HOPS);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-function originAllowed(origin) {
+export function originAllowed(origin) {
   try {
     if (!origin) return true; // same-origin/non-browser
     if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin))
@@ -55,7 +55,7 @@ function originAllowed(origin) {
   return false;
 }
 
-const corsOptions = {
+export const corsOptions = {
   origin(origin, callback) {
     if (originAllowed(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
@@ -116,7 +116,7 @@ app.use((req, res) => {
 });
 
 // Centralized error handler
-app.use((err, req, res, _next) => {
+export function errorHandler(err, req, res, _next) {
   // Normalize common, expected errors for consistent API responses
   let normalized = err;
   const msg = String(err?.message || '').toLowerCase();
@@ -137,6 +137,8 @@ app.use((err, req, res, _next) => {
   }
   // Respect normalized status; fall back to 400 for non-specified errors
   sendError(res, normalized);
-});
+}
+
+app.use(errorHandler);
 
 export default app;

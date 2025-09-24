@@ -9,7 +9,7 @@ export function isValidAccountNumber(account: string, bic: string): boolean {
     .map((char) => Number(char));
   const sum = digits.reduce((acc, digit, index) => {
     const coefficient =
-      CHECKSUM_COEFFICIENTS[index % CHECKSUM_COEFFICIENTS.length] ?? 0;
+      CHECKSUM_COEFFICIENTS[index % CHECKSUM_COEFFICIENTS.length]!;
     return acc + ((digit * coefficient) % 10);
   }, 0);
   return sum % 10 === 0;

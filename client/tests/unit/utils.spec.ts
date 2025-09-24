@@ -18,6 +18,10 @@ import {
   isStaffOnly,
 } from '@/utils/roles';
 import {
+  formatStaffPositionList,
+  getStaffPositionLabel,
+} from '@/utils/staffAccess';
+import {
   formatKickoff,
   formatMinutesSeconds,
   formatMskDateLong,
@@ -42,6 +46,9 @@ const invalidInn = '123456789012';
 
 const validSnils = '11223344595';
 const invalidSnils = '12345678901';
+const snilsSum100 = '00102889900';
+const snilsSum101 = '00102898900';
+const snilsMod100 = '00299998900';
 
 describe('utils/pageSize', () => {
   it('loads stored page size or falls back to default', () => {
@@ -49,6 +56,18 @@ describe('utils/pageSize', () => {
     expect(loadPageSize('table', 20)).toBe(50);
     localStorage.setItem('table', 'abc');
     expect(loadPageSize('table', 20)).toBe(20);
+    localStorage.setItem('table', '-5');
+    expect(loadPageSize('table', 20)).toBe(20);
+    localStorage.setItem('table', '0');
+    expect(loadPageSize('table', 20)).toBe(20);
+    localStorage.removeItem('table');
+    expect(loadPageSize('table', 15)).toBe(15);
+  });
+
+  it('persists page size when storage is available', () => {
+    localStorage.clear();
+    savePageSize('listing', 25);
+    expect(localStorage.getItem('listing')).toBe('25');
   });
 
   it('handles storage write errors gracefully', () => {
@@ -80,6 +99,10 @@ describe('utils/bank', () => {
     expect(isValidAccountNumber('40702810900000000001', '044525225')).toBe(
       false
     );
+    expect(isValidAccountNumber('40702810900000000000', '04452522')).toBe(
+      false
+    );
+    expect(isValidAccountNumber('notanaccount', '044525225')).toBe(false);
     expect(isValidAccountNumber('notanaccount', 'badbic')).toBe(false);
   });
 });
@@ -94,17 +117,29 @@ describe('utils/passwordPolicy', () => {
     expect(weak.ok).toBe(false);
     expect(weak.checks.notCommon).toBe(false);
   });
+
+  it('penalizes sequential and repeating inputs', () => {
+    const sequential = evaluatePassword('abcdef');
+    expect(sequential.checks.notSequential).toBe(false);
+    expect(sequential.ok).toBe(false);
+
+    const repeating = evaluatePassword('11111111');
+    expect(repeating.checks.notRepeating).toBe(false);
+    expect(repeating.ok).toBe(false);
+  });
 });
 
 describe('utils/personal', () => {
   it('validates INN control digits', () => {
     expect(isValidInn(validInn)).toBe(true);
     expect(isValidInn(invalidInn)).toBe(false);
+    expect(isValidInn('123')).toBe(false);
   });
 
   it('validates and formats SNILS numbers', () => {
     expect(isValidSnils(validSnils)).toBe(true);
     expect(isValidSnils(invalidSnils)).toBe(false);
+    expect(isValidSnils('123')).toBe(false);
     expect(formatSnils(validSnils)).toBe('112-233-445 95');
   });
 
@@ -112,6 +147,12 @@ describe('utils/personal', () => {
     expect(isValidSnils('00000000004')).toBe(true); // below checksum threshold
     expect(formatSnils('123')).toBe('123-');
     expect(formatSnils('12345')).toBe('123-45');
+  });
+
+  it('passes SNILS checksum boundary scenarios', () => {
+    expect(isValidSnils(snilsSum100)).toBe(true);
+    expect(isValidSnils(snilsSum101)).toBe(true);
+    expect(isValidSnils(snilsMod100)).toBe(true);
   });
 });
 
@@ -143,15 +184,45 @@ describe('utils/roles', () => {
   it('detects presence of roles correctly', () => {
     expect(hasRole(['ADMIN'], ADMIN_ROLES)).toBe(true);
     expect(hasRole(['USER'], ADMIN_ROLES)).toBe(false);
+    expect(hasRole(undefined, ADMIN_ROLES)).toBe(false);
+    expect(hasRole(null, ADMIN_ROLES)).toBe(false);
   });
 
   it('identifies brigade referees and staff compositions', () => {
     expect(isBrigadeRefereeOnly(['BRIGADE_REFEREE'])).toBe(true);
     expect(isBrigadeRefereeOnly(['BRIGADE_REFEREE', 'REFEREE'])).toBe(false);
+    expect(isBrigadeRefereeOnly(undefined)).toBe(false);
+    expect(isBrigadeRefereeOnly(null)).toBe(false);
     expect(isStaffOnly(['SPORT_SCHOOL_STAFF'])).toBe(true);
     expect(isStaffOnly(['SPORT_SCHOOL_STAFF', 'ADMIN'])).toBe(false);
     expect(isStaffOnly(['ADMIN'])).toBe(false);
     expect(isStaffOnly(undefined)).toBe(false);
+    expect(isStaffOnly([])).toBe(false);
+  });
+});
+
+describe('utils/staffAccess', () => {
+  it('maps role aliases to localized labels', () => {
+    expect(getStaffPositionLabel('coach')).toBe('Тренер');
+    expect(getStaffPositionLabel('media_manager')).toBe('Медиа-менеджер');
+    expect(getStaffPositionLabel(undefined)).toBe('');
+    expect(getStaffPositionLabel('unknown')).toBe('');
+  });
+
+  it('deduplicates and formats staff role lists', () => {
+    expect(
+      formatStaffPositionList([
+        'coach',
+        'COACH',
+        'accountant',
+        null,
+        'media_manager',
+      ])
+    ).toBe('Тренер, Бухгалтер и Медиа-менеджер');
+    expect(formatStaffPositionList([])).toBe('');
+    expect(formatStaffPositionList(['unknown'])).toBe('');
+    expect(formatStaffPositionList(['coach'])).toBe('Тренер');
+    expect(formatStaffPositionList(undefined)).toBe('');
   });
 });
 
@@ -161,9 +232,11 @@ describe('utils/time', () => {
   it('formats and parses minute-second strings', () => {
     expect(formatMinutesSeconds(125)).toBe('02:05');
     expect(formatMinutesSeconds(null)).toBe('');
+    expect(formatMinutesSeconds('abc')).toBe('');
     expect(parseMinutesSeconds('02:05')).toBe(125);
     expect(parseMinutesSeconds('205')).toBe(125);
     expect(parseMinutesSeconds('invalid')).toBeNull();
+    expect(parseMinutesSeconds(null)).toBeNull();
     expect(parseMinutesSeconds('04:75')).toBeNull();
   });
 
@@ -174,8 +247,22 @@ describe('utils/time', () => {
       '2024-05-01T15:30:00.000Z'
     );
     expect(toDayKey(null)).toBeNull();
+    expect(toDayKey('not-a-date')).toBeNull();
     expect(toDateTimeLocal(null)).toBe('');
+    expect(toDateTimeLocal('bad-date')).toBe('');
     expect(fromDateTimeLocal('')).toBe('');
+  });
+
+  it('handles malformed locale representations when computing day keys', () => {
+    const dateSpy = vi
+      .spyOn(Date.prototype, 'toLocaleDateString')
+      .mockReturnValueOnce('2024/05/01')
+      .mockReturnValueOnce('2024-xx-yy');
+
+    expect(toDayKey(iso)).toBeNull();
+    expect(toDayKey(iso)).toBeNull();
+
+    dateSpy.mockRestore();
   });
 
   it('detects midnight and formats UI-friendly values', () => {
@@ -185,6 +272,7 @@ describe('utils/time', () => {
     expect(isMskMidnight('2024-05-01T00:00:00+03:00', 'Invalid/Zone')).toBe(
       false
     );
+    expect(isMskMidnight(null)).toBe(false);
     expect(formatMskTimeShort('2024-05-01T00:00:00+03:00')).toBe('—:—');
     expect(formatMskTimeShort(iso)).toBe('18:30');
     expect(formatMskTimeShort('not-a-date', { placeholder: '??' })).toBe('??');
@@ -192,6 +280,42 @@ describe('utils/time', () => {
     expect(formatMskDateLong('bad-date')).toBe('');
     expect(formatKickoff(iso)).toMatchObject({ time: '18:30' });
     expect(formatKickoff(null)).toMatchObject({ time: '—:—', date: '' });
+  });
+
+  it('gracefully handles serialization errors when building ISO strings', () => {
+    const spy = vi
+      .spyOn(Date.prototype, 'toISOString')
+      .mockImplementation(() => {
+        throw new Error('range');
+      });
+
+    expect(fromDateTimeLocal('2024-05-01T18:30')).toBe('');
+
+    spy.mockRestore();
+  });
+
+  it('returns empty output when date parts are missing after formatting', () => {
+    const formatterSpy = vi
+      .spyOn(Intl.DateTimeFormat.prototype, 'formatToParts')
+      .mockReturnValueOnce([{ type: 'year', value: '2024' }])
+      .mockReturnValueOnce([{ type: 'minute', value: '07' }])
+      .mockReturnValueOnce([{ type: 'hour', value: '05' }]);
+
+    expect(toDateTimeLocal(iso)).toBe('');
+    expect(formatMskTimeShort(iso, { placeholder: '--' })).toBe('00:07');
+    expect(formatMskTimeShort(iso, { placeholder: '--' })).toBe('05:00');
+
+    formatterSpy.mockRestore();
+  });
+
+  it('returns empty date strings when localization yields empty output', () => {
+    const dateSpy = vi
+      .spyOn(Date.prototype, 'toLocaleDateString')
+      .mockReturnValue('');
+
+    expect(formatMskDateLong(iso)).toBe('');
+
+    dateSpy.mockRestore();
   });
 });
 
@@ -217,11 +341,16 @@ describe('utils/validation', () => {
     expect(required('')).toBe(false);
     expect(nonNegativeNumber('5')).toBe(true);
     expect(nonNegativeNumber('-1')).toBe(false);
+    expect(nonNegativeNumber('')).toBe(true);
+    expect(nonNegativeNumber(null)).toBe(true);
+    expect(nonNegativeNumber(undefined)).toBe(true);
   });
 
   it('validates chronological order of date ranges', () => {
     expect(endAfterStart('2024-05-01T10:00', '2024-05-01T11:00')).toBe(true);
     expect(endAfterStart('2024-05-01T11:00', '2024-05-01T10:00')).toBe(false);
+    expect(endAfterStart('invalid', '2024-05-01T10:00')).toBe(false);
+    expect(endAfterStart('', '2024-05-01T10:00')).toBe(true);
     expect(validateDateRange('', '2024-05-01T10:00')).toBe('start_required');
     expect(validateDateRange('2024-05-01T10:00', '')).toBe('end_required');
     expect(validateDateRange('2024-05-01T10:00', '2024-05-01T09:00')).toBe(

@@ -102,4 +102,107 @@ describe('MenuTile', () => {
     expect(card).toHaveAttribute('aria-disabled', 'true');
     expect(card?.querySelector('i')).toHaveClass('bi-lock');
   });
+
+  it('shows locked badge and hides supplemental note when locked', async () => {
+    await renderMenuTile(
+      {
+        title: 'Закрытый раздел',
+        icon: 'bi-shield-lock',
+        to: '/restricted',
+        locked: true,
+        note: 'В разработке',
+      },
+      {
+        global: {
+          stubs: {
+            RouterLink: {
+              template: '<a :href="to"><slot /></a>',
+              props: ['to'],
+            },
+          },
+        },
+      }
+    );
+
+    const card = screen.getByText('Закрытый раздел').closest('.card');
+    expect(card).not.toBeNull();
+    const lockBadge = card?.querySelector('.lock-badge') as HTMLElement | null;
+    expect(lockBadge).not.toBeNull();
+    expect(lockBadge).toHaveClass('bi', 'bi-lock-fill');
+    expect(screen.getByText('Доступ ограничен')).toHaveClass('visually-hidden');
+    expect(screen.queryByText('В разработке')).not.toBeInTheDocument();
+  });
+
+  it('renders contextual note for available tiles', async () => {
+    await renderMenuTile(
+      {
+        title: 'Отчеты',
+        icon: 'bi-graph-up',
+        to: '/reports',
+        note: 'Новые материалы',
+      },
+      {
+        global: {
+          stubs: {
+            RouterLink: {
+              template: '<a :href="to"><slot /></a>',
+              props: ['to'],
+            },
+          },
+        },
+      }
+    );
+
+    expect(screen.getByText('Новые материалы')).toHaveClass(
+      'tile-note',
+      'text-muted',
+      'small'
+    );
+  });
+
+  it('falls back to empty alternate text when imageAlt is missing', async () => {
+    await renderMenuTile(
+      {
+        title: 'Иконка',
+        imageSrc: '/icons/sample.png',
+        to: '/icons',
+      },
+      {
+        global: {
+          stubs: {
+            RouterLink: {
+              template: '<a :href="to"><slot /></a>',
+              props: ['to'],
+            },
+          },
+        },
+      }
+    );
+
+    const image = screen.getByRole('img');
+    expect(image).toHaveAttribute('alt', '');
+  });
+
+  it('marks card as non-interactive when no destination is provided', async () => {
+    await renderMenuTile(
+      {
+        title: 'Без ссылки',
+        icon: 'bi-info-circle',
+      },
+      {
+        global: {
+          stubs: {
+            RouterLink: {
+              template: '<a :href="to"><slot /></a>',
+              props: ['to'],
+            },
+          },
+        },
+      }
+    );
+
+    const card = screen.getByText('Без ссылки').closest('.card');
+    expect(card).toHaveAttribute('aria-disabled', 'true');
+    expect(card?.className).toContain('placeholder-card');
+  });
 });

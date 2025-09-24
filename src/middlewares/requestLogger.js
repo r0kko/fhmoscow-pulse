@@ -169,3 +169,10 @@ export default function requestLogger(req, res, next) {
 
   next();
 }
+
+export const __testables = {
+  redact,
+  maskUrl,
+  clampJsonBytes,
+  normalizeObjectOrNull,
+};

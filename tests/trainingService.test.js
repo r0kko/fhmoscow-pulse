@@ -14,6 +14,7 @@ const findAllUsersMock = jest.fn();
 const findRegMock = jest.fn();
 const findTrainingTypeMock = jest.fn();
 const sendInvitationMock = jest.fn();
+const trainingCourseFindAllMock = jest.fn();
 
 const trainingInstance = {
   start_at: new Date('2024-01-01T10:00:00Z'),
@@ -45,6 +46,7 @@ beforeEach(() => {
     online: false,
   });
   sendInvitationMock.mockReset();
+  trainingCourseFindAllMock.mockReset().mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -59,7 +61,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Address: {},
   Season: { findOne: findOneSeasonMock },
   TrainingRefereeGroup: { destroy: destroyMock, bulkCreate: bulkCreateMock },
-  TrainingCourse: { destroy: destroyMock, bulkCreate: bulkCreateMock },
+  TrainingCourse: {
+    destroy: destroyMock,
+    bulkCreate: bulkCreateMock,
+    findAll: trainingCourseFindAllMock,
+  },
   Course: { findAll: findAllCoursesMock },
   User: { findByPk: findUserMock, findAll: findAllUsersMock },
   TrainingRole: {},
@@ -224,6 +230,118 @@ test('listAll filters trainings without course', async () => {
   expect(args.where['$Courses.id$']).toBeNull();
   const courseInclude = args.include.filter((i) => i.through)[1];
   expect(courseInclude.required).toBe(false);
+});
+
+test('listAll applies teacher filter and computes registration window', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-01-05T10:00:00Z'));
+  const startAt = new Date('2024-01-10T10:00:00Z');
+  const trainingRow = {
+    get: () => ({
+      id: 'tr1',
+      start_at: startAt,
+      TrainingType: { for_camp: false },
+      TrainingRegistrations: [],
+    }),
+    start_at: startAt,
+    capacity: 5,
+    TrainingType: { for_camp: false },
+    TrainingRegistrations: [
+      { TrainingRole: { alias: 'LISTENER' } },
+      { TrainingRole: { alias: 'LISTENER' } },
+      { TrainingRole: { alias: 'COACH' } },
+    ],
+  };
+  findAndCountAllMock.mockResolvedValue({ rows: [trainingRow], count: 1 });
+
+  const result = await service.listAll({
+    teacher_id: 'teacher-1',
+    course_id: 'none',
+    page: '2',
+    limit: '5',
+    forCamp: false,
+  });
+
+  const args = findAndCountAllMock.mock.calls[0][0];
+  const teacherInclude = args.include.find(
+    (i) => i.as === 'TeacherRegistrations'
+  );
+  expect(teacherInclude).toMatchObject({
+    where: { user_id: 'teacher-1' },
+    required: true,
+  });
+  expect(args.where['$Courses.id$']).toBeNull();
+  expect(result.rows[0]).toMatchObject({
+    registered_count: 2,
+    registration_open: true,
+  });
+  jest.useRealTimers();
+});
+
+test('listUpcoming enforces future start filter and camp flag', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-01-01T00:00:00Z'));
+  const startAt = new Date('2024-01-03T12:00:00Z');
+  const trainingRow = {
+    get: () => ({
+      id: 'up1',
+      start_at: startAt,
+      TrainingType: { for_camp: true },
+      TrainingRegistrations: [],
+    }),
+    start_at: startAt,
+    TrainingType: { for_camp: true },
+    TrainingRegistrations: [],
+  };
+  findAndCountAllMock.mockResolvedValue({ rows: [trainingRow], count: 1 });
+
+  await service.listUpcoming({
+    forCamp: true,
+    teacher_id: 'teacher-2',
+    group_id: 'g1',
+    course_id: 'course-1',
+    type_id: 'type-1',
+  });
+
+  const args = findAndCountAllMock.mock.calls[0][0];
+  const opKeys = Object.getOwnPropertySymbols(args.where.start_at);
+  expect(opKeys).toHaveLength(1);
+  expect(args.where.start_at[opKeys[0]]).toBeInstanceOf(Date);
+  const teacherInclude = args.include.find(
+    (i) => i.as === 'TeacherRegistrations'
+  );
+  expect(teacherInclude).toBeDefined();
+  const typeInclude = args.include.find(
+    (i) => i.where && Object.prototype.hasOwnProperty.call(i.where, 'for_camp')
+  );
+  expect(typeInclude).toMatchObject({ where: { for_camp: true } });
+  jest.useRealTimers();
+});
+
+test('listPast orders descending and flags registration closed', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-02-01T10:00:00Z'));
+  const startAt = new Date('2024-01-20T08:00:00Z');
+  const trainingRow = {
+    get: () => ({
+      id: 'past1',
+      start_at: startAt,
+      TrainingType: { for_camp: false },
+      TrainingRegistrations: [],
+    }),
+    start_at: startAt,
+    TrainingType: { for_camp: false },
+    TrainingRegistrations: [],
+  };
+  findAndCountAllMock.mockResolvedValue({ rows: [trainingRow], count: 1 });
+
+  const result = await service.listPast({
+    page: 1,
+    limit: 10,
+    teacher_id: 'coach-3',
+  });
+
+  const args = findAndCountAllMock.mock.calls[0][0];
+  expect(args.order).toEqual([['start_at', 'DESC']]);
+  expect(result.rows[0].registration_open).toBe(false);
+  jest.useRealTimers();
 });
 
 test('setAttendanceMarked updates for admin', async () => {

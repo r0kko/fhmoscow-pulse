@@ -35,4 +35,45 @@ describe('PasswordStrengthMeter', () => {
     expect(now2).toBeGreaterThan(now1);
     expect(now2).toBeLessThanOrEqual(100);
   });
+
+  it.each([
+    {
+      password: '',
+      label: 'Слабый',
+      className: 'bg-danger',
+      value: 0,
+    },
+    {
+      password: 'abc123',
+      label: 'Средний',
+      className: 'bg-warning',
+      value: 40,
+    },
+    {
+      password: 'abc12345',
+      label: 'Хороший',
+      className: 'bg-info',
+      value: 60,
+    },
+    {
+      password: 'Very$trongP4ssw0rd',
+      label: 'Сильный',
+      className: 'bg-success',
+      value: 100,
+    },
+  ])(
+    'classifies password "$password" as $label',
+    ({ password, label, className, value }) => {
+      render(PasswordStrengthMeter, {
+        props: { password },
+      });
+
+      const bar = screen.getByRole('progressbar', {
+        name: 'Надёжность пароля',
+      });
+      expect(bar).toHaveClass(className);
+      expect(bar).toHaveAttribute('aria-valuenow', String(value));
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  );
 });

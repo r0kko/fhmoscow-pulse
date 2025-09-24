@@ -6,7 +6,7 @@ function calculateInnChecksum(
   coefficients: readonly number[]
 ): number {
   const sum = coefficients.reduce((acc, coef, index) => {
-    const digit = digits[index] ?? 0;
+    const digit = digits[index]!;
     return acc + coef * digit;
   }, 0);
   return (sum % 11) % 10;

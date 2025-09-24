@@ -58,4 +58,42 @@ describe('UpcomingEventCard', () => {
     expect(link).toHaveAttribute('href', 'http://lk.fhmoscow.com/session');
     expect(screen.getByText('Онлайн')).toBeInTheDocument();
   });
+
+  it('falls back to placeholders when start date is invalid', () => {
+    renderCard({
+      id: 'unknown-1',
+      type: 'exam',
+      title: 'Неизвестное мероприятие',
+      description: 'Место уточняется',
+      startAt: 'not-a-date',
+      isOnline: false,
+    });
+
+    const wrapper = screen.getByText('Неизвестное мероприятие').closest('div');
+    expect(wrapper?.closest('a')).toBeNull();
+    const datePill = document.querySelector('.date-pill');
+    expect(datePill?.textContent).toContain('—');
+    const timeNode = screen.getByText('—:—');
+    expect(timeNode).toHaveClass('time');
+    expect(
+      screen.getByLabelText(
+        'Неизвестное мероприятие — Неизвестная дата, Место уточняется'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('omits address block when description is absent', () => {
+    renderCard({
+      id: 'train-2',
+      type: 'training',
+      title: 'Сбор',
+      description: '',
+      startAt: '2024-06-01T10:00:00+03:00',
+      isOnline: false,
+    });
+
+    const badge = screen.getByText('Сбор');
+    const card = badge.closest('.upcoming-card');
+    expect(card?.querySelector('.address')).toBeNull();
+  });
 });

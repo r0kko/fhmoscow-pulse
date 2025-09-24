@@ -127,6 +127,8 @@ describe('edgeFade directive', () => {
     });
     directive.mounted(el);
     const resizeHandler = el.__edgeFade?.resizeHandler;
+    expect(typeof resizeHandler).toBe('function');
+    resizeHandler?.();
     directive.unmounted(el);
     expect(el.removeEventListener).toHaveBeenCalledWith(
       'scroll',

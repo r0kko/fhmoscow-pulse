@@ -4,6 +4,8 @@ import { beforeEach, expect, jest, test, describe } from '@jest/globals';
 const listMock = jest.fn();
 const syncExternalMock = jest.fn();
 const facetsMock = jest.fn();
+const seasonBirthYearCountsMock = jest.fn().mockResolvedValue([]);
+const seasonTeamSummariesMock = jest.fn().mockResolvedValue([]);
 
 const runWithSyncStateMock = jest.fn(async (job, runner) => {
   const outcome = await runner({ mode: 'incremental', since: null });
@@ -23,8 +25,8 @@ jest.unstable_mockModule('../src/services/playerService.js', () => ({
     facets: facetsMock,
   },
   // Named exports used by controller in other endpoints
-  seasonBirthYearCounts: jest.fn().mockResolvedValue([]),
-  seasonTeamSummaries: jest.fn().mockResolvedValue([]),
+  seasonBirthYearCounts: seasonBirthYearCountsMock,
+  seasonTeamSummaries: seasonTeamSummariesMock,
 }));
 jest.unstable_mockModule('../src/services/teamService.js', () => ({
   __esModule: true,
@@ -118,6 +120,8 @@ beforeEach(() => {
       state: { job },
     };
   });
+  seasonBirthYearCountsMock.mockReset().mockResolvedValue([]);
+  seasonTeamSummariesMock.mockReset().mockResolvedValue([]);
 });
 
 describe('playerController sync', () => {
@@ -147,6 +151,195 @@ describe('playerController sync', () => {
         stats: expect.any(Object),
       })
     );
+  });
+});
+
+describe('playerController scoped facets and summaries', () => {
+  test('seasonSummary aggregates seasons within staff scope', async () => {
+    seasonBirthYearCountsMock.mockResolvedValue([
+      {
+        season_id: 's1',
+        season_name: 'Season 1',
+        season_active: true,
+        birth_year: 2005,
+        player_count: 4,
+      },
+      {
+        season_id: 's1',
+        season_name: 'Season 1',
+        season_active: true,
+        birth_year: 2006,
+        player_count: 2,
+      },
+      {
+        season_id: 's2',
+        season_name: 'Season 2',
+        season_active: false,
+        birth_year: 2007,
+        player_count: 3,
+      },
+    ]);
+    const req = {
+      query: { mine: 'true' },
+      access: {
+        isAdmin: false,
+        allowedClubIds: ['c1'],
+        allowedTeamIds: ['t1'],
+      },
+    };
+    const res = { json: jest.fn() };
+
+    await controller.seasonSummary(req, res);
+
+    expect(seasonBirthYearCountsMock).toHaveBeenCalledWith({
+      clubIds: ['c1'],
+      teamIds: ['t1'],
+    });
+    expect(res.json).toHaveBeenCalledWith({
+      seasons: [
+        {
+          id: 's1',
+          name: 'Season 1',
+          active: true,
+          years: [
+            { year: 2005, count: 4 },
+            { year: 2006, count: 2 },
+          ],
+        },
+        {
+          id: 's2',
+          name: 'Season 2',
+          active: false,
+          years: [{ year: 2007, count: 3 }],
+        },
+      ],
+    });
+  });
+
+  test('seasonSummary denies access when scoped staff has no clubs', async () => {
+    const req = {
+      query: { mine: 'true', club_id: 'c9' },
+      access: { isAdmin: false, allowedClubIds: [], allowedTeamIds: [] },
+    };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await controller.seasonSummary(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Доступ запрещён' });
+    expect(seasonBirthYearCountsMock).not.toHaveBeenCalled();
+  });
+
+  test('facets forwards filters within club scope', async () => {
+    const payload = { seasons: ['s1'], roles: ['Forward'] };
+    facetsMock.mockResolvedValue(payload);
+    const req = {
+      query: {
+        search: 'иван',
+        season: 's1',
+        club_id: 'c1',
+        team_id: 't1',
+        birth_year: '2005',
+        mine: 'true',
+      },
+      access: {
+        isAdmin: false,
+        allowedClubIds: ['c1', 'c2'],
+        allowedTeamIds: ['t1'],
+      },
+    };
+    const res = { json: jest.fn() };
+
+    await controller.facets(req, res);
+
+    expect(facetsMock).toHaveBeenCalledWith({
+      search: 'иван',
+      seasonId: 's1',
+      teamId: 't1',
+      birthYear: 2005,
+      clubIds: ['c1'],
+    });
+    expect(res.json).toHaveBeenCalledWith(payload);
+  });
+
+  test('facets denies staff outside permitted clubs', async () => {
+    const req = {
+      query: { mine: 'false', club_id: 'c9' },
+      access: { isAdmin: false, allowedClubIds: ['c1'], allowedTeamIds: [] },
+    };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    await controller.facets(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Доступ запрещён' });
+    expect(facetsMock).not.toHaveBeenCalled();
+  });
+
+  test('seasonTeamSummary sorts teams inside each season bucket', async () => {
+    seasonTeamSummariesMock.mockResolvedValue([
+      {
+        season_id: 's1',
+        season_name: 'Season 1',
+        season_active: true,
+        team_id: 't2',
+        team_name: 'Beta',
+        birth_year: 2008,
+        player_count: 9,
+        tournaments: ['Cup'],
+      },
+      {
+        season_id: 's1',
+        season_name: 'Season 1',
+        season_active: true,
+        team_id: 't1',
+        team_name: 'Alpha',
+        birth_year: 2009,
+        player_count: 7,
+        tournaments: ['League'],
+      },
+    ]);
+    const req = {
+      query: { mine: 'true' },
+      access: {
+        isAdmin: false,
+        allowedClubIds: ['c1'],
+        allowedTeamIds: ['t1', 't2'],
+      },
+    };
+    const res = { json: jest.fn() };
+
+    await controller.seasonTeamSummary(req, res);
+
+    expect(seasonTeamSummariesMock).toHaveBeenCalledWith({
+      clubIds: ['c1'],
+      teamIds: ['t1', 't2'],
+    });
+    expect(res.json).toHaveBeenCalledWith({
+      seasons: [
+        {
+          id: 's1',
+          name: 'Season 1',
+          active: true,
+          teams: [
+            {
+              team_id: 't1',
+              team_name: 'Alpha',
+              birth_year: 2009,
+              player_count: 7,
+              tournaments: ['League'],
+            },
+            {
+              team_id: 't2',
+              team_name: 'Beta',
+              birth_year: 2008,
+              player_count: 9,
+              tournaments: ['Cup'],
+            },
+          ],
+        },
+      ],
+    });
   });
 });
 

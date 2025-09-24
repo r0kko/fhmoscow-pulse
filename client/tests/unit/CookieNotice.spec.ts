@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/vue';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CookieNotice from '@/components/CookieNotice.vue';
 
 describe('CookieNotice', () => {
@@ -38,5 +38,36 @@ describe('CookieNotice', () => {
     render(CookieNotice);
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('still displays the notice when storage APIs fail on mount', async () => {
+    const getSpy = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+
+    render(CookieNotice);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toBeInTheDocument();
+
+    getSpy.mockRestore();
+  });
+
+  it('hides the notice even if storing consent throws', async () => {
+    const getSpy = vi.spyOn(localStorage, 'getItem').mockReturnValue(null);
+    const setSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+
+    render(CookieNotice);
+
+    const button = await screen.findByRole('button', { name: 'Принять' });
+    await fireEvent.click(button);
+
+    expect(setSpy).toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    setSpy.mockRestore();
+    getSpy.mockRestore();
   });
 });

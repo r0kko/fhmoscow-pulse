@@ -16,9 +16,7 @@ export function getStaffPositionLabel(alias: StaffInput): string {
 
 export function formatStaffPositionList(aliases: StaffInput[] = []): string {
   const normalized = Array.from(
-    new Set(
-      (aliases ?? []).filter(Boolean).map((item) => String(item).toUpperCase())
-    )
+    new Set(aliases.filter(Boolean).map((item) => String(item).toUpperCase()))
   );
 
   const labels = normalized
