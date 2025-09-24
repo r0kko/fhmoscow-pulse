@@ -33,6 +33,7 @@ const extraClasses = computed(() => [
 ]);
 
 const accessibleLabel = computed(() => (props.to ? props.title : null));
+const tileBindings = computed(() => ({ ariaLabel: accessibleLabel.value ?? null }));
 </script>
 
 <template>
@@ -40,7 +41,7 @@ const accessibleLabel = computed(() => (props.to ? props.title : null));
     :to="props.to || null"
     :replace="props.replace"
     :disabled="props.placeholder || !props.to"
-    :aria-label="accessibleLabel"
+    v-bind="tileBindings"
     :section="false"
     :extra-class="extraClasses"
   >

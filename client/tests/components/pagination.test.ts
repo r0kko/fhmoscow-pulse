@@ -63,11 +63,16 @@ describe('Pagination', () => {
 
     const ellipses = screen.getAllByText('…');
     expect(ellipses).toHaveLength(1);
-    const nextItem = ellipses[0].parentElement?.nextElementSibling;
-    expect(nextItem?.textContent).toContain('8');
-    expect(
-      screen.getAllByRole('button', { name: /\d/ }).pop()
-    ).toHaveTextContent('10');
+    const [ellipsis] = ellipses;
+    if (!ellipsis)
+      throw new Error('Expected pagination ellipsis to be rendered');
+    const parent = ellipsis.parentElement;
+    expect(parent).not.toBeNull();
+    const nextItem = parent!.nextElementSibling;
+    expect(nextItem).not.toBeNull();
+    expect((nextItem as HTMLElement).textContent ?? '').toContain('8');
+    const pageButtons = screen.getAllByRole('button', { name: /\d/ });
+    expect(pageButtons[pageButtons.length - 1]).toHaveTextContent('10');
   });
 
   it('guards against ellipsis activation in event handlers', () => {
