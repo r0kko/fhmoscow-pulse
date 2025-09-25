@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import vue from 'eslint-plugin-vue';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
@@ -5,6 +6,8 @@ import vueA11y from 'eslint-plugin-vuejs-accessibility';
 import tseslintPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import vueParser from 'vue-eslint-parser';
+
+const tsconfigRootDir = fileURLToPath(new URL('.', import.meta.url));
 
 const browserGlobals = {
   window: true,
@@ -74,7 +77,6 @@ export default [
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 'latest',
-      sourceType: 'module',
       globals: browserGlobals,
     },
     plugins: {
@@ -92,6 +94,57 @@ export default [
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'prettier/prettier': 'error',
+    },
+  },
+  {
+    files: [
+      'src/views/AdminSportsCalendar.vue',
+      'src/components/admin-sports-calendar/**/*.vue',
+    ],
+    languageOptions: {
+      parser: vueParser,
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: ['./tsconfig.json'],
+        tsconfigRootDir,
+        extraFileExtensions: ['.vue'],
+      },
+      globals: browserGlobals,
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        {
+          checksVoidReturn: false,
+        },
+      ],
+      '@typescript-eslint/require-await': 'error',
+    },
+  },
+  {
+    files: ['src/components/admin-sports-calendar/**/*.ts'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        project: ['./tsconfig.json'],
+        tsconfigRootDir,
+        sourceType: 'module',
+      },
+      ecmaVersion: 'latest',
+      globals: browserGlobals,
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        {
+          checksVoidReturn: false,
+        },
+      ],
+      '@typescript-eslint/require-await': 'error',
     },
   },
   {

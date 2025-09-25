@@ -2,6 +2,7 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const addRoleMock = jest.fn();
 const removeRoleMock = jest.fn();
+const getRolesMock = jest.fn();
 
 const userRoleFindMock = jest.fn();
 const userRoleRestoreMock = jest.fn();
@@ -15,24 +16,26 @@ const user = {
   addRole: addRoleMock,
   removeRole: removeRoleMock,
   update: updateMock,
+  getRoles: getRolesMock,
 };
 const findRoleMock = jest.fn();
 const statusFindMock = jest.fn();
 const sexFindMock = jest.fn();
 
 beforeEach(() => {
-  addRoleMock.mockClear();
-  removeRoleMock.mockClear();
-  userRoleFindMock.mockClear();
-  userRoleRestoreMock.mockClear();
-  createMock.mockClear();
-  findAndCountAllMock.mockClear();
-  findByPkMock.mockClear();
-  findOneMock.mockClear();
-  updateMock.mockClear();
-  findRoleMock.mockClear();
-  statusFindMock.mockClear();
-  sexFindMock.mockClear();
+  addRoleMock.mockReset();
+  removeRoleMock.mockReset();
+  getRolesMock.mockReset();
+  userRoleFindMock.mockReset();
+  userRoleRestoreMock.mockReset();
+  createMock.mockReset();
+  findAndCountAllMock.mockReset();
+  findByPkMock.mockReset();
+  findOneMock.mockReset();
+  updateMock.mockReset();
+  findRoleMock.mockReset();
+  statusFindMock.mockReset();
+  sexFindMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -55,7 +58,8 @@ const { default: service } = await import('../src/services/userService.js');
 
 test('assignRole adds role to user', async () => {
   findByPkMock.mockResolvedValue(user);
-  findRoleMock.mockResolvedValue({});
+  findRoleMock.mockResolvedValue({ id: 1, alias: 'ADMIN' });
+  getRolesMock.mockResolvedValue([]);
   userRoleFindMock.mockResolvedValue(null);
   await service.assignRole('1', 'ADMIN', 'a1');
   expect(addRoleMock).toHaveBeenCalled();
@@ -63,7 +67,8 @@ test('assignRole adds role to user', async () => {
 
 test('assignRole restores removed role', async () => {
   findByPkMock.mockResolvedValue(user);
-  findRoleMock.mockResolvedValue({ id: 2 });
+  findRoleMock.mockResolvedValue({ id: 2, alias: 'ADMIN' });
+  getRolesMock.mockResolvedValue([]);
   addRoleMock.mockClear();
   userRoleRestoreMock.mockClear();
   const updateExistingMock = jest.fn();
@@ -76,6 +81,25 @@ test('assignRole restores removed role', async () => {
   expect(userRoleRestoreMock).toHaveBeenCalled();
   expect(updateExistingMock).toHaveBeenCalledWith({ updated_by: 'a1' });
   expect(addRoleMock).not.toHaveBeenCalled();
+});
+
+test('assignRole replaces existing FHMO position', async () => {
+  findByPkMock.mockResolvedValue(user);
+  findRoleMock.mockResolvedValue({ id: 3, alias: 'FHMO_ADMINISTRATION_PRESIDENT' });
+  const linkUpdateMock = jest.fn();
+  userRoleFindMock.mockResolvedValue(null);
+  userRoleFindMock.mockResolvedValueOnce({ update: linkUpdateMock });
+  userRoleFindMock.mockResolvedValueOnce(null);
+  getRolesMock.mockResolvedValue([
+    { id: 10, alias: 'FHMO_MEDIA_SMM_MANAGER' },
+  ]);
+  await service.assignRole('1', 'FHMO_ADMINISTRATION_PRESIDENT', 'manager');
+  expect(linkUpdateMock).toHaveBeenCalledWith({ updated_by: 'manager' });
+  expect(removeRoleMock).toHaveBeenCalledWith({ id: 10, alias: 'FHMO_MEDIA_SMM_MANAGER' });
+  expect(addRoleMock).toHaveBeenCalledWith(
+    { id: 3, alias: 'FHMO_ADMINISTRATION_PRESIDENT' },
+    { through: { created_by: 'manager', updated_by: 'manager' } }
+  );
 });
 
 test('removeRole removes role from user', async () => {

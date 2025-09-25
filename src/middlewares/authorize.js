@@ -3,6 +3,7 @@ import {
   REFEREE_ROLES,
   ADMINISTRATOR_ROLES,
   FIELD_REFEREE_ROLES,
+  FHMO_STAFF_ROLES,
 } from '../utils/roles.js';
 
 const ROLE_GROUPS = {
@@ -10,6 +11,7 @@ const ROLE_GROUPS = {
   REFEREE: REFEREE_ROLES,
   FIELD_REFEREE: FIELD_REFEREE_ROLES,
   ADMINISTRATOR: ADMINISTRATOR_ROLES,
+  FHMO_STAFF: FHMO_STAFF_ROLES,
 };
 
 export default function authorize(...aliases) {

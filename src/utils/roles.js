@@ -16,6 +16,24 @@ export const BRIGADE_REFEREE_ROLES = ['BRIGADE_REFEREE'];
 // Staff of a sports school
 export const STAFF_ROLES = ['SPORT_SCHOOL_STAFF'];
 
+// Federation employees
+export const FHMO_STAFF_ROLES = [
+  'FHMO_JUDGING_HEAD',
+  'FHMO_JUDGING_LEAD_SPECIALIST',
+  'FHMO_JUDGING_SPECIALIST',
+  'FHMO_JUDGING_TRAINING_CURATOR',
+  'FHMO_COMPETITIONS_HEAD',
+  'FHMO_COMPETITIONS_LEAD_SPECIALIST',
+  'FHMO_COMPETITIONS_SPECIALIST',
+  'FHMO_MEDIA_PRESS_SECRETARY',
+  'FHMO_MEDIA_SMM_MANAGER',
+  'FHMO_MEDIA_CONTENT_MODERATOR',
+  'FHMO_LEGAL_LAWYER',
+  'FHMO_ACCOUNTING_CHIEF_ACCOUNTANT',
+  'FHMO_ADMINISTRATION_PRESIDENT',
+  'FHMO_ADMINISTRATION_EXECUTIVE_DIRECTOR',
+];
+
 export function hasRole(roles, allowed) {
   return roles.some((r) => allowed.includes(r.alias ?? r));
 }
@@ -42,9 +60,20 @@ export function hasStaffRole(roles) {
 }
 
 export function isStaffOnly(roles) {
-  const list = roles.map((r) => r.alias ?? r);
+  const list = (roles ?? []).map((r) => r.alias ?? r);
   const hasStaff = list.includes('SPORT_SCHOOL_STAFF');
   if (!hasStaff) return false;
   // Only staff role, no other roles
   return list.every((alias) => STAFF_ROLES.includes(alias));
+}
+
+export function hasFhmoStaffRole(roles) {
+  return hasRole(roles, FHMO_STAFF_ROLES);
+}
+
+export function isFhmoStaffOnly(roles) {
+  const list = (roles ?? []).map((r) => r.alias ?? r);
+  const hasFhmo = list.some((alias) => FHMO_STAFF_ROLES.includes(alias));
+  if (!hasFhmo) return false;
+  return list.every((alias) => FHMO_STAFF_ROLES.includes(alias));
 }

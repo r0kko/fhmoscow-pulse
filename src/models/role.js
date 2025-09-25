@@ -13,6 +13,11 @@ Role.init(
     },
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     alias: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+    groupAlias: { type: DataTypes.STRING(100), allowNull: true },
+    groupName: { type: DataTypes.STRING(150), allowNull: true },
+    departmentAlias: { type: DataTypes.STRING(100), allowNull: true },
+    departmentName: { type: DataTypes.STRING(150), allowNull: true },
+    displayOrder: { type: DataTypes.INTEGER, allowNull: true },
   },
   {
     sequelize,

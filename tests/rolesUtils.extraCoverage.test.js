@@ -9,6 +9,8 @@ test('roles utils extra coverage for grouped helpers', async () => {
     hasFieldRefereeRole,
     isBrigadeRefereeOnly,
     hasStaffRole,
+    hasFhmoStaffRole,
+    isFhmoStaffOnly,
   } = rolesMod;
 
   // hasRole with string and object inputs
@@ -22,4 +24,6 @@ test('roles utils extra coverage for grouped helpers', async () => {
   expect(hasFieldRefereeRole([{ alias: 'REFEREE' }])).toBe(true);
   expect(isBrigadeRefereeOnly([{ alias: 'BRIGADE_REFEREE' }])).toBe(true);
   expect(hasStaffRole([{ alias: 'SPORT_SCHOOL_STAFF' }])).toBe(true);
+  expect(hasFhmoStaffRole([{ alias: 'FHMO_LEGAL_LAWYER' }])).toBe(true);
+  expect(isFhmoStaffOnly([{ alias: 'FHMO_LEGAL_LAWYER' }])).toBe(true);
 });

@@ -11,8 +11,10 @@ import {
   ADMIN_ROLES,
   REFEREE_ROLES,
   STAFF_ROLES,
+  FHMO_STAFF_ROLES,
   isBrigadeRefereeOnly,
   isStaffOnly as isStaffOnlyHelper,
+  isFhmoStaffOnly as isFhmoStaffOnlyHelper,
   hasRole,
 } from '../utils/roles';
 
@@ -96,10 +98,17 @@ const canSeePlayers = ref(false);
 const route = useRoute();
 const noticeMessage = computed(() => String(route.query['notice'] ?? ''));
 
+const isFhmoStaff = computed(() => hasRole(auth.roles, FHMO_STAFF_ROLES));
+const isFhmoStaffOnly = computed(() => isFhmoStaffOnlyHelper(auth.roles));
+
 onMounted(checkCourse);
 onMounted(checkSchoolLinks);
 
 async function checkCourse(): Promise<void> {
+  if (isFhmoStaff.value) {
+    hasCourse.value = false;
+    return;
+  }
   try {
     const data = await apiFetch<CourseResponse>('/courses/me').catch(
       (error) => {
@@ -132,6 +141,7 @@ async function checkSchoolLinks(): Promise<void> {
 }
 
 const workSections = computed<TileSection[]>(() => {
+  if (isFhmoStaffOnly.value) return [];
   const base = hasCourse.value
     ? [qualificationSection, ...baseWorkSections]
     : baseWorkSections;
@@ -183,6 +193,12 @@ const mediaSections = computed<TileSection[]>(() => {
 });
 
 const docsSections = computed<TileSection[]>(() => {
+  if (isFhmoStaffOnly.value) {
+    return [
+      { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
+      { title: 'Профиль', icon: 'bi-person-circle', to: '/profile' },
+    ];
+  }
   const list: TileSection[] = [
     { title: 'Документы', icon: 'bi-folder2-open', to: '/documents' },
     { title: 'Обращения', icon: 'bi-chat-dots', to: '/tickets' },
@@ -199,6 +215,7 @@ const isStaff = computed(() => hasRole(auth.roles, STAFF_ROLES));
 const isStaffOnly = computed(() => isStaffOnlyHelper(auth.roles));
 const isBrigadeOnly = computed(() => isBrigadeRefereeOnly(auth.roles));
 const preparationSections = computed<TileSection[]>(() => {
+  if (isFhmoStaffOnly.value) return [];
   if (isBrigadeOnly.value) return [];
   return basePreparationSections.filter(
     (section) => !section.referee || isReferee.value
@@ -270,6 +287,11 @@ function mapEvent(event: UpcomingTraining): UpcomingListItem {
 
 async function loadUpcoming(): Promise<void> {
   loadingUpcoming.value = true;
+  if (isFhmoStaff.value) {
+    upcoming.value = [];
+    loadingUpcoming.value = false;
+    return;
+  }
   try {
     const fetches: Promise<UpcomingData>[] = [];
     if (!isBrigadeOnly.value) {
@@ -344,6 +366,18 @@ function normaliseUpcoming(
       <h3 class="mb-3 text-start greeting-title">
         {{ greeting }}, {{ shortName || auth.user?.phone }}!
       </h3>
+      <div
+        v-if="isFhmoStaffOnly"
+        class="card section-card tile fade-in shadow-sm mb-2 info-section"
+      >
+        <div class="card-body">
+          <h2 class="card-title h5 mb-2">Работаем поэтапно</h2>
+          <p class="mb-0 text-muted">
+            Сейчас доступны разделы «Обращения» и «Профиль». Мы постепенно
+            откроем дополнительные сервисы для сотрудников ФХМ.
+          </p>
+        </div>
+      </div>
       <div v-if="showUpcoming" class="card section-card mb-2 text-start">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
@@ -394,7 +428,10 @@ function normaliseUpcoming(
         </div>
       </div>
 
-      <div v-if="!isStaffOnly" class="card section-card mb-2 menu-section">
+      <div
+        v-if="!isStaffOnly && workSections.length > 0"
+        class="card section-card mb-2 menu-section"
+      >
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Рабочие сервисы</h2>
           <div v-edge-fade class="scroll-container">

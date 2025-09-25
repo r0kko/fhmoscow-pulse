@@ -11,6 +11,9 @@ import {
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import { assertPassword } from '../utils/passwordPolicy.js';
+import { FHMO_STAFF_ROLES } from '../utils/roles.js';
+
+const FHMO_ROLE_SET = new Set(FHMO_STAFF_ROLES);
 
 async function createUser(data, actorId = null) {
   const birth = new Date(data.birth_date);
@@ -195,6 +198,26 @@ async function assignRole(userId, alias, actorId = null) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!role) throw new ServiceError('role_not_found', 404);
+
+  if (FHMO_ROLE_SET.has(alias)) {
+    const fhmoRoles = await user.getRoles({
+      where: { alias: FHMO_STAFF_ROLES },
+    });
+    await Promise.all(
+      fhmoRoles
+        .filter((fhmoRole) => fhmoRole.alias !== alias)
+        .map(async (fhmoRole) => {
+          const link = await UserRole.findOne({
+            where: { user_id: userId, role_id: fhmoRole.id },
+            paranoid: false,
+          });
+          if (link) {
+            await link.update({ updated_by: actorId });
+          }
+          await user.removeRole(fhmoRole);
+        })
+    );
+  }
 
   const existing = await UserRole.findOne({
     where: { user_id: userId, role_id: role.id },

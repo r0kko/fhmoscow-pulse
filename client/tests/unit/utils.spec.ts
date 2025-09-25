@@ -13,9 +13,11 @@ import {
 import { pluralize } from '@/utils/plural';
 import {
   ADMIN_ROLES,
+  FHMO_STAFF_ROLES,
   hasRole,
   isBrigadeRefereeOnly,
   isStaffOnly,
+  isFhmoStaffOnly,
 } from '@/utils/roles';
 import {
   formatStaffPositionList,
@@ -183,6 +185,7 @@ describe('utils/plural', () => {
 describe('utils/roles', () => {
   it('detects presence of roles correctly', () => {
     expect(hasRole(['ADMIN'], ADMIN_ROLES)).toBe(true);
+    expect(hasRole(['FHMO_MEDIA_SMM_MANAGER'], FHMO_STAFF_ROLES)).toBe(true);
     expect(hasRole(['USER'], ADMIN_ROLES)).toBe(false);
     expect(hasRole(undefined, ADMIN_ROLES)).toBe(false);
     expect(hasRole(null, ADMIN_ROLES)).toBe(false);
@@ -198,6 +201,9 @@ describe('utils/roles', () => {
     expect(isStaffOnly(['ADMIN'])).toBe(false);
     expect(isStaffOnly(undefined)).toBe(false);
     expect(isStaffOnly([])).toBe(false);
+    expect(isFhmoStaffOnly(['FHMO_ADMINISTRATION_PRESIDENT'])).toBe(true);
+    expect(isFhmoStaffOnly(['FHMO_ADMINISTRATION_PRESIDENT', 'ADMIN'])).toBe(false);
+    expect(isFhmoStaffOnly(undefined)).toBe(false);
   });
 });
 

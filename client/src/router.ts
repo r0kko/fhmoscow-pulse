@@ -67,7 +67,25 @@ import {
   ADMIN_ROLES as adminRoles,
   REFEREE_ROLES as refereeRoles,
   STAFF_ROLES as staffRoles,
+  FHMO_STAFF_ROLES as fhmoStaffRoles,
+  isFhmoStaffOnly,
 } from './utils/roles';
+
+const FHMO_ALLOWED_PATHS = new Set<string>([
+  '/',
+  '/tickets',
+  '/profile',
+  '/change-password',
+  '/forbidden',
+  '/error',
+]);
+
+const FHMO_ALLOWED_PREFIXES = ['/profile/doc'];
+
+function isRouteAllowedForFhmo(path: string): boolean {
+  if (FHMO_ALLOWED_PATHS.has(path)) return true;
+  return FHMO_ALLOWED_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
 
 const routes: RouteRecordRaw[] = [
   {
@@ -182,7 +200,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/tickets',
     component: Tickets,
-    meta: { requiresAuth: true, requiresReferee: true, title: 'Обращения' },
+    meta: {
+      requiresAuth: true,
+      requiresReferee: true,
+      allowFhmoStaff: true,
+      title: 'Обращения',
+    },
   },
   {
     path: '/tasks',
@@ -538,59 +561,82 @@ const router = createRouter({
 
 router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
   const isAuthenticated = Boolean(auth.token);
-  const roles = auth.roles;
-  const isBrigadeOnly =
-    roles.includes('BRIGADE_REFEREE') && !roles.includes('REFEREE');
+  let roles = auth.roles || [];
+
   if (isAuthenticated && !auth.user) {
     try {
       await fetchCurrentUser();
+      roles = auth.roles || [];
     } catch {
       clearAuth();
       return next('/login');
     }
   }
+
   const meta = to.meta;
+  const hasAdmin = roles.some((r) => adminRoles.includes(r));
+  const hasReferee = roles.some((r) => refereeRoles.includes(r));
+  const hasStaff = roles.some((r) => staffRoles.includes(r));
+  const hasFhmo = roles.some((r) => fhmoStaffRoles.includes(r));
+  const isBrigadeOnly =
+    roles.includes('BRIGADE_REFEREE') && !roles.includes('REFEREE');
+  const fhmoOnly = isFhmoStaffOnly(roles);
+  const allowFhmoStaff = Boolean(
+    (meta as Record<string, unknown>)['allowFhmoStaff']
+  );
 
   if (meta.requiresAuth && !isAuthenticated) {
-    next('/login');
-  } else if (
-    isAuthenticated &&
-    auth.mustChangePassword &&
-    to.path !== '/change-password'
-  ) {
-    next('/change-password');
-  } else if (meta.requiresAdmin && !roles.some((r) => adminRoles.includes(r))) {
-    next('/forbidden');
-  } else if (meta.requiresAdministrator && !roles.includes('ADMIN')) {
-    next('/forbidden');
-  } else if (
-    meta.requiresReferee &&
-    !roles.some((r) => refereeRoles.includes(r))
-  ) {
-    next('/forbidden');
-  } else if (meta.forbidBrigade && isBrigadeOnly) {
-    next('/forbidden');
-  } else if (
-    meta.requiresStaff &&
-    !roles.some((r) => staffRoles.includes(r) || adminRoles.includes(r))
-  ) {
-    next('/forbidden');
-  } else if (
+    return next('/login');
+  }
+
+  if (isAuthenticated && auth.mustChangePassword && to.path !== '/change-password') {
+    return next('/change-password');
+  }
+
+  if (meta.requiresAdmin && !hasAdmin) {
+    return next('/forbidden');
+  }
+
+  if (meta.requiresAdministrator && !roles.includes('ADMIN')) {
+    return next('/forbidden');
+  }
+
+  if (meta.requiresReferee && !hasReferee) {
+    if (!(allowFhmoStaff && hasFhmo)) {
+      return next('/forbidden');
+    }
+  }
+
+  if (meta.forbidBrigade && isBrigadeOnly) {
+    return next('/forbidden');
+  }
+
+  if (meta.requiresStaff && !(hasStaff || hasAdmin)) {
+    return next('/forbidden');
+  }
+
+  if (fhmoOnly && !allowFhmoStaff && !isRouteAllowedForFhmo(to.path)) {
+    return next('/forbidden');
+  }
+
+  if (
     isAuthenticated &&
     auth.user?.status &&
     auth.user.status.startsWith('REGISTRATION_STEP') &&
     to.path !== '/complete-profile'
   ) {
-    next('/complete-profile');
-  } else if (
+    return next('/complete-profile');
+  }
+
+  if (
     isAuthenticated &&
     auth.user?.status === 'AWAITING_CONFIRMATION' &&
     to.path !== '/awaiting-confirmation'
   ) {
-    next('/awaiting-confirmation');
-  } else {
-    next();
+    return next('/awaiting-confirmation');
   }
+
+  return next();
 });
 
 router.afterEach((to) => {

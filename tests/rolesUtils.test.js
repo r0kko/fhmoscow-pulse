@@ -7,6 +7,8 @@ import {
   isBrigadeRefereeOnly,
   hasStaffRole,
   isStaffOnly,
+  hasFhmoStaffRole,
+  isFhmoStaffOnly,
 } from '../src/utils/roles.js';
 
 test('hasRole supports string and object roles', () => {
@@ -31,4 +33,17 @@ test('staff role checks', () => {
     isStaffOnly([{ alias: 'SPORT_SCHOOL_STAFF' }, { alias: 'REFEREE' }])
   ).toBe(false);
   expect(isStaffOnly([{ alias: 'REFEREE' }])).toBe(false);
+});
+
+test('fhmo staff role checks', () => {
+  const fhmoRoles = [{ alias: 'FHMO_JUDGING_HEAD' }];
+  expect(hasFhmoStaffRole(fhmoRoles)).toBe(true);
+  expect(isFhmoStaffOnly(fhmoRoles)).toBe(true);
+  expect(
+    isFhmoStaffOnly([
+      { alias: 'FHMO_JUDGING_HEAD' },
+      { alias: 'SPORT_SCHOOL_STAFF' },
+    ])
+  ).toBe(false);
+  expect(isFhmoStaffOnly([{ alias: 'ADMIN' }])).toBe(false);
 });

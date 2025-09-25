@@ -7,6 +7,7 @@ import AddVehicleModal from '../components/AddVehicleModal.vue';
 import ChangeBankRequisitesModal from '../components/ChangeBankRequisitesModal.vue';
 import DocumentSignModal from '../components/DocumentSignModal.vue';
 import { auth } from '../auth';
+import { isStaffOnly as isStaffOnlyHelper } from '../utils/roles';
 
 const noDataPlaceholder = '—';
 
@@ -34,12 +35,7 @@ const maskedAccountNumber = computed(() => {
   return '···· ' + (num.length > 4 ? num.slice(-4) : num);
 });
 const innDisplay = computed(() => inn.value?.number || 'Отсутствует');
-const isStaffOnly = computed(() => {
-  const roles = auth.roles || [];
-  const hasStaff = roles.includes('SPORT_SCHOOL_STAFF');
-  if (!hasStaff) return false;
-  return roles.every((r) => r === 'SPORT_SCHOOL_STAFF');
-});
+const isStaffOnly = computed(() => isStaffOnlyHelper(auth.roles));
 
 const sectionNav = computed(() =>
   [

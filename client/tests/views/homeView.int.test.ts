@@ -135,4 +135,32 @@ describe('Home View (integration)', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
   });
+
+  it('shows a focused layout for FHMO staff roles', async () => {
+    auth.roles = ['FHMO_MEDIA_SMM_MANAGER'];
+
+    const router = createRouterInstance();
+    router.push('/');
+    await router.isReady();
+
+    render(HomeView, {
+      global: {
+        plugins: [router],
+        directives: {
+          'edge-fade': edgeFade,
+        },
+      },
+    });
+
+    expect(
+      screen.getByText('Работаем поэтапно', { selector: '.card-title' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Список ближайших событий')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Обращения' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Семинары' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Команды и составы' })).toBeNull();
+  });
 });
