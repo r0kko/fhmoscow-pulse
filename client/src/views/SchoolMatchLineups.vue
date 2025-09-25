@@ -13,6 +13,7 @@ import PlayersTable from '../components/lineups/PlayersTable.vue';
 import PlayersListMobile from '../components/lineups/PlayersListMobile.vue';
 
 const route = useRoute();
+const isAdminView = computed(() => route.meta?.adminMatchSection === true);
 // Disable local draft persistence to avoid any UI/DB mismatch on reload
 const DRAFT_ENABLED = false;
 const error = ref('');
@@ -80,6 +81,24 @@ const headCoachCount = computed(() => {
   }
   return cnt;
 });
+
+const breadcrumbs = computed(() =>
+  isAdminView.value
+    ? [
+        { label: 'Главная', to: '/' },
+        { label: 'Администрирование', to: '/admin' },
+        { label: 'Календарь игр', to: '/admin/sports-calendar' },
+        { label: 'Матч', to: `/admin/matches/${route.params.id}` },
+        { label: 'Составы' },
+      ]
+    : [
+        { label: 'Главная', to: '/' },
+        { label: 'Управление спортивной школой', disabled: true },
+        { label: 'Матчи', to: '/school-matches' },
+        { label: 'Матч', to: `/school-matches/${route.params.id}` },
+        { label: 'Составы' },
+      ]
+);
 const hasHeadCoachSelected = computed(() => headCoachCount.value === 1);
 const selectedCoachesCount = computed(() => {
   const byId = new Map(
@@ -2054,15 +2073,7 @@ watch(activeTeam, async () => {
 <template>
   <div class="py-3 school-match-lineups-page">
     <div class="container">
-      <Breadcrumbs
-        :items="[
-          { label: 'Главная', to: '/' },
-          { label: 'Управление спортивной школой', disabled: true },
-          { label: 'Матчи', to: '/school-matches' },
-          { label: 'Матч', to: `/school-matches/${route.params.id}` },
-          { label: 'Составы' },
-        ]"
-      />
+      <Breadcrumbs :items="breadcrumbs" />
       <h1 class="mb-3">Составы на матч</h1>
 
       <div v-if="error" class="alert alert-danger" role="alert">

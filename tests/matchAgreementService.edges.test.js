@@ -10,6 +10,7 @@ const maTypeFindOneMock = jest.fn();
 const maCountMock = jest.fn();
 const maCreateMock = jest.fn();
 const maFindByPkMock = jest.fn();
+const maFindAllMock = jest.fn();
 
 const teamFindByPkMock = jest.fn();
 const teamFindAllMock = jest.fn();
@@ -39,6 +40,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     count: maCountMock,
     create: maCreateMock,
     findByPk: maFindByPkMock,
+    findAll: maFindAllMock,
   },
   Team: { findByPk: teamFindByPkMock, findAll: teamFindAllMock },
   Role: {},
@@ -68,10 +70,11 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const svc = (await import('../src/services/matchAgreementService.js')).default;
-const { listAvailableGrounds } = await import(
+const matchAgreementModule = await import(
   '../src/services/matchAgreementService.js'
 );
+const svc = matchAgreementModule.default;
+const { listAvailableGrounds, listForAdmin } = matchAgreementModule;
 
 beforeEach(() => {
   matchFindByPkMock.mockReset();
@@ -84,6 +87,7 @@ beforeEach(() => {
   maCountMock.mockReset();
   maCreateMock.mockReset();
   maFindByPkMock.mockReset();
+  maFindAllMock.mockReset();
   teamFindByPkMock.mockReset();
   teamFindAllMock.mockReset().mockResolvedValue([]);
 });
@@ -327,5 +331,25 @@ describe('listAvailableGrounds edge cases', () => {
     expect(res.groups[1].club.name).toBe('Away Club');
     expect(res.groups[1].grounds[0]).toEqual({ id: 'g2', name: 'Away Arena' });
     expect(res.grounds).toEqual(res.groups[0].grounds);
+  });
+
+  test('listForAdmin returns agreements without participant context', async () => {
+    matchFindByPkMock.mockResolvedValue({ id: 'm_admin' });
+    maFindAllMock.mockResolvedValue([{ id: 'agr_admin' }]);
+
+    const rows = await listForAdmin('m_admin');
+
+    expect(matchFindByPkMock).toHaveBeenCalledWith('m_admin');
+    expect(maFindAllMock).toHaveBeenCalled();
+    expect(rows).toEqual([{ id: 'agr_admin' }]);
+  });
+
+  test('listForAdmin throws when match missing', async () => {
+    matchFindByPkMock.mockResolvedValue(null);
+
+    await expect(listForAdmin('missing')).rejects.toMatchObject({
+      code: 'match_not_found',
+    });
+    expect(maFindAllMock).not.toHaveBeenCalled();
   });
 });

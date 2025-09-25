@@ -1,65 +1,35 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, RouterLink } from 'vue-router';
+import { useRoute } from 'vue-router';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
-import {
-  formatKickoff,
-  isMskMidnight,
-  toDateTimeLocal,
-  fromDateTimeLocal,
-} from '../utils/time';
+import { formatKickoff, isMskMidnight } from '../utils/time';
 import InfoItem from '../components/InfoItem.vue';
-import yandexLogo from '../assets/yandex-maps.svg';
-import AgreementTimeline from '../components/AgreementTimeline.vue';
-import vkLogo from '../assets/vkvideo.png';
 import MenuTile from '../components/MenuTile.vue';
 import PenaltyTimeline from '../components/PenaltyTimeline.vue';
+import yandexLogo from '../assets/yandex-maps.svg';
+import vkLogo from '../assets/vkvideo.png';
 
 const route = useRoute();
+const matchId = computed(() => String(route.params.id || ''));
+
 const match = ref(null);
 const agreements = ref([]);
+const penalties = ref([]);
+const penaltiesLoading = ref(true);
 const loading = ref(true);
 const error = ref('');
 
-// Penalties
-const penalties = ref([]);
-const penaltiesLoading = ref(true);
-const penaltiesError = ref('');
+const reschedDate = ref('');
+const reschedError = ref('');
+const reschedLoading = ref(false);
+
+const syncingBroadcast = ref(false);
+const broadcastError = ref('');
+
 const hasPenalties = computed(
   () => Array.isArray(penalties.value) && penalties.value.length > 0
 );
-
-// Staff of both teams
-const homeStaff = ref([]);
-const awayStaff = ref([]);
-const staffLoading = ref(false);
-const staffError = ref('');
-
-// Grounds for admin selection
-const grounds = ref([]);
-const scheduleForm = ref({ dtLocal: '', groundId: '' });
-const submittingSchedule = ref(false);
-const scheduleError = ref('');
-
-// Broadcast links admin reconcile
-const syncingBroadcast = ref(false);
-const broadcastError = ref('');
-async function syncBroadcasts() {
-  if (!route.params.id) return;
-  syncingBroadcast.value = true;
-  broadcastError.value = '';
-  try {
-    await apiFetch(`/matches/${route.params.id}/sync-broadcasts`, {
-      method: 'POST',
-    });
-    const mres = await apiFetch(`/matches/${route.params.id}`);
-    match.value = mres.match || null;
-  } catch (e) {
-    broadcastError.value = e.message || 'Не удалось обновить трансляции';
-  } finally {
-    syncingBroadcast.value = false;
-  }
-}
 
 const stadiumName = computed(
   () => match.value?.ground_details?.name || match.value?.ground || ''
@@ -91,7 +61,7 @@ const arenaCoords = computed(() => {
 
 const showStadiumCard = computed(() => {
   const name = stadiumName.value || '';
-  if (!name) return true; // show default card when unknown
+  if (!name) return true;
   return name !== 'Согласовывается';
 });
 
@@ -117,7 +87,7 @@ const streamLinks = computed(() => {
         },
       ];
     const res = [];
-    const labels = ['Первый состав', 'Второй состав'];
+    const labels = ['Трансляция (1-й состав)', 'Трансляция (2-й состав)'];
     for (let i = 0; i < Math.min(2, urls.length); i += 1) {
       res.push({
         url: urls[i],
@@ -138,67 +108,14 @@ const streamLinks = computed(() => {
   }
 });
 
-onMounted(async () => {
-  loading.value = true;
-  error.value = '';
-  try {
-    const mres = await apiFetch(`/matches/${route.params.id}`);
-    match.value = mres.match || null;
-    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
-    agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
-    if (!penaltiesDisabled.value) {
-      const pres = await apiFetch(
-        `/matches/${route.params.id}/penalties`
-      ).catch((e) => ({ items: [], _err: e }));
-      penalties.value = Array.isArray(pres.items) ? pres.items : [];
-      penaltiesError.value = pres._err
-        ? pres._err.message || 'Не удалось загрузить штрафы'
-        : '';
-    } else {
-      penalties.value = [];
-      penaltiesError.value = '';
-    }
-    // Prefill schedule form
-    scheduleForm.value.dtLocal = toDateTimeLocal(match.value?.date_start);
-    scheduleForm.value.groundId = match.value?.ground_details?.id || '';
-    // Load staff and grounds lazily
-    void loadAux();
-  } catch (e) {
-    error.value = e.message || 'Ошибка загрузки данных';
-  } finally {
-    loading.value = false;
-    penaltiesLoading.value = false;
-  }
-});
-
-async function loadAux() {
-  staffLoading.value = true;
-  staffError.value = '';
-  try {
-    const [home, away, gr] = await Promise.all([
-      match.value?.team1_id
-        ? apiFetch(`/teams/${match.value.team1_id}/staff`)
-        : Promise.resolve({ users: [] }),
-      match.value?.team2_id
-        ? apiFetch(`/teams/${match.value.team2_id}/staff`)
-        : Promise.resolve({ users: [] }),
-      apiFetch('/grounds?limit=1000&order_by=name&order=ASC'),
-    ]);
-    homeStaff.value = home.users || [];
-    awayStaff.value = away.users || [];
-    grounds.value = Array.isArray(gr.grounds) ? gr.grounds : [];
-  } catch (e) {
-    staffError.value = e.message || 'Ошибка загрузки связанных данных';
-  } finally {
-    staffLoading.value = false;
-  }
-}
+const pendingAgreement = computed(() =>
+  agreements.value.find((a) => a.MatchAgreementStatus?.alias === 'PENDING')
+);
+const acceptedExists = computed(() =>
+  agreements.value.some((a) => a.MatchAgreementStatus?.alias === 'ACCEPTED')
+);
 
 const kickoff = computed(() => formatKickoff(match.value?.date_start));
-const statusAlias = computed(() =>
-  (match.value?.status?.alias || '').toUpperCase()
-);
-const isCancelled = computed(() => statusAlias.value === 'CANCELLED');
 const kickoffHeader = computed(() => {
   const iso = match.value?.date_start;
   if (!iso) return '';
@@ -206,12 +123,16 @@ const kickoffHeader = computed(() => {
   return `${kickoff.value.time} • ${kickoff.value.date}`;
 });
 
-const pendingAgreement = computed(() =>
-  agreements.value.find((a) => a.MatchAgreementStatus?.alias === 'PENDING')
+const statusAlias = computed(() =>
+  (match.value?.status?.alias || '').toUpperCase()
 );
-const acceptedExists = computed(() =>
-  agreements.value.some((a) => a.MatchAgreementStatus?.alias === 'ACCEPTED')
+const isCancelled = computed(() => statusAlias.value === 'CANCELLED');
+const isPostponed = computed(() => statusAlias.value === 'POSTPONED');
+
+const penaltiesDisabled = computed(
+  () => !!match.value?.double_protocol && match.value?.season_active === false
 );
+
 const statusChip = computed(() => {
   if (acceptedExists.value)
     return {
@@ -229,105 +150,167 @@ const statusChip = computed(() => {
   };
 });
 
-async function submitSchedule() {
-  scheduleError.value = '';
-  submittingSchedule.value = true;
+const isPastMatch = computed(() => {
   try {
-    const iso = fromDateTimeLocal(scheduleForm.value.dtLocal);
-    await apiFetch(`/matches/admin/${route.params.id}/schedule`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date_start: iso,
-        ground_id: scheduleForm.value.groundId,
-      }),
-    });
-    // Reload match and agreements to reflect updated state
-    const [mres, ares] = await Promise.all([
-      apiFetch(`/matches/${route.params.id}`),
-      apiFetch(`/matches/${route.params.id}/agreements`),
-    ]);
-    match.value = mres.match || null;
+    const ts = new Date(match.value?.date_start || '').getTime();
+    return Number.isFinite(ts) && ts < Date.now();
+  } catch {
+    return false;
+  }
+});
+const technicalStatus = computed(() => {
+  if (!isPastMatch.value) return null;
+  const winner = String(match.value?.technical_winner || '').toLowerCase();
+  if (winner !== 'home' && winner !== 'away') return null;
+  const isHome = !!match.value?.is_home;
+  const isAway = !!match.value?.is_away;
+  const won = (isHome && winner === 'home') || (isAway && winner === 'away');
+  const lost = (isHome && winner === 'away') || (isAway && winner === 'home');
+  if (won) return { text: 'Тех. победа', cls: 'alert-success' };
+  if (lost) return { text: 'Тех. поражение', cls: 'alert-danger' };
+  return { text: 'Технический результат', cls: 'alert-secondary' };
+});
+
+const minDate = computed(() => {
+  try {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  } catch {
+    return '';
+  }
+});
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Администрирование', to: '/admin' },
+  { label: 'Календарь игр', to: '/admin/sports-calendar' },
+  { label: 'Матч' },
+]);
+
+const agreementsTileDisabled = computed(() => isCancelled.value);
+const agreementsTileNote = computed(() => (isCancelled.value ? 'Отмена' : ''));
+const agreementsTileLocked = computed(() => false);
+const lineupsTileDisabled = computed(() => isCancelled.value);
+const lineupsTileNote = computed(() => (isCancelled.value ? 'Отмена' : ''));
+const lineupsTileLocked = computed(() => false);
+
+async function loadAgreements() {
+  if (!matchId.value) return;
+  try {
+    const ares = await apiFetch(`/matches/admin/${matchId.value}/agreements`);
     agreements.value = Array.isArray(ares.agreements) ? ares.agreements : [];
   } catch (e) {
-    scheduleError.value = e.message || 'Не удалось сохранить расписание';
-  } finally {
-    submittingSchedule.value = false;
+    agreements.value = [];
   }
 }
 
-// No side split/filters — timeline shows both teams
+async function loadPenalties() {
+  penaltiesLoading.value = true;
+  try {
+    if (penaltiesDisabled.value) {
+      penalties.value = [];
+      return;
+    }
+    const pres = await apiFetch(`/matches/${matchId.value}/penalties`).catch(
+      () => ({ items: [] })
+    );
+    penalties.value = Array.isArray(pres.items) ? pres.items : [];
+  } finally {
+    penaltiesLoading.value = false;
+  }
+}
 
-const penaltiesDisabled = computed(
-  () => !!match.value?.double_protocol && match.value?.season_active === false
-);
+async function loadMatchPage() {
+  loading.value = true;
+  penaltiesLoading.value = true;
+  error.value = '';
+  try {
+    const mres = await apiFetch(`/matches/${matchId.value}`);
+    match.value = mres.match || null;
+    reschedDate.value = '';
+    reschedError.value = '';
+    await loadAgreements();
+    await loadPenalties();
+  } catch (e) {
+    error.value = e.message || 'Ошибка загрузки данных';
+    penaltiesLoading.value = false;
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function submitReschedule() {
+  reschedError.value = '';
+  if (!reschedDate.value) {
+    reschedError.value = 'Выберите дату';
+    return;
+  }
+  reschedLoading.value = true;
+  try {
+    await apiFetch(`/matches/${matchId.value}/reschedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: reschedDate.value }),
+    });
+    await loadMatchPage();
+  } catch (e) {
+    reschedError.value = e.message || 'Не удалось обновить дату';
+  } finally {
+    reschedLoading.value = false;
+  }
+}
+
+async function syncBroadcasts() {
+  if (!matchId.value) return;
+  syncingBroadcast.value = true;
+  broadcastError.value = '';
+  try {
+    await apiFetch(`/matches/${matchId.value}/sync-broadcasts`, {
+      method: 'POST',
+    });
+    const refreshed = await apiFetch(`/matches/${matchId.value}`);
+    match.value = refreshed.match || null;
+  } catch (e) {
+    broadcastError.value = e.message || 'Не удалось обновить трансляции';
+  } finally {
+    syncingBroadcast.value = false;
+  }
+}
+
+onMounted(loadMatchPage);
 </script>
 
 <template>
   <div class="py-3 admin-match-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item">
-            <RouterLink to="/admin">Администрирование</RouterLink>
-          </li>
-          <li class="breadcrumb-item">
-            <RouterLink to="/admin/sports-calendar">Календарь игр</RouterLink>
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">Матч</li>
-        </ol>
-      </nav>
-
+      <Breadcrumbs :items="breadcrumbs" />
       <h1 class="mb-3">{{ match?.team1 }} — {{ match?.team2 }}</h1>
 
       <div v-if="error" class="alert alert-danger" role="alert">
         {{ error }}
       </div>
 
-      <!-- Admin menu tiles (structure aligned with client) -->
-      <div class="card section-card mb-2 menu-section">
+      <div v-else class="card section-card tile fade-in shadow-sm mb-3">
         <div class="card-body">
-          <h2 class="card-title h5 mb-3">Управление матчем</h2>
-          <div v-edge-fade class="scroll-container">
-            <MenuTile
-              title="Согласование времени"
-              icon="bi-calendar-check"
-              :to="`/school-matches/${route.params.id}/agreements`"
-              :placeholder="isCancelled"
-              :note="isCancelled ? 'Отмена' : ''"
-            />
-            <MenuTile
-              title="Составы на матч"
-              icon="bi-people"
-              :to="`/school-matches/${route.params.id}/lineups`"
-              :placeholder="isCancelled"
-              :note="isCancelled ? 'Отмена' : ''"
-            />
-            <MenuTile
-              title="Судьи матча"
-              icon="bi-person-badge"
-              :to="null"
-              :placeholder="true"
-              note="Скоро"
-            />
-            <MenuTile
-              title="Обращения по матчу"
-              icon="bi-chat-dots"
-              :to="null"
-              :placeholder="true"
-              note="Скоро"
-            />
+          <div
+            v-if="technicalStatus"
+            class="alert"
+            :class="technicalStatus.cls"
+            role="alert"
+          >
+            Матч завершён: {{ technicalStatus.text }}.
           </div>
-        </div>
-      </div>
-
-      <!-- Broadcast links moved to stadium card below for unified UX -->
-
-      <div v-if="!error" class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
+          <div v-if="isCancelled" class="alert alert-warning" role="alert">
+            Матч отменён. Для уточнения сведений обращайтесь в отдел проведения
+            соревнований ФХМ.
+          </div>
+          <div v-else-if="isPostponed" class="alert alert-info" role="alert">
+            Матч перенесён. После выбора даты согласование времени будет
+            доступно в обычном порядке.
+          </div>
           <div
             class="d-flex justify-content-between align-items-start flex-wrap gap-2"
           >
@@ -366,6 +349,50 @@ const penaltiesDisabled = computed(
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div
+        v-if="isPostponed"
+        class="card section-card tile fade-in shadow-sm mb-3"
+      >
+        <div class="card-body">
+          <h2 class="h5 mb-3">Выбор новой даты</h2>
+          <div v-if="reschedError" class="alert alert-danger" role="alert">
+            {{ reschedError }}
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+              <label for="resched-date" class="form-label small text-muted"
+                >Дата (МСК)</label
+              >
+              <input
+                id="resched-date"
+                v-model="reschedDate"
+                type="date"
+                class="form-control"
+                :min="minDate"
+                :disabled="reschedLoading"
+              />
+            </div>
+            <div class="col-12 col-md-3">
+              <button
+                class="btn btn-brand"
+                :disabled="reschedLoading || !reschedDate"
+                @click="submitReschedule"
+              >
+                <span
+                  v-if="reschedLoading"
+                  class="spinner-border spinner-border-sm me-1"
+                ></span>
+                Подтвердить дату
+              </button>
+            </div>
+          </div>
+          <p class="text-muted small mt-2 mb-0">
+            Новая дата будет записана во внешнюю систему (время 00:00 МСК),
+            после чего можно приступить к согласованию точного времени.
+          </p>
         </div>
       </div>
 
@@ -409,77 +436,51 @@ const penaltiesDisabled = computed(
                 >Координаты: {{ arenaCoords }}</span
               >
             </div>
-            <!-- Broadcast links moved to a separate tile section -->
           </div>
         </div>
       </div>
 
-      <!-- Schedule management -->
-      <div id="schedule" class="card section-card tile fade-in shadow-sm mb-3">
+      <div class="card section-card mb-2 menu-section">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h2 class="h5 mb-0">Управление расписанием</h2>
+          <h2 class="card-title h5 mb-3">Управление матчем</h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              title="Согласование времени"
+              icon="bi-calendar-check"
+              :to="`/admin/matches/${matchId}/agreements`"
+              :placeholder="agreementsTileDisabled"
+              :note="agreementsTileNote"
+              :locked="agreementsTileLocked"
+            />
+            <MenuTile
+              title="Составы на матч"
+              icon="bi-people"
+              :to="`/admin/matches/${matchId}/lineups`"
+              :placeholder="lineupsTileDisabled"
+              :note="lineupsTileNote"
+              :locked="lineupsTileLocked"
+            />
+            <MenuTile
+              title="Судьи матча"
+              icon="bi-person-badge"
+              :to="`/admin/matches/${matchId}/referees`"
+              :placeholder="isCancelled"
+              :note="isCancelled ? 'Отмена' : ''"
+            />
+            <MenuTile
+              title="Обращения по матчу"
+              icon="bi-chat-dots"
+              :to="`/admin/matches/${matchId}/appeals`"
+              :placeholder="isCancelled"
+              :note="isCancelled ? 'Отмена' : ''"
+            />
           </div>
-          <div v-if="scheduleError" class="alert alert-danger">
-            {{ scheduleError }}
-          </div>
-          <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-4">
-              <label for="dt" class="form-label small text-muted"
-                >Дата и время (МСК)</label
-              >
-              <input
-                id="dt"
-                v-model="scheduleForm.dtLocal"
-                type="datetime-local"
-                class="form-control"
-                :disabled="submittingSchedule"
-              />
-            </div>
-            <div class="col-12 col-md-5">
-              <label for="ground" class="form-label small text-muted"
-                >Стадион</label
-              >
-              <select
-                id="ground"
-                v-model="scheduleForm.groundId"
-                class="form-select"
-                :disabled="submittingSchedule"
-              >
-                <option value="">Выберите стадион</option>
-                <option v-for="g in grounds" :key="g.id" :value="g.id">
-                  {{ g.name }}
-                </option>
-              </select>
-            </div>
-            <div class="col-12 col-md-3 d-flex gap-2">
-              <button
-                class="btn btn-brand flex-grow-1"
-                :disabled="
-                  !scheduleForm.dtLocal ||
-                  !scheduleForm.groundId ||
-                  submittingSchedule
-                "
-                @click="submitSchedule"
-              >
-                <span
-                  v-if="submittingSchedule"
-                  class="spinner-border spinner-border-sm me-1"
-                ></span>
-                Утвердить расписание
-              </button>
-            </div>
-          </div>
-          <p class="text-muted small mt-2 mb-0">
-            После утверждения расписание станет недоступным для изменения
-            клубами и будет записано во внешнюю систему.
-          </p>
         </div>
       </div>
 
-      <!-- Broadcast section as tiles (admin) -->
       <div
         v-if="streamLinks.length"
+        id="media"
         class="card section-card mb-2 menu-section"
       >
         <div class="card-body">
@@ -505,15 +506,7 @@ const penaltiesDisabled = computed(
             <MenuTile
               v-for="(s, idx) in streamLinks"
               :key="s.url + '-' + idx"
-              :title="
-                streamLinks.length === 1
-                  ? 'Прямой эфир'
-                  : idx === 0
-                    ? 'Трансляция (1-й состав)'
-                    : idx === 1
-                      ? 'Трансляция (2-й состав)'
-                      : `Трансляция #${idx + 1}`
-              "
+              :title="s.label"
               :to="s.url"
               :image-src="vkLogo"
               image-alt="VK Видео"
@@ -522,17 +515,9 @@ const penaltiesDisabled = computed(
         </div>
       </div>
 
-      <!-- Agreements timeline -->
-      <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <h2 class="h5 mb-3">История согласований</h2>
-          <AgreementTimeline :items="agreements" :actions-disabled="true" />
-        </div>
-      </div>
-
-      <!-- Penalties block -->
       <div
         v-if="!penaltiesDisabled && hasPenalties"
+        id="penalties"
         class="card section-card tile fade-in shadow-sm mb-3"
       >
         <div class="card-body">
@@ -543,56 +528,6 @@ const penaltiesDisabled = computed(
             :home-label="`Хозяева: ${match?.team1 || ''}`"
             :away-label="`Гости: ${match?.team2 || ''}`"
           />
-        </div>
-      </div>
-
-      <!-- Club staff -->
-      <div class="card section-card tile fade-in shadow-sm mb-3">
-        <div class="card-body">
-          <h2 class="h5 mb-3">Сотрудники клубов</h2>
-          <div v-if="staffError" class="alert alert-danger">
-            {{ staffError }}
-          </div>
-          <div v-else class="row g-3">
-            <div class="col-12 col-md-6">
-              <div class="mb-2 fw-semibold">
-                Хозяева: {{ match?.home_club || match?.team1 }}
-              </div>
-              <ul class="list-unstyled mb-0">
-                <li v-for="u in homeStaff" :key="u.id" class="mb-1">
-                  {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
-                  <span v-if="u.email" class="text-muted small ms-1"
-                    >· {{ u.email }}</span
-                  >
-                  <span v-if="u.phone" class="text-muted small ms-1"
-                    >· {{ u.phone }}</span
-                  >
-                </li>
-                <li v-if="!homeStaff.length" class="text-muted small">
-                  Нет данных.
-                </li>
-              </ul>
-            </div>
-            <div class="col-12 col-md-6">
-              <div class="mb-2 fw-semibold">
-                Гости: {{ match?.away_club || match?.team2 }}
-              </div>
-              <ul class="list-unstyled mb-0">
-                <li v-for="u in awayStaff" :key="u.id" class="mb-1">
-                  {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
-                  <span v-if="u.email" class="text-muted small ms-1"
-                    >· {{ u.email }}</span
-                  >
-                  <span v-if="u.phone" class="text-muted small ms-1"
-                    >· {{ u.phone }}</span
-                  >
-                </li>
-                <li v-if="!awayStaff.length" class="text-muted small">
-                  Нет данных.
-                </li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -623,5 +558,12 @@ const penaltiesDisabled = computed(
   line-height: 1.2;
   font-size: 1rem;
   font-weight: 400;
+}
+@media (max-width: 575.98px) {
+  .menu-section {
+    margin-left: calc(var(--bs-gutter-x) * -0.5);
+    margin-right: calc(var(--bs-gutter-x) * -0.5);
+    border-radius: 0;
+  }
 }
 </style>

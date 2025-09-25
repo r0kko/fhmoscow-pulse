@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
@@ -7,6 +7,24 @@ import { apiFetch } from '../api';
 const route = useRoute();
 const match = ref(null);
 const error = ref('');
+const isAdminView = computed(() => route.meta?.adminMatchSection === true);
+const breadcrumbs = computed(() =>
+  isAdminView.value
+    ? [
+        { label: 'Главная', to: '/' },
+        { label: 'Администрирование', to: '/admin' },
+        { label: 'Календарь игр', to: '/admin/sports-calendar' },
+        { label: 'Матч', to: `/admin/matches/${route.params.id}` },
+        { label: 'Обращения' },
+      ]
+    : [
+        { label: 'Главная', to: '/' },
+        { label: 'Управление спортивной школой', disabled: true },
+        { label: 'Матчи', to: '/school-matches' },
+        { label: 'Матч', to: `/school-matches/${route.params.id}` },
+        { label: 'Обращения' },
+      ]
+);
 
 onMounted(async () => {
   try {
@@ -21,15 +39,7 @@ onMounted(async () => {
 <template>
   <div class="py-3 school-match-appeals-page">
     <div class="container">
-      <Breadcrumbs
-        :items="[
-          { label: 'Главная', to: '/' },
-          { label: 'Управление спортивной школой', disabled: true },
-          { label: 'Матчи', to: '/school-matches' },
-          { label: 'Матч', to: `/school-matches/${route.params.id}` },
-          { label: 'Обращения' },
-        ]"
-      />
+      <Breadcrumbs :items="breadcrumbs" />
       <h1 class="mb-3">Обращения по матчу</h1>
 
       <div v-if="error" class="alert alert-danger" role="alert">

@@ -151,6 +151,10 @@ async function list(matchId, actorId) {
   });
   ensureParticipantOrThrow(context);
   assertAgreementsAllowed(context);
+  return fetchAgreements(matchId);
+}
+
+function fetchAgreements(matchId) {
   return MatchAgreement.findAll({
     where: { match_id: matchId },
     include: [
@@ -162,6 +166,12 @@ async function list(matchId, actorId) {
     ],
     order: [['created_at', 'ASC']],
   });
+}
+
+async function listForAdmin(matchId) {
+  const match = await Match.findByPk(matchId);
+  if (!match) throw new ServiceError('match_not_found', 404);
+  return fetchAgreements(matchId);
 }
 
 function ensureNotLocked(match) {
@@ -630,7 +640,7 @@ async function decline(agreementId, actorId) {
   return result;
 }
 
-export default { list, create, approve, decline, withdraw };
+export default { list, listForAdmin, create, approve, decline, withdraw };
 
 // List available grounds for proposals/counters.
 // Defaults to HOME team grounds, extending with AWAY grounds when the Moscow rule applies.
@@ -741,7 +751,7 @@ async function listAvailableGrounds(matchId, actorId) {
   };
 }
 
-export { listAvailableGrounds };
+export { listAvailableGrounds, listForAdmin };
 
 // Withdraw a pending proposal by its author side (home can withdraw HOME_PROPOSAL; away can withdraw AWAY_COUNTER)
 async function withdraw(agreementId, actorId) {

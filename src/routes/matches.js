@@ -82,6 +82,13 @@ router.get(
   agreementController.list
 );
 
+router.get(
+  '/admin/:id/agreements',
+  auth,
+  authorize('ADMIN'),
+  agreementController.listForAdmin
+);
+
 // Lineups
 router.get(
   '/:id/lineups',

@@ -16,8 +16,11 @@ import InfoItem from '../components/InfoItem.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import AgreementTimeline from '../components/AgreementTimeline.vue';
 import EmptyState from '../components/EmptyState.vue';
+import MenuTile from '../components/MenuTile.vue';
+import vkLogo from '../assets/vkvideo.png';
 
 const route = useRoute();
+const isAdminView = computed(() => route.meta?.adminMatchSection === true);
 
 const match = ref(null);
 const agreements = ref([]);
@@ -34,6 +37,13 @@ const timeStr = ref(''); // HH:MM in MSK
 const submitting = ref(false);
 const allowGuestGroundSelection = ref(false);
 
+const adminGrounds = ref([]);
+const adminScheduleForm = ref({ dtLocal: '', groundId: '' });
+const submittingAdminSchedule = ref(false);
+const adminScheduleError = ref('');
+const syncingBroadcast = ref(false);
+const broadcastError = ref('');
+
 const pending = computed(() =>
   agreements.value.find((a) => a.MatchAgreementStatus?.alias === 'PENDING')
 );
@@ -43,6 +53,9 @@ const acceptedExists = computed(() =>
 const isHome = computed(() => Boolean(match.value?.is_home));
 const isAway = computed(() => Boolean(match.value?.is_away));
 const isParticipant = computed(() => isHome.value || isAway.value);
+const showParticipantWarning = computed(
+  () => !isAdminView.value && !isParticipant.value
+);
 const isPast = computed(() => {
   const iso = match.value?.date_start;
   if (!iso) return false;
@@ -76,6 +89,23 @@ const daysLeft = computed(() => {
   const d = Math.floor(ms / (24 * 60 * 60 * 1000));
   return d >= 0 ? d : null;
 });
+const breadcrumbs = computed(() =>
+  isAdminView.value
+    ? [
+        { label: 'Главная', to: '/' },
+        { label: 'Администрирование', to: '/admin' },
+        { label: 'Календарь игр', to: '/admin/sports-calendar' },
+        { label: 'Матч', to: `/admin/matches/${route.params.id}` },
+        { label: 'Время и место' },
+      ]
+    : [
+        { label: 'Главная', to: '/' },
+        { label: 'Управление спортивной школой', disabled: true },
+        { label: 'Матчи', to: '/school-matches' },
+        { label: 'Матч', to: `/school-matches/${route.params.id}` },
+        { label: 'Время и место' },
+      ]
+);
 // Availability helpers
 const hasAvailableGrounds = computed(() =>
   (groups.value || []).some(
@@ -197,6 +227,38 @@ function buildDateStartUtc() {
   return fromDateTimeLocal(`${dateOnly}T${timeStr.value}`);
 }
 
+function normalizeUrl(url) {
+  const value = (url || '').toString().trim();
+  if (!value) return '';
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+const streamLinks = computed(() => {
+  try {
+    const urls = (match.value?.broadcast_links || [])
+      .filter(Boolean)
+      .map(normalizeUrl)
+      .filter((href) => /^https?:\/\//i.test(href));
+    if (!urls.length) return [];
+    if (urls.length === 1)
+      return [
+        {
+          url: urls[0],
+          label: 'Прямая трансляция',
+          aria: 'Открыть прямую трансляцию',
+        },
+      ];
+    const labels = ['Трансляция (1-й состав)', 'Трансляция (2-й состав)'];
+    return urls.map((url, index) => ({
+      url,
+      label: index < labels.length ? labels[index] : `Трансляция #${index + 1}`,
+      aria: `Открыть трансляцию #${index + 1}`,
+    }));
+  } catch {
+    return [];
+  }
+});
+
 function normalizeGroup(rawGroup) {
   if (!rawGroup) return null;
   const club =
@@ -237,6 +299,58 @@ function setGroundGroups(rawGroups) {
   groundId.value = stillAvailable ? previous : flat[0]?.id || '';
 }
 
+async function loadAdminGrounds() {
+  try {
+    const res = await apiFetch('/grounds?limit=1000&order_by=name&order=ASC');
+    adminGrounds.value = Array.isArray(res.grounds) ? res.grounds : [];
+  } catch (e) {
+    adminGrounds.value = [];
+    adminScheduleError.value = e.message || 'Не удалось загрузить стадионы';
+  }
+}
+
+async function submitAdminSchedule() {
+  adminScheduleError.value = '';
+  if (!adminScheduleForm.value.dtLocal || !adminScheduleForm.value.groundId) {
+    adminScheduleError.value = 'Укажите дату и стадион';
+    return;
+  }
+  submittingAdminSchedule.value = true;
+  try {
+    const iso = fromDateTimeLocal(adminScheduleForm.value.dtLocal);
+    await apiFetch(`/matches/admin/${route.params.id}/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date_start: iso,
+        ground_id: adminScheduleForm.value.groundId,
+      }),
+    });
+    await loadAll();
+  } catch (e) {
+    adminScheduleError.value = e.message || 'Не удалось сохранить расписание';
+  } finally {
+    submittingAdminSchedule.value = false;
+  }
+}
+
+async function syncBroadcasts() {
+  if (!isAdminView.value) return;
+  syncingBroadcast.value = true;
+  broadcastError.value = '';
+  try {
+    await apiFetch(`/matches/${route.params.id}/sync-broadcasts`, {
+      method: 'POST',
+    });
+    const refreshed = await apiFetch(`/matches/${route.params.id}`);
+    match.value = refreshed.match || null;
+  } catch (e) {
+    broadcastError.value = e.message || 'Не удалось обновить трансляции';
+  } finally {
+    syncingBroadcast.value = false;
+  }
+}
+
 async function loadAll() {
   loading.value = true;
   error.value = '';
@@ -249,10 +363,21 @@ async function loadAll() {
       groundId.value = '';
       return;
     }
-    const ares = await apiFetch(`/matches/${route.params.id}/agreements`);
+    const agreementsEndpoint = isAdminView.value
+      ? `/matches/admin/${route.params.id}/agreements`
+      : `/matches/${route.params.id}/agreements`;
+    const ares = await apiFetch(agreementsEndpoint);
     agreements.value = (ares.agreements || []).map((a) => a);
-    // Fetch available grounds only for participants (to avoid 403 and noisy UX)
-    if (isParticipant.value) {
+    if (isAdminView.value) {
+      adminScheduleForm.value.dtLocal =
+        toDateTimeLocal(match.value?.date_start, MOSCOW_TZ) || '';
+      adminScheduleForm.value.groundId =
+        match.value?.ground_details?.id || match.value?.ground_id || '';
+      await loadAdminGrounds();
+      groups.value = [];
+      groundId.value = '';
+      allowGuestGroundSelection.value = false;
+    } else if (isParticipant.value) {
       try {
         const gres = await apiFetch(
           `/matches/${route.params.id}/available-grounds`
@@ -275,7 +400,6 @@ async function loadAll() {
               })();
         setGroundGroups(rawGroups);
       } catch (e) {
-        // Do not surface error to user; keep grounds empty if forbidden
         groups.value = [];
         groundId.value = '';
         allowGuestGroundSelection.value = false;
@@ -289,7 +413,7 @@ async function loadAll() {
       const local = toDateTimeLocal(match.value.date_start, MOSCOW_TZ);
       timeStr.value = local?.slice(11, 16) || '';
     }
-    await loadContacts();
+    if (!isAdminView.value) await loadContacts();
   } catch (e) {
     // Show friendly error; mask low-level forbidden
     const msg = String(e?.message || 'Ошибка загрузки данных');
@@ -434,18 +558,10 @@ async function loadContacts() {
 <template>
   <div class="py-3 school-match-agreements-page">
     <div class="container">
-      <Breadcrumbs
-        :items="[
-          { label: 'Главная', to: '/' },
-          { label: 'Управление спортивной школой', disabled: true },
-          { label: 'Матчи', to: '/school-matches' },
-          { label: 'Матч', to: `/school-matches/${route.params.id}` },
-          { label: 'Время и место' },
-        ]"
-      />
+      <Breadcrumbs :items="breadcrumbs" />
       <h1 class="mb-3">{{ pageTitle || 'Матч' }}</h1>
       <div
-        v-if="!loading && match && !isParticipant"
+        v-if="!loading && match && showParticipantWarning"
         class="alert alert-warning d-flex align-items-center"
         role="alert"
       >
@@ -477,6 +593,108 @@ async function loadContacts() {
       <BrandSpinner v-else-if="loading" label="Загрузка" />
 
       <template v-else-if="isAgreementsAllowed">
+        <div
+          v-if="isAdminView"
+          class="card section-card tile fade-in shadow-sm mb-3"
+        >
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h5 mb-0">Управление расписанием</h2>
+            </div>
+            <div v-if="adminScheduleError" class="alert alert-danger">
+              {{ adminScheduleError }}
+            </div>
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-md-4">
+                <label for="admin-datetime" class="form-label small text-muted"
+                  >Дата и время (МСК)</label
+                >
+                <input
+                  id="admin-datetime"
+                  v-model="adminScheduleForm.dtLocal"
+                  type="datetime-local"
+                  class="form-control"
+                  :disabled="submittingAdminSchedule"
+                />
+              </div>
+              <div class="col-12 col-md-5">
+                <label for="admin-ground" class="form-label small text-muted"
+                  >Стадион</label
+                >
+                <select
+                  id="admin-ground"
+                  v-model="adminScheduleForm.groundId"
+                  class="form-select"
+                  :disabled="submittingAdminSchedule"
+                >
+                  <option value="">Выберите стадион</option>
+                  <option v-for="g in adminGrounds" :key="g.id" :value="g.id">
+                    {{ g.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-12 col-md-3 d-flex gap-2">
+                <button
+                  class="btn btn-brand flex-grow-1"
+                  :disabled="
+                    submittingAdminSchedule ||
+                    !adminScheduleForm.dtLocal ||
+                    !adminScheduleForm.groundId
+                  "
+                  @click="submitAdminSchedule"
+                >
+                  <span
+                    v-if="submittingAdminSchedule"
+                    class="spinner-border spinner-border-sm me-1"
+                  ></span>
+                  Утвердить расписание
+                </button>
+              </div>
+            </div>
+            <p class="text-muted small mt-2 mb-0">
+              Расписание фиксирует стадион и время в внешней системе и блокирует
+              изменения для школ.
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-if="isAdminView && streamLinks.length"
+          id="media"
+          class="card section-card mb-2 menu-section"
+        >
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="card-title h5 mb-0">Медиа по матчу</h2>
+              <button
+                class="btn btn-outline-secondary btn-sm"
+                :disabled="syncingBroadcast"
+                aria-label="Обновить ссылки на трансляции"
+                @click="syncBroadcasts"
+              >
+                <span
+                  v-if="syncingBroadcast"
+                  class="spinner-border spinner-border-sm me-1"
+                ></span>
+                Обновить ссылки
+              </button>
+            </div>
+            <div v-if="broadcastError" class="alert alert-danger" role="alert">
+              {{ broadcastError }}
+            </div>
+            <div v-edge-fade class="scroll-container">
+              <MenuTile
+                v-for="(link, index) in streamLinks"
+                :key="link.url + '-' + index"
+                :title="link.label"
+                :to="link.url"
+                :image-src="vkLogo"
+                image-alt="VK Видео"
+              />
+            </div>
+          </div>
+        </div>
+
         <!-- Header: Teams, datetime, meta, side marker -->
         <div class="card section-card tile fade-in shadow-sm mb-3">
           <div class="card-body">

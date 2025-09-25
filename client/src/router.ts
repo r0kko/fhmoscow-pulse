@@ -102,7 +102,47 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/admin/matches/:id',
     component: AdminMatch,
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Матч' },
+    meta: { requiresAuth: true, requiresAdministrator: true, title: 'Матч' },
+  },
+  {
+    path: '/admin/matches/:id/agreements',
+    component: SchoolMatchAgreements,
+    meta: {
+      requiresAuth: true,
+      requiresAdministrator: true,
+      adminMatchSection: true,
+      title: 'Время и место',
+    },
+  },
+  {
+    path: '/admin/matches/:id/lineups',
+    component: SchoolMatchLineups,
+    meta: {
+      requiresAuth: true,
+      requiresAdministrator: true,
+      adminMatchSection: true,
+      title: 'Составы на матч',
+    },
+  },
+  {
+    path: '/admin/matches/:id/referees',
+    component: SchoolMatchReferees,
+    meta: {
+      requiresAuth: true,
+      requiresAdministrator: true,
+      adminMatchSection: true,
+      title: 'Судьи матча',
+    },
+  },
+  {
+    path: '/admin/matches/:id/appeals',
+    component: SchoolMatchAppeals,
+    meta: {
+      requiresAuth: true,
+      requiresAdministrator: true,
+      adminMatchSection: true,
+      title: 'Обращения по матчу',
+    },
   },
   {
     path: '/profile',

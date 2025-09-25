@@ -18,6 +18,15 @@ async function list(req, res, next) {
   }
 }
 
+async function listForAdmin(req, res, next) {
+  try {
+    const rows = await service.listForAdmin(req.params.id);
+    res.json({ agreements: rows });
+  } catch (e) {
+    next(e);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const created = await service.create(req.params.id, req.body, req.user.id);
@@ -45,7 +54,7 @@ async function decline(req, res, next) {
   }
 }
 
-export default { list, create, approve, decline, withdraw };
+export default { list, listForAdmin, create, approve, decline, withdraw };
 
 export async function availableGrounds(req, res, next) {
   try {
