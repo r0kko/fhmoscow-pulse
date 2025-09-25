@@ -153,8 +153,9 @@ describe('Home View (integration)', () => {
     });
 
     expect(
-      screen.getByText('Работаем поэтапно', { selector: '.card-title' })
+      screen.getByRole('heading', { level: 2, name: 'Работаем поэтапно' })
     ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Сейчас для вас');
     expect(
       screen.queryByLabelText('Список ближайших событий')
     ).not.toBeInTheDocument();
@@ -162,5 +163,29 @@ describe('Home View (integration)', () => {
     expect(screen.getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Семинары' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Команды и составы' })).toBeNull();
+  });
+
+  it('offers direct admin access for FHMO content moderators', async () => {
+    auth.roles = ['FHMO_MEDIA_CONTENT_MODERATOR'];
+
+    const router = createRouterInstance();
+    router.push('/');
+    await router.isReady();
+
+    render(HomeView, {
+      global: {
+        plugins: [router],
+        directives: {
+          'edge-fade': edgeFade,
+        },
+      },
+    });
+
+    expect(
+      screen.getByRole('link', { name: 'Администрирование' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Команды и составы' })
+    ).not.toBeInTheDocument();
   });
 });

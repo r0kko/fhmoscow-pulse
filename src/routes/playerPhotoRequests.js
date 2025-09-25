@@ -14,20 +14,30 @@ const router = express.Router();
 router.get(
   '/',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'FHMO_MEDIA_CONTENT'),
   listPlayerPhotoRequestsRules,
   validate,
   controller.list
 );
 
-router.get('/:id', auth, authorize('ADMIN'), controller.show);
+router.get(
+  '/:id',
+  auth,
+  authorize('ADMIN', 'FHMO_MEDIA_CONTENT'),
+  controller.show
+);
 
-router.post('/:id/approve', auth, authorize('ADMIN'), controller.approve);
+router.post(
+  '/:id/approve',
+  auth,
+  authorize('ADMIN', 'FHMO_MEDIA_CONTENT'),
+  controller.approve
+);
 
 router.post(
   '/:id/reject',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'FHMO_MEDIA_CONTENT'),
   rejectPlayerPhotoRequestRules,
   validate,
   controller.reject

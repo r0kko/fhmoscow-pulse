@@ -39,6 +39,9 @@ export const FHMO_STAFF_ROLES: Role[] = [
   'FHMO_ADMINISTRATION_EXECUTIVE_DIRECTOR',
 ];
 
+// Focused subset for media and content operations within FHMO
+export const FHMO_MEDIA_CONTENT_ROLES: Role[] = ['FHMO_MEDIA_CONTENT_MODERATOR'];
+
 type RoleInput = readonly Role[] | undefined | null;
 
 export function hasRole(roles: RoleInput, allowed: readonly Role[]): boolean {

@@ -12,6 +12,7 @@ import {
   REFEREE_ROLES,
   STAFF_ROLES,
   FHMO_STAFF_ROLES,
+  FHMO_MEDIA_CONTENT_ROLES,
   isBrigadeRefereeOnly,
   isStaffOnly as isStaffOnlyHelper,
   isFhmoStaffOnly as isFhmoStaffOnlyHelper,
@@ -209,7 +210,11 @@ const docsSections = computed<TileSection[]>(() => {
     : list;
 });
 
-const isAdmin = computed(() => hasRole(auth.roles, ADMIN_ROLES));
+const canAccessAdmin = computed(
+  () =>
+    hasRole(auth.roles, ADMIN_ROLES) ||
+    hasRole(auth.roles, FHMO_MEDIA_CONTENT_ROLES)
+);
 const isReferee = computed(() => hasRole(auth.roles, REFEREE_ROLES));
 const isStaff = computed(() => hasRole(auth.roles, STAFF_ROLES));
 const isStaffOnly = computed(() => isStaffOnlyHelper(auth.roles));
@@ -368,13 +373,19 @@ function normaliseUpcoming(
       </h3>
       <div
         v-if="isFhmoStaffOnly"
-        class="card section-card tile fade-in shadow-sm mb-2 info-section"
+        class="alert alert-info d-flex align-items-start gap-3 mb-3 friendly-onboarding"
+        role="status"
       >
-        <div class="card-body">
-          <h2 class="card-title h5 mb-2">Работаем поэтапно</h2>
-          <p class="mb-0 text-muted">
-            Сейчас доступны разделы «Обращения» и «Профиль». Мы постепенно
-            откроем дополнительные сервисы для сотрудников ФХМ.
+        <i
+          class="bi bi-stars friendly-onboarding__icon text-brand"
+          aria-hidden="true"
+        ></i>
+        <div>
+          <h2 class="h6 mb-1 fw-semibold text-brand">Работаем поэтапно</h2>
+          <p class="mb-0">
+            Сейчас для вас доступны разделы «Обращения» и «Профиль». Мы добавляем
+            новые сервисы шаг за шагом и обязательно сообщим, когда появятся
+            обновления.
           </p>
         </div>
       </div>
@@ -498,7 +509,7 @@ function normaliseUpcoming(
         </div>
       </div>
 
-      <div v-if="isAdmin" class="mt-2">
+      <div v-if="canAccessAdmin" class="mt-2">
         <MenuTile
           title="Администрирование"
           icon="bi bi-shield-lock"
@@ -519,6 +530,20 @@ function normaliseUpcoming(
 
 .upcoming-scroll {
   gap: 0.75rem;
+}
+
+.friendly-onboarding {
+  background-color: #eef6ff;
+  border-color: rgba(17, 56, 103, 0.18);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-tile);
+  color: #123962;
+}
+
+.friendly-onboarding__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-top: 0.2rem;
 }
 
 /* Greeting size on mobile: slightly larger for quick scanability */

@@ -34,6 +34,9 @@ export const FHMO_STAFF_ROLES = [
   'FHMO_ADMINISTRATION_EXECUTIVE_DIRECTOR',
 ];
 
+// Dedicated subset for media content operations within FHMO staff
+export const FHMO_MEDIA_CONTENT_ROLES = ['FHMO_MEDIA_CONTENT_MODERATOR'];
+
 export function hasRole(roles, allowed) {
   return roles.some((r) => allowed.includes(r.alias ?? r));
 }

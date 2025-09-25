@@ -2,6 +2,7 @@ import {
   createRouter,
   createWebHistory,
   type NavigationGuardNext,
+  type RouteLocationNormalized,
   type RouteRecordRaw,
 } from 'vue-router';
 import Login from './views/Login.vue';
@@ -68,6 +69,7 @@ import {
   REFEREE_ROLES as refereeRoles,
   STAFF_ROLES as staffRoles,
   FHMO_STAFF_ROLES as fhmoStaffRoles,
+  FHMO_MEDIA_CONTENT_ROLES as fhmoMediaContentRoles,
   isFhmoStaffOnly,
 } from './utils/roles';
 
@@ -243,6 +245,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
+      allowFhmoMediaContent: true,
       title: 'Администрирование',
     },
   },
@@ -257,6 +260,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
+      allowFhmoMediaContent: true,
       title: 'Фото игроков',
     },
   },
@@ -559,7 +563,11 @@ const router = createRouter({
   },
 });
 
-router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
+export async function navigationGuard(
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  next: NavigationGuardNext
+): Promise<void> {
   const isAuthenticated = Boolean(auth.token);
   let roles = auth.roles || [];
 
@@ -578,11 +586,17 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
   const hasReferee = roles.some((r) => refereeRoles.includes(r));
   const hasStaff = roles.some((r) => staffRoles.includes(r));
   const hasFhmo = roles.some((r) => fhmoStaffRoles.includes(r));
+  const hasFhmoMediaContent = roles.some((r) =>
+    fhmoMediaContentRoles.includes(r)
+  );
   const isBrigadeOnly =
     roles.includes('BRIGADE_REFEREE') && !roles.includes('REFEREE');
   const fhmoOnly = isFhmoStaffOnly(roles);
   const allowFhmoStaff = Boolean(
     (meta as Record<string, unknown>)['allowFhmoStaff']
+  );
+  const allowFhmoMediaContent = Boolean(
+    (meta as Record<string, unknown>)['allowFhmoMediaContent']
   );
 
   if (meta.requiresAuth && !isAuthenticated) {
@@ -594,7 +608,9 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
   }
 
   if (meta.requiresAdmin && !hasAdmin) {
-    return next('/forbidden');
+    if (!(allowFhmoMediaContent && hasFhmoMediaContent)) {
+      return next('/forbidden');
+    }
   }
 
   if (meta.requiresAdministrator && !roles.includes('ADMIN')) {
@@ -615,7 +631,12 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
     return next('/forbidden');
   }
 
-  if (fhmoOnly && !allowFhmoStaff && !isRouteAllowedForFhmo(to.path)) {
+  if (
+    fhmoOnly &&
+    !allowFhmoStaff &&
+    !(allowFhmoMediaContent && hasFhmoMediaContent) &&
+    !isRouteAllowedForFhmo(to.path)
+  ) {
     return next('/forbidden');
   }
 
@@ -637,7 +658,9 @@ router.beforeEach(async (to, _from, next: NavigationGuardNext) => {
   }
 
   return next();
-});
+}
+
+router.beforeEach(navigationGuard);
 
 router.afterEach((to) => {
   if (typeof document !== 'undefined') {

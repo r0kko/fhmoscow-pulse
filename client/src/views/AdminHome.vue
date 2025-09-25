@@ -2,6 +2,11 @@
 import { computed } from 'vue';
 import { auth } from '../auth';
 import MenuTile from '../components/MenuTile.vue';
+import {
+  ADMIN_ROLES,
+  FHMO_MEDIA_CONTENT_ROLES,
+  hasRole,
+} from '../utils/roles';
 
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
@@ -30,37 +35,48 @@ const sportsSections = [
   },
 ];
 
-const systemSections = computed(() => {
-  const items = [];
-  if (auth.roles.includes('ADMIN')) {
-    items.push({ title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' });
-    items.push({
-      title: 'Команды и клубы',
-      icon: 'bi-shield',
-      to: '/admin/clubs-teams',
-    });
-    items.push({
-      title: 'Турниры',
-      icon: 'bi-trophy',
-      to: '/admin/tournaments',
-    });
-    items.push({
-      title: 'Управление спортивными школами',
-      icon: 'bi-building',
-      to: '/admin/sport-schools',
-    });
-    items.push({
+const hasAdminAccess = computed(() => hasRole(auth.roles, ADMIN_ROLES));
+const isSuperAdmin = computed(() => auth.roles.includes('ADMIN'));
+const canModeratePhotos = computed(
+  () => isSuperAdmin.value || hasRole(auth.roles, FHMO_MEDIA_CONTENT_ROLES)
+);
+
+const mediaSections = computed(() => {
+  if (!canModeratePhotos.value) return [];
+  return [
+    {
       title: 'Фото игроков',
       icon: 'bi-person-bounding-box',
       to: '/admin/player-photo-requests',
-    });
-    items.push({
+    },
+  ];
+});
+
+const systemSections = computed(() => {
+  if (!isSuperAdmin.value) return [];
+  return [
+    { title: 'Площадки', icon: 'bi-geo-alt', to: '/admin/grounds' },
+    {
+      title: 'Команды и клубы',
+      icon: 'bi-shield',
+      to: '/admin/clubs-teams',
+    },
+    {
+      title: 'Турниры',
+      icon: 'bi-trophy',
+      to: '/admin/tournaments',
+    },
+    {
+      title: 'Управление спортивными школами',
+      icon: 'bi-building',
+      to: '/admin/sport-schools',
+    },
+    {
       title: 'Синхронизация',
       icon: 'bi-arrow-repeat',
       to: '/admin/system-ops',
-    });
-  }
-  return items;
+    },
+  ];
 });
 </script>
 
@@ -70,7 +86,10 @@ const systemSections = computed(() => {
       <!-- Keep semantic h1 for accessibility; style to match Home greeting size -->
       <h1 class="h3 mb-3 text-start">Администрирование</h1>
 
-      <div class="card section-card mb-2 menu-section">
+      <div
+        v-if="hasAdminAccess"
+        class="card section-card mb-2 menu-section"
+      >
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-people text-brand me-2" aria-hidden="true"></i>
@@ -88,7 +107,10 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div class="card section-card mb-2 menu-section">
+      <div
+        v-if="hasAdminAccess"
+        class="card section-card mb-2 menu-section"
+      >
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-trophy text-brand me-2" aria-hidden="true"></i>
@@ -106,7 +128,10 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div class="card section-card mb-2 menu-section">
+      <div
+        v-if="hasAdminAccess"
+        class="card section-card mb-2 menu-section"
+      >
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-flag text-brand me-2" aria-hidden="true"></i>
@@ -124,7 +149,31 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div class="card section-card mb-2 menu-section">
+      <div
+        v-if="mediaSections.length > 0"
+        class="card section-card mb-2 menu-section"
+      >
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-camera text-brand me-2" aria-hidden="true"></i>
+            Управление медиа и контентом
+          </h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="item in mediaSections"
+              :key="item.to"
+              :to="item.to"
+              :title="item.title"
+              :icon="item.icon"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="systemSections.length > 0"
+        class="card section-card mb-2 menu-section"
+      >
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-gear text-brand me-2" aria-hidden="true"></i>
