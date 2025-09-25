@@ -33,7 +33,9 @@ const extraClasses = computed(() => [
 ]);
 
 const accessibleLabel = computed(() => (props.to ? props.title : null));
-const tileBindings = computed(() => ({ ariaLabel: accessibleLabel.value ?? null }));
+const tileBindings = computed(() => ({
+  ariaLabel: accessibleLabel.value ?? null,
+}));
 </script>
 
 <template>
