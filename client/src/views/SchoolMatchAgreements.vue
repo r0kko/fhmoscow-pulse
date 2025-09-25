@@ -32,6 +32,7 @@ const groups = ref([]); // grounds grouped by club (always home team grounds)
 const groundId = ref('');
 const timeStr = ref(''); // HH:MM in MSK
 const submitting = ref(false);
+const allowGuestGroundSelection = ref(false);
 
 const pending = computed(() =>
   agreements.value.find((a) => a.MatchAgreementStatus?.alias === 'PENDING')
@@ -80,6 +81,12 @@ const hasAvailableGrounds = computed(() =>
   (groups.value || []).some(
     (grp) => Array.isArray(grp.grounds) && grp.grounds.length > 0
   )
+);
+const multiClubGrounds = computed(
+  () =>
+    (groups.value || []).filter(
+      (grp) => Array.isArray(grp.grounds) && grp.grounds.length > 0
+    ).length > 1
 );
 const statusChip = computed(() => {
   if (acceptedExists.value)
@@ -160,10 +167,17 @@ const showArenaCard = computed(() => {
 const clubOptions = computed(() => {
   const map = new Map();
   for (const grp of groups.value || []) {
-    const club = grp.club?.name || '';
-    if (!map.has(club)) map.set(club, []);
+    const clubName = grp.club?.name || '';
+    const suffix =
+      typeof grp.club?.is_moscow === 'boolean'
+        ? grp.club.is_moscow
+          ? ' (Москва)'
+          : ' (Регион)'
+        : '';
+    const label = `${clubName}${suffix}`.trim();
+    if (!map.has(label)) map.set(label, []);
     for (const g of grp.grounds || [])
-      map.get(club).push({ id: g.id, name: g.name });
+      map.get(label).push({ id: g.id, name: g.name });
   }
   const res = [];
   for (const [club, list] of map.entries()) {
@@ -181,6 +195,46 @@ function buildDateStartUtc() {
   const dateOnly = local ? local.slice(0, 10) : '';
   if (!dateOnly) return null;
   return fromDateTimeLocal(`${dateOnly}T${timeStr.value}`);
+}
+
+function normalizeGroup(rawGroup) {
+  if (!rawGroup) return null;
+  const club =
+    rawGroup.club && typeof rawGroup.club === 'object'
+      ? {
+          id: rawGroup.club.id || null,
+          name: rawGroup.club.name || '',
+          is_moscow:
+            typeof rawGroup.club.is_moscow === 'boolean'
+              ? rawGroup.club.is_moscow
+              : null,
+        }
+      : null;
+  const grounds = Array.isArray(rawGroup.grounds)
+    ? rawGroup.grounds
+        .map((g) => ({ id: g.id, name: g.name }))
+        .filter((g) => g.id && g.name)
+    : [];
+  if (!grounds.length) return null;
+  return { club, grounds };
+}
+
+function setGroundGroups(rawGroups) {
+  const previous = groundId.value;
+  const normalized = (Array.isArray(rawGroups) ? rawGroups : [])
+    .map(normalizeGroup)
+    .filter(Boolean);
+
+  if (!normalized.length) {
+    groups.value = [];
+    groundId.value = '';
+    return;
+  }
+
+  groups.value = normalized;
+  const flat = normalized.flatMap((grp) => grp.grounds);
+  const stillAvailable = flat.some((g) => g.id === previous);
+  groundId.value = stillAvailable ? previous : flat[0]?.id || '';
 }
 
 async function loadAll() {
@@ -203,20 +257,33 @@ async function loadAll() {
         const gres = await apiFetch(
           `/matches/${route.params.id}/available-grounds`
         );
-        const gg = Array.isArray(gres.grounds) ? gres.grounds : [];
-        const clubName = gres.club?.name || '';
-        groups.value = gg.length
-          ? [{ club: { name: clubName }, grounds: gg }]
-          : [];
-        groundId.value = gg[0]?.id || '';
+        allowGuestGroundSelection.value = Boolean(
+          gres.allow_guest_ground_selection
+        );
+        const rawGroups =
+          Array.isArray(gres.groups) && gres.groups.length
+            ? gres.groups
+            : (() => {
+                const gg = Array.isArray(gres.grounds) ? gres.grounds : [];
+                if (!gg.length) return [];
+                return [
+                  {
+                    club: gres.club || null,
+                    grounds: gg,
+                  },
+                ];
+              })();
+        setGroundGroups(rawGroups);
       } catch (e) {
         // Do not surface error to user; keep grounds empty if forbidden
         groups.value = [];
         groundId.value = '';
+        allowGuestGroundSelection.value = false;
       }
     } else {
       groups.value = [];
       groundId.value = '';
+      allowGuestGroundSelection.value = false;
     }
     if (match.value?.date_start) {
       const local = toDateTimeLocal(match.value.date_start, MOSCOW_TZ);
@@ -553,6 +620,15 @@ async function loadContacts() {
                           </option>
                         </optgroup>
                       </select>
+                    </div>
+                    <div
+                      v-if="allowGuestGroundSelection && multiClubGrounds"
+                      class="col-12"
+                    >
+                      <p class="text-muted small mb-0">
+                        Доступны площадки обеих команд: можно выбрать стадион
+                        хозяев или гостей.
+                      </p>
                     </div>
                     <div class="col-12">
                       <label class="form-label">Время</label>

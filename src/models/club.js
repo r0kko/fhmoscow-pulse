@@ -13,6 +13,11 @@ Club.init(
     },
     external_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
     name: { type: DataTypes.STRING(255), allowNull: false },
+    is_moscow: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

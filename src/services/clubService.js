@@ -12,13 +12,51 @@ import {
 } from '../utils/sync.js';
 import logger from '../../logger.js';
 
+function coerceIsMoscow(value) {
+  if (value == null) return false;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return false;
+  return ['1', 'true', 't', 'yes', 'y'].includes(normalized);
+}
+
 async function syncExternal(options = {}) {
-  const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
+  const normalized = normalizeSyncOptions(options);
+  let { mode, since, fullResync } = normalized;
+  const { actorId } = normalized;
 
   const { ACTIVE, ARCHIVE } = statusFilters('object_status');
+
+  if (!fullResync) {
+    const localMoscowCount = await Club.count({ where: { is_moscow: true } });
+    if (!localMoscowCount) {
+      try {
+        const extMoscowCount = await ExtClub.count({
+          where: {
+            [Op.and]: [ACTIVE, { is_moscow: { [Op.in]: [true, 1] } }],
+          },
+        });
+        if (extMoscowCount > 0) {
+          fullResync = true;
+          mode = 'full';
+          since = null;
+        }
+      } catch (err) {
+        logger.warn('Club sync fallback check failed: %s', err?.message || err);
+      }
+    }
+  }
+
   const sinceClause = buildSinceClause(since);
 
-  const attributes = ['id', 'short_name', 'date_update', 'date_create'];
+  const attributes = [
+    'id',
+    'short_name',
+    'date_update',
+    'date_create',
+    'is_moscow',
+  ];
   const activeWhere = fullResync ? ACTIVE : { [Op.and]: [ACTIVE, sinceClause] };
   const archiveWhere = fullResync
     ? ARCHIVE
@@ -54,10 +92,12 @@ async function syncExternal(options = {}) {
       for (const c of extActive) {
         const local = localByExt.get(c.id);
         if (!local) {
+          const isMoscow = coerceIsMoscow(c.is_moscow);
           await Club.create(
             {
               external_id: c.id,
               name: c.short_name,
+              is_moscow: isMoscow,
               created_by: actorId,
               updated_by: actorId,
             },
@@ -73,6 +113,8 @@ async function syncExternal(options = {}) {
         }
         const updates = {};
         if (local.name !== c.short_name) updates.name = c.short_name;
+        const isMoscow = coerceIsMoscow(c.is_moscow);
+        if (local.is_moscow !== isMoscow) updates.is_moscow = isMoscow;
         if (Object.keys(updates).length) {
           updates.updated_by = actorId;
           await local.update(updates, { transaction: tx });
@@ -85,7 +127,10 @@ async function syncExternal(options = {}) {
         await ensureArchivedImported(
           Club,
           extArchived,
-          (c) => ({ name: c.short_name }),
+          (c) => ({
+            name: c.short_name,
+            is_moscow: coerceIsMoscow(c.is_moscow),
+          }),
           actorId,
           tx
         );

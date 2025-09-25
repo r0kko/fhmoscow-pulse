@@ -3,6 +3,7 @@ import { beforeEach, expect, jest, test, describe } from '@jest/globals';
 const matchFindByPkMock = jest.fn();
 const userFindByPkMock = jest.fn();
 const groundFindByPkMock = jest.fn();
+const groundFindAllMock = jest.fn();
 const groundTeamFindOneMock = jest.fn();
 const maStatusFindOneMock = jest.fn();
 const maTypeFindOneMock = jest.fn();
@@ -30,7 +31,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: matchFindByPkMock },
   User: { findByPk: userFindByPkMock },
-  Ground: { findByPk: groundFindByPkMock },
+  Ground: { findByPk: groundFindByPkMock, findAll: groundFindAllMock },
   GroundTeam: { findOne: groundTeamFindOneMock },
   MatchAgreementStatus: { findOne: maStatusFindOneMock },
   MatchAgreementType: { findOne: maTypeFindOneMock },
@@ -45,6 +46,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   SportSchoolPosition: {},
   Club: {},
   Tournament: {},
+  TournamentType: {},
   TournamentGroup: {},
   Tour: {},
   GameStatus: {},
@@ -75,6 +77,7 @@ beforeEach(() => {
   matchFindByPkMock.mockReset();
   userFindByPkMock.mockReset();
   groundFindByPkMock.mockReset();
+  groundFindAllMock.mockReset().mockResolvedValue([]);
   groundTeamFindOneMock.mockReset();
   maStatusFindOneMock.mockReset();
   maTypeFindOneMock.mockReset();
@@ -293,5 +296,36 @@ describe('listAvailableGrounds edge cases', () => {
     userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] }));
     const res2 = await listAvailableGrounds('m5', 'actor');
     expect(res2.grounds.length).toBe(0);
+  });
+
+  test('includes away grounds when Moscow rule applies', async () => {
+    const future = new Date(Date.now() + 86400000).toISOString();
+    matchFindByPkMock.mockResolvedValue({
+      id: 'm6',
+      date_start: future,
+      team1_id: 't1',
+      team2_id: 't2',
+      GameStatus: { alias: 'SCHEDULED' },
+      HomeTeam: { Club: { id: 'c1', name: 'Home Club', is_moscow: false } },
+      AwayTeam: { Club: { id: 'c2', name: 'Away Club', is_moscow: true } },
+      Tournament: { TournamentType: { double_protocol: true } },
+    });
+    userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] }));
+    groundFindAllMock.mockImplementation(({ include }) => {
+      const teamId = include?.[0]?.where?.id;
+      if (teamId === 't1') return [{ id: 'g1', name: 'Home Arena' }];
+      if (teamId === 't2') return [{ id: 'g2', name: 'Away Arena' }];
+      return [];
+    });
+
+    const res = await listAvailableGrounds('m6', 'actor');
+
+    expect(res.allow_guest_ground_selection).toBe(true);
+    expect(res.groups).toHaveLength(2);
+    expect(res.groups[0].club.name).toBe('Home Club');
+    expect(res.groups[0].grounds[0]).toEqual({ id: 'g1', name: 'Home Arena' });
+    expect(res.groups[1].club.name).toBe('Away Club');
+    expect(res.groups[1].grounds[0]).toEqual({ id: 'g2', name: 'Away Arena' });
+    expect(res.grounds).toEqual(res.groups[0].grounds);
   });
 });

@@ -2,22 +2,26 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { Op } from 'sequelize';
 
 const extFindAllMock = jest.fn();
+const extCountMock = jest.fn();
 const clubCreateMock = jest.fn();
 const clubUpdateMock = jest.fn();
 const clubFindAllMock = jest.fn();
+const clubCountMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
+  extCountMock.mockReset().mockResolvedValue(0);
   clubCreateMock.mockReset();
   clubUpdateMock.mockReset();
   clubFindAllMock.mockReset();
+  clubCountMock.mockReset().mockResolvedValue(0);
   clubUpdateMock.mockResolvedValue([0]);
   clubFindAllMock.mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
   __esModule: true,
-  Club: { findAll: extFindAllMock },
+  Club: { findAll: extFindAllMock, count: extCountMock },
 }));
 
 // Mock sequelize transaction to avoid real DB calls
@@ -34,6 +38,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: clubCreateMock,
     update: clubUpdateMock,
     findAll: clubFindAllMock,
+    count: clubCountMock,
   },
 }));
 
@@ -48,6 +53,7 @@ test('syncExternal upserts active clubs and soft deletes missing ones', async ()
     {
       external_id: 11,
       name: 'HC Spartak',
+      is_moscow: false,
       created_by: 'admin',
       updated_by: 'admin',
     },
@@ -61,4 +67,26 @@ test('syncExternal upserts active clubs and soft deletes missing ones', async ()
   expect(whereArg.external_id[Op.notIn]).toEqual([11]);
   expect(whereArg.external_id[Op.ne]).toBeNull();
   expect(missingCall[0]).toMatchObject({ updated_by: 'admin' });
+});
+
+test('syncExternal forces full sync when Moscow flag backfill is needed', async () => {
+  const since = new Date('2024-01-01T00:00:00Z');
+  extCountMock.mockResolvedValue(2);
+  extFindAllMock
+    .mockResolvedValueOnce([{ id: 44, short_name: 'HC Dynamo', is_moscow: 1 }])
+    .mockResolvedValueOnce([]);
+  clubFindAllMock.mockResolvedValue([]);
+
+  await service.syncExternal({ actorId: 'admin', mode: 'incremental', since });
+
+  expect(clubCountMock).toHaveBeenCalledWith({ where: { is_moscow: true } });
+  expect(extCountMock).toHaveBeenCalled();
+  expect(extFindAllMock).toHaveBeenCalledTimes(2);
+  expect(clubCreateMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      external_id: 44,
+      is_moscow: true,
+    }),
+    expect.objectContaining({ transaction: expect.any(Object) })
+  );
 });

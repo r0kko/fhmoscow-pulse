@@ -140,14 +140,14 @@ export async function get(req, res, next) {
         {
           model: Team,
           as: 'HomeTeam',
-          attributes: ['name'],
-          include: [{ model: Club, attributes: ['name'] }],
+          attributes: ['name', 'club_id'],
+          include: [{ model: Club, attributes: ['id', 'name', 'is_moscow'] }],
         },
         {
           model: Team,
           as: 'AwayTeam',
-          attributes: ['name'],
-          include: [{ model: Club, attributes: ['name'] }],
+          attributes: ['name', 'club_id'],
+          include: [{ model: Club, attributes: ['id', 'name', 'is_moscow'] }],
         },
         {
           model: Ground,
@@ -221,7 +221,17 @@ export async function get(req, res, next) {
         team1: m.HomeTeam?.name || null,
         team2: m.AwayTeam?.name || null,
         home_club: m.HomeTeam?.Club?.name || null,
+        home_club_id: m.HomeTeam?.Club?.id || null,
+        home_club_is_moscow:
+          typeof m.HomeTeam?.Club?.is_moscow === 'boolean'
+            ? m.HomeTeam.Club.is_moscow
+            : null,
         away_club: m.AwayTeam?.Club?.name || null,
+        away_club_id: m.AwayTeam?.Club?.id || null,
+        away_club_is_moscow:
+          typeof m.AwayTeam?.Club?.is_moscow === 'boolean'
+            ? m.AwayTeam.Club.is_moscow
+            : null,
         tournament: m.Tournament?.name || null,
         double_protocol: !!m.Tournament?.TournamentType?.double_protocol,
         stage: m.Stage?.name || null,

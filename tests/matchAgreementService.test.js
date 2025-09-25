@@ -1,4 +1,5 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
+import { Op } from 'sequelize';
 
 const matchFindByPkMock = jest.fn();
 const userFindByPkMock = jest.fn();
@@ -74,6 +75,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   SportSchoolPosition: {},
   Club: {},
   Tournament: {},
+  TournamentType: {},
   TournamentGroup: {},
   Tour: {},
   GameStatus: {},
@@ -150,6 +152,67 @@ test('create (HOME_PROPOSAL) notifies away team staff', async () => {
 
   expect(sendProposedMock).toHaveBeenCalled();
   expect(listTeamUsersMock).toHaveBeenCalledWith('t2');
+});
+
+test('create allows away grounds when Moscow rule applies', async () => {
+  const future = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
+  matchFindByPkMock.mockResolvedValue({
+    id: 'm_moscow',
+    date_start: future,
+    team1_id: 't1',
+    team2_id: 't2',
+    HomeTeam: { name: 'Home', Club: { is_moscow: false } },
+    AwayTeam: { name: 'Away', Club: { is_moscow: true } },
+    Ground: { name: '' },
+    Tournament: { name: 'Cup', TournamentType: { double_protocol: true } },
+    TournamentGroup: { name: 'A' },
+    Tour: { name: '1' },
+    GameStatus: { alias: 'SCHEDULED' },
+  });
+  userFindByPkMock.mockResolvedValue(makeUser({ teams: [{ id: 't1' }] }));
+  groundFindByPkMock.mockResolvedValue({ id: 'g_away', name: 'Away Arena' });
+  groundTeamFindOneMock.mockImplementation(({ where }) => {
+    const condition = where.team_id;
+    if (condition?.[Op.in]) {
+      return condition[Op.in].includes('t2') ? {} : null;
+    }
+    if (condition === 't2') return {};
+    return null;
+  });
+  maStatusFindOneMock.mockImplementation(({ where }) => {
+    if (where.alias === 'PENDING') return Promise.resolve({ id: 'st_pen' });
+    if (where.alias === 'ACCEPTED') return Promise.resolve({ id: 'st_acc' });
+    if (where.alias === 'WITHDRAWN') return Promise.resolve({ id: 'st_wd' });
+    return Promise.resolve({ id: 'other' });
+  });
+  maTypeFindOneMock.mockImplementation(({ where }) => {
+    if (where.alias === 'HOME_PROPOSAL')
+      return Promise.resolve({ id: 'tp_home' });
+    return Promise.resolve({ id: 'tp_other' });
+  });
+  maCountMock.mockResolvedValue(0);
+  maCreateMock.mockResolvedValue({
+    id: 'agr_moscow',
+    match_id: 'm_moscow',
+    ground_id: 'g_away',
+    date_start: future,
+    parent_id: null,
+  });
+  listTeamUsersMock.mockResolvedValue([{ id: 'u_away', email: 'away@x' }]);
+
+  await service.create(
+    'm_moscow',
+    { ground_id: 'g_away', date_start: future },
+    'user_home'
+  );
+
+  expect(groundTeamFindOneMock).toHaveBeenCalled();
+  const condition = groundTeamFindOneMock.mock.calls[0][0].where.team_id;
+  if (condition?.[Op.in]) expect(condition[Op.in]).toContain('t2');
+  expect(maCreateMock).toHaveBeenCalledWith(
+    expect.objectContaining({ ground_id: 'g_away' }),
+    expect.any(Object)
+  );
 });
 
 test('approve notifies both sides', async () => {

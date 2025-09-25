@@ -9,6 +9,7 @@ import {
   GroundTeam,
   Club,
   Tournament,
+  TournamentType,
   TournamentGroup,
   Tour,
   MatchAgreement,
@@ -50,6 +51,36 @@ function isPast(isoLike) {
   if (!isoLike) return false;
   const t = new Date(isoLike).getTime();
   return !Number.isNaN(t) && t <= Date.now();
+}
+
+function normalizeClubMoscowFlag(club) {
+  if (!club) return null;
+  const value = club.is_moscow;
+  if (value == null) return null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return null;
+  return ['1', 'true', 't', 'yes', 'y'].includes(normalized);
+}
+
+function canUseGuestGroundSelection(match) {
+  if (!match) return false;
+  const doubleProtocol = Boolean(
+    match?.Tournament?.TournamentType?.double_protocol
+  );
+  if (!doubleProtocol) return false;
+  const homeFlag = normalizeClubMoscowFlag(match?.HomeTeam?.Club);
+  const awayFlag = normalizeClubMoscowFlag(match?.AwayTeam?.Club);
+  return homeFlag === false && awayFlag === true;
+}
+
+function buildAllowedGroundTeamIds(match) {
+  const ids = new Set();
+  if (match?.team1_id) ids.add(match.team1_id);
+  if (canUseGuestGroundSelection(match) && match?.team2_id)
+    ids.add(match.team2_id);
+  return Array.from(ids);
 }
 
 async function getTypeId(alias) {
@@ -180,10 +211,21 @@ async function ensureMatchWithStatus(matchOrId) {
 async function create(matchId, payload, actorId) {
   const match = await Match.findByPk(matchId, {
     include: [
-      { model: Team, as: 'HomeTeam' },
-      { model: Team, as: 'AwayTeam' },
+      {
+        model: Team,
+        as: 'HomeTeam',
+        include: [{ model: Club }],
+      },
+      {
+        model: Team,
+        as: 'AwayTeam',
+        include: [{ model: Club }],
+      },
       { model: Ground },
-      { model: Tournament },
+      {
+        model: Tournament,
+        include: [{ model: TournamentType }],
+      },
       { model: TournamentGroup },
       { model: Tour },
       { model: GameStatus },
@@ -191,10 +233,15 @@ async function create(matchId, payload, actorId) {
   });
   if (!match) throw new ServiceError('match_not_found', 404);
   if (!match.date_start) throw new ServiceError('match_date_not_set', 400);
+  if (!match.team1_id) throw new ServiceError('team_not_set_for_match', 400);
   ensureNotLocked(match);
   ensureNotCancelled(match);
   if (isPast(match.date_start))
     throw new ServiceError('match_already_past', 409);
+
+  const allowedTeamIds = buildAllowedGroundTeamIds(match);
+  if (!allowedTeamIds.length)
+    throw new ServiceError('team_not_set_for_match', 400);
 
   const context = await ensureUserSide(actorId, match);
   assertAgreementsAllowed(context);
@@ -217,6 +264,11 @@ async function create(matchId, payload, actorId) {
   const parentId = payload.parent_id || null;
 
   const created = await sequelize.transaction(async (tx) => {
+    const teamCondition =
+      allowedTeamIds.length === 1
+        ? allowedTeamIds[0]
+        : { [Op.in]: allowedTeamIds };
+
     if (parentId) {
       // counter-proposal by AWAY to a HOME proposal
       const parent = await MatchAgreement.findByPk(parentId, {
@@ -236,7 +288,7 @@ async function create(matchId, payload, actorId) {
 
       // Validate ground is linked to HOME team (business rule)
       const link = await GroundTeam.findOne({
-        where: { ground_id: ground.id, team_id: match.team1_id },
+        where: { ground_id: ground.id, team_id: teamCondition },
         transaction: tx,
       });
       if (!link) throw new ServiceError('ground_not_linked_to_home_team', 400);
@@ -287,7 +339,7 @@ async function create(matchId, payload, actorId) {
     if (!isHome) throw new ServiceError('only_home_can_propose', 403);
     // Validate ground is linked to home team
     const link = await GroundTeam.findOne({
-      where: { ground_id: ground.id, team_id: match.team1_id },
+      where: { ground_id: ground.id, team_id: teamCondition },
       transaction: tx,
     });
     if (!link) throw new ServiceError('ground_not_linked_to_home_team', 400);
@@ -581,41 +633,111 @@ async function decline(agreementId, actorId) {
 export default { list, create, approve, decline, withdraw };
 
 // List available grounds for proposals/counters.
-// As per business rule, grounds must belong to HOME team for both initial and counter proposals.
+// Defaults to HOME team grounds, extending with AWAY grounds when the Moscow rule applies.
 async function listAvailableGrounds(matchId, actorId) {
-  const match = await Match.findByPk(matchId, { include: [GameStatus] });
+  const match = await Match.findByPk(matchId, {
+    include: [
+      {
+        model: Team,
+        as: 'HomeTeam',
+        include: [{ model: Club }],
+      },
+      {
+        model: Team,
+        as: 'AwayTeam',
+        include: [{ model: Club }],
+      },
+      {
+        model: Tournament,
+        include: [{ model: TournamentType }],
+      },
+      { model: GameStatus },
+    ],
+  });
   if (!match) throw new ServiceError('match_not_found', 404);
   const context = await ensureUserSide(actorId, match);
   assertAgreementsAllowed(context);
 
+  const allowedTeamIds = buildAllowedGroundTeamIds(match);
+  if (!allowedTeamIds.length)
+    throw new ServiceError('team_not_set_for_match', 400);
+
   const homeTeamId = match.team1_id;
-  if (!homeTeamId) throw new ServiceError('team_not_set_for_match', 400);
-
-  // Fetch home team with its club for label
-  const team = await Team.findByPk(homeTeamId, { include: [Club] });
-
   const isCancelled =
     (match.GameStatus?.alias || '').toUpperCase() === 'CANCELLED';
-  const grounds =
-    isPast(match.date_start) || isCancelled
-      ? []
-      : await Ground.findAll({
-          include: [
-            {
-              model: Team,
-              where: { id: homeTeamId },
-              attributes: [],
-              through: { attributes: [] },
-              required: true,
-            },
-          ],
-          includeIgnoreAttributes: false,
-          order: [['name', 'ASC']],
+  const allowGuestSelection = canUseGuestGroundSelection(match);
+
+  const mapGroundOptions = (list) =>
+    list
+      .map((g) => ({ id: g.id, name: g.name }))
+      .filter((g) => Boolean(g.id) && Boolean(g.name));
+
+  async function fetchGroundOptions(teamId) {
+    if (!teamId) return [];
+    const rows = await Ground.findAll({
+      include: [
+        {
+          model: Team,
+          where: { id: teamId },
+          attributes: [],
+          through: { attributes: [] },
+          required: true,
+        },
+      ],
+      includeIgnoreAttributes: false,
+      order: [['name', 'ASC']],
+    });
+    return mapGroundOptions(rows);
+  }
+
+  const groups = [];
+  if (!isPast(match.date_start) && !isCancelled) {
+    const homeGrounds = await fetchGroundOptions(homeTeamId);
+    if (homeGrounds.length) {
+      const homeClub = match.HomeTeam?.Club || null;
+      groups.push({
+        club: homeClub
+          ? {
+              id: homeClub.id,
+              name: homeClub.name,
+              is_moscow: normalizeClubMoscowFlag(homeClub),
+            }
+          : null,
+        grounds: homeGrounds,
+      });
+    }
+
+    if (allowGuestSelection && match.team2_id) {
+      const awayGrounds = await fetchGroundOptions(match.team2_id);
+      if (awayGrounds.length) {
+        const awayClub = match.AwayTeam?.Club || null;
+        groups.push({
+          club: awayClub
+            ? {
+                id: awayClub.id,
+                name: awayClub.name,
+                is_moscow: normalizeClubMoscowFlag(awayClub),
+              }
+            : null,
+          grounds: awayGrounds,
         });
+      }
+    }
+  }
+
+  const primaryClub = match.HomeTeam?.Club
+    ? {
+        id: match.HomeTeam.Club.id,
+        name: match.HomeTeam.Club.name,
+        is_moscow: normalizeClubMoscowFlag(match.HomeTeam.Club),
+      }
+    : null;
 
   return {
-    club: team?.Club ? { id: team.Club.id, name: team.Club.name } : null,
-    grounds: grounds.map((g) => ({ id: g.id, name: g.name })),
+    club: primaryClub,
+    grounds: groups[0]?.grounds ?? [],
+    groups,
+    allow_guest_ground_selection: allowGuestSelection,
   };
 }
 
