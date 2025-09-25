@@ -17,6 +17,17 @@ async function calendar(req, res, next) {
     const gameDays = ['1', 'true', 'yes'].includes(
       String(req.query.game_days || '').toLowerCase()
     );
+    const anchorCandidate =
+      req.query.anchor || req.query.start || req.query.start_date || null;
+    let anchorDate = null;
+    if (anchorCandidate) {
+      const parsed = new Date(anchorCandidate);
+      if (!Number.isNaN(parsed.getTime())) anchorDate = parsed;
+    }
+    const directionRaw = String(req.query.direction || '').toLowerCase();
+    const direction = ['backward', 'both', 'forward'].includes(directionRaw)
+      ? directionRaw
+      : 'forward';
     if (gameDays) {
       const countRaw = parseInt(req.query.count, 10);
       const horizonRaw = parseInt(req.query.horizon, 10);
@@ -36,8 +47,17 @@ async function calendar(req, res, next) {
           tournaments,
           groups,
           stadiums,
+          direction,
+          anchorDate,
         });
-      return res.json({ matches, range, days: count, game_days });
+      return res.json({
+        matches,
+        range,
+        days: count,
+        game_days,
+        direction,
+        anchor: anchorDate ? anchorDate.toISOString() : null,
+      });
     }
     const raw = parseInt(req.query.days, 10);
     const days = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), 31) : 10;

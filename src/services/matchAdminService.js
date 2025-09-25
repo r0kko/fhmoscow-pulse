@@ -19,6 +19,23 @@ import {
 
 import externalSync from './externalMatchSyncService.js';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfMoscowDay(value) {
+  const base = value ? new Date(value) : new Date();
+  if (Number.isNaN(base.getTime())) return null;
+  const msk = utcToMoscow(base) || base;
+  return new Date(
+    Date.UTC(msk.getUTCFullYear(), msk.getUTCMonth(), msk.getUTCDate())
+  );
+}
+
+function normalizeDirection(raw) {
+  const dir = String(raw || '').toLowerCase();
+  if (dir === 'backward' || dir === 'both') return dir;
+  return 'forward';
+}
+
 /**
  * List matches for the next N days (Moscow time), enriched with agreement flags.
  * Admin scope: returns all matches in the range.
@@ -227,20 +244,36 @@ export async function listNextGameDays({
   tournament = '',
   groupName = '',
   stadium = '',
+  direction = 'forward',
+  anchorDate = null,
 } = {}) {
-  const now = new Date();
-  const nowMsk = utcToMoscow(now) || now;
-  const startMsk = new Date(
-    Date.UTC(nowMsk.getUTCFullYear(), nowMsk.getUTCMonth(), nowMsk.getUTCDate())
-  );
-  const startUtc = moscowToUtc(startMsk) || startMsk;
-  const endMskExclusive = new Date(
-    startMsk.getTime() + horizonDays * 24 * 60 * 60 * 1000
-  );
-  const endUtcExclusive = moscowToUtc(endMskExclusive) || endMskExclusive;
+  const anchorStart =
+    startOfMoscowDay(anchorDate) || startOfMoscowDay(new Date()) || new Date();
+  const normalizedDirection = normalizeDirection(direction);
+  const spanDays = Math.max(horizonDays, count);
+
+  let rangeStartMsk;
+  let rangeEndMskExclusive;
+  if (normalizedDirection === 'backward') {
+    rangeEndMskExclusive = new Date(anchorStart.getTime() + DAY_MS);
+    rangeStartMsk = new Date(
+      rangeEndMskExclusive.getTime() - spanDays * DAY_MS
+    );
+  } else if (normalizedDirection === 'both') {
+    rangeStartMsk = new Date(anchorStart.getTime() - spanDays * DAY_MS);
+    rangeEndMskExclusive = new Date(
+      anchorStart.getTime() + (spanDays + 1) * DAY_MS
+    );
+  } else {
+    rangeStartMsk = anchorStart;
+    rangeEndMskExclusive = new Date(anchorStart.getTime() + spanDays * DAY_MS);
+  }
 
   const where = {
-    date_start: { [Op.gte]: startUtc, [Op.lt]: endUtcExclusive },
+    date_start: {
+      [Op.gte]: moscowToUtc(rangeStartMsk) || rangeStartMsk,
+      [Op.lt]: moscowToUtc(rangeEndMskExclusive) || rangeEndMskExclusive,
+    },
   };
 
   const findOptions = {
@@ -319,7 +352,6 @@ export async function listNextGameDays({
 
   const rowsRaw = await Match.findAll(findOptions);
 
-  // Determine first `count` distinct Moscow dates having matches
   const byDayKey = new Map();
   for (const m of rowsRaw) {
     const msk = utcToMoscow(m.date_start) || new Date(m.date_start);
@@ -331,10 +363,40 @@ export async function listNextGameDays({
     if (!byDayKey.has(key)) byDayKey.set(key, []);
     byDayKey.get(key).push(m);
   }
-  const keys = [...byDayKey.keys()]
-    .sort((a, b) => a - b)
-    .slice(0, Math.max(1, count));
-  const selected = keys.flatMap((k) => byDayKey.get(k) || []);
+
+  const allKeysAsc = [...byDayKey.keys()].sort((a, b) => a - b);
+  const anchorKey = anchorStart.getTime();
+  const desiredCount = Math.max(1, count);
+
+  let keys;
+  if (allKeysAsc.length === 0) {
+    keys = [];
+  } else if (normalizedDirection === 'backward') {
+    const eligible = allKeysAsc.filter((k) => k <= anchorKey);
+    const source = eligible.length ? eligible : allKeysAsc;
+    keys = source.slice(-desiredCount);
+  } else if (normalizedDirection === 'both') {
+    const withDistances = allKeysAsc.map((k) => ({
+      key: k,
+      dist: Math.abs(k - anchorKey),
+    }));
+    withDistances.sort((a, b) => {
+      if (a.dist === b.dist) return a.key - b.key;
+      return a.dist - b.dist;
+    });
+    keys = withDistances.slice(0, desiredCount).map((item) => item.key);
+    keys.sort((a, b) => a - b);
+  } else {
+    const eligible = allKeysAsc.filter((k) => k >= anchorKey);
+    const source = eligible.length ? eligible : allKeysAsc;
+    keys = source.slice(0, desiredCount);
+  }
+
+  const selected = keys.flatMap((k) =>
+    (byDayKey.get(k) || []).sort(
+      (a, b) => new Date(a.date_start) - new Date(b.date_start)
+    )
+  );
 
   // Enrich with agreement flags for selected matches only
   const matchIds = selected.map((m) => m.id);
@@ -402,8 +464,10 @@ export async function listNextGameDays({
   return {
     matches,
     range: {
-      start: startUtc.toISOString(),
-      end_exclusive: endUtcExclusive.toISOString(),
+      start: (moscowToUtc(rangeStartMsk) || rangeStartMsk).toISOString(),
+      end_exclusive: (
+        moscowToUtc(rangeEndMskExclusive) || rangeEndMskExclusive
+      ).toISOString(),
     },
     game_days: keys.map((k) => new Date(k).toISOString()),
   };
