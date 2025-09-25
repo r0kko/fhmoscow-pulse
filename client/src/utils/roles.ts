@@ -40,7 +40,9 @@ export const FHMO_STAFF_ROLES: Role[] = [
 ];
 
 // Focused subset for media and content operations within FHMO
-export const FHMO_MEDIA_CONTENT_ROLES: Role[] = ['FHMO_MEDIA_CONTENT_MODERATOR'];
+export const FHMO_MEDIA_CONTENT_ROLES: Role[] = [
+  'FHMO_MEDIA_CONTENT_MODERATOR',
+];
 
 type RoleInput = readonly Role[] | undefined | null;
 

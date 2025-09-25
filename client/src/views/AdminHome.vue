@@ -2,11 +2,7 @@
 import { computed } from 'vue';
 import { auth } from '../auth';
 import MenuTile from '../components/MenuTile.vue';
-import {
-  ADMIN_ROLES,
-  FHMO_MEDIA_CONTENT_ROLES,
-  hasRole,
-} from '../utils/roles';
+import { ADMIN_ROLES, FHMO_MEDIA_CONTENT_ROLES, hasRole } from '../utils/roles';
 
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
@@ -86,10 +82,7 @@ const systemSections = computed(() => {
       <!-- Keep semantic h1 for accessibility; style to match Home greeting size -->
       <h1 class="h3 mb-3 text-start">Администрирование</h1>
 
-      <div
-        v-if="hasAdminAccess"
-        class="card section-card mb-2 menu-section"
-      >
+      <div v-if="hasAdminAccess" class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-people text-brand me-2" aria-hidden="true"></i>
@@ -107,10 +100,7 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div
-        v-if="hasAdminAccess"
-        class="card section-card mb-2 menu-section"
-      >
+      <div v-if="hasAdminAccess" class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-trophy text-brand me-2" aria-hidden="true"></i>
@@ -128,10 +118,7 @@ const systemSections = computed(() => {
         </div>
       </div>
 
-      <div
-        v-if="hasAdminAccess"
-        class="card section-card mb-2 menu-section"
-      >
+      <div v-if="hasAdminAccess" class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">
             <i class="bi bi-flag text-brand me-2" aria-hidden="true"></i>

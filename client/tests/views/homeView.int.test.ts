@@ -162,7 +162,9 @@ describe('Home View (integration)', () => {
     expect(screen.getByRole('link', { name: 'Обращения' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Семинары' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Команды и составы' })).toBeNull();
+    expect(
+      screen.queryByRole('link', { name: 'Команды и составы' })
+    ).toBeNull();
   });
 
   it('offers direct admin access for FHMO content moderators', async () => {

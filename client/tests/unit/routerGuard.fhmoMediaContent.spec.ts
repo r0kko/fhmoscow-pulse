@@ -1,8 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import type {
-  NavigationGuardNext,
-  RouteLocationNormalized,
-} from 'vue-router';
+import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
 import { navigationGuard } from '@/router';
 import { auth, type AuthUser } from '@/auth';
 

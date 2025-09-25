@@ -603,7 +603,11 @@ export async function navigationGuard(
     return next('/login');
   }
 
-  if (isAuthenticated && auth.mustChangePassword && to.path !== '/change-password') {
+  if (
+    isAuthenticated &&
+    auth.mustChangePassword &&
+    to.path !== '/change-password'
+  ) {
     return next('/change-password');
   }
 

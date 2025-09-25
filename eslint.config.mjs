@@ -12,7 +12,15 @@ import eslintPluginSecurity from 'eslint-plugin-security';
  */
 export default [
   {
-    ignores: ['client/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/.git/**',
+      'dist/**',
+      'coverage/**',
+      'client/**',
+      'packages/**/dist/**',
+      'packages/**/build/**',
+    ],
   },
   js.configs.recommended,
   eslintPluginN.configs['flat/recommended'],
@@ -101,16 +109,6 @@ export default [
         version: '>=20.0.0',
       },
     },
-    ignores: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/build/**',
-      '**/coverage/**',
-      // Do not lint tests with this config block; a dedicated block is below
-      '**/*.spec.js',
-      '**/logs/**',
-      '**/client/**',
-    ],
   },
   // Tests: enable Node + Jest globals so `process` and Jest globals are defined
   {

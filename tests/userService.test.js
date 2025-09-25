@@ -85,17 +85,21 @@ test('assignRole restores removed role', async () => {
 
 test('assignRole replaces existing FHMO position', async () => {
   findByPkMock.mockResolvedValue(user);
-  findRoleMock.mockResolvedValue({ id: 3, alias: 'FHMO_ADMINISTRATION_PRESIDENT' });
+  findRoleMock.mockResolvedValue({
+    id: 3,
+    alias: 'FHMO_ADMINISTRATION_PRESIDENT',
+  });
   const linkUpdateMock = jest.fn();
   userRoleFindMock.mockResolvedValue(null);
   userRoleFindMock.mockResolvedValueOnce({ update: linkUpdateMock });
   userRoleFindMock.mockResolvedValueOnce(null);
-  getRolesMock.mockResolvedValue([
-    { id: 10, alias: 'FHMO_MEDIA_SMM_MANAGER' },
-  ]);
+  getRolesMock.mockResolvedValue([{ id: 10, alias: 'FHMO_MEDIA_SMM_MANAGER' }]);
   await service.assignRole('1', 'FHMO_ADMINISTRATION_PRESIDENT', 'manager');
   expect(linkUpdateMock).toHaveBeenCalledWith({ updated_by: 'manager' });
-  expect(removeRoleMock).toHaveBeenCalledWith({ id: 10, alias: 'FHMO_MEDIA_SMM_MANAGER' });
+  expect(removeRoleMock).toHaveBeenCalledWith({
+    id: 10,
+    alias: 'FHMO_MEDIA_SMM_MANAGER',
+  });
   expect(addRoleMock).toHaveBeenCalledWith(
     { id: 3, alias: 'FHMO_ADMINISTRATION_PRESIDENT' },
     { through: { created_by: 'manager', updated_by: 'manager' } }

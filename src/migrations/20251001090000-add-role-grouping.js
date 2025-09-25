@@ -39,7 +39,10 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.removeIndex('roles', 'idx_roles_group_department_order');
+    await queryInterface.removeIndex(
+      'roles',
+      'idx_roles_group_department_order'
+    );
     await queryInterface.removeIndex('roles', 'idx_roles_department_alias');
     await queryInterface.removeIndex('roles', 'idx_roles_group_alias');
     await queryInterface.removeColumn('roles', 'display_order');

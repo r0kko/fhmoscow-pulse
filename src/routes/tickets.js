@@ -26,7 +26,12 @@ const upload = multer();
  *       200:
  *         description: Array of tickets
  */
-router.get('/me', auth, authorize('REFEREE', 'FHMO_STAFF'), selfController.list);
+router.get(
+  '/me',
+  auth,
+  authorize('REFEREE', 'FHMO_STAFF'),
+  selfController.list
+);
 
 router.get('/', auth, authorize('ADMIN'), adminController.listAll);
 
@@ -83,6 +88,11 @@ router.post(
 router.post('/:id/files', auth, upload.single('file'), fileController.upload);
 router.get('/:id/files', auth, fileController.list);
 router.delete('/:id/files/:fileId', auth, fileController.remove);
-router.delete('/:id', auth, authorize('REFEREE', 'FHMO_STAFF'), selfController.remove);
+router.delete(
+  '/:id',
+  auth,
+  authorize('REFEREE', 'FHMO_STAFF'),
+  selfController.remove
+);
 
 export default router;

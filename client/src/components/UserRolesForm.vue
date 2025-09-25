@@ -70,7 +70,10 @@ const groupedRoles = computed(() => {
       };
       group.departments.set(departmentKey, department);
     } else {
-      department.order = Math.min(department.order, extractOrder(role.display_order));
+      department.order = Math.min(
+        department.order,
+        extractOrder(role.display_order)
+      );
     }
 
     department.roles.push(role);
@@ -85,7 +88,8 @@ const groupedRoles = computed(() => {
         .map((department) => ({
           ...department,
           roles: [...department.roles].sort((a, b) => {
-            const orderDiff = extractOrder(a.display_order) - extractOrder(b.display_order);
+            const orderDiff =
+              extractOrder(a.display_order) - extractOrder(b.display_order);
             if (orderDiff !== 0) return orderDiff;
             return a.name.localeCompare(b.name, 'ru');
           }),
@@ -103,15 +107,18 @@ const groupedRoles = computed(() => {
     });
 });
 
-const fhmoGroup = computed(() =>
-  groupedRoles.value.find((group) => group.key === FHMO_GROUP_ALIAS) || null
+const fhmoGroup = computed(
+  () =>
+    groupedRoles.value.find((group) => group.key === FHMO_GROUP_ALIAS) || null
 );
 const displayGroups = computed(() =>
   groupedRoles.value.filter((group) => group.key !== FHMO_GROUP_ALIAS)
 );
 const fhmoDepartments = computed(() => fhmoGroup.value?.departments || []);
 const fhmoPositions = computed(() => {
-  const dept = fhmoDepartments.value.find((item) => item.key === fhmoDepartment.value);
+  const dept = fhmoDepartments.value.find(
+    (item) => item.key === fhmoDepartment.value
+  );
   return dept ? dept.roles : [];
 });
 const fhmoSelectionValid = computed(
@@ -131,7 +138,9 @@ function syncFhmoState() {
     fhmoPosition.value = '';
     return;
   }
-  const fhmoAlias = [...selected.value].find((alias) => FHMO_ROLE_SET.has(alias));
+  const fhmoAlias = [...selected.value].find((alias) =>
+    FHMO_ROLE_SET.has(alias)
+  );
   syncingFhmo.value = true;
   if (fhmoAlias && roleByAlias.value.has(fhmoAlias)) {
     const role = roleByAlias.value.get(fhmoAlias);
@@ -281,16 +290,20 @@ async function save() {
       <h2 class="card-title h5 mb-3">Роли</h2>
       <div v-if="groupedRoles.length">
         <div v-if="fhmoGroup" class="role-group role-group--fhmo">
-          <h3 class="role-group__title">{{ fhmoGroup.name || 'Сотрудник ФХМ' }}</h3>
+          <h3 class="role-group__title">
+            {{ fhmoGroup.name || 'Сотрудник ФХМ' }}
+          </h3>
           <div class="fhmo-card">
-            <div class="d-flex justify-content-between align-items-center gap-2">
+            <div
+              class="d-flex justify-content-between align-items-center gap-2"
+            >
               <p class="mb-0 fw-semibold">Назначение сотрудника ФХМ</p>
               <div class="form-check form-switch mb-0">
                 <input
                   id="fhmo-toggle"
+                  v-model="fhmoEnabled"
                   class="form-check-input"
                   type="checkbox"
-                  v-model="fhmoEnabled"
                 />
                 <label class="form-check-label" for="fhmo-toggle">
                   {{ fhmoEnabled ? 'Назначен' : 'Не назначен' }}
@@ -298,16 +311,18 @@ async function save() {
               </div>
             </div>
             <p class="text-muted small mb-3">
-              В рамках ФХМ пользователь может занимать только одну должность. Чтобы
-              изменить позицию, выберите новое подразделение и должность.
+              В рамках ФХМ пользователь может занимать только одну должность.
+              Чтобы изменить позицию, выберите новое подразделение и должность.
             </p>
             <div v-if="fhmoEnabled" class="row g-3">
               <div class="col-12 col-lg-6">
-                <label class="form-label" for="fhmo-department">Подразделение</label>
+                <label class="form-label" for="fhmo-department"
+                  >Подразделение</label
+                >
                 <select
                   id="fhmo-department"
-                  class="form-select"
                   v-model="fhmoDepartment"
+                  class="form-select"
                 >
                   <option value="" disabled>Выберите подразделение</option>
                   <option
@@ -321,7 +336,11 @@ async function save() {
               </div>
               <div class="col-12 col-lg-6">
                 <label class="form-label">Должность</label>
-                <div class="vstack gap-2" role="radiogroup" aria-label="Должность ФХМ">
+                <div
+                  class="vstack gap-2"
+                  role="radiogroup"
+                  aria-label="Должность ФХМ"
+                >
                   <div
                     v-for="role in fhmoPositions"
                     :key="role.alias"
@@ -329,13 +348,16 @@ async function save() {
                   >
                     <input
                       :id="`fhmo-role-${role.alias}`"
+                      v-model="fhmoPosition"
                       class="form-check-input"
                       type="radio"
                       name="fhmo-position"
                       :value="role.alias"
-                      v-model="fhmoPosition"
                     />
-                    <label class="form-check-label" :for="`fhmo-role-${role.alias}`">
+                    <label
+                      class="form-check-label"
+                      :for="`fhmo-role-${role.alias}`"
+                    >
                       {{ role.name }}
                     </label>
                   </div>
@@ -348,11 +370,7 @@ async function save() {
           </div>
         </div>
 
-        <div
-          v-for="group in displayGroups"
-          :key="group.key"
-          class="role-group"
-        >
+        <div v-for="group in displayGroups" :key="group.key" class="role-group">
           <h3 v-if="group.name" class="role-group__title">
             {{ group.name }}
           </h3>

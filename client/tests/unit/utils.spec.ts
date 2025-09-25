@@ -202,7 +202,9 @@ describe('utils/roles', () => {
     expect(isStaffOnly(undefined)).toBe(false);
     expect(isStaffOnly([])).toBe(false);
     expect(isFhmoStaffOnly(['FHMO_ADMINISTRATION_PRESIDENT'])).toBe(true);
-    expect(isFhmoStaffOnly(['FHMO_ADMINISTRATION_PRESIDENT', 'ADMIN'])).toBe(false);
+    expect(isFhmoStaffOnly(['FHMO_ADMINISTRATION_PRESIDENT', 'ADMIN'])).toBe(
+      false
+    );
     expect(isFhmoStaffOnly(undefined)).toBe(false);
   });
 });
