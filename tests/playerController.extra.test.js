@@ -50,6 +50,10 @@ let externalAvailable = false;
 jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   __esModule: true,
   isExternalDbAvailable: () => externalAvailable,
+  insertExternalFileRecord: jest.fn(),
+  updateExternalPlayerPhotoId: jest.fn(),
+  deleteExternalFileById: jest.fn(),
+  updateExternalFileName: jest.fn(),
 }));
 jest.unstable_mockModule('../src/services/syncStateService.js', () => ({
   __esModule: true,
