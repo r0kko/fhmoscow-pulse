@@ -356,3 +356,226 @@ export async function updateExternalClubPlayerNumberAndRole({
     throw err;
   }
 }
+
+function formatDateTime(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  const pad = (value) => String(value).padStart(2, '0');
+  const y = date.getUTCFullYear();
+  const mo = pad(date.getUTCMonth() + 1);
+  const d = pad(date.getUTCDate());
+  const hh = pad(date.getUTCHours());
+  const mm = pad(date.getUTCMinutes());
+  const ss = pad(date.getUTCSeconds());
+  return `${y}-${mo}-${d} ${hh}:${mm}:${ss}`;
+}
+
+function normalizeInsertId(value) {
+  if (value == null) return null;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  if (num <= 0) return null;
+  return Math.trunc(num);
+}
+
+function extractInsertIdFromResult(result) {
+  if (!result) return null;
+  if (Array.isArray(result)) {
+    for (const entry of result) {
+      const id = extractInsertIdFromResult(entry);
+      if (id) return id;
+    }
+    return null;
+  }
+  if (typeof result === 'object') {
+    return (
+      normalizeInsertId(
+        result.insertId ??
+          result.insert_id ??
+          result.lastInsertId ??
+          result.LAST_INSERT_ID ??
+          result.id ??
+          result.ID
+      ) || null
+    );
+  }
+  return null;
+}
+
+async function fetchLastInsertId() {
+  try {
+    const [rows] = await _originalQuery('SELECT LAST_INSERT_ID() AS id');
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return normalizeInsertId(
+      row?.id ?? row?.ID ?? row?.last_insert_id ?? row?.LAST_INSERT_ID
+    );
+  } catch (err) {
+    void err;
+    return null;
+  }
+}
+
+async function fetchInsertIdByAttributes({ module, name }) {
+  try {
+    const conditions = [];
+    const params = [];
+    if (module == null) {
+      conditions.push('module IS NULL');
+    } else {
+      conditions.push('module = ?');
+      params.push(module);
+    }
+    if (name == null) {
+      conditions.push('name IS NULL');
+    } else {
+      conditions.push('name = ?');
+      params.push(name);
+    }
+    const where = conditions.length ? conditions.join(' AND ') : '1=1';
+    const sql = `SELECT id FROM file WHERE ${where} ORDER BY id DESC LIMIT 1`;
+    const [rows] = await _originalQuery(sql, { replacements: params });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return normalizeInsertId(row?.id ?? row?.ID);
+  } catch (err) {
+    void err;
+    return null;
+  }
+}
+
+async function resolveInsertedFileId(result, { module, name }) {
+  const direct = extractInsertIdFromResult(result);
+  if (direct) return direct;
+  const last = await fetchLastInsertId();
+  if (last) return last;
+  return fetchInsertIdByAttributes({ module, name });
+}
+
+export async function insertExternalFileRecord({
+  module,
+  mimeType,
+  size,
+  name,
+  objectStatus = 'active',
+  createdAt = new Date(),
+  updatedAt = createdAt,
+}) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  const normalizedCreated = utcToMoscow(createdAt);
+  const normalizedUpdated = utcToMoscow(updatedAt);
+  const created = formatDateTime(normalizedCreated || new Date());
+  const updated = formatDateTime(normalizedUpdated || new Date());
+  const normalizedSize =
+    size == null || Number.isNaN(Number(size)) ? null : Number(size);
+  const sql = `INSERT INTO file (module, mime_type, size, name, date_create, date_update, object_status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  const params = [
+    module || null,
+    mimeType || null,
+    normalizedSize,
+    name || null,
+    created,
+    updated,
+    objectStatus || null,
+  ];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const idNum = await resolveInsertedFileId(result, { module, name });
+    if (!idNum) {
+      const err = new Error(
+        'Failed to obtain external file identifier after insertion'
+      );
+      err.code = 'EXTERNAL_FILE_INSERT_FAILED';
+      throw err;
+    }
+    return {
+      id: idNum,
+      module: module || null,
+      mime_type: mimeType || null,
+      size: normalizedSize,
+      name: name || null,
+      object_status: objectStatus || null,
+      date_create: normalizedCreated || null,
+      date_update: normalizedUpdated || null,
+    };
+  } catch (err) {
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}
+
+export async function updateExternalFileName({ fileId, name }) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  const normalizedId =
+    fileId == null || Number.isNaN(Number(fileId)) ? null : Number(fileId);
+  if (!normalizedId) throw new Error('Invalid fileId');
+  const trimmedName = (name || '').trim();
+  if (!trimmedName) throw new Error('Invalid file name');
+  const nowMsk = utcToMoscow(new Date()) || new Date();
+  const nowFormatted = formatDateTime(nowMsk);
+  const sql = 'UPDATE file SET name = ?, date_update = ? WHERE id = ?';
+  const params = [trimmedName, nowFormatted, normalizedId];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}
+
+export async function updateExternalPlayerPhotoId({ playerId, fileId }) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  if (
+    playerId == null ||
+    (typeof playerId !== 'number' && typeof playerId !== 'string') ||
+    Number.isNaN(Number(playerId))
+  )
+    throw new Error('Invalid playerId');
+  const normalizedFileId =
+    fileId == null || Number.isNaN(Number(fileId)) ? null : Number(fileId);
+  const sql = 'UPDATE player SET photo_id = ? WHERE id = ?';
+  const params = [normalizedFileId, Number(playerId)];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}
+
+export async function deleteExternalFileById(fileId) {
+  if (!externalDbAvailable)
+    throw Object.assign(new Error('External DB unavailable'), {
+      code: 'EXTERNAL_DB_UNAVAILABLE',
+    });
+  if (
+    fileId == null ||
+    (typeof fileId !== 'number' && typeof fileId !== 'string') ||
+    Number.isNaN(Number(fileId))
+  )
+    throw new Error('Invalid fileId');
+  const sql = 'DELETE FROM file WHERE id = ?';
+  const params = [Number(fileId)];
+  try {
+    const [result] = await _originalQuery(sql, { replacements: params });
+    const affected =
+      result && (result.affectedRows || result.affected_rows || 0);
+    return { ok: true, affected: Number(affected) || 0 };
+  } catch (err) {
+    err.code = err.code || 'EXTERNAL_DB_WHITELISTED_WRITE_FAILED';
+    throw err;
+  }
+}

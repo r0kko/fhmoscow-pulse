@@ -48,6 +48,11 @@ function resolveModulePath(module) {
   return segments.join('/');
 }
 
+export function getModuleStoragePath(module) {
+  const resolved = resolveModulePath(module || '');
+  return resolved.replace(/^\/+|\/+$/g, '');
+}
+
 function normalizeExtension(ext) {
   if (!ext) return '';
   const trimmed = ext.startsWith('.') ? ext : `.${ext}`;
@@ -144,4 +149,5 @@ export default {
   getExtFilesPublicBaseUrl,
   buildExtFilePublicUrl,
   buildExtFilePublicUrlCandidates,
+  getModuleStoragePath,
 };

@@ -25,6 +25,11 @@ const schema = Joi.object({
   S3_ENDPOINT: Joi.string().optional(),
   S3_ACCESS_KEY: Joi.string().optional(),
   S3_SECRET_KEY: Joi.string().optional(),
+  EXT_S3_BUCKET: Joi.string().optional(),
+  EXT_S3_REGION: Joi.string().optional(),
+  EXT_S3_ENDPOINT: Joi.string().optional(),
+  EXT_S3_ACCESS_KEY: Joi.string().optional(),
+  EXT_S3_SECRET_KEY: Joi.string().optional(),
   BASE_URL: Joi.string().optional(),
   EXT_FILES_PUBLIC_BASE_URL: Joi.string().uri().optional(),
   EXT_FILES_MODULE_MAP: Joi.string().optional(),
@@ -50,6 +55,16 @@ export default function validateEnv() {
     (!process.env.S3_ACCESS_KEY || !process.env.S3_SECRET_KEY)
   ) {
     const err = new Error('S3 configuration requires access and secret keys');
+    err.code = 'ENV_INVALID';
+    throw err;
+  }
+  if (
+    process.env.EXT_S3_BUCKET &&
+    (!process.env.EXT_S3_ACCESS_KEY || !process.env.EXT_S3_SECRET_KEY)
+  ) {
+    const err = new Error(
+      'External S3 configuration requires access and secret keys'
+    );
     err.code = 'ENV_INVALID';
     throw err;
   }

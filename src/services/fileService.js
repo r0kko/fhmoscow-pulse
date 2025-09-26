@@ -128,6 +128,32 @@ function buildContentDisposition(filename) {
   return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;
 }
 
+async function bodyToBuffer(body) {
+  if (!body) return null;
+  if (Buffer.isBuffer(body)) return body;
+  if (body instanceof Uint8Array) return Buffer.from(body);
+  if (typeof body.transformToByteArray === 'function') {
+    const arr = await body.transformToByteArray();
+    return Buffer.from(arr);
+  }
+  if (typeof body.text === 'function') {
+    const text = await body.text();
+    return Buffer.from(text);
+  }
+  if (typeof body.stream === 'function') {
+    return bodyToBuffer(body.stream());
+  }
+  if (typeof body.on === 'function') {
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      body.on('data', (chunk) => chunks.push(chunk));
+      body.on('error', reject);
+      body.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+  return null;
+}
+
 async function getDownloadUrl(file, options = {}) {
   if (!file || !file.key) {
     throw new ServiceError('file_not_found', 404);
@@ -416,6 +442,34 @@ async function saveGeneratedPdf(buffer, name, actorId) {
   });
 }
 
+async function getFileBuffer(file) {
+  if (!file?.key) {
+    throw new ServiceError('file_not_found', 404);
+  }
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  try {
+    const response = await s3.send(
+      new GetObjectCommand({
+        Bucket: getS3Bucket(),
+        Key: file.key,
+      })
+    );
+    const buffer = await bodyToBuffer(response.Body);
+    if (!buffer) {
+      throw new ServiceError('s3_download_failed', 502);
+    }
+    return buffer;
+  } catch (err) {
+    if (err instanceof ServiceError) throw err;
+    console.error('S3 download failed', err);
+    const error = new ServiceError('s3_download_failed', 502);
+    error.cause = err;
+    throw error;
+  }
+}
+
 export default {
   uploadForCertificate,
   listForCertificate,
@@ -429,4 +483,5 @@ export default {
   uploadPlayerPhoto,
   removeFile,
   saveGeneratedPdf,
+  getFileBuffer,
 };

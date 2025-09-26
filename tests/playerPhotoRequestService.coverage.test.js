@@ -3,14 +3,26 @@ import { Op } from 'sequelize';
 
 const fileUploadMock = jest.fn();
 const fileRemoveMock = jest.fn();
+const fileBufferMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/fileService.js', () => ({
   __esModule: true,
   default: {
     uploadPlayerPhoto: fileUploadMock,
     removeFile: fileRemoveMock,
+    getFileBuffer: fileBufferMock,
   },
 }));
+
+const processApprovalMock = jest.fn();
+
+jest.unstable_mockModule(
+  '../src/services/playerPhotoApprovalWorkflow.js',
+  () => ({
+    __esModule: true,
+    processPlayerPhotoApproval: processApprovalMock,
+  })
+);
 
 const playerFindByPkMock = jest.fn();
 const clubPlayerCountMock = jest.fn();
@@ -69,6 +81,7 @@ function buildFile() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  processApprovalMock.mockReset();
   playerFindByPkMock.mockResolvedValue({ id: 'player-1' });
   clubPlayerCountMock.mockResolvedValue(0);
   teamPlayerCountMock.mockResolvedValue(0);
@@ -83,6 +96,7 @@ beforeEach(() => {
   fileRemoveMock.mockResolvedValue();
   photoRequestFindAndCountMock.mockResolvedValue({ count: 0, rows: [] });
   photoRequestFindAllMock.mockResolvedValue([]);
+  processApprovalMock.mockResolvedValue({});
 });
 
 describe('playerPhotoRequestService.submit', () => {
@@ -193,6 +207,69 @@ describe('playerPhotoRequestService.submit', () => {
       })
     ).rejects.toMatchObject({ code: 'player_not_found', status: 404 });
     expect(fileUploadMock).not.toHaveBeenCalled();
+  });
+
+  describe('playerPhotoRequestService.approve', () => {
+    test('invokes external workflow and updates status', async () => {
+      const lockedRecord = {
+        id: 'req-approve',
+        status_id: 'pending-id',
+        update: jest.fn().mockResolvedValue(),
+      };
+      const hydratedRecord = {
+        id: 'req-approve',
+        status_id: 'pending-id',
+        update: jest.fn(), // not expected to be called
+        File: {
+          id: 'file-1',
+          key: 'player-photos/key.jpg',
+          original_name: 'photo.jpg',
+          mime_type: 'image/jpeg',
+          size: 2048,
+        },
+        Player: {
+          id: 'player-local',
+          external_id: 123,
+          update: jest.fn().mockResolvedValue(),
+          Photo: { external_id: 999 },
+        },
+      };
+      photoRequestFindByPkMock
+        .mockResolvedValueOnce(lockedRecord)
+        .mockResolvedValueOnce(hydratedRecord)
+        .mockResolvedValueOnce({ id: 'req-approve', refreshed: true });
+
+      const result = await service.approve({
+        requestId: 'req-approve',
+        actorId: 'admin-42',
+      });
+
+      expect(processApprovalMock).toHaveBeenCalledWith({
+        request: hydratedRecord,
+        actorId: 'admin-42',
+        transaction: txRef,
+      });
+      expect(lockedRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status_id: 'approved-id',
+          reviewed_by: 'admin-42',
+        }),
+        expect.objectContaining({ transaction: txRef })
+      );
+      expect(result).toEqual({ id: 'req-approve', refreshed: true });
+    });
+
+    test('throws when status already processed', async () => {
+      photoRequestFindByPkMock.mockResolvedValue({
+        id: 'req-processed',
+        status_id: 'approved-id',
+      });
+
+      await expect(
+        service.approve({ requestId: 'req-processed', actorId: 'admin' })
+      ).rejects.toMatchObject({ code: 'photo_request_already_processed' });
+      expect(processApprovalMock).not.toHaveBeenCalled();
+    });
   });
 
   test('forbids non-admin without club/team access', async () => {

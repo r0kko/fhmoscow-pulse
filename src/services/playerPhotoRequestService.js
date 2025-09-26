@@ -16,6 +16,7 @@ import {
 } from '../models/index.js';
 
 import fileService from './fileService.js';
+import { processPlayerPhotoApproval } from './playerPhotoApprovalWorkflow.js';
 
 const STATUS_ALIASES = {
   PENDING: 'pending',
@@ -461,6 +462,59 @@ async function approve({ requestId, actorId }) {
     if (String(request.status_id) !== String(pendingStatus.id)) {
       throw new ServiceError('photo_request_already_processed', 400);
     }
+    const hydratedRequest = await PlayerPhotoRequest.findByPk(requestId, {
+      transaction: tx,
+      include: [
+        {
+          model: File,
+          as: 'File',
+          required: true,
+          attributes: ['id', 'key', 'original_name', 'mime_type', 'size'],
+        },
+        {
+          model: Player,
+          as: 'Player',
+          required: true,
+          attributes: [
+            'id',
+            'external_id',
+            'surname',
+            'name',
+            'patronymic',
+            'date_of_birth',
+            'photo_ext_file_id',
+          ],
+          include: [
+            {
+              model: ExtFile,
+              as: 'Photo',
+              required: false,
+              paranoid: false,
+              attributes: [
+                'id',
+                'external_id',
+                'module',
+                'name',
+                'mime_type',
+                'size',
+                'object_status',
+                'date_create',
+                'date_update',
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    if (!hydratedRequest) {
+      throw new ServiceError('photo_request_not_found', 404);
+    }
+    await processPlayerPhotoApproval({
+      request: hydratedRequest,
+      actorId,
+      transaction: tx,
+    });
+
     const approvedStatus = await getStatusByAlias(STATUS_ALIASES.APPROVED, {
       transaction: tx,
     });

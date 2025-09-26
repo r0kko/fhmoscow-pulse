@@ -111,6 +111,18 @@ DADATA_SECRET=your_dadata_secret
 # COOKIE_DOMAIN=pulse.fhmoscow.com
 # SSL_CERT_PATH=/etc/ssl/pulse/fullchain.pem
 # SSL_KEY_PATH=/etc/ssl/pulse/privkey.pem
+# primary S3 storage for internal uploads
+# S3_BUCKET=pulse-internal
+# S3_REGION=us-east-1
+# S3_ENDPOINT=https://s3.internal
+# S3_ACCESS_KEY=AKIA...
+# S3_SECRET_KEY=...
+# external S3 storage for legacy media sync (player photos)
+# EXT_S3_BUCKET=pulse-legacy-media
+# EXT_S3_REGION=us-east-1
+# EXT_S3_ENDPOINT=https://s3.legacy
+# EXT_S3_ACCESS_KEY=AKIA...
+# EXT_S3_SECRET_KEY=...
 
 ### API documentation access
 
@@ -345,9 +357,29 @@ Integration with the legacy MariaDB is handled via Sequelize models placed in `s
 - Configure `EXT_DB_*` variables in `.env`.
 - Startup probes the connection and continues even if unavailable.
 - Models are read‑only and map directly to existing tables.
-- The application enforces a strict read‑only guard at the connection level
-  (blocks INSERT/UPDATE/DELETE/DDL). Use a DB user with read‑only privileges
+- The application enforces a strict read‑only guard at the connection level.
+  Only explicit whitelisted helpers (e.g., match reschedule, player photo sync)
+  may perform INSERT/UPDATE operations. Use a DB user with read‑only privileges
   for additional defense‑in‑depth.
+
+### Player photo approvals
+
+When an administrator approves a player photo request (`/admin/player-photo-requests`),
+the API now performs a full cross-system sync:
+
+- Downloads the original image from the internal S3 bucket (`S3_*`).
+- Uploads the processed photo to the external S3 bucket at
+- Generates deterministic object names: each approved photo is stored as
+  `person/player/photo/<external_file_id>.<ext>` where `external_file_id` is the
+  numeric identifier from the legacy `file` table (JPEG images always use the
+  `.jpg` extension).
+- Inserts a row into the legacy `file` table and reassigns the player’s `photo_id`.
+- Mirrors the `file` metadata locally by creating/updating `ext_files` and
+  binding the player’s `photo_ext_file_id`.
+
+To enable the flow, configure both `EXT_DB_*` and the new `EXT_S3_*` variables.
+Failures automatically roll back local changes and attempt to clean up the external
+bucket/records for consistency.
 
 ### External data synchronization (Teams)
 
