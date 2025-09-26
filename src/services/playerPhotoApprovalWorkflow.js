@@ -75,17 +75,12 @@ export async function processPlayerPhotoApproval({
   const player = request.Player;
   if (!file) throw new ServiceError('photo_request_file_missing', 500);
   if (!player) throw new ServiceError('photo_request_player_missing', 500);
-  if (
-    player.external_id == null ||
-    Number.isNaN(Number(player.external_id))
-  ) {
+  if (player.external_id == null || Number.isNaN(Number(player.external_id))) {
     throw new ServiceError('player_missing_external_id', 422);
   }
 
   const previousExternalPhotoId =
-    player.Photo?.external_id == null
-      ? null
-      : Number(player.Photo.external_id);
+    player.Photo?.external_id == null ? null : Number(player.Photo.external_id);
 
   const buffer = await fileService.getFileBuffer(file);
   const ext = resolveFileExtension(file);
