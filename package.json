@@ -67,7 +67,7 @@
     "mysql2": "^3.15.1",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.6",
+    "nodemailer": "^7.0.7",
     "on-finished": "^2.4.1",
     "pdfkit": "^0.17.2",
     "pdfkit-table": "^0.1.99",
