@@ -39,17 +39,16 @@ function sanitizeLocation(value: unknown): CalendarReturnLocation | null {
   const query = sanitizeQuery(value['query']);
   const rawHash = value['hash'];
   const hash =
-    typeof rawHash === 'string' && rawHash.startsWith('#') ? rawHash : undefined;
+    typeof rawHash === 'string' && rawHash.startsWith('#')
+      ? rawHash
+      : undefined;
   const location: CalendarReturnLocation = { path };
   if (query) location.query = query;
   if (hash) location.hash = hash;
   return location;
 }
 
-function safeSet(
-  storage: Storage | undefined | null,
-  payload: string
-): void {
+function safeSet(storage: Storage | undefined | null, payload: string): void {
   try {
     storage?.setItem(CALENDAR_RETURN_KEY, payload);
   } catch {
@@ -69,7 +68,9 @@ export function storeCalendarReturnLocation(
   location: CalendarReturnLocation
 ): void {
   if (typeof window === 'undefined') return;
-  const safeLocation = sanitizeLocation(location) ?? { path: DEFAULT_CALENDAR_PATH };
+  const safeLocation = sanitizeLocation(location) ?? {
+    path: DEFAULT_CALENDAR_PATH,
+  };
   const payload = JSON.stringify(safeLocation);
   safeSet(window.sessionStorage, payload);
   safeSet(window.localStorage, payload);
@@ -77,8 +78,7 @@ export function storeCalendarReturnLocation(
 
 function readCalendarLocation(): CalendarReturnLocation | null {
   if (typeof window === 'undefined') return null;
-  const raw =
-    safeGet(window.sessionStorage) ?? safeGet(window.localStorage);
+  const raw = safeGet(window.sessionStorage) ?? safeGet(window.localStorage);
   if (!raw) return null;
   try {
     return sanitizeLocation(JSON.parse(raw));

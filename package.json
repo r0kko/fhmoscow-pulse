@@ -38,7 +38,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.931.0",
     "@aws-sdk/s3-request-presigner": "^3.931.0",
-    "@jest/globals": "^30.2.0",
+    "@jest/globals": "^27.5.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.67.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.208.0",
@@ -93,11 +93,14 @@
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-security": "^3.0.1",
     "globals": "^16.5.0",
+    "is-callable": "file:packages/is-callable",
+    "is-date-object": "file:packages/is-date-object",
+    "is-symbol": "file:packages/is-symbol",
     "jest": "^30.2.0",
     "prettier": "^3.6.2",
-    "semver": "^7.7.3",
-    "is-date-object": "file:packages/is-date-object",
-    "is-callable": "file:packages/is-callable",
-    "is-symbol": "file:packages/is-symbol"
+    "semver": "^7.7.3"
+  },
+  "overrides": {
+    "js-yaml": "^4.1.1"
   }
 }
