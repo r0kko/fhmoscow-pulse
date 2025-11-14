@@ -5,6 +5,7 @@ FROM node:24-alpine AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
+COPY packages ./packages
 
 RUN npm ci
 

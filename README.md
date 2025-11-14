@@ -409,7 +409,6 @@ if (isExternalDbAvailable()) {
 - `npm run lint:ci` covers both workspaces; use `npm run lint:fix` and `npm run lint:client:fix` for autofix.
 - `npm run format` writes formatting changes, while `npm run format:check` validates without touching files.
 - `npm run test:ci` runs both suites; `npm run test:coverage` and `npm run test:client:coverage` generate coverage under `coverage/` and `client/coverage/` respectively.
-- `npm run qodana:scan` downloads the Qodana CLI (via `npx`) and produces a local HTML/SARIF report under `.qodana/`. Use it to reproduce CI findings.
 
 ## Согласования матчей (Match Agreements)
 
@@ -479,7 +478,7 @@ npm run lint:client:fix
 npm run format      # apply Prettier formatting
 ```
 
-Run `npm run qodana:scan` to launch the JetBrains Qodana container locally; results land in `.qodana/index.html` and `.qodana/qodana.sarif.json` for sharing or import into IDEs.
+Use `npm run verify` locally to reproduce the exact CI gate; coverage artifacts end up in `coverage/` and `client/coverage/` for offline analysis.
 
 ### Running tests
 

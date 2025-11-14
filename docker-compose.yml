@@ -172,7 +172,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:12.2.1
     container_name: grafana
     ports:
       - "3001:3000"
@@ -228,7 +228,7 @@ services:
     restart: unless-stopped
 
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.2.1
     container_name: node-exporter
     pid: "host"
     ports:

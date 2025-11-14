@@ -58,5 +58,3 @@ dataSources.local.xml
 # Project-specific
 shelf/
 .idea/workspace.xml
-
-.qodana/

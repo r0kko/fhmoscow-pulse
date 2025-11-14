@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build stage          #
 ############################
-FROM node:24-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /usr/src/app
 
 ARG VITE_API_BASE=/api
@@ -21,7 +21,7 @@ RUN npm run build
 ############################
 # 2️⃣ Production stage     #
 ############################
-FROM node:24-alpine AS prod
+FROM node:25-alpine AS prod
 WORKDIR /usr/src/app
 COPY --from=build /usr/src/app/vite.config.* ./
 # Copy only runtime files
