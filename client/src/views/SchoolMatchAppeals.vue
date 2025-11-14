@@ -3,17 +3,19 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
+import { resolveCalendarReturnLocation } from '../utils/adminCalendarNavigation';
 
 const route = useRoute();
 const match = ref(null);
 const error = ref('');
 const isAdminView = computed(() => route.meta?.adminMatchSection === true);
+const calendarReturnLocation = resolveCalendarReturnLocation();
 const breadcrumbs = computed(() =>
   isAdminView.value
     ? [
         { label: 'Главная', to: '/' },
         { label: 'Администрирование', to: '/admin' },
-        { label: 'Календарь игр', to: '/admin/sports-calendar' },
+        { label: 'Календарь игр', to: calendarReturnLocation },
         { label: 'Матч', to: `/admin/matches/${route.params.id}` },
         { label: 'Обращения' },
       ]

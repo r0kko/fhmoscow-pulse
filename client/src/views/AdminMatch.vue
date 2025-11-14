@@ -9,6 +9,7 @@ import MenuTile from '../components/MenuTile.vue';
 import PenaltyTimeline from '../components/PenaltyTimeline.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import vkLogo from '../assets/vkvideo.png';
+import { resolveCalendarReturnLocation } from '../utils/adminCalendarNavigation';
 
 const route = useRoute();
 const matchId = computed(() => String(route.params.id || ''));
@@ -183,10 +184,12 @@ const minDate = computed(() => {
   }
 });
 
+const calendarReturnLocation = resolveCalendarReturnLocation();
+
 const breadcrumbs = computed(() => [
   { label: 'Главная', to: '/' },
   { label: 'Администрирование', to: '/admin' },
-  { label: 'Календарь игр', to: '/admin/sports-calendar' },
+  { label: 'Календарь игр', to: calendarReturnLocation },
   { label: 'Матч' },
 ]);
 

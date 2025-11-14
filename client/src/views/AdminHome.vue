@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { auth } from '../auth';
 import MenuTile from '../components/MenuTile.vue';
 import { ADMIN_ROLES, FHMO_MEDIA_CONTENT_ROLES, hasRole } from '../utils/roles';
+import { resolveCalendarReturnLocation } from '../utils/adminCalendarNavigation';
 
 const userSections = [
   { title: 'Пользователи', icon: 'bi-people', to: '/admin/users' },
@@ -23,11 +24,13 @@ const refereeSections = [
   { title: 'Экипировка', icon: 'bi-tshirt', to: '/admin/equipment' },
 ];
 
+const calendarReturnLocation = resolveCalendarReturnLocation();
+
 const sportsSections = [
   {
     title: 'Календарь игр',
     icon: 'bi-calendar-week',
-    to: '/admin/sports-calendar',
+    to: calendarReturnLocation,
   },
 ];
 

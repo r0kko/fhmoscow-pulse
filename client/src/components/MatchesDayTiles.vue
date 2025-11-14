@@ -10,6 +10,8 @@ const props = defineProps({
   noScroll: { type: Boolean, default: false },
   // Base path for details links, e.g., '/school-matches' or '/admin/matches'
   detailsBase: { type: String, default: '/school-matches' },
+  // Optional query params to propagate to detail routes
+  detailsQuery: { type: Object, default: null },
   // When true, renders a dedicated score column (used on past matches page)
   showScoreAsColumn: { type: Boolean, default: false },
   // Mobile row style: 'card' (default) or 'divider' to separate rows with hairline dividers
@@ -34,6 +36,21 @@ const groups = computed(() => {
       return g;
     });
 });
+
+const hasDetailsQuery = computed(
+  () => props.detailsQuery && Object.keys(props.detailsQuery).length > 0
+);
+
+function buildDetailsLink(id) {
+  const basePath = `${props.detailsBase}/${id}`;
+  if (hasDetailsQuery.value) {
+    return {
+      path: basePath,
+      query: props.detailsQuery,
+    };
+  }
+  return basePath;
+}
 
 function formatDay(date) {
   // Convert Date to ISO for unified helper
@@ -212,13 +229,18 @@ function formatScore(m) {
               Действия
             </div>
           </div>
-          <div v-for="m in group.list" :key="m.id" class="grid-row" role="row">
-            <!-- Mobile: make entire row clickable via stretched link overlay -->
+          <div
+            v-for="m in group.list"
+            :key="m.id"
+            class="grid-row-wrapper match-row position-relative"
+            role="row"
+          >
             <RouterLink
-              class="stretched-link d-md-none"
-              :to="`${props.detailsBase}/${m.id}`"
-              :aria-label="`Открыть карточку матча`"
+              class="stretched-link match-row-link"
+              :to="buildDetailsLink(m.id)"
+              :aria-label="`Открыть матч ${m.team1} — ${m.team2}`"
             />
+            <div class="grid-row" role="presentation">
             <div class="cell col-teams" role="cell">
               <div class="teams-line" :title="`${m.team1} — ${m.team2}`">
                 {{ m.team1 }} — {{ m.team2 }}
@@ -330,15 +352,15 @@ function formatScore(m) {
               role="cell"
             >
               <RouterLink
-                :to="`${props.detailsBase}/${m.id}`"
-                class="btn btn-link p-0 text-primary position-relative"
-                :title="`Открыть карточку матча`"
-                aria-label="Открыть карточку матча"
+                :to="buildDetailsLink(m.id)"
+                class="inline-action"
+                :title="`Открыть матч ${m.team1} — ${m.team2}`"
+                aria-label="Открыть матч"
               >
-                <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
-                <span class="visually-hidden">Открыть</span>
+                <i class="bi bi-arrow-right-circle icon-indicator"></i>
               </RouterLink>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -373,31 +395,27 @@ function formatScore(m) {
 
 /* Grid table with synchronized columns across tiles via fixed template */
 .grid-table {
-  display: grid;
-  /* Columns: Match | Status | Time | Stadium | Actions */
-  /* Allocate more space to teams/tournament; time is fixed-width (XX:XX) */
-  grid-template-columns:
+  --match-grid:
     minmax(0, 3fr)
     minmax(0, 1.4fr)
     minmax(0, 0.8fr)
     minmax(0, 1.5fr)
     minmax(0, 0.8fr);
+  display: flex;
+  flex-direction: column;
   row-gap: 0.25rem;
 }
 
 .grid-table.no-actions {
-  /* Without actions column, re-distribute space */
-  grid-template-columns:
+  --match-grid:
     minmax(0, 3.2fr)
     minmax(0, 1.4fr)
     minmax(0, 0.8fr)
     minmax(0, 1.6fr);
 }
 
-/* When score column is present */
 .grid-table.with-score {
-  /* Columns: Match | Status | Score | Time | Stadium | Actions */
-  grid-template-columns:
+  --match-grid:
     minmax(0, 2.7fr)
     minmax(0, 1.3fr)
     minmax(0, 0.9fr)
@@ -406,7 +424,7 @@ function formatScore(m) {
     minmax(0, 0.8fr);
 }
 .grid-table.with-score.no-actions {
-  grid-template-columns:
+  --match-grid:
     minmax(0, 3fr)
     minmax(0, 1.3fr)
     minmax(0, 0.9fr)
@@ -418,7 +436,29 @@ function formatScore(m) {
   position: sticky;
   top: 0;
   z-index: 1;
-  display: contents; /* allow header cells to align with grid columns */
+  display: grid;
+  grid-template-columns: var(--match-grid);
+  column-gap: 0;
+}
+
+.grid-row-wrapper {
+  display: grid;
+  grid-template-columns: var(--match-grid);
+  column-gap: 0;
+  background-color: transparent;
+  border-radius: 0.35rem;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+}
+.grid-row-wrapper:hover {
+  background-color: rgba(25, 118, 210, 0.04);
+}
+.grid-row-wrapper:focus-within {
+  outline: 2px solid var(--brand-color, #0057b8);
+  outline-offset: 2px;
+}
+.match-row-link {
+  border-radius: inherit;
 }
 
 .grid-row {
@@ -464,6 +504,45 @@ function formatScore(m) {
 
 .icon-muted {
   color: #6c757d;
+}
+
+.match-row-link {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.match-row {
+  cursor: pointer;
+}
+
+.match-row:hover .cell {
+  border-bottom-color: transparent;
+}
+.match-row:focus-within .cell {
+  border-bottom-color: transparent;
+}
+
+.icon-indicator {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.inline-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bs-primary);
+  padding: 0.25rem;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+}
+
+.inline-action:hover,
+.inline-action:focus-visible {
+  text-decoration: none;
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Row background highlighting removed per new UX */
@@ -554,7 +633,7 @@ function formatScore(m) {
   .grid-table {
     display: block;
   }
-  .grid-row {
+  .grid-row-wrapper {
     display: block;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
@@ -562,10 +641,12 @@ function formatScore(m) {
     margin-bottom: 0.5rem;
     box-shadow: var(--shadow-tile);
     background: #fff;
-    position: relative; /* for stretched-link */
+  }
+  .grid-row {
+    display: block;
   }
   /* Divider-style rows: lighter, with hairline separators between items */
-  .grid-table.mobile-divider .grid-row {
+  .grid-table.mobile-divider .grid-row-wrapper {
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -573,7 +654,7 @@ function formatScore(m) {
     padding: 0.5rem 0;
     margin-bottom: 0;
   }
-  .grid-table.mobile-divider .grid-row + .grid-row {
+  .grid-table.mobile-divider .grid-row-wrapper + .grid-row-wrapper {
     border-top: 1px solid var(--border-subtle);
   }
   /* Ensure actions remain clickable above stretched-link */

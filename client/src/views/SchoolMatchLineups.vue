@@ -11,6 +11,7 @@ import ExportModal from '../components/lineups/ExportModal.vue';
 import StaffList from '../components/lineups/StaffList.vue';
 import PlayersTable from '../components/lineups/PlayersTable.vue';
 import PlayersListMobile from '../components/lineups/PlayersListMobile.vue';
+import { resolveCalendarReturnLocation } from '../utils/adminCalendarNavigation';
 
 const route = useRoute();
 const isAdminView = computed(() => route.meta?.adminMatchSection === true);
@@ -82,12 +83,14 @@ const headCoachCount = computed(() => {
   return cnt;
 });
 
+const calendarReturnLocation = resolveCalendarReturnLocation();
+
 const breadcrumbs = computed(() =>
   isAdminView.value
     ? [
         { label: 'Главная', to: '/' },
         { label: 'Администрирование', to: '/admin' },
-        { label: 'Календарь игр', to: '/admin/sports-calendar' },
+        { label: 'Календарь игр', to: calendarReturnLocation },
         { label: 'Матч', to: `/admin/matches/${route.params.id}` },
         { label: 'Составы' },
       ]

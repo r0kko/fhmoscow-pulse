@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 type TabKey = string | number;
 
@@ -39,16 +39,61 @@ const navClass = computed(() => {
   return classes.join(' ');
 });
 
+const navRef = ref<HTMLElement | null>(null);
+
 function selectTab(key: TabKey, disabled?: boolean): void {
   if (disabled) return;
   if (key === currentValue.value) return;
   emit('update:modelValue', key);
   emit('change', key);
 }
+
+function scrollActiveTab(behavior: ScrollBehavior = 'auto'): void {
+  const navEl = navRef.value;
+  if (!navEl) return;
+  const active = navEl.querySelector<HTMLElement>('.nav-link.active');
+  if (!active) return;
+  const scrollLeft = navEl.scrollLeft;
+  const viewWidth = navEl.clientWidth;
+  const activeLeft = active.offsetLeft;
+  const activeRight = activeLeft + active.offsetWidth;
+  if (activeLeft >= scrollLeft && activeRight <= scrollLeft + viewWidth) return;
+  const target =
+    activeLeft - Math.max(viewWidth / 2 - active.offsetWidth / 2, 0);
+  navEl.scrollTo({
+    left: Math.max(target, 0),
+    behavior,
+  });
+}
+
+function queueScroll(behavior: ScrollBehavior = 'auto'): void {
+  void nextTick(() => {
+    scrollActiveTab(behavior);
+  });
+}
+
+onMounted(() => {
+  queueScroll('auto');
+});
+
+watch(
+  () => currentValue.value,
+  () => {
+    queueScroll('smooth');
+  }
+);
+
+watch(
+  () => tabItems.value.map((tab) => tab.key),
+  () => {
+    queueScroll('auto');
+  }
+);
 </script>
 
 <template>
   <ul
+    ref="navRef"
     v-edge-fade
     class="nav nav-pills tab-selector"
     :class="navClass"

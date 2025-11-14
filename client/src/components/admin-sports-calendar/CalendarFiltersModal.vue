@@ -12,9 +12,7 @@ import type {
 const props = defineProps<{
   statusOptions: ReadonlyArray<StatusOption>;
   timeScopeTabs: TabItem[];
-  dayWindowOptions: number[];
   defaultDayWindow: number;
-  rangeSummary: string;
   formatDaysLabel: (value: number) => string;
   homeClubOptions: string[];
   awayClubOptions: string[];
@@ -30,7 +28,6 @@ const emit = defineEmits<{
   toggleStatus: [StatusFilterScope];
   shiftAnchor: [number];
   resetAnchor: [];
-  selectDayWindow: [number];
   addHome: [];
   removeHome: [string];
   addAway: [];
@@ -71,8 +68,7 @@ onBeforeUnmount(() => {
 });
 
 function handleShiftAnchor(multiplier: number): void {
-  const delta =
-    multiplier * (draft.value.dayWindow || props.defaultDayWindow || 0);
+  const delta = multiplier * (props.defaultDayWindow || 0);
   emit('shiftAnchor', delta);
 }
 
@@ -165,22 +161,14 @@ defineExpose({ show, hide });
                     class="btn btn-outline-secondary"
                     @click="handleShiftAnchor(-1)"
                   >
-                    -{{
-                      props.formatDaysLabel(
-                        draft.dayWindow || props.defaultDayWindow
-                      )
-                    }}
+                    -{{ props.formatDaysLabel(props.defaultDayWindow) }}
                   </button>
                   <button
                     type="button"
                     class="btn btn-outline-secondary"
                     @click="handleShiftAnchor(1)"
                   >
-                    +{{
-                      props.formatDaysLabel(
-                        draft.dayWindow || props.defaultDayWindow
-                      )
-                    }}
+                    +{{ props.formatDaysLabel(props.defaultDayWindow) }}
                   </button>
                 </div>
                 <button
@@ -193,31 +181,12 @@ defineExpose({ show, hide });
               </div>
             </div>
             <div class="modal-grid-item">
-              <span class="modal-filter-title">Диапазон, дни</span>
-              <div
-                class="btn-group btn-group-sm flex-wrap"
-                role="group"
-                aria-label="Диапазон, дни"
-              >
-                <button
-                  v-for="option in props.dayWindowOptions"
-                  :key="option"
-                  type="button"
-                  class="btn"
-                  :class="
-                    draft.dayWindow === option
-                      ? 'btn-brand'
-                      : 'btn-outline-secondary'
-                  "
-                  :aria-pressed="draft.dayWindow === option"
-                  @click="emit('selectDayWindow', option)"
-                >
-                  {{ props.formatDaysLabel(option) }}
-                </button>
-              </div>
-              <small v-if="props.rangeSummary" class="text-muted d-block mt-1"
-                >Текущий диапазон: {{ props.rangeSummary }}</small
-              >
+              <span class="modal-filter-title">Диапазон</span>
+              <p class="text-muted small mb-1">
+                Календарь всегда показывает
+                {{ props.formatDaysLabel(props.defaultDayWindow) }} матчей от
+                выбранной опорной даты.
+              </p>
             </div>
           </div>
 

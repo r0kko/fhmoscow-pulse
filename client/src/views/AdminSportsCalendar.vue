@@ -9,7 +9,13 @@ import {
   watch,
   type Ref,
 } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import {
+  RouterLink,
+  useRoute,
+  useRouter,
+  type LocationQuery,
+  type LocationQueryValue,
+} from 'vue-router';
 import { apiFetch } from '../api';
 import TabSelector from '../components/TabSelector.vue';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
@@ -23,10 +29,15 @@ import type {
   StatusFilterScope,
   TimeScope,
 } from '../components/admin-sports-calendar/types';
+import {
+  storeCalendarReturnLocation,
+  type CalendarReturnLocation,
+} from '../utils/adminCalendarNavigation';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_DAY_WINDOW = 7;
-const dayWindowOptions = [3, 5, 7, 10, 14];
+const DEFAULT_DAY_WINDOW = 14;
+const SEARCH_DEBOUNCE_MS = 1300;
+const SEARCH_PERSIST_GRACE_MS = 1500;
 const pluralRules = new Intl.PluralRules('ru-RU');
 
 interface CalendarMatch {
@@ -88,6 +99,7 @@ const range = ref<CalendarRange | null>(null);
 const loading = ref(false);
 const error = ref('');
 const activeDayKey = ref<number | null>(null);
+const pendingDayKey = ref<number | null>(null);
 const search = ref('');
 
 const selectedHomeClubs = ref<string[]>([]);
@@ -122,6 +134,58 @@ const draftModel = computed<CalendarFilterDraft>({
     Object.assign(draft, value);
   },
 });
+
+const route = useRoute();
+const router = useRouter();
+const calendarQuerySnapshot = computed<Record<string, string | string[]>>(
+  () => {
+    const query = route.query;
+    const snapshot: Record<string, string | string[]> = {};
+    Object.entries(query).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        const arr = value.filter(
+          (item): item is string => typeof item === 'string'
+        );
+        if (arr.length) snapshot[key] = arr;
+        return;
+      }
+      if (typeof value === 'string') {
+        snapshot[key] = value;
+      }
+    });
+    return snapshot;
+  }
+);
+
+interface CalendarPersistedState {
+  anchorDate: string;
+  dayWindow: number;
+  timeScope: TimeScope;
+  statusScope: StatusFilterScope;
+  search: string;
+  selectedHomeClubs: string[];
+  selectedAwayClubs: string[];
+  selectedTournaments: string[];
+  selectedGroups: string[];
+  selectedStadiums: string[];
+  activeDayKey: number | null;
+}
+
+const CALENDAR_STATE_VERSION = 1;
+const CALENDAR_STATE_STORAGE_KEY = `admin-sports-calendar-state-v${CALENDAR_STATE_VERSION}`;
+const QUERY_KEYS = {
+  anchor: 'anchor',
+  dayWindow: 'window',
+  timeScope: 'time',
+  statusScope: 'status',
+  search: 'q',
+  activeDayKey: 'day',
+  home: 'home',
+  away: 'away',
+  tournament: 'tournament',
+  group: 'group',
+  stadium: 'stadium',
+} as const;
 
 const activeFiltersCount = computed(() => {
   let n = 0;
@@ -280,11 +344,13 @@ const activeDayTabKey = computed<string | number>({
   set: (value) => {
     if (value === '' || value == null) {
       activeDayKey.value = null;
+      pendingDayKey.value = null;
       return;
     }
     const numericValue =
       typeof value === 'number' ? value : Number.parseInt(String(value), 10);
     activeDayKey.value = Number.isNaN(numericValue) ? null : numericValue;
+    pendingDayKey.value = null;
   },
 });
 
@@ -329,23 +395,6 @@ const groupOptionsModal = computed<string[]>(() => {
 const stadiumOptions = computed<string[]>(() =>
   toSortedUnique(matches.value, (match) => match.stadium)
 );
-
-const rangeSummary = computed(() => {
-  const currentRange = range.value;
-  if (!currentRange?.start || !currentRange?.end_exclusive) return '';
-  const startDate = new Date(currentRange.start);
-  const endExclusive = new Date(currentRange.end_exclusive);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endExclusive.getTime()))
-    return '';
-  const endDate = new Date(endExclusive.getTime() - DAY_MS);
-  const formatter = new Intl.DateTimeFormat('ru-RU', {
-    timeZone: MOSCOW_TZ,
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-  return `${formatter.format(startDate)} — ${formatter.format(endDate)}`;
-});
 
 watch(
   () => groupOptions.value,
@@ -395,9 +444,32 @@ watch(
       activeDayKey.value = null;
       return;
     }
+    const requested = pendingDayKey.value;
+    if (requested != null && keys.includes(requested)) {
+      activeDayKey.value = requested;
+      pendingDayKey.value = null;
+      return;
+    }
     const currentKey = activeDayKey.value;
-    if (currentKey == null || !keys.includes(currentKey)) {
+    if (currentKey != null && keys.includes(currentKey)) return;
+    const anchorCandidate = anchorKey.value;
+    if (anchorCandidate != null && keys.includes(anchorCandidate)) {
+      activeDayKey.value = anchorCandidate;
+      return;
+    }
+    if (directionParam.value === 'backward') {
+      activeDayKey.value = keys[keys.length - 1] ?? null;
+    } else {
       activeDayKey.value = keys[0] ?? null;
+    }
+  }
+);
+
+watch(
+  () => activeDayKey.value,
+  (value) => {
+    if (pendingDayKey.value != null && pendingDayKey.value === value) {
+      pendingDayKey.value = null;
     }
   }
 );
@@ -406,6 +478,70 @@ let suppressReload = false;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let requestToken = 0;
 let visibilityHandler: (() => void) | null = null;
+let skipSearchWatcher = false;
+let persistencePaused = false;
+let persistenceResumeTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingPersistenceState: CalendarPersistedState | null = null;
+
+const persistedStateSnapshot = computed<CalendarPersistedState>(() =>
+  createStateSnapshot()
+);
+
+function queuePersistence(state: CalendarPersistedState): void {
+  if (persistencePaused) {
+    pendingPersistenceState = state;
+    return;
+  }
+  pendingPersistenceState = null;
+  persistCalendarState(state);
+}
+
+function pausePersistenceTemporarily(
+  delay: number = SEARCH_PERSIST_GRACE_MS
+): void {
+  persistencePaused = true;
+  if (persistenceResumeTimer) {
+    clearTimeout(persistenceResumeTimer);
+    persistenceResumeTimer = null;
+  }
+  persistenceResumeTimer = setTimeout(() => {
+    persistencePaused = false;
+    persistenceResumeTimer = null;
+    if (pendingPersistenceState) {
+      const snapshot = pendingPersistenceState;
+      pendingPersistenceState = null;
+      persistCalendarState(snapshot);
+    }
+  }, delay);
+}
+
+function flushPendingPersistence(): void {
+  if (persistenceResumeTimer) {
+    clearTimeout(persistenceResumeTimer);
+    persistenceResumeTimer = null;
+  }
+  const snapshot =
+    pendingPersistenceState ?? (!suppressReload ? createStateSnapshot() : null);
+  pendingPersistenceState = null;
+  persistencePaused = false;
+  if (!snapshot || suppressReload) {
+    if (snapshot) pendingPersistenceState = snapshot;
+    return;
+  }
+  persistCalendarState(snapshot);
+}
+
+watch(
+  persistedStateSnapshot,
+  (state) => {
+    if (suppressReload) {
+      pendingPersistenceState = state;
+      return;
+    }
+    queuePersistence(state);
+  },
+  { deep: true, flush: 'post' }
+);
 
 async function loadMatches(): Promise<void> {
   const token = ++requestToken;
@@ -435,20 +571,6 @@ async function loadMatches(): Promise<void> {
     if (token !== requestToken) return;
     matches.value = Array.isArray(res.matches) ? res.matches : [];
     range.value = res.range ?? null;
-    const tabs = dayTabs.value;
-    const anchorTab = anchorKey.value
-      ? tabs.find((tab) => tab.key === anchorKey.value)
-      : null;
-    const hasActive = tabs.some((tab) => tab.key === activeDayKey.value);
-    if (!hasActive) {
-      if (anchorTab) {
-        activeDayKey.value = anchorTab.key;
-      } else if (directionParam.value === 'backward') {
-        activeDayKey.value = tabs[tabs.length - 1]?.key ?? null;
-      } else {
-        activeDayKey.value = tabs[0]?.key ?? null;
-      }
-    }
   } catch (err) {
     if (token === requestToken) {
       const message =
@@ -475,14 +597,20 @@ watch(
 watch(
   () => search.value,
   (query: string) => {
+    if (skipSearchWatcher) {
+      skipSearchWatcher = false;
+      return;
+    }
+    pausePersistenceTemporarily();
     if (searchTimer) {
       clearTimeout(searchTimer);
       searchTimer = undefined;
     }
     if (suppressReload) return;
-    const delay = query?.trim() ? 300 : 0;
+    const delay = query?.trim() ? SEARCH_DEBOUNCE_MS : 0;
     searchTimer = setTimeout(() => {
       void loadMatches();
+      flushPendingPersistence();
     }, delay);
   }
 );
@@ -517,9 +645,8 @@ function applyFilters(): void {
   selectedStadiums.value = [...draft.stadiums];
   statusScope.value = draft.statusScope;
   timeScope.value = draft.timeScope;
-  dayWindow.value = Number.isFinite(draft.dayWindow)
-    ? draft.dayWindow
-    : DEFAULT_DAY_WINDOW;
+  dayWindow.value = DEFAULT_DAY_WINDOW;
+  draft.dayWindow = DEFAULT_DAY_WINDOW;
   anchorDate.value = draft.anchorDate || '';
   filtersModal.value?.hide();
   void loadMatches();
@@ -560,12 +687,21 @@ function resetDraftAnchorToToday(): void {
   draft.anchorDate = toMoscowDateInputValue(new Date());
 }
 
-function selectDraftDayWindow(option: number): void {
-  draft.dayWindow = option;
+function submitSearchNow(): void {
+  if (suppressReload) return;
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+    searchTimer = undefined;
+  }
+  void loadMatches();
+  flushPendingPersistence();
 }
 
-function manualRefresh(): void {
-  void loadMatches();
+function clearSearchQuery(): void {
+  if (!search.value) return;
+  skipSearchWatcher = true;
+  search.value = '';
+  submitSearchNow();
 }
 
 function toggleDraftStatus(scope: StatusFilterScope): void {
@@ -589,9 +725,12 @@ function resetAllFilters(): void {
   dayWindow.value = DEFAULT_DAY_WINDOW;
   anchorDate.value = toMoscowDateInputValue(new Date());
   range.value = null;
+  activeDayKey.value = null;
+  pendingDayKey.value = null;
   setDraftFromState();
   void nextTick(() => {
     suppressReload = false;
+    persistCurrentState({ replace: true });
     void loadMatches();
   });
 }
@@ -803,6 +942,337 @@ function buildSearchMatcher(query: string): MatchesSearchPredicate | null {
   };
 }
 
+function getDefaultCalendarState(): CalendarPersistedState {
+  return {
+    anchorDate: toMoscowDateInputValue(new Date()),
+    dayWindow: DEFAULT_DAY_WINDOW,
+    timeScope: 'upcoming',
+    statusScope: 'all',
+    search: '',
+    selectedHomeClubs: [],
+    selectedAwayClubs: [],
+    selectedTournaments: [],
+    selectedGroups: [],
+    selectedStadiums: [],
+    activeDayKey: null,
+  };
+}
+
+function normalizePersistedList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  value.forEach((item) => {
+    const normalized = (item ?? '').toString().trim();
+    if (normalized) seen.add(normalized);
+  });
+  return Array.from(seen);
+}
+
+function hasOwn(obj: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function sanitizePersistedState(
+  input: Partial<CalendarPersistedState> | null | undefined
+): CalendarPersistedState {
+  const fallback = getDefaultCalendarState();
+  const candidate = (input ?? {}) as Record<string, unknown>;
+  const anchorProvided = hasOwn(candidate, 'anchorDate');
+  const rawAnchor = anchorProvided
+    ? (candidate['anchorDate'] ?? '').toString().trim()
+    : undefined;
+  let anchorDate = fallback.anchorDate;
+  if (anchorProvided) {
+    if (!rawAnchor) {
+      anchorDate = '';
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawAnchor)) {
+      anchorDate = rawAnchor;
+    } else {
+      anchorDate = toMoscowDateInputValue(rawAnchor) || fallback.anchorDate;
+    }
+  }
+  const clampDayWindow = (): number => fallback.dayWindow;
+  const normalizeSearch = (): string => {
+    if (!hasOwn(candidate, 'search')) return fallback.search;
+    return (candidate['search'] ?? '').toString().slice(0, 120);
+  };
+  const normalizeTimeScope = (): TimeScope =>
+    candidate['timeScope'] === 'past' ? 'past' : 'upcoming';
+  const allowedStatuses = statusOptions.map((option) => option.value);
+  const normalizeStatusScope = (): StatusFilterScope => {
+    const raw = candidate['statusScope'];
+    return allowedStatuses.includes(raw as StatusFilterScope)
+      ? (raw as StatusFilterScope)
+      : 'all';
+  };
+  const normalizeActiveDay = (): number | null => {
+    if (!hasOwn(candidate, 'activeDayKey')) return fallback.activeDayKey;
+    const raw = Number(candidate['activeDayKey']);
+    return Number.isFinite(raw) ? raw : null;
+  };
+  return {
+    anchorDate,
+    dayWindow: clampDayWindow(),
+    timeScope: normalizeTimeScope(),
+    statusScope: normalizeStatusScope(),
+    search: normalizeSearch(),
+    selectedHomeClubs: normalizePersistedList(candidate['selectedHomeClubs']),
+    selectedAwayClubs: normalizePersistedList(candidate['selectedAwayClubs']),
+    selectedTournaments: normalizePersistedList(
+      candidate['selectedTournaments']
+    ),
+    selectedGroups: normalizePersistedList(candidate['selectedGroups']),
+    selectedStadiums: normalizePersistedList(candidate['selectedStadiums']),
+    activeDayKey: normalizeActiveDay(),
+  };
+}
+
+function readStateFromStorage(): CalendarPersistedState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage?.getItem(CALENDAR_STATE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CalendarPersistedState>;
+    return sanitizePersistedState(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function writeStateToStorage(state: CalendarPersistedState): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage?.setItem(
+      CALENDAR_STATE_STORAGE_KEY,
+      JSON.stringify(state)
+    );
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
+function normalizeQueryValue(
+  value: LocationQueryValue | LocationQueryValue[] | undefined
+): LocationQueryValue | undefined {
+  if (Array.isArray(value)) return value.at(-1);
+  return value;
+}
+
+function queryValueToString(
+  value: LocationQueryValue | LocationQueryValue[] | undefined
+): string | undefined {
+  const normalized = normalizeQueryValue(value);
+  if (typeof normalized === 'string') return normalized;
+  if (normalized === null) return '';
+  return undefined;
+}
+
+function queryValueToNumber(
+  value: LocationQueryValue | LocationQueryValue[] | undefined
+): number | undefined {
+  const raw = queryValueToString(value);
+  if (raw == null || !raw.trim()) return undefined;
+  const num = Number.parseInt(raw, 10);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function queryValueToArray(
+  value: LocationQueryValue | LocationQueryValue[] | undefined
+): string[] {
+  const values = Array.isArray(value) ? value : [normalizeQueryValue(value)];
+  return values
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => Boolean(item));
+}
+
+function parseStateFromQuery(
+  query: LocationQuery
+): Partial<CalendarPersistedState> | null {
+  const anchor = queryValueToString(query[QUERY_KEYS.anchor]);
+  const dayWindowParam = queryValueToNumber(query[QUERY_KEYS.dayWindow]);
+  const timeScopeParam = queryValueToString(query[QUERY_KEYS.timeScope]);
+  const statusScopeParam = queryValueToString(query[QUERY_KEYS.statusScope]);
+  const searchParam = queryValueToString(query[QUERY_KEYS.search]);
+  const activeDayParam = queryValueToNumber(query[QUERY_KEYS.activeDayKey]);
+  const home = queryValueToArray(query[QUERY_KEYS.home]);
+  const away = queryValueToArray(query[QUERY_KEYS.away]);
+  const tournaments = queryValueToArray(query[QUERY_KEYS.tournament]);
+  const groups = queryValueToArray(query[QUERY_KEYS.group]);
+  const stadiums = queryValueToArray(query[QUERY_KEYS.stadium]);
+  const hasAny =
+    anchor !== undefined ||
+    dayWindowParam !== undefined ||
+    timeScopeParam !== undefined ||
+    statusScopeParam !== undefined ||
+    searchParam !== undefined ||
+    activeDayParam !== undefined ||
+    home.length > 0 ||
+    away.length > 0 ||
+    tournaments.length > 0 ||
+    groups.length > 0 ||
+    stadiums.length > 0;
+  if (!hasAny) return null;
+  const partial: Partial<CalendarPersistedState> = {};
+  if (anchor !== undefined) partial.anchorDate = anchor;
+  if (dayWindowParam !== undefined) partial.dayWindow = dayWindowParam;
+  if (timeScopeParam !== undefined)
+    partial.timeScope = timeScopeParam as TimeScope;
+  if (statusScopeParam !== undefined)
+    partial.statusScope = statusScopeParam as StatusFilterScope;
+  if (searchParam !== undefined) partial.search = searchParam;
+  if (activeDayParam !== undefined) partial.activeDayKey = activeDayParam;
+  if (home.length) partial.selectedHomeClubs = home;
+  if (away.length) partial.selectedAwayClubs = away;
+  if (tournaments.length) partial.selectedTournaments = tournaments;
+  if (groups.length) partial.selectedGroups = groups;
+  if (stadiums.length) partial.selectedStadiums = stadiums;
+  return partial;
+}
+
+function buildQueryFromState(
+  state: CalendarPersistedState
+): Record<string, string | string[]> {
+  const defaults = getDefaultCalendarState();
+  const query: Record<string, string | string[]> = {};
+  if (state.anchorDate && state.anchorDate !== defaults.anchorDate) {
+    query[QUERY_KEYS.anchor] = state.anchorDate;
+  }
+  if (state.timeScope !== defaults.timeScope) {
+    query[QUERY_KEYS.timeScope] = state.timeScope;
+  }
+  if (state.statusScope !== defaults.statusScope) {
+    query[QUERY_KEYS.statusScope] = state.statusScope;
+  }
+  const trimmedSearch = state.search.trim();
+  if (trimmedSearch) {
+    query[QUERY_KEYS.search] = trimmedSearch;
+  }
+  if (state.activeDayKey != null) {
+    query[QUERY_KEYS.activeDayKey] = String(state.activeDayKey);
+  }
+  if (state.selectedHomeClubs.length) {
+    query[QUERY_KEYS.home] = [...state.selectedHomeClubs];
+  }
+  if (state.selectedAwayClubs.length) {
+    query[QUERY_KEYS.away] = [...state.selectedAwayClubs];
+  }
+  if (state.selectedTournaments.length) {
+    query[QUERY_KEYS.tournament] = [...state.selectedTournaments];
+  }
+  if (state.selectedGroups.length) {
+    query[QUERY_KEYS.group] = [...state.selectedGroups];
+  }
+  if (state.selectedStadiums.length) {
+    query[QUERY_KEYS.stadium] = [...state.selectedStadiums];
+  }
+  return query;
+}
+
+type QueryLike = Record<string, string | string[] | null | undefined>;
+
+function queryEntries(source: QueryLike): string[] {
+  const entries: string[] = [];
+  Object.entries(source).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item === undefined) return;
+        entries.push(`${key}=${item ?? ''}`);
+      });
+    } else if (value !== undefined) {
+      entries.push(`${key}=${value ?? ''}`);
+    }
+  });
+  return entries.sort();
+}
+
+function queriesMatch(
+  current: LocationQuery,
+  next: Record<string, string | string[] | undefined>
+): boolean {
+  const currentEntries = queryEntries(current as QueryLike);
+  const nextEntries = queryEntries(next as QueryLike);
+  if (currentEntries.length !== nextEntries.length) return false;
+  return currentEntries.every((entry, index) => entry === nextEntries[index]);
+}
+
+function applyCalendarState(state: CalendarPersistedState): void {
+  search.value = state.search || '';
+  selectedHomeClubs.value = [...state.selectedHomeClubs];
+  selectedAwayClubs.value = [...state.selectedAwayClubs];
+  selectedTournaments.value = [...state.selectedTournaments];
+  selectedGroups.value = [...state.selectedGroups];
+  selectedStadiums.value = [...state.selectedStadiums];
+  anchorDate.value = state.anchorDate;
+  dayWindow.value = state.dayWindow;
+  timeScope.value = state.timeScope;
+  statusScope.value = state.statusScope;
+  activeDayKey.value = state.activeDayKey;
+}
+
+function createStateSnapshot(): CalendarPersistedState {
+  return {
+    anchorDate: anchorDate.value,
+    dayWindow: dayWindow.value,
+    timeScope: timeScope.value,
+    statusScope: statusScope.value,
+    search: search.value,
+    selectedHomeClubs: [...selectedHomeClubs.value],
+    selectedAwayClubs: [...selectedAwayClubs.value],
+    selectedTournaments: [...selectedTournaments.value],
+    selectedGroups: [...selectedGroups.value],
+    selectedStadiums: [...selectedStadiums.value],
+    activeDayKey: activeDayKey.value,
+  };
+}
+
+interface PersistOptions {
+  replace?: boolean;
+}
+
+function persistCalendarState(
+  state: CalendarPersistedState,
+  { replace = true }: PersistOptions = {}
+): void {
+  const safeState = sanitizePersistedState(state);
+  writeStateToStorage(safeState);
+  const query = buildQueryFromState(safeState);
+  const location: CalendarReturnLocation = { path: route.path, query };
+  if (route.hash) location.hash = route.hash;
+  storeCalendarReturnLocation(location);
+  if (queriesMatch(route.query, query)) return;
+  const target = {
+    path: route.path,
+    query,
+    hash: route.hash,
+  };
+  const navigation = replace ? router.replace(target) : router.push(target);
+  void navigation.catch(() => {});
+}
+
+function persistCurrentState(options?: PersistOptions): void {
+  persistCalendarState(createStateSnapshot(), options);
+}
+
+function hydrateCalendarState(): void {
+  suppressReload = true;
+  const base = getDefaultCalendarState();
+  const storageState = readStateFromStorage();
+  const queryState = parseStateFromQuery(route.query);
+  const resolved = sanitizePersistedState({
+    ...base,
+    ...(storageState ?? {}),
+    ...(queryState ?? {}),
+  });
+  applyCalendarState(resolved);
+  pendingDayKey.value = resolved.activeDayKey;
+  setDraftFromState();
+  void nextTick(() => {
+    suppressReload = false;
+    persistCurrentState({ replace: true });
+    void loadMatches();
+  });
+}
+
 function toMoscowDateInputValue(
   value: string | Date | null | undefined
 ): string {
@@ -873,29 +1343,8 @@ function formatTabLines(
   return { line1: ddmm, line2: weekday };
 }
 
-const route = useRoute();
-
-function initFromQuery(): void {
-  try {
-    const query = route.query as Record<string, string | string[] | undefined>;
-    const toArray = (value: string | string[] | undefined): string[] =>
-      Array.isArray(value) ? value : value ? [value] : [];
-    const tournaments = toArray(query['tournament']).filter(
-      (value): value is string => Boolean(value)
-    );
-    const groups = toArray(query['group']).filter((value): value is string =>
-      Boolean(value)
-    );
-    if (tournaments.length) selectedTournaments.value = [...tournaments];
-    if (groups.length) selectedGroups.value = [...groups];
-  } catch {
-    /* no-op */
-  }
-}
-
 onMounted(() => {
-  initFromQuery();
-  void loadMatches();
+  hydrateCalendarState();
   if (typeof document !== 'undefined') {
     visibilityHandler = () => {
       if (document.visibilityState === 'visible') {
@@ -940,15 +1389,15 @@ onUnmounted(() => {
       >
         <CalendarControls
           v-model:search="search"
-          :loading="loading"
           :active-filters-count="activeFiltersCount"
           :filters-summary-text="filtersSummaryText"
-          :chips="activeFilterChips"
-          @refresh="manualRefresh"
-          @open-filters="openFilters"
-          @remove-chip="removeHeaderChip"
-          @reset-filters="resetAllFilters"
-        />
+    :chips="activeFilterChips"
+        @open-filters="openFilters"
+        @remove-chip="removeHeaderChip"
+        @reset-filters="resetAllFilters"
+        @submit-search="submitSearchNow"
+        @clear-search="clearSearchQuery"
+      />
       </section>
 
       <section class="card section-card tile fade-in shadow-sm">
@@ -993,6 +1442,7 @@ onUnmounted(() => {
                 :show-day-header="false"
                 :no-scroll="true"
                 :details-base="'/admin/matches'"
+                :details-query="calendarQuerySnapshot"
               />
               <p
                 v-if="!filteredDayItems.length"
@@ -1007,14 +1457,12 @@ onUnmounted(() => {
     </div>
   </div>
 
-  <CalendarFiltersModal
-    ref="filtersModal"
-    v-model:draft="draftModel"
-    :status-options="statusOptions"
-    :time-scope-tabs="timeScopeTabs"
-    :day-window-options="dayWindowOptions"
-    :default-day-window="DEFAULT_DAY_WINDOW"
-    :range-summary="rangeSummary"
+    <CalendarFiltersModal
+      ref="filtersModal"
+      v-model:draft="draftModel"
+      :status-options="statusOptions"
+      :time-scope-tabs="timeScopeTabs"
+      :default-day-window="DEFAULT_DAY_WINDOW"
     :format-days-label="formatDaysLabel"
     :home-club-options="homeClubOptions"
     :away-club-options="awayClubOptions"
@@ -1025,7 +1473,6 @@ onUnmounted(() => {
     @toggle-status="toggleDraftStatus"
     @shift-anchor="shiftDraftAnchor"
     @reset-anchor="resetDraftAnchorToToday"
-    @select-day-window="selectDraftDayWindow"
     @add-home="addHome"
     @remove-home="removeHome"
     @add-away="addAway"

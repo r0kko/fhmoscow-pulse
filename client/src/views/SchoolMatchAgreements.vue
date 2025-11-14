@@ -18,6 +18,7 @@ import AgreementTimeline from '../components/AgreementTimeline.vue';
 import EmptyState from '../components/EmptyState.vue';
 import MenuTile from '../components/MenuTile.vue';
 import vkLogo from '../assets/vkvideo.png';
+import { resolveCalendarReturnLocation } from '../utils/adminCalendarNavigation';
 
 const route = useRoute();
 const isAdminView = computed(() => route.meta?.adminMatchSection === true);
@@ -89,12 +90,14 @@ const daysLeft = computed(() => {
   const d = Math.floor(ms / (24 * 60 * 60 * 1000));
   return d >= 0 ? d : null;
 });
+const calendarReturnLocation = resolveCalendarReturnLocation();
+
 const breadcrumbs = computed(() =>
   isAdminView.value
     ? [
         { label: 'Главная', to: '/' },
         { label: 'Администрирование', to: '/admin' },
-        { label: 'Календарь игр', to: '/admin/sports-calendar' },
+        { label: 'Календарь игр', to: calendarReturnLocation },
         { label: 'Матч', to: `/admin/matches/${route.params.id}` },
         { label: 'Время и место' },
       ]

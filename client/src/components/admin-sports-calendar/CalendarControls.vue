@@ -5,24 +5,22 @@ import type { CalendarFilterChip } from './types';
 const search = defineModel<string>('search', { required: true });
 
 const props = defineProps<{
-  loading: boolean;
   activeFiltersCount: number;
   filtersSummaryText: string;
   chips: CalendarFilterChip[];
 }>();
 
 const emit = defineEmits<{
-  refresh: [];
   openFilters: [];
   removeChip: [CalendarFilterChip];
   resetFilters: [];
+  submitSearch: [];
+  clearSearch: [];
 }>();
 
 const hasActiveFilters = computed(() => props.activeFiltersCount > 0);
-
-function handleRefresh(): void {
-  emit('refresh');
-}
+const hasSearchValue = computed(() => (search.value || '').trim().length > 0);
+const searchFieldId = 'calendar-search';
 
 function handleOpenFilters(): void {
   emit('openFilters');
@@ -35,43 +33,59 @@ function handleReset(): void {
 function handleRemoveChip(chip: CalendarFilterChip): void {
   emit('removeChip', chip);
 }
+
+function handleSubmitSearch(): void {
+  emit('submitSearch');
+}
+
+function handleClearSearch(): void {
+  emit('clearSearch');
+}
 </script>
 
 <template>
   <div class="card-body controls-card-body d-flex flex-column gap-3">
     <div class="controls-header">
       <div class="controls-search">
-        <label class="visually-hidden" for="calendar-search"
+        <label class="visually-hidden" :for="searchFieldId"
           >Поиск по матчам</label
         >
-        <div class="input-group input-group-sm">
+        <div class="input-group input-group-sm calendar-search-group">
           <span class="input-group-text">
             <i class="bi bi-search" aria-hidden="true"></i>
           </span>
-          <input
-            id="calendar-search"
-            v-model="search"
-            type="search"
-            class="form-control"
-            placeholder="Поиск по командам, клубам, стадионам"
-            autocomplete="off"
-          />
+          <div class="search-input-wrapper">
+            <input
+              :id="searchFieldId"
+              v-model="search"
+              type="search"
+              class="form-control"
+              placeholder="Поиск по командам, клубам, стадионам"
+              autocomplete="off"
+              @keyup.enter.prevent="handleSubmitSearch"
+            />
+            <button
+              v-if="hasSearchValue"
+              class="btn btn-clear-field"
+              type="button"
+              :aria-label="`Очистить поиск «${search}»`"
+              @click="handleClearSearch"
+            >
+              <i class="bi bi-x-circle" aria-hidden="true"></i>
+              <span class="visually-hidden">Очистить</span>
+            </button>
+          </div>
+          <button
+            class="btn btn-outline-primary btn-sm d-none d-lg-inline-flex"
+            type="button"
+            aria-label="Применить поиск"
+            @click="handleSubmitSearch"
+          >
+            Найти
+          </button>
         </div>
       </div>
       <div class="controls-actions">
-        <button
-          type="button"
-          class="btn btn-outline-secondary btn-sm"
-          :disabled="loading"
-          @click="handleRefresh"
-        >
-          <span
-            v-if="loading"
-            class="spinner-border spinner-border-sm me-1"
-            aria-hidden="true"
-          ></span>
-          Обновить
-        </button>
         <button
           type="button"
           class="btn btn-outline-secondary btn-sm"
@@ -145,8 +159,54 @@ function handleRemoveChip(chip: CalendarFilterChip): void {
   width: 100%;
 }
 
+.search-input-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
 .controls-search .form-control {
   min-height: 2.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 2.25rem;
+}
+
+.controls-search input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.controls-search input[type='search']::-ms-clear {
+  display: none;
+}
+
+.btn-clear-field {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  padding: 0.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  pointer-events: auto;
+}
+
+.btn-clear-field:hover,
+.btn-clear-field:focus-visible {
+  color: var(--bs-gray-800);
+  text-decoration: none;
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 .controls-search .input-group-text {
