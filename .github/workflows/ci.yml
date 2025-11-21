@@ -107,8 +107,8 @@ jobs:
     needs:
       - quality
       - client-build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: production
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+    environment: ${{ contains(fromJson('["test","test-2"]'), github.ref_name) && github.ref_name || 'production' }}
     permissions:
       contents: read
       packages: write
