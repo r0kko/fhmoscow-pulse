@@ -198,7 +198,9 @@ function handleClearSearch(): void {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 50%;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   pointer-events: auto;
 }
 

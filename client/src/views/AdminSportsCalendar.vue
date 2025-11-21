@@ -1391,13 +1391,13 @@ onUnmounted(() => {
           v-model:search="search"
           :active-filters-count="activeFiltersCount"
           :filters-summary-text="filtersSummaryText"
-    :chips="activeFilterChips"
-        @open-filters="openFilters"
-        @remove-chip="removeHeaderChip"
-        @reset-filters="resetAllFilters"
-        @submit-search="submitSearchNow"
-        @clear-search="clearSearchQuery"
-      />
+          :chips="activeFilterChips"
+          @open-filters="openFilters"
+          @remove-chip="removeHeaderChip"
+          @reset-filters="resetAllFilters"
+          @submit-search="submitSearchNow"
+          @clear-search="clearSearchQuery"
+        />
       </section>
 
       <section class="card section-card tile fade-in shadow-sm">
@@ -1457,12 +1457,12 @@ onUnmounted(() => {
     </div>
   </div>
 
-    <CalendarFiltersModal
-      ref="filtersModal"
-      v-model:draft="draftModel"
-      :status-options="statusOptions"
-      :time-scope-tabs="timeScopeTabs"
-      :default-day-window="DEFAULT_DAY_WINDOW"
+  <CalendarFiltersModal
+    ref="filtersModal"
+    v-model:draft="draftModel"
+    :status-options="statusOptions"
+    :time-scope-tabs="timeScopeTabs"
+    :default-day-window="DEFAULT_DAY_WINDOW"
     :format-days-label="formatDaysLabel"
     :home-club-options="homeClubOptions"
     :away-club-options="awayClubOptions"

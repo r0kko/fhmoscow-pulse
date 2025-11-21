@@ -241,126 +241,135 @@ function formatScore(m) {
               :aria-label="`Открыть матч ${m.team1} — ${m.team2}`"
             />
             <div class="grid-row" role="presentation">
-            <div class="cell col-teams" role="cell">
-              <div class="teams-line" :title="`${m.team1} — ${m.team2}`">
-                {{ m.team1 }} — {{ m.team2 }}
-                <span
-                  v-if="!props.showScoreAsColumn && formatScore(m)"
-                  class="score-pill pill pill-muted ms-2"
-                  >{{ formatScore(m) }}</span
+              <div class="cell col-teams" role="cell">
+                <div class="teams-line" :title="`${m.team1} — ${m.team2}`">
+                  {{ m.team1 }} — {{ m.team2 }}
+                  <span
+                    v-if="!props.showScoreAsColumn && formatScore(m)"
+                    class="score-pill pill pill-muted ms-2"
+                    >{{ formatScore(m) }}</span
+                  >
+                </div>
+                <div
+                  v-if="gameMetaLine(m)"
+                  class="meta-line"
+                  :title="gameMetaLine(m)"
                 >
+                  {{ gameMetaLine(m) }}
+                </div>
+              </div>
+              <div class="cell col-status" role="cell">
+                <span
+                  class="status-pill"
+                  :class="computeUiStatus(m).cls"
+                  :title="m.status?.name || computeUiStatus(m).text"
+                >
+                  <i
+                    v-if="(m.status?.alias || '').toUpperCase() === 'POSTPONED'"
+                    class="bi bi-arrow-repeat icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="
+                      (m.status?.alias || '').toUpperCase() === 'CANCELLED'
+                    "
+                    class="bi bi-x-octagon icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'Тех. победа'"
+                    class="bi bi-trophy-fill icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'Тех. поражение'"
+                    class="bi bi-emoji-frown icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'Победа'"
+                    class="bi bi-trophy-fill icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'Ничья'"
+                    class="bi bi-slash-circle icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'Поражение'"
+                    class="bi bi-emoji-frown icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'По расписанию'"
+                    class="bi bi-check2-circle icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="computeUiStatus(m).text === 'Согласуйте время'"
+                    class="bi bi-exclamation-circle icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  <i
+                    v-else-if="
+                      computeUiStatus(m).text === 'Согласование времени'
+                    "
+                    class="bi bi-hourglass-split icon-pin me-1"
+                    aria-hidden="true"
+                  ></i>
+                  {{ computeUiStatus(m).text }}
+                </span>
               </div>
               <div
-                v-if="gameMetaLine(m)"
-                class="meta-line"
-                :title="gameMetaLine(m)"
+                v-if="props.showScoreAsColumn"
+                class="cell col-score"
+                role="cell"
               >
-                {{ gameMetaLine(m) }}
+                <template v-if="new Date(m.date).getTime() < Date.now()">
+                  <span
+                    :class="['score-chip', formatScore(m) ? '' : 'text-muted']"
+                    >{{ formatScore(m) || '—' }}</span
+                  >
+                </template>
+                <template v-else>—</template>
+              </div>
+              <div class="cell col-time" role="cell">
+                <template v-if="isStatusReplacingSchedule(m)">—</template>
+                <template v-else>
+                  <i class="bi bi-clock icon-muted me-1" aria-hidden="true"></i>
+                  {{ formatTime(m.date) }}
+                </template>
+              </div>
+              <div
+                class="cell col-stadium"
+                role="cell"
+                :title="m.stadium || ''"
+              >
+                <template v-if="!isStatusReplacingSchedule(m)">
+                  <i
+                    class="bi bi-geo-alt icon-muted me-1"
+                    aria-hidden="true"
+                  ></i>
+                  {{ m.stadium || '—' }}
+                </template>
+                <template v-else>—</template>
+              </div>
+              <div
+                v-if="props.showActions"
+                class="cell col-actions text-end"
+                role="cell"
+              >
+                <RouterLink
+                  :to="buildDetailsLink(m.id)"
+                  class="inline-action"
+                  :title="`Открыть матч ${m.team1} — ${m.team2}`"
+                  aria-label="Открыть матч"
+                >
+                  <i class="bi bi-arrow-right-circle icon-indicator"></i>
+                </RouterLink>
               </div>
             </div>
-            <div class="cell col-status" role="cell">
-              <span
-                class="status-pill"
-                :class="computeUiStatus(m).cls"
-                :title="m.status?.name || computeUiStatus(m).text"
-              >
-                <i
-                  v-if="(m.status?.alias || '').toUpperCase() === 'POSTPONED'"
-                  class="bi bi-arrow-repeat icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="
-                    (m.status?.alias || '').toUpperCase() === 'CANCELLED'
-                  "
-                  class="bi bi-x-octagon icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Тех. победа'"
-                  class="bi bi-trophy-fill icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Тех. поражение'"
-                  class="bi bi-emoji-frown icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Победа'"
-                  class="bi bi-trophy-fill icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Ничья'"
-                  class="bi bi-slash-circle icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Поражение'"
-                  class="bi bi-emoji-frown icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'По расписанию'"
-                  class="bi bi-check2-circle icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Согласуйте время'"
-                  class="bi bi-exclamation-circle icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                <i
-                  v-else-if="computeUiStatus(m).text === 'Согласование времени'"
-                  class="bi bi-hourglass-split icon-pin me-1"
-                  aria-hidden="true"
-                ></i>
-                {{ computeUiStatus(m).text }}
-              </span>
-            </div>
-            <div
-              v-if="props.showScoreAsColumn"
-              class="cell col-score"
-              role="cell"
-            >
-              <template v-if="new Date(m.date).getTime() < Date.now()">
-                <span
-                  :class="['score-chip', formatScore(m) ? '' : 'text-muted']"
-                  >{{ formatScore(m) || '—' }}</span
-                >
-              </template>
-              <template v-else>—</template>
-            </div>
-            <div class="cell col-time" role="cell">
-              <template v-if="isStatusReplacingSchedule(m)">—</template>
-              <template v-else>
-                <i class="bi bi-clock icon-muted me-1" aria-hidden="true"></i>
-                {{ formatTime(m.date) }}
-              </template>
-            </div>
-            <div class="cell col-stadium" role="cell" :title="m.stadium || ''">
-              <template v-if="!isStatusReplacingSchedule(m)">
-                <i class="bi bi-geo-alt icon-muted me-1" aria-hidden="true"></i>
-                {{ m.stadium || '—' }}
-              </template>
-              <template v-else>—</template>
-            </div>
-            <div
-              v-if="props.showActions"
-              class="cell col-actions text-end"
-              role="cell"
-            >
-              <RouterLink
-                :to="buildDetailsLink(m.id)"
-                class="inline-action"
-                :title="`Открыть матч ${m.team1} — ${m.team2}`"
-                aria-label="Открыть матч"
-              >
-                <i class="bi bi-arrow-right-circle icon-indicator"></i>
-              </RouterLink>
-            </div>
-          </div>
           </div>
         </div>
       </div>
@@ -395,41 +404,25 @@ function formatScore(m) {
 
 /* Grid table with synchronized columns across tiles via fixed template */
 .grid-table {
-  --match-grid:
-    minmax(0, 3fr)
-    minmax(0, 1.4fr)
-    minmax(0, 0.8fr)
-    minmax(0, 1.5fr)
-    minmax(0, 0.8fr);
+  --match-grid: minmax(0, 3fr) minmax(0, 1.4fr) minmax(0, 0.8fr)
+    minmax(0, 1.5fr) minmax(0, 0.8fr);
   display: flex;
   flex-direction: column;
   row-gap: 0.25rem;
 }
 
 .grid-table.no-actions {
-  --match-grid:
-    minmax(0, 3.2fr)
-    minmax(0, 1.4fr)
-    minmax(0, 0.8fr)
+  --match-grid: minmax(0, 3.2fr) minmax(0, 1.4fr) minmax(0, 0.8fr)
     minmax(0, 1.6fr);
 }
 
 .grid-table.with-score {
-  --match-grid:
-    minmax(0, 2.7fr)
-    minmax(0, 1.3fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.8fr)
-    minmax(0, 1.5fr)
-    minmax(0, 0.8fr);
+  --match-grid: minmax(0, 2.7fr) minmax(0, 1.3fr) minmax(0, 0.9fr)
+    minmax(0, 0.8fr) minmax(0, 1.5fr) minmax(0, 0.8fr);
 }
 .grid-table.with-score.no-actions {
-  --match-grid:
-    minmax(0, 3fr)
-    minmax(0, 1.3fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.8fr)
-    minmax(0, 1.6fr);
+  --match-grid: minmax(0, 3fr) minmax(0, 1.3fr) minmax(0, 0.9fr)
+    minmax(0, 0.8fr) minmax(0, 1.6fr);
 }
 
 .grid-header {
@@ -447,7 +440,9 @@ function formatScore(m) {
   column-gap: 0;
   background-color: transparent;
   border-radius: 0.35rem;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
   position: relative;
 }
 .grid-row-wrapper:hover {

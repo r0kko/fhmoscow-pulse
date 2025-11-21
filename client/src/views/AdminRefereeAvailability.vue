@@ -583,7 +583,9 @@ function normalizeEditorDay(day) {
 }
 
 const editorChanges = computed(() => {
-  const base = new Map(editorOriginal.value.map((d) => [d.date, baseSnapshot(d)]));
+  const base = new Map(
+    editorOriginal.value.map((d) => [d.date, baseSnapshot(d)])
+  );
   const changes = [];
   for (const day of editorDays.value) {
     const next = normalizeEditorDay(day);
@@ -731,10 +733,7 @@ watch(
               >
                 <i class="bi bi-funnel me-1" aria-hidden="true"></i>
                 <span>Фильтр</span>
-                <span
-                  v-if="activeFiltersCount"
-                  class="badge bg-secondary ms-2"
-                >
+                <span v-if="activeFiltersCount" class="badge bg-secondary ms-2">
                   {{ activeFiltersCount }}
                 </span>
               </button>
@@ -785,7 +784,9 @@ watch(
                     <div class="fio-wrapper">
                       <div class="fio-name">
                         <span class="fio-full">{{ nameOf(u) }}</span>
-                        <span class="fio-short">{{ surnameWithInitials(u) }}</span>
+                        <span class="fio-short">{{
+                          surnameWithInitials(u)
+                        }}</span>
                       </div>
                       <button
                         type="button"
@@ -930,12 +931,14 @@ watch(
                   v-if="editorSelectedUser"
                   class="selected-user mt-3 p-2 bg-light rounded"
                 >
-                  <div class="fw-semibold">{{ nameOf(editorSelectedUser) }}</div>
+                  <div class="fw-semibold">
+                    {{ nameOf(editorSelectedUser) }}
+                  </div>
                   <div class="small text-muted">
                     {{
                       editorSelectedUser.email ||
-                        editorSelectedUser.phone ||
-                        'Контакты не указаны'
+                      editorSelectedUser.phone ||
+                      'Контакты не указаны'
                     }}
                   </div>
                   <span class="badge bg-secondary-subtle text-secondary mt-1">
@@ -954,7 +957,11 @@ watch(
                     <div class="text-muted small">
                       <template v-if="editorDateList.length">
                         {{ longDateLabel(editorDateList[0]) }} —
-                        {{ longDateLabel(editorDateList[editorDateList.length - 1]) }}
+                        {{
+                          longDateLabel(
+                            editorDateList[editorDateList.length - 1]
+                          )
+                        }}
                       </template>
                       <template v-else>Нет доступных дат</template>
                     </div>
@@ -981,7 +988,10 @@ watch(
                   ></div>
                 </div>
                 <div v-else>
-                  <div v-if="editorInvalidCount" class="alert alert-warning py-2">
+                  <div
+                    v-if="editorInvalidCount"
+                    class="alert alert-warning py-2"
+                  >
                     Для частичных дней укажите время — осталось
                     {{ editorInvalidCount }}.
                   </div>
@@ -995,7 +1005,9 @@ watch(
                       class="editor-day d-flex flex-column flex-sm-row gap-3"
                     >
                       <div class="editor-day-date text-nowrap">
-                        <div class="fw-semibold">{{ shortDateLabel(day.date) }}</div>
+                        <div class="fw-semibold">
+                          {{ shortDateLabel(day.date) }}
+                        </div>
                         <div class="text-muted small">
                           {{ longDateLabel(day.date) }}
                         </div>
@@ -1086,7 +1098,9 @@ watch(
                               type="time"
                               class="form-control"
                               step="300"
-                              :class="{ 'is-invalid': !editorIsValidPartial(day) }"
+                              :class="{
+                                'is-invalid': !editorIsValidPartial(day),
+                              }"
                             />
                             <input
                               v-else
@@ -1094,13 +1108,18 @@ watch(
                               type="time"
                               class="form-control"
                               step="300"
-                              :class="{ 'is-invalid': !editorIsValidPartial(day) }"
+                              :class="{
+                                'is-invalid': !editorIsValidPartial(day),
+                              }"
                             />
                           </div>
                         </div>
                         <div class="d-flex align-items-center gap-2 mt-2">
                           <span class="small text-muted">
-                            {{ statusLabels[editorEffectiveStatus(day)] || 'Не задано' }}
+                            {{
+                              statusLabels[editorEffectiveStatus(day)] ||
+                              'Не задано'
+                            }}
                             <template v-if="editorIsPartial(day)">
                               •
                               <template v-if="day.partialMode === 'BEFORE'">
@@ -1114,19 +1133,23 @@ watch(
                           <button
                             type="button"
                             class="btn btn-link btn-sm p-0"
-                            :disabled="!(
-                              day.preset ||
-                              day.currentStatus ||
-                              day.from_time ||
-                              day.to_time
-                            )"
+                            :disabled="
+                              !(
+                                day.preset ||
+                                day.currentStatus ||
+                                day.from_time ||
+                                day.to_time
+                              )
+                            "
                             @click="clearEditorDay(day)"
                           >
                             Очистить
                           </button>
                         </div>
                         <div
-                          v-if="editorIsPartial(day) && !editorIsValidPartial(day)"
+                          v-if="
+                            editorIsPartial(day) && !editorIsValidPartial(day)
+                          "
                           class="invalid-feedback d-block"
                         >
                           Укажите время для частичной занятости
@@ -1451,7 +1474,9 @@ watch(
   justify-content: center;
   line-height: 1;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease,
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 .btn-ghost:hover,
