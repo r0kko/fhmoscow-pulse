@@ -1,12 +1,26 @@
 import userAvailabilityService, {
   listForUsers as listForUsersService,
   getAvailabilityLocks,
+  clearForUser as clearAvailabilityForUser,
 } from '../services/userAvailabilityService.js';
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
+import ServiceError from '../errors/ServiceError.js';
+import { hasRefereeRole } from '../utils/roles.js';
 
 function formatDate(d) {
   return d.toISOString().slice(0, 10);
+}
+
+async function assertEditableUser(userId) {
+  const user = await userService.getUser(userId);
+  const roles = user?.Roles || [];
+  const isReferee = hasRefereeRole(roles);
+  const statusAlias = user?.UserStatus?.alias;
+  if (!isReferee || statusAlias !== 'ACTIVE') {
+    throw new ServiceError('user_not_available_for_edit', 403);
+  }
+  return user;
 }
 
 // Availability lock flags are derived in service (Moscow time)
@@ -168,5 +182,107 @@ export default {
       availableDates,
       users: items,
     });
+  },
+
+  async adminDetail(req, res) {
+    const userId = req.params.userId;
+    const user = await assertEditableUser(userId);
+
+    const today = new Date();
+    const rangeStart = formatDate(today);
+    const rangeEndDate = new Date(today);
+    rangeEndDate.setDate(
+      rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7
+    );
+
+    const dates = [];
+    const records = await userAvailabilityService.listForUser(
+      userId,
+      rangeStart,
+      formatDate(rangeEndDate)
+    );
+    const map = new Map(records.map((r) => [r.date, r]));
+    const days = [];
+    for (
+      let d = new Date(rangeStart);
+      d <= rangeEndDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const key = formatDate(d);
+      dates.push(key);
+      const rec = map.get(key);
+      days.push({
+        date: key,
+        status: rec?.AvailabilityType?.alias ?? 'FREE',
+        from_time: rec?.from_time ?? null,
+        to_time: rec?.to_time ?? null,
+        preset: !!rec,
+        editable: true,
+        fully_locked: false,
+        limited_locked: false,
+      });
+    }
+
+    res.json({
+      user: userMapper.toPublic(user),
+      dates,
+      availableDates: dates,
+      days,
+    });
+  },
+
+  async adminSet(req, res) {
+    const userId = req.params.userId;
+    await assertEditableUser(userId);
+
+    const payload = Array.isArray(req.body?.days) ? req.body.days : [];
+    if (!payload.length) {
+      throw new ServiceError('availability_empty_payload', 400);
+    }
+
+    const upserts = new Map();
+    const clears = new Set();
+
+    for (const raw of payload) {
+      const dateRaw = raw?.date ? String(raw.date).trim() : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+        throw new ServiceError('availability_invalid_date', 400);
+      }
+
+      const statusVal = raw?.status;
+      if (statusVal === null || statusVal === undefined || statusVal === '') {
+        clears.add(dateRaw);
+        continue;
+      }
+
+      const normalizedStatus = String(statusVal).toUpperCase();
+      const day = {
+        date: dateRaw,
+        status: normalizedStatus,
+        from_time: raw?.from_time ?? null,
+        to_time: raw?.to_time ?? null,
+      };
+      upserts.set(dateRaw, day);
+      clears.delete(dateRaw);
+    }
+
+    if (!upserts.size && !clears.size) {
+      return res.status(204).end();
+    }
+
+    if (upserts.size) {
+      await userAvailabilityService.setForUser(
+        userId,
+        Array.from(upserts.values()),
+        req.user.id,
+        { enforcePolicy: false }
+      );
+    }
+
+    if (clears.size) {
+      await clearAvailabilityForUser(userId, Array.from(clears), req.user.id);
+    }
+
+    res.status(204).end();
   },
 };

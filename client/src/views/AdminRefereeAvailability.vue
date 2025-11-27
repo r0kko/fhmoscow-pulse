@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { apiFetch } from '../api';
 import PageNav from '../components/PageNav.vue';
@@ -19,6 +19,22 @@ const selectedRoles = ref(new Set(roleOptions.map((r) => r.value)));
 const selectedDates = ref(new Set());
 const page = ref(1);
 const pageSize = ref(25);
+
+// Admin edit modal state
+const editorModalRef = ref(null);
+let editorModal = null;
+const editorUserQuery = ref('');
+const editorSuggestions = ref([]);
+const editorLookupLoading = ref(false);
+const editorSelectedUser = ref(null);
+const editorLoading = ref(false);
+const editorError = ref('');
+const editorSaving = ref(false);
+const editorSuccessTs = ref(0);
+const editorDays = ref([]);
+const editorOriginal = ref([]);
+const editorDates = ref([]);
+let editorSearchTimer;
 
 // Advanced filters state
 const filterFree = ref(false);
@@ -230,6 +246,12 @@ async function load() {
 onMounted(load);
 onMounted(() => {
   if (filtersModalRef.value) filtersModal = new Modal(filtersModalRef.value);
+  if (editorModalRef.value) {
+    editorModal = new Modal(editorModalRef.value, { backdrop: 'static' });
+  }
+});
+onBeforeUnmount(() => {
+  if (editorSearchTimer) clearTimeout(editorSearchTimer);
 });
 
 function prepareFilters() {
@@ -352,6 +374,302 @@ const filtersSummary = computed(() => {
   }
   return items;
 });
+
+const statusLabels = {
+  FREE: 'Свободен',
+  PARTIAL: 'Частично',
+  BUSY: 'Занят',
+};
+
+function resetEditorState(keepUser = false) {
+  editorError.value = '';
+  editorLookupLoading.value = false;
+  editorLoading.value = false;
+  editorSaving.value = false;
+  editorSuccessTs.value = 0;
+  editorDays.value = [];
+  editorOriginal.value = [];
+  editorDates.value = [];
+  if (!keepUser) {
+    editorSelectedUser.value = null;
+  }
+}
+
+function cloneEditorDays(list = []) {
+  return (list || []).map((d) => ({
+    date: d.date,
+    status: d.status,
+    from_time: d.from_time ?? null,
+    to_time: d.to_time ?? null,
+    preset: !!d.preset,
+    cleared: false,
+  }));
+}
+
+function initEditorDay(d) {
+  const day = { ...d };
+  day.cleared = false;
+  if (day.status === 'PARTIAL') {
+    if (day.to_time && !day.from_time) day.partialMode = 'BEFORE';
+    else if (day.from_time && !day.to_time) day.partialMode = 'AFTER';
+    else day.partialMode = 'AFTER';
+  } else {
+    day.partialMode = null;
+  }
+  day.currentStatus = day.preset ? day.status : null;
+  return day;
+}
+
+function editorEffectiveStatus(d) {
+  if (d.cleared) return null;
+  if (d.currentStatus != null) return d.currentStatus;
+  return d.preset ? d.status : null;
+}
+
+function editorIsPartial(d) {
+  return editorEffectiveStatus(d) === 'PARTIAL';
+}
+
+function editorIsValidPartial(d) {
+  if (!editorIsPartial(d)) return true;
+  if (d.partialMode === 'BEFORE') return !!d.to_time;
+  if (d.partialMode === 'AFTER') return !!d.from_time;
+  return false;
+}
+
+const editorInvalidCount = computed(
+  () => editorDays.value.filter((d) => !editorIsValidPartial(d)).length
+);
+
+const editorHasSelection = computed(() => !!editorSelectedUser.value);
+const editorDateList = computed(() =>
+  editorDates.value.length ? editorDates.value : availableDates.value
+);
+
+function scheduleUserSearch(term) {
+  if (editorSearchTimer) clearTimeout(editorSearchTimer);
+  if (!term || term.length < 2) {
+    editorSuggestions.value = [];
+    return;
+  }
+  editorSearchTimer = setTimeout(() => fetchRefereeCandidates(term), 220);
+}
+
+async function fetchRefereeCandidates(term) {
+  editorLookupLoading.value = true;
+  try {
+    const params = new URLSearchParams({
+      limit: '8',
+      status: 'ACTIVE',
+      sort: 'last_name',
+      order: 'asc',
+    });
+    roleOptions.forEach((r) => params.append('role', r.value));
+    if (term) params.append('search', term);
+    const data = await apiFetch(`/users?${params.toString()}`);
+    editorSuggestions.value = data.users || [];
+  } catch {
+    editorSuggestions.value = [];
+  } finally {
+    editorLookupLoading.value = false;
+  }
+}
+
+function pickEditorUser(u) {
+  editorSelectedUser.value = u;
+  editorUserQuery.value = nameOf(u);
+  editorSuggestions.value = [];
+  resetEditorState(true);
+  loadEditorAvailability(u.id);
+}
+
+async function loadEditorAvailability(userId) {
+  if (!userId) return;
+  editorLoading.value = true;
+  editorError.value = '';
+  editorSuccessTs.value = 0;
+  try {
+    const res = await apiFetch(`/availabilities/admin/${userId}`);
+    const rawDays = cloneEditorDays(res.days || []);
+    editorDays.value = rawDays.map(initEditorDay);
+    editorOriginal.value = cloneEditorDays(res.days || []);
+    editorDates.value = res.dates || res.availableDates || [];
+    if (!editorSelectedUser.value && res.user) {
+      editorSelectedUser.value = res.user;
+      editorUserQuery.value = nameOf(res.user);
+    }
+  } catch (e) {
+    editorError.value = e?.message || 'Не удалось загрузить занятость';
+  } finally {
+    editorLoading.value = false;
+  }
+}
+
+function openEditorModal(user = null) {
+  resetEditorState(true);
+  editorSuggestions.value = [];
+  if (user) {
+    editorSelectedUser.value = user;
+    editorUserQuery.value = nameOf(user);
+    loadEditorAvailability(user.id);
+  } else {
+    editorUserQuery.value = '';
+    editorSelectedUser.value = null;
+  }
+  editorModal?.show();
+}
+
+function setEditorStatus(day, status) {
+  day.cleared = false;
+  day.currentStatus = status;
+  day.status = status;
+  if (status === 'PARTIAL') {
+    if (!day.partialMode) day.partialMode = day.to_time ? 'BEFORE' : 'AFTER';
+  } else {
+    day.partialMode = null;
+    day.from_time = null;
+    day.to_time = null;
+  }
+}
+
+function setEditorPartialMode(day, mode) {
+  day.cleared = false;
+  day.partialMode = mode;
+  if (mode === 'BEFORE') {
+    day.from_time = null;
+  } else {
+    day.to_time = null;
+  }
+}
+
+function clearEditorDay(day) {
+  day.cleared = true;
+  day.currentStatus = null;
+  day.status = null;
+  day.preset = false;
+  day.partialMode = null;
+  day.from_time = null;
+  day.to_time = null;
+}
+
+function baseSnapshot(day) {
+  if (!day?.preset) return null;
+  const payload = {
+    status: day.status,
+    from_time: null,
+    to_time: null,
+  };
+  if (day.status === 'PARTIAL') {
+    payload.from_time = day.from_time || null;
+    payload.to_time = day.to_time || null;
+  }
+  return payload;
+}
+
+function normalizeEditorDay(day) {
+  if (day.cleared) return null;
+  const status = editorEffectiveStatus(day);
+  if (!status) return null;
+  if (status !== 'PARTIAL') {
+    return { date: day.date, status, from_time: null, to_time: null };
+  }
+  const partial = { date: day.date, status, from_time: null, to_time: null };
+  if (day.partialMode === 'BEFORE') {
+    partial.to_time = day.to_time || null;
+  } else {
+    partial.from_time = day.from_time || null;
+  }
+  return partial;
+}
+
+const editorChanges = computed(() => {
+  const base = new Map(
+    editorOriginal.value.map((d) => [d.date, baseSnapshot(d)])
+  );
+  const changes = [];
+  for (const day of editorDays.value) {
+    const next = normalizeEditorDay(day);
+    const prev = base.get(day.date) || null;
+    if (!next) {
+      if (prev) changes.push({ date: day.date, status: null });
+      continue;
+    }
+    const changed =
+      !prev ||
+      next.status !== prev.status ||
+      (next.from_time || null) !== (prev.from_time || null) ||
+      (next.to_time || null) !== (prev.to_time || null);
+    if (changed) changes.push(next);
+  }
+  return changes;
+});
+
+const editorCanSave = computed(
+  () =>
+    editorHasSelection.value &&
+    editorChanges.value.length > 0 &&
+    editorInvalidCount.value === 0 &&
+    !editorLoading.value
+);
+
+async function saveEditorChanges() {
+  if (!editorSelectedUser.value || editorInvalidCount.value > 0) return;
+  if (!editorChanges.value.length) return;
+  editorSaving.value = true;
+  editorError.value = '';
+  const payload = editorChanges.value.map((d) =>
+    d.status === null ? { date: d.date, status: null } : d
+  );
+  try {
+    await apiFetch(`/availabilities/admin/${editorSelectedUser.value.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ days: payload }),
+    });
+    editorSuccessTs.value = Date.now();
+    await loadEditorAvailability(editorSelectedUser.value.id);
+    load();
+  } catch (e) {
+    editorError.value = e?.message || 'Не удалось сохранить изменения';
+  } finally {
+    editorSaving.value = false;
+  }
+}
+
+watch(
+  () => editorUserQuery.value,
+  (val) => {
+    const trimmed = val.trim();
+    const currentName = editorSelectedUser.value
+      ? nameOf(editorSelectedUser.value)
+      : '';
+    if (editorSelectedUser.value && trimmed !== currentName) {
+      resetEditorState();
+    }
+    if (trimmed && trimmed === currentName) return;
+    scheduleUserSearch(trimmed);
+  }
+);
+
+watch(
+  () => editorDays.value,
+  (list) => {
+    for (const d of list) {
+      const active = editorEffectiveStatus(d);
+      if (active !== 'PARTIAL') {
+        d.from_time = null;
+        d.to_time = null;
+        d.partialMode = null;
+      } else if (!d.partialMode) {
+        d.partialMode = d.to_time ? 'BEFORE' : 'AFTER';
+      } else if (d.partialMode === 'AFTER' && d.to_time) {
+        d.to_time = null;
+      } else if (d.partialMode === 'BEFORE' && d.from_time) {
+        d.from_time = null;
+      }
+    }
+  },
+  { deep: true }
+);
 </script>
 
 <template>
@@ -422,6 +740,16 @@ const filtersSummary = computed(() => {
                 >
               </button>
             </div>
+            <div class="ms-auto d-flex gap-2 flex-wrap justify-content-end">
+              <button
+                type="button"
+                class="btn btn-brand btn-sm d-inline-flex align-items-center"
+                @click="openEditorModal()"
+              >
+                <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
+                <span>Управление занятостью</span>
+              </button>
+            </div>
           </div>
           <div
             v-if="filtersSummary.length"
@@ -465,10 +793,23 @@ const filtersSummary = computed(() => {
                     :title="nameOf(u)"
                     :aria-label="nameOf(u)"
                   >
-                    <span class="fio-full">{{ nameOf(u) }}</span>
-                    <span class="fio-short" aria-hidden="true">
-                      {{ surnameWithInitials(u) }}
-                    </span>
+                    <div class="fio-wrapper">
+                      <div class="fio-name">
+                        <span class="fio-full">{{ nameOf(u) }}</span>
+                        <span class="fio-short">{{
+                          surnameWithInitials(u)
+                        }}</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm"
+                        :title="'Редактировать занятость: ' + nameOf(u)"
+                        @click.stop="openEditorModal(u)"
+                      >
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                        <span class="visually-hidden">Редактировать</span>
+                      </button>
+                    </div>
                   </td>
                   <td
                     v-for="d in dates"
@@ -521,6 +862,348 @@ const filtersSummary = computed(() => {
         :total-pages="totalPages"
         :sizes="[10, 25, 50, 100]"
       />
+    </div>
+  </div>
+
+  <!-- Editor Modal -->
+  <div
+    id="editorModal"
+    ref="editorModalRef"
+    class="modal fade"
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Корректировка занятости</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Закрыть"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="editorError" class="alert alert-danger" role="alert">
+            {{ editorError }}
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-lg-4">
+              <div class="editor-card h-100 border rounded-3 p-3">
+                <label class="form-label fw-semibold" for="editorUser"
+                  >Пользователь</label
+                >
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"
+                    ><i class="bi bi-search" aria-hidden="true"></i
+                  ></span>
+                  <input
+                    id="editorUser"
+                    v-model.trim="editorUserQuery"
+                    type="search"
+                    class="form-control"
+                    placeholder="Фамилия, email или телефон"
+                    autocomplete="off"
+                  />
+                  <span
+                    v-if="editorLookupLoading"
+                    class="input-group-text"
+                    aria-label="Поиск"
+                  >
+                    <span
+                      class="spinner-border spinner-border-sm text-brand"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                  </span>
+                </div>
+                <div
+                  v-if="editorSuggestions.length"
+                  class="list-group suggestion-list mt-2"
+                >
+                  <button
+                    v-for="u in editorSuggestions"
+                    :key="u.id"
+                    type="button"
+                    class="list-group-item list-group-item-action"
+                    @click="pickEditorUser(u)"
+                  >
+                    <div class="fw-semibold">{{ nameOf(u) }}</div>
+                    <div class="small text-muted">
+                      {{ u.email || u.phone || 'Аккаунт без контактов' }}
+                    </div>
+                  </button>
+                </div>
+                <p class="small text-muted mb-0 mt-2">
+                  Доступны только активные судьи с правом входа в раздел «Моя
+                  занятость».
+                </p>
+                <div
+                  v-if="editorSelectedUser"
+                  class="selected-user mt-3 p-2 bg-light rounded"
+                >
+                  <div class="fw-semibold">
+                    {{ nameOf(editorSelectedUser) }}
+                  </div>
+                  <div class="small text-muted">
+                    {{
+                      editorSelectedUser.email ||
+                      editorSelectedUser.phone ||
+                      'Контакты не указаны'
+                    }}
+                  </div>
+                  <span class="badge bg-secondary-subtle text-secondary mt-1">
+                    Активен
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-lg-8">
+              <div class="editor-card h-100 border rounded-3 p-3">
+                <div
+                  class="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap"
+                >
+                  <div>
+                    <div class="fw-semibold">Ближайшие дни</div>
+                    <div class="text-muted small">
+                      <template v-if="editorDateList.length">
+                        {{ longDateLabel(editorDateList[0]) }} —
+                        {{
+                          longDateLabel(
+                            editorDateList[editorDateList.length - 1]
+                          )
+                        }}
+                      </template>
+                      <template v-else>Нет доступных дат</template>
+                    </div>
+                  </div>
+                  <span
+                    v-if="editorSuccessTs && !editorSaving"
+                    class="badge bg-success-subtle text-success"
+                  >
+                    Сохранено
+                  </span>
+                </div>
+
+                <div
+                  v-if="!editorHasSelection"
+                  class="text-muted placeholder-panel"
+                >
+                  Выберите судью слева, чтобы открыть его расписание.
+                </div>
+                <div v-else-if="editorLoading" class="text-center py-4">
+                  <div
+                    class="spinner-border spinner-brand"
+                    role="status"
+                    aria-label="Загрузка"
+                  ></div>
+                </div>
+                <div v-else>
+                  <div
+                    v-if="editorInvalidCount"
+                    class="alert alert-warning py-2"
+                  >
+                    Для частичных дней укажите время — осталось
+                    {{ editorInvalidCount }}.
+                  </div>
+                  <div v-if="!editorDays.length" class="text-muted">
+                    Нет дат для редактирования.
+                  </div>
+                  <div v-else class="editor-days-list">
+                    <div
+                      v-for="day in editorDays"
+                      :key="day.date"
+                      class="editor-day d-flex flex-column flex-sm-row gap-3"
+                    >
+                      <div class="editor-day-date text-nowrap">
+                        <div class="fw-semibold">
+                          {{ shortDateLabel(day.date) }}
+                        </div>
+                        <div class="text-muted small">
+                          {{ longDateLabel(day.date) }}
+                        </div>
+                        <div class="small mt-1">
+                          <span
+                            v-if="day.preset"
+                            class="badge bg-secondary-subtle text-secondary"
+                          >
+                            Указано пользователем
+                          </span>
+                          <span v-else class="text-muted">Не задано</span>
+                        </div>
+                      </div>
+                      <div class="editor-day-controls flex-grow-1">
+                        <div
+                          class="btn-group btn-group-sm flex-wrap"
+                          role="group"
+                          aria-label="Статус на дату"
+                        >
+                          <button
+                            type="button"
+                            class="btn btn-outline-success"
+                            :class="{
+                              active: editorEffectiveStatus(day) === 'FREE',
+                            }"
+                            @click="setEditorStatus(day, 'FREE')"
+                          >
+                            Свободен
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-outline-warning"
+                            :class="{
+                              active: editorEffectiveStatus(day) === 'PARTIAL',
+                            }"
+                            @click="setEditorStatus(day, 'PARTIAL')"
+                          >
+                            Частично
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-outline-secondary"
+                            :class="{
+                              active: editorEffectiveStatus(day) === 'BUSY',
+                            }"
+                            @click="setEditorStatus(day, 'BUSY')"
+                          >
+                            Занят
+                          </button>
+                        </div>
+                        <div
+                          v-if="editorIsPartial(day)"
+                          class="partial-controls d-flex flex-wrap align-items-center gap-2 mt-2"
+                        >
+                          <div class="btn-group btn-group-sm" role="group">
+                            <input
+                              :id="'partial-before-' + day.date"
+                              type="radio"
+                              class="btn-check"
+                              :checked="day.partialMode === 'BEFORE'"
+                              @change="setEditorPartialMode(day, 'BEFORE')"
+                            />
+                            <label
+                              class="btn btn-outline-secondary"
+                              :for="'partial-before-' + day.date"
+                              >До</label
+                            >
+                            <input
+                              :id="'partial-after-' + day.date"
+                              type="radio"
+                              class="btn-check"
+                              :checked="day.partialMode === 'AFTER'"
+                              @change="setEditorPartialMode(day, 'AFTER')"
+                            />
+                            <label
+                              class="btn btn-outline-secondary"
+                              :for="'partial-after-' + day.date"
+                              >После</label
+                            >
+                          </div>
+                          <div class="input-group input-group-sm time-input">
+                            <span class="input-group-text"
+                              ><i class="bi bi-clock" aria-hidden="true"></i
+                            ></span>
+                            <input
+                              v-if="day.partialMode === 'AFTER'"
+                              v-model="day.from_time"
+                              type="time"
+                              class="form-control"
+                              step="300"
+                              :class="{
+                                'is-invalid': !editorIsValidPartial(day),
+                              }"
+                            />
+                            <input
+                              v-else
+                              v-model="day.to_time"
+                              type="time"
+                              class="form-control"
+                              step="300"
+                              :class="{
+                                'is-invalid': !editorIsValidPartial(day),
+                              }"
+                            />
+                          </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                          <span class="small text-muted">
+                            {{
+                              statusLabels[editorEffectiveStatus(day)] ||
+                              'Не задано'
+                            }}
+                            <template v-if="editorIsPartial(day)">
+                              •
+                              <template v-if="day.partialMode === 'BEFORE'">
+                                до {{ formatHm(day.to_time) || '—' }}
+                              </template>
+                              <template v-else>
+                                после {{ formatHm(day.from_time) || '—' }}
+                              </template>
+                            </template>
+                          </span>
+                          <button
+                            type="button"
+                            class="btn btn-link btn-sm p-0"
+                            :disabled="
+                              !(
+                                day.preset ||
+                                day.currentStatus ||
+                                day.from_time ||
+                                day.to_time
+                              )
+                            "
+                            @click="clearEditorDay(day)"
+                          >
+                            Очистить
+                          </button>
+                        </div>
+                        <div
+                          v-if="
+                            editorIsPartial(day) && !editorIsValidPartial(day)
+                          "
+                          class="invalid-feedback d-block"
+                        >
+                          Укажите время для частичной занятости
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="text-muted small me-auto">
+            <template v-if="editorChanges.length">
+              Изменений: {{ editorChanges.length }}
+            </template>
+            <template v-else>Нет изменений</template>
+          </div>
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            data-bs-dismiss="modal"
+          >
+            Закрыть
+          </button>
+          <button
+            type="button"
+            class="btn btn-brand"
+            :disabled="!editorCanSave || editorSaving"
+            @click="saveEditorChanges"
+          >
+            <span
+              v-if="editorSaving"
+              class="spinner-border spinner-border-sm me-2"
+              role="status"
+              aria-hidden="true"
+            ></span>
+            Сохранить
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -779,6 +1462,28 @@ const filtersSummary = computed(() => {
 .fio-short {
   display: none;
 }
+.fio-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+.fio-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-ghost {
+  border: 0;
+  background: transparent;
+  color: var(--bs-gray-500, #6c757d);
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+}
+.btn-ghost:hover,
+.btn-ghost:focus-visible {
+  color: var(--brand-primary, var(--bs-primary));
+}
 .filter-summary .badge {
   font-size: 0.75rem;
   font-weight: 500;
@@ -833,6 +1538,9 @@ const filtersSummary = computed(() => {
   color: rgba(255, 255, 255, 0.85);
 }
 /* Keep the toolbar compact and aligned */
+.toolbar {
+  flex-wrap: wrap;
+}
 .toolbar .input-group > .btn {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
@@ -881,5 +1589,47 @@ const filtersSummary = computed(() => {
   .table tbody td {
     padding: 0.5rem 0.4rem;
   }
+}
+.editor-card {
+  background: var(--surface-elevated, #fff);
+  box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.06);
+}
+.suggestion-list {
+  max-height: 14rem;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+}
+.placeholder-panel {
+  min-height: 8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px dashed var(--border-subtle, #e9ecef);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+.editor-days-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.editor-day {
+  padding: 0.75rem 0.75rem;
+  border: 1px solid var(--border-subtle, #e9ecef);
+  border-radius: 0.75rem;
+  background: #fff;
+}
+.editor-day-date .fw-semibold {
+  letter-spacing: 0.01em;
+}
+.editor-day-controls .btn-group .btn {
+  min-width: 6rem;
+}
+.partial-controls .time-input {
+  max-width: 11rem;
+}
+.selected-user {
+  border: 1px solid var(--border-subtle, #e9ecef);
 }
 </style>

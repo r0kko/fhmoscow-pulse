@@ -90,6 +90,17 @@ async function setForUser(userId, days, actorId, options = {}) {
   return results;
 }
 
+async function clearForUser(userId, dates = []) {
+  const uniqueDates = Array.from(new Set(dates || []).values());
+  if (!uniqueDates.length) return 0;
+  return UserAvailability.destroy({
+    where: {
+      user_id: userId,
+      date: { [Op.in]: uniqueDates },
+    },
+  });
+}
+
 export default { listForUser, setForUser };
 
 export async function listForUsers(userIds = [], startDate, endDate) {
@@ -108,3 +119,4 @@ export async function listForUsers(userIds = [], startDate, endDate) {
 }
 
 export { getAvailabilityLocks };
+export { clearForUser };
