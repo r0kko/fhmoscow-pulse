@@ -203,11 +203,7 @@ export default {
     );
     const map = new Map(records.map((r) => [r.date, r]));
     const days = [];
-    for (
-      let d = new Date(rangeStart);
-      d <= rangeEndDate;
-      d.setDate(d.getDate() + 1)
-    ) {
+    for (let d = new Date(rangeStart); d <= rangeEndDate; d.setDate(d.getDate() + 1)) {
       const key = formatDate(d);
       dates.push(key);
       const rec = map.get(key);

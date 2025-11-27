@@ -158,10 +158,7 @@ test('adminDetail returns editable window for a referee', async () => {
   const controller = (await import(controllerPath)).default;
   const jsonMock = jest.fn();
 
-  await controller.adminDetail(
-    { params: { userId: 'u1' } },
-    { json: jsonMock }
-  );
+  await controller.adminDetail({ params: { userId: 'u1' } }, { json: jsonMock });
 
   expect(getUserMock).toHaveBeenCalledWith('u1');
   const payload = jsonMock.mock.calls[0][0];
@@ -204,22 +201,16 @@ test('adminSet updates and clears availability without policy limits', async () 
 
   expect(setForUserMock).toHaveBeenCalledWith(
     'u1',
-    [
-      {
-        date: '2024-04-02',
-        status: 'BUSY',
-        from_time: null,
-        to_time: null,
-      },
-    ],
+    [{
+      date: '2024-04-02',
+      status: 'BUSY',
+      from_time: null,
+      to_time: null,
+    }],
     'admin-1',
     { enforcePolicy: false }
   );
-  expect(clearForUserMock).toHaveBeenCalledWith(
-    'u1',
-    ['2024-04-03'],
-    'admin-1'
-  );
+  expect(clearForUserMock).toHaveBeenCalledWith('u1', ['2024-04-03'], 'admin-1');
   expect(statusMock).toHaveBeenCalledWith(204);
   expect(endMock).toHaveBeenCalled();
 });
