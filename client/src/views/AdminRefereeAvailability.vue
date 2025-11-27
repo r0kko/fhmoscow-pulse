@@ -583,7 +583,9 @@ function normalizeEditorDay(day) {
 }
 
 const editorChanges = computed(() => {
-  const base = new Map(editorOriginal.value.map((d) => [d.date, baseSnapshot(d)]));
+  const base = new Map(
+    editorOriginal.value.map((d) => [d.date, baseSnapshot(d)])
+  );
   const changes = [];
   for (const day of editorDays.value) {
     const next = normalizeEditorDay(day);
@@ -703,9 +705,9 @@ watch(
         <div class="card-body">
           <div class="toolbar mb-3 d-flex align-items-center gap-2">
             <div
-        class="input-group input-group-sm flex-grow-1"
-        style="min-width: 16rem"
-      >
+              class="input-group input-group-sm flex-grow-1"
+              style="min-width: 16rem"
+            >
               <span id="search-addon" class="input-group-text"
                 ><i class="bi bi-search" aria-hidden="true"></i
               ></span>
@@ -734,21 +736,21 @@ watch(
                 <span
                   v-if="activeFiltersCount"
                   class="badge bg-secondary ms-2"
-                >{{ activeFiltersCount }}</span
+                  >{{ activeFiltersCount }}</span
+                >
+              </button>
+            </div>
+            <div class="ms-auto d-flex gap-2 flex-wrap justify-content-end">
+              <button
+                type="button"
+                class="btn btn-brand btn-sm d-inline-flex align-items-center"
+                @click="openEditorModal()"
               >
-            </button>
+                <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
+                <span>Управление занятостью</span>
+              </button>
+            </div>
           </div>
-          <div class="ms-auto d-flex gap-2 flex-wrap justify-content-end">
-            <button
-              type="button"
-              class="btn btn-brand btn-sm d-inline-flex align-items-center"
-              @click="openEditorModal()"
-            >
-              <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
-              <span>Управление занятостью</span>
-            </button>
-          </div>
-        </div>
           <div
             v-if="filtersSummary.length"
             class="filter-summary small text-muted mb-3 d-flex flex-wrap align-items-center gap-2"
@@ -787,26 +789,28 @@ watch(
               <tbody>
                 <tr v-for="u in pagedUsers" :key="u.id">
                   <td
-                class="fio-col sticky-col"
-                :title="nameOf(u)"
-                :aria-label="nameOf(u)"
-              >
-                <div class="fio-wrapper">
-                  <div class="fio-name">
-                    <span class="fio-full">{{ nameOf(u) }}</span>
-                    <span class="fio-short">{{ surnameWithInitials(u) }}</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-ghost btn-sm"
-                    :title="'Редактировать занятость: ' + nameOf(u)"
-                    @click.stop="openEditorModal(u)"
+                    class="fio-col sticky-col"
+                    :title="nameOf(u)"
+                    :aria-label="nameOf(u)"
                   >
-                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                    <span class="visually-hidden">Редактировать</span>
-                  </button>
-                </div>
-              </td>
+                    <div class="fio-wrapper">
+                      <div class="fio-name">
+                        <span class="fio-full">{{ nameOf(u) }}</span>
+                        <span class="fio-short">{{
+                          surnameWithInitials(u)
+                        }}</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm"
+                        :title="'Редактировать занятость: ' + nameOf(u)"
+                        @click.stop="openEditorModal(u)"
+                      >
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                        <span class="visually-hidden">Редактировать</span>
+                      </button>
+                    </div>
+                  </td>
                   <td
                     v-for="d in dates"
                     :key="u.id + '-' + d"
@@ -939,12 +943,14 @@ watch(
                   v-if="editorSelectedUser"
                   class="selected-user mt-3 p-2 bg-light rounded"
                 >
-                  <div class="fw-semibold">{{ nameOf(editorSelectedUser) }}</div>
+                  <div class="fw-semibold">
+                    {{ nameOf(editorSelectedUser) }}
+                  </div>
                   <div class="small text-muted">
                     {{
                       editorSelectedUser.email ||
-                        editorSelectedUser.phone ||
-                        'Контакты не указаны'
+                      editorSelectedUser.phone ||
+                      'Контакты не указаны'
                     }}
                   </div>
                   <span class="badge bg-secondary-subtle text-secondary mt-1">
@@ -963,7 +969,11 @@ watch(
                     <div class="text-muted small">
                       <template v-if="editorDateList.length">
                         {{ longDateLabel(editorDateList[0]) }} —
-                        {{ longDateLabel(editorDateList[editorDateList.length - 1]) }}
+                        {{
+                          longDateLabel(
+                            editorDateList[editorDateList.length - 1]
+                          )
+                        }}
                       </template>
                       <template v-else>Нет доступных дат</template>
                     </div>
@@ -990,7 +1000,10 @@ watch(
                   ></div>
                 </div>
                 <div v-else>
-                  <div v-if="editorInvalidCount" class="alert alert-warning py-2">
+                  <div
+                    v-if="editorInvalidCount"
+                    class="alert alert-warning py-2"
+                  >
                     Для частичных дней укажите время — осталось
                     {{ editorInvalidCount }}.
                   </div>
@@ -1004,7 +1017,9 @@ watch(
                       class="editor-day d-flex flex-column flex-sm-row gap-3"
                     >
                       <div class="editor-day-date text-nowrap">
-                        <div class="fw-semibold">{{ shortDateLabel(day.date) }}</div>
+                        <div class="fw-semibold">
+                          {{ shortDateLabel(day.date) }}
+                        </div>
                         <div class="text-muted small">
                           {{ longDateLabel(day.date) }}
                         </div>
@@ -1095,7 +1110,9 @@ watch(
                               type="time"
                               class="form-control"
                               step="300"
-                              :class="{ 'is-invalid': !editorIsValidPartial(day) }"
+                              :class="{
+                                'is-invalid': !editorIsValidPartial(day),
+                              }"
                             />
                             <input
                               v-else
@@ -1103,13 +1120,18 @@ watch(
                               type="time"
                               class="form-control"
                               step="300"
-                              :class="{ 'is-invalid': !editorIsValidPartial(day) }"
+                              :class="{
+                                'is-invalid': !editorIsValidPartial(day),
+                              }"
                             />
                           </div>
                         </div>
                         <div class="d-flex align-items-center gap-2 mt-2">
                           <span class="small text-muted">
-                            {{ statusLabels[editorEffectiveStatus(day)] || 'Не задано' }}
+                            {{
+                              statusLabels[editorEffectiveStatus(day)] ||
+                              'Не задано'
+                            }}
                             <template v-if="editorIsPartial(day)">
                               •
                               <template v-if="day.partialMode === 'BEFORE'">
@@ -1123,19 +1145,23 @@ watch(
                           <button
                             type="button"
                             class="btn btn-link btn-sm p-0"
-                            :disabled="!(
-                              day.preset ||
-                              day.currentStatus ||
-                              day.from_time ||
-                              day.to_time
-                            )"
+                            :disabled="
+                              !(
+                                day.preset ||
+                                day.currentStatus ||
+                                day.from_time ||
+                                day.to_time
+                              )
+                            "
                             @click="clearEditorDay(day)"
                           >
                             Очистить
                           </button>
                         </div>
                         <div
-                          v-if="editorIsPartial(day) && !editorIsValidPartial(day)"
+                          v-if="
+                            editorIsPartial(day) && !editorIsValidPartial(day)
+                          "
                           class="invalid-feedback d-block"
                         >
                           Укажите время для частичной занятости
