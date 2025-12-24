@@ -117,12 +117,12 @@ const hasCustomSort = computed(
 const hasActiveFilters = computed(() =>
   Boolean(
     filters.search ||
-      filters.typeId ||
-      filters.manufacturerId ||
-      filters.sizeId ||
-      filters.status ||
-      filters.number ||
-      hasCustomSort.value
+    filters.typeId ||
+    filters.manufacturerId ||
+    filters.sizeId ||
+    filters.status ||
+    filters.number ||
+    hasCustomSort.value
   )
 );
 

@@ -7,6 +7,7 @@ import type {
   StatusFilterScope,
   StatusOption,
   TabItem,
+  TimeScope,
 } from './types';
 
 const props = defineProps<{
@@ -76,6 +77,10 @@ function handleResetAnchor(): void {
   emit('resetAnchor');
 }
 
+function updateTimeScope(value: TabItem['key']): void {
+  draft.value.timeScope = value as TimeScope;
+}
+
 defineExpose({ show, hide });
 </script>
 
@@ -133,11 +138,12 @@ defineExpose({ show, hide });
           <div class="modal-filter-group">
             <span class="modal-filter-title">Период календаря</span>
             <TabSelector
-              v-model="draft.timeScope"
+              :model-value="draft.timeScope"
               :tabs="props.timeScopeTabs"
               v-bind="{ ariaLabel: 'Период' }"
               :nav-fill="false"
               justify="start"
+              @update:model-value="updateTimeScope"
             />
           </div>
 
