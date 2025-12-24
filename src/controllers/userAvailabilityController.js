@@ -7,9 +7,40 @@ import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 import ServiceError from '../errors/ServiceError.js';
 import { hasRefereeRole } from '../utils/roles.js';
+import { utcToMoscow } from '../utils/time.js';
 
 function formatDate(d) {
   return d.toISOString().slice(0, 10);
+}
+
+function parseDateKey(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+  const [year, month, day] = dateStr.split('-').map((value) => Number(value));
+  if ([year, month, day].some((value) => Number.isNaN(value))) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function moscowTodayKey() {
+  const nowMsk = utcToMoscow(new Date()) || new Date();
+  return formatDate(nowMsk);
+}
+
+function startOfIsoWeek(dateKey) {
+  const base = parseDateKey(dateKey);
+  if (!base) return null;
+  const dayNum = base.getUTCDay();
+  const offset = (dayNum + 6) % 7; // Monday = 0, Sunday = 6
+  base.setUTCDate(base.getUTCDate() - offset);
+  return base;
+}
+
+function endOfNextWeek(dateKey) {
+  const base = parseDateKey(dateKey);
+  if (!base) return null;
+  const dayNum = base.getUTCDay();
+  const daysToNextSunday = ((7 - dayNum) % 7) + 7;
+  base.setUTCDate(base.getUTCDate() + daysToNextSunday);
+  return base;
 }
 
 async function assertEditableUser(userId) {
@@ -27,18 +58,13 @@ async function assertEditableUser(userId) {
 
 export default {
   async list(req, res) {
-    const today = new Date();
     // Start from Monday of the current week (Moscow time)
-    const todayKey = formatDate(today);
-    const moscow = new Date(`${todayKey}T00:00:00+03:00`);
-    const dayNum = moscow.getUTCDay();
-    const mondayMs =
-      moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
-    const start = formatDate(new Date(mondayMs));
-
-    const end = new Date(today);
-    end.setDate(end.getDate() + (7 - end.getDay()) + 7);
-    const endStr = formatDate(end);
+    const todayKey = moscowTodayKey();
+    const startDate = startOfIsoWeek(todayKey) || new Date();
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(endDate.getUTCDate() + 13);
+    const start = formatDate(startDate);
+    const endStr = formatDate(endDate);
     const records = await userAvailabilityService.listForUser(
       req.user.id,
       start,
@@ -46,7 +72,13 @@ export default {
     );
     const map = new Map(records.map((r) => [r.date, r]));
     const days = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const startIter = parseDateKey(start) || startDate;
+    const endIter = parseDateKey(endStr) || endDate;
+    for (
+      let d = new Date(startIter);
+      d <= endIter;
+      d.setUTCDate(d.getUTCDate() + 1)
+    ) {
       const key = formatDate(d);
       const rec = map.get(key);
       // Determine editability and lock flags (Moscow time, corporate policy)
@@ -78,12 +110,9 @@ export default {
 
   async adminGrid(req, res) {
     // Admin overview: referees' availability from today through end of next week
-    const today = new Date();
-    const rangeStart = formatDate(today);
-    const rangeEndDate = new Date(today);
-    rangeEndDate.setDate(
-      rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7
-    );
+    const todayKey = moscowTodayKey();
+    const rangeStartDate = parseDateKey(todayKey) || new Date();
+    const rangeEndDate = endOfNextWeek(todayKey) || new Date(rangeStartDate);
 
     // Roles/status filters
     const rolesParam = req.query.role;
@@ -123,9 +152,9 @@ export default {
     // Fetch availabilities in bulk
     const availableDates = [];
     for (
-      let d = new Date(rangeStart);
+      let d = new Date(rangeStartDate);
       d <= rangeEndDate;
-      d.setDate(d.getDate() + 1)
+      d.setUTCDate(d.getUTCDate() + 1)
     ) {
       availableDates.push(formatDate(d));
     }
@@ -188,25 +217,24 @@ export default {
     const userId = req.params.userId;
     const user = await assertEditableUser(userId);
 
-    const today = new Date();
-    const rangeStart = formatDate(today);
-    const rangeEndDate = new Date(today);
-    rangeEndDate.setDate(
-      rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7
-    );
+    const todayKey = moscowTodayKey();
+    const rangeStartDate = parseDateKey(todayKey) || new Date();
+    const rangeEndDate = endOfNextWeek(todayKey) || new Date(rangeStartDate);
+    const rangeStart = formatDate(rangeStartDate);
+    const rangeEnd = formatDate(rangeEndDate);
 
     const dates = [];
     const records = await userAvailabilityService.listForUser(
       userId,
       rangeStart,
-      formatDate(rangeEndDate)
+      rangeEnd
     );
     const map = new Map(records.map((r) => [r.date, r]));
     const days = [];
     for (
-      let d = new Date(rangeStart);
+      let d = new Date(rangeStartDate);
       d <= rangeEndDate;
-      d.setDate(d.getDate() + 1)
+      d.setUTCDate(d.getUTCDate() + 1)
     ) {
       const key = formatDate(d);
       dates.push(key);

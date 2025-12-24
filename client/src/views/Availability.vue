@@ -180,31 +180,54 @@ watch(invalidCount, (current, previous) => {
   }
 });
 
-// Week grouping (ISO week number) using Moscow midnight for date boundaries
-function toMoscowMidnight(dateStr) {
-  return new Date(`${dateStr}T00:00:00+03:00`);
+// Week grouping (ISO week number + ISO week-year)
+function moscowDateKey(value = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: MOSCOW_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(value)
+      .reduce((acc, part) => {
+        if (part.type !== 'literal') acc[part.type] = part.value;
+        return acc;
+      }, {});
+    const { year, month, day } = parts;
+    if (year && month && day) return `${year}-${month}-${day}`;
+  } catch (_) {
+    // Fall through to ISO if Intl fails.
+  }
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function isoWeekData(dateStr) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+  if (Number.isNaN(date.getTime())) return null;
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const year = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const week = Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  return { week, year };
 }
 
 // Time helpers (Moscow timezone)
 function mskStartOfDayMs(dateStr) {
   return new Date(`${dateStr}T00:00:00+03:00`).getTime();
 }
-function isoWeek(date) {
-  const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
-  );
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-}
 const weekGroups = computed(() => {
   const groups = new Map();
   for (const d of days.value) {
-    const dt = toMoscowMidnight(d.date);
-    const week = isoWeek(dt);
-    const key = `${dt.getUTCFullYear()}-${week}`;
-    if (!groups.has(key)) groups.set(key, { key, week, list: [] });
+    const info = isoWeekData(d.date);
+    if (!info) continue;
+    const key = `${info.year}-${info.week}`;
+    if (!groups.has(key))
+      groups.set(key, { key, week: info.week, year: info.year, list: [] });
     groups.get(key).list.push(d);
   }
   const arr = [...groups.values()].map((g) => {
@@ -224,11 +247,10 @@ const visibleWeekGroups = computed(() => {
   if (all.length <= 2) return all;
 
   // Determine the current ISO week key in Moscow time
-  const today = new Date();
-  const todayKey = today.toISOString().slice(0, 10);
-  const msk = new Date(`${todayKey}T00:00:00+03:00`);
-  const curWeek = isoWeek(msk);
-  const curKey = `${msk.getUTCFullYear()}-${curWeek}`;
+  const todayKey = moscowDateKey(new Date());
+  const current = isoWeekData(todayKey);
+  if (!current) return all.slice(-2);
+  const curKey = `${current.year}-${current.week}`;
 
   const idx = all.findIndex((g) => g.key === curKey);
   if (idx === -1) {

@@ -8,6 +8,7 @@ const listForUserMock = jest.fn();
 const setForUserMock = jest.fn();
 const clearForUserMock = jest.fn();
 const listForUsersMock = jest.fn();
+const getAvailabilityLocksMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
@@ -23,7 +24,7 @@ jest.unstable_mockModule('../src/services/userAvailabilityService.js', () => ({
   __esModule: true,
   default: { listForUser: listForUserMock, setForUser: setForUserMock },
   listForUsers: listForUsersMock,
-  getAvailabilityLocks: jest.fn(),
+  getAvailabilityLocks: getAvailabilityLocksMock,
   clearForUser: clearForUserMock,
 }));
 
@@ -39,6 +40,7 @@ beforeEach(() => {
   setForUserMock.mockReset();
   clearForUserMock.mockReset();
   listForUsersMock.mockReset();
+  getAvailabilityLocksMock.mockReset();
 });
 
 afterEach(() => {
@@ -105,6 +107,29 @@ test('adminGrid returns filtered dates and the full calendar metadata', async ()
     status: 'PARTIAL',
     preset: true,
   });
+});
+
+test('list spans the next ISO week across year boundary in Moscow time', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-12-29T12:00:00Z'));
+
+  listForUserMock.mockResolvedValue([]);
+  getAvailabilityLocksMock.mockReturnValue({
+    fullyLocked: false,
+    limitedLocked: false,
+  });
+
+  const controller = (await import(controllerPath)).default;
+  const jsonMock = jest.fn();
+
+  await controller.list({ user: { id: 'u1' } }, { json: jsonMock });
+
+  expect(listForUserMock).toHaveBeenCalledWith(
+    'u1',
+    '2024-12-23',
+    '2025-01-05'
+  );
+  const payload = jsonMock.mock.calls[0][0];
+  expect(payload.days.some((d) => d.date === '2025-01-01')).toBe(true);
 });
 
 test('adminGrid falls back to full range when requested dates miss the window', async () => {

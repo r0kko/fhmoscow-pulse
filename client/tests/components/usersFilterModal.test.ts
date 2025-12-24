@@ -7,12 +7,26 @@ const modalSpies = vi.hoisted(() => {
   const show = vi.fn();
   const hide = vi.fn();
   const dispose = vi.fn();
-  const ctor = vi.fn(() => ({ show, hide, dispose }));
-  return { show, hide, dispose, ctor };
+  const ctor = vi.fn();
+  class ModalMock {
+    constructor(...args: unknown[]) {
+      ctor(...args);
+    }
+    show(): void {
+      show();
+    }
+    hide(): void {
+      hide();
+    }
+    dispose(): void {
+      dispose();
+    }
+  }
+  return { show, hide, dispose, ctor, ModalMock };
 });
 
 vi.mock('bootstrap/js/dist/modal', () => ({
-  default: modalSpies.ctor,
+  default: modalSpies.ModalMock,
 }));
 
 describe('UsersFilterModal', () => {
