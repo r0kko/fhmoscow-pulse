@@ -1400,9 +1400,7 @@ watch(
                                 :class="{
                                   'is-invalid': !editorIsValidPartial(day),
                                 }"
-                                :aria-label="
-                                  'Доступен после указанного времени'
-                                "
+                                :aria-label="'Доступен после указанного времени'"
                                 :title="'Доступен после указанного времени'"
                               />
                             </div>
