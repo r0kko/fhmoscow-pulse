@@ -11,9 +11,8 @@ jest.unstable_mockModule('../src/mappers/staffMapper.js', () => ({
   default: { toPublicArray: (rows) => rows },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/staffController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/staffController.js');
 
 test('include=teams and include=clubs map correctly', async () => {
   listStaffMock.mockClear();

@@ -420,9 +420,8 @@ export async function applyESignStamp(doc, info) {
     const s = info.signId || '';
     const u = info.userId || '';
     try {
-      const { buildShortVerifyUrl } = await import(
-        '../services/shortLinkService.js'
-      );
+      const { buildShortVerifyUrl } =
+        await import('../services/shortLinkService.js');
       try {
         return await buildShortVerifyUrl({ d, s, u });
       } catch {

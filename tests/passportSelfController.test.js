@@ -23,9 +23,8 @@ jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/passportSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/passportSelfController.js');
 
 test('create returns 400 on validation errors', async () => {
   validationOk = false;

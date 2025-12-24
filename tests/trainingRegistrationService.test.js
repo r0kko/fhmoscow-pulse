@@ -62,9 +62,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const { default: service } = await import(
-  '../src/services/trainingRegistrationService.js'
-);
+const { default: service } =
+  await import('../src/services/trainingRegistrationService.js');
 
 beforeEach(() => {
   findTrainingMock.mockReset();

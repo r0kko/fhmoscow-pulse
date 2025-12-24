@@ -1,4 +1,3 @@
-/* eslint-env node */
 /* global process */
 import { expect, test, jest } from '@jest/globals';
 

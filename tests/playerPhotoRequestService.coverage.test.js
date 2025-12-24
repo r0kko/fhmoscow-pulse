@@ -66,9 +66,8 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
   default: { transaction: transactionMock },
 }));
 
-const { default: service } = await import(
-  '../src/services/playerPhotoRequestService.js'
-);
+const { default: service } =
+  await import('../src/services/playerPhotoRequestService.js');
 
 function buildFile() {
   return {

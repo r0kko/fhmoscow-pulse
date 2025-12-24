@@ -29,9 +29,8 @@ jest.unstable_mockModule('../src/mappers/bankAccountMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/bankAccountSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/bankAccountSelfController.js');
 
 test('create returns 400 on validation errors', async () => {
   validationOk = false;

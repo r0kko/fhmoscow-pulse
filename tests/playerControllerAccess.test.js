@@ -27,9 +27,8 @@ jest.unstable_mockModule('../src/services/clubUserService.js', () => ({
   default: { listUserClubs: jest.fn() },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/playerController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/playerController.js');
 
 function mockRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

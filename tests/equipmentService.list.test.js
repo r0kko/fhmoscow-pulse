@@ -58,9 +58,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserSignType: noopModel,
 }));
 
-const { default: service } = await import(
-  '../src/services/equipmentService.js'
-);
+const { default: service } =
+  await import('../src/services/equipmentService.js');
 
 describe('equipmentService.listAll', () => {
   test('returns paginated list with summary and search filters applied', async () => {

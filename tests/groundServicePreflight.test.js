@@ -20,9 +20,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Address: {},
 }));
 
-const { default: groundService } = await import(
-  '../src/services/groundService.js'
-);
+const { default: groundService } =
+  await import('../src/services/groundService.js');
 
 test('ground sync preflight returns early when external_id column is missing', async () => {
   const res = await groundService.syncExternal('admin');

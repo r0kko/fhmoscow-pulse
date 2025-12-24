@@ -73,9 +73,8 @@ describe('rateLimiter middleware', () => {
     delete process.env.RATE_LIMIT_ENABLED;
     delete process.env.RATE_LIMIT_GLOBAL_ENABLED;
 
-    const { default: middleware } = await import(
-      '../src/middlewares/rateLimiter.js'
-    );
+    const { default: middleware } =
+      await import('../src/middlewares/rateLimiter.js');
 
     const next = jest.fn();
     await middleware({ method: 'GET', path: '/' }, {}, next);
@@ -91,9 +90,8 @@ describe('rateLimiter middleware', () => {
     process.env.RATE_LIMIT_WINDOW_MS = '60000';
     process.env.RATE_LIMIT_MAX = '1200';
 
-    const { default: middleware } = await import(
-      '../src/middlewares/rateLimiter.js'
-    );
+    const { default: middleware } =
+      await import('../src/middlewares/rateLimiter.js');
 
     expect(RedisStoreMock).toHaveBeenCalledWith({ prefix: 'rate:global' });
     expect(typeof middleware).toBe('function');
@@ -130,9 +128,8 @@ describe('rateLimiter middleware', () => {
   test('skips health and safe methods even when enabled', async () => {
     process.env.RATE_LIMIT_ENABLED = 'true';
 
-    const { default: middleware } = await import(
-      '../src/middlewares/rateLimiter.js'
-    );
+    const { default: middleware } =
+      await import('../src/middlewares/rateLimiter.js');
 
     const next = jest.fn();
 

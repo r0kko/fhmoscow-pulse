@@ -21,9 +21,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   MatchAgreementStatus: {},
 }));
 
-const { listUpcomingLocal, listPastLocal } = await import(
-  '../src/services/matchService.js'
-);
+const { listUpcomingLocal, listPastLocal } =
+  await import('../src/services/matchService.js');
 
 beforeEach(() => {
   userFindByPkMock.mockReset();

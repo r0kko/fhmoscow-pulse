@@ -36,9 +36,8 @@ jest.unstable_mockModule('../src/models/role.js', () => ({
   default: {},
 }));
 
-const { default: service } = await import(
-  '../src/services/matchStaffService.js'
-);
+const { default: service } =
+  await import('../src/services/matchStaffService.js');
 
 function baseMatch() {
   return {

@@ -16,9 +16,8 @@ jest.unstable_mockModule('../src/services/bankAccountChangeService.js', () => ({
   default: { requestChange: requestChangeMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/bankAccountSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/bankAccountSelfController.js');
 
 beforeEach(() => {
   requestChangeMock.mockReset();

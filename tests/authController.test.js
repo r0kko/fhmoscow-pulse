@@ -75,9 +75,8 @@ jest.unstable_mockModule('express-validator', () => ({
   })),
 }));
 
-const { default: authController } = await import(
-  '../src/controllers/authController.js'
-);
+const { default: authController } =
+  await import('../src/controllers/authController.js');
 
 process.env.JWT_SECRET = 'secret';
 

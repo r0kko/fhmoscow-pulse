@@ -12,9 +12,8 @@ jest.unstable_mockModule('../logger.js', () => ({
   default: { error: loggerErrorMock },
 }));
 
-const { findByEmail, findById } = await import(
-  '../src/services/legacyUserService.js'
-);
+const { findByEmail, findById } =
+  await import('../src/services/legacyUserService.js');
 
 beforeEach(() => {
   queryMock.mockReset();

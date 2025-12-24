@@ -20,9 +20,8 @@ jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
   default: { toPublic: jest.fn() },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/passportSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/passportSelfController.js');
 
 test('create returns 400 when service throws', async () => {
   createMock.mockRejectedValue(new Error('db_error'));

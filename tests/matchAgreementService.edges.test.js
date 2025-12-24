@@ -70,9 +70,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const matchAgreementModule = await import(
-  '../src/services/matchAgreementService.js'
-);
+const matchAgreementModule =
+  await import('../src/services/matchAgreementService.js');
 const svc = matchAgreementModule.default;
 const { listAvailableGrounds, listForAdmin } = matchAgreementModule;
 

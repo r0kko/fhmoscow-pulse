@@ -7,9 +7,8 @@ process.env.PASSWORD_MAX_LENGTH = '64';
 
 process.env.PASSWORD_PATTERN = '(?=.*[A-Za-z])(?=.*\\d)';
 
-const { validatePassword, assertPassword } = await import(
-  '../src/utils/passwordPolicy.js'
-);
+const { validatePassword, assertPassword } =
+  await import('../src/utils/passwordPolicy.js');
 
 describe('passwordPolicy', () => {
   test('rejects common/weak passwords', () => {

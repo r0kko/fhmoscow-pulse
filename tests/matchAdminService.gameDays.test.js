@@ -31,9 +31,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   GameStatus: {},
 }));
 
-const { listNextGameDays } = await import(
-  '../src/services/matchAdminService.js'
-);
+const { listNextGameDays } =
+  await import('../src/services/matchAdminService.js');
 
 function makeMatch(id, isoDate, overrides = {}) {
   return {

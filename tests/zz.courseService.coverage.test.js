@@ -36,9 +36,8 @@ async function loadServiceWithMocks(factory) {
       NormativeType: {},
     }));
 
-    const { default: service } = await import(
-      '../src/services/courseService.js'
-    );
+    const { default: service } =
+      await import('../src/services/courseService.js');
     await extras(service, {
       courseMocks,
       userMocks,

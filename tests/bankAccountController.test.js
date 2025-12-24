@@ -10,9 +10,8 @@ jest.unstable_mockModule('../src/mappers/bankAccountMapper.js', () => ({
   default: { toPublic: jest.fn((a) => a) },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/bankAccountController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/bankAccountController.js');
 const service = await import('../src/services/bankAccountService.js');
 
 test('me returns stored account', async () => {

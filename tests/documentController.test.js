@@ -35,9 +35,8 @@ jest.unstable_mockModule('../src/utils/api.js', () => ({
   sendError: sendErrorMock,
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/documentController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/documentController.js');
 
 beforeEach(() => {
   validationOk = true;

@@ -41,9 +41,8 @@ beforeEach(async () => {
     buildPermissionPayload: buildPermissionPayloadMock,
   }));
 
-  ({ default: service } = await import(
-    '../src/services/matchLineupService.js'
-  ));
+  ({ default: service } =
+    await import('../src/services/matchLineupService.js'));
 });
 
 describe('matchLineupService.list access guards', () => {

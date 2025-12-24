@@ -43,9 +43,8 @@ jest.unstable_mockModule('../src/services/syncStateService.js', () => ({
   runWithSyncState: (...args) => runWithSyncStateMock(...args),
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/staffController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/staffController.js');
 
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

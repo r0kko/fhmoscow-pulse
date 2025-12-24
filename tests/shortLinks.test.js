@@ -38,9 +38,8 @@ describe('shortLinkService memory backend', () => {
       process.env.SHORTLINK_BACKEND = 'memory';
       process.env.SHORTLINK_PUBLIC_PREFIX = '/api/v';
 
-      const { buildShortVerifyUrl, resolveCode } = await import(
-        '../src/services/shortLinkService.js'
-      );
+      const { buildShortVerifyUrl, resolveCode } =
+        await import('../src/services/shortLinkService.js');
 
       const url = await buildShortVerifyUrl({
         d: 'docX',
@@ -99,9 +98,8 @@ describe('shortLinkService db backend', () => {
         default: { warn: jest.fn(), info: jest.fn(), error: jest.fn() },
       }));
 
-      const { getOrCreateForToken, resolveCode } = await import(
-        '../src/services/shortLinkService.js'
-      );
+      const { getOrCreateForToken, resolveCode } =
+        await import('../src/services/shortLinkService.js');
 
       const code = await getOrCreateForToken('db-token');
       expect(code).toBe('dbCode');
@@ -144,9 +142,8 @@ describe('shortLinkService db backend', () => {
         default: { warn: warnMock, info: jest.fn(), error: jest.fn() },
       }));
 
-      const { getOrCreateForToken } = await import(
-        '../src/services/shortLinkService.js'
-      );
+      const { getOrCreateForToken } =
+        await import('../src/services/shortLinkService.js');
 
       const code = await getOrCreateForToken('fallback-token');
       expect(typeof code).toBe('string');

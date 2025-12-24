@@ -7,9 +7,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TrainingRole: { findAll: findAllMock },
 }));
 
-const { default: service } = await import(
-  '../src/services/trainingRoleService.js'
-);
+const { default: service } =
+  await import('../src/services/trainingRoleService.js');
 
 beforeEach(() => {
   findAllMock.mockReset();

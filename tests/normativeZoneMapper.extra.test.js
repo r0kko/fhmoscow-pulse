@@ -1,8 +1,7 @@
 import { expect, test } from '@jest/globals';
 
-const { default: mapper } = await import(
-  '../src/mappers/normativeZoneMapper.js'
-);
+const { default: mapper } =
+  await import('../src/mappers/normativeZoneMapper.js');
 
 test('toPublic returns null for falsy zone', () => {
   expect(mapper.toPublic(null)).toBeNull();

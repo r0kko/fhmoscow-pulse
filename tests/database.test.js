@@ -34,9 +34,8 @@ process.env.DB_HOST = 'localhost';
 
 process.env.DB_PORT = '5432';
 
-const { connectToDatabase, closeDatabase } = await import(
-  '../src/config/database.js'
-);
+const { connectToDatabase, closeDatabase } =
+  await import('../src/config/database.js');
 
 test('connectToDatabase authenticates', async () => {
   await connectToDatabase();

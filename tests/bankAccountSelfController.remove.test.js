@@ -7,9 +7,8 @@ jest.unstable_mockModule('../src/services/bankAccountService.js', () => ({
   default: { removeForUser: removeMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/bankAccountSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/bankAccountSelfController.js');
 
 test('remove deletes bank account and returns 204', async () => {
   removeMock.mockResolvedValue(undefined);

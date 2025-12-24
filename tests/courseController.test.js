@@ -10,9 +10,8 @@ jest.unstable_mockModule('../src/mappers/courseMapper.js', () => ({
   default: { toPublic: jest.fn((c) => c) },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/courseController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/courseController.js');
 const service = await import('../src/services/courseService.js');
 
 test('me returns course when assigned', async () => {

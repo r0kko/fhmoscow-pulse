@@ -24,9 +24,8 @@ describe('accessScope middleware', () => {
     };
     const res = {};
     const next = jest.fn();
-    const { default: accessScope } = await import(
-      '../src/middlewares/accessScope.js'
-    );
+    const { default: accessScope } =
+      await import('../src/middlewares/accessScope.js');
     await accessScope(req, res, next);
     expect(req.access).toMatchObject({
       isAdmin: false,
@@ -46,9 +45,8 @@ describe('accessScope middleware', () => {
     };
     const res = {};
     const next = jest.fn();
-    const { default: accessScope } = await import(
-      '../src/middlewares/accessScope.js'
-    );
+    const { default: accessScope } =
+      await import('../src/middlewares/accessScope.js');
     await accessScope(req, res, next);
     expect(req.access.isAdmin).toBe(true);
     expect(req.access.allowedClubIds).toEqual([]);
@@ -61,9 +59,8 @@ describe('accessScope middleware', () => {
     const json = jest.fn();
     const res = { status, json };
     const next = jest.fn();
-    const { default: accessScope } = await import(
-      '../src/middlewares/accessScope.js'
-    );
+    const { default: accessScope } =
+      await import('../src/middlewares/accessScope.js');
     await accessScope(req, res, next);
     expect(status).toHaveBeenCalledWith(401);
     expect(json).toHaveBeenCalledWith({ error: 'Не авторизовано' });
@@ -82,9 +79,8 @@ describe('accessScope middleware', () => {
     const json = jest.fn();
     const res = { status, json };
     const next = jest.fn();
-    const { default: accessScope } = await import(
-      '../src/middlewares/accessScope.js'
-    );
+    const { default: accessScope } =
+      await import('../src/middlewares/accessScope.js');
     await accessScope(req, res, next);
     expect(status).toHaveBeenCalledWith(500);
     expect(next).not.toHaveBeenCalled();

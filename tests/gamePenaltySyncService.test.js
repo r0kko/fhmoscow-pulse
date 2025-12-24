@@ -77,9 +77,8 @@ jest.unstable_mockModule('../logger.js', () => ({
   },
 }));
 
-const { reconcileForMatch } = await import(
-  '../src/services/gamePenaltySyncService.js'
-);
+const { reconcileForMatch } =
+  await import('../src/services/gamePenaltySyncService.js');
 
 test('reconcileForMatch upserts and soft-deletes penalties by external_id', async () => {
   matchFindByPkMock.mockResolvedValueOnce({ id: 'm1', external_id: 123 });

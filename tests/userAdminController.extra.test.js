@@ -68,9 +68,8 @@ jest.unstable_mockModule('express-validator', () => ({
   validationResult: () => ({ isEmpty: () => true, array: () => [] }),
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/userAdminController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/userAdminController.js');
 
 function mockRes() {
   return {
@@ -207,9 +206,8 @@ describe('userAdminController validation error flows', () => {
         array: () => [{ msg: 'bad' }],
       }),
     }));
-    const { default: controller2 } = await import(
-      '../src/controllers/userAdminController.js'
-    );
+    const { default: controller2 } =
+      await import('../src/controllers/userAdminController.js');
 
     const res = mockRes();
     await controller2.create({ body: {} }, res);
@@ -232,9 +230,8 @@ describe('userAdminController validation error flows', () => {
       __esModule: true,
       validationResult: () => ({ isEmpty: () => false, array: () => ['x'] }),
     }));
-    const { default: controller3 } = await import(
-      '../src/controllers/userAdminController.js'
-    );
+    const { default: controller3 } =
+      await import('../src/controllers/userAdminController.js');
     const res = mockRes();
     await controller3.resetPassword(
       { params: { id: 'u' }, body: { password: 'p' }, user: { id: 'a' } },

@@ -19,9 +19,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
 
 import * as attemptStore from '../src/services/emailCodeAttempts.js';
 
-const { sendCode, verifyCode } = await import(
-  '../src/services/emailVerificationService.js'
-);
+const { sendCode, verifyCode } =
+  await import('../src/services/emailVerificationService.js');
 
 beforeEach(() => {
   createMock.mockClear();

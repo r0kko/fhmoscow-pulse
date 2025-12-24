@@ -22,9 +22,8 @@ jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/userSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/userSelfController.js');
 
 test('update returns 400 on validation errors', async () => {
   validationOk = false;

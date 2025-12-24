@@ -50,9 +50,8 @@ jest.unstable_mockModule('../src/services/seasonService.js', () => ({
   default: { getActive: getActiveMock },
 }));
 
-const { default: service } = await import(
-  '../src/services/refereeGroupService.js'
-);
+const { default: service } =
+  await import('../src/services/refereeGroupService.js');
 
 test('removeUser soft deletes assignment', async () => {
   findOneMock.mockResolvedValue({ destroy: destroyMock, update: updateMock });

@@ -71,9 +71,8 @@ test('allow list extends default private ranges', async () => {
 
 test('disabled mode returns 404 semantics', async () => {
   process.env.API_DOCS_ACCESS = 'disabled';
-  const { isDocsEnabled, isApiDocsRequestAllowed } = await import(
-    '../src/config/docs.js'
-  );
+  const { isDocsEnabled, isApiDocsRequestAllowed } =
+    await import('../src/config/docs.js');
   expect(isDocsEnabled()).toBe(false);
   expect(isApiDocsRequestAllowed({ ip: '127.0.0.1' })).toBe(false);
 });

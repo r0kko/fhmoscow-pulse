@@ -1,4 +1,3 @@
-/* eslint-env node */
 import { expect, jest, test } from '@jest/globals';
 
 test('connectRedis marks cache up on success', async () => {

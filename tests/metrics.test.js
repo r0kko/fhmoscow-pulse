@@ -1,8 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-const { withJobMetrics, metricsText } = await import(
-  '../src/config/metrics.js'
-);
+const { withJobMetrics, metricsText } =
+  await import('../src/config/metrics.js');
 
 describe('metrics integration', () => {
   test('records success path and exposes metrics text', async () => {

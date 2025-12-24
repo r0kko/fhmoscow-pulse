@@ -31,9 +31,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   default: { sendMedicalCertificateAddedEmail: sendEmailMock },
 }));
 
-const { default: service } = await import(
-  '../src/services/medicalCertificateService.js'
-);
+const { default: service } =
+  await import('../src/services/medicalCertificateService.js');
 
 beforeEach(() => {
   sendEmailMock.mockClear();

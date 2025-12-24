@@ -30,9 +30,8 @@ jest.unstable_mockModule('../src/services/dadataService.js', () => ({
   default: { findBankByBic: findBankMock },
 }));
 
-const { default: service } = await import(
-  '../src/services/bankAccountService.js'
-);
+const { default: service } =
+  await import('../src/services/bankAccountService.js');
 
 findOneMock.mockResolvedValue(accountInstance);
 

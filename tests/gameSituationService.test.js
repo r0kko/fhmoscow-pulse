@@ -33,9 +33,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   },
 }));
 
-const { default: gameSituationService } = await import(
-  '../src/services/gameSituationService.js'
-);
+const { default: gameSituationService } =
+  await import('../src/services/gameSituationService.js');
 
 test('syncExternal upserts and soft deletes by external_id', async () => {
   extFindAllMock.mockResolvedValueOnce([

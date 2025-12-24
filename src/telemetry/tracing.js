@@ -13,15 +13,12 @@ export async function initTracing() {
   }
   try {
     const { NodeSDK } = await import('@opentelemetry/sdk-node');
-    const { OTLPTraceExporter } = await import(
-      '@opentelemetry/exporter-trace-otlp-grpc'
-    );
-    const { resourceFromAttributes, defaultResource } = await import(
-      '@opentelemetry/resources'
-    );
-    const { getNodeAutoInstrumentations } = await import(
-      '@opentelemetry/auto-instrumentations-node'
-    );
+    const { OTLPTraceExporter } =
+      await import('@opentelemetry/exporter-trace-otlp-grpc');
+    const { resourceFromAttributes, defaultResource } =
+      await import('@opentelemetry/resources');
+    const { getNodeAutoInstrumentations } =
+      await import('@opentelemetry/auto-instrumentations-node');
 
     const serviceName = process.env.OTEL_SERVICE_NAME || 'api';
     const version = process.env.VERSION || '0.0.0';

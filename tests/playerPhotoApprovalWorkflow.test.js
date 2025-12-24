@@ -44,9 +44,8 @@ jest.unstable_mockModule('../src/models/extFile.js', () => ({
   },
 }));
 
-const { processPlayerPhotoApproval } = await import(
-  '../src/services/playerPhotoApprovalWorkflow.js'
-);
+const { processPlayerPhotoApproval } =
+  await import('../src/services/playerPhotoApprovalWorkflow.js');
 
 function buildRequest({ fileOverrides = {}, playerOverrides = {} } = {}) {
   const file = {

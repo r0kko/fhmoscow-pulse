@@ -46,9 +46,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   sendMatchAgreementDailyDigestEmail: (u, d) => sendDigestMock(u, d),
 }));
 
-const { runMatchAgreementReminders } = await import(
-  '../src/jobs/matchAgreementReminderCron.js'
-);
+const { runMatchAgreementReminders } =
+  await import('../src/jobs/matchAgreementReminderCron.js');
 
 beforeEach(() => {
   matchFindAllMock.mockReset();
