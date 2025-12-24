@@ -10,9 +10,8 @@ jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
   default: { toPublic: jest.fn((p) => p) },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/passportController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/passportController.js');
 const service = await import('../src/services/passportService.js');
 
 test('me returns stored passport', async () => {

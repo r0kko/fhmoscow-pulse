@@ -9,9 +9,8 @@ jest.unstable_mockModule('express-validator', () => ({
   }),
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/passwordChangeController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/passwordChangeController.js');
 
 function createRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

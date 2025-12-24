@@ -17,9 +17,8 @@ test('withRedisLock acquires and releases lock', async () => {
     },
     isRedisWritable: () => true,
   }));
-  const { withRedisLock, buildJobLockKey } = await import(
-    '../src/utils/redisLock.js'
-  );
+  const { withRedisLock, buildJobLockKey } =
+    await import('../src/utils/redisLock.js');
   const key = buildJobLockKey('demo');
   const result = await withRedisLock(key, 1000, async () => 'work');
   expect(result).toBe('work');

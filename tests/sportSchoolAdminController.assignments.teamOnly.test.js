@@ -35,9 +35,8 @@ jest.unstable_mockModule('../src/services/clubUserService.js', () => ({
   default: { listUserClubs: jest.fn() },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/sportSchoolAdminController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/sportSchoolAdminController.js');
 
 beforeEach(() => {
   teamServiceListMock.mockReset();

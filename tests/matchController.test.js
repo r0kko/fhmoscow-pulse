@@ -14,9 +14,8 @@ jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   isExternalDbAvailable: () => false,
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/matchController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/matchController.js');
 
 beforeEach(() => {
   listUpcomingMock.mockReset();
@@ -69,9 +68,8 @@ test('matchController uses external when available', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller2 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller2 } =
+    await import('../src/controllers/matchController.js');
   listUpcomingMock.mockResolvedValue({ rows: [], count: 0 });
 
   const req = {
@@ -103,9 +101,8 @@ test('matchController forces local when source=local even if external is availab
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controllerX } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controllerX } =
+    await import('../src/controllers/matchController.js');
   const req = { query: { source: 'local', all: 'true' }, user: { id: 'u6' } };
   const json = jest.fn();
   const res = { json };
@@ -127,9 +124,8 @@ test('matchController computes total_pages=1 when all=true', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller3 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller3 } =
+    await import('../src/controllers/matchController.js');
   const req = { query: { all: 'true' }, user: { id: 'u3' } };
   const json = jest.fn();
   const res = { json };
@@ -157,9 +153,8 @@ test('matchController forwards errors via next()', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller4 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller4 } =
+    await import('../src/controllers/matchController.js');
 
   const req = { query: {}, user: { id: 'u4' } };
   const json = jest.fn();
@@ -181,9 +176,8 @@ test('matchController defaults to type=all on invalid type', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller5 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller5 } =
+    await import('../src/controllers/matchController.js');
   const req = { query: { type: 'weird' }, user: { id: 'u5' } };
   const json = jest.fn();
   const res = { json };

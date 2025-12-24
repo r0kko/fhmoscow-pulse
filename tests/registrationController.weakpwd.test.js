@@ -59,9 +59,8 @@ jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
   default: { toPublic: (u) => ({ id: u.id }) },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/registrationController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/registrationController.js');
 
 function createRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

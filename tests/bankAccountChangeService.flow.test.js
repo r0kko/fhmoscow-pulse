@@ -51,9 +51,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   SignType: {},
 }));
 
-const { default: bankAccountChangeService } = await import(
-  '../src/services/bankAccountChangeService.js'
-);
+const { default: bankAccountChangeService } =
+  await import('../src/services/bankAccountChangeService.js');
 
 beforeEach(() => {
   createForUserMock.mockReset();

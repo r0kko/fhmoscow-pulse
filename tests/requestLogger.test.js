@@ -17,9 +17,8 @@ jest.unstable_mockModule('../logger.js', () => ({
   },
 }));
 
-const { default: requestLogger } = await import(
-  '../src/middlewares/requestLogger.js'
-);
+const { default: requestLogger } =
+  await import('../src/middlewares/requestLogger.js');
 
 beforeEach(() => {
   jest.clearAllMocks();

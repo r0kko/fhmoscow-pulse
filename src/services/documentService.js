@@ -3063,3 +3063,10 @@ export default {
     return buildElectronicInteractionAgreementPdf(user, { userId: user.id });
   },
 };
+
+// Expose individual PDF builders for tests
+export {
+  buildPersonalDataConsentPdf,
+  buildElectronicInteractionAgreementPdf,
+  buildRefereeContractApplicationPdf,
+};

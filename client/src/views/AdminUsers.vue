@@ -122,6 +122,10 @@ function applyTooltips(): void {
   });
 }
 
+function updateActiveTab(value: string | number): void {
+  activeTab.value = value as AdminTabKey;
+}
+
 async function loadRoles(): Promise<void> {
   try {
     const data = await apiFetch<RolesResponse>('/roles');
@@ -503,11 +507,12 @@ async function bulk(action: BulkAction): Promise<void> {
       <div class="card tile mb-3">
         <div class="card-body">
           <TabSelector
-            v-model="activeTab"
+            :model-value="activeTab"
             :tabs="[
               { key: 'users', label: 'Пользователи' },
               { key: 'profiles', label: 'Заполнение профиля' },
             ]"
+            @update:model-value="updateActiveTab"
           />
         </div>
       </div>

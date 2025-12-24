@@ -10,9 +10,8 @@ jest.unstable_mockModule('../../src/config/csrf.js', () => ({
 
 // Import HMAC utils to issue a valid token
 const { issueCsrfHmac } = await import('../../src/utils/csrfHmac.js');
-const { default: csrfMiddleware } = await import(
-  '../../src/middlewares/csrf.js'
-);
+const { default: csrfMiddleware } =
+  await import('../../src/middlewares/csrf.js');
 
 function makeReq(method, path, headers = {}) {
   return {

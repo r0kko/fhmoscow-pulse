@@ -96,9 +96,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserExternalId: { create: createExtMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/registrationController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/registrationController.js');
 
 function createRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

@@ -35,9 +35,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Address: {},
 }));
 
-const { default: groundService } = await import(
-  '../src/services/groundService.js'
-);
+const { default: groundService } =
+  await import('../src/services/groundService.js');
 
 test('syncExternal upserts active stadiums and soft deletes archived/missing', async () => {
   // first call -> active, second -> archive

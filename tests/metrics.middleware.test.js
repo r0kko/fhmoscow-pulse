@@ -67,9 +67,8 @@ jest.unstable_mockModule('prom-client', () => ({
   },
 }));
 
-const { httpMetricsMiddleware, metricsText } = await import(
-  '../src/config/metrics.js'
-);
+const { httpMetricsMiddleware, metricsText } =
+  await import('../src/config/metrics.js');
 
 function makeReqRes({
   method = 'GET',

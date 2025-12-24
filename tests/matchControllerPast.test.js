@@ -16,9 +16,8 @@ jest.unstable_mockModule('../src/config/externalMariaDb.js', () => ({
   isExternalDbAvailable: () => false,
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/matchController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/matchController.js');
 
 beforeEach(() => {
   listPastMock.mockReset();
@@ -55,9 +54,8 @@ test('listPast uses external when available', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller2 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller2 } =
+    await import('../src/controllers/matchController.js');
   const req = {
     query: { page: '2', limit: '5', type: 'away', q: 'k' },
     user: { id: 'u' },
@@ -84,9 +82,8 @@ test('listPast forces local when source=local', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller3 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller3 } =
+    await import('../src/controllers/matchController.js');
   const req = { query: { source: 'local', all: 'true' }, user: { id: 'u' } };
   const res = { json: jest.fn() };
   await controller3.listPast(req, res, () => {});
@@ -115,9 +112,8 @@ test('listPast forwards errors via next()', async () => {
     __esModule: true,
     isExternalDbAvailable: () => true,
   }));
-  const { default: controller4 } = await import(
-    '../src/controllers/matchController.js'
-  );
+  const { default: controller4 } =
+    await import('../src/controllers/matchController.js');
   const next = jest.fn();
   await controller4.listPast(
     { query: {}, user: { id: 'u' } },

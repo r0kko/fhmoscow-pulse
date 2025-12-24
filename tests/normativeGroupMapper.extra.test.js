@@ -1,8 +1,7 @@
 import { expect, test } from '@jest/globals';
 
-const { default: mapper } = await import(
-  '../src/mappers/normativeGroupMapper.js'
-);
+const { default: mapper } =
+  await import('../src/mappers/normativeGroupMapper.js');
 
 test('toPublic returns null for falsy group', () => {
   expect(mapper.toPublic(null)).toBeNull();

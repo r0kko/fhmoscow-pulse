@@ -108,9 +108,8 @@ Object.defineProperty(modelsMock, 'ClubPlayer', {
 
 jest.unstable_mockModule('../src/models/index.js', () => modelsMock);
 
-const { default: controller } = await import(
-  '../src/controllers/playerController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/playerController.js');
 
 beforeEach(() => {
   externalAvailable = false;

@@ -23,9 +23,8 @@ jest.unstable_mockModule('../src/utils/api.js', () => ({
   sendError: sendErrorMock,
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/documentAdminController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/documentAdminController.js');
 
 beforeEach(() => {
   listAllMock.mockReset();

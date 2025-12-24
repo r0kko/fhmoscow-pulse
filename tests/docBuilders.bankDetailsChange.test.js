@@ -24,9 +24,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TaxationType: {},
 }));
 
-const { default: buildBankDetailsChangePdf } = await import(
-  '../src/services/docBuilders/bankDetailsChange.js'
-);
+const { default: buildBankDetailsChangePdf } =
+  await import('../src/services/docBuilders/bankDetailsChange.js');
 
 beforeEach(() => {
   // no-op

@@ -46,9 +46,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   default: { sendAccountActivatedEmail: sendActivationEmailMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/userAdminController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/userAdminController.js');
 
 beforeEach(() => {
   sendActivationEmailMock.mockClear();

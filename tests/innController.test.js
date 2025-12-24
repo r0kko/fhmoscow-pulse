@@ -35,9 +35,8 @@ jest.unstable_mockModule('../src/mappers/innMapper.js', () => ({
   default: { toPublic: toPublicMock },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/innController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/innController.js');
 
 test('create returns 400 on validation errors', async () => {
   validationOk = false;

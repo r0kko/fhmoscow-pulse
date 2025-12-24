@@ -23,9 +23,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Ground: { findByPk: groundFindByPkMock },
 }));
 
-const { syncApprovedMatchToExternal } = await import(
-  '../src/services/externalMatchSyncService.js'
-);
+const { syncApprovedMatchToExternal } =
+  await import('../src/services/externalMatchSyncService.js');
 
 beforeEach(() => {
   isExternalDbAvailableMock.mockReset();

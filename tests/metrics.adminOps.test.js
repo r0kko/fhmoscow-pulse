@@ -1,8 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-const { seedJobMetrics, getJobStats, withJobMetrics } = await import(
-  '../src/config/metrics.js'
-);
+const { seedJobMetrics, getJobStats, withJobMetrics } =
+  await import('../src/config/metrics.js');
 
 describe('metrics adminOps helpers', () => {
   test('seedJobMetrics pre-creates series and getJobStats returns zeros', async () => {

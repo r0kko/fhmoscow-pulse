@@ -268,9 +268,8 @@ test('createContractApplicationDocument sets AWAITING_SIGNATURE and emails recip
   });
 
   // File save
-  const { default: fileService } = await import(
-    '../src/services/fileService.js'
-  );
+  const { default: fileService } =
+    await import('../src/services/fileService.js');
   fileService.saveGeneratedPdf = jest
     .fn()
     .mockResolvedValue({ id: 'file1', key: 'k' });
@@ -294,9 +293,8 @@ test('createContractApplicationDocument sets AWAITING_SIGNATURE and emails recip
     SignType: { name: 'Простая ЭП', alias: 'SIMPLE_ELECTRONIC' },
   });
 
-  const { default: service } = await import(
-    '../src/services/documentService.js'
-  );
+  const { default: service } =
+    await import('../src/services/documentService.js');
   const res = await service.createContractApplicationDocument('u1', 'adm');
 
   expect(res.document.status).toEqual({

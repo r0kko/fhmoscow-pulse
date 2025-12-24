@@ -13,9 +13,8 @@ jest.unstable_mockModule('../src/mappers/clubMapper.js', () => ({
   default: { toPublic: (c) => c },
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/clubController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/clubController.js');
 
 test('mine=true uses include=teams flag when provided', async () => {
   listUserClubsMock.mockClear();

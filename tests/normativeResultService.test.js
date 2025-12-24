@@ -53,9 +53,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-const { default: service } = await import(
-  '../src/services/normativeResultService.js'
-);
+const { default: service } =
+  await import('../src/services/normativeResultService.js');
 
 const dataRow = {
   setDataValue(key, val) {

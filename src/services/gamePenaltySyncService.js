@@ -17,9 +17,8 @@ async function getExternalPenaltyTypeId() {
   if (row?.external_id) return row.external_id;
   // Fallback to external dictionary by name
   try {
-    const { GameEventType: ExtGameEventType } = await import(
-      '../externalModels/index.js'
-    );
+    const { GameEventType: ExtGameEventType } =
+      await import('../externalModels/index.js');
     const ext = await ExtGameEventType.findOne({
       where: { name: 'Нарушение' },
     });
@@ -46,9 +45,8 @@ export async function reconcileForMatch(matchId, actorId = null, tx = null) {
   if (!penaltyTypeExtId) return { ok: false, reason: 'event_type_not_synced' };
 
   // Fetch external penalties for this game only, selecting necessary fields
-  const { GameEvent: ExtGameEvent } = await import(
-    '../externalModels/index.js'
-  );
+  const { GameEvent: ExtGameEvent } =
+    await import('../externalModels/index.js');
   const extRows = await ExtGameEvent.findAll({
     where: {
       game_id: Number(match.external_id),
@@ -105,9 +103,8 @@ export async function reconcileForMatch(matchId, actorId = null, tx = null) {
     const missing = extMinutesIds.filter((id) => !existingSet.has(id));
     if (missing.length) {
       try {
-        const { PenaltyMinutes: ExtPenaltyMinutes } = await import(
-          '../externalModels/index.js'
-        );
+        const { PenaltyMinutes: ExtPenaltyMinutes } =
+          await import('../externalModels/index.js');
         const extDict = await ExtPenaltyMinutes.findAll({
           where: { id: { [Op.in]: missing } },
           attributes: ['id', 'name'],
@@ -129,9 +126,8 @@ export async function reconcileForMatch(matchId, actorId = null, tx = null) {
     }
   }
 
-  const { Player, GameViolation, GamePenalty } = await import(
-    '../models/index.js'
-  );
+  const { Player, GameViolation, GamePenalty } =
+    await import('../models/index.js');
   const [players, violations, minutesFetched, localType] = await Promise.all([
     extPlayerIds.length
       ? Player.findAll({
@@ -582,9 +578,8 @@ export async function syncExternal(options = {}) {
     // eslint-disable-next-line
     "MD5(CONCAT_WS('|', COALESCE(penalty_player_id,'#'), COALESCE(penalty_violation_id,'#'), COALESCE(minute,'#'), COALESCE(second,'#'), COALESCE(period,'#'), COALESCE(penalty_minutes_id,'#'), COALESCE(team_penalty,'#')))"
   );
-  const { GameEvent: ExtGameEvent } = await import(
-    '../externalModels/index.js'
-  );
+  const { GameEvent: ExtGameEvent } =
+    await import('../externalModels/index.js');
   const extSummary = await ExtGameEvent.findAll({
     where: {
       game_id: { [Op.in]: extGameIds },
@@ -718,9 +713,8 @@ export async function syncExternal(options = {}) {
     const missing = extMinutesIds.filter((id) => !existingSet.has(id));
     if (missing.length) {
       try {
-        const { PenaltyMinutes: ExtPenaltyMinutes } = await import(
-          '../externalModels/index.js'
-        );
+        const { PenaltyMinutes: ExtPenaltyMinutes } =
+          await import('../externalModels/index.js');
         if (ExtPenaltyMinutes?.findAll) {
           const extDict = await ExtPenaltyMinutes.findAll({
             where: { id: { [Op.in]: missing } },
@@ -742,9 +736,8 @@ export async function syncExternal(options = {}) {
     }
   }
 
-  const { Player, GameViolation, GameEventType } = await import(
-    '../models/index.js'
-  );
+  const { Player, GameViolation, GameEventType } =
+    await import('../models/index.js');
   const [players, violations, minutes, localType] = await Promise.all([
     extPlayerIds.length
       ? Player.findAll({

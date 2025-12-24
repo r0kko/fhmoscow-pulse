@@ -12,9 +12,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   SignType: {},
 }));
 
-const { default: buildEquipmentTransferPdf } = await import(
-  '../src/services/docBuilders/equipmentTransfer.js'
-);
+const { default: buildEquipmentTransferPdf } =
+  await import('../src/services/docBuilders/equipmentTransfer.js');
 
 beforeEach(() => {
   findAgreementMock.mockReset();

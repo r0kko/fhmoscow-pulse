@@ -777,9 +777,9 @@ async function list(options = {}) {
       model: Team,
       required: Boolean(
         options.teamId ||
-          options.requireTeamWithinClub ||
-          options.teamBirthYear ||
-          (options.allowedTeamIds && options.allowedTeamIds.length)
+        options.requireTeamWithinClub ||
+        options.teamBirthYear ||
+        (options.allowedTeamIds && options.allowedTeamIds.length)
       ),
     };
     if (

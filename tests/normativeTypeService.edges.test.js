@@ -42,9 +42,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: {},
 }));
 
-const { default: svc } = await import(
-  '../src/services/normativeTypeService.js'
-);
+const { default: svc } =
+  await import('../src/services/normativeTypeService.js');
 
 beforeEach(() => {
   ntFindByPkMock.mockReset();

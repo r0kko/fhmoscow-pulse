@@ -658,9 +658,8 @@ export default {
   },
   async updateAnthroAndRoster(req, res) {
     try {
-      const { default: playerEditService } = await import(
-        '../services/playerEditService.js'
-      );
+      const { default: playerEditService } =
+        await import('../services/playerEditService.js');
       const scope = req.access || {};
       const isAdmin = Boolean(scope.isAdmin);
       const allowedClubIds = scope.allowedClubIds || [];

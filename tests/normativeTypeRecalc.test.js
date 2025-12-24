@@ -17,9 +17,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: {},
 }));
 
-const { recalcResults } = await import(
-  '../src/services/normativeTypeService.js'
-);
+const { recalcResults } =
+  await import('../src/services/normativeTypeService.js');
 
 test('recalcResults updates zones using user sex', async () => {
   const updateMock1 = jest.fn();

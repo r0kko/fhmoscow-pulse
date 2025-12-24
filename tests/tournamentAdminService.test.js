@@ -33,9 +33,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Team: {},
 }));
 
-const { default: svc } = await import(
-  '../src/services/tournamentAdminService.js'
-);
+const { default: svc } =
+  await import('../src/services/tournamentAdminService.js');
 
 function makeRow(id) {
   return {

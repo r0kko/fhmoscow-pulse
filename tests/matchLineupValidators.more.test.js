@@ -1,8 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-const { setLineupRules } = await import(
-  '../src/validators/matchLineupValidators.js'
-);
+const { setLineupRules } =
+  await import('../src/validators/matchLineupValidators.js');
 const { validationResult } = await import('express-validator');
 
 async function runValidation(body) {

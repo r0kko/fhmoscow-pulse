@@ -6,9 +6,8 @@ beforeAll(() => {
 });
 
 test('builds and verifies token for given ids', async () => {
-  const { buildVerifyToken, verifyToken } = await import(
-    '../src/utils/verifyDocHmac.js'
-  );
+  const { buildVerifyToken, verifyToken } =
+    await import('../src/utils/verifyDocHmac.js');
   const token = buildVerifyToken({ d: 'doc-1', s: 'sign-1', u: 'user-1' });
   expect(typeof token).toBe('string');
   const { ok, payload } = verifyToken(token);
@@ -17,9 +16,8 @@ test('builds and verifies token for given ids', async () => {
 });
 
 test('rejects tampered token', async () => {
-  const { buildVerifyToken, verifyToken } = await import(
-    '../src/utils/verifyDocHmac.js'
-  );
+  const { buildVerifyToken, verifyToken } =
+    await import('../src/utils/verifyDocHmac.js');
   const good = buildVerifyToken({ d: 'd', s: 's', u: 'u' });
   const [body] = good.split('.');
   const bad = `${body}.AAAAAAAA`;
@@ -28,9 +26,8 @@ test('rejects tampered token', async () => {
 });
 
 test('builds public verify URL', async () => {
-  const { buildVerifyUrl, verifyToken } = await import(
-    '../src/utils/verifyDocHmac.js'
-  );
+  const { buildVerifyUrl, verifyToken } =
+    await import('../src/utils/verifyDocHmac.js');
   const url = buildVerifyUrl({ d: 'D', s: 'S', u: 'U' });
   expect(url.startsWith('https://lk.fhmoscow.com/verify?t=')).toBe(true);
   const t = decodeURIComponent(url.split('t=')[1] || '');

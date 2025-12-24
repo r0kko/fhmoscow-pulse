@@ -7,9 +7,102 @@ import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 import ServiceError from '../errors/ServiceError.js';
 import { hasRefereeRole } from '../utils/roles.js';
+import { utcToMoscow } from '../utils/time.js';
 
 function formatDate(d) {
   return d.toISOString().slice(0, 10);
+}
+
+function parseDateKey(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+  const [year, month, day] = dateStr.split('-').map((value) => Number(value));
+  if ([year, month, day].some((value) => Number.isNaN(value))) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function isAllDigits(text) {
+  if (!text) return false;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code < 48 || code > 57) return false;
+  }
+  return true;
+}
+
+function parseTimeSeconds(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  const parts = text.split(':');
+  if (parts.length < 2 || parts.length > 3) return null;
+  const [hourPart, minutePart, secondPart] = parts;
+  if (!isAllDigits(hourPart) || !isAllDigits(minutePart)) return null;
+  if (secondPart !== undefined && !isAllDigits(secondPart)) return null;
+  if (
+    hourPart.length < 1 ||
+    hourPart.length > 2 ||
+    minutePart.length !== 2 ||
+    (secondPart !== undefined && secondPart.length !== 2)
+  ) {
+    return null;
+  }
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+  const second = secondPart ? Number(secondPart) : 0;
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    Number.isNaN(second) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  return hour * 3600 + minute * 60 + second;
+}
+
+function compareTimes(firstValue, secondValue) {
+  const first = parseTimeSeconds(firstValue);
+  const second = parseTimeSeconds(secondValue);
+  if (first === null || second === null) return null;
+  return first - second;
+}
+
+function moscowTodayKey() {
+  const nowMsk = utcToMoscow(new Date()) || new Date();
+  return formatDate(nowMsk);
+}
+
+function derivePartialMode(fromTime, toTime) {
+  if (fromTime && toTime) {
+    const diff = compareTimes(fromTime, toTime);
+    if (diff > 0) return 'SPLIT';
+    return 'WINDOW';
+  }
+  if (toTime && !fromTime) return 'BEFORE';
+  if (fromTime && !toTime) return 'AFTER';
+  return null;
+}
+
+function startOfIsoWeek(dateKey) {
+  const base = parseDateKey(dateKey);
+  if (!base) return null;
+  const dayNum = base.getUTCDay();
+  const offset = (dayNum + 6) % 7; // Monday = 0, Sunday = 6
+  base.setUTCDate(base.getUTCDate() - offset);
+  return base;
+}
+
+function endOfFollowingWeek(dateKey) {
+  const base = parseDateKey(dateKey);
+  if (!base) return null;
+  const dayNum = base.getUTCDay();
+  const daysToNextSunday = ((7 - dayNum) % 7) + 7;
+  base.setUTCDate(base.getUTCDate() + daysToNextSunday + 7);
+  return base;
 }
 
 async function assertEditableUser(userId) {
@@ -27,18 +120,13 @@ async function assertEditableUser(userId) {
 
 export default {
   async list(req, res) {
-    const today = new Date();
     // Start from Monday of the current week (Moscow time)
-    const todayKey = formatDate(today);
-    const moscow = new Date(`${todayKey}T00:00:00+03:00`);
-    const dayNum = moscow.getUTCDay();
-    const mondayMs =
-      moscow.getTime() - ((dayNum + 6) % 7) * 24 * 60 * 60 * 1000;
-    const start = formatDate(new Date(mondayMs));
-
-    const end = new Date(today);
-    end.setDate(end.getDate() + (7 - end.getDay()) + 7);
-    const endStr = formatDate(end);
+    const todayKey = moscowTodayKey();
+    const startDate = startOfIsoWeek(todayKey) || new Date();
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(endDate.getUTCDate() + 20);
+    const start = formatDate(startDate);
+    const endStr = formatDate(endDate);
     const records = await userAvailabilityService.listForUser(
       req.user.id,
       start,
@@ -46,7 +134,13 @@ export default {
     );
     const map = new Map(records.map((r) => [r.date, r]));
     const days = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const startIter = parseDateKey(start) || startDate;
+    const endIter = parseDateKey(endStr) || endDate;
+    for (
+      let d = new Date(startIter);
+      d <= endIter;
+      d.setUTCDate(d.getUTCDate() + 1)
+    ) {
       const key = formatDate(d);
       const rec = map.get(key);
       // Determine editability and lock flags (Moscow time, corporate policy)
@@ -57,6 +151,7 @@ export default {
         status: rec?.AvailabilityType?.alias ?? 'FREE',
         from_time: rec?.from_time ?? null,
         to_time: rec?.to_time ?? null,
+        partial_mode: derivePartialMode(rec?.from_time, rec?.to_time),
         preset: !!rec, // indicates whether value was explicitly set by user
         editable,
         fully_locked: !!locks.fullyLocked,
@@ -77,13 +172,11 @@ export default {
   },
 
   async adminGrid(req, res) {
-    // Admin overview: referees' availability from today through end of next week
-    const today = new Date();
-    const rangeStart = formatDate(today);
-    const rangeEndDate = new Date(today);
-    rangeEndDate.setDate(
-      rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7
-    );
+    // Admin overview: referees' availability from today through end of following week
+    const todayKey = moscowTodayKey();
+    const rangeStartDate = parseDateKey(todayKey) || new Date();
+    const rangeEndDate =
+      endOfFollowingWeek(todayKey) || new Date(rangeStartDate);
 
     // Roles/status filters
     const rolesParam = req.query.role;
@@ -123,9 +216,9 @@ export default {
     // Fetch availabilities in bulk
     const availableDates = [];
     for (
-      let d = new Date(rangeStart);
+      let d = new Date(rangeStartDate);
       d <= rangeEndDate;
-      d.setDate(d.getDate() + 1)
+      d.setUTCDate(d.getUTCDate() + 1)
     ) {
       availableDates.push(formatDate(d));
     }
@@ -151,6 +244,7 @@ export default {
         status: r.AvailabilityType?.alias || 'FREE',
         from_time: r.from_time || null,
         to_time: r.to_time || null,
+        partial_mode: derivePartialMode(r.from_time, r.to_time),
         preset: true,
       });
     }
@@ -164,6 +258,7 @@ export default {
           status: 'FREE',
           from_time: null,
           to_time: null,
+          partial_mode: null,
           preset: false,
         };
       }
@@ -188,25 +283,25 @@ export default {
     const userId = req.params.userId;
     const user = await assertEditableUser(userId);
 
-    const today = new Date();
-    const rangeStart = formatDate(today);
-    const rangeEndDate = new Date(today);
-    rangeEndDate.setDate(
-      rangeEndDate.getDate() + (7 - rangeEndDate.getDay()) + 7
-    );
+    const todayKey = moscowTodayKey();
+    const rangeStartDate = parseDateKey(todayKey) || new Date();
+    const rangeEndDate =
+      endOfFollowingWeek(todayKey) || new Date(rangeStartDate);
+    const rangeStart = formatDate(rangeStartDate);
+    const rangeEnd = formatDate(rangeEndDate);
 
     const dates = [];
     const records = await userAvailabilityService.listForUser(
       userId,
       rangeStart,
-      formatDate(rangeEndDate)
+      rangeEnd
     );
     const map = new Map(records.map((r) => [r.date, r]));
     const days = [];
     for (
-      let d = new Date(rangeStart);
+      let d = new Date(rangeStartDate);
       d <= rangeEndDate;
-      d.setDate(d.getDate() + 1)
+      d.setUTCDate(d.getUTCDate() + 1)
     ) {
       const key = formatDate(d);
       dates.push(key);
@@ -216,6 +311,7 @@ export default {
         status: rec?.AvailabilityType?.alias ?? 'FREE',
         from_time: rec?.from_time ?? null,
         to_time: rec?.to_time ?? null,
+        partial_mode: derivePartialMode(rec?.from_time, rec?.to_time),
         preset: !!rec,
         editable: true,
         fully_locked: false,
@@ -261,6 +357,7 @@ export default {
         status: normalizedStatus,
         from_time: raw?.from_time ?? null,
         to_time: raw?.to_time ?? null,
+        partial_mode: raw?.partial_mode ?? raw?.partialMode ?? null,
       };
       upserts.set(dateRaw, day);
       clears.delete(dateRaw);

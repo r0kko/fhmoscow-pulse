@@ -36,9 +36,8 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
   },
 }));
 
-const { reconcileForMatch, reconcileWindow } = await import(
-  '../src/services/broadcastSyncService.js'
-);
+const { reconcileForMatch, reconcileWindow } =
+  await import('../src/services/broadcastSyncService.js');
 
 beforeEach(() => {
   findByPkMatchMock.mockReset();

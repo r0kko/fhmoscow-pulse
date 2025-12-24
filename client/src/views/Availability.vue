@@ -124,15 +124,45 @@ function cloneDays(list) {
   return (list || []).map((d) => ({ ...d }));
 }
 
+function normalizePartialMode(raw) {
+  if (!raw) return null;
+  const value = String(raw).trim().toUpperCase();
+  if (
+    value === 'BEFORE' ||
+    value === 'AFTER' ||
+    value === 'WINDOW' ||
+    value === 'SPLIT'
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function inferPartialModeFromTimes(fromTime, toTime) {
+  if (fromTime && toTime) {
+    const from = parseTimeSeconds(fromTime);
+    const to = parseTimeSeconds(toTime);
+    if (from !== null && to !== null) {
+      if (from > to) return 'SPLIT';
+      return 'WINDOW';
+    }
+    return 'WINDOW';
+  }
+  if (toTime && !fromTime) return 'BEFORE';
+  if (fromTime && !toTime) return 'AFTER';
+  return null;
+}
+
 function initDay(d) {
+  const mode = normalizePartialMode(d.partial_mode);
   // Derive UI-only partial mode from existing times
   if (d.status === 'PARTIAL') {
-    if (d.to_time && !d.from_time) d.partialMode = 'BEFORE';
-    else if (d.from_time && !d.to_time) d.partialMode = 'AFTER';
-    else d.partialMode = 'AFTER';
+    d.partialMode =
+      mode || inferPartialModeFromTimes(d.from_time, d.to_time) || 'AFTER';
   } else {
     d.partialMode = null;
   }
+  d.partial_mode = d.partialMode;
   // Proactive selection: do not preselect if not preset from server
   if (!d.preset) {
     d.currentStatus = null;
@@ -162,10 +192,72 @@ function isPartial(d) {
   return effectiveStatus(d) === 'PARTIAL';
 }
 
+function isAllDigits(text) {
+  if (!text) return false;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code < 48 || code > 57) return false;
+  }
+  return true;
+}
+
+function parseTimeSeconds(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  const parts = text.split(':');
+  if (parts.length < 2 || parts.length > 3) return null;
+  const [hourPart, minutePart, secondPart] = parts;
+  if (!isAllDigits(hourPart) || !isAllDigits(minutePart)) return null;
+  if (secondPart !== undefined && !isAllDigits(secondPart)) return null;
+  if (
+    hourPart.length < 1 ||
+    hourPart.length > 2 ||
+    minutePart.length !== 2 ||
+    (secondPart !== undefined && secondPart.length !== 2)
+  ) {
+    return null;
+  }
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+  const second = secondPart ? Number(secondPart) : 0;
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    Number.isNaN(second) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  return hour * 3600 + minute * 60 + second;
+}
+
 function isValidPartial(d) {
   if (!isPartial(d)) return true;
-  if (d.partialMode === 'BEFORE') return !!d.to_time && !d.from_time;
-  if (d.partialMode === 'AFTER') return !!d.from_time && !d.to_time;
+  if (d.partialMode === 'BEFORE') {
+    return !!d.to_time && !d.from_time && parseTimeSeconds(d.to_time) !== null;
+  }
+  if (d.partialMode === 'AFTER') {
+    return (
+      !!d.from_time && !d.to_time && parseTimeSeconds(d.from_time) !== null
+    );
+  }
+  if (d.partialMode === 'WINDOW') {
+    if (!d.from_time || !d.to_time) return false;
+    const from = parseTimeSeconds(d.from_time);
+    const to = parseTimeSeconds(d.to_time);
+    return from !== null && to !== null && from < to;
+  }
+  if (d.partialMode === 'SPLIT') {
+    if (!d.from_time || !d.to_time) return false;
+    const from = parseTimeSeconds(d.from_time);
+    const to = parseTimeSeconds(d.to_time);
+    return from !== null && to !== null && to < from;
+  }
   return false;
 }
 
@@ -180,31 +272,54 @@ watch(invalidCount, (current, previous) => {
   }
 });
 
-// Week grouping (ISO week number) using Moscow midnight for date boundaries
-function toMoscowMidnight(dateStr) {
-  return new Date(`${dateStr}T00:00:00+03:00`);
+// Week grouping (ISO week number + ISO week-year)
+function moscowDateKey(value = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: MOSCOW_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(value)
+      .reduce((acc, part) => {
+        if (part.type !== 'literal') acc[part.type] = part.value;
+        return acc;
+      }, {});
+    const { year, month, day } = parts;
+    if (year && month && day) return `${year}-${month}-${day}`;
+  } catch (_) {
+    // Fall through to ISO if Intl fails.
+  }
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function isoWeekData(dateStr) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+  if (Number.isNaN(date.getTime())) return null;
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const year = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const week = Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  return { week, year };
 }
 
 // Time helpers (Moscow timezone)
 function mskStartOfDayMs(dateStr) {
   return new Date(`${dateStr}T00:00:00+03:00`).getTime();
 }
-function isoWeek(date) {
-  const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
-  );
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-}
 const weekGroups = computed(() => {
   const groups = new Map();
   for (const d of days.value) {
-    const dt = toMoscowMidnight(d.date);
-    const week = isoWeek(dt);
-    const key = `${dt.getUTCFullYear()}-${week}`;
-    if (!groups.has(key)) groups.set(key, { key, week, list: [] });
+    const info = isoWeekData(d.date);
+    if (!info) continue;
+    const key = `${info.year}-${info.week}`;
+    if (!groups.has(key))
+      groups.set(key, { key, week: info.week, year: info.year, list: [] });
     groups.get(key).list.push(d);
   }
   const arr = [...groups.values()].map((g) => {
@@ -216,35 +331,26 @@ const weekGroups = computed(() => {
   return arr.sort((a, b) => (a.start < b.start ? -1 : 1));
 });
 
-// Keep at most two weeks visible following the product policy:
-// - Until the next week is present, show previous + current
-// - Once next week is available, hide the past week and show current + next
+// Keep at most three weeks visible following the product policy:
+// - Prefer current + next + following weeks when available
+// - Otherwise include the nearest past week to fill up to three weeks
 const visibleWeekGroups = computed(() => {
   const all = weekGroups.value;
-  if (all.length <= 2) return all;
+  if (all.length <= 3) return all;
 
   // Determine the current ISO week key in Moscow time
-  const today = new Date();
-  const todayKey = today.toISOString().slice(0, 10);
-  const msk = new Date(`${todayKey}T00:00:00+03:00`);
-  const curWeek = isoWeek(msk);
-  const curKey = `${msk.getUTCFullYear()}-${curWeek}`;
+  const todayKey = moscowDateKey(new Date());
+  const current = isoWeekData(todayKey);
+  if (!current) return all.slice(-3);
+  const curKey = `${current.year}-${current.week}`;
 
   const idx = all.findIndex((g) => g.key === curKey);
   if (idx === -1) {
-    // Fallback to the last two groups if current is not found
-    return all.slice(-2);
+    // Fallback to the last three groups if current is not found
+    return all.slice(-3);
   }
-  // If there is a next week in data, show current + next
-  if (idx + 1 < all.length) {
-    return all.slice(idx, idx + 2);
-  }
-  // Otherwise, show previous + current (guard idx > 0)
-  if (idx > 0) {
-    return all.slice(idx - 1, idx + 1);
-  }
-  // As a final fallback, clamp to the first two
-  return all.slice(0, 2);
+  const startIdx = Math.min(idx, all.length - 3);
+  return all.slice(startIdx, startIdx + 3);
 });
 
 function isActive(d, status) {
@@ -353,6 +459,7 @@ async function saveDay(d) {
     status: d.currentStatus ?? d.status,
     from_time: d.from_time ?? null,
     to_time: d.to_time ?? null,
+    partial_mode: d.partialMode ?? null,
   };
   try {
     await apiFetch('/availabilities', {
@@ -376,11 +483,16 @@ function setStatus(d, status) {
   if (status !== 'FREE' && isLimitedLocked(d)) return;
   d.currentStatus = status;
   if (status === 'PARTIAL') {
-    if (!d.partialMode) d.partialMode = 'AFTER';
+    if (!d.partialMode) {
+      d.partialMode =
+        inferPartialModeFromTimes(d.from_time, d.to_time) || 'AFTER';
+    }
+    d.partial_mode = d.partialMode;
     // wait for time input
   } else {
     d.from_time = null;
     d.to_time = null;
+    d.partial_mode = null;
     saveDay(d);
   }
 }
@@ -423,10 +535,13 @@ function cancelConfirmFree() {
 function setPartialMode(d, mode) {
   if (isFullyLocked(d) || isLimitedLocked(d)) return;
   d.partialMode = mode;
+  d.partial_mode = mode;
   if (mode === 'BEFORE') {
     d.from_time = null;
   } else if (mode === 'AFTER') {
     d.to_time = null;
+  } else if (mode === 'WINDOW' || mode === 'SPLIT') {
+    // Keep existing bounds for the range.
   }
 }
 
@@ -439,8 +554,11 @@ watch(
         d.from_time = null;
         d.to_time = null;
         d.partialMode = null;
+        d.partial_mode = null;
       } else if (!d.partialMode) {
-        d.partialMode = 'AFTER';
+        d.partialMode =
+          inferPartialModeFromTimes(d.from_time, d.to_time) || 'AFTER';
+        d.partial_mode = d.partialMode;
       } else if (d.partialMode === 'AFTER' && d.to_time) {
         // Ensure mutually exclusive values for partial
         d.to_time = null;
@@ -523,7 +641,7 @@ onBeforeUnmount(() => {
             >
               <p class="text-muted small mb-3">
                 На каждый день укажите статус. Для частичной готовности выберите
-                «До» или «После» и задайте время.
+                «До», «После», «С—по» или «До и после» и задайте время.
               </p>
               <ul class="list-unstyled small mb-0">
                 <li class="d-flex align-items-center mb-2">
@@ -538,7 +656,9 @@ onBeforeUnmount(() => {
                     class="bi bi-clock text-warning me-2"
                     aria-hidden="true"
                   ></i>
-                  <span>Частично — «До» или «После» + время.</span>
+                  <span>
+                    Частично — «До», «После», «С—по» или «До и после» + время.
+                  </span>
                 </li>
                 <li class="d-flex align-items-center mb-2">
                   <i
@@ -706,13 +826,37 @@ onBeforeUnmount(() => {
                           :for="'mode-after-' + d.date"
                           >После</label
                         >
+                        <input
+                          :id="'mode-window-' + d.date"
+                          type="radio"
+                          class="btn-check"
+                          :checked="d.partialMode === 'WINDOW'"
+                          @change="setPartialMode(d, 'WINDOW')"
+                        />
+                        <label
+                          class="btn btn-outline-secondary"
+                          :for="'mode-window-' + d.date"
+                          >С—по</label
+                        >
+                        <input
+                          :id="'mode-split-' + d.date"
+                          type="radio"
+                          class="btn-check"
+                          :checked="d.partialMode === 'SPLIT'"
+                          @change="setPartialMode(d, 'SPLIT')"
+                        />
+                        <label
+                          class="btn btn-outline-secondary"
+                          :for="'mode-split-' + d.date"
+                          >До и после</label
+                        >
                       </div>
 
                       <div v-if="d.partialMode === 'AFTER'" class="ms-2">
                         <label
                           :for="'from-' + d.date"
                           class="form-label small mb-1"
-                          >Время</label
+                          >Время (после)</label
                         >
                         <div class="input-group input-group-sm">
                           <span class="input-group-text"
@@ -734,11 +878,11 @@ onBeforeUnmount(() => {
                         </div>
                       </div>
 
-                      <div v-else class="ms-2">
+                      <div v-else-if="d.partialMode === 'BEFORE'" class="ms-2">
                         <label
                           :for="'to-' + d.date"
                           class="form-label small mb-1"
-                          >Время</label
+                          >Время (до)</label
                         >
                         <div class="input-group input-group-sm">
                           <span class="input-group-text"
@@ -757,6 +901,111 @@ onBeforeUnmount(() => {
                         </div>
                         <div class="form-text">
                           Доступны до указанного времени
+                        </div>
+                      </div>
+                      <div
+                        v-else-if="d.partialMode === 'WINDOW'"
+                        class="ms-2 d-flex flex-wrap align-items-end gap-2"
+                      >
+                        <div>
+                          <label
+                            :for="'from-window-' + d.date"
+                            class="form-label small mb-1"
+                            >Время (с)</label
+                          >
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text"
+                              ><i class="bi bi-clock" aria-hidden="true"></i
+                            ></span>
+                            <input
+                              :id="'from-window-' + d.date"
+                              v-model="d.from_time"
+                              type="time"
+                              step="300"
+                              class="form-control"
+                              :class="{ 'is-invalid': !isValidPartial(d) }"
+                              required
+                              @change="saveDayIfValid(d)"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label
+                            :for="'to-window-' + d.date"
+                            class="form-label small mb-1"
+                            >Время (по)</label
+                          >
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text"
+                              ><i class="bi bi-clock" aria-hidden="true"></i
+                            ></span>
+                            <input
+                              :id="'to-window-' + d.date"
+                              v-model="d.to_time"
+                              type="time"
+                              step="300"
+                              class="form-control"
+                              :class="{ 'is-invalid': !isValidPartial(d) }"
+                              required
+                              @change="saveDayIfValid(d)"
+                            />
+                          </div>
+                        </div>
+                        <div class="form-text">
+                          Доступны в указанном интервале (время «с» раньше «по»)
+                        </div>
+                      </div>
+                      <div
+                        v-else
+                        class="ms-2 d-flex flex-wrap align-items-end gap-2"
+                      >
+                        <div>
+                          <label
+                            :for="'to-split-' + d.date"
+                            class="form-label small mb-1"
+                            >Время (до)</label
+                          >
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text"
+                              ><i class="bi bi-clock" aria-hidden="true"></i
+                            ></span>
+                            <input
+                              :id="'to-split-' + d.date"
+                              v-model="d.to_time"
+                              type="time"
+                              step="300"
+                              class="form-control"
+                              :class="{ 'is-invalid': !isValidPartial(d) }"
+                              required
+                              @change="saveDayIfValid(d)"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label
+                            :for="'from-split-' + d.date"
+                            class="form-label small mb-1"
+                            >Время (после)</label
+                          >
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text"
+                              ><i class="bi bi-clock" aria-hidden="true"></i
+                            ></span>
+                            <input
+                              :id="'from-split-' + d.date"
+                              v-model="d.from_time"
+                              type="time"
+                              step="300"
+                              class="form-control"
+                              :class="{ 'is-invalid': !isValidPartial(d) }"
+                              required
+                              @change="saveDayIfValid(d)"
+                            />
+                          </div>
+                        </div>
+                        <div class="form-text">
+                          Доступны до указанного времени и после (время «до»
+                          раньше «после»)
                         </div>
                       </div>
 

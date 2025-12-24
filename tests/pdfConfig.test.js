@@ -1,4 +1,3 @@
-/* eslint-env node */
 /* global process */
 import { beforeAll, expect, jest, test } from '@jest/globals';
 import fs from 'fs';

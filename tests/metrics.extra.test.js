@@ -1,8 +1,7 @@
 import { expect, test } from '@jest/globals';
 
-const { getJobStats, seedJobMetrics } = await import(
-  '../src/config/metrics.js'
-);
+const { getJobStats, seedJobMetrics } =
+  await import('../src/config/metrics.js');
 
 test('getJobStats returns consistent keys when metrics disabled or enabled', async () => {
   const res = await getJobStats(['a', 'a', 'b']);

@@ -14,9 +14,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 }));
 
 // Use real mapper to validate output shape
-const { default: controller } = await import(
-  '../src/controllers/groundSelfController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/groundSelfController.js');
 
 beforeEach(() => {
   groundFindAll.mockReset();

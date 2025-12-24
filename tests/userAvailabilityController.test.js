@@ -8,6 +8,7 @@ const listForUserMock = jest.fn();
 const setForUserMock = jest.fn();
 const clearForUserMock = jest.fn();
 const listForUsersMock = jest.fn();
+const getAvailabilityLocksMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
@@ -23,7 +24,7 @@ jest.unstable_mockModule('../src/services/userAvailabilityService.js', () => ({
   __esModule: true,
   default: { listForUser: listForUserMock, setForUser: setForUserMock },
   listForUsers: listForUsersMock,
-  getAvailabilityLocks: jest.fn(),
+  getAvailabilityLocks: getAvailabilityLocksMock,
   clearForUser: clearForUserMock,
 }));
 
@@ -39,6 +40,7 @@ beforeEach(() => {
   setForUserMock.mockReset();
   clearForUserMock.mockReset();
   listForUsersMock.mockReset();
+  getAvailabilityLocksMock.mockReset();
 });
 
 afterEach(() => {
@@ -107,6 +109,55 @@ test('adminGrid returns filtered dates and the full calendar metadata', async ()
   });
 });
 
+test('list spans the next ISO week across year boundary in Moscow time', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-12-29T12:00:00Z'));
+
+  listForUserMock.mockResolvedValue([]);
+  getAvailabilityLocksMock.mockReturnValue({
+    fullyLocked: false,
+    limitedLocked: false,
+  });
+
+  const controller = (await import(controllerPath)).default;
+  const jsonMock = jest.fn();
+
+  await controller.list({ user: { id: 'u1' } }, { json: jsonMock });
+
+  expect(listForUserMock).toHaveBeenCalledWith(
+    'u1',
+    '2024-12-23',
+    '2025-01-12'
+  );
+  const payload = jsonMock.mock.calls[0][0];
+  expect(payload.days.some((d) => d.date === '2025-01-01')).toBe(true);
+});
+
+test('list derives split partial mode when to_time is before from_time', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
+
+  listForUserMock.mockResolvedValue([
+    {
+      date: '2024-04-02',
+      AvailabilityType: { alias: 'PARTIAL' },
+      from_time: '14:00:00',
+      to_time: '10:00:00',
+    },
+  ]);
+  getAvailabilityLocksMock.mockReturnValue({
+    fullyLocked: false,
+    limitedLocked: false,
+  });
+
+  const controller = (await import(controllerPath)).default;
+  const jsonMock = jest.fn();
+
+  await controller.list({ user: { id: 'u1' } }, { json: jsonMock });
+
+  const payload = jsonMock.mock.calls[0][0];
+  const day = payload.days.find((d) => d.date === '2024-04-02');
+  expect(day.partial_mode).toBe('SPLIT');
+});
+
 test('adminGrid falls back to full range when requested dates miss the window', async () => {
   jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
 
@@ -167,7 +218,7 @@ test('adminDetail returns editable window for a referee', async () => {
   const payload = jsonMock.mock.calls[0][0];
   expect(payload.user).toEqual({ id: 'u1', last_name: 'Сидоров' });
   expect(payload.dates[0]).toBe('2024-04-01');
-  expect(payload.dates.at(-1)).toBe('2024-04-14');
+  expect(payload.dates.at(-1)).toBe('2024-04-21');
   const partialDay = payload.days.find((d) => d.date === '2024-04-05');
   expect(partialDay).toMatchObject({
     preset: true,
@@ -210,6 +261,7 @@ test('adminSet updates and clears availability without policy limits', async () 
         status: 'BUSY',
         from_time: null,
         to_time: null,
+        partial_mode: null,
       },
     ],
     'admin-1',

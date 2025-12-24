@@ -101,9 +101,8 @@ jest.unstable_mockModule('../src/services/externalMatchSyncService.js', () => ({
   default: { syncApprovedMatchToExternal: jest.fn().mockResolvedValue(true) },
 }));
 
-const { default: service } = await import(
-  '../src/services/matchAgreementService.js'
-);
+const { default: service } =
+  await import('../src/services/matchAgreementService.js');
 
 test('create (HOME_PROPOSAL) notifies away team staff', async () => {
   const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();

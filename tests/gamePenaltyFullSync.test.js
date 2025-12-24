@@ -52,9 +52,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   PenaltyMinutes: { findAll: minutesFindAllMock },
 }));
 
-const { syncExternal } = await import(
-  '../src/services/gamePenaltySyncService.js'
-);
+const { syncExternal } =
+  await import('../src/services/gamePenaltySyncService.js');
 
 test('syncExternal upserts and soft-deletes penalties across all matches', async () => {
   // Local matches known

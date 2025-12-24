@@ -8,9 +8,8 @@ jest.unstable_mockModule('../../src/config/csrf.js', () => ({
   default: mockLuscaCsrf,
 }));
 
-const { default: csrfMiddleware } = await import(
-  '../../src/middlewares/csrf.js'
-);
+const { default: csrfMiddleware } =
+  await import('../../src/middlewares/csrf.js');
 
 function makeReq(method, path) {
   return { method, path };

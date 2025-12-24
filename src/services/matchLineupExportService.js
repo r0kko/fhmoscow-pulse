@@ -836,9 +836,8 @@ async function exportPlayersPdf(matchId, teamId, actorId, opts = {}) {
     }
     // Head coach: require exactly one overall (team), regardless of roster
     {
-      const { default: matchStaffService } = await import(
-        './matchStaffService.js'
-      );
+      const { default: matchStaffService } =
+        await import('./matchStaffService.js');
       const staffData = await matchStaffService.list(matchId, actorId);
       const staffPool =
         (isHome ? staffData.home.staff : staffData.away.staff) || [];

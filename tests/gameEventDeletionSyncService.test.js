@@ -24,9 +24,8 @@ jest.unstable_mockModule('../src/externalModels/index.js', () => ({
   GameEvent: { findAll: extFindAll },
 }));
 
-const { reapOrphans } = await import(
-  '../src/services/gameEventDeletionSyncService.js'
-);
+const { reapOrphans } =
+  await import('../src/services/gameEventDeletionSyncService.js');
 
 test('reapOrphans soft-deletes local penalties missing in external DB', async () => {
   // First batch returns two rows

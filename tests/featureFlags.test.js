@@ -25,9 +25,8 @@ afterEach(() => {
 });
 
 test('feature flags default to disabled for UX', async () => {
-  const { isLockoutEnabled, isRateLimitEnabled } = await import(
-    '../src/config/featureFlags.js'
-  );
+  const { isLockoutEnabled, isRateLimitEnabled } =
+    await import('../src/config/featureFlags.js');
   expect(isLockoutEnabled()).toBe(false);
   expect(isRateLimitEnabled()).toBe(false);
   expect(isRateLimitEnabled('login')).toBe(false);

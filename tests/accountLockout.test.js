@@ -15,9 +15,8 @@ describe('accountLockout service', () => {
         },
       },
     }));
-    const { lock, isLocked } = await import(
-      '../src/services/accountLockout.js'
-    );
+    const { lock, isLocked } =
+      await import('../src/services/accountLockout.js');
     await lock('u1', 1000);
     await expect(isLocked('u1')).resolves.toBe(true);
   });
@@ -35,9 +34,8 @@ describe('accountLockout service', () => {
         },
       },
     }));
-    const { lock, isLocked } = await import(
-      '../src/services/accountLockout.js'
-    );
+    const { lock, isLocked } =
+      await import('../src/services/accountLockout.js');
     await expect(lock('u2', 1000)).resolves.toBeUndefined();
     await expect(isLocked('u2')).resolves.toBe(false);
   });

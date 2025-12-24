@@ -25,9 +25,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   },
 }));
 
-const { default: service } = await import(
-  '../src/services/trainingTypeService.js'
-);
+const { default: service } =
+  await import('../src/services/trainingTypeService.js');
 
 test('update modifies name and capacity', async () => {
   findByPkMock.mockResolvedValue({
