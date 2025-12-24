@@ -331,34 +331,26 @@ const weekGroups = computed(() => {
   return arr.sort((a, b) => (a.start < b.start ? -1 : 1));
 });
 
-// Keep at most two weeks visible following the product policy:
-// - Until the next week is present, show previous + current
-// - Once next week is available, hide the past week and show current + next
+// Keep at most three weeks visible following the product policy:
+// - Prefer current + next + following weeks when available
+// - Otherwise include the nearest past week to fill up to three weeks
 const visibleWeekGroups = computed(() => {
   const all = weekGroups.value;
-  if (all.length <= 2) return all;
+  if (all.length <= 3) return all;
 
   // Determine the current ISO week key in Moscow time
   const todayKey = moscowDateKey(new Date());
   const current = isoWeekData(todayKey);
-  if (!current) return all.slice(-2);
+  if (!current) return all.slice(-3);
   const curKey = `${current.year}-${current.week}`;
 
   const idx = all.findIndex((g) => g.key === curKey);
   if (idx === -1) {
-    // Fallback to the last two groups if current is not found
-    return all.slice(-2);
+    // Fallback to the last three groups if current is not found
+    return all.slice(-3);
   }
-  // If there is a next week in data, show current + next
-  if (idx + 1 < all.length) {
-    return all.slice(idx, idx + 2);
-  }
-  // Otherwise, show previous + current (guard idx > 0)
-  if (idx > 0) {
-    return all.slice(idx - 1, idx + 1);
-  }
-  // As a final fallback, clamp to the first two
-  return all.slice(0, 2);
+  const startIdx = Math.min(idx, all.length - 3);
+  return all.slice(startIdx, startIdx + 3);
 });
 
 function isActive(d, status) {

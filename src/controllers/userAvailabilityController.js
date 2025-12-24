@@ -96,12 +96,12 @@ function startOfIsoWeek(dateKey) {
   return base;
 }
 
-function endOfNextWeek(dateKey) {
+function endOfFollowingWeek(dateKey) {
   const base = parseDateKey(dateKey);
   if (!base) return null;
   const dayNum = base.getUTCDay();
   const daysToNextSunday = ((7 - dayNum) % 7) + 7;
-  base.setUTCDate(base.getUTCDate() + daysToNextSunday);
+  base.setUTCDate(base.getUTCDate() + daysToNextSunday + 7);
   return base;
 }
 
@@ -124,7 +124,7 @@ export default {
     const todayKey = moscowTodayKey();
     const startDate = startOfIsoWeek(todayKey) || new Date();
     const endDate = new Date(startDate);
-    endDate.setUTCDate(endDate.getUTCDate() + 13);
+    endDate.setUTCDate(endDate.getUTCDate() + 20);
     const start = formatDate(startDate);
     const endStr = formatDate(endDate);
     const records = await userAvailabilityService.listForUser(
@@ -172,10 +172,11 @@ export default {
   },
 
   async adminGrid(req, res) {
-    // Admin overview: referees' availability from today through end of next week
+    // Admin overview: referees' availability from today through end of following week
     const todayKey = moscowTodayKey();
     const rangeStartDate = parseDateKey(todayKey) || new Date();
-    const rangeEndDate = endOfNextWeek(todayKey) || new Date(rangeStartDate);
+    const rangeEndDate =
+      endOfFollowingWeek(todayKey) || new Date(rangeStartDate);
 
     // Roles/status filters
     const rolesParam = req.query.role;
@@ -284,7 +285,8 @@ export default {
 
     const todayKey = moscowTodayKey();
     const rangeStartDate = parseDateKey(todayKey) || new Date();
-    const rangeEndDate = endOfNextWeek(todayKey) || new Date(rangeStartDate);
+    const rangeEndDate =
+      endOfFollowingWeek(todayKey) || new Date(rangeStartDate);
     const rangeStart = formatDate(rangeStartDate);
     const rangeEnd = formatDate(rangeEndDate);
 

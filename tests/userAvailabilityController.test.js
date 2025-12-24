@@ -126,7 +126,7 @@ test('list spans the next ISO week across year boundary in Moscow time', async (
   expect(listForUserMock).toHaveBeenCalledWith(
     'u1',
     '2024-12-23',
-    '2025-01-05'
+    '2025-01-12'
   );
   const payload = jsonMock.mock.calls[0][0];
   expect(payload.days.some((d) => d.date === '2025-01-01')).toBe(true);
@@ -218,7 +218,7 @@ test('adminDetail returns editable window for a referee', async () => {
   const payload = jsonMock.mock.calls[0][0];
   expect(payload.user).toEqual({ id: 'u1', last_name: 'Сидоров' });
   expect(payload.dates[0]).toBe('2024-04-01');
-  expect(payload.dates.at(-1)).toBe('2024-04-14');
+  expect(payload.dates.at(-1)).toBe('2024-04-21');
   const partialDay = payload.days.find((d) => d.date === '2024-04-05');
   expect(partialDay).toMatchObject({
     preset: true,
