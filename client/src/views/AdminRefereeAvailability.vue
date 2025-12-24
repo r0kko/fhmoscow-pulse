@@ -40,7 +40,7 @@ let editorSearchTimer;
 const filterFree = ref(false);
 const filterBusy = ref(false);
 const filterPartialEnabled = ref(false);
-const filterPartialMode = ref(''); // 'BEFORE' | 'AFTER' | ''
+const filterPartialMode = ref(''); // 'BEFORE' | 'AFTER' | 'WINDOW' | 'SPLIT' | ''
 const filterPartialTime = ref(''); // HH:MM
 
 // Filters modal state
@@ -131,15 +131,59 @@ function statusTitle(cell) {
   const s = cell?.status || 'FREE';
   if (s === 'FREE') return 'Свободен';
   if (s === 'BUSY') return 'Занят';
-  if (cell?.from_time) return `После ${formatHm(cell.from_time)}`;
-  if (cell?.to_time) return `До ${formatHm(cell.to_time)}`;
-  return 'Частично';
+  return partialLabel(cell, { capitalize: true });
+}
+
+function normalizePartialMode(raw) {
+  if (!raw) return null;
+  const value = String(raw).trim().toUpperCase();
+  if (
+    value === 'BEFORE' ||
+    value === 'AFTER' ||
+    value === 'WINDOW' ||
+    value === 'SPLIT'
+  ) {
+    return value;
+  }
+  return null;
 }
 
 function formatHm(t) {
   if (!t) return '';
   const m = String(t).match(/^(\d{2}:\d{2})/);
   return m ? m[1] : String(t);
+}
+
+function inferPartialModeFromTimes(fromTime, toTime) {
+  if (fromTime && toTime) {
+    const from = parseTimeSeconds(fromTime);
+    const to = parseTimeSeconds(toTime);
+    if (from !== null && to !== null) {
+      if (from > to) return 'SPLIT';
+      return 'WINDOW';
+    }
+    return 'WINDOW';
+  }
+  if (toTime && !fromTime) return 'BEFORE';
+  if (fromTime && !toTime) return 'AFTER';
+  return null;
+}
+
+function partialLabel(cell, { capitalize = true } = {}) {
+  const from = formatHm(cell?.from_time);
+  const to = formatHm(cell?.to_time);
+  const mode =
+    normalizePartialMode(cell?.partial_mode) ||
+    inferPartialModeFromTimes(cell?.from_time, cell?.to_time);
+  if (mode === 'SPLIT' && from && to) {
+    return `${capitalize ? 'До' : 'до'} ${to} и ${capitalize ? 'после' : 'после'} ${from}`;
+  }
+  if (mode === 'WINDOW' && from && to) {
+    return `${capitalize ? 'С' : 'с'} ${from} до ${to}`;
+  }
+  if (to) return `${capitalize ? 'До' : 'до'} ${to}`;
+  if (from) return `${capitalize ? 'После' : 'после'} ${from}`;
+  return capitalize ? 'Частично' : 'частично';
 }
 
 const hasData = computed(() => users.value.length > 0);
@@ -166,9 +210,13 @@ function matchesAdvanced(u) {
     if (filterFree.value && c.status === 'FREE') return true;
     if (filterBusy.value && c.status === 'BUSY') return true;
     if (filterPartialEnabled.value && c.status === 'PARTIAL') {
+      const cellMode =
+        normalizePartialMode(c.partial_mode) ||
+        inferPartialModeFromTimes(c.from_time, c.to_time);
       if (!filterPartialMode.value) return true;
       if (
         filterPartialMode.value === 'BEFORE' &&
+        cellMode === 'BEFORE' &&
         c.to_time &&
         (!filterPartialTime.value ||
           formatHm(c.to_time) === formatHm(filterPartialTime.value))
@@ -177,9 +225,32 @@ function matchesAdvanced(u) {
       }
       if (
         filterPartialMode.value === 'AFTER' &&
+        cellMode === 'AFTER' &&
         c.from_time &&
         (!filterPartialTime.value ||
           formatHm(c.from_time) === formatHm(filterPartialTime.value))
+      ) {
+        return true;
+      }
+      if (
+        filterPartialMode.value === 'WINDOW' &&
+        cellMode === 'WINDOW' &&
+        c.from_time &&
+        c.to_time &&
+        (!filterPartialTime.value ||
+          formatHm(c.from_time) === formatHm(filterPartialTime.value) ||
+          formatHm(c.to_time) === formatHm(filterPartialTime.value))
+      ) {
+        return true;
+      }
+      if (
+        filterPartialMode.value === 'SPLIT' &&
+        cellMode === 'SPLIT' &&
+        c.from_time &&
+        c.to_time &&
+        (!filterPartialTime.value ||
+          formatHm(c.from_time) === formatHm(filterPartialTime.value) ||
+          formatHm(c.to_time) === formatHm(filterPartialTime.value))
       ) {
         return true;
       }
@@ -364,6 +435,16 @@ const filtersSummary = computed(() => {
           ? formatHm(filterPartialTime.value)
           : '';
         parts.push(`Частично (после${time ? ` ${time}` : ''})`);
+      } else if (filterPartialMode.value === 'WINDOW') {
+        const time = filterPartialTime.value
+          ? formatHm(filterPartialTime.value)
+          : '';
+        parts.push(`Частично (с/по${time ? ` ${time}` : ''})`);
+      } else if (filterPartialMode.value === 'SPLIT') {
+        const time = filterPartialTime.value
+          ? formatHm(filterPartialTime.value)
+          : '';
+        parts.push(`Частично (до/после${time ? ` ${time}` : ''})`);
       } else {
         parts.push('Частично');
       }
@@ -401,6 +482,7 @@ function cloneEditorDays(list = []) {
     status: d.status,
     from_time: d.from_time ?? null,
     to_time: d.to_time ?? null,
+    partial_mode: d.partial_mode ?? null,
     preset: !!d.preset,
     cleared: false,
   }));
@@ -409,13 +491,14 @@ function cloneEditorDays(list = []) {
 function initEditorDay(d) {
   const day = { ...d };
   day.cleared = false;
+  const mode = normalizePartialMode(day.partial_mode);
   if (day.status === 'PARTIAL') {
-    if (day.to_time && !day.from_time) day.partialMode = 'BEFORE';
-    else if (day.from_time && !day.to_time) day.partialMode = 'AFTER';
-    else day.partialMode = 'AFTER';
+    day.partialMode =
+      mode || inferPartialModeFromTimes(day.from_time, day.to_time) || 'AFTER';
   } else {
     day.partialMode = null;
   }
+  day.partial_mode = day.partialMode;
   day.currentStatus = day.preset ? day.status : null;
   return day;
 }
@@ -430,10 +513,72 @@ function editorIsPartial(d) {
   return editorEffectiveStatus(d) === 'PARTIAL';
 }
 
+function isAllDigits(text) {
+  if (!text) return false;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code < 48 || code > 57) return false;
+  }
+  return true;
+}
+
+function parseTimeSeconds(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  const parts = text.split(':');
+  if (parts.length < 2 || parts.length > 3) return null;
+  const [hourPart, minutePart, secondPart] = parts;
+  if (!isAllDigits(hourPart) || !isAllDigits(minutePart)) return null;
+  if (secondPart !== undefined && !isAllDigits(secondPart)) return null;
+  if (
+    hourPart.length < 1 ||
+    hourPart.length > 2 ||
+    minutePart.length !== 2 ||
+    (secondPart !== undefined && secondPart.length !== 2)
+  ) {
+    return null;
+  }
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+  const second = secondPart ? Number(secondPart) : 0;
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    Number.isNaN(second) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  return hour * 3600 + minute * 60 + second;
+}
+
 function editorIsValidPartial(d) {
   if (!editorIsPartial(d)) return true;
-  if (d.partialMode === 'BEFORE') return !!d.to_time;
-  if (d.partialMode === 'AFTER') return !!d.from_time;
+  if (d.partialMode === 'BEFORE') {
+    return !!d.to_time && !d.from_time && parseTimeSeconds(d.to_time) !== null;
+  }
+  if (d.partialMode === 'AFTER') {
+    return (
+      !!d.from_time && !d.to_time && parseTimeSeconds(d.from_time) !== null
+    );
+  }
+  if (d.partialMode === 'WINDOW') {
+    if (!d.from_time || !d.to_time) return false;
+    const from = parseTimeSeconds(d.from_time);
+    const to = parseTimeSeconds(d.to_time);
+    return from !== null && to !== null && from < to;
+  }
+  if (d.partialMode === 'SPLIT') {
+    if (!d.from_time || !d.to_time) return false;
+    const from = parseTimeSeconds(d.from_time);
+    const to = parseTimeSeconds(d.to_time);
+    return from !== null && to !== null && to < from;
+  }
   return false;
 }
 
@@ -524,21 +669,29 @@ function setEditorStatus(day, status) {
   day.currentStatus = status;
   day.status = status;
   if (status === 'PARTIAL') {
-    if (!day.partialMode) day.partialMode = day.to_time ? 'BEFORE' : 'AFTER';
+    if (!day.partialMode) {
+      day.partialMode =
+        inferPartialModeFromTimes(day.from_time, day.to_time) || 'AFTER';
+    }
+    day.partial_mode = day.partialMode;
   } else {
     day.partialMode = null;
     day.from_time = null;
     day.to_time = null;
+    day.partial_mode = null;
   }
 }
 
 function setEditorPartialMode(day, mode) {
   day.cleared = false;
   day.partialMode = mode;
+  day.partial_mode = mode;
   if (mode === 'BEFORE') {
     day.from_time = null;
-  } else {
+  } else if (mode === 'AFTER') {
     day.to_time = null;
+  } else if (mode === 'WINDOW' || mode === 'SPLIT') {
+    // Keep bounds for the interval.
   }
 }
 
@@ -550,6 +703,7 @@ function clearEditorDay(day) {
   day.partialMode = null;
   day.from_time = null;
   day.to_time = null;
+  day.partial_mode = null;
 }
 
 function baseSnapshot(day) {
@@ -571,13 +725,28 @@ function normalizeEditorDay(day) {
   const status = editorEffectiveStatus(day);
   if (!status) return null;
   if (status !== 'PARTIAL') {
-    return { date: day.date, status, from_time: null, to_time: null };
+    return {
+      date: day.date,
+      status,
+      from_time: null,
+      to_time: null,
+      partial_mode: null,
+    };
   }
-  const partial = { date: day.date, status, from_time: null, to_time: null };
+  const partial = {
+    date: day.date,
+    status,
+    from_time: null,
+    to_time: null,
+    partial_mode: day.partialMode || null,
+  };
   if (day.partialMode === 'BEFORE') {
     partial.to_time = day.to_time || null;
-  } else {
+  } else if (day.partialMode === 'AFTER') {
     partial.from_time = day.from_time || null;
+  } else if (day.partialMode === 'WINDOW' || day.partialMode === 'SPLIT') {
+    partial.from_time = day.from_time || null;
+    partial.to_time = day.to_time || null;
   }
   return partial;
 }
@@ -659,8 +828,11 @@ watch(
         d.from_time = null;
         d.to_time = null;
         d.partialMode = null;
+        d.partial_mode = null;
       } else if (!d.partialMode) {
-        d.partialMode = d.to_time ? 'BEFORE' : 'AFTER';
+        d.partialMode =
+          inferPartialModeFromTimes(d.from_time, d.to_time) || 'AFTER';
+        d.partial_mode = d.partialMode;
       } else if (d.partialMode === 'AFTER' && d.to_time) {
         d.to_time = null;
       } else if (d.partialMode === 'BEFORE' && d.from_time) {
@@ -835,9 +1007,9 @@ watch(
                     >
                       <span class="partial-text text-muted">
                         {{
-                          u.availability[d]?.to_time
-                            ? 'до ' + formatHm(u.availability[d].to_time)
-                            : 'после ' + formatHm(u.availability[d]?.from_time)
+                          partialLabel(u.availability[d], {
+                            capitalize: false,
+                          })
                         }}
                       </span>
                     </template>
@@ -1099,13 +1271,39 @@ watch(
                               :for="'partial-after-' + day.date"
                               >После</label
                             >
+                            <input
+                              :id="'partial-window-' + day.date"
+                              type="radio"
+                              class="btn-check"
+                              :checked="day.partialMode === 'WINDOW'"
+                              @change="setEditorPartialMode(day, 'WINDOW')"
+                            />
+                            <label
+                              class="btn btn-outline-secondary"
+                              :for="'partial-window-' + day.date"
+                              >С—по</label
+                            >
+                            <input
+                              :id="'partial-split-' + day.date"
+                              type="radio"
+                              class="btn-check"
+                              :checked="day.partialMode === 'SPLIT'"
+                              @change="setEditorPartialMode(day, 'SPLIT')"
+                            />
+                            <label
+                              class="btn btn-outline-secondary"
+                              :for="'partial-split-' + day.date"
+                              >До и после</label
+                            >
                           </div>
-                          <div class="input-group input-group-sm time-input">
+                          <div
+                            v-if="day.partialMode === 'AFTER'"
+                            class="input-group input-group-sm time-input"
+                          >
                             <span class="input-group-text"
                               ><i class="bi bi-clock" aria-hidden="true"></i
                             ></span>
                             <input
-                              v-if="day.partialMode === 'AFTER'"
                               v-model="day.from_time"
                               type="time"
                               class="form-control"
@@ -1113,9 +1311,18 @@ watch(
                               :class="{
                                 'is-invalid': !editorIsValidPartial(day),
                               }"
+                              :aria-label="'Доступен после указанного времени'"
+                              :title="'Доступен после указанного времени'"
                             />
+                          </div>
+                          <div
+                            v-else-if="day.partialMode === 'BEFORE'"
+                            class="input-group input-group-sm time-input"
+                          >
+                            <span class="input-group-text"
+                              ><i class="bi bi-clock" aria-hidden="true"></i
+                            ></span>
                             <input
-                              v-else
                               v-model="day.to_time"
                               type="time"
                               class="form-control"
@@ -1123,7 +1330,82 @@ watch(
                               :class="{
                                 'is-invalid': !editorIsValidPartial(day),
                               }"
+                              :aria-label="'Доступен до указанного времени'"
+                              :title="'Доступен до указанного времени'"
                             />
+                          </div>
+                          <div
+                            v-else-if="day.partialMode === 'WINDOW'"
+                            class="d-flex flex-wrap gap-2"
+                          >
+                            <div class="input-group input-group-sm time-input">
+                              <span class="input-group-text"
+                                ><i class="bi bi-clock" aria-hidden="true"></i
+                              ></span>
+                              <input
+                                v-model="day.from_time"
+                                type="time"
+                                class="form-control"
+                                step="300"
+                                :class="{
+                                  'is-invalid': !editorIsValidPartial(day),
+                                }"
+                                :aria-label="'Доступен с указанного времени'"
+                                :title="'Доступен с указанного времени'"
+                              />
+                            </div>
+                            <div class="input-group input-group-sm time-input">
+                              <span class="input-group-text"
+                                ><i class="bi bi-clock" aria-hidden="true"></i
+                              ></span>
+                              <input
+                                v-model="day.to_time"
+                                type="time"
+                                class="form-control"
+                                step="300"
+                                :class="{
+                                  'is-invalid': !editorIsValidPartial(day),
+                                }"
+                                :aria-label="'Доступен до указанного времени'"
+                                :title="'Доступен до указанного времени'"
+                              />
+                            </div>
+                          </div>
+                          <div v-else class="d-flex flex-wrap gap-2">
+                            <div class="input-group input-group-sm time-input">
+                              <span class="input-group-text"
+                                ><i class="bi bi-clock" aria-hidden="true"></i
+                              ></span>
+                              <input
+                                v-model="day.to_time"
+                                type="time"
+                                class="form-control"
+                                step="300"
+                                :class="{
+                                  'is-invalid': !editorIsValidPartial(day),
+                                }"
+                                :aria-label="'Доступен до указанного времени'"
+                                :title="'Доступен до указанного времени'"
+                              />
+                            </div>
+                            <div class="input-group input-group-sm time-input">
+                              <span class="input-group-text"
+                                ><i class="bi bi-clock" aria-hidden="true"></i
+                              ></span>
+                              <input
+                                v-model="day.from_time"
+                                type="time"
+                                class="form-control"
+                                step="300"
+                                :class="{
+                                  'is-invalid': !editorIsValidPartial(day),
+                                }"
+                                :aria-label="
+                                  'Доступен после указанного времени'
+                                "
+                                :title="'Доступен после указанного времени'"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div class="d-flex align-items-center gap-2 mt-2">
@@ -1137,8 +1419,18 @@ watch(
                               <template v-if="day.partialMode === 'BEFORE'">
                                 до {{ formatHm(day.to_time) || '—' }}
                               </template>
-                              <template v-else>
+                              <template v-else-if="day.partialMode === 'AFTER'">
                                 после {{ formatHm(day.from_time) || '—' }}
+                              </template>
+                              <template
+                                v-else-if="day.partialMode === 'WINDOW'"
+                              >
+                                с {{ formatHm(day.from_time) || '—' }} до
+                                {{ formatHm(day.to_time) || '—' }}
+                              </template>
+                              <template v-else>
+                                до {{ formatHm(day.to_time) || '—' }} и после
+                                {{ formatHm(day.from_time) || '—' }}
                               </template>
                             </template>
                           </span>
@@ -1377,6 +1669,32 @@ watch(
                       />
                       <label class="btn btn-outline-secondary" for="pm-after"
                         >После</label
+                      >
+                      <input
+                        id="pm-window"
+                        v-model="modalFilterPartialMode"
+                        type="radio"
+                        class="btn-check"
+                        value="WINDOW"
+                        :disabled="
+                          !modalFilterPartialEnabled || modalStatusDisabled
+                        "
+                      />
+                      <label class="btn btn-outline-secondary" for="pm-window"
+                        >С—по</label
+                      >
+                      <input
+                        id="pm-split"
+                        v-model="modalFilterPartialMode"
+                        type="radio"
+                        class="btn-check"
+                        value="SPLIT"
+                        :disabled="
+                          !modalFilterPartialEnabled || modalStatusDisabled
+                        "
+                      />
+                      <label class="btn btn-outline-secondary" for="pm-split"
+                        >До и после</label
                       >
                     </div>
                     <div

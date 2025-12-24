@@ -71,7 +71,7 @@ test('setForUser validates PARTIAL time bounds', async () => {
     { id: 'partial-id', alias: 'PARTIAL' },
   ]);
   const service = (await import(svcPath)).default;
-  // both from and to provided -> invalid
+  // none provided -> invalid
   await expect(
     service.setForUser(
       'u',
@@ -79,18 +79,54 @@ test('setForUser validates PARTIAL time bounds', async () => {
         {
           date: '2025-02-01',
           status: 'PARTIAL',
-          from_time: '10:00',
-          to_time: '12:00',
         },
       ],
       'actor'
     )
   ).rejects.toThrow('invalid_partial_time');
-  // none provided -> invalid
+  // invalid window (from >= to)
   await expect(
     service.setForUser(
       'u',
-      [{ date: '2025-02-01', status: 'PARTIAL' }],
+      [
+        {
+          date: '2025-02-01',
+          status: 'PARTIAL',
+          from_time: '18:00',
+          to_time: '10:00',
+        },
+      ],
+      'actor'
+    )
+  ).rejects.toThrow('invalid_partial_time');
+  // mode mismatch
+  await expect(
+    service.setForUser(
+      'u',
+      [
+        {
+          date: '2025-02-01',
+          status: 'PARTIAL',
+          partial_mode: 'BEFORE',
+          from_time: '10:00',
+        },
+      ],
+      'actor'
+    )
+  ).rejects.toThrow('invalid_partial_time');
+  // invalid split (to >= from)
+  await expect(
+    service.setForUser(
+      'u',
+      [
+        {
+          date: '2025-02-02',
+          status: 'PARTIAL',
+          partial_mode: 'SPLIT',
+          from_time: '10:00',
+          to_time: '14:00',
+        },
+      ],
       'actor'
     )
   ).rejects.toThrow('invalid_partial_time');

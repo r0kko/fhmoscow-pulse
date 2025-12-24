@@ -20,9 +20,71 @@ function parseDateKey(dateStr) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+function isAllDigits(text) {
+  if (!text) return false;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code < 48 || code > 57) return false;
+  }
+  return true;
+}
+
+function parseTimeSeconds(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  const parts = text.split(':');
+  if (parts.length < 2 || parts.length > 3) return null;
+  const [hourPart, minutePart, secondPart] = parts;
+  if (!isAllDigits(hourPart) || !isAllDigits(minutePart)) return null;
+  if (secondPart !== undefined && !isAllDigits(secondPart)) return null;
+  if (
+    hourPart.length < 1 ||
+    hourPart.length > 2 ||
+    minutePart.length !== 2 ||
+    (secondPart !== undefined && secondPart.length !== 2)
+  ) {
+    return null;
+  }
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+  const second = secondPart ? Number(secondPart) : 0;
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    Number.isNaN(second) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  return hour * 3600 + minute * 60 + second;
+}
+
+function compareTimes(firstValue, secondValue) {
+  const first = parseTimeSeconds(firstValue);
+  const second = parseTimeSeconds(secondValue);
+  if (first === null || second === null) return null;
+  return first - second;
+}
+
 function moscowTodayKey() {
   const nowMsk = utcToMoscow(new Date()) || new Date();
   return formatDate(nowMsk);
+}
+
+function derivePartialMode(fromTime, toTime) {
+  if (fromTime && toTime) {
+    const diff = compareTimes(fromTime, toTime);
+    if (diff > 0) return 'SPLIT';
+    return 'WINDOW';
+  }
+  if (toTime && !fromTime) return 'BEFORE';
+  if (fromTime && !toTime) return 'AFTER';
+  return null;
 }
 
 function startOfIsoWeek(dateKey) {
@@ -89,6 +151,7 @@ export default {
         status: rec?.AvailabilityType?.alias ?? 'FREE',
         from_time: rec?.from_time ?? null,
         to_time: rec?.to_time ?? null,
+        partial_mode: derivePartialMode(rec?.from_time, rec?.to_time),
         preset: !!rec, // indicates whether value was explicitly set by user
         editable,
         fully_locked: !!locks.fullyLocked,
@@ -180,6 +243,7 @@ export default {
         status: r.AvailabilityType?.alias || 'FREE',
         from_time: r.from_time || null,
         to_time: r.to_time || null,
+        partial_mode: derivePartialMode(r.from_time, r.to_time),
         preset: true,
       });
     }
@@ -193,6 +257,7 @@ export default {
           status: 'FREE',
           from_time: null,
           to_time: null,
+          partial_mode: null,
           preset: false,
         };
       }
@@ -244,6 +309,7 @@ export default {
         status: rec?.AvailabilityType?.alias ?? 'FREE',
         from_time: rec?.from_time ?? null,
         to_time: rec?.to_time ?? null,
+        partial_mode: derivePartialMode(rec?.from_time, rec?.to_time),
         preset: !!rec,
         editable: true,
         fully_locked: false,
@@ -289,6 +355,7 @@ export default {
         status: normalizedStatus,
         from_time: raw?.from_time ?? null,
         to_time: raw?.to_time ?? null,
+        partial_mode: raw?.partial_mode ?? raw?.partialMode ?? null,
       };
       upserts.set(dateRaw, day);
       clears.delete(dateRaw);

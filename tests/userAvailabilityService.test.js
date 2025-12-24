@@ -62,3 +62,72 @@ test('setForUser creates and updates records', async () => {
   expect(availabilityTypeFindAllMock).toHaveBeenCalled();
   expect(findOrCreateMock.mock.calls[0][0].defaults.type_id).toBe('free-id');
 });
+
+test('setForUser normalizes partial modes before and after', async () => {
+  userFindMock.mockResolvedValue({});
+  findOrCreateMock.mockResolvedValue([{ id: 'new' }, true]);
+  availabilityTypeFindAllMock.mockResolvedValue([
+    { id: 'partial-id', alias: 'PARTIAL' },
+  ]);
+  const service = (await import(servicePath)).default;
+  await service.setForUser(
+    'u',
+    [
+      {
+        date: '2025-01-10',
+        status: 'PARTIAL',
+        partial_mode: 'BEFORE',
+        to_time: '12:00',
+      },
+      {
+        date: '2025-01-11',
+        status: 'PARTIAL',
+        partial_mode: 'AFTER',
+        from_time: '14:00',
+      },
+      {
+        date: '2025-01-12',
+        status: 'PARTIAL',
+        partial_mode: 'WINDOW',
+        from_time: '09:00',
+        to_time: '15:00',
+      },
+      {
+        date: '2025-01-13',
+        status: 'PARTIAL',
+        from_time: '10:00',
+        to_time: '12:00',
+      },
+      {
+        date: '2025-01-14',
+        status: 'PARTIAL',
+        partial_mode: 'SPLIT',
+        from_time: '14:00',
+        to_time: '10:00',
+      },
+    ],
+    'actor'
+  );
+
+  expect(findOrCreateMock).toHaveBeenCalledTimes(5);
+  expect(findOrCreateMock.mock.calls[0][0].defaults).toMatchObject({
+    from_time: null,
+    to_time: '12:00',
+  });
+  expect(findOrCreateMock.mock.calls[1][0].defaults).toMatchObject({
+    from_time: '14:00',
+    to_time: null,
+  });
+  expect(findOrCreateMock.mock.calls[2][0].defaults).toMatchObject({
+    from_time: '09:00',
+    to_time: '15:00',
+  });
+  expect(findOrCreateMock.mock.calls[3][0].defaults).toMatchObject({
+    from_time: '10:00',
+    to_time: '12:00',
+  });
+  expect(findOrCreateMock.mock.calls[4][0].defaults).toMatchObject({
+    from_time: '14:00',
+    to_time: '10:00',
+  });
+});
