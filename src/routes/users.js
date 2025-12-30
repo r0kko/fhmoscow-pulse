@@ -73,7 +73,6 @@ router.get('/me', auth, (req, res) => {
 router.get(
   '/me/sport-schools',
   auth,
-  authorize('SPORT_SCHOOL_STAFF'),
   sportSchoolSelfController.getLinks
 );
 

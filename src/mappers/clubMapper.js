@@ -15,18 +15,26 @@ export default {
       out.grounds = club.Grounds.map((g) => ({ id: g.id, name: g.name }));
     }
 
-    if (club.UserClub) {
+    const clubMembership =
+      club.UserClub ||
+      (typeof club.get === 'function' ? club.get('UserClub') : null) ||
+      club.dataValues?.UserClub;
+    if (clubMembership) {
       const membership =
-        typeof club.UserClub.get === 'function'
-          ? club.UserClub.get({ plain: true })
-          : club.UserClub;
+        typeof clubMembership.get === 'function'
+          ? clubMembership.get({ plain: true })
+          : clubMembership;
       out.sport_school_position_id =
         membership.sport_school_position_id || null;
-      if (membership.SportSchoolPosition) {
-        const position = membership.SportSchoolPosition;
-        out.sport_school_position_name = position.name;
-        out.sport_school_position_alias = position.alias;
-      }
+      const position =
+        membership.SportSchoolPosition ||
+        membership.sport_school_position ||
+        null;
+      const alias =
+        position?.alias || membership.sport_school_position_alias || null;
+      const name = position?.name || membership.sport_school_position_name || null;
+      if (alias) out.sport_school_position_alias = alias;
+      if (name) out.sport_school_position_name = name;
     }
     return out;
   },

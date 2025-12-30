@@ -1,25 +1,38 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const tournamentFindAndCountAllMock = jest.fn();
+const tournamentFindByPkMock = jest.fn();
 const stageFindAllMock = jest.fn();
 const stageFindAndCountAllMock = jest.fn();
 const groupFindAllMock = jest.fn();
 const ttFindAllMock = jest.fn();
 const ttFindAndCountAllMock = jest.fn();
+const competitionFindAllMock = jest.fn();
+const competitionFindByPkMock = jest.fn();
 
 beforeEach(() => {
   tournamentFindAndCountAllMock.mockReset();
+  tournamentFindByPkMock.mockReset();
   stageFindAllMock.mockReset();
   stageFindAndCountAllMock.mockReset();
   groupFindAllMock.mockReset();
   ttFindAllMock.mockReset();
   ttFindAndCountAllMock.mockReset();
+  competitionFindAllMock.mockReset();
+  competitionFindByPkMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  Tournament: { findAndCountAll: tournamentFindAndCountAllMock },
+  Tournament: {
+    findAndCountAll: tournamentFindAndCountAllMock,
+    findByPk: tournamentFindByPkMock,
+  },
   TournamentType: {},
+  CompetitionType: {
+    findAll: competitionFindAllMock,
+    findByPk: competitionFindByPkMock,
+  },
   Stage: {
     findAll: stageFindAllMock,
     findAndCountAll: stageFindAndCountAllMock,
@@ -29,6 +42,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findAll: ttFindAllMock,
     findAndCountAll: ttFindAndCountAllMock,
   },
+  RefereeRoleGroup: {},
+  RefereeRole: {},
+  TournamentGroupReferee: {},
   Season: {},
   Team: {},
 }));
@@ -124,4 +140,31 @@ test('listTournamentTeams adds team where when search present', async () => {
   expect(Array.isArray(args.include)).toBe(true);
   expect(args.include[2]).toBeTruthy();
   expect(args.include[2].where).toBeTruthy();
+});
+
+test('updateTournament rejects invalid match format', async () => {
+  tournamentFindByPkMock.mockResolvedValue({ update: jest.fn() });
+  await expect(
+    svc.updateTournament('t1', { match_format: 'BAD' })
+  ).rejects.toMatchObject({ code: 'invalid_match_format' });
+});
+
+test('updateTournament applies competition settings', async () => {
+  const updateMock = jest.fn();
+  tournamentFindByPkMock.mockResolvedValue({ update: updateMock });
+  competitionFindByPkMock.mockResolvedValue({ id: 'c1' });
+  await svc.updateTournament('t1', {
+    competition_type_id: 'c1',
+    match_format: 'FIVE_FIVE_FULL',
+    referee_payment_type: 'HOME_TEAM',
+  });
+  expect(updateMock).toHaveBeenCalledWith(
+    {
+      updated_by: null,
+      competition_type_id: 'c1',
+      match_format: 'FIVE_FIVE_FULL',
+      referee_payment_type: 'HOME_TEAM',
+    },
+    { returning: false }
+  );
 });

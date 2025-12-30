@@ -84,6 +84,7 @@ async function listUsers(options = {}) {
     where[Op.or] = [
       { last_name: { [Op.iLike]: term } },
       { first_name: { [Op.iLike]: term } },
+      { patronymic: { [Op.iLike]: term } },
       { phone: { [Op.iLike]: term } },
       { email: { [Op.iLike]: term } },
     ];

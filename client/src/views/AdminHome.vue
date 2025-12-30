@@ -17,6 +17,11 @@ const refereeSections = [
   { title: 'Нормативы', icon: 'bi-speedometer2', to: '/admin/normatives' },
   { title: 'Мероприятия', icon: 'bi-calendar-event', to: '/admin/courses' },
   {
+    title: 'Назначение судей',
+    icon: 'bi-person-check',
+    to: '/admin/referee-assignments',
+  },
+  {
     title: 'Занятость судей',
     icon: 'bi-calendar-week',
     to: '/admin/referee-availability',

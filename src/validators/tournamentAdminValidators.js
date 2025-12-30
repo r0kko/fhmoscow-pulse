@@ -1,13 +1,43 @@
 import { body } from 'express-validator';
 
+import {
+  MATCH_FORMAT_VALUES,
+  REFEREE_PAYMENT_VALUES,
+} from '../utils/tournamentSettings.js';
+
+const optionValidator = (allowedSet, errorCode) => (value) => {
+  if (value === '' || value == null) return true;
+  if (!allowedSet.has(String(value))) {
+    throw new Error(errorCode);
+  }
+  return true;
+};
+
 export const tournamentCreateRules = [
   body('name').isString().notEmpty(),
   body('season_id').optional({ nullable: true }).isUUID(),
   body('type_id').optional({ nullable: true }).isUUID(),
+  body('competition_type_id').optional({ nullable: true }).isUUID(),
   body('birth_year')
     .optional({ nullable: true })
     .isInt({ min: 1900, max: 2100 }),
   body('full_name').optional({ nullable: true }).isString(),
+  body('match_format').optional({ nullable: true }).custom(
+    optionValidator(MATCH_FORMAT_VALUES, 'invalid_match_format')
+  ),
+  body('referee_payment_type').optional({ nullable: true }).custom(
+    optionValidator(REFEREE_PAYMENT_VALUES, 'invalid_referee_payment_type')
+  ),
+];
+
+export const tournamentUpdateRules = [
+  body('competition_type_id').optional({ nullable: true }).isUUID(),
+  body('match_format').optional({ nullable: true }).custom(
+    optionValidator(MATCH_FORMAT_VALUES, 'invalid_match_format')
+  ),
+  body('referee_payment_type').optional({ nullable: true }).custom(
+    optionValidator(REFEREE_PAYMENT_VALUES, 'invalid_referee_payment_type')
+  ),
 ];
 
 export const stageCreateRules = [

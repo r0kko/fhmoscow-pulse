@@ -7,6 +7,7 @@ import {
   incTokenIssued,
 } from '../config/metrics.js';
 import userService from '../services/userService.js';
+import { syncStaffRole } from '../services/sportSchoolRoleService.js';
 import userMapper from '../mappers/userMapper.js';
 import {
   setRefreshCookie,
@@ -118,6 +119,7 @@ export default {
   /* GET /auth/me */
   async me(req, res) {
     const user = await req.user.reload({ include: [UserStatus] });
+    await syncStaffRole(user.id, user.id);
     const roles = (await user.getRoles({ attributes: ['alias'] })).map(
       (r) => r.alias
     );
@@ -183,6 +185,7 @@ export default {
     };
     try {
       const { user, accessToken, refreshToken } = result;
+      await syncStaffRole(user.id, user.id);
       try {
         incTokenIssued('access');
         incTokenIssued('refresh');

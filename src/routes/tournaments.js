@@ -6,6 +6,7 @@ import controller from '../controllers/tournamentAdminController.js';
 import validate from '../middlewares/validate.js';
 import {
   tournamentCreateRules,
+  tournamentUpdateRules,
   stageCreateRules,
   groupCreateRules,
   groupUpdateRules,
@@ -24,6 +25,12 @@ const router = express.Router();
  */
 router.get('/', auth, authorize('ADMIN'), controller.listTournaments);
 router.get('/types', auth, authorize('ADMIN'), controller.listTypes);
+router.get(
+  '/settings-options',
+  auth,
+  authorize('ADMIN'),
+  controller.listSettingsOptions
+);
 router.post(
   '/',
   auth,
@@ -31,6 +38,14 @@ router.post(
   tournamentCreateRules,
   validate,
   controller.createTournament
+);
+router.patch(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  tournamentUpdateRules,
+  validate,
+  controller.updateTournament
 );
 
 /**

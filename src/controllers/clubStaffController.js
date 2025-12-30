@@ -1,6 +1,8 @@
 import { validationResult } from 'express-validator';
 
 import userService from '../services/userService.js';
+import userMapper from '../mappers/userMapper.js';
+import { UserClub } from '../models/index.js';
 import {
   addClubUser,
   removeClubUser,
@@ -9,18 +11,6 @@ import {
 import sportSchoolStructureService from '../services/sportSchoolStructureService.js';
 import sportSchoolPositionService from '../services/sportSchoolPositionService.js';
 import { sendError } from '../utils/api.js';
-
-async function assertSportSchoolStaff(userId) {
-  const user = await userService.getUser(userId);
-  const hasRole = (user.Roles || []).some(
-    (r) => r.alias === 'SPORT_SCHOOL_STAFF'
-  );
-  if (!hasRole) {
-    const err = new Error('user_must_be_sport_school_staff');
-    err.status = 400;
-    throw err;
-  }
-}
 
 function mapStaffEntryToUserPayload(entry) {
   if (!entry) return null;
@@ -86,7 +76,6 @@ export default {
     }
     try {
       const userId = req.body.user_id;
-      await assertSportSchoolStaff(userId);
       const positionId = await normalizePositionId(req.body.position_id);
       await addClubUser(req.params.id, userId, req.user.id, {
         positionId,
@@ -106,7 +95,6 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      await assertSportSchoolStaff(req.params.userId);
       const positionId = await normalizePositionId(req.body.position_id);
       await updateClubUserPosition(
         req.params.id,
@@ -125,12 +113,34 @@ export default {
 
   async remove(req, res) {
     try {
-      await assertSportSchoolStaff(req.params.userId);
       await removeClubUser(req.params.id, req.params.userId, req.user.id);
       const structure = await sportSchoolStructureService.getClubStructure(
         req.params.id
       );
       return res.json(buildUsersResponse(structure));
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async candidates(req, res) {
+    try {
+      const search = String(req.query.search || req.query.q || '').trim();
+      const limit = Math.min(
+        Math.max(parseInt(req.query.limit || '50', 10) || 50, 1),
+        100
+      );
+      const { rows } = await userService.listUsers({
+        search,
+        limit,
+      });
+      const linked = await UserClub.findAll({
+        where: { club_id: req.params.id },
+        attributes: ['user_id'],
+      });
+      const linkedIds = new Set(linked.map((row) => row.user_id));
+      const filtered = rows.filter((user) => !linkedIds.has(user.id));
+      return res.json({ users: userMapper.toPublicArray(filtered) });
     } catch (err) {
       return sendError(res, err);
     }

@@ -67,6 +67,7 @@ import Ticket from './ticket.js';
 import TicketFile from './ticketFile.js';
 import Team from './team.js';
 import TournamentType from './tournamentType.js';
+import CompetitionType from './competitionType.js';
 import Tournament from './tournament.js';
 import Stage from './stage.js';
 import TournamentGroup from './tournamentGroup.js';
@@ -102,6 +103,9 @@ import JobLog from './jobLog.js';
 import SyncState from './syncState.js';
 import MatchPlayer from './matchPlayer.js';
 import MatchStaff from './matchStaff.js';
+import MatchReferee from './matchReferee.js';
+import MatchRefereeStatus from './matchRefereeStatus.js';
+import MatchRefereeDraftClear from './matchRefereeDraftClear.js';
 import GameEventType from './gameEventType.js';
 import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
@@ -361,6 +365,8 @@ TrainingCourse.belongsTo(Course, { foreignKey: 'course_id' });
 /* tournaments */
 TournamentType.hasMany(Tournament, { foreignKey: 'type_id' });
 Tournament.belongsTo(TournamentType, { foreignKey: 'type_id' });
+CompetitionType.hasMany(Tournament, { foreignKey: 'competition_type_id' });
+Tournament.belongsTo(CompetitionType, { foreignKey: 'competition_type_id' });
 Season.hasMany(Tournament, { foreignKey: 'season_id' });
 Tournament.belongsTo(Season, { foreignKey: 'season_id' });
 
@@ -447,6 +453,23 @@ Team.hasMany(MatchStaff, { foreignKey: 'team_id' });
 MatchStaff.belongsTo(Team, { foreignKey: 'team_id' });
 TeamStaff.hasMany(MatchStaff, { foreignKey: 'team_staff_id' });
 MatchStaff.belongsTo(TeamStaff, { foreignKey: 'team_staff_id' });
+
+Match.hasMany(MatchReferee, { foreignKey: 'match_id' });
+MatchReferee.belongsTo(Match, { foreignKey: 'match_id' });
+User.hasMany(MatchReferee, { foreignKey: 'user_id' });
+MatchReferee.belongsTo(User, { foreignKey: 'user_id' });
+RefereeRole.hasMany(MatchReferee, { foreignKey: 'referee_role_id' });
+MatchReferee.belongsTo(RefereeRole, { foreignKey: 'referee_role_id' });
+MatchRefereeStatus.hasMany(MatchReferee, { foreignKey: 'status_id' });
+MatchReferee.belongsTo(MatchRefereeStatus, { foreignKey: 'status_id' });
+Match.hasMany(MatchRefereeDraftClear, { foreignKey: 'match_id' });
+MatchRefereeDraftClear.belongsTo(Match, { foreignKey: 'match_id' });
+RefereeRoleGroup.hasMany(MatchRefereeDraftClear, {
+  foreignKey: 'referee_role_group_id',
+});
+MatchRefereeDraftClear.belongsTo(RefereeRoleGroup, {
+  foreignKey: 'referee_role_group_id',
+});
 
 /* match agreements */
 Match.hasMany(MatchAgreement, { foreignKey: 'match_id' });
@@ -726,6 +749,7 @@ export {
   Team,
   Tournament,
   TournamentType,
+  CompetitionType,
   Stage,
   TournamentGroup,
   TournamentTeam,
@@ -743,6 +767,9 @@ export {
   TeamPlayer,
   MatchPlayer,
   MatchStaff,
+  MatchReferee,
+  MatchRefereeStatus,
+  MatchRefereeDraftClear,
   GamePenalty,
   GameEventType,
   PenaltyMinutes,

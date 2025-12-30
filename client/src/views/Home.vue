@@ -18,6 +18,7 @@ import {
   isFhmoStaffOnly as isFhmoStaffOnlyHelper,
   hasRole,
 } from '../utils/roles';
+import { isSportSchoolManagerPosition } from '../utils/sportSchoolPositions';
 
 type Nullable<T> = T | null | undefined;
 
@@ -28,6 +29,7 @@ interface CourseResponse {
 interface SportSchoolResponse {
   has_club?: boolean;
   has_team?: boolean;
+  clubs?: Array<{ sport_school_position_alias?: string }>;
 }
 
 interface TrainingGround {
@@ -82,7 +84,12 @@ const baseWorkSections: TileSection[] = [
     to: '/availability',
     referee: true,
   },
-  { title: 'Мои назначения', icon: 'bi-calendar-check' },
+  {
+    title: 'Мои назначения',
+    icon: 'bi-calendar-check',
+    to: '/referee-assignments',
+    referee: true,
+  },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
   { title: 'Рапорты', icon: 'bi-file-earmark-text' },
   { title: 'Доходы', icon: 'ruble-icon' },
@@ -96,6 +103,7 @@ const qualificationSection: TileSection = {
 
 const hasCourse = ref(false);
 const canSeePlayers = ref(false);
+const canManageStaff = ref(false);
 const route = useRoute();
 const noticeMessage = computed(() => String(route.query['notice'] ?? ''));
 
@@ -127,17 +135,24 @@ async function checkCourse(): Promise<void> {
 
 async function checkSchoolLinks(): Promise<void> {
   // Show players tile only for staff with at least one club/team
-  if (!isStaff.value) {
-    canSeePlayers.value = false;
-    return;
-  }
   try {
     const data = await apiFetch<SportSchoolResponse>('/users/me/sport-schools');
     // Allow entry if user has clubs or teams assigned
     canSeePlayers.value = Boolean(data?.has_club || data?.has_team);
+    const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
+    canManageStaff.value = clubs.some((club) =>
+      isSportSchoolManagerPosition(club?.sport_school_position_alias)
+    );
+    if (
+      (canSeePlayers.value || canManageStaff.value) &&
+      !auth.roles.includes('SPORT_SCHOOL_STAFF')
+    ) {
+      auth.roles = [...auth.roles, 'SPORT_SCHOOL_STAFF'];
+    }
   } catch {
     // Fail closed to avoid exposing empty section
     canSeePlayers.value = false;
+    canManageStaff.value = false;
   }
 }
 
@@ -151,8 +166,12 @@ const workSections = computed<TileSection[]>(() => {
 });
 
 // Раздел управления спортивной школой — формируется только для роли сотрудника СШ
+const hasSchoolAccess = computed(
+  () => isStaff.value || canSeePlayers.value || canManageStaff.value
+);
+
 const schoolSections = computed<TileSection[]>(() => {
-  if (!isStaff.value) return [];
+  if (!hasSchoolAccess.value) return [];
   const sections = [
     {
       title: 'Ближайшие матчи',
@@ -179,11 +198,18 @@ const schoolSections = computed<TileSection[]>(() => {
       }
     );
   }
+  if (canManageStaff.value) {
+    sections.push({
+      title: 'Сотрудники и доступы',
+      icon: 'bi-people-gear',
+      to: '/school-staff',
+    });
+  }
   return sections;
 });
 
 const mediaSections = computed<TileSection[]>(() => {
-  if (!isStaff.value || !canSeePlayers.value) return [];
+  if (!hasSchoolAccess.value || !canSeePlayers.value) return [];
   return [
     {
       title: 'Фотографии игроков',
@@ -458,7 +484,7 @@ function normaliseUpcoming(
         </div>
       </div>
 
-      <div v-if="isStaff" class="card section-card mb-2 menu-section">
+      <div v-if="hasSchoolAccess" class="card section-card mb-2 menu-section">
         <div class="card-body">
           <h2 class="card-title h5 mb-3">Управление спортивной школой</h2>
           <div v-edge-fade class="scroll-container">

@@ -1,12 +1,28 @@
 import { sendError } from '../utils/api.js';
 import svc from '../services/tournamentAdminService.js';
 import map from '../mappers/tournamentMapper.js';
+import {
+  MATCH_FORMAT_OPTIONS,
+  REFEREE_PAYMENT_OPTIONS,
+} from '../utils/tournamentSettings.js';
 
 export default {
   async listTypes(_req, res) {
     try {
       const types = await svc.listTypes();
       return res.json({ types: types.map(map.toPublicType) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async listSettingsOptions(_req, res) {
+    try {
+      const competitionTypes = await svc.listCompetitionTypes();
+      return res.json({
+        competition_types: competitionTypes.map(map.toPublicCompetitionType),
+        match_formats: MATCH_FORMAT_OPTIONS,
+        referee_payment_types: REFEREE_PAYMENT_OPTIONS,
+      });
     } catch (err) {
       return sendError(res, err);
     }
@@ -118,6 +134,18 @@ export default {
         .json({ tournament: map.toPublicTournament(tournament) });
     } catch (err) {
       return sendError(res, err);
+    }
+  },
+  async updateTournament(req, res) {
+    try {
+      const tournament = await svc.updateTournament(
+        req.params.id,
+        req.body,
+        req.user?.id
+      );
+      return res.json({ tournament: map.toPublicTournament(tournament) });
+    } catch (err) {
+      return sendError(res, err, 404);
     }
   },
   async createStage(req, res) {

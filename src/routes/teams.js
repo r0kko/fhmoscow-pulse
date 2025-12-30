@@ -5,6 +5,7 @@ import authorize from '../middlewares/authorize.js';
 import accessScope from '../middlewares/accessScope.js';
 import controller from '../controllers/teamController.js';
 import teamStaffController from '../controllers/teamStaffController.js';
+import requireSportSchoolManager from '../middlewares/requireSportSchoolManager.js';
 import { addTeamStaffRules } from '../validators/teamStaffValidators.js';
 import validate from '../middlewares/validate.js';
 
@@ -52,7 +53,9 @@ router.get(
 router.post(
   '/:id/staff',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ teamParam: 'id', clubParam: null }),
   addTeamStaffRules,
   validate,
   teamStaffController.add
@@ -68,7 +71,9 @@ router.post(
 router.delete(
   '/:id/staff/:userId',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ teamParam: 'id', clubParam: null }),
   teamStaffController.remove
 );
 

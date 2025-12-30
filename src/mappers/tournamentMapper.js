@@ -8,6 +8,15 @@ export default {
       double_protocol: !!plain.double_protocol,
     };
   },
+  toPublicCompetitionType(t) {
+    if (!t) return null;
+    const plain = typeof t.get === 'function' ? t.get({ plain: true }) : t;
+    return {
+      id: plain.id,
+      alias: plain.alias,
+      name: plain.name,
+    };
+  },
 
   toPublicTournament(t) {
     if (!t) return null;
@@ -19,6 +28,9 @@ export default {
       birth_year: t.birth_year || null,
       season_id: t.season_id || null,
       type_id: t.type_id || null,
+      competition_type_id: t.competition_type_id || null,
+      match_format: t.match_format || null,
+      referee_payment_type: t.referee_payment_type || null,
     };
     if (t.Season) {
       out.season = { id: t.Season.id, name: t.Season.name };
@@ -28,6 +40,13 @@ export default {
         id: t.TournamentType.id,
         name: t.TournamentType.name,
         double_protocol: !!t.TournamentType.double_protocol,
+      };
+    }
+    if (t.CompetitionType) {
+      out.competition_type = {
+        id: t.CompetitionType.id,
+        alias: t.CompetitionType.alias,
+        name: t.CompetitionType.name,
       };
     }
     if (t.counts) out.counts = t.counts;

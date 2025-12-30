@@ -3,6 +3,7 @@ import { Op, fn, col } from 'sequelize';
 import {
   Tournament,
   TournamentType,
+  CompetitionType,
   Stage,
   TournamentGroup,
   TournamentTeam,
@@ -14,6 +15,10 @@ import {
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
+import {
+  MATCH_FORMAT_VALUES,
+  REFEREE_PAYMENT_VALUES,
+} from '../utils/tournamentSettings.js';
 
 function statusToParanoid(status) {
   const s = String(status || 'ACTIVE').toUpperCase();
@@ -47,6 +52,7 @@ async function listTournaments({
   if (onlyArchived) where.deleted_at = { [Op.ne]: null };
 
   const include = [{ model: Season }, { model: TournamentType }];
+  include.push({ model: CompetitionType });
   const { rows, count } = await Tournament.findAndCountAll({
     include,
     where,
@@ -122,6 +128,17 @@ function normalizeDurationMinutes(value) {
     throw new ServiceError('invalid_match_duration', 400);
   }
   return parsed;
+}
+
+function normalizeOption(value, allowedSet, errorCode) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  if (!allowedSet.has(trimmed)) {
+    throw new ServiceError(errorCode, 400);
+  }
+  return trimmed;
 }
 
 function assertManualTournament(tournament) {
@@ -259,6 +276,9 @@ export default {
   async listTypes() {
     return TournamentType.findAll({ order: [['name', 'ASC']] });
   },
+  async listCompetitionTypes() {
+    return CompetitionType.findAll({ order: [['name', 'ASC']] });
+  },
   listTournaments,
   listStages,
   listGroups,
@@ -279,6 +299,27 @@ export default {
       if (!type) throw new ServiceError('tournament_type_not_found', 404);
     }
 
+    let competitionTypeId = null;
+    if (data.competition_type_id !== undefined) {
+      competitionTypeId = data.competition_type_id || null;
+      if (competitionTypeId) {
+        const competition = await CompetitionType.findByPk(competitionTypeId);
+        if (!competition)
+          throw new ServiceError('competition_type_not_found', 404);
+      }
+    }
+
+    const matchFormat = normalizeOption(
+      data.match_format,
+      MATCH_FORMAT_VALUES,
+      'invalid_match_format'
+    );
+    const refereePaymentType = normalizeOption(
+      data.referee_payment_type,
+      REFEREE_PAYMENT_VALUES,
+      'invalid_referee_payment_type'
+    );
+
     let birthYear = null;
     if (data.birth_year !== undefined && data.birth_year !== null) {
       const parsed = Number.parseInt(String(data.birth_year), 10);
@@ -295,9 +336,47 @@ export default {
       birth_year: birthYear,
       season_id: seasonId,
       type_id: typeId,
+      competition_type_id: competitionTypeId,
+      match_format: matchFormat ?? null,
+      referee_payment_type: refereePaymentType ?? null,
       created_by: actorId,
       updated_by: actorId,
     });
+  },
+  async updateTournament(id, data = {}, actorId = null) {
+    const tournament = await Tournament.findByPk(id);
+    if (!tournament) throw new ServiceError('tournament_not_found', 404);
+
+    const updates = { updated_by: actorId };
+
+    if (data.competition_type_id !== undefined) {
+      const competitionTypeId = data.competition_type_id || null;
+      if (competitionTypeId) {
+        const competition = await CompetitionType.findByPk(competitionTypeId);
+        if (!competition)
+          throw new ServiceError('competition_type_not_found', 404);
+      }
+      updates.competition_type_id = competitionTypeId;
+    }
+
+    if (data.match_format !== undefined) {
+      updates.match_format = normalizeOption(
+        data.match_format,
+        MATCH_FORMAT_VALUES,
+        'invalid_match_format'
+      );
+    }
+
+    if (data.referee_payment_type !== undefined) {
+      updates.referee_payment_type = normalizeOption(
+        data.referee_payment_type,
+        REFEREE_PAYMENT_VALUES,
+        'invalid_referee_payment_type'
+      );
+    }
+
+    await tournament.update(updates, { returning: false });
+    return tournament;
   },
   async createStage(data = {}, actorId = null) {
     const tournamentId = data.tournament_id;

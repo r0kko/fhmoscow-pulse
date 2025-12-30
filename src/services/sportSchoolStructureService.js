@@ -88,9 +88,6 @@ async function getClubStructure(clubId) {
   memberships.forEach((membershipModel) => {
     const membership = toPlain(membershipModel);
     if (!membership.User) return;
-    const roles = membership.User.Roles || [];
-    const isStaff = roles.some((role) => role.alias === 'SPORT_SCHOOL_STAFF');
-    if (!isStaff) return;
     const userPublic = userMapper.toPublic(membership.User);
     const position =
       positionById.get(membership.sport_school_position_id || '') || null;

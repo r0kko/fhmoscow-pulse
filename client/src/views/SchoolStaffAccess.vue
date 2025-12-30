@@ -1,27 +1,18 @@
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
-
-import PageNav from '../components/PageNav.vue';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
-import { loadPageSize, savePageSize } from '../utils/pageSize';
+import { isSportSchoolManagerPosition } from '../utils/sportSchoolPositions';
 
 const { showToast } = useToast();
 
-const clubList = reactive({
-  items: [],
-  total: 0,
+const clubsState = reactive({
   loading: false,
-  page: 1,
-  pageSize: loadPageSize('adminSportSchoolsClubPageSize', 10),
-  search: '',
+  items: [],
 });
-
-const totalClubPages = computed(() =>
-  Math.max(1, Math.ceil((clubList.total || 1) / clubList.pageSize))
-);
+const selectedClubId = ref('');
 
 const structure = reactive({
   loading: false,
@@ -31,8 +22,10 @@ const structure = reactive({
   teams: [],
 });
 
-const selectedClubId = ref('');
-const selectedClub = computed(() => structure.club);
+const selectedClub = computed(() =>
+  clubsState.items.find((club) => club.id === selectedClubId.value)
+);
+const hasManagerClubs = computed(() => clubsState.items.length > 0);
 
 function resetStructure() {
   structure.club = null;
@@ -41,38 +34,53 @@ function resetStructure() {
   structure.teams = [];
 }
 
-async function fetchClubs() {
-  clubList.loading = true;
+function normalizeSearch(val) {
+  return String(val || '')
+    .trim()
+    .toLowerCase();
+}
+
+function buildUserLabel(user) {
+  if (!user) return '';
+  const name = [user.last_name, user.first_name, user.patronymic]
+    .filter(Boolean)
+    .join(' ');
+  return user.phone ? `${name} · ${user.phone}` : name;
+}
+
+function userSearchTarget(user) {
+  if (!user) return '';
+  const name = [user.last_name, user.first_name, user.patronymic]
+    .filter(Boolean)
+    .join(' ');
+  return `${name} ${user.phone || ''}`.trim().toLowerCase();
+}
+
+async function loadManagerClubs() {
+  clubsState.loading = true;
   try {
-    const params = new URLSearchParams({
-      page: String(clubList.page),
-      limit: String(clubList.pageSize),
-    });
-    const term = clubList.search.trim();
-    if (term) params.set('search', term);
-    const data = await apiFetch(`/clubs?${params.toString()}`);
-    clubList.items = data.clubs || [];
-    clubList.total = Number(data.total || 0);
-    if (clubList.items.length === 0) {
+    const data = await apiFetch('/users/me/sport-schools');
+    const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
+    clubsState.items = clubs.filter((club) =>
+      isSportSchoolManagerPosition(club?.sport_school_position_alias)
+    );
+    if (!clubsState.items.length) {
       selectedClubId.value = '';
       resetStructure();
       return;
     }
     if (
       !selectedClubId.value ||
-      !clubList.items.some((club) => club.id === selectedClubId.value)
+      !clubsState.items.some((club) => club.id === selectedClubId.value)
     ) {
-      selectedClubId.value = clubList.items[0].id;
-    } else {
-      const current = clubList.items.find(
-        (club) => club.id === selectedClubId.value
-      );
-      if (current) {
-        structure.club = { ...(structure.club || {}), ...current };
-      }
+      selectedClubId.value = clubsState.items[0].id;
     }
+  } catch (err) {
+    clubsState.items = [];
+    selectedClubId.value = '';
+    resetStructure();
   } finally {
-    clubList.loading = false;
+    clubsState.loading = false;
   }
 }
 
@@ -149,17 +157,17 @@ const addStaff = reactive({
 });
 
 async function searchStaffOptions() {
+  if (!selectedClubId.value) return;
   addStaff.loading = true;
   try {
-    const params = new URLSearchParams({
-      role: 'SPORT_SCHOOL_STAFF',
-      limit: '50',
-    });
+    const params = new URLSearchParams({ limit: '50' });
     if (addStaff.q.trim()) params.set('search', addStaff.q.trim());
-    const data = await apiFetch(`/users?${params.toString()}`);
+    const data = await apiFetch(
+      `/clubs/${selectedClubId.value}/staff-candidates?${params.toString()}`
+    );
     addStaff.options = (data.users || []).map((u) => ({
       id: u.id,
-      label: `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.trim(),
+      label: buildUserLabel(u),
     }));
   } finally {
     addStaff.loading = false;
@@ -205,24 +213,31 @@ const teamManage = reactive({
   staff: [],
   attach: {
     q: '',
-    options: [],
-    loading: false,
     selected: '',
     saving: false,
   },
+});
+
+const teamAttachOptions = computed(() => {
+  if (!structure.staff.length) return [];
+  const used = new Set(teamManage.staff.map((u) => u.id));
+  const query = normalizeSearch(teamManage.attach.q);
+  return structure.staff
+    .filter((entry) => entry?.user?.id && !used.has(entry.user.id))
+    .map((entry) => ({
+      id: entry.user.id,
+      label: buildUserLabel(entry.user),
+      search: userSearchTarget(entry.user),
+    }))
+    .filter((option) => !query || option.search.includes(query));
 });
 
 async function openManageTeam(team) {
   if (!team?.id) return;
   teamManage.team = team;
   teamManage.loading = true;
-  teamManage.attach = {
-    q: '',
-    options: [],
-    loading: false,
-    selected: '',
-    saving: false,
-  };
+  teamManage.attach.q = '';
+  teamManage.attach.selected = '';
   try {
     const data = await apiFetch(`/teams/${team.id}/staff`);
     const existing = data.users || [];
@@ -238,25 +253,6 @@ async function openManageTeam(team) {
     teamManage.loading = false;
   }
   teamModal?.show?.();
-}
-
-async function searchTeamAttachOptions() {
-  teamManage.attach.loading = true;
-  try {
-    const params = new URLSearchParams({
-      role: 'SPORT_SCHOOL_STAFF',
-      limit: '50',
-    });
-    if (teamManage.attach.q.trim())
-      params.set('search', teamManage.attach.q.trim());
-    const data = await apiFetch(`/users?${params.toString()}`);
-    teamManage.attach.options = (data.users || []).map((u) => ({
-      id: u.id,
-      label: `${u.last_name} ${u.first_name} ${u.patronymic || ''}`.trim(),
-    }));
-  } finally {
-    teamManage.attach.loading = false;
-  }
 }
 
 async function confirmAttachTeamStaff() {
@@ -323,7 +319,7 @@ async function confirmDetachAction() {
 }
 
 onMounted(() => {
-  fetchClubs();
+  loadManagerClubs();
   if (addStaffModalRef.value)
     addStaffModal = new Modal(addStaffModalRef.value, { backdrop: 'static' });
   if (teamModalRef.value)
@@ -336,36 +332,7 @@ onUnmounted(() => {
   addStaffModal?.dispose?.();
   teamModal?.dispose?.();
   confirmDetachModal?.dispose?.();
-  clearTimeout(searchTimeout);
 });
-
-let searchTimeout;
-watch(
-  () => clubList.search,
-  () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-      if (clubList.page !== 1) clubList.page = 1;
-      else fetchClubs();
-    }, 300);
-  }
-);
-
-watch(
-  () => clubList.pageSize,
-  (value) => {
-    savePageSize('adminSportSchoolsClubPageSize', value);
-    if (clubList.page !== 1) clubList.page = 1;
-    else fetchClubs();
-  }
-);
-
-watch(
-  () => clubList.page,
-  () => {
-    fetchClubs();
-  }
-);
 
 watch(selectedClubId, (id) => {
   if (id) loadStructure(id);
@@ -374,238 +341,197 @@ watch(selectedClubId, (id) => {
 </script>
 
 <template>
-  <div class="py-3 admin-sport-schools-page">
+  <div class="py-3 school-staff-access-page">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/admin">Администрирование</RouterLink>
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Управление спортивными школами
-          </li>
-        </ol>
-      </nav>
-      <h1 class="mb-3 text-start">Управление спортивными школами</h1>
+      <Breadcrumbs
+        :items="[
+          { label: 'Главная', to: '/' },
+          { label: 'Управление спортивной школой', to: '/school' },
+          { label: 'Сотрудники и доступы' },
+        ]"
+      />
+      <div
+        class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-3"
+      >
+        <div>
+          <h1 class="mb-1">Сотрудники и доступы</h1>
+          <p class="text-muted mb-0">
+            Управляйте сотрудниками клуба и доступом к командам.
+          </p>
+        </div>
+        <div v-if="clubsState.items.length > 1" class="min-width-240">
+          <label class="form-label small text-muted mb-1">Клуб</label>
+          <select v-model="selectedClubId" class="form-select">
+            <option
+              v-for="club in clubsState.items"
+              :key="club.id"
+              :value="club.id"
+            >
+              {{ club.name }}
+            </option>
+          </select>
+        </div>
+      </div>
 
-      <div class="row g-3">
-        <div class="col-12 col-lg-4">
-          <div class="card tile shadow-sm h-100">
-            <div class="card-body d-flex flex-column">
-              <h2 class="card-title h5 mb-3">Клубы</h2>
-              <div class="input-group mb-3">
-                <span id="club-search" class="input-group-text">
-                  <i class="bi bi-search" aria-hidden="true"></i>
-                </span>
-                <input
-                  v-model="clubList.search"
-                  type="search"
-                  class="form-control"
-                  placeholder="Поиск клуба"
-                  aria-describedby="club-search"
-                />
+      <div v-if="clubsState.loading" class="text-center py-3">
+        <div class="spinner-border spinner-brand" role="status"></div>
+      </div>
+      <div v-else-if="!hasManagerClubs" class="alert alert-warning">
+        Доступ к управлению сотрудниками доступен только администраторам и
+        директорам спортивной школы.
+      </div>
+      <div v-else-if="structure.loading" class="card tile shadow-sm h-100">
+        <div class="card-body d-flex align-items-center justify-content-center">
+          <div class="text-muted">Загрузка структуры клуба...</div>
+        </div>
+      </div>
+      <div v-else class="d-flex flex-column gap-3">
+        <div class="card tile shadow-sm">
+          <div class="card-body">
+            <div
+              class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3"
+            >
+              <div>
+                <h2 class="card-title h5 mb-1">Сотрудники клуба</h2>
+                <p class="text-muted mb-0">
+                  {{ selectedClub?.name || structure.club?.name }}
+                </p>
               </div>
-              <div v-edge-fade class="flex-grow-1 overflow-auto">
-                <div v-if="clubList.loading" class="text-muted py-3">
-                  Загрузка...
-                </div>
-                <div v-else-if="!clubList.items.length" class="text-muted py-3">
-                  Клубы не найдены
-                </div>
-                <div v-else class="list-group">
-                  <button
-                    v-for="club in clubList.items"
-                    :key="club.id"
-                    type="button"
-                    class="list-group-item list-group-item-action"
-                    :class="{ active: club.id === selectedClubId }"
-                    @click="selectedClubId = club.id"
-                  >
-                    {{ club.name }}
-                  </button>
-                </div>
-              </div>
-              <PageNav
-                class="pt-3"
-                :page="clubList.page"
-                :total-pages="totalClubPages"
-                :page-size="clubList.pageSize"
-                @update:page="(val) => (clubList.page = val)"
-                @update:page-size="(val) => (clubList.pageSize = val)"
-              />
+              <button
+                class="btn btn-brand mt-2 mt-md-0"
+                @click="openAddStaffModal"
+              >
+                Добавить сотрудника
+              </button>
+            </div>
+            <div v-edge-fade class="table-responsive">
+              <table class="table admin-table align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Сотрудник</th>
+                    <th style="width: 220px">Должность</th>
+                    <th class="text-end" style="width: 140px">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!staffRows.length">
+                    <td colspan="3" class="text-muted text-center py-4">
+                      Сотрудники ещё не назначены
+                    </td>
+                  </tr>
+                  <tr v-for="row in staffRows" :key="row.id">
+                    <td>
+                      <div class="fw-semibold">
+                        {{ row.last_name }} {{ row.first_name }}
+                        {{ row.patronymic }}
+                      </div>
+                      <div class="text-muted small">
+                        {{ row.email || row.phone }}
+                      </div>
+                    </td>
+                    <td>
+                      <select
+                        class="form-select form-select-sm"
+                        :value="row.positionId"
+                        :disabled="positionSaving[row.id]"
+                        @change="
+                          changeStaffPosition(row.id, $event.target.value)
+                        "
+                      >
+                        <option
+                          v-for="opt in positionOptions"
+                          :key="opt.value"
+                          :value="opt.value"
+                        >
+                          {{ opt.label }}
+                        </option>
+                      </select>
+                    </td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        @click="
+                          askDetach(
+                            'club',
+                            row.id,
+                            `${row.last_name} ${row.first_name}`
+                          )
+                        "
+                      >
+                        Открепить
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <div class="col-12 col-lg-8">
-          <div v-if="structure.loading" class="card tile shadow-sm h-100">
+        <div class="card tile shadow-sm">
+          <div class="card-body">
             <div
-              class="card-body d-flex align-items-center justify-content-center"
+              class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3"
             >
-              <div class="text-muted">Загрузка структуры клуба...</div>
-            </div>
-          </div>
-
-          <div v-else-if="!selectedClub" class="card tile shadow-sm h-100">
-            <div
-              class="card-body d-flex align-items-center justify-content-center"
-            >
-              <div class="text-center text-muted">
-                Выберите клуб, чтобы увидеть структуру спортивной школы
+              <h2 class="card-title h5 mb-0">Команды клуба</h2>
+              <div class="text-muted small">
+                Добавляйте сотрудников к командам и управляйте доступами
               </div>
             </div>
-          </div>
-
-          <div v-else class="d-flex flex-column gap-3">
-            <div class="card tile shadow-sm">
-              <div class="card-body">
-                <div
-                  class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3"
-                >
-                  <div>
-                    <h2 class="card-title h5 mb-1">Сотрудники клуба</h2>
-                    <p class="text-muted mb-0">{{ selectedClub.name }}</p>
-                  </div>
-                  <button
-                    class="btn btn-brand mt-2 mt-md-0"
-                    @click="openAddStaffModal"
-                  >
-                    Добавить сотрудника
-                  </button>
-                </div>
-                <div v-edge-fade class="table-responsive">
-                  <table class="table admin-table align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Сотрудник</th>
-                        <th style="width: 220px">Должность</th>
-                        <th class="text-end" style="width: 140px">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-if="!staffRows.length">
-                        <td colspan="3" class="text-muted text-center py-4">
-                          Сотрудники ещё не назначены
-                        </td>
-                      </tr>
-                      <tr v-for="row in staffRows" :key="row.id">
-                        <td>
-                          <div class="fw-semibold">
-                            {{ row.last_name }} {{ row.first_name }}
-                            {{ row.patronymic }}
-                          </div>
-                          <div class="text-muted small">
-                            {{ row.email || row.phone }}
-                          </div>
-                        </td>
-                        <td>
-                          <select
-                            class="form-select form-select-sm"
-                            :value="row.positionId"
-                            :disabled="positionSaving[row.id]"
-                            @change="
-                              changeStaffPosition(row.id, $event.target.value)
-                            "
-                          >
-                            <option
-                              v-for="opt in positionOptions"
-                              :key="opt.value"
-                              :value="opt.value"
-                            >
-                              {{ opt.label }}
-                            </option>
-                          </select>
-                        </td>
-                        <td class="text-end">
-                          <button
-                            class="btn btn-sm btn-outline-danger"
-                            @click="
-                              askDetach(
-                                'club',
-                                row.id,
-                                `${row.last_name} ${row.first_name}`
-                              )
-                            "
-                          >
-                            Открепить
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div class="card tile shadow-sm">
-              <div class="card-body">
-                <div
-                  class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3"
-                >
-                  <h2 class="card-title h5 mb-0">Команды клуба</h2>
-                  <div class="text-muted small">
-                    Редактируйте состав сотрудников по каждой команде
-                  </div>
-                </div>
-                <div v-edge-fade class="table-responsive">
-                  <table class="table admin-table align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Команда</th>
-                        <th>Сотрудники</th>
-                        <th class="text-end" style="width: 160px">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-if="!structure.teams.length">
-                        <td colspan="3" class="text-muted text-center py-4">
-                          У клуба пока нет команд
-                        </td>
-                      </tr>
-                      <tr v-for="team in structure.teams" :key="team.id">
-                        <td>
-                          <div class="fw-semibold">
-                            {{ team.name }}
-                            <span v-if="team.birth_year" class="text-muted">
-                              ({{ team.birth_year }})
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <div
-                            v-if="!team.staff.length"
-                            class="text-muted small"
-                          >
-                            Сотрудники не назначены
-                          </div>
-                          <ul v-else class="list-unstyled mb-0">
-                            <li
-                              v-for="member in team.staff"
-                              :key="member.user.id"
-                              class="small"
-                            >
-                              {{ member.user.last_name }}
-                              {{ member.user.first_name }}
-                              {{ member.user.patronymic }}
-                              <span v-if="member.position" class="text-muted">
-                                — {{ member.position.name }}
-                              </span>
-                            </li>
-                          </ul>
-                        </td>
-                        <td class="text-end">
-                          <button
-                            class="btn btn-sm btn-outline-brand"
-                            @click="openManageTeam(team)"
-                          >
-                            Назначить сотрудников
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div v-edge-fade class="table-responsive">
+              <table class="table admin-table align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Команда</th>
+                    <th>Сотрудники</th>
+                    <th class="text-end" style="width: 160px">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!structure.teams.length">
+                    <td colspan="3" class="text-muted text-center py-4">
+                      У клуба пока нет команд
+                    </td>
+                  </tr>
+                  <tr v-for="team in structure.teams" :key="team.id">
+                    <td>
+                      <div class="fw-semibold">
+                        {{ team.name }}
+                        <span v-if="team.birth_year" class="text-muted">
+                          ({{ team.birth_year }})
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div v-if="!team.staff.length" class="text-muted small">
+                        Сотрудники не назначены
+                      </div>
+                      <ul v-else class="list-unstyled mb-0">
+                        <li
+                          v-for="member in team.staff"
+                          :key="member.user.id"
+                          class="small"
+                        >
+                          {{ member.user.last_name }}
+                          {{ member.user.first_name }}
+                          {{ member.user.patronymic }}
+                          <span v-if="member.position" class="text-muted">
+                            — {{ member.position.name }}
+                          </span>
+                        </li>
+                      </ul>
+                    </td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm btn-outline-brand"
+                        @click="openManageTeam(team)"
+                      >
+                        Назначить сотрудников
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -733,15 +659,7 @@ watch(selectedClubId, (id) => {
                   type="search"
                   class="form-control"
                   placeholder="Поиск по ФИО или телефону"
-                  @keyup.enter="searchTeamAttachOptions"
                 />
-                <button
-                  class="btn btn-outline-brand"
-                  :disabled="teamManage.attach.loading"
-                  @click="searchTeamAttachOptions"
-                >
-                  Найти
-                </button>
               </div>
               <div class="d-flex gap-2 align-items-center mb-3">
                 <select
@@ -750,7 +668,7 @@ watch(selectedClubId, (id) => {
                 >
                   <option value="">— Выберите сотрудника —</option>
                   <option
-                    v-for="opt in teamManage.attach.options"
+                    v-for="opt in teamAttachOptions"
                     :key="opt.id"
                     :value="opt.id"
                   >
@@ -770,6 +688,12 @@ watch(selectedClubId, (id) => {
                   ></span>
                   Прикрепить
                 </button>
+              </div>
+              <div
+                v-if="!teamAttachOptions.length"
+                class="text-muted small mb-3"
+              >
+                Нет сотрудников, доступных для добавления.
               </div>
               <div v-edge-fade class="table-responsive">
                 <table class="table admin-table align-middle mb-0">
@@ -881,12 +805,7 @@ watch(selectedClubId, (id) => {
 </template>
 
 <style scoped>
-.admin-sport-schools-page .card-title {
-  color: var(--bs-secondary-color);
-}
-
-.admin-sport-schools-page .list-group-item-action.active {
-  background-color: var(--bs-primary);
-  border-color: var(--bs-primary);
+.min-width-240 {
+  min-width: 240px;
 }
 </style>

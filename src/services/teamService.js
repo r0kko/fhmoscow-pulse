@@ -13,6 +13,8 @@ import {
 } from '../utils/sync.js';
 import logger from '../../logger.js';
 
+import { syncStaffRole } from './sportSchoolRoleService.js';
+
 async function syncExternal(options = {}) {
   const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
 
@@ -278,6 +280,7 @@ async function addUserTeam(userId, teamId, actorId) {
   await user.addTeam(team, {
     through: { created_by: actorId, updated_by: actorId },
   });
+  await syncStaffRole(userId, actorId);
 }
 
 async function removeUserTeam(userId, teamId, actorId = null) {
@@ -294,6 +297,7 @@ async function removeUserTeam(userId, teamId, actorId = null) {
     await link.update({ updated_by: actorId });
   }
   await user.removeTeam(team);
+  await syncStaffRole(userId, actorId);
 }
 
 export default {

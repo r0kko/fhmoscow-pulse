@@ -9,6 +9,8 @@ import {
 import sequelize from '../config/database.js';
 import ServiceError from '../errors/ServiceError.js';
 
+import { syncStaffRole } from './sportSchoolRoleService.js';
+
 async function listUserClubs(userId, withTeams = false) {
   const clubInclude = {
     model: Club,
@@ -32,9 +34,12 @@ async function listUserClubs(userId, withTeams = false) {
     .map((membership) => {
       const club = membership.Club;
       if (!club) return null;
-      if (typeof club.setDataValue === 'function')
+      if (typeof club.setDataValue === 'function') {
         club.setDataValue('UserClub', membership);
-      else club.UserClub = membership;
+        club.UserClub = membership;
+      } else {
+        club.UserClub = membership;
+      }
       return club;
     })
     .filter(Boolean);
@@ -101,6 +106,7 @@ async function addUserClub(userId, clubId, actorId, options = {}) {
       }
     }
   });
+  await syncStaffRole(userId, actorId);
 }
 
 async function removeUserClub(userId, clubId, actorId = null) {
@@ -131,6 +137,7 @@ async function removeUserClub(userId, clubId, actorId = null) {
       await user.removeTeam(t, { transaction: tx });
     }
   });
+  await syncStaffRole(userId, actorId);
 }
 
 async function updateClubUserPosition(

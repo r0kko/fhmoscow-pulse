@@ -18,6 +18,7 @@ import Medical from './views/Medical.vue';
 import Camps from './views/Camps.vue';
 import Tasks from './views/Tasks.vue';
 import Availability from './views/Availability.vue';
+import RefereeAssignments from './views/RefereeAssignments.vue';
 import Normatives from './views/Normatives.vue';
 import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
@@ -39,6 +40,7 @@ import SchoolPlayers from './views/SchoolPlayers.vue';
 import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
 import SchoolPlayerPhotos from './views/SchoolPlayerPhotos.vue';
 import SchoolHome from './views/SchoolHome.vue';
+import SchoolStaffAccess from './views/SchoolStaffAccess.vue';
 import AdminCamps from './views/AdminCamps.vue';
 import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
 import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
@@ -52,6 +54,7 @@ import AdminPlayerPhotoRequests from './views/AdminPlayerPhotoRequests.vue';
 import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
 import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
+import AdminRefereeAssignments from './views/AdminRefereeAssignments.vue';
 import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
 import AdminMatch from './views/AdminMatch.vue';
 import AdminSystemOps from './views/AdminSystemOps.vue';
@@ -220,6 +223,11 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresReferee: true, title: 'Моя занятость' },
   },
   {
+    path: '/referee-assignments',
+    component: RefereeAssignments,
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Назначения' },
+  },
+  {
     path: '/normatives',
     component: Normatives,
     meta: {
@@ -271,6 +279,15 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Занятость судей',
+    },
+  },
+  {
+    path: '/admin/referee-assignments',
+    component: AdminRefereeAssignments,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Назначение судей',
     },
   },
   {
@@ -476,6 +493,15 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresStaff: true,
       title: 'Стадионы',
+    },
+  },
+  {
+    path: '/school-staff',
+    component: SchoolStaffAccess,
+    meta: {
+      requiresAuth: true,
+      requiresStaff: true,
+      title: 'Сотрудники и доступы',
     },
   },
   {

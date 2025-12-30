@@ -84,6 +84,7 @@ export const ERROR_MESSAGES = {
   team_locked: 'Команда заблокирована для изменений',
   team_player_not_found: 'Игрок команды не найден',
   team_staff_not_found: 'Представитель команды не найден',
+  club_staff_link_required: 'Сначала прикрепите сотрудника к выбранному клубу',
   lineup_export_forbidden: 'Недостаточно прав для экспорта состава',
   lineup_export_failed: 'Не удалось подготовить выгрузку состава',
   player_ids_must_be_array: 'Некорректный формат списка игроков',
@@ -123,10 +124,34 @@ export const ERROR_MESSAGES = {
     'Некорректные идентификаторы представителей',
   staff_not_in_team: 'Некорректный представитель команды',
   group_not_found: 'Группа не найдена',
+  referee_role_group_required: 'Выберите группу амплуа',
+  referee_role_group_not_found: 'Группа амплуа не найдена',
   referee_role_not_found: 'Должность судьи не найдена',
   referee_roles_required: 'Укажите список должностей судей',
   referee_roles_duplicate: 'Есть повторяющиеся должности судей',
   invalid_referee_count: 'Количество судей должно быть от 0 до 2',
+  referee_assignments_required: 'Укажите назначения судей',
+  referee_user_duplicate: 'Судья уже назначен на этот матч',
+  referee_role_not_allowed: 'Должность судьи недоступна для этого матча',
+  referee_count_exceeds_requirement:
+    'Превышено требуемое количество судей по должности',
+  referee_requirements_missing:
+    'Не заданы требования по судейским должностям для группы',
+  referee_user_not_allowed: 'Выбранный судья недоступен для назначения',
+  referee_user_already_assigned:
+    'Судья уже назначен на другую роль этого матча',
+  referee_unavailable: 'Судья недоступен в выбранное время',
+  referee_schedule_conflict: 'У судьи есть пересечение с другим матчем',
+  referee_assignments_missing: 'Черновик назначения не найден',
+  referee_assignments_incomplete:
+    'Заполните все слоты перед отправкой назначения',
+  invalid_clear_flag: 'Некорректный параметр отмены назначения',
+  referee_statuses_missing:
+    'Конфигурация статусов назначений недоступна. Обратитесь в поддержку',
+  match_schedule_missing: 'У матча не указаны дата и время',
+  match_duration_missing: 'Укажите длительность матча для группы',
+  date_required: 'Укажите дату',
+  invalid_date: 'Некорректная дата',
   match_role_required: 'Выберите амплуа для всех выбранных игроков',
   match_number_required: 'Укажите номер для всех выбранных игроков',
   grip_required: 'Выберите хват',
@@ -144,6 +169,9 @@ export const ERROR_MESSAGES = {
   validation_error: 'Проверьте корректность введённых данных',
   rate_limited:
     'Слишком много запросов. Пожалуйста, подождите и попробуйте снова.',
+  competition_type_not_found: 'Тип соревнований не найден',
+  invalid_match_format: 'Некорректный формат проведения',
+  invalid_referee_payment_type: 'Некорректный способ расчетов с судьями',
   tournament_is_imported:
     'Турнир импортирован из внешней системы. Изменение структуры недоступно.',
 } as const;

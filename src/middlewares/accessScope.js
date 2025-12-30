@@ -1,4 +1,5 @@
 import { hasAdminRole } from '../utils/roles.js';
+import { isSportSchoolManagerPosition } from '../utils/sportSchoolPositions.js';
 import clubUserService from '../services/clubUserService.js';
 import teamService from '../services/teamService.js';
 
@@ -13,6 +14,8 @@ export default async function accessScope(req, res, next) {
 
     let allowedClubIds = [];
     let allowedTeamIds = [];
+    let clubPositions = {};
+    let managerClubIds = [];
     // Compute staff scope for any user with staff role (including admins),
     // so endpoints can honor mine=true by restricting to personal scope.
     if (isStaff) {
@@ -22,6 +25,19 @@ export default async function accessScope(req, res, next) {
       ]);
       allowedClubIds = (clubs || []).map((c) => c.id);
       allowedTeamIds = (teams || []).map((t) => t.id);
+      clubPositions = (clubs || []).reduce((acc, club) => {
+        if (!club?.id) return acc;
+        const membership =
+          typeof club.UserClub?.get === 'function'
+            ? club.UserClub.get({ plain: true })
+            : club.UserClub;
+        const alias = membership?.SportSchoolPosition?.alias || null;
+        if (alias) acc[club.id] = alias;
+        return acc;
+      }, {});
+      managerClubIds = Object.entries(clubPositions)
+        .filter(([, alias]) => isSportSchoolManagerPosition(alias))
+        .map(([clubId]) => String(clubId));
     }
 
     req.access = {
@@ -30,6 +46,8 @@ export default async function accessScope(req, res, next) {
       isStaff,
       allowedClubIds,
       allowedTeamIds,
+      clubPositions,
+      managerClubIds,
     };
     return next();
   } catch (err) {

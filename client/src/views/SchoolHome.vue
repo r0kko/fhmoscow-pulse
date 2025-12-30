@@ -1,6 +1,25 @@
 <script setup>
+import { onMounted, ref } from 'vue';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import MenuTile from '../components/MenuTile.vue';
+import { apiFetch } from '../api';
+import { isSportSchoolManagerPosition } from '../utils/sportSchoolPositions';
+
+const canManageStaff = ref(false);
+
+onMounted(checkManagerAccess);
+
+async function checkManagerAccess() {
+  try {
+    const data = await apiFetch('/users/me/sport-schools');
+    const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
+    canManageStaff.value = clubs.some((club) =>
+      isSportSchoolManagerPosition(club?.sport_school_position_alias)
+    );
+  } catch {
+    canManageStaff.value = false;
+  }
+}
 </script>
 
 <template>
@@ -40,6 +59,13 @@ import MenuTile from '../components/MenuTile.vue';
               title="Стадионы"
               icon="bi-geo-alt"
               to="/school-grounds"
+              :replace="true"
+            />
+            <MenuTile
+              v-if="canManageStaff"
+              title="Сотрудники и доступы"
+              icon="bi-people-gear"
+              to="/school-staff"
               :replace="true"
             />
           </div>

@@ -5,6 +5,7 @@ import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/clubController.js';
 import accessScope from '../middlewares/accessScope.js';
 import clubStaffController from '../controllers/clubStaffController.js';
+import requireSportSchoolManager from '../middlewares/requireSportSchoolManager.js';
 import {
   addClubStaffRules,
   updateClubStaffPositionRules,
@@ -41,7 +42,9 @@ router.post('/sync', auth, authorize('ADMIN'), controller.sync);
 router.get(
   '/:id/sport-school-structure',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ clubParam: 'id' }),
   clubStaffController.structure
 );
 
@@ -65,7 +68,9 @@ router.get('/:id/staff', auth, authorize('ADMIN'), clubStaffController.list);
 router.post(
   '/:id/staff',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ clubParam: 'id' }),
   addClubStaffRules,
   validate,
   clubStaffController.add
@@ -81,7 +86,9 @@ router.post(
 router.patch(
   '/:id/staff/:userId',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ clubParam: 'id' }),
   updateClubStaffPositionRules,
   validate,
   clubStaffController.updatePosition
@@ -97,8 +104,19 @@ router.patch(
 router.delete(
   '/:id/staff/:userId',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ clubParam: 'id' }),
   clubStaffController.remove
+);
+
+router.get(
+  '/:id/staff-candidates',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  requireSportSchoolManager({ clubParam: 'id' }),
+  clubStaffController.candidates
 );
 
 export default router;
