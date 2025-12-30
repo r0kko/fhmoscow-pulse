@@ -1489,8 +1489,8 @@ watch(search, () => {
                   class="accordion-item"
                 >
                   <h2
-                    class="accordion-header"
                     :id="`heading-${bucket.stage.id}`"
+                    class="accordion-header"
                   >
                     <button
                       class="accordion-button"
@@ -1510,9 +1510,9 @@ watch(search, () => {
                     </button>
                   </h2>
                   <div
+                    :id="`stage-${bucket.stage.id}`"
                     class="accordion-collapse collapse"
                     :class="{ show: settingsOpenStageId === bucket.stage.id }"
-                    :id="`stage-${bucket.stage.id}`"
                     :aria-labelledby="`heading-${bucket.stage.id}`"
                   >
                     <div class="accordion-body">
