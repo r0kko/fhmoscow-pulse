@@ -99,7 +99,10 @@ const settingsGroupsByStage = computed(() => {
   for (const stage of settingsStages.value || []) {
     buckets.set(stage.id, { stage, groups: [] });
   }
-  const unassigned = { stage: { id: 'unassigned', name: 'Без этапа' }, groups: [] };
+  const unassigned = {
+    stage: { id: 'unassigned', name: 'Без этапа' },
+    groups: [],
+  };
   for (const group of settingsGroups.value || []) {
     const bucket = buckets.get(group.stage_id) || unassigned;
     bucket.groups.push(group);
@@ -284,12 +287,16 @@ function parseDurationInput(hoursInput, minutesInput) {
 }
 
 function normalizeSearchTerm(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function matchesSearch(value, term) {
   if (!term) return true;
-  return String(value || '').toLowerCase().includes(term);
+  return String(value || '')
+    .toLowerCase()
+    .includes(term);
 }
 
 function formatDurationMinutes(total) {
@@ -418,8 +425,7 @@ async function loadTournamentSettings() {
 }
 
 function toggleSettingsStage(id) {
-  settingsOpenStageId.value =
-    settingsOpenStageId.value === id ? null : id;
+  settingsOpenStageId.value = settingsOpenStageId.value === id ? null : id;
 }
 
 async function saveGroupSettings(group) {
@@ -440,7 +446,8 @@ async function saveGroupSettings(group) {
       body: JSON.stringify(payload),
     });
     const updated = res.group || {};
-    group.match_duration_minutes = updated.match_duration_minutes ?? parsed.value;
+    group.match_duration_minutes =
+      updated.match_duration_minutes ?? parsed.value;
     edit.dirty = false;
     showToast('Настройки группы сохранены');
   } catch (e) {
@@ -1069,7 +1076,11 @@ watch(search, () => {
             <button
               type="button"
               class="btn"
-              :class="detailMode === 'structure' ? 'btn-brand' : 'btn-outline-secondary'"
+              :class="
+                detailMode === 'structure'
+                  ? 'btn-brand'
+                  : 'btn-outline-secondary'
+              "
               @click="openTournamentStructure"
             >
               Структура
@@ -1077,7 +1088,11 @@ watch(search, () => {
             <button
               type="button"
               class="btn"
-              :class="detailMode === 'settings' ? 'btn-brand' : 'btn-outline-secondary'"
+              :class="
+                detailMode === 'settings'
+                  ? 'btn-brand'
+                  : 'btn-outline-secondary'
+              "
               @click="openTournamentSettings"
             >
               Настройки
@@ -1119,7 +1134,10 @@ watch(search, () => {
       <div class="card section-card tile fade-in shadow-sm">
         <div class="card-body">
           <template v-if="detailMode === 'structure'">
-            <div v-if="isImportedTournament" class="alert alert-info small mb-3">
+            <div
+              v-if="isImportedTournament"
+              class="alert alert-info small mb-3"
+            >
               Турнир импортирован из внешней системы. Добавление этапов и групп
               недоступно.
             </div>
@@ -1162,7 +1180,10 @@ watch(search, () => {
                         aria-label="Поиск этапа"
                       />
                     </div>
-                    <div v-if="detailStagesError" class="text-danger small mb-2">
+                    <div
+                      v-if="detailStagesError"
+                      class="text-danger small mb-2"
+                    >
                       {{ detailStagesError }}
                     </div>
                     <div
@@ -1193,10 +1214,7 @@ watch(search, () => {
                         Создать этап
                       </button>
                     </div>
-                    <BrandSpinner
-                      v-if="detailStagesLoading"
-                      label="Загрузка"
-                    />
+                    <BrandSpinner v-if="detailStagesLoading" label="Загрузка" />
                     <div v-else>
                       <div
                         v-if="detailStagesVisible.length"
@@ -1221,7 +1239,12 @@ watch(search, () => {
                             </span>
                           </div>
                           <div class="small text-muted">
-                            ID: {{ s.id === 'unassigned' ? '—' : s.external_id || s.id }}
+                            ID:
+                            {{
+                              s.id === 'unassigned'
+                                ? '—'
+                                : s.external_id || s.id
+                            }}
                           </div>
                         </button>
                       </div>
@@ -1276,7 +1299,10 @@ watch(search, () => {
                         :disabled="!detailStage"
                       />
                     </div>
-                    <div v-if="detailGroupsError" class="text-danger small mb-2">
+                    <div
+                      v-if="detailGroupsError"
+                      class="text-danger small mb-2"
+                    >
                       {{ detailGroupsError }}
                     </div>
                     <div
@@ -1338,10 +1364,7 @@ watch(search, () => {
                         Создать группу
                       </button>
                     </div>
-                    <BrandSpinner
-                      v-if="detailGroupsLoading"
-                      label="Загрузка"
-                    />
+                    <BrandSpinner v-if="detailGroupsLoading" label="Загрузка" />
                     <div v-else>
                       <div v-if="!detailStage" class="text-muted small">
                         Выберите этап слева, чтобы увидеть список групп.
@@ -1365,8 +1388,13 @@ watch(search, () => {
                               {{ g.name || 'Группа' }}
                             </div>
                             <span class="badge bg-light text-muted border">
-                              <i class="bi bi-clock me-1" aria-hidden="true"></i>
-                              {{ formatDurationMinutes(g.match_duration_minutes) }}
+                              <i
+                                class="bi bi-clock me-1"
+                                aria-hidden="true"
+                              ></i>
+                              {{
+                                formatDurationMinutes(g.match_duration_minutes)
+                              }}
                             </span>
                           </div>
                           <div class="small text-muted">
@@ -1471,7 +1499,9 @@ watch(search, () => {
                         collapsed: settingsOpenStageId !== bucket.stage.id,
                       }"
                       :aria-expanded="
-                        settingsOpenStageId === bucket.stage.id ? 'true' : 'false'
+                        settingsOpenStageId === bucket.stage.id
+                          ? 'true'
+                          : 'false'
                       "
                       :aria-controls="`stage-${bucket.stage.id}`"
                       @click="toggleSettingsStage(bucket.stage.id)"

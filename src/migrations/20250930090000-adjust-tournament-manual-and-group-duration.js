@@ -14,14 +14,21 @@ module.exports = {
       type: Sequelize.INTEGER,
       allowNull: true,
     });
-    await queryInterface.addColumn('tournament_groups', 'match_duration_minutes', {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-    });
+    await queryInterface.addColumn(
+      'tournament_groups',
+      'match_duration_minutes',
+      {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      }
+    );
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.removeColumn('tournament_groups', 'match_duration_minutes');
+    await queryInterface.removeColumn(
+      'tournament_groups',
+      'match_duration_minutes'
+    );
     await queryInterface.sequelize.query(`
       WITH cte AS (
         SELECT id, ROW_NUMBER() OVER (ORDER BY created_at NULLS LAST, id) AS rn

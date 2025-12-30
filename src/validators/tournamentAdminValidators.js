@@ -4,7 +4,9 @@ export const tournamentCreateRules = [
   body('name').isString().notEmpty(),
   body('season_id').optional({ nullable: true }).isUUID(),
   body('type_id').optional({ nullable: true }).isUUID(),
-  body('birth_year').optional({ nullable: true }).isInt({ min: 1900, max: 2100 }),
+  body('birth_year')
+    .optional({ nullable: true })
+    .isInt({ min: 1900, max: 2100 }),
   body('full_name').optional({ nullable: true }).isString(),
 ];
 
