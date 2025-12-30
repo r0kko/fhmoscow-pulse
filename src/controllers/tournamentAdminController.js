@@ -110,4 +110,42 @@ export default {
       return sendError(res, err);
     }
   },
+  async createTournament(req, res) {
+    try {
+      const tournament = await svc.createTournament(req.body, req.user?.id);
+      return res
+        .status(201)
+        .json({ tournament: map.toPublicTournament(tournament) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async createStage(req, res) {
+    try {
+      const stage = await svc.createStage(req.body, req.user?.id);
+      return res.status(201).json({ stage: map.toPublicStage(stage) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async createGroup(req, res) {
+    try {
+      const group = await svc.createGroup(req.body, req.user?.id);
+      return res.status(201).json({ group: map.toPublicGroup(group) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async updateGroup(req, res) {
+    try {
+      const group = await svc.updateGroup(
+        req.params.id,
+        req.body,
+        req.user?.id
+      );
+      return res.json({ group: map.toPublicGroup(group) });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
 };

@@ -11,7 +11,7 @@ Tournament.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    external_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+    external_id: { type: DataTypes.INTEGER, allowNull: true, unique: true },
     season_id: { type: DataTypes.UUID },
     type_id: { type: DataTypes.UUID },
     name: { type: DataTypes.STRING(255), allowNull: false },

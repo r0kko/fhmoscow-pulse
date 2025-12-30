@@ -3,6 +3,13 @@ import express from 'express';
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/tournamentAdminController.js';
+import validate from '../middlewares/validate.js';
+import {
+  tournamentCreateRules,
+  stageCreateRules,
+  groupCreateRules,
+  groupUpdateRules,
+} from '../validators/tournamentAdminValidators.js';
 
 const router = express.Router();
 
@@ -16,6 +23,14 @@ const router = express.Router();
  */
 router.get('/', auth, authorize('ADMIN'), controller.listTournaments);
 router.get('/types', auth, authorize('ADMIN'), controller.listTypes);
+router.post(
+  '/',
+  auth,
+  authorize('ADMIN'),
+  tournamentCreateRules,
+  validate,
+  controller.createTournament
+);
 
 /**
  * @swagger
@@ -26,6 +41,14 @@ router.get('/types', auth, authorize('ADMIN'), controller.listTypes);
  *     summary: List stages (across tournaments)
  */
 router.get('/stages', auth, authorize('ADMIN'), controller.listStages);
+router.post(
+  '/stages',
+  auth,
+  authorize('ADMIN'),
+  stageCreateRules,
+  validate,
+  controller.createStage
+);
 
 /**
  * @swagger
@@ -36,6 +59,22 @@ router.get('/stages', auth, authorize('ADMIN'), controller.listStages);
  *     summary: List tournament groups
  */
 router.get('/groups', auth, authorize('ADMIN'), controller.listGroups);
+router.post(
+  '/groups',
+  auth,
+  authorize('ADMIN'),
+  groupCreateRules,
+  validate,
+  controller.createGroup
+);
+router.patch(
+  '/groups/:id',
+  auth,
+  authorize('ADMIN'),
+  groupUpdateRules,
+  validate,
+  controller.updateGroup
+);
 
 /**
  * @swagger

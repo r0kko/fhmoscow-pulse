@@ -68,6 +68,7 @@ export default {
       name: g.name || null,
       tournament_id: g.tournament_id || null,
       stage_id: g.stage_id || null,
+      match_duration_minutes: g.match_duration_minutes ?? null,
     };
     if (g.Tournament) {
       const t = g.Tournament;

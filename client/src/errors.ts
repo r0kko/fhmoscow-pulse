@@ -139,6 +139,8 @@ export const ERROR_MESSAGES = {
   validation_error: 'Проверьте корректность введённых данных',
   rate_limited:
     'Слишком много запросов. Пожалуйста, подождите и попробуйте снова.',
+  tournament_is_imported:
+    'Турнир импортирован из внешней системы. Изменение структуры недоступно.',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

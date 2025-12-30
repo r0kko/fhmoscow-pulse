@@ -9,6 +9,7 @@ import {
   Season,
   Team,
 } from '../models/index.js';
+import ServiceError from '../errors/ServiceError.js';
 
 function statusToParanoid(status) {
   const s = String(status || 'ACTIVE').toUpperCase();
@@ -102,6 +103,41 @@ async function listTournaments({
     return t;
   });
   return { rows: out, count };
+}
+
+function normalizeString(value) {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeDurationMinutes(value) {
+  if (value === '' || value == null) return null;
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 24 * 60) {
+    throw new ServiceError('invalid_match_duration', 400);
+  }
+  return parsed;
+}
+
+function assertManualTournament(tournament) {
+  if (tournament?.external_id != null) {
+    throw new ServiceError('tournament_is_imported', 409);
+  }
+}
+
+async function ensureTournament(id) {
+  if (!id) return null;
+  const tournament = await Tournament.findByPk(id);
+  if (!tournament) throw new ServiceError('tournament_not_found', 404);
+  return tournament;
+}
+
+async function ensureStage(id) {
+  if (!id) return null;
+  const stage = await Stage.findByPk(id);
+  if (!stage) throw new ServiceError('stage_not_found', 404);
+  return stage;
 }
 
 async function listStages({ page = 1, limit = 20, tournament_id, status }) {
@@ -216,4 +252,107 @@ export default {
   listStages,
   listGroups,
   listTournamentTeams,
+  async createTournament(data = {}, actorId = null) {
+    const name = normalizeString(data.name);
+    if (!name) throw new ServiceError('invalid_tournament_name', 400);
+
+    const seasonId = data.season_id || null;
+    if (seasonId) {
+      const season = await Season.findByPk(seasonId);
+      if (!season) throw new ServiceError('season_not_found', 404);
+    }
+
+    const typeId = data.type_id || null;
+    if (typeId) {
+      const type = await TournamentType.findByPk(typeId);
+      if (!type) throw new ServiceError('tournament_type_not_found', 404);
+    }
+
+    let birthYear = null;
+    if (data.birth_year !== undefined && data.birth_year !== null) {
+      const parsed = Number.parseInt(String(data.birth_year), 10);
+      if (!Number.isFinite(parsed) || parsed < 1900 || parsed > 2100) {
+        throw new ServiceError('invalid_birth_year', 400);
+      }
+      birthYear = parsed;
+    }
+
+    return Tournament.create({
+      external_id: null,
+      name,
+      full_name: normalizeString(data.full_name),
+      birth_year: birthYear,
+      season_id: seasonId,
+      type_id: typeId,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  },
+  async createStage(data = {}, actorId = null) {
+    const tournamentId = data.tournament_id;
+    if (!tournamentId) throw new ServiceError('tournament_not_found', 404);
+    const tournament = await ensureTournament(tournamentId);
+    assertManualTournament(tournament);
+
+    const name = normalizeString(data.name);
+
+    return Stage.create({
+      external_id: null,
+      tournament_id: tournamentId,
+      name,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  },
+  async createGroup(data = {}, actorId = null) {
+    const tournamentId = data.tournament_id;
+    const stageId = data.stage_id;
+    if (!tournamentId) throw new ServiceError('tournament_not_found', 404);
+    if (!stageId) throw new ServiceError('stage_not_found', 404);
+
+    const [tournament, stage] = await Promise.all([
+      ensureTournament(tournamentId),
+      ensureStage(stageId),
+    ]);
+    assertManualTournament(tournament);
+    if (stage.tournament_id && stage.tournament_id !== tournament.id) {
+      throw new ServiceError('stage_tournament_mismatch', 400);
+    }
+
+    const name = normalizeString(data.name);
+    const matchDurationMinutes = normalizeDurationMinutes(
+      data.match_duration_minutes
+    );
+
+    return TournamentGroup.create({
+      external_id: null,
+      tournament_id: tournament.id,
+      stage_id: stage.id,
+      name,
+      match_duration_minutes: matchDurationMinutes,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  },
+  async updateGroup(id, data = {}, actorId = null) {
+    const group = await TournamentGroup.findByPk(id);
+    if (!group) throw new ServiceError('group_not_found', 404);
+
+    const updates = {
+      updated_by: actorId,
+    };
+
+    if (data.name !== undefined) {
+      updates.name = normalizeString(data.name);
+    }
+
+    if (data.match_duration_minutes !== undefined) {
+      updates.match_duration_minutes = normalizeDurationMinutes(
+        data.match_duration_minutes
+      );
+    }
+
+    await group.update(updates, { returning: false });
+    return group;
+  },
 };
