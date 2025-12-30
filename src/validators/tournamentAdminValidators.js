@@ -30,3 +30,24 @@ export const groupUpdateRules = [
     .optional({ nullable: true })
     .isInt({ min: 0, max: 1440 }),
 ];
+
+export const groupRefereesUpdateRules = [
+  body('roles').isArray().withMessage('referee_roles_required'),
+  body('roles').custom((arr) => {
+    const seen = new Set();
+    for (const item of arr) {
+      if (!item || typeof item.role_id !== 'string' || !item.role_id) {
+        throw new Error('referee_role_not_found');
+      }
+      if (seen.has(item.role_id)) {
+        throw new Error('referee_roles_duplicate');
+      }
+      seen.add(item.role_id);
+      const count = Number(item.count);
+      if (!Number.isFinite(count) || count < 0 || count > 2) {
+        throw new Error('invalid_referee_count');
+      }
+    }
+    return true;
+  }),
+];

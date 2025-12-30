@@ -108,4 +108,17 @@ export default {
     if (tt.Team) out.team = { id: tt.Team.id, name: tt.Team.name };
     return out;
   },
+
+  toPublicRefereeRoleGroup(group) {
+    if (!group) return null;
+    const plain = typeof group.get === 'function' ? group.get({ plain: true }) : group;
+    return {
+      id: plain.id,
+      name: plain.name,
+      roles: (plain.RefereeRoles || plain.referee_roles || []).map((r) => ({
+        id: r.id,
+        name: r.name,
+      })),
+    };
+  },
 };

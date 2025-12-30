@@ -236,6 +236,10 @@ const settingsLoading = ref(false);
 const settingsError = ref('');
 const settingsEdits = ref({});
 const settingsOpenStageId = ref(null);
+const refereeRoleGroups = ref([]);
+const refereeEdits = ref({});
+const refereeLoading = ref(false);
+const refereeError = ref('');
 
 function closeDetail() {
   detailTournament.value = null;
@@ -252,6 +256,10 @@ function closeDetail() {
   settingsGroups.value = [];
   settingsEdits.value = {};
   settingsOpenStageId.value = null;
+  refereeRoleGroups.value = [];
+  refereeEdits.value = {};
+  refereeLoading.value = false;
+  refereeError.value = '';
   createStageOpen.value = false;
   createGroupOpen.value = false;
   resetCreateStageForm();
@@ -380,18 +388,24 @@ async function loadTournamentSettings() {
   const tournamentId = detailTournament.value.id;
   settingsLoading.value = true;
   settingsError.value = '';
+  refereeLoading.value = true;
+  refereeError.value = '';
   try {
     const params = new URLSearchParams({
       page: '1',
       limit: '1000',
       tournament_id: tournamentId,
     });
-    const [stagesRes, groupsRes] = await Promise.all([
+    const [stagesRes, groupsRes, rolesRes, assignmentsRes] = await Promise.all([
       apiFetch(`/tournaments/stages?${params.toString()}`),
       apiFetch(`/tournaments/groups?${params.toString()}`),
+      apiFetch('/tournaments/referee-roles'),
+      apiFetch(`/tournaments/groups/referees?${params.toString()}`),
     ]);
     settingsStages.value = stagesRes.stages || [];
     settingsGroups.value = groupsRes.groups || [];
+    refereeRoleGroups.value = rolesRes.groups || [];
+    const assignments = assignmentsRes.assignments || [];
     const edits = {};
     for (const g of settingsGroups.value) {
       const parts = splitDurationMinutes(g.match_duration_minutes);
@@ -404,6 +418,26 @@ async function loadTournamentSettings() {
       };
     }
     settingsEdits.value = edits;
+    const refereeMap = {};
+    const roleIds = refereeRoleGroups.value.flatMap((group) =>
+      (group.roles || []).map((role) => role.id)
+    );
+    const roleSet = new Set(roleIds);
+    for (const g of settingsGroups.value) {
+      refereeMap[g.id] = {
+        counts: Object.fromEntries(roleIds.map((id) => [id, 0])),
+        saving: false,
+        error: '',
+        dirty: false,
+      };
+    }
+    for (const row of assignments) {
+      if (!roleSet.has(row.referee_role_id)) continue;
+      if (!refereeMap[row.tournament_group_id]) continue;
+      refereeMap[row.tournament_group_id].counts[row.referee_role_id] =
+        row.count ?? 0;
+    }
+    refereeEdits.value = refereeMap;
     const stageIds = (settingsStages.value || []).map((s) => s.id);
     const hasUnassigned = settingsGroups.value.some((g) => !g.stage_id);
     const isValidOpen =
@@ -418,9 +452,13 @@ async function loadTournamentSettings() {
     settingsGroups.value = [];
     settingsEdits.value = {};
     settingsOpenStageId.value = null;
+    refereeRoleGroups.value = [];
+    refereeEdits.value = {};
     settingsError.value = e.message || 'Ошибка загрузки настроек';
+    refereeError.value = e.message || 'Ошибка загрузки судей';
   } finally {
     settingsLoading.value = false;
+    refereeLoading.value = false;
   }
 }
 
@@ -455,6 +493,44 @@ async function saveGroupSettings(group) {
   } finally {
     edit.saving = false;
   }
+}
+
+async function saveGroupReferees(group) {
+  const edit = refereeEdits.value[group.id];
+  if (!edit || edit.saving) return;
+  edit.saving = true;
+  edit.error = '';
+  try {
+    const roles = Object.entries(edit.counts || {}).map(([roleId, count]) => ({
+      role_id: roleId,
+      count: Number(count),
+    }));
+    await apiFetch(`/tournaments/groups/${group.id}/referees`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roles }),
+    });
+    edit.dirty = false;
+    showToast('Судейский состав сохранён');
+  } catch (e) {
+    edit.error = e.message || 'Ошибка сохранения судей';
+  } finally {
+    edit.saving = false;
+  }
+}
+
+function getRefereeCount(groupId, roleId) {
+  return refereeEdits.value?.[groupId]?.counts?.[roleId] ?? 0;
+}
+
+function setRefereeCount(groupId, roleId, value) {
+  const edit = refereeEdits.value?.[groupId];
+  if (!edit) return;
+  const parsed = Number.parseInt(String(value), 10);
+  const safe = Number.isFinite(parsed) ? Math.min(2, Math.max(0, parsed)) : 0;
+  edit.counts[roleId] = safe;
+  edit.dirty = true;
+  edit.error = '';
 }
 
 function resetCreateTournamentForm() {
@@ -1597,6 +1673,77 @@ watch(search, () => {
                               <div class="text-danger small">
                                 {{ settingsEdits[g.id].error }}
                               </div>
+                            </div>
+                          </div>
+                          <div class="mt-3">
+                            <div class="fw-semibold">Судейский состав</div>
+                            <div v-if="refereeError" class="text-danger small">
+                              {{ refereeError }}
+                            </div>
+                            <div v-else-if="refereeRoleGroups.length">
+                              <div
+                                v-for="rg in refereeRoleGroups"
+                                :key="rg.id"
+                                class="mt-2"
+                              >
+                                <div class="small text-muted mb-1">
+                                  {{ rg.name }}
+                                </div>
+                                <div class="row g-2">
+                                  <div
+                                    v-for="role in rg.roles"
+                                    :key="role.id"
+                                    class="col-6 col-lg-4"
+                                  >
+                                    <label class="form-label small">{{
+                                      role.name
+                                    }}</label>
+                                    <select
+                                      :value="getRefereeCount(g.id, role.id)"
+                                      class="form-select form-select-sm"
+                                      :disabled="
+                                        refereeLoading || !refereeEdits[g.id]
+                                      "
+                                      @change="
+                                        setRefereeCount(
+                                          g.id,
+                                          role.id,
+                                          $event.target.value
+                                        )
+                                      "
+                                    >
+                                      <option :value="0">0</option>
+                                      <option :value="1">1</option>
+                                      <option :value="2">2</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                              <div
+                                v-if="refereeEdits[g.id]?.error"
+                                class="text-danger small mt-2"
+                              >
+                                {{ refereeEdits[g.id].error }}
+                              </div>
+                              <button
+                                type="button"
+                                class="btn btn-brand btn-sm mt-2"
+                                :disabled="
+                                  refereeLoading ||
+                                  !refereeEdits[g.id]?.dirty ||
+                                  refereeEdits[g.id]?.saving
+                                "
+                                @click="saveGroupReferees(g)"
+                              >
+                                <span
+                                  v-if="refereeEdits[g.id]?.saving"
+                                  class="spinner-border spinner-border-sm me-2"
+                                ></span>
+                                Сохранить судейский состав
+                              </button>
+                            </div>
+                            <div v-else class="text-muted small">
+                              Должности судей не настроены.
                             </div>
                           </div>
                         </div>

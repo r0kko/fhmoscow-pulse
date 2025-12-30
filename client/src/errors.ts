@@ -122,6 +122,11 @@ export const ERROR_MESSAGES = {
   staff_ids_must_be_array_of_strings:
     'Некорректные идентификаторы представителей',
   staff_not_in_team: 'Некорректный представитель команды',
+  group_not_found: 'Группа не найдена',
+  referee_role_not_found: 'Должность судьи не найдена',
+  referee_roles_required: 'Укажите список должностей судей',
+  referee_roles_duplicate: 'Есть повторяющиеся должности судей',
+  invalid_referee_count: 'Количество судей должно быть от 0 до 2',
   match_role_required: 'Выберите амплуа для всех выбранных игроков',
   match_number_required: 'Укажите номер для всех выбранных игроков',
   grip_required: 'Выберите хват',

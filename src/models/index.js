@@ -71,6 +71,9 @@ import Tournament from './tournament.js';
 import Stage from './stage.js';
 import TournamentGroup from './tournamentGroup.js';
 import TournamentTeam from './tournamentTeam.js';
+import RefereeRoleGroup from './refereeRoleGroup.js';
+import RefereeRole from './refereeRole.js';
+import TournamentGroupReferee from './tournamentGroupReferee.js';
 import Tour from './tour.js';
 import Match from './match.js';
 import MatchBroadcastLink from './matchBroadcastLink.js';
@@ -385,6 +388,23 @@ TournamentTeam.belongsTo(TournamentGroup, {
 });
 Team.hasMany(TournamentTeam, { foreignKey: 'team_id' });
 TournamentTeam.belongsTo(Team, { foreignKey: 'team_id' });
+
+RefereeRoleGroup.hasMany(RefereeRole, { foreignKey: 'referee_role_group_id' });
+RefereeRole.belongsTo(RefereeRoleGroup, {
+  foreignKey: 'referee_role_group_id',
+});
+TournamentGroup.hasMany(TournamentGroupReferee, {
+  foreignKey: 'tournament_group_id',
+});
+TournamentGroupReferee.belongsTo(TournamentGroup, {
+  foreignKey: 'tournament_group_id',
+});
+RefereeRole.hasMany(TournamentGroupReferee, {
+  foreignKey: 'referee_role_id',
+});
+TournamentGroupReferee.belongsTo(RefereeRole, {
+  foreignKey: 'referee_role_id',
+});
 
 /* matches */
 Tour.hasMany(Match, { foreignKey: 'tour_id' });
@@ -709,6 +729,9 @@ export {
   Stage,
   TournamentGroup,
   TournamentTeam,
+  RefereeRoleGroup,
+  RefereeRole,
+  TournamentGroupReferee,
   UserTeam,
   UserClub,
   Club,

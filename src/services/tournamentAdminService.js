@@ -6,10 +6,14 @@ import {
   Stage,
   TournamentGroup,
   TournamentTeam,
+  RefereeRoleGroup,
+  RefereeRole,
+  TournamentGroupReferee,
   Season,
   Team,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import sequelize from '../config/database.js';
 
 function statusToParanoid(status) {
   const s = String(status || 'ACTIVE').toUpperCase();
@@ -138,6 +142,13 @@ async function ensureStage(id) {
   const stage = await Stage.findByPk(id);
   if (!stage) throw new ServiceError('stage_not_found', 404);
   return stage;
+}
+
+async function ensureGroup(id) {
+  if (!id) return null;
+  const group = await TournamentGroup.findByPk(id);
+  if (!group) throw new ServiceError('group_not_found', 404);
+  return group;
 }
 
 async function listStages({ page = 1, limit = 20, tournament_id, status }) {
@@ -354,5 +365,81 @@ export default {
 
     await group.update(updates, { returning: false });
     return group;
+  },
+  async listRefereeRoleGroups() {
+    return RefereeRoleGroup.findAll({
+      include: [{ model: RefereeRole }],
+      order: [
+        ['sort_order', 'ASC'],
+        ['name', 'ASC'],
+        [{ model: RefereeRole }, 'sort_order', 'ASC'],
+        [{ model: RefereeRole }, 'name', 'ASC'],
+      ],
+    });
+  },
+  async listGroupReferees({ tournament_id }) {
+    if (!tournament_id) return [];
+    const groups = await TournamentGroup.findAll({
+      attributes: ['id'],
+      where: { tournament_id },
+      raw: true,
+    });
+    const groupIds = groups.map((g) => g.id);
+    if (!groupIds.length) return [];
+    return TournamentGroupReferee.findAll({
+      attributes: ['tournament_group_id', 'referee_role_id', 'count'],
+      where: { tournament_group_id: { [Op.in]: groupIds } },
+      raw: true,
+    });
+  },
+  async updateGroupReferees(groupId, roles = [], actorId = null) {
+    const group = await ensureGroup(groupId);
+    if (!Array.isArray(roles)) {
+      throw new ServiceError('referee_roles_required', 400);
+    }
+    const unique = new Map();
+    for (const role of roles) {
+      if (!role || typeof role.role_id !== 'string') {
+        throw new ServiceError('referee_role_not_found', 404);
+      }
+      if (!Number.isFinite(role.count) || role.count < 0 || role.count > 2) {
+        throw new ServiceError('invalid_referee_count', 400);
+      }
+      unique.set(role.role_id, role.count);
+    }
+    const roleIds = [...unique.keys()];
+    if (roleIds.length) {
+      const existing = await RefereeRole.findAll({
+        where: { id: { [Op.in]: roleIds } },
+        attributes: ['id'],
+      });
+      if (existing.length !== roleIds.length) {
+        throw new ServiceError('referee_role_not_found', 404);
+      }
+    }
+    const payload = roleIds
+      .filter((id) => unique.get(id) > 0)
+      .map((id) => ({
+        tournament_group_id: group.id,
+        referee_role_id: id,
+        count: unique.get(id),
+        created_by: actorId,
+        updated_by: actorId,
+      }));
+    await sequelize.transaction(async (tx) => {
+      await TournamentGroupReferee.destroy({
+        where: { tournament_group_id: group.id },
+        force: true,
+        transaction: tx,
+      });
+      if (payload.length) {
+        await TournamentGroupReferee.bulkCreate(payload, { transaction: tx });
+      }
+    });
+    return payload.map((row) => ({
+      tournament_group_id: row.tournament_group_id,
+      referee_role_id: row.referee_role_id,
+      count: row.count,
+    }));
   },
 };

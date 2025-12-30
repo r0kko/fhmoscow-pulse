@@ -148,4 +148,36 @@ export default {
       return sendError(res, err, 404);
     }
   },
+  async listRefereeRoles(_req, res) {
+    try {
+      const groups = await svc.listRefereeRoleGroups();
+      return res.json({
+        groups: groups.map(map.toPublicRefereeRoleGroup),
+      });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async listGroupReferees(req, res) {
+    try {
+      const { tournament_id } = req.query;
+      const assignments = await svc.listGroupReferees({ tournament_id });
+      return res.json({ assignments });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async updateGroupReferees(req, res) {
+    try {
+      const roles = req.body?.roles || [];
+      const assignments = await svc.updateGroupReferees(
+        req.params.id,
+        roles,
+        req.user?.id
+      );
+      return res.json({ assignments });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
 };

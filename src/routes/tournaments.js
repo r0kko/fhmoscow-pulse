@@ -9,6 +9,7 @@ import {
   stageCreateRules,
   groupCreateRules,
   groupUpdateRules,
+  groupRefereesUpdateRules,
 } from '../validators/tournamentAdminValidators.js';
 
 const router = express.Router();
@@ -74,6 +75,26 @@ router.patch(
   groupUpdateRules,
   validate,
   controller.updateGroup
+);
+router.get(
+  '/referee-roles',
+  auth,
+  authorize('ADMIN'),
+  controller.listRefereeRoles
+);
+router.get(
+  '/groups/referees',
+  auth,
+  authorize('ADMIN'),
+  controller.listGroupReferees
+);
+router.put(
+  '/groups/:id/referees',
+  auth,
+  authorize('ADMIN'),
+  groupRefereesUpdateRules,
+  validate,
+  controller.updateGroupReferees
 );
 
 /**
