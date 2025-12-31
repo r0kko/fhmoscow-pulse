@@ -3,7 +3,7 @@
 module.exports = {
   async up(queryInterface) {
     const [rows] = await queryInterface.sequelize.query(
-      'SELECT id FROM match_referee_statuses WHERE alias = \'CONFIRMED\' LIMIT 1'
+      "SELECT id FROM match_referee_statuses WHERE alias = 'CONFIRMED' LIMIT 1"
     );
     if (Array.isArray(rows) && rows.length) return;
     const now = new Date();
@@ -19,12 +19,12 @@ module.exports = {
 
   async down(queryInterface) {
     const [confirmedRows] = await queryInterface.sequelize.query(
-      'SELECT id FROM match_referee_statuses WHERE alias = \'CONFIRMED\' LIMIT 1'
+      "SELECT id FROM match_referee_statuses WHERE alias = 'CONFIRMED' LIMIT 1"
     );
     if (!Array.isArray(confirmedRows) || !confirmedRows.length) return;
     const confirmedId = confirmedRows[0].id;
     const [publishedRows] = await queryInterface.sequelize.query(
-      'SELECT id FROM match_referee_statuses WHERE alias = \'PUBLISHED\' LIMIT 1'
+      "SELECT id FROM match_referee_statuses WHERE alias = 'PUBLISHED' LIMIT 1"
     );
     if (Array.isArray(publishedRows) && publishedRows.length) {
       await queryInterface.sequelize.query(

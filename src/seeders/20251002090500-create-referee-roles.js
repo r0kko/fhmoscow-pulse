@@ -6,7 +6,7 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     const [existing] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS cnt FROM referee_role_groups WHERE name IN (\'Судьи в поле\',\'Судьи в бригаде\',\'Руководство\');'
+      "SELECT COUNT(*) AS cnt FROM referee_role_groups WHERE name IN ('Судьи в поле','Судьи в бригаде','Руководство');"
     );
     if (Number(existing[0].cnt) > 0) return;
 
