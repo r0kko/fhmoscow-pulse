@@ -10,6 +10,7 @@ import {
   Club,
   Tournament,
   TournamentType,
+  ScheduleManagementType,
   TournamentGroup,
   Tour,
   MatchAgreement,
@@ -23,6 +24,8 @@ import {
   resolveMatchAccessContext,
   evaluateStaffMatchRestrictions,
   ensureParticipantOrThrow,
+  evaluateScheduleManagementRestrictions,
+  mergeMatchRestrictions,
 } from '../utils/matchAccess.js';
 
 import externalSync from './externalMatchSyncService.js';
@@ -112,10 +115,20 @@ async function ensureUserSide(userId, match) {
   return context;
 }
 
-function assertAgreementsAllowed(context) {
-  const restrictions = evaluateStaffMatchRestrictions(context);
+function assertAgreementsAllowed(context, match = null) {
+  const staffRestrictions = evaluateStaffMatchRestrictions(context);
+  const scheduleRestrictions = evaluateScheduleManagementRestrictions(
+    match || context?.match
+  );
+  const restrictions = mergeMatchRestrictions(
+    staffRestrictions,
+    scheduleRestrictions
+  );
   if (restrictions.agreementsBlocked) {
-    throw new ServiceError('staff_position_restricted', 403);
+    throw new ServiceError(
+      restrictions.agreementsBlockedReason || 'staff_position_restricted',
+      403
+    );
   }
   return restrictions;
 }
@@ -193,7 +206,13 @@ async function ensureMatchWithStatus(matchOrId) {
   if (typeof matchOrId === 'object') {
     if (matchOrId.GameStatus) return matchOrId;
     const reloaded = await Match.findByPk(matchOrId.id, {
-      include: [GameStatus],
+      include: [
+        GameStatus,
+        {
+          model: Tournament,
+          include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
+        },
+      ],
     });
     if (reloaded?.GameStatus) {
       try {
@@ -215,7 +234,15 @@ async function ensureMatchWithStatus(matchOrId) {
     }
     return matchOrId;
   }
-  return Match.findByPk(matchOrId, { include: [GameStatus] });
+  return Match.findByPk(matchOrId, {
+    include: [
+      GameStatus,
+      {
+        model: Tournament,
+        include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
+      },
+    ],
+  });
 }
 
 async function create(matchId, payload, actorId) {
@@ -234,7 +261,10 @@ async function create(matchId, payload, actorId) {
       { model: Ground },
       {
         model: Tournament,
-        include: [{ model: TournamentType }],
+        include: [
+          { model: TournamentType },
+          { model: ScheduleManagementType, attributes: ['alias'] },
+        ],
       },
       { model: TournamentGroup },
       { model: Tour },
@@ -659,7 +689,10 @@ async function listAvailableGrounds(matchId, actorId) {
       },
       {
         model: Tournament,
-        include: [{ model: TournamentType }],
+        include: [
+          { model: TournamentType },
+          { model: ScheduleManagementType, attributes: ['alias'] },
+        ],
       },
       { model: GameStatus },
     ],

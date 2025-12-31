@@ -9,7 +9,11 @@ module.exports = {
         primaryKey: true,
       },
       name: { type: Sequelize.STRING(150), allowNull: false },
-      sort_order: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
+      sort_order: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },
@@ -51,7 +55,11 @@ module.exports = {
         onDelete: 'CASCADE',
       },
       name: { type: Sequelize.STRING(150), allowNull: false },
-      sort_order: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
+      sort_order: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
       created_by: {
         type: Sequelize.UUID,
         references: { model: 'users', key: 'id' },
@@ -154,7 +162,9 @@ module.exports = {
       'referee_roles',
       'uniq_referee_roles_group_name'
     );
-    await queryInterface.removeIndex('referee_roles', ['referee_role_group_id']);
+    await queryInterface.removeIndex('referee_roles', [
+      'referee_role_group_id',
+    ]);
     await queryInterface.dropTable('referee_roles');
 
     await queryInterface.removeIndex(

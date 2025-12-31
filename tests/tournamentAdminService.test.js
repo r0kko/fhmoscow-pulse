@@ -33,6 +33,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findAll: competitionFindAllMock,
     findByPk: competitionFindByPkMock,
   },
+  ScheduleManagementType: {},
   Stage: {
     findAll: stageFindAllMock,
     findAndCountAll: stageFindAndCountAllMock,

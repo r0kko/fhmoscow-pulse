@@ -49,6 +49,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Club: {},
   Tournament: {},
   TournamentType: {},
+  ScheduleManagementType: {},
   TournamentGroup: {},
   Tour: {},
   GameStatus: {},

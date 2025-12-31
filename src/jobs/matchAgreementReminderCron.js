@@ -12,6 +12,7 @@ import {
   Team,
   Ground,
   Tournament,
+  ScheduleManagementType,
   TournamentGroup,
   Tour,
   GameStatus,
@@ -21,6 +22,7 @@ import {
 import emailService from '../services/emailService.js';
 import { listUsersForTeams } from '../services/teamService.js';
 import { utcToMoscow } from '../utils/time.js';
+import { isAgreementsBlockedBySchedule } from '../utils/scheduleManagement.js';
 
 function daysLeftMsk(dateUtc) {
   const now = utcToMoscow(new Date()) || new Date();
@@ -62,7 +64,13 @@ export async function runMatchAgreementReminders() {
               { model: Team, as: 'HomeTeam', attributes: ['name'] },
               { model: Team, as: 'AwayTeam', attributes: ['name'] },
               { model: Ground, attributes: ['name'] },
-              { model: Tournament, attributes: ['name'] },
+              {
+                model: Tournament,
+                attributes: ['name'],
+                include: [
+                  { model: ScheduleManagementType, attributes: ['alias'] },
+                ],
+              },
               { model: TournamentGroup, attributes: ['name'] },
               { model: Tour, attributes: ['name'] },
               { model: GameStatus, attributes: ['alias'] },
@@ -145,6 +153,7 @@ export async function runMatchAgreementReminders() {
 
           // Section A: Assign time (no proposal) — only when < 7 days left, daily at 09:00
           for (const m of matches) {
+            if (isAgreementsBlockedBySchedule(m)) continue;
             const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
             if (
               statusAlias === 'CANCELLED' ||
@@ -184,6 +193,7 @@ export async function runMatchAgreementReminders() {
             if (p.decision_reminded_at) continue; // already reminded once
             const m = matches.find((mm) => mm.id === p.match_id);
             if (!m) continue;
+            if (isAgreementsBlockedBySchedule(m)) continue;
             const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
             if (
               statusAlias === 'CANCELLED' ||

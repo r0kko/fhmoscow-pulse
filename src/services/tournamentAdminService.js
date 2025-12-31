@@ -4,6 +4,7 @@ import {
   Tournament,
   TournamentType,
   CompetitionType,
+  ScheduleManagementType,
   Stage,
   TournamentGroup,
   TournamentTeam,
@@ -53,6 +54,7 @@ async function listTournaments({
 
   const include = [{ model: Season }, { model: TournamentType }];
   include.push({ model: CompetitionType });
+  include.push({ model: ScheduleManagementType });
   const { rows, count } = await Tournament.findAndCountAll({
     include,
     where,
@@ -279,6 +281,9 @@ export default {
   async listCompetitionTypes() {
     return CompetitionType.findAll({ order: [['name', 'ASC']] });
   },
+  async listScheduleManagementTypes() {
+    return ScheduleManagementType.findAll({ order: [['name', 'ASC']] });
+  },
   listTournaments,
   listStages,
   listGroups,
@@ -298,6 +303,16 @@ export default {
       const type = await TournamentType.findByPk(typeId);
       if (!type) throw new ServiceError('tournament_type_not_found', 404);
     }
+
+    const scheduleManagementTypeId = data.schedule_management_type_id || null;
+    if (!scheduleManagementTypeId) {
+      throw new ServiceError('schedule_management_type_required', 400);
+    }
+    const scheduleManagementType = await ScheduleManagementType.findByPk(
+      scheduleManagementTypeId
+    );
+    if (!scheduleManagementType)
+      throw new ServiceError('schedule_management_type_not_found', 404);
 
     let competitionTypeId = null;
     if (data.competition_type_id !== undefined) {
@@ -337,6 +352,7 @@ export default {
       season_id: seasonId,
       type_id: typeId,
       competition_type_id: competitionTypeId,
+      schedule_management_type_id: scheduleManagementTypeId,
       match_format: matchFormat ?? null,
       referee_payment_type: refereePaymentType ?? null,
       created_by: actorId,
@@ -357,6 +373,19 @@ export default {
           throw new ServiceError('competition_type_not_found', 404);
       }
       updates.competition_type_id = competitionTypeId;
+    }
+
+    if (data.schedule_management_type_id !== undefined) {
+      const scheduleManagementTypeId = data.schedule_management_type_id || null;
+      if (!scheduleManagementTypeId) {
+        throw new ServiceError('schedule_management_type_required', 400);
+      }
+      const scheduleManagementType = await ScheduleManagementType.findByPk(
+        scheduleManagementTypeId
+      );
+      if (!scheduleManagementType)
+        throw new ServiceError('schedule_management_type_not_found', 404);
+      updates.schedule_management_type_id = scheduleManagementTypeId;
     }
 
     if (data.match_format !== undefined) {

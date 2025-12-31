@@ -60,8 +60,7 @@ export default function requireSportSchoolManager({
       }
 
       const scope = resolveScope(req);
-      const isAdmin =
-        scope.isAdmin || hasAdminRole(scope.roles || []) || false;
+      const isAdmin = scope.isAdmin || hasAdminRole(scope.roles || []) || false;
       if (isAdmin) return next();
 
       if (!scope.isStaff) {

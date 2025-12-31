@@ -2,6 +2,7 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const listTypesMock = jest.fn();
 const listCompetitionTypesMock = jest.fn();
+const listScheduleManagementTypesMock = jest.fn();
 const listTournamentsMock = jest.fn();
 const listStagesMock = jest.fn();
 const listGroupsMock = jest.fn();
@@ -12,6 +13,7 @@ const sendErrorMock = jest.fn();
 beforeEach(() => {
   listTypesMock.mockReset();
   listCompetitionTypesMock.mockReset();
+  listScheduleManagementTypesMock.mockReset();
   listTournamentsMock.mockReset();
   listStagesMock.mockReset();
   listGroupsMock.mockReset();
@@ -25,6 +27,7 @@ jest.unstable_mockModule('../src/services/tournamentAdminService.js', () => ({
   default: {
     listTypes: listTypesMock,
     listCompetitionTypes: listCompetitionTypesMock,
+    listScheduleManagementTypes: listScheduleManagementTypesMock,
     listTournaments: listTournamentsMock,
     listStages: listStagesMock,
     listGroups: listGroupsMock,
@@ -39,6 +42,7 @@ const toPublicGroup = jest.fn((x) => x);
 const toPublicTournamentTeam = jest.fn((x) => x);
 const toPublicType = jest.fn((x) => x);
 const toPublicCompetitionType = jest.fn((x) => x);
+const toPublicScheduleManagementType = jest.fn((x) => x);
 
 jest.unstable_mockModule('../src/mappers/tournamentMapper.js', () => ({
   __esModule: true,
@@ -49,6 +53,7 @@ jest.unstable_mockModule('../src/mappers/tournamentMapper.js', () => ({
     toPublicTournamentTeam,
     toPublicType,
     toPublicCompetitionType,
+    toPublicScheduleManagementType,
   },
 }));
 
@@ -74,12 +79,15 @@ test('listTypes maps response', async () => {
 
 test('listSettingsOptions returns options', async () => {
   listCompetitionTypesMock.mockResolvedValue([{ id: 'c1' }]);
+  listScheduleManagementTypesMock.mockResolvedValue([{ id: 's1' }]);
   const res = mockRes();
   await controller.listSettingsOptions({}, res);
   expect(toPublicCompetitionType.mock.calls[0][0]).toEqual({ id: 'c1' });
+  expect(toPublicScheduleManagementType.mock.calls[0][0]).toEqual({ id: 's1' });
   expect(res.json).toHaveBeenCalledWith(
     expect.objectContaining({
       competition_types: [{ id: 'c1' }],
+      schedule_management_types: [{ id: 's1' }],
       match_formats: expect.any(Array),
       referee_payment_types: expect.any(Array),
     })

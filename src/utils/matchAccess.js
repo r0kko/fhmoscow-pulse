@@ -8,10 +8,16 @@ import {
   Role,
   UserClub,
   SportSchoolPosition,
+  Tournament,
+  ScheduleManagementType,
 } from '../models/index.js';
 
 import { hasAdminRole, hasStaffRole } from './roles.js';
 import { isSportSchoolManagerPosition } from './sportSchoolPositions.js';
+import {
+  SCHEDULE_MANAGEMENT_ALIASES,
+  resolveScheduleManagementAlias,
+} from './scheduleManagement.js';
 
 export const STAFF_POSITIONS = Object.freeze({
   COACH: 'COACH',
@@ -86,10 +92,22 @@ export async function resolveMatchAccessContext({ matchOrId, userId }) {
   let match = matchOrId || null;
   if (!match || typeof match !== 'object') {
     match = await Match.findByPk(matchOrId, {
-      attributes: ['id', 'team1_id', 'team2_id'],
+      attributes: ['id', 'team1_id', 'team2_id', 'tournament_id'],
       include: [
         { model: Team, as: 'HomeTeam', attributes: ['id', 'club_id'] },
         { model: Team, as: 'AwayTeam', attributes: ['id', 'club_id'] },
+        {
+          model: Tournament,
+          attributes: ['id', 'schedule_management_type_id'],
+          include: [
+            {
+              model: ScheduleManagementType,
+              attributes: ['alias'],
+              required: false,
+            },
+          ],
+          required: false,
+        },
       ],
     });
   }
@@ -267,13 +285,38 @@ export function evaluateStaffMatchRestrictions(
   };
 }
 
+export function evaluateScheduleManagementRestrictions(match) {
+  const alias = resolveScheduleManagementAlias(match);
+  const agreementsBlocked = alias === SCHEDULE_MANAGEMENT_ALIASES.ORGANIZER;
+  return {
+    agreementsBlocked,
+    agreementsBlockedReason: agreementsBlocked
+      ? 'schedule_managed_by_organizer'
+      : null,
+  };
+}
+
+export function mergeMatchRestrictions(base = {}, extra = {}) {
+  const merged = { ...base };
+  if (extra.agreementsBlocked) {
+    merged.agreementsBlocked = true;
+    merged.agreementsBlockedReason =
+      merged.agreementsBlockedReason || extra.agreementsBlockedReason || null;
+  }
+  if (extra.lineupsBlocked) merged.lineupsBlocked = true;
+  return merged;
+}
+
 export function buildPermissionPayload(restrictions, context = null) {
   const res = restrictions || {};
   const ctx = context || {};
+  const agreementsReason =
+    res.agreementsBlockedReason ||
+    (res.agreementsBlocked ? 'staff_position_restricted' : null);
   return {
     agreements: {
       allowed: !res.agreementsBlocked,
-      reason: res.agreementsBlocked ? 'staff_position_restricted' : null,
+      reason: agreementsReason,
     },
     lineups: {
       allowed: !res.lineupsBlocked,

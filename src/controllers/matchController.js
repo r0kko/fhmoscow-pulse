@@ -3,6 +3,8 @@ import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import {
   resolveMatchAccessContext,
   evaluateStaffMatchRestrictions,
+  evaluateScheduleManagementRestrictions,
+  mergeMatchRestrictions,
   buildPermissionPayload,
 } from '../utils/matchAccess.js';
 
@@ -117,6 +119,7 @@ export async function get(req, res, next) {
       Stage,
       Address,
       TournamentType,
+      ScheduleManagementType,
       Club,
       GameStatus,
       MatchBroadcastLink,
@@ -162,7 +165,10 @@ export async function get(req, res, next) {
         {
           model: Tournament,
           attributes: ['name', 'type_id'],
-          include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+          include: [
+            { model: TournamentType, attributes: ['double_protocol'] },
+            { model: ScheduleManagementType, attributes: ['alias', 'name'] },
+          ],
         },
         { model: Stage, attributes: ['name'] },
         { model: TournamentGroup, attributes: ['name'] },
@@ -181,14 +187,25 @@ export async function get(req, res, next) {
         matchOrId: m,
         userId: req.user.id,
       });
-      restrictions = evaluateStaffMatchRestrictions(context);
+      const staffRestrictions = evaluateStaffMatchRestrictions(context);
+      const scheduleRestrictions = evaluateScheduleManagementRestrictions(m);
+      restrictions = mergeMatchRestrictions(
+        staffRestrictions,
+        scheduleRestrictions
+      );
     } catch (err) {
       if (err?.code === 'user_not_found') {
         context = null;
-        restrictions = null;
+        restrictions = mergeMatchRestrictions(
+          {},
+          evaluateScheduleManagementRestrictions(m)
+        );
       } else {
         context = null;
-        restrictions = null;
+        restrictions = mergeMatchRestrictions(
+          {},
+          evaluateScheduleManagementRestrictions(m)
+        );
       }
     }
     const isHome = context?.isHome || false;

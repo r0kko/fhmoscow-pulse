@@ -13,6 +13,7 @@ import {
   MatchPlayer,
   Tournament,
   TournamentType,
+  ScheduleManagementType,
   Stage,
   TournamentGroup,
   Tour,
@@ -20,6 +21,8 @@ import {
 import {
   resolveMatchAccessContext,
   evaluateStaffMatchRestrictions,
+  evaluateScheduleManagementRestrictions,
+  mergeMatchRestrictions,
   buildPermissionPayload,
 } from '../utils/matchAccess.js';
 
@@ -40,7 +43,10 @@ async function loadActorContext(match, actorUserId) {
     matchOrId: match,
     userId: actorUserId,
   });
-  const restrictions = evaluateStaffMatchRestrictions(context);
+  const restrictions = mergeMatchRestrictions(
+    evaluateStaffMatchRestrictions(context),
+    evaluateScheduleManagementRestrictions(match)
+  );
   const isAdmin = context.isAdmin || false;
   if (!context.isHome && !context.isAway && !isAdmin) {
     const err = new Error('forbidden_not_match_member');
@@ -87,7 +93,10 @@ async function list(matchId, actorUserId) {
       {
         model: Tournament,
         attributes: ['name', 'type_id'],
-        include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+        include: [
+          { model: TournamentType, attributes: ['double_protocol'] },
+          { model: ScheduleManagementType, attributes: ['alias', 'name'] },
+        ],
       },
       { model: Stage, attributes: ['name'] },
       { model: TournamentGroup, attributes: ['name'] },
@@ -221,7 +230,10 @@ async function set(
       {
         model: Tournament,
         attributes: ['id', 'type_id'],
-        include: [{ model: TournamentType, attributes: ['double_protocol'] }],
+        include: [
+          { model: TournamentType, attributes: ['double_protocol'] },
+          { model: ScheduleManagementType, attributes: ['alias', 'name'] },
+        ],
       },
     ],
   });

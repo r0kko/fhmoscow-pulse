@@ -16,6 +16,7 @@ const search = ref(route.query.q || '');
 const seasonOptions = ref([]);
 const tournamentTypeOptions = ref([]);
 const competitionTypeOptions = ref([]);
+const scheduleManagementOptions = ref([]);
 const matchFormatOptions = ref([]);
 const refereePaymentOptions = ref([]);
 const selectedSeasonId = ref(String(route.query.season_id || ''));
@@ -43,6 +44,7 @@ const createTournamentForm = ref({
   season_id: '',
   type_id: '',
   competition_type_id: '',
+  schedule_management_type_id: '',
   match_format: '',
   referee_payment_type: '',
 });
@@ -240,6 +242,9 @@ function resetMainSettings() {
   const tournament = detailTournament.value;
   mainSettings.value = {
     competition_type_id: tournament?.competition_type_id || '',
+    schedule_management_type_id:
+      tournament?.schedule_management_type_id ||
+      resolveDefaultScheduleManagementId(),
     match_format: tournament?.match_format || '',
     referee_payment_type: tournament?.referee_payment_type || '',
     dirty: false,
@@ -256,6 +261,7 @@ const settingsEdits = ref({});
 const settingsOpenStageId = ref(null);
 const mainSettings = ref({
   competition_type_id: '',
+  schedule_management_type_id: '',
   match_format: '',
   referee_payment_type: '',
   dirty: false,
@@ -332,6 +338,12 @@ function matchesSearch(value, term) {
   return String(value || '')
     .toLowerCase()
     .includes(term);
+}
+
+function resolveDefaultScheduleManagementId() {
+  const options = scheduleManagementOptions.value || [];
+  const preferred = options.find((o) => o.alias === 'PARTICIPANTS');
+  return preferred?.id || options[0]?.id || '';
 }
 
 function formatDurationMinutes(total) {
@@ -525,11 +537,17 @@ async function saveGroupSettings(group) {
 
 async function saveMainSettings() {
   if (!detailTournament.value || mainSettings.value.saving) return;
+  if (!mainSettings.value.schedule_management_type_id) {
+    mainSettings.value.error = 'Укажите управление расписанием';
+    return;
+  }
   mainSettings.value.saving = true;
   mainSettings.value.error = '';
   try {
     const payload = {
       competition_type_id: mainSettings.value.competition_type_id || null,
+      schedule_management_type_id:
+        mainSettings.value.schedule_management_type_id || null,
       match_format: mainSettings.value.match_format || null,
       referee_payment_type: mainSettings.value.referee_payment_type || null,
     };
@@ -598,6 +616,7 @@ function resetCreateTournamentForm() {
     season_id: selectedSeasonId.value || '',
     type_id: '',
     competition_type_id: '',
+    schedule_management_type_id: resolveDefaultScheduleManagementId(),
     match_format: '',
     referee_payment_type: '',
   };
@@ -618,6 +637,10 @@ async function submitCreateTournament() {
     createTournamentError.value = 'Укажите название турнира';
     return;
   }
+  if (!createTournamentForm.value.schedule_management_type_id) {
+    createTournamentError.value = 'Укажите управление расписанием';
+    return;
+  }
   createTournamentLoading.value = true;
   createTournamentError.value = '';
   try {
@@ -631,6 +654,9 @@ async function submitCreateTournament() {
     if (createTournamentForm.value.competition_type_id)
       payload.competition_type_id =
         createTournamentForm.value.competition_type_id;
+    if (createTournamentForm.value.schedule_management_type_id)
+      payload.schedule_management_type_id =
+        createTournamentForm.value.schedule_management_type_id;
     if (createTournamentForm.value.match_format)
       payload.match_format = createTournamentForm.value.match_format;
     if (createTournamentForm.value.referee_payment_type)
@@ -833,6 +859,13 @@ async function loadFilters() {
         name: t.name,
       })
     );
+    scheduleManagementOptions.value = (
+      settingsRes.schedule_management_types || []
+    ).map((t) => ({
+      id: t.id,
+      name: t.name,
+      alias: t.alias,
+    }));
     matchFormatOptions.value = settingsRes.match_formats || [];
     refereePaymentOptions.value = settingsRes.referee_payment_types || [];
     if (!selectedSeasonId.value && activeRes?.season?.id) {
@@ -1108,6 +1141,22 @@ watch(search, () => {
                         :value="t.id"
                       >
                         {{ t.name }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <label class="form-label">Управление расписанием</label>
+                    <select
+                      v-model="createTournamentForm.schedule_management_type_id"
+                      class="form-select"
+                    >
+                      <option value="">Выберите вариант</option>
+                      <option
+                        v-for="option in scheduleManagementOptions"
+                        :key="option.id"
+                        :value="option.id"
+                      >
+                        {{ option.name }}
                       </option>
                     </select>
                   </div>
@@ -1725,6 +1774,29 @@ watch(search, () => {
                             :value="t.id"
                           >
                             {{ t.name }}
+                          </option>
+                        </select>
+                      </div>
+                      <div class="col-12 col-lg-4">
+                        <label class="form-label">Управление расписанием</label>
+                        <select
+                          v-model="mainSettings.schedule_management_type_id"
+                          class="form-select"
+                          :disabled="mainSettings.saving"
+                          @change="
+                            () => {
+                              mainSettings.dirty = true;
+                              mainSettings.error = '';
+                            }
+                          "
+                        >
+                          <option value="">Выберите вариант</option>
+                          <option
+                            v-for="option in scheduleManagementOptions"
+                            :key="option.id"
+                            :value="option.id"
+                          >
+                            {{ option.name }}
                           </option>
                         </select>
                       </div>

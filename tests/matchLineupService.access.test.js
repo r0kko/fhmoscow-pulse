@@ -24,6 +24,7 @@ beforeEach(async () => {
     MatchPlayer: { findAll: jest.fn() },
     Tournament: {},
     TournamentType: {},
+    ScheduleManagementType: {},
     Stage: {},
     TournamentGroup: {},
     Tour: {},
@@ -38,6 +39,21 @@ beforeEach(async () => {
     __esModule: true,
     resolveMatchAccessContext: resolveMatchAccessContextMock,
     evaluateStaffMatchRestrictions: evaluateStaffMatchRestrictionsMock,
+    evaluateScheduleManagementRestrictions: jest
+      .fn()
+      .mockReturnValue({ lineupsBlocked: false, agreementsBlocked: false }),
+    mergeMatchRestrictions: jest.fn((staff = {}, schedule = {}) => {
+      const merged = { ...staff };
+      if (schedule.agreementsBlocked) {
+        merged.agreementsBlocked = true;
+        merged.agreementsBlockedReason =
+          merged.agreementsBlockedReason ||
+          schedule.agreementsBlockedReason ||
+          null;
+      }
+      if (schedule.lineupsBlocked) merged.lineupsBlocked = true;
+      return merged;
+    }),
     buildPermissionPayload: buildPermissionPayloadMock,
   }));
 

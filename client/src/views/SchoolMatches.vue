@@ -68,6 +68,7 @@ const filteredAway = computed(() => filterByQuery(awayMatches.value));
 
 // Attention indicators for tabs (pending or urgent agreements)
 function needsAttention(m) {
+  if (m?.agreements_allowed === false) return false;
   const alias = (m?.status?.alias || '').toUpperCase();
   const schedulable = !['CANCELLED', 'FINISHED', 'LIVE'].includes(alias);
   const agreed = Boolean(m?.agreement_accepted);

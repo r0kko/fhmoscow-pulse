@@ -35,9 +35,8 @@ jest.unstable_mockModule('../src/utils/api.js', () => ({
   sendError: sendErrorMock,
 }));
 
-const { default: controller } = await import(
-  '../src/controllers/refereeAssignmentAdminController.js'
-);
+const { default: controller } =
+  await import('../src/controllers/refereeAssignmentAdminController.js');
 
 function mockRes() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };

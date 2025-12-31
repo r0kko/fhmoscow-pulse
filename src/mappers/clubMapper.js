@@ -32,7 +32,8 @@ export default {
         null;
       const alias =
         position?.alias || membership.sport_school_position_alias || null;
-      const name = position?.name || membership.sport_school_position_name || null;
+      const name =
+        position?.name || membership.sport_school_position_name || null;
       if (alias) out.sport_school_position_alias = alias;
       if (name) out.sport_school_position_name = name;
     }

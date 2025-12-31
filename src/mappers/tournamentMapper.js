@@ -17,6 +17,15 @@ export default {
       name: plain.name,
     };
   },
+  toPublicScheduleManagementType(t) {
+    if (!t) return null;
+    const plain = typeof t.get === 'function' ? t.get({ plain: true }) : t;
+    return {
+      id: plain.id,
+      alias: plain.alias,
+      name: plain.name,
+    };
+  },
 
   toPublicTournament(t) {
     if (!t) return null;
@@ -29,6 +38,7 @@ export default {
       season_id: t.season_id || null,
       type_id: t.type_id || null,
       competition_type_id: t.competition_type_id || null,
+      schedule_management_type_id: t.schedule_management_type_id || null,
       match_format: t.match_format || null,
       referee_payment_type: t.referee_payment_type || null,
     };
@@ -47,6 +57,13 @@ export default {
         id: t.CompetitionType.id,
         alias: t.CompetitionType.alias,
         name: t.CompetitionType.name,
+      };
+    }
+    if (t.ScheduleManagementType) {
+      out.schedule_management_type = {
+        id: t.ScheduleManagementType.id,
+        alias: t.ScheduleManagementType.alias,
+        name: t.ScheduleManagementType.name,
       };
     }
     if (t.counts) out.counts = t.counts;
@@ -130,7 +147,8 @@ export default {
 
   toPublicRefereeRoleGroup(group) {
     if (!group) return null;
-    const plain = typeof group.get === 'function' ? group.get({ plain: true }) : group;
+    const plain =
+      typeof group.get === 'function' ? group.get({ plain: true }) : group;
     return {
       id: plain.id,
       name: plain.name,

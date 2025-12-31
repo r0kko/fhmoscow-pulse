@@ -54,6 +54,7 @@ interface CalendarMatch {
   urgent_unagreed?: boolean;
   agreement_accepted?: boolean;
   agreement_pending?: boolean;
+  agreements_allowed?: boolean;
   status?: { alias?: string | null; name?: string | null } | null;
   technical_winner?: string | null;
   score_team1?: number | null;
@@ -236,6 +237,7 @@ const matchesAfterSearch = computed<CalendarMatch[]>(() => {
 
 function isAttentionMatch(match: CalendarMatch): boolean {
   if (!match) return false;
+  if (match.agreements_allowed === false) return false;
   if (match.urgent_unagreed) return true;
   const alias = (match.status?.alias || '').toUpperCase();
   const schedulable = !['CANCELLED', 'FINISHED', 'LIVE'].includes(alias);

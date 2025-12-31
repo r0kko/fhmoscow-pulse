@@ -68,6 +68,7 @@ import TicketFile from './ticketFile.js';
 import Team from './team.js';
 import TournamentType from './tournamentType.js';
 import CompetitionType from './competitionType.js';
+import ScheduleManagementType from './scheduleManagementType.js';
 import Tournament from './tournament.js';
 import Stage from './stage.js';
 import TournamentGroup from './tournamentGroup.js';
@@ -367,6 +368,12 @@ TournamentType.hasMany(Tournament, { foreignKey: 'type_id' });
 Tournament.belongsTo(TournamentType, { foreignKey: 'type_id' });
 CompetitionType.hasMany(Tournament, { foreignKey: 'competition_type_id' });
 Tournament.belongsTo(CompetitionType, { foreignKey: 'competition_type_id' });
+ScheduleManagementType.hasMany(Tournament, {
+  foreignKey: 'schedule_management_type_id',
+});
+Tournament.belongsTo(ScheduleManagementType, {
+  foreignKey: 'schedule_management_type_id',
+});
 Season.hasMany(Tournament, { foreignKey: 'season_id' });
 Tournament.belongsTo(Season, { foreignKey: 'season_id' });
 
@@ -750,6 +757,7 @@ export {
   Tournament,
   TournamentType,
   CompetitionType,
+  ScheduleManagementType,
   Stage,
   TournamentGroup,
   TournamentTeam,

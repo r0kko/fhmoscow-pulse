@@ -16,12 +16,7 @@ import {
 
 const router = express.Router();
 
-router.get(
-  '/role-groups',
-  auth,
-  authorize('ADMIN'),
-  controller.listRoleGroups
-);
+router.get('/role-groups', auth, authorize('ADMIN'), controller.listRoleGroups);
 router.get(
   '/matches',
   auth,
@@ -68,12 +63,7 @@ router.get(
   validate,
   selfController.listMyAssignments
 );
-router.get(
-  '/my/dates',
-  auth,
-  authorize('REFEREE'),
-  selfController.listMyDates
-);
+router.get('/my/dates', auth, authorize('REFEREE'), selfController.listMyDates);
 router.post(
   '/my/confirm',
   auth,

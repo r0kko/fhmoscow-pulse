@@ -10,6 +10,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Team: { findAll: jest.fn() },
   Ground: {},
   Tournament: {},
+  ScheduleManagementType: {},
   TournamentGroup: {},
   Tour: {},
   Season: {},

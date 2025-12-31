@@ -5,13 +5,7 @@ const { randomUUID } = require('crypto');
 module.exports = {
   async up(queryInterface) {
     const now = new Date();
-    const aliases = [
-      'YOUTH',
-      'AMATEUR',
-      'STUDENT',
-      'PRO',
-      'COMMERCIAL',
-    ];
+    const aliases = ['YOUTH', 'AMATEUR', 'STUDENT', 'PRO', 'COMMERCIAL'];
     const [existing] = await queryInterface.sequelize.query(
       'SELECT COUNT(*) AS cnt FROM competition_types WHERE alias IN (:aliases);',
       { replacements: { aliases } }

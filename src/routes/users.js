@@ -70,11 +70,7 @@ router.get('/me', auth, (req, res) => {
  *       200:
  *         description: Links summary
  */
-router.get(
-  '/me/sport-schools',
-  auth,
-  sportSchoolSelfController.getLinks
-);
+router.get('/me/sport-schools', auth, sportSchoolSelfController.getLinks);
 
 /**
  * @swagger

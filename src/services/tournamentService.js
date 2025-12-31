@@ -11,6 +11,7 @@ import {
   Season,
   Team,
   Ground,
+  ScheduleManagementType,
 } from '../models/index.js';
 import { MatchBroadcastLink } from '../models/index.js';
 import { MatchAgreement } from '../models/index.js';
@@ -35,6 +36,7 @@ import {
 } from '../utils/sync.js';
 import { GameStatus } from '../models/index.js';
 import { computeTechnicalWinner } from '../utils/technical.js';
+import { SCHEDULE_MANAGEMENT_ALIASES } from '../utils/scheduleManagement.js';
 
 function emptyStats() {
   return {
@@ -208,6 +210,13 @@ async function syncTournaments(actorId = null, { fullResync } = {}) {
   const seasonIdByExt = new Map(seasons.map((s) => [s.external_id, s.id]));
   const typeIdByExt = new Map(types.map((t) => [t.external_id, t.id]));
 
+  const defaultScheduleManagement = await ScheduleManagementType.findOne({
+    where: { alias: SCHEDULE_MANAGEMENT_ALIASES.PARTICIPANTS },
+  });
+  if (!defaultScheduleManagement) {
+    throw new Error('schedule_management_type_missing');
+  }
+
   await sequelize.transaction(async (tx) => {
     const locals = knownIds.length
       ? await Tournament.findAll({
@@ -225,6 +234,7 @@ async function syncTournaments(actorId = null, { fullResync } = {}) {
         birth_year: t.year_of_birth || null,
         season_id: seasonIdByExt.get(t.season_id) || null,
         type_id: typeIdByExt.get(t.type_id) || null,
+        schedule_management_type_id: defaultScheduleManagement?.id || null,
       };
       const local = localByExt.get(t.id);
       if (!local) {
@@ -254,6 +264,13 @@ async function syncTournaments(actorId = null, { fullResync } = {}) {
       if (local.season_id !== desired.season_id)
         updates.season_id = desired.season_id;
       if (local.type_id !== desired.type_id) updates.type_id = desired.type_id;
+      if (
+        !local.schedule_management_type_id &&
+        desired.schedule_management_type_id
+      ) {
+        updates.schedule_management_type_id =
+          desired.schedule_management_type_id;
+      }
       if (Object.keys(updates).length) {
         updates.updated_by = actorId;
         await local.update(updates, { transaction: tx });
@@ -272,6 +289,7 @@ async function syncTournaments(actorId = null, { fullResync } = {}) {
         birth_year: t.year_of_birth || null,
         season_id: seasonIdByExt.get(t.season_id) || null,
         type_id: typeIdByExt.get(t.type_id) || null,
+        schedule_management_type_id: defaultScheduleManagement?.id || null,
       }),
       actorId,
       tx

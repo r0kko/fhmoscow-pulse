@@ -152,16 +152,11 @@ function availabilityAllowsInterval(availability, startSeconds, endSeconds) {
   if (mode === 'AFTER') return from !== null && startSeconds >= from;
   if (mode === 'WINDOW')
     return (
-      from !== null &&
-      to !== null &&
-      startSeconds >= from &&
-      endSeconds <= to
+      from !== null && to !== null && startSeconds >= from && endSeconds <= to
     );
   if (mode === 'SPLIT')
     return (
-      from !== null &&
-      to !== null &&
-      (endSeconds <= to || startSeconds >= from)
+      from !== null && to !== null && (endSeconds <= to || startSeconds >= from)
     );
 
   if (from !== null && to !== null) {
@@ -315,7 +310,10 @@ export async function listMatchesByDate(dateKey) {
     include: [
       { model: Tournament, attributes: ['id', 'name', 'full_name'] },
       { model: Stage, attributes: ['id', 'name'] },
-      { model: TournamentGroup, attributes: ['id', 'name', 'match_duration_minutes'] },
+      {
+        model: TournamentGroup,
+        attributes: ['id', 'name', 'match_duration_minutes'],
+      },
       { model: Tour, attributes: ['id', 'name'] },
       { model: Ground, attributes: ['id', 'name'] },
       {
@@ -335,9 +333,7 @@ export async function listMatchesByDate(dateKey) {
   });
 
   const matchIds = matches.map((m) => m.id);
-  const groupIds = matches
-    .map((m) => m.tournament_group_id)
-    .filter(Boolean);
+  const groupIds = matches.map((m) => m.tournament_group_id).filter(Boolean);
 
   const requirementsRaw = groupIds.length
     ? await TournamentGroupReferee.findAll({
@@ -415,9 +411,7 @@ export async function listMatchesByDate(dateKey) {
           )
         : null;
     const assignments = assignmentsByMatch.get(m.id) || [];
-    const hasDraft = assignments.some(
-      (a) => a.status === DRAFT_STATUS_ALIAS
-    );
+    const hasDraft = assignments.some((a) => a.status === DRAFT_STATUS_ALIAS);
     const hasPublished = assignments.some(
       (a) => a.status === PUBLISHED_STATUS_ALIAS
     );
@@ -435,7 +429,9 @@ export async function listMatchesByDate(dateKey) {
       msk_date: mskDate,
       msk_start_time: startTime,
       msk_end_time: endTime,
-      duration_minutes: Number.isFinite(durationMinutes) ? durationMinutes : null,
+      duration_minutes: Number.isFinite(durationMinutes)
+        ? durationMinutes
+        : null,
       schedule_missing: scheduleMissing,
       duration_missing: durationMissing,
       tournament: m.Tournament
@@ -468,7 +464,8 @@ export async function listMatchesByDate(dateKey) {
           }
         : null,
       year: matchYear,
-      referee_requirements: requirementsByGroup.get(m.tournament_group_id) || [],
+      referee_requirements:
+        requirementsByGroup.get(m.tournament_group_id) || [],
       assignments,
       draft_clear_group_ids: draftClearByMatch.get(m.id) || [],
       has_draft: hasDraft,
@@ -524,7 +521,11 @@ export async function listRefereesByDate({
   });
 
   const userIds = users.map((u) => u.id);
-  const availRecords = await listAvailabilities(userIds, normalized, normalized);
+  const availRecords = await listAvailabilities(
+    userIds,
+    normalized,
+    normalized
+  );
   const availMap = new Map();
   for (const rec of availRecords) {
     availMap.set(rec.user_id, {
@@ -537,15 +538,13 @@ export async function listRefereesByDate({
   }
 
   const referees = users.map((u) => {
-    const availability =
-      availMap.get(u.id) ||
-      ({
-        status: 'FREE',
-        from_time: null,
-        to_time: null,
-        partial_mode: null,
-        preset: false,
-      });
+    const availability = availMap.get(u.id) || {
+      status: 'FREE',
+      from_time: null,
+      to_time: null,
+      partial_mode: null,
+      preset: false,
+    };
     return formatUser(u, availability);
   });
 
@@ -662,7 +661,9 @@ export async function listAssignmentsForUser(userId, dateKey) {
           {
             model: Ground,
             attributes: ['id', 'name', 'yandex_url'],
-            include: [{ model: Address, attributes: ['result', 'source', 'metro'] }],
+            include: [
+              { model: Address, attributes: ['result', 'source', 'metro'] },
+            ],
           },
           {
             model: Team,
@@ -699,7 +700,8 @@ export async function listAssignmentsForUser(userId, dateKey) {
       userRoleGroupIds.add(row.RefereeRole.referee_role_group_id);
     }
     if (!matchesById.has(match.id)) {
-      const durationMinutes = match.TournamentGroup?.match_duration_minutes ?? null;
+      const durationMinutes =
+        match.TournamentGroup?.match_duration_minutes ?? null;
       const durationMissing =
         !Number.isFinite(durationMinutes) || durationMinutes <= 0;
       const startTime = match.date_start
@@ -715,9 +717,7 @@ export async function listAssignmentsForUser(userId, dateKey) {
           : null;
       const mskDate = match.date_start ? moscowDateKey(match.date_start) : null;
       const address =
-        match.Ground?.Address?.result ||
-        match.Ground?.Address?.source ||
-        null;
+        match.Ground?.Address?.result || match.Ground?.Address?.source || null;
       const metro = Array.isArray(match.Ground?.Address?.metro)
         ? match.Ground.Address.metro
         : [];
@@ -728,7 +728,9 @@ export async function listAssignmentsForUser(userId, dateKey) {
         msk_date: mskDate,
         msk_start_time: startTime,
         msk_end_time: endTime,
-        duration_minutes: Number.isFinite(durationMinutes) ? durationMinutes : null,
+        duration_minutes: Number.isFinite(durationMinutes)
+          ? durationMinutes
+          : null,
         tournament: match.Tournament
           ? {
               id: match.Tournament.id,
@@ -736,7 +738,9 @@ export async function listAssignmentsForUser(userId, dateKey) {
               short_name: match.Tournament.name || match.Tournament.full_name,
             }
           : null,
-        stage: match.Stage ? { id: match.Stage.id, name: match.Stage.name } : null,
+        stage: match.Stage
+          ? { id: match.Stage.id, name: match.Stage.name }
+          : null,
         group: match.TournamentGroup
           ? { id: match.TournamentGroup.id, name: match.TournamentGroup.name }
           : null,
@@ -949,7 +953,9 @@ export async function updateMatchReferees(
   const statusInfo = await resolveAssignmentStatuses();
 
   const match = await Match.findByPk(matchId, {
-    include: [{ model: TournamentGroup, attributes: ['id', 'match_duration_minutes'] }],
+    include: [
+      { model: TournamentGroup, attributes: ['id', 'match_duration_minutes'] },
+    ],
   });
   if (!match) throw new ServiceError('match_not_found', 404);
   if (!match.date_start) throw new ServiceError('match_schedule_missing', 400);
@@ -963,6 +969,13 @@ export async function updateMatchReferees(
     where: { match_id: match.id, status_id: { [Op.in]: statusInfo.ids } },
     include: [{ model: RefereeRole, include: [RefereeRoleGroup] }],
   });
+  const draftClearRows = await MatchRefereeDraftClear.findAll({
+    where: { match_id: match.id },
+    attributes: ['referee_role_group_id'],
+  });
+  const clearedGroupIds = new Set(
+    draftClearRows.map((row) => row.referee_role_group_id).filter(Boolean)
+  );
 
   const uniqueAssignments = [];
   const roleCounts = new Map();
@@ -1090,7 +1103,10 @@ export async function updateMatchReferees(
           model: Match,
           required: true,
           where: {
-            date_start: { [Op.gte]: bounds.start, [Op.lt]: bounds.endExclusive },
+            date_start: {
+              [Op.gte]: bounds.start,
+              [Op.lt]: bounds.endExclusive,
+            },
           },
           include: [
             {
@@ -1102,8 +1118,27 @@ export async function updateMatchReferees(
       ],
     });
 
+    const draftRolesByMatch = new Map();
+    for (const assignment of otherAssignments) {
+      if (assignment.status_id !== statusInfo.draft.id) continue;
+      if (!draftRolesByMatch.has(assignment.match_id)) {
+        draftRolesByMatch.set(assignment.match_id, new Set());
+      }
+      if (assignment.referee_role_id) {
+        draftRolesByMatch
+          .get(assignment.match_id)
+          .add(assignment.referee_role_id);
+      }
+    }
+
     for (const assignment of otherAssignments) {
       if (assignment.match_id === match.id) continue;
+      if (assignment.status_id !== statusInfo.draft.id) {
+        const draftRoles = draftRolesByMatch.get(assignment.match_id);
+        if (draftRoles?.has(assignment.referee_role_id)) {
+          continue;
+        }
+      }
       const otherMatch = assignment.Match;
       if (!otherMatch?.date_start) continue;
       const otherDuration = otherMatch.TournamentGroup?.match_duration_minutes;
@@ -1118,15 +1153,36 @@ export async function updateMatchReferees(
     }
   }
 
-  const occupiedByOtherGroup = new Set(
-    existingAssignments
-      .filter(
-        (assignment) =>
-          assignment.RefereeRole?.referee_role_group_id !== roleGroup.id
-      )
-      .map((assignment) => assignment.user_id)
-      .filter(Boolean)
-  );
+  const assignmentsByGroup = new Map();
+  for (const assignment of existingAssignments) {
+    const groupId = assignment.RefereeRole?.referee_role_group_id;
+    if (!groupId) continue;
+    if (!assignmentsByGroup.has(groupId)) {
+      assignmentsByGroup.set(groupId, {
+        drafts: new Set(),
+        published: new Set(),
+      });
+    }
+    const bucket = assignmentsByGroup.get(groupId);
+    if (assignment.status_id === statusInfo.draft.id) {
+      if (assignment.user_id) bucket.drafts.add(assignment.user_id);
+      continue;
+    }
+    if (
+      assignment.status_id === statusInfo.published.id ||
+      assignment.status_id === statusInfo.confirmed?.id
+    ) {
+      if (assignment.user_id) bucket.published.add(assignment.user_id);
+    }
+  }
+
+  const occupiedByOtherGroup = new Set();
+  for (const [groupId, bucket] of assignmentsByGroup.entries()) {
+    if (groupId === roleGroup.id) continue;
+    const useDraft = clearedGroupIds.has(groupId) || bucket.drafts.size > 0;
+    const source = useDraft ? bucket.drafts : bucket.published;
+    source.forEach((id) => occupiedByOtherGroup.add(id));
+  }
   for (const userId of userIds) {
     if (occupiedByOtherGroup.has(userId)) {
       throw new ServiceError('referee_user_already_assigned', 400);
@@ -1198,7 +1254,10 @@ export async function updateMatchReferees(
     include: [
       { model: MatchRefereeStatus, required: false },
       { model: RefereeRole, include: [RefereeRoleGroup] },
-      { model: User, attributes: ['id', 'last_name', 'first_name', 'patronymic'] },
+      {
+        model: User,
+        attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+      },
     ],
   });
 
@@ -1276,7 +1335,10 @@ export async function publishMatchReferees(matchId, actorId) {
     include: [
       { model: MatchRefereeStatus, required: false },
       { model: RefereeRole, include: [RefereeRoleGroup] },
-      { model: User, attributes: ['id', 'last_name', 'first_name', 'patronymic'] },
+      {
+        model: User,
+        attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+      },
     ],
   });
 
@@ -1316,7 +1378,9 @@ export async function publishAssignmentsForDate(
       },
     },
     attributes: ['id', 'tournament_group_id', 'date_start'],
-    include: [{ model: TournamentGroup, attributes: ['match_duration_minutes'] }],
+    include: [
+      { model: TournamentGroup, attributes: ['match_duration_minutes'] },
+    ],
   });
 
   if (!matches.length) {
@@ -1361,24 +1425,6 @@ export async function publishAssignmentsForDate(
     roleIdsByGroupId.get(groupId).add(roleId);
   }
 
-  const allRoleIds = Array.from(
-    new Set(
-      Array.from(roleIdsByGroupId.values()).flatMap((set) =>
-        Array.from(set.values())
-      )
-    )
-  );
-
-  const assignments = matchIds.length && allRoleIds.length
-    ? await MatchReferee.findAll({
-        where: {
-          match_id: { [Op.in]: matchIds },
-          referee_role_id: { [Op.in]: allRoleIds },
-          status_id: { [Op.in]: statusInfo.ids },
-        },
-      })
-    : [];
-
   const requirementsByTournamentGroup = new Map();
   for (const req of requirementsRaw) {
     const tournamentGroupId = req.tournament_group_id;
@@ -1390,48 +1436,95 @@ export async function publishAssignmentsForDate(
     }
     const byRoleGroup = requirementsByTournamentGroup.get(tournamentGroupId);
     if (!byRoleGroup.has(roleGroupId)) {
-      byRoleGroup.set(roleGroupId, new Map());
+      byRoleGroup.set(roleGroupId, new Set());
     }
-    const roleMap = byRoleGroup.get(roleGroupId);
-    roleMap.set(roleId, req.count);
+    byRoleGroup.get(roleGroupId).add(roleId);
   }
 
-  const draftCountsByMatch = new Map();
+  const missingRoleGroups = uniqueGroupIds.filter(
+    (groupId) => !roleIdsByGroupId.get(groupId)?.size
+  );
+  if (missingRoleGroups.length) {
+    const roles = await RefereeRole.findAll({
+      where: { referee_role_group_id: { [Op.in]: missingRoleGroups } },
+      attributes: ['id', 'referee_role_group_id'],
+    });
+    for (const role of roles) {
+      const groupId = role.referee_role_group_id;
+      if (!groupId || !role.id) continue;
+      roleGroupByRoleId.set(role.id, groupId);
+      if (!roleIdsByGroupId.has(groupId)) {
+        roleIdsByGroupId.set(groupId, new Set());
+      }
+      roleIdsByGroupId.get(groupId).add(role.id);
+    }
+  }
+
+  const allRoleIds = Array.from(
+    new Set(
+      Array.from(roleIdsByGroupId.values()).flatMap((set) =>
+        Array.from(set.values())
+      )
+    )
+  );
+
+  const assignments =
+    matchIds.length && allRoleIds.length
+      ? await MatchReferee.findAll({
+          where: {
+            match_id: { [Op.in]: matchIds },
+            referee_role_id: { [Op.in]: allRoleIds },
+            status_id: { [Op.in]: statusInfo.ids },
+          },
+        })
+      : [];
+
+  const draftRolesByGroup = new Map();
+  const publishedUsersByGroup = new Map();
+  const ensureRoleUsers = (store, groupId, matchId) => {
+    if (!store.has(groupId)) {
+      store.set(groupId, new Map());
+    }
+    const byMatch = store.get(groupId);
+    if (!byMatch.has(matchId)) {
+      byMatch.set(matchId, new Map());
+    }
+    return byMatch.get(matchId);
+  };
+
   for (const assignment of assignments) {
-    if (assignment.status_id !== statusInfo.draft.id) continue;
     const roleGroupId = roleGroupByRoleId.get(assignment.referee_role_id);
     if (!roleGroupId) continue;
-    if (!draftCountsByMatch.has(assignment.match_id)) {
-      draftCountsByMatch.set(assignment.match_id, new Map());
+    const matchId = assignment.match_id;
+    const roleId = assignment.referee_role_id;
+    const userId = assignment.user_id;
+    if (assignment.status_id === statusInfo.draft.id) {
+      if (!draftRolesByGroup.has(roleGroupId)) {
+        draftRolesByGroup.set(roleGroupId, new Map());
+      }
+      const byMatch = draftRolesByGroup.get(roleGroupId);
+      if (!byMatch.has(matchId)) {
+        byMatch.set(matchId, new Set());
+      }
+      byMatch.get(matchId).add(roleId);
+      continue;
     }
-    const byGroup = draftCountsByMatch.get(assignment.match_id);
-    if (!byGroup.has(roleGroupId)) {
-      byGroup.set(roleGroupId, new Map());
+    if (
+      assignment.status_id === statusInfo.published.id ||
+      assignment.status_id === statusInfo.confirmed?.id
+    ) {
+      if (!userId) continue;
+      const roleUsers = ensureRoleUsers(
+        publishedUsersByGroup,
+        roleGroupId,
+        matchId
+      );
+      if (!roleUsers.has(roleId)) {
+        roleUsers.set(roleId, new Set());
+      }
+      roleUsers.get(roleId).add(userId);
     }
-    const roleMap = byGroup.get(roleGroupId);
-    roleMap.set(
-      assignment.referee_role_id,
-      (roleMap.get(assignment.referee_role_id) || 0) + 1
-    );
   }
-
-  const isCompleteForGroup = (matchId, roleGroupId) => {
-    const match = matchesById.get(matchId);
-    if (!match) return false;
-    const roleGroupMap = requirementsByTournamentGroup.get(
-      match.tournament_group_id
-    );
-    const requiredRoles = roleGroupMap?.get(roleGroupId);
-    if (!requiredRoles || requiredRoles.size === 0) return true;
-    const counts = draftCountsByMatch
-      .get(matchId)
-      ?.get(roleGroupId) || new Map();
-    for (const [roleId, required] of requiredRoles.entries()) {
-      const actual = counts.get(roleId) || 0;
-      if (actual !== required) return false;
-    }
-    return true;
-  };
 
   const clearMarkers = await MatchRefereeDraftClear.findAll({
     where: {
@@ -1453,11 +1546,11 @@ export async function publishAssignmentsForDate(
   for (const groupId of uniqueGroupIds) {
     matchesWithDraftsByGroup.set(groupId, new Set());
   }
-  for (const assignment of assignments) {
-    if (assignment.status_id !== statusInfo.draft.id) continue;
-    const groupId = roleGroupByRoleId.get(assignment.referee_role_id);
-    if (!groupId || !matchesWithDraftsByGroup.has(groupId)) continue;
-    matchesWithDraftsByGroup.get(groupId).add(assignment.match_id);
+  for (const [groupId, byMatch] of draftRolesByGroup.entries()) {
+    if (!matchesWithDraftsByGroup.has(groupId)) continue;
+    byMatch.forEach((_value, matchId) => {
+      matchesWithDraftsByGroup.get(groupId).add(matchId);
+    });
   }
 
   const publishedMatches = new Set();
@@ -1467,45 +1560,95 @@ export async function publishAssignmentsForDate(
       const publishMatchIds = Array.from(
         matchesWithDraftsByGroup.get(groupId) || []
       );
-      const completeMatchIds = publishMatchIds.filter((matchId) =>
-        isCompleteForGroup(matchId, groupId)
-      );
+      const publishRoleMap = draftRolesByGroup.get(groupId) || new Map();
+      const publishedUsersByMatch =
+        publishedUsersByGroup.get(groupId) || new Map();
       const clearMatchIds = Array.from(clearByGroup.get(groupId) || []);
-      if (completeMatchIds.length && roleIdList.length) {
-        completeMatchIds.forEach((id) => publishedMatches.add(id));
-        await MatchReferee.destroy({
-          where: {
-            match_id: { [Op.in]: completeMatchIds },
-            referee_role_id: { [Op.in]: roleIdList },
-            status_id: statusInfo.published.id,
-          },
-          force: true,
-          transaction: tx,
-        });
-        await MatchReferee.update(
-          {
-            status_id: statusInfo.published.id,
-            published_at: new Date(),
-            published_by: actorId,
-            updated_by: actorId,
-          },
-          {
-            where: {
-              match_id: { [Op.in]: completeMatchIds },
-              referee_role_id: { [Op.in]: roleIdList },
-              status_id: statusInfo.draft.id,
-            },
-            transaction: tx,
+      if (publishMatchIds.length) {
+        publishMatchIds.forEach((id) => publishedMatches.add(id));
+        for (const matchId of publishMatchIds) {
+          const match = matchesById.get(matchId);
+          const groupRequirements = match?.tournament_group_id
+            ? requirementsByTournamentGroup.get(match.tournament_group_id)
+            : null;
+          const roleIdsForMatch = groupRequirements?.has(groupId)
+            ? Array.from(groupRequirements.get(groupId).values())
+            : roleIdList;
+
+          const draftRoles = publishRoleMap.get(matchId) || new Set();
+          const replaceStatuses = [
+            statusInfo.published.id,
+            statusInfo.confirmed?.id,
+          ].filter(Boolean);
+
+          const roleIdsWithDraft = Array.from(draftRoles.values());
+          if (roleIdsWithDraft.length) {
+            await MatchReferee.destroy({
+              where: {
+                match_id: matchId,
+                referee_role_id: { [Op.in]: roleIdsWithDraft },
+                status_id: { [Op.in]: replaceStatuses },
+              },
+              force: true,
+              transaction: tx,
+            });
           }
-        );
+
+          const publishedUsersByRole =
+            publishedUsersByMatch.get(matchId) || new Map();
+          const rolesToClear = roleIdsForMatch.filter(
+            (roleId) => !draftRoles.has(roleId)
+          );
+          for (const roleId of rolesToClear) {
+            const publishedUsers = publishedUsersByRole.get(roleId);
+            if (!publishedUsers || !publishedUsers.size) continue;
+            await MatchReferee.destroy({
+              where: {
+                match_id: matchId,
+                referee_role_id: roleId,
+                user_id: Array.from(publishedUsers.values()),
+                status_id: { [Op.in]: replaceStatuses },
+              },
+              force: true,
+              transaction: tx,
+            });
+          }
+
+          if (roleIdsWithDraft.length) {
+            await MatchReferee.update(
+              {
+                status_id: statusInfo.published.id,
+                published_at: new Date(),
+                published_by: actorId,
+                updated_by: actorId,
+              },
+              {
+                where: {
+                  match_id: matchId,
+                  referee_role_id: { [Op.in]: roleIdsWithDraft },
+                  status_id: statusInfo.draft.id,
+                },
+                transaction: tx,
+              }
+            );
+          }
+        }
       }
       if (clearMatchIds.length) {
         clearMatchIds.forEach((id) => publishedMatches.add(id));
-        if (roleIdList.length) {
+        for (const matchId of clearMatchIds) {
+          const match = matchesById.get(matchId);
+          const groupRequirements = match?.tournament_group_id
+            ? requirementsByTournamentGroup.get(match.tournament_group_id)
+            : null;
+          const roleIdsForMatch = groupRequirements?.has(groupId)
+            ? Array.from(groupRequirements.get(groupId).values())
+            : roleIdList;
+          if (!roleIdsForMatch.length) continue;
           await MatchReferee.destroy({
             where: {
-              match_id: { [Op.in]: clearMatchIds },
-              referee_role_id: { [Op.in]: roleIdList },
+              match_id: matchId,
+              referee_role_id: { [Op.in]: roleIdsForMatch },
               status_id: { [Op.in]: statusInfo.ids },
             },
             force: true,

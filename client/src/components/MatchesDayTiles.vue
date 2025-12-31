@@ -64,6 +64,7 @@ function formatTime(dateStr) {
 // Compute UI-facing status combining schedule state and time proximity
 function computeUiStatus(m) {
   const alias = (m?.status?.alias || '').toUpperCase();
+  const agreementsAllowed = m?.agreements_allowed !== false;
   // Non-schedulable statuses always prevail over frontend states
   const schedulable = !['CANCELLED', 'FINISHED', 'LIVE', 'POSTPONED'].includes(
     alias
@@ -105,6 +106,9 @@ function computeUiStatus(m) {
   if (!schedulable) {
     // Keep backend statuses like POSTPONED/CANCELLED/LIVE/FINISHED as-is
     return { text: m?.status?.name || '—', cls: statusPillClassByAlias(alias) };
+  }
+  if (!agreementsAllowed) {
+    return { text: 'Расписание организатора', cls: 'pill pill-info' };
   }
   if (agreed) {
     // Only when time is agreed

@@ -6,6 +6,8 @@ import userMapper from '../mappers/userMapper.js';
 import {
   resolveMatchAccessContext,
   evaluateStaffMatchRestrictions,
+  evaluateScheduleManagementRestrictions,
+  mergeMatchRestrictions,
   ensureParticipantOrThrow,
 } from '../utils/matchAccess.js';
 
@@ -86,9 +88,15 @@ export async function opponentContacts(req, res, next) {
     if (!match.team1_id && !match.team2_id)
       return res.status(409).json({ error: 'match_teams_not_set' });
     ensureParticipantOrThrow(context);
-    const restrictions = evaluateStaffMatchRestrictions(context);
+    const restrictions = mergeMatchRestrictions(
+      evaluateStaffMatchRestrictions(context),
+      evaluateScheduleManagementRestrictions(context.match)
+    );
     if (restrictions.agreementsBlocked)
-      return res.status(403).json({ error: 'staff_position_restricted' });
+      return res.status(403).json({
+        error:
+          restrictions.agreementsBlockedReason || 'staff_position_restricted',
+      });
     const opponentTeamId = context.isHome ? match.team2_id : match.team1_id;
     if (!opponentTeamId)
       return res.status(400).json({ error: 'opponent_team_not_set' });

@@ -1,4 +1,5 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
+import { Op } from 'sequelize';
 
 const matchFindAllMock = jest.fn();
 const matchFindByPkMock = jest.fn();
@@ -47,6 +48,7 @@ beforeEach(() => {
   refereeRoleGroupFindByPkMock.mockResolvedValue(makeRoleGroup());
   refereeRoleGroupFindAllMock.mockResolvedValue([makeRoleGroup()]);
   refereeRoleFindAllMock.mockResolvedValue([]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -209,7 +211,11 @@ test('updateMatchReferees saves draft assignments', async () => {
     { tournament_group_id: 'tg1', referee_role_id: 'r1', count: 1 },
   ]);
   userFindAllMock.mockResolvedValue([
-    { id: 'u1', Roles: [{ alias: 'REFEREE' }], UserStatus: { alias: 'ACTIVE' } },
+    {
+      id: 'u1',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
   ]);
   listForUsersMock.mockResolvedValue([
     { user_id: 'u1', AvailabilityType: { alias: 'FREE' } },
@@ -256,7 +262,11 @@ test('updateMatchReferees rejects unavailable referees', async () => {
     { tournament_group_id: 'tg1', referee_role_id: 'r1', count: 1 },
   ]);
   userFindAllMock.mockResolvedValue([
-    { id: 'u1', Roles: [{ alias: 'REFEREE' }], UserStatus: { alias: 'ACTIVE' } },
+    {
+      id: 'u1',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
   ]);
   listForUsersMock.mockResolvedValue([
     { user_id: 'u1', AvailabilityType: { alias: 'BUSY' } },
@@ -278,21 +288,17 @@ test('updateMatchReferees stores clear marker when clearing assignments', async 
   tournamentGroupRefereeFindAllMock.mockResolvedValue([
     { tournament_group_id: 'tg1', referee_role_id: 'r1', count: 1 },
   ]);
-  matchRefereeFindAllMock
-    .mockResolvedValueOnce([])
-    .mockResolvedValueOnce([]);
+  matchRefereeFindAllMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
   matchRefereeDraftClearFindAllMock.mockResolvedValue([
     { referee_role_group_id: 'rg1' },
   ]);
   matchRefereeDraftClearFindOrCreateMock.mockResolvedValue([{}, true]);
   matchRefereeDraftClearUpdateMock.mockResolvedValue([1]);
 
-  const result = await service.updateMatchReferees(
-    'm1',
-    [],
-    'admin',
-    { roleGroupId: 'rg1', clearPublished: true }
-  );
+  const result = await service.updateMatchReferees('m1', [], 'admin', {
+    roleGroupId: 'rg1',
+    clearPublished: true,
+  });
 
   expect(matchRefereeDraftClearFindOrCreateMock).toHaveBeenCalled();
   expect(matchRefereeDraftClearDestroyMock).not.toHaveBeenCalled();
@@ -308,9 +314,9 @@ test('publishMatchReferees requires full slot coverage', async () => {
     { match_id: 'm1', referee_role_id: 'r1', status_id: draftStatus.id },
   ]);
 
-  await expect(service.publishMatchReferees('m1', 'admin')).rejects.toMatchObject(
-    { code: 'referee_assignments_incomplete' }
-  );
+  await expect(
+    service.publishMatchReferees('m1', 'admin')
+  ).rejects.toMatchObject({ code: 'referee_assignments_incomplete' });
 });
 
 test('publishMatchReferees promotes draft assignments', async () => {
@@ -369,13 +375,22 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
 
   expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      where: expect.objectContaining({ status_id: publishedStatus.id }),
+      where: expect.objectContaining({
+        match_id: 'm1',
+        referee_role_id: { [Op.in]: ['r1'] },
+        status_id: { [Op.in]: [publishedStatus.id, confirmedStatus.id] },
+      }),
+      force: true,
     })
   );
   expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
     expect.objectContaining({ status_id: publishedStatus.id }),
     expect.objectContaining({
-      where: expect.objectContaining({ status_id: draftStatus.id }),
+      where: expect.objectContaining({
+        match_id: 'm1',
+        referee_role_id: { [Op.in]: ['r1'] },
+        status_id: draftStatus.id,
+      }),
       transaction: expect.any(Object),
     })
   );
@@ -407,9 +422,18 @@ test('publishAssignmentsForDate skips incomplete drafts', async () => {
     }
   );
 
-  expect(matchRefereeUpdateMock).not.toHaveBeenCalled();
-  expect(matchRefereeDestroyMock).not.toHaveBeenCalled();
-  expect(result.published_matches).toEqual([]);
+  expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
+    expect.objectContaining({ status_id: publishedStatus.id }),
+    expect.objectContaining({
+      where: expect.objectContaining({
+        match_id: 'm1',
+        referee_role_id: { [Op.in]: ['r1'] },
+        status_id: draftStatus.id,
+      }),
+      transaction: expect.any(Object),
+    })
+  );
+  expect(result.published_matches).toEqual(['m1']);
 });
 
 test('publishAssignmentsForDate clears published when draft clear exists', async () => {
@@ -440,13 +464,22 @@ test('publishAssignmentsForDate clears published when draft clear exists', async
   expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
     expect.objectContaining({
       where: expect.objectContaining({
-        match_id: expect.any(Object),
+        match_id: 'm1',
+        referee_role_id: { [Op.in]: ['r1'] },
+        status_id: {
+          [Op.in]: [draftStatus.id, publishedStatus.id, confirmedStatus.id],
+        },
       }),
+      force: true,
     })
   );
   expect(matchRefereeDraftClearDestroyMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      where: expect.objectContaining({ referee_role_group_id: 'rg1' }),
+      where: expect.objectContaining({
+        match_id: { [Op.in]: ['m1'] },
+        referee_role_group_id: 'rg1',
+      }),
+      force: true,
     })
   );
   expect(result.published_matches).toEqual(['m1']);
@@ -492,7 +525,10 @@ test('listAssignmentDatesForUser groups assignments by day', async () => {
     {
       match_id: 'm2',
       status_id: confirmedStatus.id,
-      Match: makeMatch({ id: 'm2', date_start: new Date('2024-02-11T09:00:00Z') }),
+      Match: makeMatch({
+        id: 'm2',
+        date_start: new Date('2024-02-11T09:00:00Z'),
+      }),
     },
   ]);
 

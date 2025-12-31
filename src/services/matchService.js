@@ -5,6 +5,7 @@ import { Game, Team as ExtTeam, Stadium } from '../externalModels/index.js';
 import { utcToMoscow, moscowToUtc } from '../utils/time.js';
 import { extractFirstUrl } from '../utils/url.js';
 import ServiceError from '../errors/ServiceError.js';
+import { isAgreementsBlockedBySchedule } from '../utils/scheduleManagement.js';
 
 async function listUpcoming(userId, options) {
   // Backward-compat API: allow second arg to be a number (limit)
@@ -132,6 +133,7 @@ async function listUpcomingLocal(userId, options) {
     Match,
     Ground,
     Tournament,
+    ScheduleManagementType,
     TournamentGroup,
     Tour,
     MatchAgreement,
@@ -185,7 +187,11 @@ async function listUpcomingLocal(userId, options) {
       { model: Ground, attributes: ['name'] },
       { model: GameStatus, attributes: ['name', 'alias'] },
       // enrich with competition meta
-      { model: Tournament, attributes: ['name'] },
+      {
+        model: Tournament,
+        attributes: ['name'],
+        include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
+      },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
       { model: MatchBroadcastLink, attributes: ['url', 'position'] },
@@ -288,6 +294,10 @@ async function listUpcomingLocal(userId, options) {
         accepted: false,
         pending: false,
       };
+      const agreementsAllowed = !isAgreementsBlockedBySchedule(m);
+      const effectiveFlags = agreementsAllowed
+        ? flags
+        : { accepted: false, pending: false };
       // Urgency: less than 7 days to kickoff in MSK, not accepted, and schedulable status
       const now = new Date();
       const mskNow = utcToMoscow(now) || now;
@@ -300,7 +310,11 @@ async function listUpcomingLocal(userId, options) {
         statusAlias !== 'FINISHED' &&
         statusAlias !== 'LIVE';
       const isUrgent =
-        !flags.accepted && isSchedulable && diffMs >= 0 && diffMs < sevenDaysMs;
+        agreementsAllowed &&
+        !effectiveFlags.accepted &&
+        isSchedulable &&
+        diffMs >= 0 &&
+        diffMs < sevenDaysMs;
       return {
         id: m.id,
         date: m.date_start,
@@ -318,9 +332,10 @@ async function listUpcomingLocal(userId, options) {
         status: m.GameStatus
           ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
           : null,
-        agreement_accepted: !!flags.accepted,
-        agreement_pending: !!flags.pending && !flags.accepted,
+        agreement_accepted: !!effectiveFlags.accepted,
+        agreement_pending: !!effectiveFlags.pending && !effectiveFlags.accepted,
         urgent_unagreed: isUrgent,
+        agreements_allowed: agreementsAllowed,
         broadcast_links: (m.MatchBroadcastLinks || [])
           .sort((a, b) => (a.position || 0) - (b.position || 0))
           .map((x) => x.url)

@@ -18,8 +18,12 @@ export default {
   async listSettingsOptions(_req, res) {
     try {
       const competitionTypes = await svc.listCompetitionTypes();
+      const scheduleManagementTypes = await svc.listScheduleManagementTypes();
       return res.json({
         competition_types: competitionTypes.map(map.toPublicCompetitionType),
+        schedule_management_types: scheduleManagementTypes.map(
+          map.toPublicScheduleManagementType
+        ),
         match_formats: MATCH_FORMAT_OPTIONS,
         referee_payment_types: REFEREE_PAYMENT_OPTIONS,
       });

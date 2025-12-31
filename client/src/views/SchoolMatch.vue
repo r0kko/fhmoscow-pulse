@@ -139,9 +139,17 @@ const agreementsTileDisabled = computed(
   () => isCancelled.value || !isParticipant.value || !agreementsAllowed.value
 );
 const agreementsTileLocked = computed(() => agreementsRestricted.value);
+const agreementsReason = computed(
+  () => matchPermissions.value?.agreements?.reason || null
+);
 const agreementsTileNote = computed(() => {
   if (isCancelled.value) return 'Отмена';
   if (!isParticipant.value) return 'Недоступно';
+  if (!agreementsAllowed.value) {
+    if (agreementsReason.value === 'schedule_managed_by_organizer')
+      return 'Расписание организатора';
+    return 'Недоступно';
+  }
   return '';
 });
 

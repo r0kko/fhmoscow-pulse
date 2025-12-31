@@ -15,6 +15,7 @@ Tournament.init(
     season_id: { type: DataTypes.UUID },
     type_id: { type: DataTypes.UUID },
     competition_type_id: { type: DataTypes.UUID },
+    schedule_management_type_id: { type: DataTypes.UUID, allowNull: false },
     name: { type: DataTypes.STRING(255), allowNull: false },
     full_name: { type: DataTypes.STRING(255) },
     birth_year: { type: DataTypes.INTEGER },

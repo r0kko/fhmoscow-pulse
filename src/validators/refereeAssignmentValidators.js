@@ -36,13 +36,9 @@ export const refereeAssignmentsSelfConfirmRules = [
 
 export const refereeAssignmentsUpdateRules = [
   body('assignments').isArray().withMessage('referee_assignments_required'),
-  body('assignments.*.role_id')
-    .isUUID()
-    .withMessage('referee_role_not_found'),
+  body('assignments.*.role_id').isUUID().withMessage('referee_role_not_found'),
   body('assignments.*.user_id').isUUID().withMessage('user_not_found'),
-  body('role_group_id')
-    .isUUID()
-    .withMessage('referee_role_group_required'),
+  body('role_group_id').isUUID().withMessage('referee_role_group_required'),
   body('clear_published')
     .optional({ nullable: true })
     .isBoolean()

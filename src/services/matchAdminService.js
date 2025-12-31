@@ -9,6 +9,7 @@ import {
   Club,
   Ground,
   Tournament,
+  ScheduleManagementType,
   TournamentGroup,
   Tour,
   MatchAgreement,
@@ -16,6 +17,7 @@ import {
   MatchAgreementType,
   GameStatus,
 } from '../models/index.js';
+import { isAgreementsBlockedBySchedule } from '../utils/scheduleManagement.js';
 
 import externalSync from './externalMatchSyncService.js';
 
@@ -102,7 +104,11 @@ export async function listNextDays({
         include: [{ model: Club, attributes: ['name'] }],
       },
       { model: Ground, attributes: ['name'] },
-      { model: Tournament, attributes: ['name'] },
+      {
+        model: Tournament,
+        attributes: ['name'],
+        include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
+      },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
       { model: GameStatus, attributes: ['name', 'alias'] },
@@ -184,6 +190,10 @@ export async function listNextDays({
 
   const matches = rowsRaw.map((m) => {
     const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
+    const agreementsAllowed = !isAgreementsBlockedBySchedule(m);
+    const effectiveFlags = agreementsAllowed
+      ? flags
+      : { accepted: false, pending: false };
     const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
     const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
     const isSchedulable =
@@ -191,7 +201,8 @@ export async function listNextDays({
       statusAlias !== 'FINISHED' &&
       statusAlias !== 'LIVE';
     const isUrgent =
-      !flags.accepted &&
+      agreementsAllowed &&
+      !effectiveFlags.accepted &&
       isSchedulable &&
       mskKickoff.getTime() >= nowMskTs &&
       mskKickoff.getTime() - nowMskTs < sevenDaysMs;
@@ -210,9 +221,10 @@ export async function listNextDays({
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,
-      agreement_accepted: !!flags.accepted,
-      agreement_pending: !!flags.pending && !flags.accepted,
+      agreement_accepted: !!effectiveFlags.accepted,
+      agreement_pending: !!effectiveFlags.pending && !effectiveFlags.accepted,
       urgent_unagreed: isUrgent,
+      agreements_allowed: agreementsAllowed,
     };
   });
 
@@ -302,7 +314,11 @@ export async function listNextGameDays({
         include: [{ model: Club, attributes: ['name'] }],
       },
       { model: Ground, attributes: ['name'] },
-      { model: Tournament, attributes: ['name'] },
+      {
+        model: Tournament,
+        attributes: ['name'],
+        include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
+      },
       { model: TournamentGroup, attributes: ['name'] },
       { model: Tour, attributes: ['name'] },
       { model: GameStatus, attributes: ['name', 'alias'] },
@@ -430,6 +446,10 @@ export async function listNextGameDays({
 
   const matches = selected.map((m) => {
     const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
+    const agreementsAllowed = !isAgreementsBlockedBySchedule(m);
+    const effectiveFlags = agreementsAllowed
+      ? flags
+      : { accepted: false, pending: false };
     const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
     const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
     const isSchedulable =
@@ -437,7 +457,8 @@ export async function listNextGameDays({
       statusAlias !== 'FINISHED' &&
       statusAlias !== 'LIVE';
     const isUrgent =
-      !flags.accepted &&
+      agreementsAllowed &&
+      !effectiveFlags.accepted &&
       isSchedulable &&
       mskKickoff.getTime() >= nowMskTs &&
       mskKickoff.getTime() - nowMskTs < sevenDaysMs;
@@ -455,9 +476,10 @@ export async function listNextGameDays({
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,
-      agreement_accepted: !!flags.accepted,
-      agreement_pending: !!flags.pending && !flags.accepted,
+      agreement_accepted: !!effectiveFlags.accepted,
+      agreement_pending: !!effectiveFlags.pending && !effectiveFlags.accepted,
       urgent_unagreed: isUrgent,
+      agreements_allowed: agreementsAllowed,
     };
   });
 

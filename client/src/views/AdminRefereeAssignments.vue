@@ -38,6 +38,16 @@ const roleGroupByRoleId = computed(() => {
   return map;
 });
 
+const roleIdByGroupId = computed(() => {
+  const map = new Map();
+  roleGroups.value.forEach((group) => {
+    if (!group?.id || map.has(group.id)) return;
+    const firstRole = (group.roles || []).find((role) => role?.id);
+    if (firstRole?.id) map.set(group.id, firstRole.id);
+  });
+  return map;
+});
+
 const requirementsByMatch = computed(() => {
   const map = new Map();
   const activeGroups = selectedGroupIds.value;
@@ -86,7 +96,7 @@ const assignmentCountsByReferee = computed(() => {
   const perUserMatch = new Map();
   const activeGroups = selectedGroupIds.value;
   matches.value.forEach((match) => {
-    (match.assignments || []).forEach((assignment) => {
+    effectiveAssignments(match, activeGroups).forEach((assignment) => {
       if (activeGroups.size && !activeGroups.has(assignment.role?.group_id)) {
         return;
       }
@@ -334,6 +344,97 @@ function assignmentsForSelectedGroups(match) {
   );
 }
 
+function splitAssignmentsByGroup(assignments = []) {
+  const byGroup = new Map();
+  const ungrouped = [];
+  assignments.forEach((assignment) => {
+    const groupId = assignment.role?.group_id;
+    if (!groupId) {
+      ungrouped.push(assignment);
+      return;
+    }
+    if (!byGroup.has(groupId)) {
+      byGroup.set(groupId, { drafts: [], published: [] });
+    }
+    const bucket = byGroup.get(groupId);
+    if (assignment.status === 'DRAFT') {
+      bucket.drafts.push(assignment);
+      return;
+    }
+    if (
+      assignment.status === 'PUBLISHED' ||
+      assignment.status === 'CONFIRMED'
+    ) {
+      bucket.published.push(assignment);
+    }
+  });
+  return { byGroup, ungrouped };
+}
+
+function collectRoleAssignments(assignments = []) {
+  const activeGroups = selectedGroupIds.value;
+  const draftByRole = new Map();
+  const publishedByRole = new Map();
+  const groupIdByRole = new Map();
+  if (!activeGroups.size) {
+    return { draftByRole, publishedByRole, groupIdByRole };
+  }
+  assignments.forEach((assignment) => {
+    const groupId = assignment.role?.group_id;
+    if (!groupId || !activeGroups.has(groupId)) return;
+    const roleId = assignment.role?.id;
+    const userId = assignment.user?.id;
+    if (!roleId || !userId) return;
+    groupIdByRole.set(roleId, groupId);
+    if (assignment.status === 'DRAFT') {
+      if (!draftByRole.has(roleId)) draftByRole.set(roleId, []);
+      draftByRole.get(roleId).push(assignment);
+      return;
+    }
+    if (
+      assignment.status === 'PUBLISHED' ||
+      assignment.status === 'CONFIRMED'
+    ) {
+      if (!publishedByRole.has(roleId)) publishedByRole.set(roleId, []);
+      publishedByRole.get(roleId).push(assignment);
+    }
+  });
+  return { draftByRole, publishedByRole, groupIdByRole };
+}
+
+function buildRoleMapFromAssignments(assignments = []) {
+  const { draftByRole, publishedByRole } = collectRoleAssignments(assignments);
+  const roleMap = {};
+  const roleIds = new Set([...draftByRole.keys(), ...publishedByRole.keys()]);
+  roleIds.forEach((roleId) => {
+    const source = draftByRole.has(roleId) ? draftByRole : publishedByRole;
+    const list = source.get(roleId) || [];
+    roleMap[roleId] = list
+      .map((assignment) => assignment.user?.id)
+      .filter(Boolean);
+  });
+  return roleMap;
+}
+
+function effectiveAssignments(match, groupIds = null) {
+  const assignments = match?.assignments || [];
+  const clearGroups = new Set(match?.draft_clear_group_ids || []);
+  const { byGroup, ungrouped } = splitAssignmentsByGroup(assignments);
+  const result = groupIds ? [] : [...ungrouped];
+  const groupIdSet = groupIds ? new Set(groupIds) : null;
+  const groupsToCheck = groupIdSet
+    ? Array.from(groupIdSet.values())
+    : Array.from(byGroup.keys());
+  groupsToCheck.forEach((groupId) => {
+    const bucket = byGroup.get(groupId);
+    if (!bucket) return;
+    const useDraft = clearGroups.has(groupId) || bucket.drafts.length > 0;
+    const source = useDraft ? bucket.drafts : bucket.published;
+    result.push(...source);
+  });
+  return result;
+}
+
 function matchStatusForGroups(match) {
   const list = assignmentsForSelectedGroups(match);
   const clearGroups = new Set(match.draft_clear_group_ids || []);
@@ -350,21 +451,7 @@ function matchStatusForGroups(match) {
 function initDrafts(list = []) {
   const next = {};
   list.forEach((match) => {
-    const groupAssignments = assignmentsForSelectedGroups(match);
-    const draftAssignments = groupAssignments.filter(
-      (a) => a.status === 'DRAFT'
-    );
-    const base = draftAssignments.length
-      ? draftAssignments
-      : groupAssignments.filter(
-          (a) => a.status === 'PUBLISHED' || a.status === 'CONFIRMED'
-        );
-    const roleMap = {};
-    base.forEach((a) => {
-      if (!a.role?.id || !a.user?.id) return;
-      if (!roleMap[a.role.id]) roleMap[a.role.id] = [];
-      roleMap[a.role.id].push(a.user.id);
-    });
+    const roleMap = buildRoleMapFromAssignments(match.assignments || []);
     applyClearMarkers(match, roleMap);
     next[match.id] = roleMap;
   });
@@ -495,7 +582,7 @@ const assignmentWindowsByUser = computed(() => {
   matches.value.forEach((match) => {
     const window = matchTimeWindow(match);
     if (!window) return;
-    (match.assignments || []).forEach((a) => {
+    effectiveAssignments(match).forEach((a) => {
       const userId = a.user?.id;
       if (!userId) return;
       if (!map.has(userId)) map.set(userId, []);
@@ -563,7 +650,7 @@ function assignmentStatus(match, roleId, userId) {
     (a) => a.role?.id === roleId && a.user?.id === userId
   );
   if (!byRoleUser.length) return null;
-  const priority = ['DRAFT', 'CONFIRMED', 'PUBLISHED'];
+  const priority = ['CONFIRMED', 'PUBLISHED', 'DRAFT'];
   for (const alias of priority) {
     if (byRoleUser.some((a) => a.status === alias)) return alias;
   }
@@ -597,7 +684,7 @@ function reservedUserIds(match) {
   const activeGroups = selectedGroupIds.value;
   if (!activeGroups.size) return new Set();
   return new Set(
-    (match.assignments || [])
+    effectiveAssignments(match)
       .filter(
         (assignment) =>
           assignment.role?.group_id &&
@@ -606,6 +693,11 @@ function reservedUserIds(match) {
       .map((assignment) => assignment.user?.id)
       .filter(Boolean)
   );
+}
+
+function arraysEqual(left = [], right = []) {
+  if (left.length !== right.length) return false;
+  return left.every((value, idx) => value === right[idx]);
 }
 
 function setSlotValue(match, roleId, index, value) {
@@ -619,17 +711,41 @@ function setSlotValue(match, roleId, index, value) {
   while (list.length <= index) list.push('');
   list[index] = normalized;
   roleMap[roleId] = list;
+  const updatedRoleIds = new Set([roleId]);
   if (normalized) {
     Object.keys(roleMap).forEach((key) => {
       const current = key === roleId ? list : roleMap[key] || [];
-      roleMap[key] = current.map((item, idx) => {
+      const nextList = current.map((item, idx) => {
         if (key === roleId && idx === index) return normalized;
         return item === normalized ? '' : item;
       });
+      if (!arraysEqual(current, nextList)) {
+        updatedRoleIds.add(key);
+      }
+      roleMap[key] = nextList;
     });
   }
   drafts.value = { ...drafts.value, [matchId]: roleMap };
-  saveMatchAssignments(match, roleId);
+  const primaryGroupId = roleGroupIdForRole(roleId);
+  const extraGroupIds = new Set();
+  updatedRoleIds.forEach((changedRoleId) => {
+    const groupId = roleGroupIdForRole(changedRoleId);
+    if (groupId && groupId !== primaryGroupId) {
+      extraGroupIds.add(groupId);
+    }
+  });
+  const groupsToSave = [
+    ...extraGroupIds.values(),
+    ...(primaryGroupId ? [primaryGroupId] : []),
+  ];
+  if (!groupsToSave.length) return;
+  (async () => {
+    for (const groupId of groupsToSave) {
+      const saveRoleId = roleIdByGroupId.value.get(groupId);
+      if (!saveRoleId) continue;
+      await saveMatchAssignments(match, saveRoleId);
+    }
+  })();
 }
 
 function requiredCount(match, roleId) {
@@ -663,21 +779,7 @@ function buildAssignmentsPayload(matchId, groupId) {
 }
 
 function applyAssignmentsToDrafts(matchId, assignments) {
-  const groupAssignments = (assignments || []).filter((a) =>
-    selectedGroupIds.value.has(a.role?.group_id)
-  );
-  const draftAssignments = groupAssignments.filter((a) => a.status === 'DRAFT');
-  const base = draftAssignments.length
-    ? draftAssignments
-    : groupAssignments.filter(
-        (a) => a.status === 'PUBLISHED' || a.status === 'CONFIRMED'
-      );
-  const roleMap = {};
-  base.forEach((a) => {
-    if (!a.role?.id || !a.user?.id) return;
-    if (!roleMap[a.role.id]) roleMap[a.role.id] = [];
-    roleMap[a.role.id].push(a.user.id);
-  });
+  const roleMap = buildRoleMapFromAssignments(assignments || []);
   const match = matches.value.find((item) => item.id === matchId);
   if (match) {
     applyClearMarkers(match, roleMap);

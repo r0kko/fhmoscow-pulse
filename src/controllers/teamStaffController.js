@@ -84,9 +84,7 @@ export default {
         const clubId = team?.club_id || null;
         const membership = await resolveUserClubMembership(userId, clubId);
         if (!membership) {
-          return res
-            .status(400)
-            .json({ error: 'club_staff_link_required' });
+          return res.status(400).json({ error: 'club_staff_link_required' });
         }
         const positionAlias = membership.SportSchoolPosition?.alias || null;
         ensureEditablePosition(positionAlias);
@@ -115,9 +113,7 @@ export default {
           clubId
         );
         if (!membership) {
-          return res
-            .status(400)
-            .json({ error: 'club_staff_link_required' });
+          return res.status(400).json({ error: 'club_staff_link_required' });
         }
         const positionAlias = membership.SportSchoolPosition?.alias || null;
         ensureEditablePosition(positionAlias);

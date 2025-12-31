@@ -32,6 +32,18 @@ const matchPermissions = computed(() => match.value?.permissions || null);
 const isAgreementsAllowed = computed(
   () => matchPermissions.value?.agreements?.allowed !== false
 );
+const agreementsReason = computed(
+  () => matchPermissions.value?.agreements?.reason || null
+);
+const agreementsBlockedMessage = computed(() => {
+  if (agreementsReason.value === 'schedule_managed_by_organizer') {
+    return 'Расписание матча управляется организатором. Согласование между командами недоступно.';
+  }
+  if (agreementsReason.value === 'staff_position_restricted') {
+    return 'Недостаточно прав для согласования времени.';
+  }
+  return 'Раздел доступен сотрудникам с расширенными правами.';
+});
 const groups = ref([]); // grounds grouped by club (always home team grounds)
 const groundId = ref('');
 const timeStr = ref(''); // HH:MM in MSK
@@ -122,6 +134,12 @@ const multiClubGrounds = computed(
     ).length > 1
 );
 const statusChip = computed(() => {
+  if (!isAgreementsAllowed.value) {
+    return {
+      text: 'Расписание организатора',
+      cls: 'bg-info-subtle text-info border',
+    };
+  }
   if (acceptedExists.value)
     return {
       text: 'Согласовано',
@@ -364,13 +382,16 @@ async function loadAll() {
       agreements.value = [];
       groups.value = [];
       groundId.value = '';
-      return;
+      allowGuestGroundSelection.value = false;
+      if (!isAdminView.value) return;
     }
-    const agreementsEndpoint = isAdminView.value
-      ? `/matches/admin/${route.params.id}/agreements`
-      : `/matches/${route.params.id}/agreements`;
-    const ares = await apiFetch(agreementsEndpoint);
-    agreements.value = (ares.agreements || []).map((a) => a);
+    if (isAgreementsAllowed.value) {
+      const agreementsEndpoint = isAdminView.value
+        ? `/matches/admin/${route.params.id}/agreements`
+        : `/matches/${route.params.id}/agreements`;
+      const ares = await apiFetch(agreementsEndpoint);
+      agreements.value = (ares.agreements || []).map((a) => a);
+    }
     if (isAdminView.value) {
       adminScheduleForm.value.dtLocal =
         toDateTimeLocal(match.value?.date_start, MOSCOW_TZ) || '';
@@ -380,7 +401,7 @@ async function loadAll() {
       groups.value = [];
       groundId.value = '';
       allowGuestGroundSelection.value = false;
-    } else if (isParticipant.value) {
+    } else if (isParticipant.value && isAgreementsAllowed.value) {
       try {
         const gres = await apiFetch(
           `/matches/${route.params.id}/available-grounds`
@@ -595,7 +616,15 @@ async function loadContacts() {
       </div>
       <BrandSpinner v-else-if="loading" label="Загрузка" />
 
-      <template v-else-if="isAgreementsAllowed">
+      <template v-else-if="isAgreementsAllowed || isAdminView">
+        <div
+          v-if="!isAgreementsAllowed"
+          class="alert alert-info d-flex align-items-center"
+          role="status"
+        >
+          <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+          <div>{{ agreementsBlockedMessage }}</div>
+        </div>
         <div
           v-if="isAdminView"
           class="card section-card tile fade-in shadow-sm mb-3"
@@ -794,180 +823,182 @@ async function loadContacts() {
           </div>
         </div>
 
-        <!-- Two-column layout: propose (left) and decision/history (right) -->
-        <div class="row g-3" :aria-disabled="!isParticipant">
-          <div v-if="canShowHomeProposal" class="col-12 col-xl-5">
-            <div class="card section-card tile fade-in shadow-sm h-100">
-              <div
-                class="card-header d-flex justify-content-between align-items-center"
-              >
-                <span>Предложить время и площадку</span>
-                <small v-if="!isPast" class="text-muted"
-                  >Дата фиксирована</small
-                >
-              </div>
-              <div class="card-body">
+        <template v-if="isAgreementsAllowed">
+          <!-- Two-column layout: propose (left) and decision/history (right) -->
+          <div class="row g-3" :aria-disabled="!isParticipant">
+            <div v-if="canShowHomeProposal" class="col-12 col-xl-5">
+              <div class="card section-card tile fade-in shadow-sm h-100">
                 <div
-                  v-if="isPast"
-                  class="alert alert-secondary d-flex align-items-center py-2 px-3 mb-3"
-                  role="status"
+                  class="card-header d-flex justify-content-between align-items-center"
                 >
-                  <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
-                  <div>
-                    Матч уже прошёл. Действия по согласованию недоступны.
-                  </div>
+                  <span>Предложить время и площадку</span>
+                  <small v-if="!isPast" class="text-muted"
+                    >Дата фиксирована</small
+                  >
                 </div>
+                <div class="card-body">
+                  <div
+                    v-if="isPast"
+                    class="alert alert-secondary d-flex align-items-center py-2 px-3 mb-3"
+                    role="status"
+                  >
+                    <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+                    <div>
+                      Матч уже прошёл. Действия по согласованию недоступны.
+                    </div>
+                  </div>
 
-                <div class="mb-3">
-                  <div class="row g-3">
-                    <div class="col-12">
-                      <label class="form-label">Площадка</label>
-                      <select
-                        v-model="groundId"
-                        class="form-select"
-                        aria-label="Выбор стадиона"
-                      >
-                        <optgroup
-                          v-for="grp in clubOptions"
-                          :key="grp.club || '—'"
-                          :label="grp.club || '—'"
+                  <div class="mb-3">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Площадка</label>
+                        <select
+                          v-model="groundId"
+                          class="form-select"
+                          aria-label="Выбор стадиона"
                         >
-                          <option
-                            v-for="g in grp.grounds"
-                            :key="g.id"
-                            :value="g.id"
+                          <optgroup
+                            v-for="grp in clubOptions"
+                            :key="grp.club || '—'"
+                            :label="grp.club || '—'"
                           >
-                            {{ g.name }}
-                          </option>
-                        </optgroup>
-                      </select>
+                            <option
+                              v-for="g in grp.grounds"
+                              :key="g.id"
+                              :value="g.id"
+                            >
+                              {{ g.name }}
+                            </option>
+                          </optgroup>
+                        </select>
+                      </div>
+                      <div
+                        v-if="allowGuestGroundSelection && multiClubGrounds"
+                        class="col-12"
+                      >
+                        <p class="text-muted small mb-0">
+                          Доступны площадки обеих команд: можно выбрать стадион
+                          хозяев или гостей.
+                        </p>
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Время</label>
+                        <input
+                          v-model="timeStr"
+                          type="time"
+                          step="60"
+                          class="form-control"
+                        />
+                      </div>
                     </div>
-                    <div
-                      v-if="allowGuestGroundSelection && multiClubGrounds"
-                      class="col-12"
-                    >
-                      <p class="text-muted small mb-0">
-                        Доступны площадки обеих команд: можно выбрать стадион
-                        хозяев или гостей.
-                      </p>
+                    <div class="d-flex gap-2 mt-3">
+                      <button
+                        class="btn btn-brand"
+                        :disabled="submitting || !groundId || !timeStr"
+                        @click="submitProposal(null)"
+                      >
+                        <span
+                          v-if="submitting"
+                          class="spinner-border spinner-border-sm me-2"
+                        ></span>
+                        Предложить
+                      </button>
                     </div>
-                    <div class="col-12">
-                      <label class="form-label">Время</label>
-                      <input
-                        v-model="timeStr"
-                        type="time"
-                        step="60"
-                        class="form-control"
-                      />
-                    </div>
+                    <p class="text-muted small mb-0 mt-2">
+                      Одновременно может быть только одно ожидающее предложение.
+                    </p>
                   </div>
-                  <div class="d-flex gap-2 mt-3">
-                    <button
-                      class="btn btn-brand"
-                      :disabled="submitting || !groundId || !timeStr"
-                      @click="submitProposal(null)"
-                    >
-                      <span
-                        v-if="submitting"
-                        class="spinner-border spinner-border-sm me-2"
-                      ></span>
-                      Предложить
-                    </button>
-                  </div>
-                  <p class="text-muted small mb-0 mt-2">
-                    Одновременно может быть только одно ожидающее предложение.
-                  </p>
-                </div>
 
-                <!-- removed mini-timeline to avoid duplication -->
+                  <!-- removed mini-timeline to avoid duplication -->
+                </div>
               </div>
             </div>
-          </div>
 
-          <div :class="[canShowHomeProposal ? 'col-12 col-xl-7' : 'col-12']">
-            <div class="card section-card tile fade-in shadow-sm h-100">
-              <div
-                class="card-header d-flex justify-content-between align-items-center"
-              >
-                <span>Принять решение</span>
-                <small class="text-muted"
-                  >Выберите один из предложенных вариантов</small
-                >
-              </div>
-              <div class="card-body">
+            <div :class="[canShowHomeProposal ? 'col-12 col-xl-7' : 'col-12']">
+              <div class="card section-card tile fade-in shadow-sm h-100">
                 <div
-                  v-if="isLocked"
-                  class="alert alert-secondary d-flex align-items-center py-2 px-3 mb-3"
-                  role="status"
+                  class="card-header d-flex justify-content-between align-items-center"
                 >
-                  <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
-                  <div>
-                    Расписание утверждено администратором. Действия по
-                    согласованию недоступны.
-                  </div>
+                  <span>Принять решение</span>
+                  <small class="text-muted"
+                    >Выберите один из предложенных вариантов</small
+                  >
                 </div>
-                <div
-                  v-else-if="!isParticipant"
-                  class="alert alert-warning d-flex align-items-center py-2 px-3 mb-3"
-                  role="status"
-                >
-                  <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
-                  <div>
-                    Недоступно: вы не участник этого матча. Действия по
-                    согласованию скрыты.
+                <div class="card-body">
+                  <div
+                    v-if="isLocked"
+                    class="alert alert-secondary d-flex align-items-center py-2 px-3 mb-3"
+                    role="status"
+                  >
+                    <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
+                    <div>
+                      Расписание утверждено администратором. Действия по
+                      согласованию недоступны.
+                    </div>
                   </div>
+                  <div
+                    v-else-if="!isParticipant"
+                    class="alert alert-warning d-flex align-items-center py-2 px-3 mb-3"
+                    role="status"
+                  >
+                    <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+                    <div>
+                      Недоступно: вы не участник этого матча. Действия по
+                      согласованию скрыты.
+                    </div>
+                  </div>
+                  <AgreementTimeline
+                    :items="agreements"
+                    :is-home="isHome"
+                    :is-away="isAway"
+                    :submitting="submitting"
+                    :actions-disabled="
+                      !isParticipant || isPast || isLocked || isCancelled
+                    "
+                    @approve="approve"
+                    @decline="confirmDecline"
+                    @withdraw="withdraw"
+                  />
+                  <!-- removed hint to reduce noise -->
                 </div>
-                <AgreementTimeline
-                  :items="agreements"
-                  :is-home="isHome"
-                  :is-away="isAway"
-                  :submitting="submitting"
-                  :actions-disabled="
-                    !isParticipant || isPast || isLocked || isCancelled
-                  "
-                  @approve="approve"
-                  @decline="confirmDecline"
-                  @withdraw="withdraw"
-                />
-                <!-- removed hint to reduce noise -->
               </div>
             </div>
           </div>
-        </div>
 
-        <div
-          v-if="contacts.length"
-          class="card section-card tile fade-in shadow-sm mt-3"
-        >
-          <div class="card-body p-0">
-            <h2 class="h6 mb-0 px-3 pt-3">Контакты команды</h2>
-            <div
-              v-for="c in contacts"
-              :key="c.email + c.phone + c.name"
-              class="d-flex align-items-center p-3 cursor-pointer"
-              role="button"
-              tabindex="0"
-              :aria-label="`Открыть контакты: ${c.name}`"
-              @click="openContactModal(c)"
-              @keydown.enter.prevent="openContactModal(c)"
-              @keydown.space.prevent="openContactModal(c)"
-            >
+          <div
+            v-if="contacts.length"
+            class="card section-card tile fade-in shadow-sm mt-3"
+          >
+            <div class="card-body p-0">
+              <h2 class="h6 mb-0 px-3 pt-3">Контакты команды</h2>
               <div
-                class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
-                style="width: 3rem; height: 3rem"
+                v-for="c in contacts"
+                :key="c.email + c.phone + c.name"
+                class="d-flex align-items-center p-3 cursor-pointer"
+                role="button"
+                tabindex="0"
+                :aria-label="`Открыть контакты: ${c.name}`"
+                @click="openContactModal(c)"
+                @keydown.enter.prevent="openContactModal(c)"
+                @keydown.space.prevent="openContactModal(c)"
               >
-                <i class="bi bi-person-fill text-muted fs-3"></i>
-              </div>
-              <div>
-                <div>{{ c.name }}</div>
-                <div class="text-muted small">{{ c.title }}</div>
+                <div
+                  class="flex-shrink-0 me-3 rounded-circle bg-light d-flex align-items-center justify-content-center"
+                  style="width: 3rem; height: 3rem"
+                >
+                  <i class="bi bi-person-fill text-muted fs-3"></i>
+                </div>
+                <div>
+                  <div>{{ c.name }}</div>
+                  <div class="text-muted small">{{ c.title }}</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Modals -->
-        <ContactModal ref="contactModalRef" />
+          <!-- Modals -->
+          <ContactModal ref="contactModalRef" />
+        </template>
       </template>
 
       <div v-else class="card section-card tile fade-in shadow-sm">
@@ -975,7 +1006,7 @@ async function loadContacts() {
           <EmptyState
             icon="bi-lock-fill"
             title="Доступ ограничен"
-            description="Раздел доступен сотрудникам с расширенными правами."
+            :description="agreementsBlockedMessage"
           />
         </div>
       </div>

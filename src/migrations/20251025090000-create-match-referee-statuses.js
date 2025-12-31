@@ -143,7 +143,10 @@ module.exports = {
       'match_referees',
       'uniq_match_referees_match_user_status'
     );
-    await queryInterface.removeIndex('match_referees', ['match_id', 'status_id']);
+    await queryInterface.removeIndex('match_referees', [
+      'match_id',
+      'status_id',
+    ]);
     await queryInterface.removeIndex('match_referees', ['status_id']);
     await queryInterface.addIndex('match_referees', ['status']);
     await queryInterface.addIndex('match_referees', ['match_id', 'status']);
