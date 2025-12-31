@@ -11,6 +11,7 @@ import {
 } from '../models/index.js';
 
 import { hasAdminRole, hasStaffRole } from './roles.js';
+import { isSportSchoolManagerPosition } from './sportSchoolPositions.js';
 
 export const STAFF_POSITIONS = Object.freeze({
   COACH: 'COACH',
@@ -196,6 +197,12 @@ export async function resolveMatchAccessContext({ matchOrId, userId }) {
   const awayPositionAlias = awayClubId
     ? positionByClub.get(awayClubId) || null
     : null;
+  if (!isHome && homePositionAlias) {
+    if (isSportSchoolManagerPosition(homePositionAlias)) isHome = true;
+  }
+  if (!isAway && awayPositionAlias) {
+    if (isSportSchoolManagerPosition(awayPositionAlias)) isAway = true;
+  }
 
   const roles = user.Roles || [];
   const isAdmin = hasAdminRole(roles);

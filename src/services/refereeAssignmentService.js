@@ -266,6 +266,14 @@ function formatAssignmentRow(row) {
           group_name: row.RefereeRole.RefereeRoleGroup?.name ?? null,
         }
       : null,
+    user: row.User
+      ? {
+          id: row.User.id,
+          last_name: row.User.last_name,
+          first_name: row.User.first_name,
+          patronymic: row.User.patronymic,
+        }
+      : null,
   };
 }
 
@@ -623,7 +631,7 @@ export async function listAssignmentsForUser(userId, dateKey) {
   const statusIds = [statusInfo.published.id];
   if (statusInfo.confirmed) statusIds.push(statusInfo.confirmed.id);
 
-  const assignmentsRaw = await MatchReferee.findAll({
+  const userAssignments = await MatchReferee.findAll({
     where: {
       user_id: userId,
       status_id: { [Op.in]: statusIds },
@@ -654,7 +662,7 @@ export async function listAssignmentsForUser(userId, dateKey) {
           {
             model: Ground,
             attributes: ['id', 'name', 'yandex_url'],
-            include: [{ model: Address, attributes: ['result', 'source'] }],
+            include: [{ model: Address, attributes: ['result', 'source', 'metro'] }],
           },
           {
             model: Team,
@@ -675,11 +683,21 @@ export async function listAssignmentsForUser(userId, dateKey) {
     ],
   });
 
-  const matchesById = new Map();
+  if (!userAssignments.length) {
+    return { date: normalized, matches: [] };
+  }
 
-  for (const row of assignmentsRaw) {
+  const matchesById = new Map();
+  const matchIds = new Set();
+  const userRoleGroupIds = new Set();
+
+  for (const row of userAssignments) {
     const match = row.Match;
     if (!match) continue;
+    matchIds.add(match.id);
+    if (row.RefereeRole?.referee_role_group_id) {
+      userRoleGroupIds.add(row.RefereeRole.referee_role_group_id);
+    }
     if (!matchesById.has(match.id)) {
       const durationMinutes = match.TournamentGroup?.match_duration_minutes ?? null;
       const durationMissing =
@@ -700,6 +718,9 @@ export async function listAssignmentsForUser(userId, dateKey) {
         match.Ground?.Address?.result ||
         match.Ground?.Address?.source ||
         null;
+      const metro = Array.isArray(match.Ground?.Address?.metro)
+        ? match.Ground.Address.metro
+        : [];
 
       matchesById.set(match.id, {
         id: match.id,
@@ -724,6 +745,7 @@ export async function listAssignmentsForUser(userId, dateKey) {
               id: match.Ground.id,
               name: match.Ground.name,
               address,
+              metro,
               yandex_url: match.Ground.yandex_url || null,
             }
           : null,
@@ -736,7 +758,45 @@ export async function listAssignmentsForUser(userId, dateKey) {
         assignments: [],
       });
     }
-    matchesById.get(match.id).assignments.push(formatAssignmentRow(row));
+  }
+
+  const visibleGroupIds = new Set(userRoleGroupIds);
+  if (visibleGroupIds.size === 0) {
+    userAssignments.forEach((row) => {
+      const groupId = row.RefereeRole?.referee_role_group_id;
+      if (groupId) visibleGroupIds.add(groupId);
+    });
+  }
+
+  const allAssignments = await MatchReferee.findAll({
+    where: {
+      match_id: { [Op.in]: Array.from(matchIds.values()) },
+      status_id: { [Op.in]: statusIds },
+    },
+    include: [
+      { model: MatchRefereeStatus, required: false },
+      {
+        model: RefereeRole,
+        include: [RefereeRoleGroup],
+        required: false,
+      },
+      {
+        model: User,
+        attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+      },
+    ],
+    order: [
+      [{ model: RefereeRole }, 'name', 'ASC'],
+      [{ model: User }, 'last_name', 'ASC'],
+    ],
+  });
+
+  for (const row of allAssignments) {
+    const groupId = row.RefereeRole?.referee_role_group_id;
+    if (groupId && !visibleGroupIds.has(groupId)) continue;
+    const matchEntry = matchesById.get(row.match_id);
+    if (!matchEntry) continue;
+    matchEntry.assignments.push(formatAssignmentRow(row));
   }
 
   const matches = Array.from(matchesById.values());

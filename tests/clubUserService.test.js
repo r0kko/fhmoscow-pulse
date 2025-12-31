@@ -7,6 +7,7 @@ const userClubFindOneMock = jest.fn();
 const userClubFindAllMock = jest.fn();
 const teamFindAllMock = jest.fn();
 const userTeamFindOneMock = jest.fn();
+const syncStaffRoleMock = jest.fn();
 
 const clubModelStub = { __name: 'ClubModel' };
 const teamModelStub = { __name: 'TeamModel' };
@@ -22,6 +23,7 @@ beforeEach(() => {
   userClubFindAllMock.mockReset();
   teamFindAllMock.mockReset();
   userTeamFindOneMock.mockReset();
+  syncStaffRoleMock.mockReset();
   transactionMock.mockClear();
 });
 
@@ -38,6 +40,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Team: { findAll: teamFindAllMock, ...teamModelStub },
   UserTeam: { findOne: userTeamFindOneMock },
   SportSchoolPosition: {},
+}));
+
+jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
+  __esModule: true,
+  syncStaffRole: syncStaffRoleMock,
+  ensureStaffRole: jest.fn(),
 }));
 
 const svcMod = await import('../src/services/clubUserService.js');

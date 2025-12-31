@@ -14,6 +14,7 @@ const clearRefreshCookie = jest.fn();
 const getRefreshTokenCandidates = jest.fn();
 const sendError = jest.fn();
 const isStaffOnly = jest.fn();
+const syncStaffRole = jest.fn();
 
 const res = () => {
   const obj = {};
@@ -40,6 +41,7 @@ beforeEach(() => {
   getRefreshTokenCandidates.mockReset();
   sendError.mockReset();
   isStaffOnly.mockReset();
+  syncStaffRole.mockReset();
 });
 
 afterEach(() => {
@@ -96,6 +98,12 @@ jest.unstable_mockModule('../src/utils/api.js', () => ({
 jest.unstable_mockModule('../src/utils/roles.js', () => ({
   __esModule: true,
   isStaffOnly,
+}));
+
+jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
+  __esModule: true,
+  syncStaffRole,
+  ensureStaffRole: jest.fn(),
 }));
 
 jest.unstable_mockModule('../src/models/index.js', () => ({

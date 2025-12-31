@@ -84,6 +84,9 @@ export const ERROR_MESSAGES = {
   team_locked: 'Команда заблокирована для изменений',
   team_player_not_found: 'Игрок команды не найден',
   team_staff_not_found: 'Представитель команды не найден',
+  staff_position_restricted:
+    'Недостаточно прав для управления сотрудником с этой должностью',
+  position_id_required: 'Укажите должность сотрудника',
   club_staff_link_required: 'Сначала прикрепите сотрудника к выбранному клубу',
   lineup_export_forbidden: 'Недостаточно прав для экспорта состава',
   lineup_export_failed: 'Не удалось подготовить выгрузку состава',

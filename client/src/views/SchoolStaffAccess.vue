@@ -3,8 +3,12 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch } from '../api';
+import { auth } from '../auth';
 import { useToast } from '../utils/toast';
-import { isSportSchoolManagerPosition } from '../utils/sportSchoolPositions';
+import {
+  isSportSchoolEditablePosition,
+  isSportSchoolManagerPosition,
+} from '../utils/sportSchoolPositions';
 
 const { showToast } = useToast();
 
@@ -26,6 +30,7 @@ const selectedClub = computed(() =>
   clubsState.items.find((club) => club.id === selectedClubId.value)
 );
 const hasManagerClubs = computed(() => clubsState.items.length > 0);
+const isAdmin = computed(() => auth.roles.includes('ADMIN'));
 
 function resetStructure() {
   structure.club = null;
@@ -123,6 +128,43 @@ const positionOptions = computed(() => [
   { value: '', label: '— Не назначена —' },
   ...structure.positions.map((pos) => ({ value: pos.id, label: pos.name })),
 ]);
+const editablePositionOptions = computed(() =>
+  structure.positions
+    .filter((pos) => isSportSchoolEditablePosition(pos.alias))
+    .map((pos) => ({ value: pos.id, label: pos.name }))
+);
+const addStaffPositionOptions = computed(() =>
+  isAdmin.value ? positionOptions.value : editablePositionOptions.value
+);
+
+function positionOptionsForRow(row) {
+  if (isAdmin.value) return positionOptions.value;
+  const alias = row?.position?.alias || null;
+  if (!alias) {
+    return [
+      { value: '', label: '— Выберите должность —', disabled: true },
+      ...editablePositionOptions.value,
+    ];
+  }
+  if (alias && !isSportSchoolEditablePosition(alias)) {
+    return row.position
+      ? [{ value: row.position.id, label: row.position.name }]
+      : positionOptions.value;
+  }
+  return editablePositionOptions.value;
+}
+
+function canEditRow(row) {
+  if (isAdmin.value) return true;
+  const alias = row?.position?.alias || null;
+  return !alias || isSportSchoolEditablePosition(alias);
+}
+
+function canDetachRow(row) {
+  if (isAdmin.value) return true;
+  const alias = row?.position?.alias || null;
+  return isSportSchoolEditablePosition(alias);
+}
 
 const positionSaving = reactive({});
 
@@ -224,6 +266,10 @@ const teamAttachOptions = computed(() => {
   const query = normalizeSearch(teamManage.attach.q);
   return structure.staff
     .filter((entry) => entry?.user?.id && !used.has(entry.user.id))
+    .filter(
+      (entry) =>
+        isAdmin.value || isSportSchoolEditablePosition(entry?.position?.alias)
+    )
     .map((entry) => ({
       id: entry.user.id,
       label: buildUserLabel(entry.user),
@@ -247,12 +293,18 @@ async function openManageTeam(team) {
       return {
         ...user,
         club_position_name: membership?.position?.name || null,
+        club_position_alias: membership?.position?.alias || null,
       };
     });
   } finally {
     teamManage.loading = false;
   }
   teamModal?.show?.();
+}
+
+function canDetachTeamMember(member) {
+  if (isAdmin.value) return true;
+  return isSportSchoolEditablePosition(member?.club_position_alias);
 }
 
 async function confirmAttachTeamStaff() {
@@ -358,6 +410,9 @@ watch(selectedClubId, (id) => {
           <p class="text-muted mb-0">
             Управляйте сотрудниками клуба и доступом к командам.
           </p>
+          <p v-if="!isAdmin" class="text-muted small mb-0">
+            Доступны роли: бухгалтер, тренер, медиа-менеджер.
+          </p>
         </div>
         <div v-if="clubsState.items.length > 1" class="min-width-240">
           <label class="form-label small text-muted mb-1">Клуб</label>
@@ -433,23 +488,36 @@ watch(selectedClubId, (id) => {
                       <select
                         class="form-select form-select-sm"
                         :value="row.positionId"
-                        :disabled="positionSaving[row.id]"
+                        :disabled="positionSaving[row.id] || !canEditRow(row)"
                         @change="
                           changeStaffPosition(row.id, $event.target.value)
                         "
                       >
                         <option
-                          v-for="opt in positionOptions"
+                          v-for="opt in positionOptionsForRow(row)"
                           :key="opt.value"
                           :value="opt.value"
+                          :disabled="opt.disabled"
                         >
                           {{ opt.label }}
                         </option>
                       </select>
+                      <div
+                        v-if="!canEditRow(row) && !isAdmin"
+                        class="text-muted small mt-1"
+                      >
+                        Доступ ограничен для этой должности
+                      </div>
                     </td>
                     <td class="text-end">
                       <button
                         class="btn btn-sm btn-outline-danger"
+                        :disabled="!canDetachRow(row)"
+                        :title="
+                          !canDetachRow(row) && !isAdmin
+                            ? 'Недоступно для этой должности'
+                            : ''
+                        "
                         @click="
                           askDetach(
                             'club',
@@ -589,8 +657,11 @@ watch(selectedClubId, (id) => {
             </select>
             <label class="form-label">Должность</label>
             <select v-model="addStaff.selectedPositionId" class="form-select">
+              <option v-if="!isAdmin" value="" disabled>
+                — Выберите должность —
+              </option>
               <option
-                v-for="opt in positionOptions"
+                v-for="opt in addStaffPositionOptions"
                 :key="opt.value || 'none'"
                 :value="opt.value"
               >
@@ -608,7 +679,11 @@ watch(selectedClubId, (id) => {
             </button>
             <button
               class="btn btn-brand"
-              :disabled="addStaff.saving || !addStaff.selectedUserId"
+              :disabled="
+                addStaff.saving ||
+                !addStaff.selectedUserId ||
+                (!isAdmin && !addStaff.selectedPositionId)
+              "
               @click="confirmAddStaff"
             >
               <span
@@ -728,6 +803,12 @@ watch(selectedClubId, (id) => {
                       <td class="text-end">
                         <button
                           class="btn btn-sm btn-outline-danger"
+                          :disabled="!canDetachTeamMember(user)"
+                          :title="
+                            !canDetachTeamMember(user) && !isAdmin
+                              ? 'Недоступно для этой должности'
+                              : ''
+                          "
                           @click="
                             askDetach(
                               'team',

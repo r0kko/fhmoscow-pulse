@@ -356,7 +356,9 @@ function initDrafts(list = []) {
     );
     const base = draftAssignments.length
       ? draftAssignments
-      : groupAssignments.filter((a) => a.status === 'PUBLISHED');
+      : groupAssignments.filter(
+          (a) => a.status === 'PUBLISHED' || a.status === 'CONFIRMED'
+        );
     const roleMap = {};
     base.forEach((a) => {
       if (!a.role?.id || !a.user?.id) return;
@@ -667,7 +669,9 @@ function applyAssignmentsToDrafts(matchId, assignments) {
   const draftAssignments = groupAssignments.filter((a) => a.status === 'DRAFT');
   const base = draftAssignments.length
     ? draftAssignments
-    : groupAssignments.filter((a) => a.status === 'PUBLISHED');
+    : groupAssignments.filter(
+        (a) => a.status === 'PUBLISHED' || a.status === 'CONFIRMED'
+      );
   const roleMap = {};
   base.forEach((a) => {
     if (!a.role?.id || !a.user?.id) return;
@@ -1154,11 +1158,11 @@ onMounted(() => {
                           >
                             <option value="">Свободно</option>
                             <option
-                              v-for="ref in matchOptions(match)"
-                              :key="ref.id"
-                              :value="ref.id"
+                              v-for="refereeOption in matchOptions(match)"
+                              :key="refereeOption.id"
+                              :value="refereeOption.id"
                             >
-                              {{ refereeLabel(ref, match) }}
+                              {{ refereeLabel(refereeOption, match) }}
                             </option>
                           </select>
                         </div>
@@ -1187,21 +1191,21 @@ onMounted(() => {
             </div>
             <ul v-else class="list-unstyled referee-list">
               <li
-                v-for="ref in availableReferees"
-                :key="ref.id"
+                v-for="referee in availableReferees"
+                :key="referee.id"
                 class="referee-item"
               >
                 <div class="referee-main">
                   <div class="referee-name">
                     <span class="referee-name-text">
-                      {{ refereeLabel(ref) || 'Без имени' }}
+                      {{ refereeLabel(referee) || 'Без имени' }}
                     </span>
                     <span class="count-pill count-total">
-                      {{ ref.counts.total }} матчей
+                      {{ referee.counts.total }} матчей
                     </span>
                   </div>
                   <div class="referee-availability">
-                    {{ ref.availabilityLabel }}
+                    {{ referee.availabilityLabel }}
                   </div>
                 </div>
               </li>

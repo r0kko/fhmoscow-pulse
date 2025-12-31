@@ -6,6 +6,7 @@ const issueTokensMock = jest.fn(() => ({
   accessToken: 'access',
   refreshToken: 'refresh',
 }));
+const syncStaffRoleMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
@@ -20,6 +21,17 @@ const bumpTokenVersionMock = jest.fn();
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
   default: { bumpTokenVersion: bumpTokenVersionMock },
+}));
+
+jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
+  __esModule: true,
+  syncStaffRole: syncStaffRoleMock,
+  ensureStaffRole: jest.fn(),
+}));
+
+jest.unstable_mockModule('../src/models/index.js', () => ({
+  __esModule: true,
+  UserStatus: {},
 }));
 
 const setRefreshCookieMock = jest.fn();

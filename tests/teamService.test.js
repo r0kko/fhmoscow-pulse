@@ -11,6 +11,7 @@ const userAddTeamMock = jest.fn();
 const userRemoveTeamMock = jest.fn();
 const userTeamFindOneMock = jest.fn();
 const userTeamUpdateMock = jest.fn();
+const syncStaffRoleMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
@@ -25,6 +26,7 @@ beforeEach(() => {
   userRemoveTeamMock.mockReset();
   userTeamFindOneMock.mockReset();
   userTeamUpdateMock.mockReset();
+  syncStaffRoleMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
@@ -51,6 +53,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: { findByPk: userFindByPkMock },
   UserTeam: { findOne: userTeamFindOneMock },
   Club: { findAll: jest.fn().mockResolvedValue([]) },
+}));
+
+jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
+  __esModule: true,
+  syncStaffRole: syncStaffRoleMock,
+  ensureStaffRole: jest.fn(),
 }));
 
 const { default: service } = await import('../src/services/teamService.js');

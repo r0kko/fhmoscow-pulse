@@ -28,9 +28,9 @@ module.exports = {
     );
 
     const roles = [
-      { name: 'Главные судьи', group: 'Судьи в поле', sort_order: 1 },
-      { name: 'Линейные судьи', group: 'Судьи в поле', sort_order: 2 },
-      { name: 'Резервный судья', group: 'Судьи в поле', sort_order: 3 },
+      { name: 'Главный', group: 'Судьи в поле', sort_order: 1 },
+      { name: 'Линейный', group: 'Судьи в поле', sort_order: 2 },
+      { name: 'Резервный', group: 'Судьи в поле', sort_order: 3 },
       { name: 'Секретарь матча', group: 'Судьи в бригаде', sort_order: 1 },
       { name: 'Судья времени', group: 'Судьи в бригаде', sort_order: 2 },
       {
@@ -66,9 +66,9 @@ module.exports = {
   async down(queryInterface) {
     await queryInterface.bulkDelete('referee_roles', {
       name: [
-        'Главные судьи',
-        'Линейные судьи',
-        'Резервный судья',
+        'Главный',
+        'Линейный',
+        'Резервный',
         'Секретарь матча',
         'Судья времени',
         'Судья при оштрафованных',

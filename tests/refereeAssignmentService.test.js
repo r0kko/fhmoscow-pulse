@@ -453,14 +453,23 @@ test('publishAssignmentsForDate clears published when draft clear exists', async
 });
 
 test('listAssignmentsForUser returns published assignments grouped by match', async () => {
-  matchRefereeFindAllMock.mockResolvedValue([
-    {
-      ...makeAssignment('PUBLISHED'),
-      MatchRefereeStatus: publishedStatus,
-      RefereeRole: makeRole(makeRoleGroup()),
-      Match: makeMatch(),
-    },
-  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('PUBLISHED'),
+        MatchRefereeStatus: publishedStatus,
+        RefereeRole: makeRole(makeRoleGroup()),
+        Match: makeMatch(),
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('PUBLISHED'),
+        MatchRefereeStatus: publishedStatus,
+        RefereeRole: makeRole(makeRoleGroup()),
+        User: makeAssignment('PUBLISHED').User,
+      },
+    ]);
 
   const result = await service.listAssignmentsForUser('u1', '2024-02-10');
 

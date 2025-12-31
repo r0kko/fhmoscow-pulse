@@ -2,7 +2,7 @@ import { validationResult } from 'express-validator';
 
 import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
-import { UserClub } from '../models/index.js';
+import { UserClub, SportSchoolPosition } from '../models/index.js';
 import {
   addClubUser,
   removeClubUser,
@@ -11,6 +11,8 @@ import {
 import sportSchoolStructureService from '../services/sportSchoolStructureService.js';
 import sportSchoolPositionService from '../services/sportSchoolPositionService.js';
 import { sendError } from '../utils/api.js';
+import { isSportSchoolEditablePosition } from '../utils/sportSchoolPositions.js';
+import ServiceError from '../errors/ServiceError.js';
 
 function mapStaffEntryToUserPayload(entry) {
   if (!entry) return null;
@@ -33,7 +35,12 @@ function buildUsersResponse(structure) {
   };
 }
 
-async function normalizePositionId(raw) {
+function resolveAccess(req) {
+  const scope = req.access || {};
+  return { isAdmin: Boolean(scope.isAdmin) };
+}
+
+async function resolvePosition(raw) {
   if (typeof raw === 'undefined') return undefined;
   if (raw === null || raw === '') return null;
   const position = await sportSchoolPositionService.getById(raw);
@@ -42,7 +49,33 @@ async function normalizePositionId(raw) {
     err.status = 400;
     throw err;
   }
-  return position.id;
+  return position;
+}
+
+async function resolveMembership(clubId, userId) {
+  const membership = await UserClub.findOne({
+    where: { club_id: clubId, user_id: userId },
+    include: [
+      {
+        model: SportSchoolPosition,
+        as: 'SportSchoolPosition',
+        attributes: ['alias', 'name'],
+        required: false,
+      },
+    ],
+  });
+  if (!membership) {
+    throw new ServiceError('club_staff_link_not_found', 404);
+  }
+  return membership;
+}
+
+function ensureEditablePosition(positionAlias) {
+  if (!isSportSchoolEditablePosition(positionAlias)) {
+    const err = new Error('staff_position_restricted');
+    err.status = 403;
+    throw err;
+  }
 }
 
 export default {
@@ -75,10 +108,19 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
+      const { isAdmin } = resolveAccess(req);
       const userId = req.body.user_id;
-      const positionId = await normalizePositionId(req.body.position_id);
+      const position = await resolvePosition(req.body.position_id);
+      if (!isAdmin) {
+        if (!position?.id) {
+          const err = new Error('position_id_required');
+          err.status = 400;
+          throw err;
+        }
+        ensureEditablePosition(position.alias);
+      }
       await addClubUser(req.params.id, userId, req.user.id, {
-        positionId,
+        positionId: position?.id || null,
       });
       const structure = await sportSchoolStructureService.getClubStructure(
         req.params.id
@@ -95,11 +137,26 @@ export default {
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const positionId = await normalizePositionId(req.body.position_id);
+      const { isAdmin } = resolveAccess(req);
+      const position = await resolvePosition(req.body.position_id);
+      if (!isAdmin) {
+        const membership = await resolveMembership(
+          req.params.id,
+          req.params.userId
+        );
+        const currentAlias = membership.SportSchoolPosition?.alias || null;
+        if (currentAlias) ensureEditablePosition(currentAlias);
+        if (!position?.id) {
+          const err = new Error('position_id_required');
+          err.status = 400;
+          throw err;
+        }
+        ensureEditablePosition(position.alias);
+      }
       await updateClubUserPosition(
         req.params.id,
         req.params.userId,
-        positionId,
+        position?.id || null,
         req.user.id
       );
       const structure = await sportSchoolStructureService.getClubStructure(
@@ -113,6 +170,15 @@ export default {
 
   async remove(req, res) {
     try {
+      const { isAdmin } = resolveAccess(req);
+      if (!isAdmin) {
+        const membership = await resolveMembership(
+          req.params.id,
+          req.params.userId
+        );
+        const currentAlias = membership.SportSchoolPosition?.alias || null;
+        ensureEditablePosition(currentAlias);
+      }
       await removeClubUser(req.params.id, req.params.userId, req.user.id);
       const structure = await sportSchoolStructureService.getClubStructure(
         req.params.id

@@ -2,9 +2,11 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { Op } from 'sequelize';
 
 const findAndCountAllMock = jest.fn(async () => ({ rows: [], count: 0 }));
+const syncStaffRoleMock = jest.fn();
 
 beforeEach(() => {
   findAndCountAllMock.mockClear();
+  syncStaffRoleMock.mockReset();
 });
 
 // Mock models for teamService.list
@@ -14,6 +16,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Club: {},
   User: {},
   UserTeam: {},
+}));
+
+jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
+  __esModule: true,
+  syncStaffRole: syncStaffRoleMock,
+  ensureStaffRole: jest.fn(),
 }));
 
 // Ensure external models are not loaded (avoid heavy coverage impact)

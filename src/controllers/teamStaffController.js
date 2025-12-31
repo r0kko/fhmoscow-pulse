@@ -2,15 +2,31 @@ import { validationResult } from 'express-validator';
 
 import userMapper from '../mappers/userMapper.js';
 import teamService, { listTeamUsers } from '../services/teamService.js';
-import { Team, UserClub } from '../models/index.js';
+import { Team, UserClub, SportSchoolPosition } from '../models/index.js';
 import { sendError } from '../utils/api.js';
+import { isSportSchoolEditablePosition } from '../utils/sportSchoolPositions.js';
 
-async function ensureUserInClub(userId, clubId) {
+async function resolveUserClubMembership(userId, clubId) {
   if (!userId || !clubId) return false;
-  const link = await UserClub.findOne({
+  return await UserClub.findOne({
     where: { user_id: userId, club_id: clubId },
+    include: [
+      {
+        model: SportSchoolPosition,
+        as: 'SportSchoolPosition',
+        attributes: ['alias'],
+        required: false,
+      },
+    ],
   });
-  return Boolean(link);
+}
+
+function ensureEditablePosition(positionAlias) {
+  if (!isSportSchoolEditablePosition(positionAlias)) {
+    const err = new Error('staff_position_restricted');
+    err.status = 403;
+    throw err;
+  }
 }
 
 export default {
@@ -66,12 +82,14 @@ export default {
               attributes: ['club_id'],
             });
         const clubId = team?.club_id || null;
-        const inClub = await ensureUserInClub(userId, clubId);
-        if (!inClub) {
+        const membership = await resolveUserClubMembership(userId, clubId);
+        if (!membership) {
           return res
             .status(400)
             .json({ error: 'club_staff_link_required' });
         }
+        const positionAlias = membership.SportSchoolPosition?.alias || null;
+        ensureEditablePosition(positionAlias);
       }
       await teamService.addUserTeam(userId, req.params.id, req.user.id);
       const users = await listTeamUsers(req.params.id);
@@ -92,12 +110,17 @@ export default {
               attributes: ['club_id'],
             });
         const clubId = team?.club_id || null;
-        const inClub = await ensureUserInClub(req.params.userId, clubId);
-        if (!inClub) {
+        const membership = await resolveUserClubMembership(
+          req.params.userId,
+          clubId
+        );
+        if (!membership) {
           return res
             .status(400)
             .json({ error: 'club_staff_link_required' });
         }
+        const positionAlias = membership.SportSchoolPosition?.alias || null;
+        ensureEditablePosition(positionAlias);
       }
       await teamService.removeUserTeam(
         req.params.userId,

@@ -1,4 +1,5 @@
 import { hasAdminRole } from '../utils/roles.js';
+import { Team } from '../models/index.js';
 import { isSportSchoolManagerPosition } from '../utils/sportSchoolPositions.js';
 import clubUserService from '../services/clubUserService.js';
 import teamService from '../services/teamService.js';
@@ -38,6 +39,18 @@ export default async function accessScope(req, res, next) {
       managerClubIds = Object.entries(clubPositions)
         .filter(([, alias]) => isSportSchoolManagerPosition(alias))
         .map(([clubId]) => String(clubId));
+      if (managerClubIds.length > 0) {
+        const managerTeams = await Team.findAll({
+          where: { club_id: managerClubIds },
+          attributes: ['id'],
+        });
+        const managerTeamIds = managerTeams.map((team) => String(team.id));
+        const set = new Set([
+          ...allowedTeamIds.map((id) => String(id)),
+          ...managerTeamIds,
+        ]);
+        allowedTeamIds = Array.from(set);
+      }
     }
 
     req.access = {

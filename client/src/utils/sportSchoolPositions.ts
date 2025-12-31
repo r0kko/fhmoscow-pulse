@@ -1,4 +1,15 @@
-export const SPORT_SCHOOL_MANAGER_POSITIONS = ['DIRECTOR', 'ADMINISTRATOR'];
+export const SPORT_SCHOOL_MANAGER_POSITIONS = [
+  'DIRECTOR',
+  'ADMINISTRATOR',
+  'METHODIST',
+  'ACCOUNTANT',
+];
+
+export const SPORT_SCHOOL_EDITABLE_POSITIONS = [
+  'ACCOUNTANT',
+  'COACH',
+  'MEDIA_MANAGER',
+];
 
 export function normalizeSportSchoolPosition(alias?: string | null): string {
   if (!alias) return '';
@@ -8,4 +19,9 @@ export function normalizeSportSchoolPosition(alias?: string | null): string {
 export function isSportSchoolManagerPosition(alias?: string | null): boolean {
   const normalized = normalizeSportSchoolPosition(alias);
   return SPORT_SCHOOL_MANAGER_POSITIONS.includes(normalized);
+}
+
+export function isSportSchoolEditablePosition(alias?: string | null): boolean {
+  const normalized = normalizeSportSchoolPosition(alias);
+  return SPORT_SCHOOL_EDITABLE_POSITIONS.includes(normalized);
 }

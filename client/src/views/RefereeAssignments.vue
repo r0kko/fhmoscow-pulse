@@ -3,8 +3,17 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
+import { auth } from '../auth';
 import TabSelector from '../components/TabSelector.vue';
-import { formatMskDateLong, formatMskTimeShort, MOSCOW_TZ, toDayKey } from '../utils/time';
+import yandexLogo from '../assets/yandex-maps.svg';
+import metroIcon from '../assets/metro.svg';
+import { withHttp } from '../utils/url';
+import {
+  formatMskDateLong,
+  formatMskTimeShort,
+  MOSCOW_TZ,
+  toDayKey,
+} from '../utils/time';
 
 const DATE_STORAGE_KEY = 'refereeAssignmentsActiveDate';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -26,21 +35,16 @@ const normalizedMatches = computed(() =>
     const assignments = Array.isArray(match.assignments)
       ? match.assignments
       : [];
-    const hasPublished = assignments.some((a) => a.status === 'PUBLISHED');
-    const hasConfirmed = assignments.some((a) => a.status === 'CONFIRMED');
+    const userAssignments = assignments.filter(
+      (a) => a.user?.id === currentUserId.value
+    );
+    const hasPublished = userAssignments.some((a) => a.status === 'PUBLISHED');
+    const hasConfirmed = userAssignments.some((a) => a.status === 'CONFIRMED');
     const status = hasPublished
       ? 'PUBLISHED'
       : hasConfirmed
         ? 'CONFIRMED'
         : null;
-    const roleLabels = Array.from(
-      new Set(
-        assignments
-          .map((a) => a.role?.name || '')
-          .map((name) => name.trim())
-          .filter(Boolean)
-      )
-    );
     const startTime =
       match.msk_start_time ||
       formatMskTimeShort(match.date_start, { placeholder: '—:—' });
@@ -60,7 +64,6 @@ const normalizedMatches = computed(() =>
       start_seconds: startSeconds,
       end_seconds: endSeconds,
       status,
-      role_labels: roleLabels,
     };
   })
 );
@@ -73,7 +76,9 @@ const dayTabs = computed(() => {
     const date = new Date(`${entry.date}T00:00:00+03:00`);
     const key = entry.date;
     const offset =
-      todayKey == null ? 0 : (toDayKey(date.toISOString(), MOSCOW_TZ) - todayKey) / DAY_MS;
+      todayKey == null
+        ? 0
+        : (toDayKey(date.toISOString(), MOSCOW_TZ) - todayKey) / DAY_MS;
     const { line1, line2 } = formatTabLines(date, offset);
     return {
       key,
@@ -94,18 +99,65 @@ const activeDayKey = computed({
   },
 });
 
-const selectedDayCount = computed(() =>
-  normalizedMatches.value.length
-);
-const publishedCount = computed(() =>
-  normalizedMatches.value.filter((m) => m.status === 'PUBLISHED').length
-);
-const confirmedCount = computed(() =>
-  normalizedMatches.value.filter((m) => m.status === 'CONFIRMED').length
+const selectedDayCount = computed(() => normalizedMatches.value.length);
+const publishedCount = computed(
+  () => normalizedMatches.value.filter((m) => m.status === 'PUBLISHED').length
 );
 const canConfirmDay = computed(
   () => publishedCount.value > 0 && !confirming.value
 );
+
+const currentUserId = computed(() => auth.user?.id || '');
+
+const visibleGroupIds = computed(() => {
+  const ids = new Set();
+  normalizedMatches.value.forEach((match) => {
+    (match.assignments || []).forEach((assignment) => {
+      if (
+        assignment.user?.id === currentUserId.value &&
+        assignment.role?.group_id
+      ) {
+        ids.add(assignment.role.group_id);
+      }
+    });
+  });
+  if (ids.size) return ids;
+  normalizedMatches.value.forEach((match) => {
+    (match.assignments || []).forEach((assignment) => {
+      if (assignment.role?.group_id) ids.add(assignment.role.group_id);
+    });
+  });
+  return ids;
+});
+
+const roleColumns = computed(() => {
+  const columns = new Map();
+  const groupIds = visibleGroupIds.value;
+  normalizedMatches.value.forEach((match) => {
+    (match.assignments || []).forEach((assignment) => {
+      const role = assignment.role;
+      if (!role?.id || !role?.name) return;
+      if (groupIds.size && !groupIds.has(role.group_id)) return;
+      if (!columns.has(role.id)) {
+        columns.set(role.id, {
+          id: role.id,
+          name: role.name,
+          group_id: role.group_id,
+          group_name: role.group_name || '',
+        });
+      }
+    });
+  });
+  return Array.from(columns.values()).sort((a, b) => {
+    const groupA = a.group_name || '';
+    const groupB = b.group_name || '';
+    const groupCompare = groupA.localeCompare(groupB, 'ru', {
+      sensitivity: 'base',
+    });
+    if (groupCompare !== 0) return groupCompare;
+    return a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' });
+  });
+});
 
 const pluralRules = new Intl.PluralRules('ru-RU');
 
@@ -205,18 +257,6 @@ async function confirmDayAssignments() {
   }
 }
 
-function statusLabel(match) {
-  if (match.status === 'CONFIRMED') return 'Подтверждено';
-  if (match.status === 'PUBLISHED') return 'Опубликовано';
-  return '—';
-}
-
-function statusClass(match) {
-  if (match.status === 'CONFIRMED') return 'pill pill-success';
-  if (match.status === 'PUBLISHED') return 'pill pill-warning';
-  return 'pill pill-muted';
-}
-
 function formatGap(minutes) {
   if (!Number.isFinite(minutes)) return '';
   const total = Math.max(0, Math.round(minutes));
@@ -235,10 +275,52 @@ function formatMatchMeta(match) {
   return parts.join(' · ');
 }
 
+function metroLabel(metro) {
+  if (!Array.isArray(metro) || !metro.length) return '';
+  const normalized = metro
+    .map((entry) => {
+      const name = entry?.name || entry?.station || '';
+      const rawDistance =
+        entry?.distance_m ?? entry?.distance ?? entry?.distance_km ?? null;
+      const distance = Number.isFinite(rawDistance)
+        ? Number(rawDistance)
+        : Number.parseFloat(rawDistance);
+      return {
+        name,
+        distance: Number.isFinite(distance) ? distance : null,
+      };
+    })
+    .filter((entry) => entry.name);
+  if (!normalized.length) return '';
+  normalized.sort((a, b) => {
+    if (a.distance === null && b.distance === null) return 0;
+    if (a.distance === null) return 1;
+    if (b.distance === null) return -1;
+    return a.distance - b.distance;
+  });
+  return normalized[0].name;
+}
+
 function matchTitle(match) {
   const home = match.team1?.name || '—';
   const away = match.team2?.name || '—';
   return `${home} — ${away}`;
+}
+
+function refereeLabel(user) {
+  if (!user) return '—';
+  const last = user.last_name || '';
+  const first = user.first_name || '';
+  const patronymic = user.patronymic || '';
+  const initials = [first, patronymic]
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0)}.`)
+    .join(' ');
+  return [last, initials].filter(Boolean).join(' ').trim() || '—';
+}
+
+function assignmentsForRole(match, roleId) {
+  return (match.assignments || []).filter((a) => a.role?.id === roleId);
 }
 
 function dayLabel(dateKey) {
@@ -319,12 +401,18 @@ function buildArenaGroups(list) {
         key,
         name: match.ground?.name || 'Без арены',
         address: match.ground?.address || null,
+        metro_label: metroLabel(match.ground?.metro),
         yandex_url: match.ground?.yandex_url || null,
         matches: [],
         first_start: null,
         last_end: null,
         travel_gap_minutes: null,
       });
+    } else {
+      const entry = map.get(key);
+      if (!entry.metro_label) {
+        entry.metro_label = metroLabel(match.ground?.metro);
+      }
     }
     map.get(key).matches.push(match);
   });
@@ -393,7 +481,6 @@ function formatTabLines(date, offset) {
   if (normalizedOffset === -2) return { line1: ddmm, line2: 'Позавчера' };
   return { line1: ddmm, line2: weekday };
 }
-
 </script>
 
 <template>
@@ -404,9 +491,7 @@ function formatTabLines(date, offset) {
           <li class="breadcrumb-item">
             <RouterLink to="/">Главная</RouterLink>
           </li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Назначения
-          </li>
+          <li class="breadcrumb-item active" aria-current="page">Назначения</li>
         </ol>
       </nav>
       <h1 class="mb-3">Назначения</h1>
@@ -423,31 +508,19 @@ function formatTabLines(date, offset) {
             />
             <div class="day-actions">
               <div class="text-muted small">
-                Всего: {{ selectedDayCount }} {{ matchesLabel(selectedDayCount) }}
+                Всего: {{ selectedDayCount }}
+                {{ matchesLabel(selectedDayCount) }}
               </div>
-              <div class="status-chips">
-                <span class="badge bg-warning-subtle text-warning">
-                  Опубликовано: {{ publishedCount }}
-                </span>
-                <span class="badge bg-success-subtle text-success">
-                  Подтверждено: {{ confirmedCount }}
-                </span>
-              </div>
-              <button
-                class="btn btn-sm btn-primary"
-                type="button"
-                :disabled="!canConfirmDay"
-                @click="openConfirmDay"
-              >
-                Подтвердить назначения за день
-              </button>
             </div>
           </div>
 
           <div v-if="error" class="alert alert-danger" role="alert">
             {{ error }}
           </div>
-          <div v-else-if="loadingDates || loadingMatches" class="text-center py-3">
+          <div
+            v-else-if="loadingDates || loadingMatches"
+            class="text-center py-3"
+          >
             <div
               class="spinner-border spinner-brand"
               role="status"
@@ -465,98 +538,148 @@ function formatTabLines(date, offset) {
               Назначений пока нет.
             </div>
             <template v-else>
-              <div v-if="!arenaGroups.length" class="text-muted small text-center">
+              <div
+                v-if="!arenaGroups.length"
+                class="text-muted small text-center"
+              >
                 На выбранный день назначений нет.
               </div>
               <div v-else class="arena-list">
                 <div
                   v-for="arena in arenaGroups"
                   :key="arena.key"
-                  class="arena-block"
+                  class="arena-entry"
                 >
-                  <div class="arena-header">
-                    <div>
-                      <div class="arena-name">
-                        {{ arena.name }}
+                  <div
+                    v-if="arena.travel_gap_minutes !== null"
+                    class="travel-divider"
+                  >
+                    <span class="travel-label">
+                      Переезд: {{ formatGap(arena.travel_gap_minutes) }}
+                    </span>
+                  </div>
+                  <div class="arena-block">
+                    <div class="arena-header">
+                      <div class="arena-info">
+                        <div class="arena-name">
+                          {{ arena.name }}
+                        </div>
+                        <div v-if="arena.address" class="arena-address">
+                          {{ arena.address }}
+                        </div>
+                        <div v-if="arena.metro_label" class="arena-metro">
+                          <img
+                            :src="metroIcon"
+                            alt="Метро"
+                            class="metro-icon"
+                          />
+                          <span>{{ arena.metro_label }}</span>
+                        </div>
                       </div>
-                      <div v-if="arena.address" class="arena-address">
-                        {{ arena.address }}
-                      </div>
-                    </div>
-                    <div class="arena-meta">
                       <a
                         v-if="arena.yandex_url"
-                        :href="arena.yandex_url"
-                        class="link-secondary small"
+                        :href="withHttp(arena.yandex_url)"
+                        class="route-link arena-link"
                         target="_blank"
                         rel="noopener noreferrer"
+                        title="Открыть в Яндекс.Картах"
                       >
-                        Маршрут
+                        <img :src="yandexLogo" alt="Яндекс.Карты" height="18" />
                       </a>
-                      <span class="badge bg-light text-dark">
-                        {{ arena.matches.length }}
-                        {{ matchesLabel(arena.matches.length) }}
-                      </span>
-                      <span
-                        v-if="arena.travel_gap_minutes !== null"
-                        class="badge bg-info-subtle text-info"
-                      >
-                        Переезд: {{ formatGap(arena.travel_gap_minutes) }}
-                      </span>
+                    </div>
+
+                    <div class="table-responsive">
+                      <table class="table table-sm assignments-table">
+                        <colgroup>
+                          <col class="col-time" />
+                          <col class="col-match" />
+                          <col
+                            v-for="role in roleColumns"
+                            :key="role.id"
+                            class="col-role"
+                          />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th class="col-time">Время</th>
+                            <th class="col-match">Матч</th>
+                            <th
+                              v-for="role in roleColumns"
+                              :key="role.id"
+                              class="col-role"
+                            >
+                              {{ role.name }}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="match in arena.matches"
+                            :key="match.id"
+                            class="match-row"
+                          >
+                            <td class="col-time">
+                              <div class="time-text">
+                                {{ match.start_time }}
+                              </div>
+                            </td>
+                            <td class="col-match">
+                              <div class="match-teams">
+                                {{ matchTitle(match) }}
+                              </div>
+                              <div class="match-meta text-muted">
+                                {{ formatMatchMeta(match) }}
+                              </div>
+                            </td>
+                            <td
+                              v-for="role in roleColumns"
+                              :key="role.id"
+                              class="col-role"
+                            >
+                              <div class="role-cell-label d-md-none">
+                                {{ role.name }}
+                              </div>
+                              <div class="referee-list">
+                                <span
+                                  v-for="assignment in assignmentsForRole(
+                                    match,
+                                    role.id
+                                  )"
+                                  :key="assignment.id"
+                                  class="referee-name"
+                                  :class="{
+                                    'is-current-user':
+                                      assignment.user?.id === currentUserId,
+                                  }"
+                                >
+                                  {{ refereeLabel(assignment.user) }}
+                                </span>
+                                <span
+                                  v-if="
+                                    assignmentsForRole(match, role.id)
+                                      .length === 0
+                                  "
+                                  class="text-muted"
+                                >
+                                  —
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-
-                  <div class="table-responsive">
-                    <table class="table table-sm assignments-table">
-                      <thead>
-                        <tr>
-                          <th class="col-time">Время</th>
-                          <th class="col-match">Матч</th>
-                          <th class="col-role">Амплуа</th>
-                          <th class="col-status">Статус</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="match in arena.matches"
-                          :key="match.id"
-                          class="match-row"
-                        >
-                          <td class="col-time">
-                            <div class="time-text">{{ match.start_time }}</div>
-                          </td>
-                          <td class="col-match">
-                            <div class="match-teams">
-                              {{ matchTitle(match) }}
-                            </div>
-                            <div class="match-meta text-muted">
-                              {{ formatMatchMeta(match) }}
-                            </div>
-                          </td>
-                          <td class="col-role">
-                            <div
-                              v-if="match.role_labels.length"
-                              class="role-list"
-                            >
-                              <div
-                                v-for="role in match.role_labels"
-                                :key="role"
-                                class="role-item"
-                              >
-                                {{ role }}
-                              </div>
-                            </div>
-                            <span v-else class="text-muted">—</span>
-                          </td>
-                          <td class="col-status">
-                            <span :class="statusClass(match)">
-                              {{ statusLabel(match) }}
-                            </span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                </div>
+                <div class="day-footer">
+                  <button
+                    class="btn btn-primary"
+                    type="button"
+                    :disabled="!canConfirmDay"
+                    @click="openConfirmDay"
+                  >
+                    Подтвердить назначения за день
+                  </button>
                 </div>
               </div>
             </template>
@@ -590,10 +713,6 @@ function formatTabLines(date, offset) {
           <div class="confirm-summary">
             <div class="confirm-date">
               {{ dayLabel(activeDate) }}
-            </div>
-            <div class="text-muted small">
-              Опубликовано: {{ publishedCount }} · Подтверждено:
-              {{ confirmedCount }}
             </div>
           </div>
           <div v-if="confirmError" class="text-danger small mt-2">
@@ -648,15 +767,14 @@ function formatTabLines(date, offset) {
   gap: 0.75rem;
 }
 
-.status-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .arena-list {
   display: grid;
   gap: 1.25rem;
+}
+
+.arena-entry {
+  display: grid;
+  gap: 0.5rem;
 }
 
 .arena-block {
@@ -666,12 +784,43 @@ function formatTabLines(date, offset) {
   background: #f8f9fa;
 }
 
+.travel-divider {
+  position: relative;
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.78rem;
+  margin: 0.2rem 0 0.35rem;
+}
+
+.travel-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #cfd4da;
+  z-index: 1;
+}
+
+.travel-label {
+  position: relative;
+  z-index: 2;
+  padding: 0 0.6rem;
+  background: var(--bs-body-bg, #fff);
+}
+
 .arena-header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 0.6rem;
+}
+
+.arena-info {
+  min-width: 0;
+  padding-right: 2.6rem;
 }
 
 .arena-name {
@@ -685,16 +834,46 @@ function formatTabLines(date, offset) {
   margin-top: 0.1rem;
 }
 
-.arena-meta {
-  display: flex;
-  flex-wrap: wrap;
+.arena-metro {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: #6c757d;
+}
+
+.metro-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+}
+
+.arena-link {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.route-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #e9ecef;
+  background: #fff;
 }
 
 .assignments-table {
   margin-bottom: 0;
   font-size: 0.9rem;
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: transparent;
+  background: transparent;
+  table-layout: fixed;
+  width: 100%;
 }
 
 .assignments-table thead th {
@@ -702,21 +881,27 @@ function formatTabLines(date, offset) {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: #6c757d;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+  background: transparent;
 }
 
 .match-row td {
   vertical-align: middle;
   padding-top: 0.35rem;
   padding-bottom: 0.35rem;
+  background: transparent;
 }
 
 .col-time {
   width: 80px;
 }
 
-.col-status {
-  width: 140px;
+col.col-time {
+  width: 80px;
+}
+
+col.col-role {
+  width: 180px;
 }
 
 .time-text {
@@ -727,19 +912,42 @@ function formatTabLines(date, offset) {
 .match-teams {
   font-weight: 600;
   font-size: 0.92rem;
+  line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .match-meta {
   font-size: 0.8rem;
+  line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
 }
 
-.role-list {
+.referee-list {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
-.role-item {
-  font-size: 0.85rem;
+.referee-name {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #212529;
+}
+
+.referee-name.is-current-user {
+  color: var(--brand-color, #113867);
+  font-weight: 700;
+}
+
+.role-cell-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+  margin-bottom: 0.2rem;
 }
 
 .confirm-summary {
@@ -751,13 +959,181 @@ function formatTabLines(date, offset) {
   font-weight: 600;
 }
 
+.day-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 1199.98px) {
+  .arena-block {
+    padding: 0.65rem 0.75rem;
+  }
+  .arena-name {
+    font-size: 0.92rem;
+  }
+  .arena-address {
+    font-size: 0.8rem;
+  }
+  .assignments-table {
+    font-size: 0.85rem;
+  }
+  .col-time,
+  col.col-time {
+    width: 72px;
+  }
+  col.col-role {
+    width: 150px;
+  }
+  .time-text,
+  .match-teams {
+    font-size: 0.88rem;
+  }
+  .match-meta {
+    font-size: 0.75rem;
+  }
+  .referee-name {
+    font-size: 0.78rem;
+  }
+}
+
 @media (max-width: 767.98px) {
   .arena-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .table-responsive {
+    overflow-x: visible;
   }
   .assignments-table {
-    font-size: 0.86rem;
+    font-size: 0.84rem;
+    table-layout: auto;
+  }
+  col.col-time,
+  col.col-match,
+  col.col-role {
+    width: auto;
+  }
+  .assignments-table thead {
+    display: none;
+  }
+  .assignments-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(60px, 74px) 1fr;
+    gap: 0.4rem 0.75rem;
+    border: 1px solid #e5e9f0;
+    border-radius: 10px;
+    padding: 0.6rem 0.7rem;
+    margin-bottom: 0.5rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(17, 56, 103, 0.06);
+  }
+  .assignments-table tbody td {
+    padding: 0;
+    min-width: 0;
+    border: none;
+  }
+  .assignments-table tbody td.col-time {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+  .assignments-table tbody td.col-match {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .assignments-table tbody td.col-role {
+    grid-column: 1 / -1;
+    border-top: none;
+    padding-top: 0.2rem;
+  }
+  .time-text {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.2rem;
+    background: #e8eef6;
+    color: var(--brand-color, #113867);
+    border-radius: 0.4rem;
+    padding: 0.15rem 0.35rem;
+  }
+  .match-teams {
+    font-size: 0.88rem;
+  }
+  .match-meta {
+    font-size: 0.74rem;
+  }
+  .referee-list {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.2rem 0.6rem;
+  }
+  .referee-name,
+  .text-muted {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .role-cell-label {
+    font-size: 0.68rem;
+  }
+  .day-footer {
+    justify-content: stretch;
+  }
+  .day-footer .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .assignments-results {
+    gap: 0.75rem;
+  }
+  .arena-entry {
+    gap: 0.4rem;
+  }
+  .travel-divider {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.72rem;
+  }
+  .arena-block {
+    padding: 0.55rem 0.6rem;
+  }
+  .arena-info {
+    padding-right: 2.2rem;
+  }
+  .arena-name {
+    font-size: 0.9rem;
+  }
+  .arena-address {
+    font-size: 0.78rem;
+  }
+  .assignments-table tbody tr {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+  .assignments-table tbody tr + tr {
+    margin-top: 0.15rem;
+  }
+  .assignments-table tbody td.col-time,
+  .assignments-table tbody td.col-match {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .assignments-table tbody td.col-match {
+    margin-bottom: 0.15rem;
+  }
+  .match-teams {
+    font-size: 0.85rem;
+  }
+  .match-meta {
+    font-size: 0.72rem;
+  }
+  .referee-list {
+    grid-template-columns: 1fr;
+  }
+  .role-cell-label {
+    margin-bottom: 0.15rem;
   }
 }
 </style>
