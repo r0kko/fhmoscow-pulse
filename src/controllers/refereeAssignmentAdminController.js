@@ -62,7 +62,8 @@ export default {
         req.params.id,
         req.user.id
       );
-      return res.json(data);
+      const response = Array.isArray(data) ? { assignments: data } : data;
+      return res.json(response);
     } catch (err) {
       return sendError(res, err);
     }

@@ -13,6 +13,9 @@ const matchRefereeDraftClearFindOrCreateMock = jest.fn();
 const matchRefereeDraftClearUpdateMock = jest.fn();
 const matchRefereeDraftClearDestroyMock = jest.fn();
 const matchRefereeStatusFindAllMock = jest.fn();
+const matchRefereeNotificationFindAllMock = jest.fn();
+const matchRefereeNotificationBulkCreateMock = jest.fn();
+const matchRefereeNotificationUpdateMock = jest.fn();
 const refereeRoleGroupFindByPkMock = jest.fn();
 const refereeRoleGroupFindAllMock = jest.fn();
 const refereeRoleFindAllMock = jest.fn();
@@ -34,6 +37,9 @@ beforeEach(() => {
   matchRefereeDraftClearUpdateMock.mockReset();
   matchRefereeDraftClearDestroyMock.mockReset();
   matchRefereeStatusFindAllMock.mockReset();
+  matchRefereeNotificationFindAllMock.mockReset();
+  matchRefereeNotificationBulkCreateMock.mockReset();
+  matchRefereeNotificationUpdateMock.mockReset();
   refereeRoleGroupFindByPkMock.mockReset();
   refereeRoleGroupFindAllMock.mockReset();
   refereeRoleFindAllMock.mockReset();
@@ -71,6 +77,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Stage: {},
   TournamentGroup: {},
   Tour: {},
+  Season: {},
   RefereeRole: { findAll: refereeRoleFindAllMock },
   RefereeRoleGroup: {
     findByPk: refereeRoleGroupFindByPkMock,
@@ -90,6 +97,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     destroy: matchRefereeDraftClearDestroyMock,
   },
   MatchRefereeStatus: { findAll: matchRefereeStatusFindAllMock },
+  MatchRefereeNotification: {
+    findAll: matchRefereeNotificationFindAllMock,
+    bulkCreate: matchRefereeNotificationBulkCreateMock,
+    update: matchRefereeNotificationUpdateMock,
+  },
+  GameStatus: {},
   Address: {},
   User: { findAll: userFindAllMock },
   Role: {},
@@ -310,9 +323,11 @@ test('publishMatchReferees requires full slot coverage', async () => {
   tournamentGroupRefereeFindAllMock.mockResolvedValue([
     { tournament_group_id: 'tg1', referee_role_id: 'r1', count: 2 },
   ]);
-  matchRefereeFindAllMock.mockResolvedValueOnce([
-    { match_id: 'm1', referee_role_id: 'r1', status_id: draftStatus.id },
-  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      { match_id: 'm1', referee_role_id: 'r1', status_id: draftStatus.id },
+    ]);
 
   await expect(
     service.publishMatchReferees('m1', 'admin')
@@ -325,6 +340,7 @@ test('publishMatchReferees promotes draft assignments', async () => {
     { tournament_group_id: 'tg1', referee_role_id: 'r1', count: 1 },
   ]);
   matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
     .mockResolvedValueOnce([
       { match_id: 'm1', referee_role_id: 'r1', status_id: draftStatus.id },
     ])
@@ -344,7 +360,7 @@ test('publishMatchReferees promotes draft assignments', async () => {
       transaction: expect.any(Object),
     })
   );
-  expect(result[0].status).toBe('PUBLISHED');
+  expect(result.assignments[0].status).toBe('PUBLISHED');
 });
 
 test('publishAssignmentsForDate publishes drafts for a role group', async () => {

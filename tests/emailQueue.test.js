@@ -55,13 +55,16 @@ describe('emailQueue __testables', () => {
       EMAIL_QUEUE_DEDUPE_TTL_MS: '1000',
       EMAIL_QUEUE_DEDUPE_GRACE_MS: '2000',
     });
-    const availableAfter = Date.now() + 3000;
+    const now = Date.now();
+    const clockSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+    const availableAfter = now + 3000;
     const job = {
       dedupeTtlMs: 1000,
       availableAfter,
       delayMs: 0,
     };
     expect(t.dedupeTtlForJob(job)).toBeGreaterThanOrEqual(5000);
+    clockSpy.mockRestore();
   });
 
   test('acquireDedupeLock honors NX semantics and returns existing job id', async () => {
