@@ -72,7 +72,9 @@ module.exports = {
       'match_referee_notifications',
       'uniq_match_referee_notifications_payload_hash'
     );
-    await queryInterface.removeIndex('match_referee_notifications', ['sent_at']);
+    await queryInterface.removeIndex('match_referee_notifications', [
+      'sent_at',
+    ]);
     await queryInterface.removeIndex('match_referee_notifications', ['type']);
     await queryInterface.removeIndex('match_referee_notifications', [
       'user_id',

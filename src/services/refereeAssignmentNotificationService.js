@@ -56,7 +56,11 @@ function formatMskDateTime(date) {
   const mi = String(msk.getUTCMinutes()).padStart(2, '0');
   const dateLabel = `${dd}.${mm}.${yyyy}`;
   const timeLabel = `${hh}:${mi}`;
-  return { date: dateLabel, time: timeLabel, label: `${dateLabel}, ${timeLabel}` };
+  return {
+    date: dateLabel,
+    time: timeLabel,
+    label: `${dateLabel}, ${timeLabel}`,
+  };
 }
 
 function moscowDateKey(date) {
@@ -116,15 +120,18 @@ function buildPayloadHash(source) {
 
 function sortSnapshots(list = []) {
   return list.sort((a, b) => {
-    const aTs = Number.isFinite(a.sort_ts) ? a.sort_ts : Number.MAX_SAFE_INTEGER;
-    const bTs = Number.isFinite(b.sort_ts) ? b.sort_ts : Number.MAX_SAFE_INTEGER;
+    const aTs = Number.isFinite(a.sort_ts)
+      ? a.sort_ts
+      : Number.MAX_SAFE_INTEGER;
+    const bTs = Number.isFinite(b.sort_ts)
+      ? b.sort_ts
+      : Number.MAX_SAFE_INTEGER;
     if (aTs !== bTs) return aTs - bTs;
     const aLabel = a.match_label || '';
     const bLabel = b.match_label || '';
     return aLabel.localeCompare(bLabel, 'ru', { sensitivity: 'base' });
   });
 }
-
 
 export async function notifyRefereeAssignmentChanges({
   before = [],

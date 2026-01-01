@@ -385,9 +385,7 @@ async function fetchAssignmentNotificationDetails({
           {
             model: Ground,
             attributes: ['id', 'name'],
-            include: [
-              { model: Address, attributes: ['result', 'source'] },
-            ],
+            include: [{ model: Address, attributes: ['result', 'source'] }],
           },
           { model: Team, as: 'HomeTeam', attributes: ['id', 'name'] },
           { model: Team, as: 'AwayTeam', attributes: ['id', 'name'] },
@@ -960,7 +958,9 @@ export async function getMatchDetailsForUser(matchId, userId) {
       {
         model: Ground,
         attributes: ['id', 'name', 'yandex_url'],
-        include: [{ model: Address, attributes: ['result', 'source', 'metro'] }],
+        include: [
+          { model: Address, attributes: ['result', 'source', 'metro'] },
+        ],
       },
       {
         model: Team,
@@ -1038,12 +1038,16 @@ export async function getMatchDetailsForUser(matchId, userId) {
             short_name: match.Tournament.name || match.Tournament.full_name,
           }
         : null,
-      stage: match.Stage ? { id: match.Stage.id, name: match.Stage.name } : null,
+      stage: match.Stage
+        ? { id: match.Stage.id, name: match.Stage.name }
+        : null,
       group: match.TournamentGroup
         ? { id: match.TournamentGroup.id, name: match.TournamentGroup.name }
         : null,
       tour: match.Tour ? { id: match.Tour.id, name: match.Tour.name } : null,
-      season: match.Season ? { id: match.Season.id, name: match.Season.name } : null,
+      season: match.Season
+        ? { id: match.Season.id, name: match.Season.name }
+        : null,
       ground: match.Ground
         ? {
             id: match.Ground.id,
@@ -1990,11 +1994,7 @@ export async function publishAssignmentsForDate(
         })
       : [];
     const affectedUserIds = collectChangedUserIds(beforeDetails, afterDetails);
-    if (
-      affectedUserIds.size &&
-      statusInfo.confirmed &&
-      matchIds.length
-    ) {
+    if (affectedUserIds.size && statusInfo.confirmed && matchIds.length) {
       await MatchReferee.update(
         {
           status_id: statusInfo.published.id,
