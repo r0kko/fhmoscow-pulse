@@ -15,7 +15,7 @@ export const refereeAssignmentsListRefereesRules = [
   ...refereeAssignmentsListRules,
   query('role_group_id').optional({ nullable: true }).isUUID(),
   query('search').optional({ nullable: true }).isString(),
-  query('limit').optional({ nullable: true }).isInt({ min: 1, max: 200 }),
+  query('limit').optional({ nullable: true }).isInt({ min: 0, max: 10000 }),
 ];
 
 export const refereeAssignmentsSelfListRules = [

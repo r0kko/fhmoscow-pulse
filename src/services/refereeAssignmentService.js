@@ -595,7 +595,15 @@ export async function listRefereesByDate({
   limit = 200,
 } = {}) {
   const normalized = normalizeDateKey(dateKey);
-  const maxLimit = Math.min(Math.max(Number(limit) || 200, 1), 200);
+  const DEFAULT_LIMIT = 200;
+  const MAX_LIMIT = 10000;
+  const limitProvided = limit !== undefined && limit !== null;
+  const rawLimit = limitProvided ? Number(limit) : DEFAULT_LIMIT;
+  const normalizedLimit = Number.isFinite(rawLimit) ? rawLimit : DEFAULT_LIMIT;
+  const maxLimit =
+    normalizedLimit > 0
+      ? Math.min(Math.max(normalizedLimit, 1), MAX_LIMIT)
+      : null;
   const where = {};
   if (search) {
     const term = `%${search.trim()}%`;
@@ -610,7 +618,7 @@ export async function listRefereesByDate({
 
   void roleGroupId;
 
-  const users = await User.findAll({
+  const userQuery = {
     where,
     include: [
       {
@@ -629,8 +637,10 @@ export async function listRefereesByDate({
       ['last_name', 'ASC'],
       ['first_name', 'ASC'],
     ],
-    limit: maxLimit,
-  });
+  };
+  if (maxLimit !== null) userQuery.limit = maxLimit;
+
+  const users = await User.findAll(userQuery);
 
   const userIds = users.map((u) => u.id);
   const availRecords = await listAvailabilities(

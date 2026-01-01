@@ -978,7 +978,10 @@ async function loadReferees() {
   if (!selectedDate.value) return;
   loadingReferees.value = true;
   try {
-    const params = new URLSearchParams({ date: selectedDate.value });
+    const params = new URLSearchParams({
+      date: selectedDate.value,
+      limit: '0',
+    });
     const data = await apiFetch(`/referee-assignments/referees?${params}`);
     referees.value = data.referees || [];
   } catch (_) {
