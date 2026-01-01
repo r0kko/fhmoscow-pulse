@@ -31,6 +31,7 @@ import { renderMatchAgreementDeclinedEmail } from '../templates/matchAgreementDe
 import { renderMatchAgreementWithdrawnEmail } from '../templates/matchAgreementWithdrawnEmail.js';
 import { renderMatchAgreementReminderEmail } from '../templates/matchAgreementReminderEmail.js';
 import { renderMatchAgreementDailyDigestEmail } from '../templates/matchAgreementDailyDigestEmail.js';
+import { renderRefereeAssignmentsNotificationEmail } from '../templates/refereeAssignmentsNotificationEmail.js';
 
 import { isEmailConfigured } from './email/emailTransport.js';
 import {
@@ -485,6 +486,31 @@ export async function sendMatchAgreementDailyDigestEmail(user, digest) {
   );
 }
 
+export async function sendRefereeAssignmentsNotificationEmail(
+  user,
+  payload = {}
+) {
+  const payloadHashes = Array.isArray(payload?.meta?.payloadHashes)
+    ? payload.meta.payloadHashes
+    : [];
+  const meta = {
+    publishedCount: Array.isArray(payload.published)
+      ? payload.published.length
+      : 0,
+    cancelledCount: Array.isArray(payload.cancelled)
+      ? payload.cancelled.length
+      : 0,
+    payloadHashes,
+  };
+  await queueMailFromTemplate(
+    user,
+    renderRefereeAssignmentsNotificationEmail,
+    [payload],
+    'referee_assignments',
+    meta
+  );
+}
+
 export {
   isEmailConfigured,
   startEmailWorker,
@@ -529,6 +555,7 @@ export default {
   sendMatchAgreementWithdrawnEmail,
   sendMatchAgreementReminderEmail,
   sendMatchAgreementDailyDigestEmail,
+  sendRefereeAssignmentsNotificationEmail,
   startEmailWorker,
   stopEmailWorker,
   getEmailQueueStats,

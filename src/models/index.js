@@ -107,6 +107,7 @@ import MatchStaff from './matchStaff.js';
 import MatchReferee from './matchReferee.js';
 import MatchRefereeStatus from './matchRefereeStatus.js';
 import MatchRefereeDraftClear from './matchRefereeDraftClear.js';
+import MatchRefereeNotification from './matchRefereeNotification.js';
 import GameEventType from './gameEventType.js';
 import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
@@ -469,6 +470,14 @@ RefereeRole.hasMany(MatchReferee, { foreignKey: 'referee_role_id' });
 MatchReferee.belongsTo(RefereeRole, { foreignKey: 'referee_role_id' });
 MatchRefereeStatus.hasMany(MatchReferee, { foreignKey: 'status_id' });
 MatchReferee.belongsTo(MatchRefereeStatus, { foreignKey: 'status_id' });
+MatchReferee.hasMany(MatchRefereeNotification, {
+  foreignKey: 'match_referee_id',
+});
+MatchRefereeNotification.belongsTo(MatchReferee, {
+  foreignKey: 'match_referee_id',
+});
+User.hasMany(MatchRefereeNotification, { foreignKey: 'user_id' });
+MatchRefereeNotification.belongsTo(User, { foreignKey: 'user_id' });
 Match.hasMany(MatchRefereeDraftClear, { foreignKey: 'match_id' });
 MatchRefereeDraftClear.belongsTo(Match, { foreignKey: 'match_id' });
 RefereeRoleGroup.hasMany(MatchRefereeDraftClear, {
@@ -778,6 +787,7 @@ export {
   MatchReferee,
   MatchRefereeStatus,
   MatchRefereeDraftClear,
+  MatchRefereeNotification,
   GamePenalty,
   GameEventType,
   PenaltyMinutes,

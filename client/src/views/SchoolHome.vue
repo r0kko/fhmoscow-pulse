@@ -64,7 +64,7 @@ async function checkManagerAccess() {
             <MenuTile
               v-if="canManageStaff"
               title="Сотрудники и доступы"
-              icon="bi-people-gear"
+              icon="bi-shield-lock"
               to="/school-staff"
               :replace="true"
             />

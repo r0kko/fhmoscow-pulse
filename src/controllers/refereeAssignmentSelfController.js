@@ -37,4 +37,16 @@ export default {
       return sendError(res, err);
     }
   },
+
+  async getMyMatchDetails(req, res) {
+    try {
+      const data = await refereeAssignmentService.getMatchDetailsForUser(
+        req.params.id,
+        req.user.id
+      );
+      return res.json(data);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
 };

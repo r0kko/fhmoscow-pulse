@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 import { auth } from '../auth';
@@ -29,6 +30,7 @@ const confirmModalRef = ref(null);
 let confirmModal;
 const confirming = ref(false);
 const confirmError = ref('');
+const router = useRouter();
 const breadcrumbs = Object.freeze([
   { label: 'Главная', to: '/' },
   { label: 'Назначения', disabled: true },
@@ -262,6 +264,11 @@ function openConfirmDay() {
     confirmModal = new Modal(confirmModalRef.value);
   }
   confirmModal.show();
+}
+
+function openMatchDetails(matchId) {
+  if (!matchId) return;
+  router.push({ path: `/referee-assignments/matches/${matchId}` });
 }
 
 async function confirmDayAssignments() {
@@ -520,7 +527,7 @@ function formatTabLines(date, offset) {
 
       <section class="card section-card tile fade-in shadow-sm">
         <div class="card-body assignments-results">
-          <div class="results-header">
+          <div v-if="dayTabs.length" class="results-header">
             <TabSelector
               v-model="activeDayKey"
               :tabs="dayTabs"
@@ -556,7 +563,8 @@ function formatTabLines(date, offset) {
             <template v-else>
               <div
                 v-if="!arenaGroups.length"
-                class="text-muted small text-center"
+                class="alert alert-light border small text-center"
+                role="status"
               >
                 На выбранный день назначений нет.
               </div>
@@ -633,6 +641,12 @@ function formatTabLines(date, offset) {
                             v-for="match in arena.matches"
                             :key="match.id"
                             class="match-row"
+                            role="button"
+                            tabindex="0"
+                            :aria-label="`Открыть матч ${matchTitle(match)}`"
+                            @click="openMatchDetails(match.id)"
+                            @keydown.enter="openMatchDetails(match.id)"
+                            @keydown.space.prevent="openMatchDetails(match.id)"
                           >
                             <td class="col-time">
                               <div class="time-text">
@@ -903,6 +917,23 @@ function formatTabLines(date, offset) {
   padding-top: 0.35rem;
   padding-bottom: 0.35rem;
   background: transparent;
+}
+
+.match-row {
+  cursor: pointer;
+}
+
+.match-row:hover {
+  background-color: rgba(17, 56, 103, 0.04);
+}
+
+.match-row:hover td {
+  background-color: rgba(17, 56, 103, 0.04);
+}
+
+.match-row:focus-visible {
+  outline: 2px solid var(--brand-color, #113867);
+  outline-offset: 2px;
 }
 
 .col-time {

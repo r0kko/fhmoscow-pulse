@@ -1,3 +1,5 @@
+import './env.js';
+
 import { readBool, readNumber, readString } from '../utils/env.js';
 
 export const SMTP_HOST = readString(process.env.SMTP_HOST);
@@ -5,6 +7,7 @@ export const SMTP_PORT = readNumber(process.env.SMTP_PORT, 587);
 export const SMTP_USER = readString(process.env.SMTP_USER);
 export const SMTP_PASS = readString(process.env.SMTP_PASS);
 export const EMAIL_FROM = readString(process.env.EMAIL_FROM);
+export const EMAIL_OVERRIDE_TO = readString(process.env.EMAIL_OVERRIDE_TO);
 
 export const SMTP_SECURE = readBool(process.env.SMTP_SECURE, SMTP_PORT === 465);
 export const SMTP_REQUIRE_TLS = readBool(
@@ -67,6 +70,7 @@ export default {
   SMTP_USER,
   SMTP_PASS,
   EMAIL_FROM,
+  EMAIL_OVERRIDE_TO,
   SMTP_SECURE,
   SMTP_REQUIRE_TLS,
   SMTP_ALLOW_INSECURE_TLS,

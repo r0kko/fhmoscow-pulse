@@ -79,15 +79,15 @@ const basePreparationSections: TileSection[] = [
 
 const baseWorkSections: TileSection[] = [
   {
-    title: 'Моя занятость',
-    icon: 'bi-calendar-week',
-    to: '/availability',
-    referee: true,
-  },
-  {
     title: 'Мои назначения',
     icon: 'bi-calendar-check',
     to: '/referee-assignments',
+    referee: true,
+  },
+  {
+    title: 'Моя занятость',
+    icon: 'bi-calendar-week',
+    to: '/availability',
     referee: true,
   },
   { title: 'Прошедшие матчи', icon: 'bi-clock-history' },
@@ -201,7 +201,7 @@ const schoolSections = computed<TileSection[]>(() => {
   if (canManageStaff.value) {
     sections.push({
       title: 'Сотрудники и доступы',
-      icon: 'bi-people-gear',
+      icon: 'bi-shield-lock',
       to: '/school-staff',
     });
   }

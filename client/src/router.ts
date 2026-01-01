@@ -19,6 +19,7 @@ import Camps from './views/Camps.vue';
 import Tasks from './views/Tasks.vue';
 import Availability from './views/Availability.vue';
 import RefereeAssignments from './views/RefereeAssignments.vue';
+import RefereeAssignmentMatch from './views/RefereeAssignmentMatch.vue';
 import Normatives from './views/Normatives.vue';
 import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
@@ -226,6 +227,11 @@ const routes: RouteRecordRaw[] = [
     path: '/referee-assignments',
     component: RefereeAssignments,
     meta: { requiresAuth: true, requiresReferee: true, title: 'Назначения' },
+  },
+  {
+    path: '/referee-assignments/matches/:id',
+    component: RefereeAssignmentMatch,
+    meta: { requiresAuth: true, requiresReferee: true, title: 'Матч' },
   },
   {
     path: '/normatives',

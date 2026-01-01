@@ -58,11 +58,11 @@ export default {
 
   async publishMatchReferees(req, res) {
     try {
-      const assignments = await refereeAssignmentService.publishMatchReferees(
+      const data = await refereeAssignmentService.publishMatchReferees(
         req.params.id,
         req.user.id
       );
-      return res.json({ assignments });
+      return res.json(data);
     } catch (err) {
       return sendError(res, err);
     }

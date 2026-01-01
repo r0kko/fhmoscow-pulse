@@ -12,6 +12,7 @@ import {
   refereeAssignmentsPublishDayRules,
   refereeAssignmentsSelfListRules,
   refereeAssignmentsSelfConfirmRules,
+  refereeAssignmentsSelfMatchRules,
 } from '../validators/refereeAssignmentValidators.js';
 
 const router = express.Router();
@@ -62,6 +63,14 @@ router.get(
   refereeAssignmentsSelfListRules,
   validate,
   selfController.listMyAssignments
+);
+router.get(
+  '/my/matches/:id',
+  auth,
+  authorize('REFEREE'),
+  refereeAssignmentsSelfMatchRules,
+  validate,
+  selfController.getMyMatchDetails
 );
 router.get('/my/dates', auth, authorize('REFEREE'), selfController.listMyDates);
 router.post(

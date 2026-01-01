@@ -9,6 +9,7 @@ import {
   SMTP_USER,
   SMTP_PASS,
   EMAIL_FROM,
+  EMAIL_OVERRIDE_TO,
   SMTP_SECURE,
   SMTP_REQUIRE_TLS,
   SMTP_ALLOW_INSECURE_TLS,
@@ -254,20 +255,30 @@ export async function deliverEmail(message) {
     throw new Error('Recipient address is required');
   }
 
+  const overrideActive = Boolean(EMAIL_OVERRIDE_TO);
+  const effectiveTo = overrideActive ? EMAIL_OVERRIDE_TO : to;
+  const sanitizedHeaders = { ...(headers || {}) };
+  if (overrideActive) {
+    ['to', 'To', 'cc', 'Cc', 'bcc', 'Bcc'].forEach((key) => {
+      if (sanitizedHeaders[key]) delete sanitizedHeaders[key];
+    });
+    sanitizedHeaders['X-Email-Override-To'] = EMAIL_OVERRIDE_TO;
+  }
+
   const { finalText, finalHtml } = appendFooters(text, html);
   const mail = {
     from: resolveMailFrom(),
-    to,
+    to: effectiveTo,
     subject,
     text: finalText,
     html: finalHtml,
     headers: {
       'X-Email-Purpose': purpose,
       ...(id ? { 'X-Email-Job-Id': id } : {}),
-      ...headers,
+      ...sanitizedHeaders,
     },
-    cc,
-    bcc,
+    cc: overrideActive ? undefined : cc,
+    bcc: overrideActive ? undefined : bcc,
   };
 
   const started = performance.now();
@@ -278,11 +289,14 @@ export async function deliverEmail(message) {
     const latencyMs = Math.round(performance.now() - started);
     await recordDeliveryMetrics('ok', purpose, latencyMs);
     logger.info('Email delivered', {
-      to,
+      to: effectiveTo,
       purpose,
       jobId: id,
       messageId: info?.messageId,
       latency_ms: latencyMs,
+      ...(overrideActive
+        ? { override_to: EMAIL_OVERRIDE_TO, original_to: to }
+        : {}),
     });
     return info;
   } catch (err) {
@@ -293,7 +307,7 @@ export async function deliverEmail(message) {
       lastTransportOptions || transport?.options
     );
     logger.error('Email delivery failed', {
-      to,
+      to: effectiveTo,
       purpose,
       jobId: id,
       error: rootError?.message || String(rootError),
@@ -303,6 +317,9 @@ export async function deliverEmail(message) {
       responseCode: rootError?.responseCode,
       latency_ms: latencyMs,
       transport: transportMeta,
+      ...(overrideActive
+        ? { override_to: EMAIL_OVERRIDE_TO, original_to: to }
+        : {}),
     });
     if (shouldResetTransport(rootError)) {
       resetTransport(transport);

@@ -1,5 +1,7 @@
 import { body, query } from 'express-validator';
 
+import { uuidParam } from './paramsValidators.js';
+
 export const refereeAssignmentsListRules = [
   query('date')
     .isString()
@@ -33,6 +35,8 @@ export const refereeAssignmentsSelfConfirmRules = [
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage('invalid_date'),
 ];
+
+export const refereeAssignmentsSelfMatchRules = [...uuidParam('id')];
 
 export const refereeAssignmentsUpdateRules = [
   body('assignments').isArray().withMessage('referee_assignments_required'),

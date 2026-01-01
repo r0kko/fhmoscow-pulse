@@ -4,6 +4,7 @@ import sequelize from '../config/database.js';
 import ServiceError from '../errors/ServiceError.js';
 import { utcToMoscow } from '../utils/time.js';
 import { REFEREE_ROLES } from '../utils/roles.js';
+import logger from '../../logger.js';
 import {
   Match,
   Team,
@@ -13,6 +14,7 @@ import {
   Stage,
   TournamentGroup,
   Tour,
+  Season,
   Address,
   RefereeRole,
   RefereeRoleGroup,
@@ -20,12 +22,14 @@ import {
   MatchReferee,
   MatchRefereeStatus,
   MatchRefereeDraftClear,
+  GameStatus,
   User,
   Role,
   UserStatus,
 } from '../models/index.js';
 
 import { listForUsers as listAvailabilities } from './userAvailabilityService.js';
+import { notifyRefereeAssignmentChanges } from './refereeAssignmentNotificationService.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DRAFT_STATUS_ALIAS = 'DRAFT';
@@ -272,6 +276,56 @@ function formatAssignmentRow(row) {
   };
 }
 
+function formatAssignmentRowWithPhone(row) {
+  const formatted = formatAssignmentRow(row);
+  if (formatted.user) {
+    formatted.user.phone = row.User?.phone ?? null;
+  }
+  return formatted;
+}
+
+function assignmentKey(row) {
+  if (!row) return null;
+  const matchId = row.match_id || row.Match?.id;
+  const roleId = row.referee_role_id || row.RefereeRole?.id;
+  const userId = row.user_id || row.User?.id;
+  if (!matchId || !roleId || !userId) return null;
+  return `${matchId}:${roleId}:${userId}`;
+}
+
+function assignmentUserId(row) {
+  return row?.user_id || row?.User?.id || null;
+}
+
+function collectChangedUserIds(before = [], after = []) {
+  const beforeMap = new Map();
+  before.forEach((row) => {
+    const key = assignmentKey(row);
+    if (!key) return;
+    if (!beforeMap.has(key)) beforeMap.set(key, row);
+  });
+  const afterMap = new Map();
+  after.forEach((row) => {
+    const key = assignmentKey(row);
+    if (!key) return;
+    if (!afterMap.has(key)) afterMap.set(key, row);
+  });
+  const affected = new Set();
+  for (const [key, row] of afterMap.entries()) {
+    if (!beforeMap.has(key)) {
+      const userId = assignmentUserId(row);
+      if (userId) affected.add(userId);
+    }
+  }
+  for (const [key, row] of beforeMap.entries()) {
+    if (!afterMap.has(key)) {
+      const userId = assignmentUserId(row);
+      if (userId) affected.add(userId);
+    }
+  }
+  return affected;
+}
+
 function formatUser(u, availability) {
   return {
     id: u.id,
@@ -281,6 +335,66 @@ function formatUser(u, availability) {
     roles: (u.Roles || []).map((r) => r.alias),
     availability,
   };
+}
+
+async function fetchAssignmentNotificationDetails({
+  matchIds = [],
+  roleIds = null,
+  roleGroupIds = null,
+  statusIds = [],
+} = {}) {
+  if (!matchIds.length || !statusIds.length) return [];
+  const where = {
+    match_id: { [Op.in]: matchIds },
+    status_id: { [Op.in]: statusIds },
+  };
+  if (Array.isArray(roleIds) && roleIds.length) {
+    where.referee_role_id = { [Op.in]: roleIds };
+  }
+  const roleInclude = {
+    model: RefereeRole,
+    include: [RefereeRoleGroup],
+    required: false,
+  };
+  if (Array.isArray(roleGroupIds) && roleGroupIds.length) {
+    roleInclude.where = {
+      referee_role_group_id: { [Op.in]: roleGroupIds },
+    };
+    roleInclude.required = true;
+  }
+  return MatchReferee.findAll({
+    where,
+    include: [
+      {
+        model: User,
+        attributes: ['id', 'first_name', 'last_name', 'patronymic', 'email'],
+      },
+      roleInclude,
+      {
+        model: Match,
+        required: true,
+        attributes: ['id', 'date_start'],
+        include: [
+          { model: Tournament, attributes: ['id', 'name', 'full_name'] },
+          { model: Stage, attributes: ['id', 'name'] },
+          {
+            model: TournamentGroup,
+            attributes: ['id', 'name', 'match_duration_minutes'],
+          },
+          { model: Tour, attributes: ['id', 'name'] },
+          {
+            model: Ground,
+            attributes: ['id', 'name'],
+            include: [
+              { model: Address, attributes: ['result', 'source'] },
+            ],
+          },
+          { model: Team, as: 'HomeTeam', attributes: ['id', 'name'] },
+          { model: Team, as: 'AwayTeam', attributes: ['id', 'name'] },
+        ],
+      },
+    ],
+  });
 }
 
 export async function listRoleGroups() {
@@ -813,6 +927,146 @@ export async function listAssignmentsForUser(userId, dateKey) {
   return { date: normalized, matches };
 }
 
+export async function getMatchDetailsForUser(matchId, userId) {
+  if (!userId) throw new ServiceError('user_not_found', 404);
+  if (!matchId) throw new ServiceError('match_not_found', 404);
+  const statusInfo = await resolveAssignmentStatuses();
+  const statusIds = [statusInfo.published.id];
+  if (statusInfo.confirmed) statusIds.push(statusInfo.confirmed.id);
+
+  const hasAssignment = await MatchReferee.findOne({
+    where: {
+      match_id: matchId,
+      user_id: userId,
+      status_id: { [Op.in]: statusIds },
+    },
+    attributes: ['id'],
+  });
+
+  if (!hasAssignment) {
+    throw new ServiceError('access_denied', 403);
+  }
+
+  const match = await Match.findByPk(matchId, {
+    include: [
+      { model: Tournament, attributes: ['id', 'name', 'full_name'] },
+      { model: Stage, attributes: ['id', 'name'] },
+      {
+        model: TournamentGroup,
+        attributes: ['id', 'name', 'match_duration_minutes'],
+      },
+      { model: Tour, attributes: ['id', 'name'] },
+      { model: Season, attributes: ['id', 'name'] },
+      {
+        model: Ground,
+        attributes: ['id', 'name', 'yandex_url'],
+        include: [{ model: Address, attributes: ['result', 'source', 'metro'] }],
+      },
+      {
+        model: Team,
+        as: 'HomeTeam',
+        attributes: ['id', 'name'],
+      },
+      {
+        model: Team,
+        as: 'AwayTeam',
+        attributes: ['id', 'name'],
+      },
+      { model: GameStatus, attributes: ['name', 'alias'] },
+    ],
+  });
+
+  if (!match) throw new ServiceError('match_not_found', 404);
+
+  const durationMinutes = match.TournamentGroup?.match_duration_minutes ?? null;
+  const durationMissing =
+    !Number.isFinite(durationMinutes) || durationMinutes <= 0;
+  const startTime = match.date_start
+    ? formatHm(utcToMoscow(match.date_start))
+    : null;
+  const endTime =
+    match.date_start && !durationMissing
+      ? formatHm(
+          utcToMoscow(
+            new Date(match.date_start.getTime() + durationMinutes * 60000)
+          )
+        )
+      : null;
+  const mskDate = match.date_start ? moscowDateKey(match.date_start) : null;
+  const address =
+    match.Ground?.Address?.result || match.Ground?.Address?.source || null;
+  const metro = Array.isArray(match.Ground?.Address?.metro)
+    ? match.Ground.Address.metro
+    : [];
+
+  const assignmentRows = await MatchReferee.findAll({
+    where: {
+      match_id: matchId,
+    },
+    include: [
+      { model: MatchRefereeStatus, required: false },
+      {
+        model: RefereeRole,
+        include: [RefereeRoleGroup],
+        required: false,
+      },
+      {
+        model: User,
+        attributes: ['id', 'last_name', 'first_name', 'patronymic', 'phone'],
+      },
+    ],
+    order: [
+      [{ model: RefereeRole }, 'name', 'ASC'],
+      [{ model: User }, 'last_name', 'ASC'],
+    ],
+  });
+
+  return {
+    match: {
+      id: match.id,
+      date_start: match.date_start,
+      msk_date: mskDate,
+      msk_start_time: startTime,
+      msk_end_time: endTime,
+      duration_minutes: Number.isFinite(durationMinutes)
+        ? durationMinutes
+        : null,
+      tournament: match.Tournament
+        ? {
+            id: match.Tournament.id,
+            name: match.Tournament.name,
+            short_name: match.Tournament.name || match.Tournament.full_name,
+          }
+        : null,
+      stage: match.Stage ? { id: match.Stage.id, name: match.Stage.name } : null,
+      group: match.TournamentGroup
+        ? { id: match.TournamentGroup.id, name: match.TournamentGroup.name }
+        : null,
+      tour: match.Tour ? { id: match.Tour.id, name: match.Tour.name } : null,
+      season: match.Season ? { id: match.Season.id, name: match.Season.name } : null,
+      ground: match.Ground
+        ? {
+            id: match.Ground.id,
+            name: match.Ground.name,
+            address,
+            metro,
+            yandex_url: match.Ground.yandex_url || null,
+          }
+        : null,
+      team1: match.HomeTeam
+        ? { id: match.HomeTeam.id, name: match.HomeTeam.name }
+        : null,
+      team2: match.AwayTeam
+        ? { id: match.AwayTeam.id, name: match.AwayTeam.name }
+        : null,
+      status: match.GameStatus
+        ? { name: match.GameStatus.name, alias: match.GameStatus.alias }
+        : null,
+      assignments: assignmentRows.map(formatAssignmentRowWithPhone),
+    },
+  };
+}
+
 export async function confirmAssignmentsForMatch(matchId, userId) {
   if (!userId) throw new ServiceError('user_not_found', 404);
   const statusInfo = await resolveAssignmentStatuses();
@@ -1279,6 +1533,15 @@ export async function publishMatchReferees(matchId, actorId) {
   });
   if (!match) throw new ServiceError('match_not_found', 404);
 
+  const assignedStatusIds = [
+    statusInfo.published.id,
+    statusInfo.confirmed?.id,
+  ].filter(Boolean);
+  const beforeDetails = await fetchAssignmentNotificationDetails({
+    matchIds: [match.id],
+    statusIds: assignedStatusIds,
+  });
+
   const requirementsRaw = await TournamentGroupReferee.findAll({
     where: { tournament_group_id: match.tournament_group_id },
   });
@@ -1342,7 +1605,37 @@ export async function publishMatchReferees(matchId, actorId) {
     ],
   });
 
-  return formatMatchAssignments(published).get(match.id) || [];
+  let notificationStats = {
+    recipients: 0,
+    queued: 0,
+    failed: 0,
+    published: 0,
+    cancelled: 0,
+    skipped_no_email: 0,
+    skipped_duplicate: 0,
+  };
+  try {
+    const afterDetails = await fetchAssignmentNotificationDetails({
+      matchIds: [match.id],
+      statusIds: assignedStatusIds,
+    });
+    notificationStats = await notifyRefereeAssignmentChanges({
+      before: beforeDetails,
+      after: afterDetails,
+      actorId,
+    });
+  } catch (err) {
+    logger.error('Referee assignment notifications failed', {
+      error: err?.message || String(err),
+      matchId,
+    });
+    notificationStats = { ...notificationStats, error: 'notification_failed' };
+  }
+
+  return {
+    assignments: formatMatchAssignments(published).get(match.id) || [],
+    notifications: notificationStats,
+  };
 }
 
 export async function publishAssignmentsForDate(
@@ -1467,6 +1760,17 @@ export async function publishAssignmentsForDate(
       )
     )
   );
+  const assignedStatusIds = [
+    statusInfo.published.id,
+    statusInfo.confirmed?.id,
+  ].filter(Boolean);
+  const beforeDetails = matchIds.length
+    ? await fetchAssignmentNotificationDetails({
+        matchIds,
+        roleGroupIds: uniqueGroupIds,
+        statusIds: assignedStatusIds,
+      })
+    : [];
 
   const assignments =
     matchIds.length && allRoleIds.length
@@ -1668,10 +1972,60 @@ export async function publishAssignmentsForDate(
   });
 
   const publishedList = Array.from(publishedMatches.values());
+  let notificationStats = {
+    recipients: 0,
+    queued: 0,
+    failed: 0,
+    published: 0,
+    cancelled: 0,
+    skipped_no_email: 0,
+    skipped_duplicate: 0,
+  };
+  try {
+    const afterDetails = matchIds.length
+      ? await fetchAssignmentNotificationDetails({
+          matchIds,
+          roleGroupIds: uniqueGroupIds,
+          statusIds: assignedStatusIds,
+        })
+      : [];
+    const affectedUserIds = collectChangedUserIds(beforeDetails, afterDetails);
+    if (
+      affectedUserIds.size &&
+      statusInfo.confirmed &&
+      matchIds.length
+    ) {
+      await MatchReferee.update(
+        {
+          status_id: statusInfo.published.id,
+          updated_by: actorId,
+        },
+        {
+          where: {
+            match_id: { [Op.in]: matchIds },
+            user_id: { [Op.in]: Array.from(affectedUserIds.values()) },
+            status_id: statusInfo.confirmed.id,
+          },
+        }
+      );
+    }
+    notificationStats = await notifyRefereeAssignmentChanges({
+      before: beforeDetails,
+      after: afterDetails,
+      actorId,
+    });
+  } catch (err) {
+    logger.error('Referee assignment notifications failed', {
+      error: err?.message || String(err),
+      date: normalized,
+    });
+    notificationStats = { ...notificationStats, error: 'notification_failed' };
+  }
   return {
     date: normalized,
     published_matches: publishedList,
     published_count: publishedList.length,
+    notifications: notificationStats,
   };
 }
 
@@ -1681,6 +2035,7 @@ export default {
   listRefereesByDate,
   listAssignmentDatesForUser,
   listAssignmentsForUser,
+  getMatchDetailsForUser,
   confirmAssignmentsForMatch,
   confirmAssignmentsForDate,
   updateMatchReferees,

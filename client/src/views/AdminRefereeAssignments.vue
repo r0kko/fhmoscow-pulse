@@ -822,6 +822,30 @@ async function saveMatchAssignments(match, roleId) {
   }
 }
 
+function formatPublishNotificationSummary(stats) {
+  if (!stats) return '';
+  if (stats.error) return 'Отправка уведомлений завершилась ошибкой';
+  const parts = [];
+  if (Number.isFinite(stats.queued) && stats.queued > 0) {
+    parts.push(`отправлено: ${stats.queued}`);
+  }
+  if (Number.isFinite(stats.published) || Number.isFinite(stats.cancelled)) {
+    const published = Number.isFinite(stats.published) ? stats.published : 0;
+    const cancelled = Number.isFinite(stats.cancelled) ? stats.cancelled : 0;
+    if (published || cancelled) {
+      parts.push(`новые: ${published}, отмены: ${cancelled}`);
+    }
+  }
+  if (Number.isFinite(stats.skipped_no_email) && stats.skipped_no_email > 0) {
+    parts.push(`без email: ${stats.skipped_no_email}`);
+  }
+  if (Number.isFinite(stats.failed) && stats.failed > 0) {
+    parts.push(`ошибки: ${stats.failed}`);
+  }
+  if (!parts.length) return 'Уведомления не требуются';
+  return `Уведомления: ${parts.join(', ')}`;
+}
+
 async function publishDay() {
   if (!canAssignGroup.value) return;
   if (dayPublishState.value.disabled) return;
@@ -829,14 +853,17 @@ async function publishDay() {
   publishSuccess.value = '';
   publishingDay.value = true;
   try {
-    await apiFetch('/referee-assignments/publish', {
+    const data = await apiFetch('/referee-assignments/publish', {
       method: 'POST',
       body: JSON.stringify({
         date: selectedDate.value,
         role_group_ids: selectedGroups.value,
       }),
     });
-    publishSuccess.value = 'Назначения опубликованы.';
+    const summary = formatPublishNotificationSummary(data?.notifications);
+    publishSuccess.value = summary
+      ? `Назначения опубликованы. ${summary}.`
+      : 'Назначения опубликованы.';
     await loadMatches();
   } catch (e) {
     publishError.value = e.message || 'Ошибка публикации';

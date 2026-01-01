@@ -189,6 +189,7 @@ async function changeStaffPosition(userId, positionId) {
 
 const addStaffModalRef = ref(null);
 let addStaffModal;
+let staffSearchTimer = null;
 const addStaff = reactive({
   q: '',
   options: [],
@@ -198,22 +199,59 @@ const addStaff = reactive({
   saving: false,
 });
 
+function normalizeOptionLabel(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase();
+}
+
+function findOptionByLabel(value) {
+  const normalized = normalizeOptionLabel(value);
+  if (!normalized) return null;
+  return (
+    addStaff.options.find(
+      (opt) => normalizeOptionLabel(opt.label) === normalized
+    ) || null
+  );
+}
+
+function syncSelectedUser() {
+  const match = findOptionByLabel(addStaff.q);
+  addStaff.selectedUserId = match ? match.id : '';
+  return Boolean(match);
+}
+
 async function searchStaffOptions() {
   if (!selectedClubId.value) return;
   addStaff.loading = true;
   try {
     const params = new URLSearchParams({ limit: '50' });
-    if (addStaff.q.trim()) params.set('search', addStaff.q.trim());
+    const raw = addStaff.q.trim();
+    const digits = raw.replace(/\D+/g, '');
+    const namePart = raw.split('·')[0].trim();
+    const searchValue =
+      digits.length >= 7 ? digits : namePart || (raw ? raw : '');
+    if (searchValue) params.set('search', searchValue);
     const data = await apiFetch(
       `/clubs/${selectedClubId.value}/staff-candidates?${params.toString()}`
     );
-    addStaff.options = (data.users || []).map((u) => ({
+    const options = (data.users || []).map((u) => ({
       id: u.id,
       label: buildUserLabel(u),
     }));
+    addStaff.options = options;
+    syncSelectedUser();
   } finally {
     addStaff.loading = false;
   }
+}
+
+function queueStaffSearch() {
+  if (staffSearchTimer) clearTimeout(staffSearchTimer);
+  if (syncSelectedUser()) return;
+  staffSearchTimer = setTimeout(() => {
+    searchStaffOptions();
+  }, 350);
 }
 
 function openAddStaffModal() {
@@ -384,12 +422,20 @@ onUnmounted(() => {
   addStaffModal?.dispose?.();
   teamModal?.dispose?.();
   confirmDetachModal?.dispose?.();
+  if (staffSearchTimer) clearTimeout(staffSearchTimer);
 });
 
 watch(selectedClubId, (id) => {
   if (id) loadStructure(id);
   else resetStructure();
 });
+
+watch(
+  () => addStaff.q,
+  () => {
+    queueStaffSearch();
+  }
+);
 </script>
 
 <template>
@@ -626,35 +672,48 @@ watch(selectedClubId, (id) => {
             />
           </div>
           <div class="modal-body">
+            <label class="form-label">Сотрудник</label>
             <div class="input-group mb-2">
               <span class="input-group-text">
                 <i class="bi bi-search"></i>
               </span>
               <input
                 v-model="addStaff.q"
+                list="staff-candidates"
                 type="search"
                 class="form-control"
-                placeholder="Поиск по ФИО или телефону"
+                placeholder="Начните вводить ФИО или телефон"
+                aria-label="Поиск сотрудника"
                 @keyup.enter="searchStaffOptions"
               />
-              <button
-                class="btn btn-outline-brand"
-                :disabled="addStaff.loading"
-                @click="searchStaffOptions"
-              >
-                Найти
-              </button>
+              <span v-if="addStaff.loading" class="input-group-text">
+                <span class="spinner-border spinner-border-sm"></span>
+              </span>
             </div>
-            <select v-model="addStaff.selectedUserId" class="form-select mb-3">
-              <option value="">— Выберите сотрудника —</option>
+            <datalist id="staff-candidates">
               <option
                 v-for="opt in addStaff.options"
                 :key="opt.id"
-                :value="opt.id"
-              >
-                {{ opt.label }}
-              </option>
-            </select>
+                :value="opt.label"
+              ></option>
+            </datalist>
+            <div
+              v-if="
+                addStaff.q.trim() &&
+                !addStaff.loading &&
+                !addStaff.options.length &&
+                !addStaff.selectedUserId
+              "
+              class="text-muted small mb-2"
+            >
+              Ничего не найдено
+            </div>
+            <div
+              v-else-if="!addStaff.selectedUserId"
+              class="text-muted small mb-2"
+            >
+              Выберите сотрудника из подсказок
+            </div>
             <label class="form-label">Должность</label>
             <select v-model="addStaff.selectedPositionId" class="form-select">
               <option v-if="!isAdmin" value="" disabled>
