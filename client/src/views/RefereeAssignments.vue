@@ -1,9 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import { RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
 import { auth } from '../auth';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import TabSelector from '../components/TabSelector.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import metroIcon from '../assets/metro.svg';
@@ -29,6 +29,10 @@ const confirmModalRef = ref(null);
 let confirmModal;
 const confirming = ref(false);
 const confirmError = ref('');
+const breadcrumbs = Object.freeze([
+  { label: 'Главная', to: '/' },
+  { label: 'Назначения', disabled: true },
+]);
 
 const normalizedMatches = computed(() =>
   matches.value.map((match) => {
@@ -84,10 +88,8 @@ const dayTabs = computed(() => {
       key,
       label: line1,
       subLabel: line2,
-      badge: entry.total || 0,
-      total: entry.total || 0,
-      published: entry.published || 0,
-      confirmed: entry.confirmed || 0,
+      alert: (entry.published || 0) > 0,
+      alertLabel: 'Назначения не подтверждены',
     };
   });
 });
@@ -99,12 +101,30 @@ const activeDayKey = computed({
   },
 });
 
-const selectedDayCount = computed(() => normalizedMatches.value.length);
 const publishedCount = computed(
   () => normalizedMatches.value.filter((m) => m.status === 'PUBLISHED').length
 );
+const activeDayMeta = computed(() =>
+  dates.value.find((entry) => entry.date === activeDate.value)
+);
+const dayNeedsConfirmation = computed(() => {
+  if (activeDayMeta.value) return (activeDayMeta.value.published || 0) > 0;
+  return publishedCount.value > 0;
+});
+const dayHasAssignments = computed(() => {
+  if (activeDayMeta.value) return (activeDayMeta.value.total || 0) > 0;
+  return normalizedMatches.value.length > 0;
+});
+const dayIsConfirmed = computed(
+  () => dayHasAssignments.value && !dayNeedsConfirmation.value
+);
 const canConfirmDay = computed(
-  () => publishedCount.value > 0 && !confirming.value
+  () => dayNeedsConfirmation.value && !confirming.value
+);
+const confirmButtonLabel = computed(() =>
+  dayIsConfirmed.value
+    ? 'Назначения подтверждены'
+    : 'Подтвердить назначения за день'
 );
 
 const currentUserId = computed(() => auth.user?.id || '');
@@ -159,14 +179,20 @@ const roleColumns = computed(() => {
   });
 });
 
-const pluralRules = new Intl.PluralRules('ru-RU');
-
-function matchesLabel(value) {
-  const rule = pluralRules.select(value);
-  if (rule === 'one') return 'матч';
-  if (rule === 'few') return 'матча';
-  return 'матчей';
-}
+const assignmentsByMatchRole = computed(() => {
+  const map = new Map();
+  normalizedMatches.value.forEach((match) => {
+    const roleMap = new Map();
+    (match.assignments || []).forEach((assignment) => {
+      const roleId = assignment.role?.id;
+      if (!roleId) return;
+      if (!roleMap.has(roleId)) roleMap.set(roleId, []);
+      roleMap.get(roleId).push(assignment);
+    });
+    map.set(match.id, roleMap);
+  });
+  return map;
+});
 
 onMounted(() => {
   if (confirmModalRef.value) {
@@ -320,7 +346,7 @@ function refereeLabel(user) {
 }
 
 function assignmentsForRole(match, roleId) {
-  return (match.assignments || []).filter((a) => a.role?.id === roleId);
+  return assignmentsByMatchRole.value.get(match.id)?.get(roleId) ?? [];
 }
 
 function dayLabel(dateKey) {
@@ -338,7 +364,10 @@ function loadStoredDate(key) {
 
 function saveStoredDate(key, value) {
   if (typeof window === 'undefined') return;
-  if (!value) return;
+  if (!value) {
+    window.localStorage.removeItem(key);
+    return;
+  }
   window.localStorage.setItem(key, value);
 }
 
@@ -486,14 +515,7 @@ function formatTabLines(date, offset) {
 <template>
   <div class="py-3">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/">Главная</RouterLink>
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">Назначения</li>
-        </ol>
-      </nav>
+      <Breadcrumbs :items="breadcrumbs" />
       <h1 class="mb-3">Назначения</h1>
 
       <section class="card section-card tile fade-in shadow-sm">
@@ -506,12 +528,6 @@ function formatTabLines(date, offset) {
               :nav-fill="false"
               justify="start"
             />
-            <div class="day-actions">
-              <div class="text-muted small">
-                Всего: {{ selectedDayCount }}
-                {{ matchesLabel(selectedDayCount) }}
-              </div>
-            </div>
           </div>
 
           <div v-if="error" class="alert alert-danger" role="alert">
@@ -673,12 +689,16 @@ function formatTabLines(date, offset) {
                 </div>
                 <div class="day-footer">
                   <button
-                    class="btn btn-primary"
+                    class="btn confirm-day-btn"
+                    :class="{
+                      'is-pending': dayNeedsConfirmation,
+                      'is-confirmed': !dayNeedsConfirmation,
+                    }"
                     type="button"
                     :disabled="!canConfirmDay"
                     @click="openConfirmDay"
                   >
-                    Подтвердить назначения за день
+                    {{ confirmButtonLabel }}
                   </button>
                 </div>
               </div>
@@ -758,13 +778,6 @@ function formatTabLines(date, offset) {
   gap: 1rem;
   align-items: center;
   justify-content: space-between;
-}
-
-.day-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
 }
 
 .arena-list {
@@ -963,6 +976,42 @@ col.col-role {
   display: flex;
   justify-content: flex-end;
   padding-top: 0.5rem;
+}
+
+.confirm-day-btn {
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.confirm-day-btn.is-pending {
+  background-color: var(--bs-danger, #dc3545);
+  border-color: var(--bs-danger, #dc3545);
+  color: #fff;
+}
+
+.confirm-day-btn.is-confirmed {
+  background-color: #d1e7dd;
+  border-color: #c3e0d2;
+  color: #1b4d2b;
+}
+
+.confirm-day-btn:disabled {
+  opacity: 1;
+}
+
+.confirm-day-btn.is-confirmed:disabled {
+  background-color: #d1e7dd;
+  border-color: #c3e0d2;
+  color: #1b4d2b;
+}
+
+.confirm-day-btn.is-pending:disabled {
+  background-color: var(--bs-danger, #dc3545);
+  border-color: var(--bs-danger, #dc3545);
+  color: #fff;
 }
 
 @media (max-width: 1199.98px) {

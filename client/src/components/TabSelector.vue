@@ -8,6 +8,8 @@ interface TabDefinition {
   label: string;
   subLabel?: string;
   badge?: number | string;
+  alert?: boolean;
+  alertLabel?: string;
   disabled?: boolean;
 }
 
@@ -121,9 +123,18 @@ watch(
           >
             {{ Number(t.badge) > 99 ? '99+' : String(t.badge) }}
           </span>
-          <span v-if="t.badge && Number(t.badge) > 0" class="visually-hidden">{{
-            String(t.badge)
-          }}</span>
+          <span
+            v-else-if="t.alert"
+            class="notif-dot"
+            :title="t.alertLabel || 'Есть уведомления'"
+            aria-hidden="true"
+          ></span>
+          <span v-if="t.badge && Number(t.badge) > 0" class="visually-hidden">
+            {{ String(t.badge) }}
+          </span>
+          <span v-else-if="t.alert" class="visually-hidden">
+            {{ t.alertLabel || 'Есть уведомления' }}
+          </span>
         </span>
         <small v-if="t.subLabel" class="d-block text-muted lh-1">{{
           t.subLabel
