@@ -28,7 +28,7 @@ jobs:
       - name: Use Node.js 25
         uses: actions/setup-node@v4
         with:
-          node-version: 25.0.3
+          node-version: 24.12.0
           cache: npm
           cache-dependency-path: |
             package-lock.json
@@ -78,10 +78,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Use Node.js 25
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 25.0.3
+          node-version: 24.12.0
           cache: npm
           cache-dependency-path: client/package-lock.json
 
