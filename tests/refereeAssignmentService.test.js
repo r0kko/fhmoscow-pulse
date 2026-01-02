@@ -376,7 +376,18 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
     },
   ]);
   matchRefereeFindAllMock.mockResolvedValue([
-    { match_id: 'm1', referee_role_id: 'r1', status_id: draftStatus.id },
+    {
+      match_id: 'm1',
+      referee_role_id: 'r1',
+      user_id: 'u1',
+      status_id: draftStatus.id,
+    },
+    {
+      match_id: 'm1',
+      referee_role_id: 'r1',
+      user_id: 'u2',
+      status_id: publishedStatus.id,
+    },
   ]);
 
   matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
@@ -393,7 +404,8 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
     expect.objectContaining({
       where: expect.objectContaining({
         match_id: 'm1',
-        referee_role_id: { [Op.in]: ['r1'] },
+        referee_role_id: 'r1',
+        user_id: { [Op.in]: ['u2'] },
         status_id: { [Op.in]: [publishedStatus.id, confirmedStatus.id] },
       }),
       force: true,
@@ -404,7 +416,8 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
     expect.objectContaining({
       where: expect.objectContaining({
         match_id: 'm1',
-        referee_role_id: { [Op.in]: ['r1'] },
+        referee_role_id: 'r1',
+        user_id: { [Op.in]: ['u1'] },
         status_id: draftStatus.id,
       }),
       transaction: expect.any(Object),
@@ -413,7 +426,7 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
   expect(result.published_matches).toEqual(['m1']);
 });
 
-test('publishAssignmentsForDate skips incomplete drafts', async () => {
+test('publishAssignmentsForDate publishes available drafts despite gaps', async () => {
   matchFindAllMock.mockResolvedValue([makeMatch()]);
   const group = makeRoleGroup();
   const role = makeRole(group);
@@ -426,7 +439,12 @@ test('publishAssignmentsForDate skips incomplete drafts', async () => {
     },
   ]);
   matchRefereeFindAllMock.mockResolvedValue([
-    { match_id: 'm1', referee_role_id: 'r1', status_id: draftStatus.id },
+    {
+      match_id: 'm1',
+      referee_role_id: 'r1',
+      user_id: 'u1',
+      status_id: draftStatus.id,
+    },
   ]);
   matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
 
@@ -443,7 +461,8 @@ test('publishAssignmentsForDate skips incomplete drafts', async () => {
     expect.objectContaining({
       where: expect.objectContaining({
         match_id: 'm1',
-        referee_role_id: { [Op.in]: ['r1'] },
+        referee_role_id: 'r1',
+        user_id: { [Op.in]: ['u1'] },
         status_id: draftStatus.id,
       }),
       transaction: expect.any(Object),
