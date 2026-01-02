@@ -1827,7 +1827,11 @@ export async function publishAssignmentsForDate(
       }
       byMatch.get(matchId).add(roleId);
       if (!userId) continue;
-      const roleUsers = ensureRoleUsers(draftUsersByGroup, roleGroupId, matchId);
+      const roleUsers = ensureRoleUsers(
+        draftUsersByGroup,
+        roleGroupId,
+        matchId
+      );
       if (!roleUsers.has(roleId)) {
         roleUsers.set(roleId, new Set());
       }
@@ -1930,7 +1934,8 @@ export async function publishAssignmentsForDate(
 
           for (const roleId of Array.from(draftRoles.values())) {
             const draftUsers = draftUsersByRole.get(roleId) || new Set();
-            const publishedUsers = publishedUsersByRole.get(roleId) || new Set();
+            const publishedUsers =
+              publishedUsersByRole.get(roleId) || new Set();
             const usersToRemove = Array.from(publishedUsers).filter(
               (id) => !draftUsers.has(id)
             );
