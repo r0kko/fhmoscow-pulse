@@ -1798,6 +1798,7 @@ export async function publishAssignmentsForDate(
       : [];
 
   const draftRolesByGroup = new Map();
+  const draftUsersByGroup = new Map();
   const publishedUsersByGroup = new Map();
   const ensureRoleUsers = (store, groupId, matchId) => {
     if (!store.has(groupId)) {
@@ -1825,6 +1826,12 @@ export async function publishAssignmentsForDate(
         byMatch.set(matchId, new Set());
       }
       byMatch.get(matchId).add(roleId);
+      if (!userId) continue;
+      const roleUsers = ensureRoleUsers(draftUsersByGroup, roleGroupId, matchId);
+      if (!roleUsers.has(roleId)) {
+        roleUsers.set(roleId, new Set());
+      }
+      roleUsers.get(roleId).add(userId);
       continue;
     }
     if (
@@ -1879,6 +1886,7 @@ export async function publishAssignmentsForDate(
         matchesWithDraftsByGroup.get(groupId) || []
       );
       const publishRoleMap = draftRolesByGroup.get(groupId) || new Map();
+      const draftUsersByMatch = draftUsersByGroup.get(groupId) || new Map();
       const publishedUsersByMatch =
         publishedUsersByGroup.get(groupId) || new Map();
       const clearMatchIds = Array.from(clearByGroup.get(groupId) || []);
@@ -1894,26 +1902,14 @@ export async function publishAssignmentsForDate(
             : roleIdList;
 
           const draftRoles = publishRoleMap.get(matchId) || new Set();
+          const draftUsersByRole = draftUsersByMatch.get(matchId) || new Map();
+          const publishedUsersByRole =
+            publishedUsersByMatch.get(matchId) || new Map();
           const replaceStatuses = [
             statusInfo.published.id,
             statusInfo.confirmed?.id,
           ].filter(Boolean);
 
-          const roleIdsWithDraft = Array.from(draftRoles.values());
-          if (roleIdsWithDraft.length) {
-            await MatchReferee.destroy({
-              where: {
-                match_id: matchId,
-                referee_role_id: { [Op.in]: roleIdsWithDraft },
-                status_id: { [Op.in]: replaceStatuses },
-              },
-              force: true,
-              transaction: tx,
-            });
-          }
-
-          const publishedUsersByRole =
-            publishedUsersByMatch.get(matchId) || new Map();
           const rolesToClear = roleIdsForMatch.filter(
             (roleId) => !draftRoles.has(roleId)
           );
@@ -1932,23 +1928,64 @@ export async function publishAssignmentsForDate(
             });
           }
 
-          if (roleIdsWithDraft.length) {
-            await MatchReferee.update(
-              {
-                status_id: statusInfo.published.id,
-                published_at: new Date(),
-                published_by: actorId,
-                updated_by: actorId,
-              },
-              {
+          for (const roleId of Array.from(draftRoles.values())) {
+            const draftUsers = draftUsersByRole.get(roleId) || new Set();
+            const publishedUsers = publishedUsersByRole.get(roleId) || new Set();
+            const usersToRemove = Array.from(publishedUsers).filter(
+              (id) => !draftUsers.has(id)
+            );
+            const usersToKeep = Array.from(publishedUsers).filter((id) =>
+              draftUsers.has(id)
+            );
+            const usersToAdd = Array.from(draftUsers).filter(
+              (id) => !publishedUsers.has(id)
+            );
+
+            if (usersToRemove.length) {
+              await MatchReferee.destroy({
                 where: {
                   match_id: matchId,
-                  referee_role_id: { [Op.in]: roleIdsWithDraft },
+                  referee_role_id: roleId,
+                  user_id: { [Op.in]: usersToRemove },
+                  status_id: { [Op.in]: replaceStatuses },
+                },
+                force: true,
+                transaction: tx,
+              });
+            }
+
+            if (usersToKeep.length) {
+              await MatchReferee.destroy({
+                where: {
+                  match_id: matchId,
+                  referee_role_id: roleId,
+                  user_id: { [Op.in]: usersToKeep },
                   status_id: statusInfo.draft.id,
                 },
+                force: true,
                 transaction: tx,
-              }
-            );
+              });
+            }
+
+            if (usersToAdd.length) {
+              await MatchReferee.update(
+                {
+                  status_id: statusInfo.published.id,
+                  published_at: new Date(),
+                  published_by: actorId,
+                  updated_by: actorId,
+                },
+                {
+                  where: {
+                    match_id: matchId,
+                    referee_role_id: roleId,
+                    user_id: { [Op.in]: usersToAdd },
+                    status_id: statusInfo.draft.id,
+                  },
+                  transaction: tx,
+                }
+              );
+            }
           }
         }
       }
