@@ -28,7 +28,8 @@ export default {
     resetModules: true,
     clearMocks: true,
     restoreMocks: true,
-    collectCoverage: true,
+    collectCoverage: false,
+    coverageProvider: 'v8',
     coverageDirectory: 'coverage',
     coverageReporters: ['json-summary', 'text', 'lcov'],
     coveragePathIgnorePatterns: [

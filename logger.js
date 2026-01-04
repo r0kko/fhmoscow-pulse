@@ -5,6 +5,9 @@ const { combine, timestamp, printf, errors, colorize, json, splat } = format;
 
 const env = process.env.NODE_ENV || 'development';
 const isProd = env === 'production';
+const isTest = env === 'test';
+const logLevel = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
+const isSilent = process.env.LOG_SILENT === 'true' || isTest;
 
 // Service metadata for each log line (helps correlate in Loki)
 const defaultMeta = {
@@ -33,10 +36,10 @@ const devPretty = printf(({ timestamp, level, message, stack, ...rest }) => {
   return `${timestamp} [${level}] ${stack || message}${meta ? ' ' + meta : ''}`;
 });
 
-const consoleTransport = new transports.Console();
+const consoleTransport = new transports.Console({ silent: isSilent });
 
 const logger = createLogger({
-  level: isProd ? 'info' : 'debug',
+  level: logLevel,
   defaultMeta,
   format: combine(
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
