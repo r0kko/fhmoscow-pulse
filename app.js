@@ -65,6 +65,7 @@ export const corsOptions = {
     'Content-Type',
     'Authorization',
     'X-XSRF-TOKEN',
+    'X-CSRF-TOKEN',
     'X-Request-Id',
   ],
   credentials: true,

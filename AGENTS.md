@@ -1,38 +1,64 @@
-# Repository Guidelines
+# AGENTS — Руководство по репозиторию
 
-## Project Structure & Module Organization
-- Source: `src/` (controllers, services, routes, models, middlewares, utils, validators, config, migrations, seeders, templates).
-- Entry points: `app.js` (Express app), `bin/www` (server bootstrap). Client lives under `client/`.
-- Tests: `tests/*.test.js` (Jest). Coverage output in `coverage/`.
-- Assets & infra: `assets/`, `infra/`, `Dockerfile`, `docker-compose*.yml`.
+## Краткая архитектура
+- API: Express 5 (ESM), Sequelize (PostgreSQL), Redis, JWT + refresh cookie, CSRF, rate limiting.
+- Клиент: Vue 3 + Vite + Bootstrap, дизайн-код через `client/src/brand.css` и `client/UX_GUIDELINES.md`.
+- Интеграции: внешняя MariaDB (read-only), S3 (внутр./внеш.), SMTP, DaData.
+- Observability: Prometheus `/metrics`, Loki/JSON-логи, Grafana, OpenTelemetry tracing.
 
-## Build, Test, and Development Commands
-- Install: `npm ci` (Node.js 20+ required).
-- Start API: `npm start` (runs `bin/www`). Ensure `.env` is configured.
-- Test: `npm test` (Jest, ESM enabled). Coverage: `npm run test:coverage`.
-- Lint: `npm run lint` | Auto-fix: `npm run lint:fix`.
-- Format check: `npm run format:check` | Write: `npm run format`.
-- Migrations: `npm run migrate` | Undo all: `npm run migrate:undo`.
-- Generate: `npm run migration:create -- <name>` | `npm run seed:create -- <name>`.
+## Структура проекта
+- `app.js` — Express app (middleware, маршруты, Swagger).
+- `bin/www` — bootstrap сервера, подключение БД/Redis, cron/очереди.
+- `src/` — доменная логика:
+  - `routes/`, `controllers/`, `services/`, `validators/`, `middlewares/`.
+  - `models/`, `migrations/`, `seeders/`.
+  - `jobs/`, `queue/`, `workers/`, `telemetry/`, `templates/`.
+- `client/` — SPA (Vue 3, Vite), тесты в `client/tests/`.
+- `infra/` — docker/nginx/observability.
+- `tests/` — Jest (API).
 
-## Coding Style & Naming Conventions
-- Standard: ESLint (flat config) + Prettier. ESM only (`type: module`).
-- Prettier: single quotes, semicolons, trailing commas (see `.prettierrc`).
-- Imports: group/order enforced (`eslint-plugin-import`).
-- Files: JavaScript filenames use camelCase; tests end with `.test.js`.
+## Бизнес-домены (ключевые)
+- Доступ: пользователи, роли, регистрация, восстановление пароля, профили.
+- Спорт-операции: клубы, команды, игроки, матчи, турниры, судейство.
+- Согласование/перенос матчей, синхронизация статусов со внешней БД.
+- Медицина: медцентры, осмотры, справки, допуски.
+- Обучение и сборы: курсы, тренировки, сезоны.
+- Документы/контракты/подписи, QR-верификация документов.
+- Заявки/обращения/задачи, оборудование, отчеты.
+- Синхронизация с внешними источниками и хранилищами.
 
-## Testing Guidelines
-- Framework: Jest (`testEnvironment: 'node'`). Place tests in `tests/` mirroring `src/`.
-- Coverage thresholds (jest.config.js): 70% statements/functions/lines, 55% branches.
-- Run locally before PR: `npm test`; prefer unit tests with mocks over external I/O.
+## Команды (API + SPA)
+- Установка: `npm ci`
+- Запуск API: `npm start`
+- Тесты: `npm test` (API), `npm run test:client` (SPA)
+- Линт: `npm run lint`, `npm run lint:client`
+- Формат: `npm run format`, `npm run format:check`
+- Миграции: `npm run migrate`, `npm run migrate:undo`
 
-## Commit & Pull Request Guidelines
-- Branches: open PRs against `dev`; `main` is production.
-- Commits: concise, imperative English (e.g., `Add login route`).
-- PRs: clear description, linked issues, steps to test; include screenshots for client changes.
-- Quality gate: ensure `npm test`, `npm run lint`, and `npm run format:check` pass.
+## Код-стайл и стандарты
+- ESM only (`type: module`), без CommonJS.
+- Prettier: одинарные кавычки, ;, trailing commas.
+- Импорты группируются (eslint-plugin-import).
+- Файлы JS: camelCase, тесты: `*.test.js`.
 
-## Security & Configuration Tips
-- Environment: copy `.env.example` to `.env`; never commit secrets.
-- Database: Sequelize paths configured via `.sequelizerc` to `src/{models,migrations,seeders}`.
-- Middleware: app uses Helmet and rate limiting—keep security headers intact when modifying routes.
+## Бэкенд правила
+- Сохраняйте Helmet/CSRF/rate limiting и проверку CORS.
+- Внешняя MariaDB — read-only. Разрешенные записи описаны в `src/docs/external-db-write.md`.
+- Метрики/логи: структурированные JSON, не логировать PII/секреты.
+- Для фоновых задач используйте `withRedisLock` и `withJobMetrics`.
+
+## UI/UX правила
+- Дизайн-код и паттерны: `client/UX_GUIDELINES.md`.
+- Токены и общий стиль: `client/src/brand.css`.
+- Не дублировать стили компонентов в представлениях, использовать базовые компоненты.
+- Всегда поддерживать доступность (`aria-*`, `:focus-visible`, адаптивность).
+
+## Конфигурация и безопасность
+- Конфигурация — через `.env` (см. `.env.example`). Секреты не коммитить.
+- Swagger: `/api-docs` ограничен приватными сетями по умолчанию.
+- TLS в проде — через nginx; Node работает по HTTP внутри кластера.
+
+## Проверки перед PR
+- `npm run verify` (lint + format check + tests).
+- Обновить документацию при изменении потоков/интеграций.
+- Добавить тесты на ключевые сценарии или критичные изменения.

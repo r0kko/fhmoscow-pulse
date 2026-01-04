@@ -19,6 +19,9 @@ export function sendError(res, err, defaultStatus = 400) {
   } catch (_) {
     /* ignore */
   }
+  if (!res.locals?.body) {
+    res.locals.body = { error: code };
+  }
   if (err?.retryAfter) {
     // Seconds per RFC for Retry-After
     const secs = Math.max(1, Math.ceil(Number(err.retryAfter)));
