@@ -8,6 +8,7 @@ const userClubFindAllMock = jest.fn();
 const teamFindAllMock = jest.fn();
 const userTeamFindOneMock = jest.fn();
 const syncStaffRoleMock = jest.fn();
+const sportSchoolPositionFindByPkMock = jest.fn();
 
 const clubModelStub = { __name: 'ClubModel' };
 const teamModelStub = { __name: 'TeamModel' };
@@ -24,6 +25,8 @@ beforeEach(() => {
   teamFindAllMock.mockReset();
   userTeamFindOneMock.mockReset();
   syncStaffRoleMock.mockReset();
+  sportSchoolPositionFindByPkMock.mockReset();
+  sportSchoolPositionFindByPkMock.mockResolvedValue(null);
   transactionMock.mockClear();
 });
 
@@ -39,7 +42,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserClub: { findOne: userClubFindOneMock, findAll: userClubFindAllMock },
   Team: { findAll: teamFindAllMock, ...teamModelStub },
   UserTeam: { findOne: userTeamFindOneMock },
-  SportSchoolPosition: {},
+  SportSchoolPosition: { findByPk: sportSchoolPositionFindByPkMock },
 }));
 
 jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({

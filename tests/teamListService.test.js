@@ -16,6 +16,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Club: {},
   User: {},
   UserTeam: {},
+  UserClub: {},
+  SportSchoolPosition: {},
 }));
 
 jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
