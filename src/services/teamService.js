@@ -1,6 +1,13 @@
 import { Op } from 'sequelize';
 
-import { Team, User, UserTeam, Club } from '../models/index.js';
+import {
+  Team,
+  User,
+  UserTeam,
+  Club,
+  UserClub,
+  SportSchoolPosition,
+} from '../models/index.js';
 import { Team as ExtTeam } from '../externalModels/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
@@ -12,6 +19,7 @@ import {
   normalizeSyncOptions,
 } from '../utils/sync.js';
 import logger from '../../logger.js';
+import { isSportSchoolClubWidePosition } from '../utils/sportSchoolPositions.js';
 
 import { syncStaffRole } from './sportSchoolRoleService.js';
 
@@ -267,6 +275,23 @@ async function addUserTeam(userId, teamId, actorId) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!team) throw new ServiceError('team_not_found', 404);
+  if (team?.club_id) {
+    const membership = await UserClub.findOne({
+      where: { user_id: userId, club_id: team.club_id },
+      include: [
+        {
+          model: SportSchoolPosition,
+          as: 'SportSchoolPosition',
+          attributes: ['alias'],
+          required: false,
+        },
+      ],
+    });
+    const positionAlias = membership?.SportSchoolPosition?.alias || null;
+    if (isSportSchoolClubWidePosition(positionAlias)) {
+      throw new ServiceError('staff_position_restricted', 403);
+    }
+  }
   // Handle soft-deleted link: restore instead of creating duplicate
   const existing = await UserTeam.findOne({
     where: { user_id: userId, team_id: teamId },

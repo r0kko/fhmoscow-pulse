@@ -8,6 +8,7 @@ import {
 } from '../models/index.js';
 import sequelize from '../config/database.js';
 import ServiceError from '../errors/ServiceError.js';
+import { isSportSchoolClubWidePosition } from '../utils/sportSchoolPositions.js';
 
 import { syncStaffRole } from './sportSchoolRoleService.js';
 
@@ -45,6 +46,30 @@ async function listUserClubs(userId, withTeams = false) {
     .filter(Boolean);
 }
 
+async function resolvePositionAlias(positionId, fallback = null) {
+  if (!positionId) return fallback;
+  const position = await SportSchoolPosition.findByPk(positionId, {
+    attributes: ['alias'],
+  });
+  return position?.alias || fallback;
+}
+
+async function detachUserFromClubTeams(user, clubId, actorId, transaction) {
+  if (!user || !clubId) return;
+  const teams = await Team.findAll({
+    where: { club_id: clubId },
+    transaction,
+  });
+  for (const t of teams) {
+    const tlink = await UserTeam.findOne({
+      where: { user_id: user.id, team_id: t.id },
+      transaction,
+    });
+    if (tlink) await tlink.update({ updated_by: actorId }, { transaction });
+    await user.removeTeam(t, { transaction });
+  }
+}
+
 async function addUserClub(userId, clubId, actorId, options = {}) {
   const [user, club] = await Promise.all([
     User.findByPk(userId),
@@ -52,6 +77,12 @@ async function addUserClub(userId, clubId, actorId, options = {}) {
   ]);
   if (!user) throw new ServiceError('user_not_found', 404);
   if (!club) throw new ServiceError('club_not_found', 404);
+  const positionAlias = await resolvePositionAlias(
+    options.positionId,
+    options.positionAlias || null
+  );
+  const isClubWide = isSportSchoolClubWidePosition(positionAlias);
+
   await sequelize.transaction(async (tx) => {
     // Restore soft-deleted club link if exists
     const existingClubLink = await UserClub.findOne({
@@ -80,29 +111,31 @@ async function addUserClub(userId, clubId, actorId, options = {}) {
       });
     }
 
-    // Attach or restore user to all teams of the club
-    const teams = await Team.findAll({
-      where: { club_id: clubId },
-      transaction: tx,
-    });
-    for (const t of teams) {
-      const existingTeamLink = await UserTeam.findOne({
-        where: { user_id: userId, team_id: t.id },
-        paranoid: false,
+    if (!isClubWide) {
+      // Attach or restore user to all teams of the club
+      const teams = await Team.findAll({
+        where: { club_id: clubId },
         transaction: tx,
       });
-      if (existingTeamLink) {
-        if (existingTeamLink.deletedAt)
-          await existingTeamLink.restore({ transaction: tx });
-        await existingTeamLink.update(
-          { updated_by: actorId },
-          { transaction: tx }
-        );
-      } else {
-        await user.addTeam(t, {
-          through: { created_by: actorId, updated_by: actorId },
+      for (const t of teams) {
+        const existingTeamLink = await UserTeam.findOne({
+          where: { user_id: userId, team_id: t.id },
+          paranoid: false,
           transaction: tx,
         });
+        if (existingTeamLink) {
+          if (existingTeamLink.deletedAt)
+            await existingTeamLink.restore({ transaction: tx });
+          await existingTeamLink.update(
+            { updated_by: actorId },
+            { transaction: tx }
+          );
+        } else {
+          await user.addTeam(t, {
+            through: { created_by: actorId, updated_by: actorId },
+            transaction: tx,
+          });
+        }
       }
     }
   });
@@ -146,18 +179,27 @@ async function updateClubUserPosition(
   positionId,
   actorId = null
 ) {
-  const link = await UserClub.findOne({
-    where: { club_id: clubId, user_id: userId },
+  const positionAlias = await resolvePositionAlias(positionId, null);
+  const isClubWide = isSportSchoolClubWidePosition(positionAlias);
+  return await sequelize.transaction(async (tx) => {
+    const link = await UserClub.findOne({
+      where: { club_id: clubId, user_id: userId },
+      transaction: tx,
+    });
+    if (!link) throw new ServiceError('club_staff_link_not_found', 404);
+    await link.update(
+      {
+        sport_school_position_id: positionId || null,
+        updated_by: actorId,
+      },
+      { returning: false, transaction: tx }
+    );
+    if (isClubWide) {
+      const user = await User.findByPk(userId, { transaction: tx });
+      await detachUserFromClubTeams(user, clubId, actorId, tx);
+    }
+    return link;
   });
-  if (!link) throw new ServiceError('club_staff_link_not_found', 404);
-  await link.update(
-    {
-      sport_school_position_id: positionId || null,
-      updated_by: actorId,
-    },
-    { returning: false }
-  );
-  return link;
 }
 
 export default {

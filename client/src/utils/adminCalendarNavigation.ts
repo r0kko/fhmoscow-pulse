@@ -5,7 +5,8 @@ export interface CalendarReturnLocation {
 }
 
 const CALENDAR_RETURN_KEY = 'admin-sports-calendar-return-v1';
-const DEFAULT_CALENDAR_PATH = '/admin/sports-calendar';
+export const DEFAULT_CALENDAR_PATH = '/admin/sports-calendar';
+const ALLOWED_CALENDAR_PATHS = new Set([DEFAULT_CALENDAR_PATH]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -31,10 +32,19 @@ function sanitizeQuery(
   return Object.keys(result).length ? result : undefined;
 }
 
+function normalizeCalendarPath(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+  if (!ALLOWED_CALENDAR_PATHS.has(normalized)) return null;
+  return normalized;
+}
+
 function sanitizeLocation(value: unknown): CalendarReturnLocation | null {
   if (!isRecord(value)) return null;
   const rawPath = value['path'];
-  const path = typeof rawPath === 'string' ? rawPath : '';
+  const path =
+    typeof rawPath === 'string' ? normalizeCalendarPath(rawPath) : null;
   if (!path) return null;
   const query = sanitizeQuery(value['query']);
   const rawHash = value['hash'];

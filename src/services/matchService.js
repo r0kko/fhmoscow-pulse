@@ -1,11 +1,73 @@
 import { Op } from 'sequelize';
 
-import { User, Team } from '../models/index.js';
+import { User, Team, UserClub, SportSchoolPosition } from '../models/index.js';
 import { Game, Team as ExtTeam, Stadium } from '../externalModels/index.js';
 import { utcToMoscow, moscowToUtc } from '../utils/time.js';
 import { extractFirstUrl } from '../utils/url.js';
 import ServiceError from '../errors/ServiceError.js';
 import { isAgreementsBlockedBySchedule } from '../utils/scheduleManagement.js';
+import { isSportSchoolClubWidePosition } from '../utils/sportSchoolPositions.js';
+
+async function resolveUserTeamScope(userId) {
+  const user = await User.findByPk(userId, {
+    include: [
+      {
+        model: Team,
+        attributes: ['id', 'club_id', 'external_id'],
+        through: { attributes: [] },
+        required: false,
+      },
+      {
+        model: UserClub,
+        attributes: ['club_id'],
+        include: [
+          {
+            model: SportSchoolPosition,
+            as: 'SportSchoolPosition',
+            attributes: ['alias'],
+            required: false,
+          },
+        ],
+        required: false,
+      },
+    ],
+  });
+  if (!user) throw new ServiceError('user_not_found', 404);
+
+  const teamIds = new Set();
+  const extIds = new Set();
+  for (const t of user.Teams || []) {
+    if (t?.id) teamIds.add(String(t.id));
+    if (t?.external_id != null) {
+      const num = Number(t.external_id);
+      if (Number.isFinite(num)) extIds.add(num);
+    }
+  }
+
+  const clubWideClubIds = new Set();
+  for (const membership of user.UserClubs || []) {
+    const alias = membership?.SportSchoolPosition?.alias || null;
+    if (!alias || !isSportSchoolClubWidePosition(alias)) continue;
+    if (membership.club_id) clubWideClubIds.add(membership.club_id);
+  }
+
+  if (clubWideClubIds.size) {
+    const clubs = Array.from(clubWideClubIds);
+    const clubTeams = await Team.findAll({
+      where: { club_id: { [Op.in]: clubs } },
+      attributes: ['id', 'external_id'],
+    });
+    for (const t of clubTeams || []) {
+      if (t?.id) teamIds.add(String(t.id));
+      if (t?.external_id != null) {
+        const num = Number(t.external_id);
+        if (Number.isFinite(num)) extIds.add(num);
+      }
+    }
+  }
+
+  return { teamIds: Array.from(teamIds), extIds: Array.from(extIds) };
+}
 
 async function listUpcoming(userId, options) {
   // Backward-compat API: allow second arg to be a number (limit)
@@ -14,12 +76,9 @@ async function listUpcoming(userId, options) {
     ? { limit: typeof options === 'number' ? options : undefined }
     : options;
   const { limit = 100, offset = 0, type = 'all', q = '' } = opts;
-  const user = await User.findByPk(userId, { include: [Team] });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  const extIds = (user.Teams || [])
-    .map((t) => t.external_id)
-    .filter((id) => id != null);
+  const { extIds } = await resolveUserTeamScope(userId);
   if (!extIds.length) return compatArrayReturn ? [] : { rows: [], count: 0 };
+  const extIdSet = new Set(extIds);
   // Upcoming: include all games from start of Moscow day (00:00 MSK) and later
   const now = new Date();
   const nowMsk = utcToMoscow(now) || now;
@@ -114,7 +173,7 @@ async function listUpcoming(userId, options) {
       stadium: g.Stadium?.name || null,
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
-      is_home: extIds.includes(Number(g.team1_id)),
+      is_home: extIdSet.has(Number(g.team1_id)),
       broadcast_links: [
         extractFirstUrl(g.broadcast),
         extractFirstUrl(g.broadcast2),
@@ -147,10 +206,9 @@ async function listUpcomingLocal(userId, options) {
     : options;
   const { limit = 100, offset = 0, type = 'all', q = '' } = opts;
 
-  const user = await User.findByPk(userId, { include: [Team] });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  const teamIds = (user.Teams || []).map((t) => t.id);
+  const { teamIds } = await resolveUserTeamScope(userId);
   if (!teamIds.length) return compatArrayReturn ? [] : { rows: [], count: 0 };
+  const teamIdSet = new Set(teamIds.map((id) => String(id)));
 
   const now = new Date();
   // Start of Moscow day in UTC
@@ -182,8 +240,8 @@ async function listUpcomingLocal(userId, options) {
     ],
     where,
     include: [
-      { model: Team, as: 'HomeTeam', attributes: ['name'] },
-      { model: Team, as: 'AwayTeam', attributes: ['name'] },
+      { model: Team, as: 'HomeTeam', attributes: ['name', 'club_id'] },
+      { model: Team, as: 'AwayTeam', attributes: ['name', 'club_id'] },
       { model: Ground, attributes: ['name'] },
       { model: GameStatus, attributes: ['name', 'alias'] },
       // enrich with competition meta
@@ -321,7 +379,7 @@ async function listUpcomingLocal(userId, options) {
         stadium: m.Ground?.name || null,
         team1: m.HomeTeam?.name || null,
         team2: m.AwayTeam?.name || null,
-        is_home: teamIds.includes(m.team1_id),
+        is_home: teamIdSet.has(String(m.team1_id)),
         technical_winner: m.technical_winner || null,
         score_team1: m.score_team1 ?? null,
         score_team2: m.score_team2 ?? null,
@@ -356,12 +414,9 @@ async function listPast(userId, options) {
     : options;
   // Do not default limit to 100: undefined means 'no limit' (show all)
   const { limit, offset = 0, type = 'all', q = '' } = opts;
-  const user = await User.findByPk(userId, { include: [Team] });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  const extIds = (user.Teams || [])
-    .map((t) => t.external_id)
-    .filter((id) => id != null);
+  const { extIds } = await resolveUserTeamScope(userId);
   if (!extIds.length) return compatArrayReturn ? [] : { rows: [], count: 0 };
+  const extIdSet = new Set(extIds);
 
   const now = new Date();
   const nowMsk = utcToMoscow(now) || now;
@@ -449,11 +504,10 @@ async function listPast(userId, options) {
       stadium: g.Stadium?.name || null,
       team1: g.Team1?.full_name || null,
       team2: g.Team2?.full_name || null,
-      is_home: extIds.includes(Number(g.team1_id)),
-      is_away: extIds.includes(Number(g.team2_id)),
+      is_home: extIdSet.has(Number(g.team1_id)),
+      is_away: extIdSet.has(Number(g.team2_id)),
       is_both_teams:
-        extIds.includes(Number(g.team1_id)) &&
-        extIds.includes(Number(g.team2_id)),
+        extIdSet.has(Number(g.team1_id)) && extIdSet.has(Number(g.team2_id)),
       score_team1: g.score_team1 ?? null,
       score_team2: g.score_team2 ?? null,
       broadcast_links: [
@@ -482,10 +536,9 @@ async function listPastLocal(userId, options) {
   // Do not default limit to 100: undefined means 'no limit' (show all)
   const { limit, offset = 0, type = 'all', q = '', seasonId = null } = opts;
 
-  const user = await User.findByPk(userId, { include: [Team] });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  const teamIds = (user.Teams || []).map((t) => t.id);
+  const { teamIds } = await resolveUserTeamScope(userId);
   if (!teamIds.length) return compatArrayReturn ? [] : { rows: [], count: 0 };
+  const teamIdSet = new Set(teamIds.map((id) => String(id)));
 
   const now = new Date();
   const nowMsk = utcToMoscow(now) || now;
@@ -518,8 +571,8 @@ async function listPastLocal(userId, options) {
     ],
     where,
     include: [
-      { model: Team, as: 'HomeTeam', attributes: ['name'] },
-      { model: Team, as: 'AwayTeam', attributes: ['name'] },
+      { model: Team, as: 'HomeTeam', attributes: ['name', 'club_id'] },
+      { model: Team, as: 'AwayTeam', attributes: ['name', 'club_id'] },
       { model: Ground, attributes: ['name'] },
       { model: GameStatus, attributes: ['name', 'alias'] },
       { model: Tournament, attributes: ['name'] },
@@ -565,10 +618,10 @@ async function listPastLocal(userId, options) {
       technical_winner: m.technical_winner || null,
       score_team1: m.score_team1 ?? null,
       score_team2: m.score_team2 ?? null,
-      is_home: teamIds.includes(m.team1_id),
-      is_away: teamIds.includes(m.team2_id),
+      is_home: teamIdSet.has(String(m.team1_id)),
+      is_away: teamIdSet.has(String(m.team2_id)),
       is_both_teams:
-        teamIds.includes(m.team1_id) && teamIds.includes(m.team2_id),
+        teamIdSet.has(String(m.team1_id)) && teamIdSet.has(String(m.team2_id)),
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,
@@ -607,10 +660,10 @@ async function listPastLocal(userId, options) {
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
       season_id: m.season_id || null,
-      is_home: teamIds.includes(m.team1_id),
-      is_away: teamIds.includes(m.team2_id),
+      is_home: teamIdSet.has(String(m.team1_id)),
+      is_away: teamIdSet.has(String(m.team2_id)),
       is_both_teams:
-        teamIds.includes(m.team1_id) && teamIds.includes(m.team2_id),
+        teamIdSet.has(String(m.team1_id)) && teamIdSet.has(String(m.team2_id)),
       technical_winner: m.technical_winner || null,
       score_team1: m.score_team1 ?? null,
       score_team2: m.score_team2 ?? null,

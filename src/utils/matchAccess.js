@@ -13,7 +13,7 @@ import {
 } from '../models/index.js';
 
 import { hasAdminRole, hasStaffRole } from './roles.js';
-import { isSportSchoolManagerPosition } from './sportSchoolPositions.js';
+import { isSportSchoolClubWidePosition } from './sportSchoolPositions.js';
 import {
   SCHEDULE_MANAGEMENT_ALIASES,
   resolveScheduleManagementAlias,
@@ -216,10 +216,10 @@ export async function resolveMatchAccessContext({ matchOrId, userId }) {
     ? positionByClub.get(awayClubId) || null
     : null;
   if (!isHome && homePositionAlias) {
-    if (isSportSchoolManagerPosition(homePositionAlias)) isHome = true;
+    if (isSportSchoolClubWidePosition(homePositionAlias)) isHome = true;
   }
   if (!isAway && awayPositionAlias) {
-    if (isSportSchoolManagerPosition(awayPositionAlias)) isAway = true;
+    if (isSportSchoolClubWidePosition(awayPositionAlias)) isAway = true;
   }
 
   const roles = user.Roles || [];

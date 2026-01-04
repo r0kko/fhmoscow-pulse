@@ -5,6 +5,8 @@ const gameCountMock = jest.fn();
 const userFindByPkMock = jest.fn();
 
 const TeamModel = {};
+const UserClubModel = {};
+const SportSchoolPositionModel = {};
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
   __esModule: true,
@@ -17,6 +19,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   User: { findByPk: userFindByPkMock },
   Team: TeamModel,
+  UserClub: UserClubModel,
+  SportSchoolPosition: SportSchoolPositionModel,
 }));
 
 const { default: service } = await import('../src/services/matchService.js');

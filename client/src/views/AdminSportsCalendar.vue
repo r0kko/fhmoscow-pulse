@@ -32,6 +32,7 @@ import type {
 import {
   storeCalendarReturnLocation,
   type CalendarReturnLocation,
+  DEFAULT_CALENDAR_PATH,
 } from '../utils/adminCalendarNavigation';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1238,12 +1239,17 @@ function persistCalendarState(
   const safeState = sanitizePersistedState(state);
   writeStateToStorage(safeState);
   const query = buildQueryFromState(safeState);
-  const location: CalendarReturnLocation = { path: route.path, query };
-  if (route.hash) location.hash = route.hash;
+  const isCalendarRoute = route.path === DEFAULT_CALENDAR_PATH;
+  const location: CalendarReturnLocation = {
+    path: DEFAULT_CALENDAR_PATH,
+    query,
+  };
+  if (isCalendarRoute && route.hash) location.hash = route.hash;
   storeCalendarReturnLocation(location);
+  if (!isCalendarRoute) return;
   if (queriesMatch(route.query, query)) return;
   const target = {
-    path: route.path,
+    path: DEFAULT_CALENDAR_PATH,
     query,
     hash: route.hash,
   };
@@ -1366,6 +1372,12 @@ onUnmounted(() => {
     clearTimeout(searchTimer);
     searchTimer = undefined;
   }
+  if (persistenceResumeTimer) {
+    clearTimeout(persistenceResumeTimer);
+    persistenceResumeTimer = null;
+  }
+  pendingPersistenceState = null;
+  persistencePaused = false;
 });
 </script>
 

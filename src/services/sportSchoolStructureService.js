@@ -10,6 +10,7 @@ import ServiceError from '../errors/ServiceError.js';
 import clubMapper from '../mappers/clubMapper.js';
 import teamMapper from '../mappers/teamMapper.js';
 import userMapper from '../mappers/userMapper.js';
+import { isSportSchoolTeamPosition } from '../utils/sportSchoolPositions.js';
 
 function toPlain(model) {
   return typeof model?.get === 'function' ? model.get({ plain: true }) : model;
@@ -105,6 +106,9 @@ async function getClubStructure(clubId) {
     const staffMembers = (team.Users || []).filter((user) => {
       if (!user) return false;
       if (!staffByUserId.has(user.id)) return false;
+      const membership = staffByUserId.get(user.id);
+      const positionAlias = membership?.position?.alias || null;
+      if (!isSportSchoolTeamPosition(positionAlias)) return false;
       const roles = user.Roles || [];
       return roles.some((role) => role.alias === 'SPORT_SCHOOL_STAFF');
     });

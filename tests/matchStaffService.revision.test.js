@@ -5,11 +5,13 @@ const tx = { id: 'tx' };
 const findMatchMock = jest.fn();
 const findUserMock = jest.fn();
 const findMsMock = jest.fn();
+const findTeamMock = jest.fn();
 
 beforeEach(() => {
   findMatchMock.mockReset();
   findUserMock.mockReset();
   findMsMock.mockReset();
+  findTeamMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -20,8 +22,11 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: findMatchMock },
-  Team: {},
+  Team: { findAll: findTeamMock },
   User: { findByPk: findUserMock },
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
   TeamStaff: { findAll: jest.fn().mockResolvedValue([]) },
   Staff: {},
   ClubStaff: {},
@@ -29,11 +34,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   MatchStaff: { findAll: findMsMock },
   Tournament: {},
   TournamentType: {},
-}));
-
-jest.unstable_mockModule('../src/models/role.js', () => ({
-  __esModule: true,
-  default: {},
+  ScheduleManagementType: {},
 }));
 
 const { default: service } =
@@ -52,7 +53,12 @@ function baseMatch() {
 test('set throws conflict on mismatched if_staff_rev', async () => {
   findMatchMock.mockResolvedValue(baseMatch());
   // ADMIN
-  findUserMock.mockResolvedValue({ Teams: [], Roles: [{ alias: 'ADMIN' }] });
+  findUserMock.mockResolvedValue({
+    Teams: [],
+    Roles: [{ alias: 'ADMIN' }],
+    UserClubs: [],
+  });
+  findTeamMock.mockResolvedValue([]);
   findMsMock.mockResolvedValue([
     { id: 'ms1', team_staff_id: 'a', team_id: 't1', role_id: 'coach' },
   ]);

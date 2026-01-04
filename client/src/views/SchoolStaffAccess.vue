@@ -7,6 +7,7 @@ import { auth } from '../auth';
 import { useToast } from '../utils/toast';
 import {
   isSportSchoolEditablePosition,
+  isSportSchoolTeamPosition,
   isSportSchoolManagerPosition,
 } from '../utils/sportSchoolPositions';
 
@@ -304,10 +305,7 @@ const teamAttachOptions = computed(() => {
   const query = normalizeSearch(teamManage.attach.q);
   return structure.staff
     .filter((entry) => entry?.user?.id && !used.has(entry.user.id))
-    .filter(
-      (entry) =>
-        isAdmin.value || isSportSchoolEditablePosition(entry?.position?.alias)
-    )
+    .filter((entry) => isSportSchoolTeamPosition(entry?.position?.alias))
     .map((entry) => ({
       id: entry.user.id,
       label: buildUserLabel(entry.user),
@@ -342,7 +340,7 @@ async function openManageTeam(team) {
 
 function canDetachTeamMember(member) {
   if (isAdmin.value) return true;
-  return isSportSchoolEditablePosition(member?.club_position_alias);
+  return isSportSchoolTeamPosition(member?.club_position_alias);
 }
 
 async function confirmAttachTeamStaff() {
@@ -589,7 +587,9 @@ watch(
             >
               <h2 class="card-title h5 mb-0">Команды клуба</h2>
               <div class="text-muted small">
-                Добавляйте сотрудников к командам и управляйте доступами
+                Привязка к командам доступна только для тренеров. Директор,
+                администратор, методист, бухгалтер и медиа-менеджер имеют доступ
+                ко всем командам клуба.
               </div>
             </div>
             <div v-edge-fade class="table-responsive">

@@ -10,6 +10,7 @@ const findTeamStaffMock = jest.fn();
 const findCatsMock = jest.fn();
 const findMatchMock = jest.fn();
 const findUserMock = jest.fn();
+const findTeamMock = jest.fn();
 
 beforeEach(() => {
   createMock.mockReset();
@@ -21,6 +22,7 @@ beforeEach(() => {
   findCatsMock.mockReset();
   findMatchMock.mockReset();
   findUserMock.mockReset();
+  findTeamMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -31,8 +33,11 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Match: { findByPk: findMatchMock },
-  Team: {},
+  Team: { findAll: findTeamMock },
   User: { findByPk: findUserMock },
+  Role: {},
+  UserClub: {},
+  SportSchoolPosition: {},
   TeamStaff: { findAll: findTeamStaffMock },
   Staff: {},
   ClubStaff: {},
@@ -41,11 +46,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findAll: findMsMock,
     create: createMock,
   },
-}));
-
-jest.unstable_mockModule('../src/models/role.js', () => ({
-  __esModule: true,
-  default: {},
+  Tournament: {},
+  TournamentType: {},
+  ScheduleManagementType: {},
 }));
 
 const { default: service } =
@@ -59,7 +62,12 @@ function setupBase({ seasonId = 's1' } = {}) {
     season_id: seasonId,
   });
   // Allow as ADMIN
-  findUserMock.mockResolvedValue({ Roles: [{ alias: 'ADMIN' }], Teams: [] });
+  findUserMock.mockResolvedValue({
+    Roles: [{ alias: 'ADMIN' }],
+    Teams: [],
+    UserClubs: [],
+  });
+  findTeamMock.mockResolvedValue([]);
   // Team staff exists for both ids
   findTeamStaffMock.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
   // Categories include head coach and coach
@@ -130,6 +138,43 @@ test('set removes unselected and adds newly selected', async () => {
     expect.any(Object)
   );
   expect(destroyMock).toHaveBeenCalled();
+});
+
+test('list allows club-wide staff without team link', async () => {
+  findMatchMock.mockResolvedValue({
+    id: 'm1',
+    team1_id: 't1',
+    team2_id: 't2',
+    season_id: 's1',
+    Tournament: { TournamentType: { double_protocol: false } },
+  });
+  findUserMock.mockResolvedValue({
+    Teams: [],
+    Roles: [{ alias: 'SPORT_SCHOOL_STAFF' }],
+    UserClubs: [
+      {
+        club_id: 'c1',
+        SportSchoolPosition: { alias: 'DIRECTOR' },
+      },
+    ],
+  });
+  findTeamMock.mockResolvedValue([
+    { id: 't1', club_id: 'c1' },
+    { id: 't2', club_id: 'c2' },
+  ]);
+  findTeamStaffMock.mockResolvedValue([]);
+  findMsMock.mockResolvedValue([]);
+  findCatsMock.mockResolvedValue([]);
+
+  const res = await service.list('m1', 'u1');
+  expect(res).toMatchObject({
+    match_id: 'm1',
+    team1_id: 't1',
+    team2_id: 't2',
+    is_admin: false,
+  });
+  expect(Array.isArray(res.home.staff)).toBe(true);
+  expect(Array.isArray(res.away.staff)).toBe(true);
 });
 
 test('set rejects when more than one head coach selected', async () => {

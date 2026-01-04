@@ -1,10 +1,11 @@
 import { validationResult } from 'express-validator';
+import { Op } from 'sequelize';
 
 import userMapper from '../mappers/userMapper.js';
 import teamService, { listTeamUsers } from '../services/teamService.js';
 import { Team, UserClub, SportSchoolPosition } from '../models/index.js';
 import { sendError } from '../utils/api.js';
-import { isSportSchoolEditablePosition } from '../utils/sportSchoolPositions.js';
+import { isSportSchoolTeamPosition } from '../utils/sportSchoolPositions.js';
 
 async function resolveUserClubMembership(userId, clubId) {
   if (!userId || !clubId) return false;
@@ -22,18 +23,46 @@ async function resolveUserClubMembership(userId, clubId) {
 }
 
 function ensureEditablePosition(positionAlias) {
-  if (!isSportSchoolEditablePosition(positionAlias)) {
+  if (!isSportSchoolTeamPosition(positionAlias)) {
     const err = new Error('staff_position_restricted');
     err.status = 403;
     throw err;
   }
 }
 
+async function filterTeamStaffUsers(team, users) {
+  if (!team?.club_id || !users.length) return users;
+  const userIds = users.map((u) => u?.id).filter(Boolean);
+  if (!userIds.length) return [];
+  const memberships = await UserClub.findAll({
+    where: { club_id: team.club_id, user_id: { [Op.in]: userIds } },
+    include: [
+      {
+        model: SportSchoolPosition,
+        as: 'SportSchoolPosition',
+        attributes: ['alias'],
+        required: false,
+      },
+    ],
+  });
+  const positionByUser = new Map(
+    memberships.map((m) => [m.user_id, m.SportSchoolPosition?.alias || null])
+  );
+  return users.filter((user) =>
+    isSportSchoolTeamPosition(positionByUser.get(user.id))
+  );
+}
+
 export default {
   async list(req, res) {
     try {
+      const team = await Team.findByPk(req.params.id, {
+        attributes: ['id', 'club_id'],
+      });
+      if (!team) return res.status(404).json({ error: 'team_not_found' });
       const users = await listTeamUsers(req.params.id);
-      return res.json({ users: userMapper.toPublicArray(users) });
+      const filtered = await filterTeamStaffUsers(team, users);
+      return res.json({ users: userMapper.toPublicArray(filtered) });
     } catch (err) {
       return sendError(res, err);
     }
@@ -59,8 +88,15 @@ export default {
           }
         }
       }
+      const team = req.team
+        ? req.team
+        : await Team.findByPk(req.params.id, {
+            attributes: ['id', 'club_id'],
+          });
+      if (!team) return res.status(404).json({ error: 'team_not_found' });
       const users = await listTeamUsers(req.params.id);
-      return res.json({ users: userMapper.toPublicArray(users) });
+      const filtered = await filterTeamStaffUsers(team, users);
+      return res.json({ users: userMapper.toPublicArray(filtered) });
     } catch (err) {
       return sendError(res, err);
     }
@@ -75,23 +111,24 @@ export default {
       const userId = req.body.user_id;
       const scope = req.access || {};
       const isAdmin = Boolean(scope.isAdmin);
-      if (!isAdmin) {
-        const team = req.team
-          ? req.team
-          : await Team.findByPk(req.params.id, {
-              attributes: ['club_id'],
-            });
-        const clubId = team?.club_id || null;
-        const membership = await resolveUserClubMembership(userId, clubId);
-        if (!membership) {
-          return res.status(400).json({ error: 'club_staff_link_required' });
-        }
+      const team = req.team
+        ? req.team
+        : await Team.findByPk(req.params.id, {
+            attributes: ['club_id'],
+          });
+      const clubId = team?.club_id || null;
+      const membership = await resolveUserClubMembership(userId, clubId);
+      if (!membership && !isAdmin) {
+        return res.status(400).json({ error: 'club_staff_link_required' });
+      }
+      if (membership) {
         const positionAlias = membership.SportSchoolPosition?.alias || null;
         ensureEditablePosition(positionAlias);
       }
       await teamService.addUserTeam(userId, req.params.id, req.user.id);
       const users = await listTeamUsers(req.params.id);
-      return res.json({ users: userMapper.toPublicArray(users) });
+      const filtered = await filterTeamStaffUsers(team, users);
+      return res.json({ users: userMapper.toPublicArray(filtered) });
     } catch (err) {
       return sendError(res, err);
     }
@@ -101,20 +138,20 @@ export default {
     try {
       const scope = req.access || {};
       const isAdmin = Boolean(scope.isAdmin);
-      if (!isAdmin) {
-        const team = req.team
-          ? req.team
-          : await Team.findByPk(req.params.id, {
-              attributes: ['club_id'],
-            });
-        const clubId = team?.club_id || null;
-        const membership = await resolveUserClubMembership(
-          req.params.userId,
-          clubId
-        );
-        if (!membership) {
-          return res.status(400).json({ error: 'club_staff_link_required' });
-        }
+      const team = req.team
+        ? req.team
+        : await Team.findByPk(req.params.id, {
+            attributes: ['club_id'],
+          });
+      const clubId = team?.club_id || null;
+      const membership = await resolveUserClubMembership(
+        req.params.userId,
+        clubId
+      );
+      if (!membership && !isAdmin) {
+        return res.status(400).json({ error: 'club_staff_link_required' });
+      }
+      if (membership) {
         const positionAlias = membership.SportSchoolPosition?.alias || null;
         ensureEditablePosition(positionAlias);
       }
@@ -124,7 +161,8 @@ export default {
         req.user.id
       );
       const users = await listTeamUsers(req.params.id);
-      return res.json({ users: userMapper.toPublicArray(users) });
+      const filtered = await filterTeamStaffUsers(team, users);
+      return res.json({ users: userMapper.toPublicArray(filtered) });
     } catch (err) {
       return sendError(res, err);
     }

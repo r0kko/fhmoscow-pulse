@@ -5,12 +5,17 @@ const userFindByPkMock = jest.fn();
 const matchFindAllMock = jest.fn();
 const matchCountMock = jest.fn();
 const agreementFindAllMock = jest.fn();
+const teamFindAllMock = jest.fn();
+const userClubModel = {};
+const sportSchoolPositionModel = {};
 
 // Provide models used by listUpcomingLocal/listPastLocal
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   User: { findByPk: userFindByPkMock },
-  Team: {},
+  Team: { findAll: teamFindAllMock },
+  UserClub: userClubModel,
+  SportSchoolPosition: sportSchoolPositionModel,
   Ground: {},
   Tournament: {},
   TournamentGroup: {},
@@ -29,6 +34,7 @@ beforeEach(() => {
   matchFindAllMock.mockReset();
   matchCountMock.mockReset();
   agreementFindAllMock.mockReset();
+  teamFindAllMock.mockReset();
 });
 
 function makeMatch({ id = 'm1', when = 'future', home = true } = {}) {
@@ -116,4 +122,32 @@ test('listPastLocal orders by date_start DESC', async () => {
   const args = matchFindAllMock.mock.calls[0][0];
   expect(Array.isArray(args.order)).toBe(true);
   expect(args.order[0]).toEqual(['date_start', 'DESC']);
+});
+
+test('listUpcomingLocal uses club-wide positions to resolve team scope', async () => {
+  userFindByPkMock.mockResolvedValue({
+    Teams: [],
+    UserClubs: [
+      { club_id: 'club-1', SportSchoolPosition: { alias: 'DIRECTOR' } },
+    ],
+  });
+  teamFindAllMock.mockResolvedValue([{ id: 't1', external_id: null }]);
+  const m = makeMatch({ when: 'future', home: true });
+  matchFindAllMock.mockResolvedValue([m]);
+  matchCountMock.mockResolvedValue(1);
+  agreementFindAllMock.mockResolvedValue([]);
+
+  const { rows } = await listUpcomingLocal('u1', {
+    limit: 10,
+    offset: 0,
+    type: 'home',
+  });
+
+  expect(teamFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { club_id: { [Op.in]: ['club-1'] } },
+      attributes: ['id', 'external_id'],
+    })
+  );
+  expect(rows[0]).toMatchObject({ id: m.id, is_home: true });
 });

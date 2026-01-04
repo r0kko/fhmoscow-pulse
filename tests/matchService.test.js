@@ -6,6 +6,8 @@ const gameCountMock = jest.fn();
 const userFindByPkMock = jest.fn();
 
 const TeamModel = {};
+const UserClubModel = {};
+const SportSchoolPositionModel = {};
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
   __esModule: true,
@@ -18,6 +20,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   User: { findByPk: userFindByPkMock },
   Team: TeamModel,
+  UserClub: UserClubModel,
+  SportSchoolPosition: SportSchoolPositionModel,
 }));
 
 const { default: service } = await import('../src/services/matchService.js');
@@ -43,7 +47,13 @@ test('listUpcoming queries external games for user teams', async () => {
     },
   ]);
   const res = await service.listUpcoming('u1', 50);
-  expect(userFindByPkMock).toHaveBeenCalledWith('u1', { include: [TeamModel] });
+  const include = userFindByPkMock.mock.calls[0][1]?.include || [];
+  expect(include).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ model: TeamModel }),
+      expect.objectContaining({ model: UserClubModel }),
+    ])
+  );
   expect(gameFindAllMock).toHaveBeenCalled();
   // ensure count path covered
   gameCountMock.mockResolvedValueOnce(1);
@@ -90,7 +100,13 @@ test('listUpcoming supports type filter and search query', async () => {
     q: 'Beta',
     limit: 10,
   });
-  expect(userFindByPkMock).toHaveBeenCalledWith('u1', { include: [TeamModel] });
+  const include = userFindByPkMock.mock.calls[0][1]?.include || [];
+  expect(include).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ model: TeamModel }),
+      expect.objectContaining({ model: UserClubModel }),
+    ])
+  );
   expect(gameFindAllMock).toHaveBeenCalled();
   const args = gameFindAllMock.mock.calls[0][0];
   // away filter

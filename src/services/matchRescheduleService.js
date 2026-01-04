@@ -1,19 +1,20 @@
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
 import { utcToMoscow } from '../utils/time.js';
-import { GameStatus, Match, Team, User } from '../models/index.js';
+import { GameStatus, Match } from '../models/index.js';
+import { resolveMatchAccessContext } from '../utils/matchAccess.js';
 
 import { rescheduleExternalGameDate } from './rescheduleExternalService.js';
 
 async function ensureParticipant(userId, match) {
-  const user = await User.findByPk(userId, { include: [Team] });
-  if (!user) throw new ServiceError('user_not_found', 404);
-  const teamIds = new Set((user.Teams || []).map((t) => t.id));
-  const isHome = match?.team1_id && teamIds.has(match.team1_id);
-  const isAway = match?.team2_id && teamIds.has(match.team2_id);
-  if (!match?.team1_id && !match?.team2_id)
+  const context = await resolveMatchAccessContext({
+    matchOrId: match,
+    userId,
+  });
+  if (!context?.match?.team1_id && !context?.match?.team2_id)
     throw new ServiceError('match_teams_not_set', 409);
-  if (!isHome && !isAway)
+  if (context.isAdmin) return;
+  if (!context.isHome && !context.isAway)
     throw new ServiceError('forbidden_not_match_member', 403);
 }
 

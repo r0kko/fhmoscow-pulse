@@ -46,7 +46,13 @@ async function load() {
     ]);
     const home = Array.isArray(homeRes.matches) ? homeRes.matches : [];
     const away = Array.isArray(awayRes.matches) ? awayRes.matches : [];
-    matches.value = [...home, ...away];
+    const merged = new Map();
+    for (const item of [...home, ...away]) {
+      if (!item?.id) continue;
+      const key = String(item.id);
+      if (!merged.has(key)) merged.set(key, item);
+    }
+    matches.value = Array.from(merged.values());
     resetFilters();
   } catch (e) {
     error.value = e.message || 'Не удалось загрузить данные';

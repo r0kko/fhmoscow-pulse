@@ -5,26 +5,24 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
   Match,
-  Team,
-  User,
   TeamStaff,
   Staff,
   ClubStaff,
   StaffCategory,
   MatchStaff,
 } from '../models/index.js';
+import { resolveMatchAccessContext } from '../utils/matchAccess.js';
 
 async function getActorSides(match, actorUserId) {
-  const { default: Role } = await import('../models/role.js');
-  const user = await User.findByPk(actorUserId, { include: [Team, Role] });
-  const teamIds = new Set((user?.Teams || []).map((t) => t.id));
-  const isHome = match.team1_id && teamIds.has(match.team1_id);
-  const isAway = match.team2_id && teamIds.has(match.team2_id);
-  const roles = new Set(
-    (user?.Roles || []).map((r) => (r.alias || r.name || '').toUpperCase())
-  );
-  const isAdmin = roles.has('ADMIN');
-  return { isHome, isAway, isAdmin };
+  const context = await resolveMatchAccessContext({
+    matchOrId: match,
+    userId: actorUserId,
+  });
+  return {
+    isHome: Boolean(context?.isHome),
+    isAway: Boolean(context?.isAway),
+    isAdmin: Boolean(context?.isAdmin),
+  };
 }
 
 function fio(s) {
