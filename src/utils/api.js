@@ -13,19 +13,26 @@ export function sendError(res, err, defaultStatus = 400) {
   }
   try {
     // Surface error code as response header for logs/drilldown
-    res.set('X-Error-Code', String(code));
+    if (typeof res.set === 'function') {
+      res.set('X-Error-Code', String(code));
+    }
     // Increment error code metric for global monitoring
     incHttpErrorCode(String(code), Number(status));
   } catch (_) {
     /* ignore */
   }
-  if (!res.locals?.body) {
+  if (!res.locals) {
+    res.locals = {};
+  }
+  if (!res.locals.body) {
     res.locals.body = { error: code };
   }
   if (err?.retryAfter) {
     // Seconds per RFC for Retry-After
     const secs = Math.max(1, Math.ceil(Number(err.retryAfter)));
-    res.set('Retry-After', String(secs));
+    if (typeof res.set === 'function') {
+      res.set('Retry-After', String(secs));
+    }
   }
   return res.status(status).json({ error: code });
 }

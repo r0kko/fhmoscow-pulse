@@ -24,8 +24,8 @@ export default {
 
     // Coverage is collected from files touched by tests (default)
 
-    maxWorkers: 1,
-    resetModules: true,
+    maxWorkers: process.env.JEST_MAX_WORKERS || '50%',
+    resetModules: false,
     clearMocks: true,
     restoreMocks: true,
     collectCoverage: false,
@@ -33,10 +33,12 @@ export default {
     coverageDirectory: 'coverage',
     coverageReporters: ['json-summary', 'text', 'lcov'],
     coveragePathIgnorePatterns: [
+        '/node_modules/',
+        '<rootDir>/client/',
+        '<rootDir>/client/node_modules/',
         '<rootDir>/src/externalModels/',
         '<rootDir>/src/migrations/',
         '<rootDir>/src/config/externalMariaDb.js',
-        
     ],
     coverageThreshold: {
         global: {
