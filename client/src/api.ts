@@ -14,6 +14,7 @@ type TimeoutResult = {
 export type ApiError = Error & {
   code?: string | null;
   requestId?: string | null;
+  details?: unknown;
 };
 
 interface RetryOptions {
@@ -27,7 +28,7 @@ export interface ApiFetchOptions extends RequestInit, RetryOptions {
   timeoutMs?: number;
 }
 
-type ErrorPayload = { error?: string | null };
+type ErrorPayload = { error?: string | null; details?: unknown };
 
 function normalizeHeaders(headers: HeadersInit | undefined): HeadersMap {
   if (!headers) return {};
@@ -483,7 +484,7 @@ if (typeof window !== 'undefined') {
 
 interface HttpErrorOptions {
   status: number;
-  data?: { error?: string | null } | null;
+  data?: ErrorPayload | null;
   reqId?: string | null;
   fallbackCode?: string | null;
   message?: string;
@@ -502,6 +503,7 @@ function createHttpError({
   const err = new Error(fullMessage) as ApiError;
   err.code = data?.error || fallbackCode;
   if (reqId) err.requestId = reqId;
+  if (data?.details !== undefined) err.details = data.details;
   return err;
 }
 

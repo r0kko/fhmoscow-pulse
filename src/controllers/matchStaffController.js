@@ -5,8 +5,11 @@ async function list(req, res, next) {
     const data = await service.list(req.params.id, req.user.id);
     res.json(data);
   } catch (e) {
-    if (e.code && Number.isFinite(e.code))
-      return res.status(e.code).json({ error: e.message });
+    if (e.code && Number.isFinite(e.code)) {
+      const payload = { error: e.message };
+      if (e.details) payload.details = e.details;
+      return res.status(e.code).json(payload);
+    }
     next(e);
   }
 }
@@ -24,8 +27,11 @@ async function set(req, res, next) {
     );
     res.json(data);
   } catch (e) {
-    if (e.code && Number.isFinite(e.code))
-      return res.status(e.code).json({ error: e.message });
+    if (e.code && Number.isFinite(e.code)) {
+      const payload = { error: e.message };
+      if (e.details) payload.details = e.details;
+      return res.status(e.code).json(payload);
+    }
     next(e);
   }
 }

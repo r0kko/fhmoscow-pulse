@@ -193,3 +193,24 @@ test('set rejects when more than one head coach selected', async () => {
     )
   ).rejects.toThrow('too_many_head_coaches');
 });
+
+test('set rejects invalid staff ids with details', async () => {
+  setupBase();
+  findMsMock.mockResolvedValue([]);
+  findTeamStaffMock.mockResolvedValue([{ id: 'a' }]);
+  await expect(
+    service.set(
+      'm1',
+      't1',
+      null,
+      [
+        { team_staff_id: 'a', selected: true, role_id: 'coach' },
+        { team_staff_id: 'b', selected: true, role_id: 'coach' },
+      ],
+      'admin'
+    )
+  ).rejects.toMatchObject({
+    message: 'staff_not_in_team',
+    details: { invalid_staff_ids: ['b'] },
+  });
+});

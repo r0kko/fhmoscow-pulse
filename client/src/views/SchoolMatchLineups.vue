@@ -1759,9 +1759,38 @@ const staffHasChanges = computed(() => {
   return false;
 });
 
+function sanitizeStaffState(arr) {
+  const validIds = new Set((arr || []).map((r) => r.team_staff_id));
+  if (!validIds.size) {
+    if (staffSelected.value.size) staffSelected.value = new Set();
+    if (Object.keys(editedStaffRole.value || {}).length)
+      editedStaffRole.value = {};
+    return validIds;
+  }
+  let changed = false;
+  const nextSelected = new Set();
+  for (const id of staffSelected.value) {
+    if (validIds.has(id)) nextSelected.add(id);
+    else changed = true;
+  }
+  if (changed) staffSelected.value = nextSelected;
+  const currentRoles = editedStaffRole.value || {};
+  const nextRoles = {};
+  for (const id of validIds) {
+    if (Object.prototype.hasOwnProperty.call(currentRoles, id)) {
+      nextRoles[id] = currentRoles[id];
+    }
+  }
+  if (Object.keys(nextRoles).length !== Object.keys(currentRoles).length) {
+    editedStaffRole.value = nextRoles;
+  }
+  return validIds;
+}
+
 async function saveStaff() {
   if (!data.value) return;
   const arr = staff.value || [];
+  sanitizeStaffState(arr);
   const payload = arr.map((r) => ({
     team_staff_id: r.team_staff_id,
     selected: staffSelected.value.has(r.team_staff_id),
@@ -1812,22 +1841,46 @@ async function saveStaff() {
     }
   } catch (e) {
     if (e?.code === 'staff_not_in_team' || e?.code === 'team_not_in_match') {
+      clearPending('staff');
       await load();
-      error.value = 'Данные обновлены. Проверьте список представителей.';
+      const invalid =
+        e?.details &&
+        Array.isArray(e.details.invalid_staff_ids) &&
+        e.details.invalid_staff_ids.length > 0;
+      error.value = invalid
+        ? 'Часть представителей больше не доступна. Мы обновили список.'
+        : 'Данные обновлены. Проверьте список представителей.';
     } else if (e?.code === 'conflict_staff_version') {
       try {
         await load();
+        const validIds = new Set(
+          (staff.value || []).map((r) => r.team_staff_id)
+        );
+        const pendingPayload = getPending('staff')?.staff || payload;
+        const sanitizedPayload = Array.isArray(pendingPayload)
+          ? pendingPayload.filter((r) => r && validIds.has(r.team_staff_id))
+          : pendingPayload;
         const respS2 = await apiFetch(`/matches/${route.params.id}/staff`, {
           method: 'POST',
           body: JSON.stringify({
             team_id: activeTeam.value,
-            staff: getPending('staff')?.staff || payload,
+            staff: sanitizedPayload,
           }),
         });
         if (respS2 && respS2.team_rev) staffRev.value = respS2.team_rev;
         clearPending('staff');
         showToast('Обновили данные и применили ваши изменения');
       } catch (e2) {
+        if (
+          e2?.code === 'staff_not_in_team' ||
+          e2?.code === 'team_not_in_match'
+        ) {
+          clearPending('staff');
+          await load();
+          error.value =
+            'Часть представителей больше не доступна. Мы обновили список.';
+          return;
+        }
         error.value = e2.message || 'Конфликт при сохранении представителей';
       }
     } else if (e?.code === 'too_many_officials') {

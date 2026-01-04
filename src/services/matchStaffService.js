@@ -261,12 +261,12 @@ async function set(
     }
     // no per-squad coach limits — staff list is global for export
   }
-  for (const id of ids) {
-    if (!validIds.has(id)) {
-      const err = new Error('staff_not_in_team');
-      err.code = 400;
-      throw err;
-    }
+  const invalidIds = ids.filter((id) => !validIds.has(id));
+  if (invalidIds.length) {
+    const err = new Error('staff_not_in_team');
+    err.code = 400;
+    err.details = { invalid_staff_ids: invalidIds };
+    throw err;
   }
   await sequelize.transaction(async (tx) => {
     const existing = await MatchStaff.findAll({
