@@ -55,13 +55,14 @@ function scrollActiveTab(behavior: ScrollBehavior = 'auto'): void {
   if (!navEl) return;
   const active = navEl.querySelector<HTMLElement>('.nav-link.active');
   if (!active) return;
+  const navRect = navEl.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
+  const activeLeft = activeRect.left - navRect.left + navEl.scrollLeft;
+  const activeRight = activeLeft + activeRect.width;
   const scrollLeft = navEl.scrollLeft;
   const viewWidth = navEl.clientWidth;
-  const activeLeft = active.offsetLeft;
-  const activeRight = activeLeft + active.offsetWidth;
   if (activeLeft >= scrollLeft && activeRight <= scrollLeft + viewWidth) return;
-  const target =
-    activeLeft - Math.max(viewWidth / 2 - active.offsetWidth / 2, 0);
+  const target = activeLeft - Math.max(viewWidth / 2 - activeRect.width / 2, 0);
   navEl.scrollTo({
     left: Math.max(target, 0),
     behavior,
@@ -94,54 +95,54 @@ watch(
 </script>
 
 <template>
-  <ul
-    ref="navRef"
-    v-edge-fade
-    class="nav nav-pills tab-selector"
-    :class="navClass"
-    role="tablist"
-    :aria-label="ariaLabelText || undefined"
-  >
-    <li v-for="t in tabItems" :key="String(t.key)" class="nav-item">
-      <button
-        type="button"
-        class="nav-link"
-        :class="{ active: currentValue === t.key, disabled: t.disabled }"
-        role="tab"
-        :aria-selected="currentValue === t.key"
-        :aria-disabled="t.disabled ? 'true' : undefined"
-        @click="selectTab(t.key, t.disabled)"
-        @keydown.enter="selectTab(t.key, t.disabled)"
-      >
-        <span class="d-block lh-1 fw-semibold">
-          {{ t.label }}
-          <span
-            v-if="t.badge && Number(t.badge) > 0"
-            class="notif-badge ms-1"
-            :title="String(t.badge)"
-            aria-hidden="true"
-          >
-            {{ Number(t.badge) > 99 ? '99+' : String(t.badge) }}
+  <div ref="navRef" v-edge-fade class="tab-selector-wrap">
+    <ul
+      class="nav nav-pills tab-selector"
+      :class="navClass"
+      role="tablist"
+      :aria-label="ariaLabelText || undefined"
+    >
+      <li v-for="t in tabItems" :key="String(t.key)" class="nav-item">
+        <button
+          type="button"
+          class="nav-link"
+          :class="{ active: currentValue === t.key, disabled: t.disabled }"
+          role="tab"
+          :aria-selected="currentValue === t.key"
+          :aria-disabled="t.disabled ? 'true' : undefined"
+          @click="selectTab(t.key, t.disabled)"
+          @keydown.enter="selectTab(t.key, t.disabled)"
+        >
+          <span class="d-block lh-1 fw-semibold">
+            {{ t.label }}
+            <span
+              v-if="t.badge && Number(t.badge) > 0"
+              class="notif-badge ms-1"
+              :title="String(t.badge)"
+              aria-hidden="true"
+            >
+              {{ Number(t.badge) > 99 ? '99+' : String(t.badge) }}
+            </span>
+            <span
+              v-else-if="t.alert"
+              class="notif-dot"
+              :title="t.alertLabel || 'Есть уведомления'"
+              aria-hidden="true"
+            ></span>
+            <span v-if="t.badge && Number(t.badge) > 0" class="visually-hidden">
+              {{ String(t.badge) }}
+            </span>
+            <span v-else-if="t.alert" class="visually-hidden">
+              {{ t.alertLabel || 'Есть уведомления' }}
+            </span>
           </span>
-          <span
-            v-else-if="t.alert"
-            class="notif-dot"
-            :title="t.alertLabel || 'Есть уведомления'"
-            aria-hidden="true"
-          ></span>
-          <span v-if="t.badge && Number(t.badge) > 0" class="visually-hidden">
-            {{ String(t.badge) }}
-          </span>
-          <span v-else-if="t.alert" class="visually-hidden">
-            {{ t.alertLabel || 'Есть уведомления' }}
-          </span>
-        </span>
-        <small v-if="t.subLabel" class="d-block text-muted lh-1">{{
-          t.subLabel
-        }}</small>
-      </button>
-    </li>
-  </ul>
+          <small v-if="t.subLabel" class="d-block text-muted lh-1">{{
+            t.subLabel
+          }}</small>
+        </button>
+      </li>
+    </ul>
+  </div>
 </template>
 
 <style scoped></style>

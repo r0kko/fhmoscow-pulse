@@ -18,6 +18,7 @@ import {
 
 const DATE_STORAGE_KEY = 'refereeAssignmentsActiveDate';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const dates = ref([]);
 const matches = ref([]);
@@ -221,7 +222,13 @@ async function loadDates() {
   error.value = '';
   try {
     const data = await apiFetch('/referee-assignments/my/dates');
-    dates.value = Array.isArray(data.dates) ? data.dates : [];
+    const rawDates = Array.isArray(data.dates) ? data.dates : [];
+    const todayKey = getMoscowDateKey();
+    const filteredDates = rawDates
+      .filter((entry) => DATE_KEY_PATTERN.test(entry?.date ?? ''))
+      .filter((entry) => (!todayKey ? true : entry.date >= todayKey))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    dates.value = filteredDates;
     if (!dates.value.length) {
       activeDate.value = '';
       matches.value = [];
@@ -230,7 +237,8 @@ async function loadDates() {
     const stored = activeDate.value;
     const hasStored = stored && dates.value.some((d) => d.date === stored);
     if (!hasStored) {
-      activeDate.value = dates.value[0].date;
+      const hasToday = todayKey && dates.value.some((d) => d.date === todayKey);
+      activeDate.value = hasToday ? todayKey : dates.value[0].date;
     }
     saveStoredDate(DATE_STORAGE_KEY, activeDate.value);
     if (activeDate.value) {
@@ -245,6 +253,11 @@ async function loadDates() {
 
 async function loadAssignments() {
   if (!activeDate.value) return;
+  const todayKey = getMoscowDateKey();
+  if (todayKey && activeDate.value < todayKey) {
+    matches.value = [];
+    return;
+  }
   loadingMatches.value = true;
   error.value = '';
   try {
@@ -362,11 +375,21 @@ function dayLabel(dateKey) {
   return formatMskDateLong(date.toISOString());
 }
 
+function getMoscowDateKey() {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: MOSCOW_TZ }).format(
+      new Date()
+    );
+  } catch {
+    return '';
+  }
+}
+
 function loadStoredDate(key) {
   if (typeof window === 'undefined') return '';
   const value = window.localStorage.getItem(key);
   if (!value) return '';
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+  return DATE_KEY_PATTERN.test(value) ? value : '';
 }
 
 function saveStoredDate(key, value) {
@@ -792,11 +815,13 @@ function formatTabLines(date, offset) {
   gap: 1rem;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .arena-list {
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .arena-entry {
@@ -901,6 +926,7 @@ function formatTabLines(date, offset) {
   background: transparent;
   table-layout: fixed;
   width: 100%;
+  max-width: 100%;
 }
 
 .assignments-table thead th {
@@ -1007,6 +1033,8 @@ col.col-role {
   display: flex;
   justify-content: flex-end;
   padding-top: 0.5rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .confirm-day-btn {
@@ -1084,11 +1112,19 @@ col.col-role {
     gap: 0.5rem;
   }
   .table-responsive {
-    overflow-x: visible;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
   }
   .assignments-table {
     font-size: 0.84rem;
     table-layout: auto;
+  }
+  .assignments-table colgroup {
+    display: none;
+  }
+  .assignments-table col {
+    width: auto !important;
   }
   col.col-time,
   col.col-match,

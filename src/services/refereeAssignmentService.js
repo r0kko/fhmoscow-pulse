@@ -91,6 +91,10 @@ function moscowDateKey(date) {
   return msk.toISOString().slice(0, 10);
 }
 
+function moscowTodayKey() {
+  return moscowDateKey(new Date());
+}
+
 function moscowTimeSeconds(date) {
   const msk = utcToMoscow(date);
   if (!msk) return null;
@@ -684,6 +688,17 @@ export async function listAssignmentDatesForUser(userId) {
   const statusInfo = await resolveAssignmentStatuses();
   const statusIds = [statusInfo.published.id];
   if (statusInfo.confirmed) statusIds.push(statusInfo.confirmed.id);
+  const todayKey = moscowTodayKey();
+  const todayBounds = todayKey ? moscowDayBounds(todayKey) : null;
+
+  const matchInclude = {
+    model: Match,
+    required: true,
+    attributes: ['id', 'date_start'],
+  };
+  if (todayBounds) {
+    matchInclude.where = { date_start: { [Op.gte]: todayBounds.start } };
+  }
 
   const rows = await MatchReferee.findAll({
     where: {
@@ -691,13 +706,7 @@ export async function listAssignmentDatesForUser(userId) {
       status_id: { [Op.in]: statusIds },
     },
     attributes: ['match_id', 'status_id'],
-    include: [
-      {
-        model: Match,
-        required: true,
-        attributes: ['id', 'date_start'],
-      },
-    ],
+    include: [matchInclude],
     order: [[{ model: Match }, 'date_start', 'ASC']],
   });
 
@@ -736,9 +745,9 @@ export async function listAssignmentDatesForUser(userId) {
     else day.confirmed += 1;
   }
 
-  const dates = Array.from(dateMap.values()).sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
+  const dates = Array.from(dateMap.values())
+    .filter((entry) => (!todayKey ? true : entry.date >= todayKey))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return { dates };
 }
@@ -748,6 +757,10 @@ export async function listAssignmentsForUser(userId, dateKey) {
   const normalized = normalizeDateKey(dateKey);
   const bounds = moscowDayBounds(normalized);
   if (!bounds) throw new ServiceError('invalid_date', 400);
+  const todayKey = moscowTodayKey();
+  if (todayKey && normalized < todayKey) {
+    return { date: normalized, matches: [] };
+  }
   const statusInfo = await resolveAssignmentStatuses();
   const statusIds = [statusInfo.published.id];
   if (statusInfo.confirmed) statusIds.push(statusInfo.confirmed.id);

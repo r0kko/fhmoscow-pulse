@@ -93,11 +93,25 @@
  * Compact, scrollable tab selectors used across admin views
  * Unified spacing and shape per design code
  */
+.tab-selector-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
 .tab-selector {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   gap: 0.5rem;
   padding: 0.25rem;
+  width: max-content;
+  min-width: 100%;
+  flex-wrap: nowrap;
+}
+.tab-selector-wrap .tab-selector {
+  overflow: visible;
 }
 .tab-selector .nav-link {
   white-space: nowrap;
@@ -105,15 +119,16 @@
 }
 
 /* Small-screen behavior for tab selector */
-@media (max-width: 575.98px) {
-  .tab-selector {
+@media (max-width: 767.98px) {
+  .tab-selector,
+  .tab-selector-wrap {
     scrollbar-width: none;
     white-space: nowrap;
-    flex-wrap: nowrap;
     scroll-snap-type: x mandatory;
     padding-bottom: 0.25rem;
   }
-  .tab-selector::-webkit-scrollbar {
+  .tab-selector::-webkit-scrollbar,
+  .tab-selector-wrap::-webkit-scrollbar {
     display: none;
   }
   .tab-selector .nav-item {
@@ -361,6 +376,14 @@ body {
 }
 .scroll-fade.show-right-fade::after {
   opacity: 1;
+}
+
+/* Tabs: avoid edge fades overlaying active pills */
+.tab-selector.scroll-fade::before,
+.tab-selector.scroll-fade::after,
+.tab-selector-wrap.scroll-fade::before,
+.tab-selector-wrap.scroll-fade::after {
+  content: none;
 }
 
 .menu-card {

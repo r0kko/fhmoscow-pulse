@@ -114,6 +114,10 @@ const service = await import('../src/services/refereeAssignmentService.js');
 const draftStatus = { id: 'status-draft', alias: 'DRAFT' };
 const publishedStatus = { id: 'status-published', alias: 'PUBLISHED' };
 const confirmedStatus = { id: 'status-confirmed', alias: 'CONFIRMED' };
+const TEST_DATE = '2099-02-10';
+const TEST_DATE_NEXT = '2099-02-11';
+const TEST_DATE_START = new Date(`${TEST_DATE}T09:00:00Z`);
+const TEST_DATE_NEXT_START = new Date(`${TEST_DATE_NEXT}T09:00:00Z`);
 
 function makeRoleGroup() {
   return { id: 'rg1', name: 'Судьи в поле', sort_order: 1 };
@@ -132,7 +136,7 @@ function makeRole(group) {
 function makeMatch(overrides = {}) {
   return {
     id: overrides.id || 'm1',
-    date_start: overrides.date_start || new Date('2024-02-10T09:00:00Z'),
+    date_start: overrides.date_start || TEST_DATE_START,
     tournament_group_id: overrides.tournament_group_id || 'tg1',
     Tournament: { id: 't1', name: 'Кубок' },
     Stage: { id: 's1', name: 'Этап 1' },
@@ -204,7 +208,7 @@ test('listMatchesByDate maps requirements and assignments', async () => {
   ]);
   matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
 
-  const result = await service.listMatchesByDate('2024-02-10');
+  const result = await service.listMatchesByDate(TEST_DATE);
   expect(result.matches).toHaveLength(1);
   const match = result.matches[0];
   expect(match.msk_start_time).toBe('12:00');
@@ -392,13 +396,9 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
 
   matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
 
-  const result = await service.publishAssignmentsForDate(
-    '2024-02-10',
-    'admin',
-    {
-      roleGroupIds: ['rg1'],
-    }
-  );
+  const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+    roleGroupIds: ['rg1'],
+  });
 
   expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -448,13 +448,9 @@ test('publishAssignmentsForDate publishes available drafts despite gaps', async 
   ]);
   matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
 
-  const result = await service.publishAssignmentsForDate(
-    '2024-02-10',
-    'admin',
-    {
-      roleGroupIds: ['rg1'],
-    }
-  );
+  const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+    roleGroupIds: ['rg1'],
+  });
 
   expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
     expect.objectContaining({ status_id: publishedStatus.id }),
@@ -488,13 +484,9 @@ test('publishAssignmentsForDate clears published when draft clear exists', async
     { match_id: 'm1', referee_role_group_id: 'rg1' },
   ]);
 
-  const result = await service.publishAssignmentsForDate(
-    '2024-02-10',
-    'admin',
-    {
-      roleGroupIds: ['rg1'],
-    }
-  );
+  const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+    roleGroupIds: ['rg1'],
+  });
 
   expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -539,7 +531,7 @@ test('listAssignmentsForUser returns published assignments grouped by match', as
       },
     ]);
 
-  const result = await service.listAssignmentsForUser('u1', '2024-02-10');
+  const result = await service.listAssignmentsForUser('u1', TEST_DATE);
 
   expect(result.matches).toHaveLength(1);
   const match = result.matches[0];
@@ -562,7 +554,7 @@ test('listAssignmentDatesForUser groups assignments by day', async () => {
       status_id: confirmedStatus.id,
       Match: makeMatch({
         id: 'm2',
-        date_start: new Date('2024-02-11T09:00:00Z'),
+        date_start: TEST_DATE_NEXT_START,
       }),
     },
   ]);
@@ -570,8 +562,8 @@ test('listAssignmentDatesForUser groups assignments by day', async () => {
   const result = await service.listAssignmentDatesForUser('u1');
 
   expect(result.dates).toEqual([
-    expect.objectContaining({ date: '2024-02-10', total: 1, published: 1 }),
-    expect.objectContaining({ date: '2024-02-11', total: 1, confirmed: 1 }),
+    expect.objectContaining({ date: TEST_DATE, total: 1, published: 1 }),
+    expect.objectContaining({ date: TEST_DATE_NEXT, total: 1, confirmed: 1 }),
   ]);
 });
 
@@ -580,7 +572,7 @@ test('confirmAssignmentsForDate updates published assignments for day', async ()
     { match_id: 'm1', status_id: publishedStatus.id, Match: { id: 'm1' } },
   ]);
 
-  const result = await service.confirmAssignmentsForDate('2024-02-10', 'u1');
+  const result = await service.confirmAssignmentsForDate(TEST_DATE, 'u1');
 
   expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
     expect.objectContaining({ status_id: confirmedStatus.id }),
@@ -598,7 +590,7 @@ test('confirmAssignmentsForDate fails without published assignments', async () =
   matchRefereeFindAllMock.mockResolvedValue([]);
 
   await expect(
-    service.confirmAssignmentsForDate('2024-02-10', 'u1')
+    service.confirmAssignmentsForDate(TEST_DATE, 'u1')
   ).rejects.toMatchObject({ code: 'referee_assignments_missing' });
 });
 
