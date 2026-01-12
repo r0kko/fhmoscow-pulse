@@ -181,8 +181,25 @@ test('create derives season from date', async () => {
     },
     'admin'
   );
-  expect(findOneSeasonMock).toHaveBeenCalledWith({ where: { alias: '2025' } });
+  expect(findOneSeasonMock).toHaveBeenCalledWith({ where: { alias: '2024' } });
   expect(createMock.mock.calls[0][0].season_id).toBe('s3');
+});
+
+test('create derives season from Moscow date boundary', async () => {
+  findOneSeasonMock.mockResolvedValue({ id: 's4' });
+  createMock.mockResolvedValue({ id: 't4', season_id: 's4' });
+  findByPkMock.mockResolvedValue({ get: () => ({ id: 't4' }) });
+  await service.create(
+    {
+      type_id: 'tp',
+      ground_id: 'g1',
+      start_at: '2025-05-31T21:30:00Z',
+      end_at: '2025-05-31T23:00:00Z',
+    },
+    'admin'
+  );
+  expect(findOneSeasonMock).toHaveBeenCalledWith({ where: { alias: '2025' } });
+  expect(createMock.mock.calls[0][0].season_id).toBe('s4');
 });
 
 test('create rejects mismatched group season', async () => {

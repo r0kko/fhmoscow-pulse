@@ -15,6 +15,7 @@ import {
 import ServiceError from '../errors/ServiceError.js';
 import TrainingRegistration from '../models/trainingRegistration.js';
 import { hasAdminRole, hasRefereeRole } from '../utils/roles.js';
+import { seasonAliasFromDate } from '../utils/season.js';
 
 import { sendTrainingInvitationEmail } from './emailService.js';
 
@@ -319,8 +320,9 @@ async function create(data, actorId, forCamp) {
         throw new ServiceError('invalid_group_season');
       }
     } else {
-      const yearAlias = new Date(data.start_at).getUTCFullYear().toString();
-      const season = await Season.findOne({ where: { alias: yearAlias } });
+      const seasonAlias = seasonAliasFromDate(data.start_at);
+      if (!seasonAlias) throw new ServiceError('invalid_date');
+      const season = await Season.findOne({ where: { alias: seasonAlias } });
       if (!season) throw new ServiceError('season_not_found', 404);
       seasonId = season.id;
     }

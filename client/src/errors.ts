@@ -40,6 +40,7 @@ export const ERROR_MESSAGES = {
   taxation_not_found: 'Налоговый статус не найден',
   certificate_not_found: 'Медицинское заключение не найдено',
   ground_not_found: 'Площадка не найдена',
+  season_not_found: 'Сезон не найден',
   equipment_not_found: 'Экипировка не найдена',
   equipment_already_assigned: 'Экипировка уже выдана другому получателю',
   equipment_assignment_exists:
