@@ -220,7 +220,10 @@ describe('userAdminController validation error flows', () => {
     const resetPasswordMock2 = jest.fn();
     jest.unstable_mockModule('../src/services/userService.js', () => ({
       __esModule: true,
-      default: { resetPassword: resetPasswordMock2 },
+      default: {
+        resetPassword: resetPasswordMock2,
+        bumpTokenVersion: jest.fn(),
+      },
     }));
     jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
       __esModule: true,

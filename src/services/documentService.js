@@ -2171,7 +2171,7 @@ async function signWithCode(user, documentId, code) {
   if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE')
     throw new ServiceError('document_status_invalid', 400);
   const { verifyCodeOnly } = await import('./emailVerificationService.js');
-  await verifyCodeOnly(user, code);
+  await verifyCodeOnly(user, code, 'doc-sign');
   // proceed with signing and stamping
   await sign(user, documentId);
   // After status update and sign record creation, regenerate with stamp

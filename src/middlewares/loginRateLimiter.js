@@ -4,11 +4,12 @@ import { incRateLimited } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
 import { isRateLimitEnabled } from '../config/featureFlags.js';
+import { getClientIp } from '../utils/clientIp.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
 function loginKey(req) {
-  const ip = req.ip || req.connection?.remoteAddress || '';
+  const ip = getClientIp(req);
   const acct = (req.body?.phone || req.body?.email || '').toString().trim();
   // Pair IP with account identifier to reduce NAT collisions while
   // still constraining per-source

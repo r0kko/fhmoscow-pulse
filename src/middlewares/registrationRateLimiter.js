@@ -4,11 +4,12 @@ import { incRateLimited } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
 import { isRateLimitEnabled } from '../config/featureFlags.js';
+import { getClientIp } from '../utils/clientIp.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
 function regKey(req) {
-  const ip = req.ip || req.connection?.remoteAddress || '';
+  const ip = getClientIp(req);
   const email = (req.body?.email || '').toString().trim().toLowerCase();
   const ipKey = ipKeyGenerator(ip, 64);
   return `ip:${ipKey}|email:${email || 'unknown'}`;

@@ -4,13 +4,14 @@ import { incRateLimited } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
 import { isRateLimitEnabled } from '../config/featureFlags.js';
+import { getClientIp } from '../utils/clientIp.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
 function clientKey(req) {
   // Prefer per-user buckets for authenticated requests, else IP subnet key
   if (req.user?.id) return `u:${req.user.id}`;
-  const ip = req.ip || req.connection?.remoteAddress || '';
+  const ip = getClientIp(req);
   return `ip:${ipKeyGenerator(ip, 64)}`;
 }
 

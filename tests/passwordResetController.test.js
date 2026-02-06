@@ -57,16 +57,16 @@ test('start sends code when user exists', async () => {
   const res = createRes();
   await controller.start(req, res);
   expect(sendCodeMock).toHaveBeenCalledWith(user);
-  expect(res.json).toHaveBeenCalledWith({ message: 'code_sent' });
+  expect(res.json).toHaveBeenCalledWith({ message: 'if_account_exists_code_sent' });
 });
 
-test('start returns 404 when user missing', async () => {
+test('start returns neutral response when user missing', async () => {
   findUserMock.mockResolvedValue(null);
   const req = { body: { email: 'a@b.c' } };
   const res = createRes();
   await controller.start(req, res);
-  expect(res.status).toHaveBeenCalledWith(404);
-  expect(res.json).toHaveBeenCalledWith({ error: 'not_found' });
+  expect(res.status).not.toHaveBeenCalled();
+  expect(res.json).toHaveBeenCalledWith({ message: 'if_account_exists_code_sent' });
 });
 
 test('start returns 400 on validation errors', async () => {
@@ -89,6 +89,17 @@ test('finish resets password when code valid', async () => {
   expect(verifyCodeMock).toHaveBeenCalledWith(user, '123');
   expect(resetPasswordMock).toHaveBeenCalledWith('u1', 'Passw0rd', 'u1');
   expect(res.json).toHaveBeenCalledWith({ message: 'password_updated' });
+});
+
+test('finish returns invalid_code for unknown user (anti-enumeration)', async () => {
+  findUserMock.mockResolvedValue(null);
+  const req = {
+    body: { email: 'nobody@example.com', code: '123456', password: 'Passw0rd1' },
+  };
+  const res = createRes();
+  await controller.finish(req, res);
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(res.json).toHaveBeenCalledWith({ error: 'invalid_code' });
 });
 
 test('finish returns error when code invalid', async () => {

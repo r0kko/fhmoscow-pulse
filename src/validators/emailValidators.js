@@ -1,5 +1,8 @@
 import { body } from 'express-validator';
 
 export const confirmCodeRules = [
-  body('code').isLength({ min: 6, max: 6 }).withMessage('code_required'),
+  body('code')
+    .customSanitizer((val) => String(val || '').replace(/\D+/g, '').slice(0, 6))
+    .matches(/^\d{6}$/)
+    .withMessage('invalid_code'),
 ];

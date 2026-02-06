@@ -8,7 +8,10 @@ export const passwordResetStartRules = [
 
 export const passwordResetFinishRules = [
   body('email').isEmail().normalizeEmail(),
-  body('code').isString().notEmpty(),
+  body('code')
+    .customSanitizer((val) => String(val || '').replace(/\D+/g, '').slice(0, 6))
+    .matches(/^\d{6}$/)
+    .withMessage('invalid_code'),
   body('password')
     .customSanitizer((val, { req }) => {
       if (typeof val === 'string' && val.length > 0) return val;

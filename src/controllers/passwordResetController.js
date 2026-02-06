@@ -13,12 +13,19 @@ export default {
     }
     const { email } = req.body;
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ error: 'not_found' });
+    // Anti-enumeration: same response whether account exists or not.
+    if (!user) {
+      return res.json({ message: 'if_account_exists_code_sent' });
+    }
     try {
       await passwordResetService.sendCode(user);
-      return res.json({ message: 'code_sent' });
+      return res.json({ message: 'if_account_exists_code_sent' });
     } catch (err) {
-      return sendError(res, err, 500);
+      // Keep response neutral for start flow to avoid account discovery.
+      if (err?.code === 'too_many_attempts') {
+        return res.json({ message: 'if_account_exists_code_sent' });
+      }
+      return res.json({ message: 'if_account_exists_code_sent' });
     }
   },
 
@@ -40,7 +47,8 @@ export default {
     }
     const { email, code, password } = req.body;
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ error: 'not_found' });
+    // Anti-enumeration: do not reveal whether email exists.
+    if (!user) return res.status(400).json({ error: 'invalid_code' });
     try {
       await passwordResetService.verifyCode(user, code);
       await userService.resetPassword(user.id, password, user.id);

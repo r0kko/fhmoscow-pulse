@@ -19,7 +19,11 @@ const normalizedEmail = computed(() => email.value.trim().toLowerCase());
 const isEmailValid = computed(() =>
   /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail.value)
 );
-const sanitizedCode = computed(() => code.value.replace(/\s+/g, ''));
+const sanitizedCode = computed(() =>
+  String(code.value || '')
+    .replace(/\D+/g, '')
+    .slice(0, 6)
+);
 const passwordMeetsMin = computed(() => password.value.length >= 8);
 const passwordHasLetter = computed(() => /[A-Za-z]/.test(password.value));
 const passwordHasDigit = computed(() => /\d/.test(password.value));
@@ -33,7 +37,7 @@ const passwordsMatch = computed(
 const canSubmitStart = computed(() => isEmailValid.value && !loading.value);
 const canSubmitFinish = computed(
   () =>
-    sanitizedCode.value.length > 0 &&
+    sanitizedCode.value.length === 6 &&
     passwordMeetsPolicy.value &&
     passwordsMatch.value &&
     !loading.value
@@ -89,6 +93,16 @@ async function finish() {
     loading.value = false;
   }
 }
+
+function onCodeInput(event) {
+  const value = event?.target?.value || '';
+  code.value = String(value).replace(/\D+/g, '').slice(0, 6);
+}
+
+function onEmailInput(event) {
+  const value = event?.target?.value || '';
+  email.value = String(value).trimStart().toLowerCase();
+}
 </script>
 
 <template>
@@ -117,12 +131,7 @@ async function finish() {
               :aria-invalid="
                 !isEmailValid && email.length > 0 ? 'true' : 'false'
               "
-              @input="
-                (e) =>
-                  (email.value = (e?.target?.value || '')
-                    .trimStart()
-                    .toLowerCase())
-              "
+              @input="onEmailInput"
               @keydown.enter.prevent="start"
             />
             <label for="email">Email</label>
@@ -148,8 +157,8 @@ async function finish() {
 
         <form v-else novalidate @submit.prevent="finish">
           <p class="mb-3">
-            На <strong>{{ normalizedEmail }}</strong> отправлен код
-            подтверждения.
+            Если учетная запись для <strong>{{ normalizedEmail }}</strong>
+            существует, код подтверждения уже отправлен на email.
           </p>
           <div class="form-floating mb-3">
             <input
@@ -159,10 +168,17 @@ async function finish() {
               placeholder="Код"
               required
               inputmode="numeric"
+              maxlength="6"
+              pattern="[0-9]*"
               autocomplete="one-time-code"
+              @input="onCodeInput"
             />
             <label for="code">Код из письма</label>
           </div>
+          <small class="text-muted d-block mb-3">
+            Код состоит из 6 цифр. После 5 неверных попыток ввод блокируется на
+            15 минут.
+          </small>
           <div class="mb-2">
             <PasswordInput
               id="password"

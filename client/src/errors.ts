@@ -16,6 +16,7 @@ export const ERROR_MESSAGES = {
   inn_exists: 'ИНН уже зарегистрирован',
   inn_not_found: 'ИНН не найден',
   invalid_code: 'Неверный код',
+  code_required: 'Введите 6-значный код из письма',
   invalid_credentials: 'Неверные учётные данные',
   invalid_passport: 'Неверные данные паспорта',
   invalid_token: 'Некорректный или истёкший токен',
@@ -177,6 +178,10 @@ export const ERROR_MESSAGES = {
   validation_error: 'Проверьте корректность введённых данных',
   rate_limited:
     'Слишком много запросов. Пожалуйста, подождите и попробуйте снова.',
+  too_many_attempts:
+    'Слишком много неверных попыток. Повторите позже или запросите новый код.',
+  reset_cooldown:
+    'Временная блокировка после неверных попыток. Повторите позже.',
   competition_type_not_found: 'Тип соревнований не найден',
   invalid_match_format: 'Некорректный формат проведения',
   invalid_referee_payment_type: 'Некорректный способ расчетов с судьями',

@@ -139,6 +139,7 @@ export default {
         req.body.password,
         req.user.id
       );
+      await userService.bumpTokenVersion(req.params.id);
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err, 404);

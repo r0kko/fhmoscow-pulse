@@ -1,10 +1,13 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
+process.env.EMAIL_CODE_SECRET = 'email-code-secret';
+
 const createMock = jest.fn();
 const destroyMock = jest.fn();
 const findOneMock = jest.fn();
 const statusFindMock = jest.fn();
-const sendEmailMock = jest.fn();
+const sendVerificationEmailMock = jest.fn();
+const sendSignTypeEmailMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -14,50 +17,136 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 
 jest.unstable_mockModule('../src/services/emailService.js', () => ({
   __esModule: true,
-  default: { sendVerificationEmail: sendEmailMock },
+  default: {
+    sendVerificationEmail: sendVerificationEmailMock,
+    sendSignTypeSelectionEmail: sendSignTypeEmailMock,
+    sendDocumentSignCodeEmail: jest.fn(),
+  },
 }));
 
-import * as attemptStore from '../src/services/emailCodeAttempts.js';
+const { hashEmailCode } = await import('../src/utils/emailCode.js');
+const { sendCode, verifyCode, verifyCodeOnly } = await import(
+  '../src/services/emailVerificationService.js'
+);
 
-const { sendCode, verifyCode } =
-  await import('../src/services/emailVerificationService.js');
+function createRecord({
+  id = 'rec-v1',
+  userId = 'u1',
+  purpose = 'verify',
+  code = '123456',
+  attemptCount = 0,
+} = {}) {
+  const record = {
+    id,
+    user_id: userId,
+    purpose,
+    code_hash: hashEmailCode({ code, recordId: id, userId, purpose }),
+    attempt_count: attemptCount,
+    expires_at: new Date(Date.now() + 10 * 60 * 1000),
+    consumed_at: null,
+    locked_until: null,
+    update: jest.fn(async (patch) => {
+      Object.assign(record, patch);
+      return record;
+    }),
+  };
+  return record;
+}
 
 beforeEach(() => {
-  createMock.mockClear();
-  destroyMock.mockClear();
-  findOneMock.mockClear();
-  statusFindMock.mockClear();
-  sendEmailMock.mockClear();
-  attemptStore._reset();
+  createMock.mockReset();
+  destroyMock.mockReset();
+  findOneMock.mockReset();
+  statusFindMock.mockReset();
+  sendVerificationEmailMock.mockReset();
+  sendSignTypeEmailMock.mockReset();
 });
 
-test('sendCode stores plain code and sends email', async () => {
-  const user = { id: '1' };
+test('sendCode stores hash for verify purpose and sends 6-digit email code', async () => {
+  findOneMock.mockResolvedValueOnce(null); // cooldown lookup
+  const user = { id: 'u1' };
   await sendCode(user);
-  expect(createMock).toHaveBeenCalled();
-  const data = createMock.mock.calls[0][0];
-  expect(data.user_id).toBe('1');
-  expect(data.code).toMatch(/^\d{6}$/);
-  expect(sendEmailMock).toHaveBeenCalledWith(user, expect.any(String));
+
+  const payload = createMock.mock.calls[0][0];
+  expect(payload.user_id).toBe('u1');
+  expect(payload.purpose).toBe('verify');
+  expect(payload.code).toBeNull();
+  expect(payload.code_hash).toMatch(/^[a-f0-9]{64}$/);
+  expect(sendVerificationEmailMock).toHaveBeenCalledWith(
+    user,
+    expect.stringMatching(/^\d{6}$/)
+  );
 });
 
-test('verifyCode succeeds with correct code', async () => {
-  const user = { id: '1', update: jest.fn() };
-  findOneMock.mockResolvedValue({ code: '123456' });
-  statusFindMock.mockResolvedValue({ id: 's1' });
-  destroyMock.mockResolvedValue();
-  await verifyCode(user, '123456');
-  expect(user.update).toHaveBeenCalled();
-  expect(attemptStore.get('1')).toBe(0);
+test('sendCode maps sign-type to sign_type purpose', async () => {
+  findOneMock.mockResolvedValueOnce(null); // cooldown lookup
+  const user = { id: 'u1' };
+  await sendCode(user, 'sign-type');
+  const payload = createMock.mock.calls[0][0];
+  expect(payload.purpose).toBe('sign_type');
+  expect(sendSignTypeEmailMock).toHaveBeenCalledWith(
+    user,
+    expect.stringMatching(/^\d{6}$/)
+  );
 });
 
-test('verifyCode counts failed attempts and locks after five', async () => {
-  const user = { id: '1', update: jest.fn() };
-  findOneMock.mockResolvedValue(null);
-  await expect(verifyCode(user, '111111')).rejects.toThrow('invalid_code');
-  await expect(verifyCode(user, '111111')).rejects.toThrow('invalid_code');
-  await expect(verifyCode(user, '111111')).rejects.toThrow('invalid_code');
-  await expect(verifyCode(user, '111111')).rejects.toThrow('invalid_code');
-  await expect(verifyCode(user, '111111')).rejects.toThrow('too_many_attempts');
-  expect(attemptStore.get('1')).toBe(5);
+test('sendCode rejects during active cooldown', async () => {
+  findOneMock.mockResolvedValueOnce({
+    locked_until: new Date(Date.now() + 3 * 60 * 1000),
+  });
+  await expect(sendCode({ id: 'u1' })).rejects.toThrow('too_many_attempts');
+  expect(createMock).not.toHaveBeenCalled();
+});
+
+test('verifyCode confirms user when code matches', async () => {
+  const user = { id: 'u1', update: jest.fn() };
+  const record = createRecord({ userId: 'u1', purpose: 'verify', code: '123456' });
+  findOneMock.mockResolvedValue(record);
+  destroyMock.mockResolvedValue(1);
+  statusFindMock.mockResolvedValue({ id: 'ACTIVE' });
+
+  await verifyCode(user, '123456', 'ACTIVE');
+
+  expect(statusFindMock).toHaveBeenCalledWith({ where: { alias: 'ACTIVE' } });
+  expect(user.update).toHaveBeenCalledWith({
+    email_confirmed: true,
+    status_id: 'ACTIVE',
+  });
+});
+
+test('verifyCodeOnly respects type and locks after five invalid attempts', async () => {
+  const user = { id: 'u1' };
+  const record = createRecord({
+    userId: 'u1',
+    purpose: 'doc_sign',
+    code: '654321',
+  });
+
+  findOneMock.mockImplementation(async (query) => {
+    const where = query?.where || {};
+    if (Object.prototype.hasOwnProperty.call(where, 'consumed_at')) {
+      if (where.purpose !== 'doc_sign') return null;
+      return record.consumed_at ? null : record;
+    }
+    return null;
+  });
+
+  await expect(verifyCodeOnly(user, '111111', 'doc-sign')).rejects.toThrow(
+    'invalid_code'
+  );
+  await expect(verifyCodeOnly(user, '222222', 'doc-sign')).rejects.toThrow(
+    'invalid_code'
+  );
+  await expect(verifyCodeOnly(user, '333333', 'doc-sign')).rejects.toThrow(
+    'invalid_code'
+  );
+  await expect(verifyCodeOnly(user, '444444', 'doc-sign')).rejects.toThrow(
+    'invalid_code'
+  );
+  await expect(verifyCodeOnly(user, '555555', 'doc-sign')).rejects.toThrow(
+    'too_many_attempts'
+  );
+  await expect(verifyCodeOnly(user, '654321', 'doc-sign')).rejects.toThrow(
+    'invalid_code'
+  );
 });

@@ -1,6 +1,8 @@
 import morgan from 'morgan';
 import { context, trace } from '@opentelemetry/api';
 
+import { getClientIp } from '../utils/clientIp.js';
+
 // JSON access logs with low cardinality fields and correlation ID
 // Only enabled outside of test environment
 
@@ -11,12 +13,7 @@ morgan.token('errorcode', (_req, res) => res.getHeader('X-Error-Code') || '');
 
 // Build a JSON line to stdout; promtail/Loki will parse it easily
 const jsonFormat = (tokens, req, res) => {
-  const clientIp =
-    req.headers['cf-connecting-ip'] ||
-    req.headers['x-real-ip'] ||
-    req.ip ||
-    req.connection?.remoteAddress ||
-    '';
+  const clientIp = getClientIp(req);
   const line = {
     type: 'access',
     ts: tokens.date(req, res, 'iso'),

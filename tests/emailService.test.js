@@ -205,7 +205,6 @@ const wrapperMatrix = [
     args: [fixtures.verifyUser, '123456'],
     templateArgs: ['123456'],
     purpose: 'verification',
-    meta: { code: '123456' },
   },
   {
     fn: 'sendSignTypeSelectionEmail',
@@ -213,7 +212,6 @@ const wrapperMatrix = [
     args: [fixtures.signTypeUser, '654321'],
     templateArgs: ['654321'],
     purpose: 'sign_type',
-    meta: { code: '654321' },
   },
   {
     fn: 'sendPasswordResetEmail',
@@ -221,7 +219,6 @@ const wrapperMatrix = [
     args: [fixtures.resetUser, 'abcdef'],
     templateArgs: ['abcdef'],
     purpose: 'password_reset',
-    meta: { code: 'abcdef' },
   },
   {
     fn: 'sendUserCreatedByAdminEmail',
@@ -403,7 +400,7 @@ const wrapperMatrix = [
     args: [fixtures.docCodeUser, fixtures.document, '1111'],
     templateArgs: [fixtures.document, '1111'],
     purpose: 'doc_sign_code',
-    meta: { documentId: 'doc1', code: '1111' },
+    meta: { documentId: 'doc1' },
   },
   {
     fn: 'sendMatchAgreementProposedEmail',
@@ -689,6 +686,14 @@ describe('emailService', () => {
         for (const [key, value] of Object.entries(meta)) {
           expect(envelope.metadata[key]).toEqual(value);
         }
+      }
+      if (
+        fn === 'sendVerificationEmail' ||
+        fn === 'sendSignTypeSelectionEmail' ||
+        fn === 'sendPasswordResetEmail' ||
+        fn === 'sendDocumentSignCodeEmail'
+      ) {
+        expect(envelope.metadata.code).toBeUndefined();
       }
     }
   });

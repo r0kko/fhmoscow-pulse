@@ -2,6 +2,7 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const setStatusMock = jest.fn();
 const resetPasswordMock = jest.fn();
+const bumpTokenVersionMock = jest.fn();
 const assignRoleMock = jest.fn();
 const removeRoleMock = jest.fn();
 const toPublicMock = jest.fn((u) => u);
@@ -11,6 +12,7 @@ jest.unstable_mockModule('../src/services/userService.js', () => ({
   default: {
     setStatus: setStatusMock,
     resetPassword: resetPasswordMock,
+    bumpTokenVersion: bumpTokenVersionMock,
     assignRole: assignRoleMock,
     removeRole: removeRoleMock,
   },
@@ -52,6 +54,7 @@ const { default: controller } =
 beforeEach(() => {
   sendActivationEmailMock.mockClear();
   setStatusMock.mockClear();
+  bumpTokenVersionMock.mockClear();
 });
 
 test('approve updates user status to ACTIVE', async () => {
@@ -93,6 +96,7 @@ test('resetPassword returns updated user', async () => {
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await controller.resetPassword(req, res);
   expect(resetPasswordMock).toHaveBeenCalledWith('4', 'P', 'admin');
+  expect(bumpTokenVersionMock).toHaveBeenCalledWith('4');
   expect(res.json).toHaveBeenCalledWith({ user: { id: '4' } });
 });
 

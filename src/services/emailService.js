@@ -124,33 +124,15 @@ export async function sendMail(
 }
 
 export async function sendVerificationEmail(user, code) {
-  await queueMailFromTemplate(
-    user,
-    renderVerificationEmail,
-    [code],
-    'verification',
-    { code }
-  );
+  await queueMailFromTemplate(user, renderVerificationEmail, [code], 'verification');
 }
 
 export async function sendSignTypeSelectionEmail(user, code) {
-  await queueMailFromTemplate(
-    user,
-    renderSignTypeSelectionEmail,
-    [code],
-    'sign_type',
-    { code }
-  );
+  await queueMailFromTemplate(user, renderSignTypeSelectionEmail, [code], 'sign_type');
 }
 
 export async function sendPasswordResetEmail(user, code) {
-  await queueMailFromTemplate(
-    user,
-    renderPasswordResetEmail,
-    [code],
-    'password_reset',
-    { code }
-  );
+  await queueMailFromTemplate(user, renderPasswordResetEmail, [code], 'password_reset');
 }
 
 export async function sendUserCreatedByAdminEmail(user, tempPassword) {
@@ -405,7 +387,7 @@ export async function sendDocumentSignCodeEmail(user, document, code) {
     renderDocumentSignCodeEmail,
     [document, code],
     'doc_sign_code',
-    { documentId: document?.id, code }
+    { documentId: document?.id }
   );
 }
 

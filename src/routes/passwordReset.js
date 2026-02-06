@@ -5,7 +5,11 @@ import {
   passwordResetStartRules,
   passwordResetFinishRules,
 } from '../validators/passwordResetValidators.js';
-import passwordResetRateLimiter from '../middlewares/passwordResetRateLimiter.js';
+import {
+  passwordResetStartEmailRateLimiter,
+  passwordResetStartIpRateLimiter,
+  passwordResetFinishRateLimiter,
+} from '../middlewares/passwordResetRateLimiters.js';
 import validate from '../middlewares/validate.js';
 
 const router = express.Router();
@@ -14,7 +18,7 @@ const router = express.Router();
  * @swagger
  * /password-reset/start:
  *   post:
- *     summary: Send password reset code
+ *     summary: Request password reset code (neutral response)
  *     requestBody:
  *       required: true
  *       content:
@@ -28,11 +32,12 @@ const router = express.Router();
  *                 type: string
  *     responses:
  *       200:
- *         description: Code sent
+ *         description: Neutral response to avoid account enumeration
  */
 router.post(
   '/start',
-  passwordResetRateLimiter,
+  passwordResetStartEmailRateLimiter,
+  passwordResetStartIpRateLimiter,
   passwordResetStartRules,
   validate,
   controller.start
@@ -42,7 +47,7 @@ router.post(
  * @swagger
  * /password-reset/finish:
  *   post:
- *     summary: Reset password with code
+ *     summary: Reset password with 6-digit email code
  *     requestBody:
  *       required: true
  *       content:
@@ -58,6 +63,7 @@ router.post(
  *                 type: string
  *               code:
  *                 type: string
+ *                 description: 6-digit numeric code
  *               password:
  *                 type: string
  *     responses:
@@ -66,7 +72,7 @@ router.post(
  */
 router.post(
   '/finish',
-  passwordResetRateLimiter,
+  passwordResetFinishRateLimiter,
   passwordResetFinishRules,
   validate,
   controller.finish

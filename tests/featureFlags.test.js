@@ -1,18 +1,22 @@
 import { afterEach, beforeEach, expect, test } from '@jest/globals';
 
 const saved = {
+  NODE_ENV: process.env.NODE_ENV,
   AUTH_LOCKOUT_ENABLED: process.env.AUTH_LOCKOUT_ENABLED,
   RATE_LIMIT_ENABLED: process.env.RATE_LIMIT_ENABLED,
   RATE_LIMIT_LOGIN_ENABLED: process.env.RATE_LIMIT_LOGIN_ENABLED,
 };
 
 beforeEach(() => {
+  process.env.NODE_ENV = 'test';
   delete process.env.AUTH_LOCKOUT_ENABLED;
   delete process.env.RATE_LIMIT_ENABLED;
   delete process.env.RATE_LIMIT_LOGIN_ENABLED;
 });
 
 afterEach(() => {
+  if (saved.NODE_ENV === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = saved.NODE_ENV;
   if (saved.AUTH_LOCKOUT_ENABLED === undefined)
     delete process.env.AUTH_LOCKOUT_ENABLED;
   else process.env.AUTH_LOCKOUT_ENABLED = saved.AUTH_LOCKOUT_ENABLED;
@@ -45,4 +49,13 @@ test('RATE_LIMIT_ENABLED acts as global default; per-kind override applies', asy
   expect(isRateLimitEnabled('login')).toBe(true);
   process.env.RATE_LIMIT_LOGIN_ENABLED = 'false';
   expect(isRateLimitEnabled('login')).toBe(false);
+});
+
+test('production defaults enable lockout and rate limit', async () => {
+  process.env.NODE_ENV = 'production';
+  const { isLockoutEnabled, isRateLimitEnabled } =
+    await import('../src/config/featureFlags.js');
+  expect(isLockoutEnabled()).toBe(true);
+  expect(isRateLimitEnabled()).toBe(true);
+  expect(isRateLimitEnabled('password_reset')).toBe(true);
 });

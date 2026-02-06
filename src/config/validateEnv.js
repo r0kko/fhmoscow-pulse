@@ -20,6 +20,8 @@ const schema = Joi.object({
   EXT_DB_PASS: Joi.string().optional(),
   JWT_SECRET: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
+  EMAIL_CODE_SECRET: Joi.string().optional(),
+  RATE_LIMIT_KEY_SECRET: Joi.string().optional(),
   S3_BUCKET: Joi.string().optional(),
   S3_REGION: Joi.string().optional(),
   S3_ENDPOINT: Joi.string().optional(),

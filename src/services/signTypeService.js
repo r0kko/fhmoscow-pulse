@@ -40,7 +40,7 @@ async function sendCode(user) {
 }
 
 async function select(user, alias, code) {
-  await emailVerificationService.verifyCode(user, code, 'ACTIVE');
+  await emailVerificationService.verifyCode(user, code, 'ACTIVE', 'sign-type');
   const signType = await SignType.findOne({ where: { alias } });
   if (!signType) {
     throw new ServiceError('sign_type_not_found', 404);
