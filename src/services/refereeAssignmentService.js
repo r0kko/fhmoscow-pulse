@@ -13,6 +13,7 @@ import {
   Tournament,
   Stage,
   TournamentGroup,
+  TournamentTeam,
   Tour,
   Season,
   Address,
@@ -224,6 +225,86 @@ function buildRequirements(records = []) {
     );
   }
   return result;
+}
+
+function normalizeMatchDuration(duration) {
+  return Number.isFinite(duration) && duration > 0 ? duration : null;
+}
+
+async function resolveMatchGroupContext(matches = []) {
+  const contextByMatchId = new Map();
+  const unresolved = [];
+
+  for (const match of matches) {
+    const groupId = match?.TournamentGroup?.id || match?.tournament_group_id;
+    if (groupId) {
+      contextByMatchId.set(match.id, {
+        id: groupId,
+        name: match?.TournamentGroup?.name || null,
+        match_duration_minutes: normalizeMatchDuration(
+          match?.TournamentGroup?.match_duration_minutes
+        ),
+      });
+      continue;
+    }
+    unresolved.push(match);
+  }
+
+  if (!unresolved.length) return contextByMatchId;
+
+  const tournamentIds = Array.from(
+    new Set(unresolved.map((match) => match?.tournament_id).filter(Boolean))
+  );
+  const teamIds = Array.from(
+    new Set(
+      unresolved
+        .flatMap((match) => [match?.team1_id, match?.team2_id])
+        .filter(Boolean)
+    )
+  );
+
+  if (!tournamentIds.length || !teamIds.length) return contextByMatchId;
+
+  const tournamentTeams = await TournamentTeam.findAll({
+    where: {
+      tournament_id: { [Op.in]: tournamentIds },
+      team_id: { [Op.in]: teamIds },
+      tournament_group_id: { [Op.ne]: null },
+    },
+    attributes: ['tournament_id', 'team_id', 'tournament_group_id'],
+    include: [
+      {
+        model: TournamentGroup,
+        attributes: ['id', 'name', 'match_duration_minutes'],
+        required: false,
+      },
+    ],
+  });
+
+  const byTournamentTeamKey = new Map();
+  for (const row of tournamentTeams) {
+    const key = `${row.tournament_id}:${row.team_id}`;
+    if (!byTournamentTeamKey.has(key)) {
+      byTournamentTeamKey.set(key, row);
+    }
+  }
+
+  for (const match of unresolved) {
+    const homeKey = `${match.tournament_id}:${match.team1_id}`;
+    const awayKey = `${match.tournament_id}:${match.team2_id}`;
+    const row =
+      byTournamentTeamKey.get(homeKey) || byTournamentTeamKey.get(awayKey);
+    if (!row) continue;
+    contextByMatchId.set(match.id, {
+      id: row.tournament_group_id || row.TournamentGroup?.id || null,
+      name: row.TournamentGroup?.name || null,
+      match_duration_minutes: normalizeMatchDuration(
+        row.TournamentGroup?.match_duration_minutes
+      ),
+    });
+  }
+
+  return contextByMatchId;
 }
 
 function formatMatchAssignments(records = []) {
@@ -449,7 +530,14 @@ export async function listMatchesByDate(dateKey) {
   });
 
   const matchIds = matches.map((m) => m.id);
-  const groupIds = matches.map((m) => m.tournament_group_id).filter(Boolean);
+  const matchGroupContextById = await resolveMatchGroupContext(matches);
+  const groupIds = Array.from(
+    new Set(
+      matches
+        .map((match) => matchGroupContextById.get(match.id)?.id)
+        .filter(Boolean)
+    )
+  );
 
   const requirementsRaw = groupIds.length
     ? await TournamentGroupReferee.findAll({
@@ -512,10 +600,13 @@ export async function listMatchesByDate(dateKey) {
   }
 
   const result = matches.map((m) => {
-    const durationMinutes = m.TournamentGroup?.match_duration_minutes ?? null;
+    const groupContext = matchGroupContextById.get(m.id) || null;
+    const durationMinutes = normalizeMatchDuration(
+      groupContext?.match_duration_minutes ??
+        m.TournamentGroup?.match_duration_minutes
+    );
     const scheduleMissing = !m.date_start;
-    const durationMissing =
-      !Number.isFinite(durationMinutes) || durationMinutes <= 0;
+    const durationMissing = !durationMinutes;
     const mskDate = m.date_start ? moscowDateKey(m.date_start) : null;
     const startTime = m.date_start ? formatHm(utcToMoscow(m.date_start)) : null;
     const endTime =
@@ -558,8 +649,11 @@ export async function listMatchesByDate(dateKey) {
           }
         : null,
       stage: m.Stage ? { id: m.Stage.id, name: m.Stage.name } : null,
-      group: m.TournamentGroup
-        ? { id: m.TournamentGroup.id, name: m.TournamentGroup.name }
+      group: groupContext?.id
+        ? {
+            id: groupContext.id,
+            name: groupContext.name || m.TournamentGroup?.name || null,
+          }
         : null,
       tour: m.Tour ? { id: m.Tour.id, name: m.Tour.name } : null,
       ground: m.Ground ? { id: m.Ground.id, name: m.Ground.name } : null,
@@ -580,8 +674,7 @@ export async function listMatchesByDate(dateKey) {
           }
         : null,
       year: matchYear,
-      referee_requirements:
-        requirementsByGroup.get(m.tournament_group_id) || [],
+      referee_requirements: requirementsByGroup.get(groupContext?.id) || [],
       assignments,
       draft_clear_group_ids: draftClearByMatch.get(m.id) || [],
       has_draft: hasDraft,
@@ -1241,8 +1334,15 @@ export async function updateMatchReferees(
   if (!match) throw new ServiceError('match_not_found', 404);
   if (!match.date_start) throw new ServiceError('match_schedule_missing', 400);
 
-  const durationMinutes = match.TournamentGroup?.match_duration_minutes;
-  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+  const matchGroupContextById = await resolveMatchGroupContext([match]);
+  const matchGroupContext = matchGroupContextById.get(match.id) || null;
+  const effectiveTournamentGroupId =
+    matchGroupContext?.id || match.tournament_group_id || null;
+  const durationMinutes = normalizeMatchDuration(
+    matchGroupContext?.match_duration_minutes ??
+      match.TournamentGroup?.match_duration_minutes
+  );
+  if (!durationMinutes) {
     throw new ServiceError('match_duration_missing', 400);
   }
 
@@ -1275,7 +1375,7 @@ export async function updateMatchReferees(
     uniqueAssignments.push({ role_id: roleId, user_id: userId });
   }
 
-  const groupIdValue = match.tournament_group_id;
+  const groupIdValue = effectiveTournamentGroupId;
   const requirementsRaw = await TournamentGroupReferee.findAll({
     where: { tournament_group_id: groupIdValue },
     include: [
@@ -1559,6 +1659,10 @@ export async function publishMatchReferees(matchId, actorId) {
     include: [{ model: TournamentGroup, attributes: ['id'] }],
   });
   if (!match) throw new ServiceError('match_not_found', 404);
+  const matchGroupContextById = await resolveMatchGroupContext([match]);
+  const matchGroupContext = matchGroupContextById.get(match.id) || null;
+  const effectiveTournamentGroupId =
+    matchGroupContext?.id || match.tournament_group_id || null;
 
   const assignedStatusIds = [
     statusInfo.published.id,
@@ -1570,7 +1674,7 @@ export async function publishMatchReferees(matchId, actorId) {
   });
 
   const requirementsRaw = await TournamentGroupReferee.findAll({
-    where: { tournament_group_id: match.tournament_group_id },
+    where: { tournament_group_id: effectiveTournamentGroupId },
   });
   const requiredByRole = new Map();
   for (const req of requirementsRaw) {
@@ -1697,9 +1801,16 @@ export async function publishAssignmentsForDate(
         [Op.lt]: bounds.endExclusive,
       },
     },
-    attributes: ['id', 'tournament_group_id', 'date_start'],
+    attributes: [
+      'id',
+      'tournament_group_id',
+      'tournament_id',
+      'team1_id',
+      'team2_id',
+      'date_start',
+    ],
     include: [
-      { model: TournamentGroup, attributes: ['match_duration_minutes'] },
+      { model: TournamentGroup, attributes: ['id', 'match_duration_minutes'] },
     ],
   });
 
@@ -1713,9 +1824,14 @@ export async function publishAssignmentsForDate(
 
   const matchIds = matches.map((match) => match.id);
   const matchesById = new Map(matches.map((match) => [match.id, match]));
-  const groupIds = matches
-    .map((match) => match.tournament_group_id)
-    .filter(Boolean);
+  const matchGroupContextById = await resolveMatchGroupContext(matches);
+  const groupIds = Array.from(
+    new Set(
+      matches
+        .map((match) => matchGroupContextById.get(match.id)?.id)
+        .filter(Boolean)
+    )
+  );
 
   const requirementsRaw = groupIds.length
     ? await TournamentGroupReferee.findAll({
@@ -1911,8 +2027,12 @@ export async function publishAssignmentsForDate(
         publishMatchIds.forEach((id) => publishedMatches.add(id));
         for (const matchId of publishMatchIds) {
           const match = matchesById.get(matchId);
-          const groupRequirements = match?.tournament_group_id
-            ? requirementsByTournamentGroup.get(match.tournament_group_id)
+          const effectiveGroupId =
+            matchGroupContextById.get(matchId)?.id ||
+            match?.tournament_group_id ||
+            null;
+          const groupRequirements = effectiveGroupId
+            ? requirementsByTournamentGroup.get(effectiveGroupId)
             : null;
           const roleIdsForMatch = groupRequirements?.has(groupId)
             ? Array.from(groupRequirements.get(groupId).values())
@@ -2011,8 +2131,12 @@ export async function publishAssignmentsForDate(
         clearMatchIds.forEach((id) => publishedMatches.add(id));
         for (const matchId of clearMatchIds) {
           const match = matchesById.get(matchId);
-          const groupRequirements = match?.tournament_group_id
-            ? requirementsByTournamentGroup.get(match.tournament_group_id)
+          const effectiveGroupId =
+            matchGroupContextById.get(matchId)?.id ||
+            match?.tournament_group_id ||
+            null;
+          const groupRequirements = effectiveGroupId
+            ? requirementsByTournamentGroup.get(effectiveGroupId)
             : null;
           const roleIdsForMatch = groupRequirements?.has(groupId)
             ? Array.from(groupRequirements.get(groupId).values())

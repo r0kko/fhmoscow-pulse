@@ -144,6 +144,51 @@ export default {
     if (tt.Team) out.team = { id: tt.Team.id, name: tt.Team.name };
     return out;
   },
+  toPublicTournamentMatch(match) {
+    if (!match) return null;
+    const out = {
+      id: match.id,
+      external_id: match.external_id,
+      date_start: match.date_start || null,
+      scheduled_date: match.scheduled_date || null,
+      tournament_id: match.tournament_id || null,
+      stage_id: match.stage_id || null,
+      ground_id: match.ground_id || null,
+      home_team_id: match.team1_id || null,
+      away_team_id: match.team2_id || null,
+    };
+    if (match.Tournament) {
+      out.tournament = {
+        id: match.Tournament.id,
+        name: match.Tournament.name,
+      };
+    }
+    if (match.Stage) {
+      out.stage = {
+        id: match.Stage.id,
+        name: match.Stage.name || null,
+      };
+    }
+    if (match.Ground) {
+      out.ground = {
+        id: match.Ground.id,
+        name: match.Ground.name || null,
+      };
+    }
+    if (match.HomeTeam) {
+      out.home_team = {
+        id: match.HomeTeam.id,
+        name: match.HomeTeam.name,
+      };
+    }
+    if (match.AwayTeam) {
+      out.away_team = {
+        id: match.AwayTeam.id,
+        name: match.AwayTeam.name,
+      };
+    }
+    return out;
+  },
 
   toPublicRefereeRoleGroup(group) {
     if (!group) return null;

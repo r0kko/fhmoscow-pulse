@@ -10,6 +10,8 @@ import {
   stageCreateRules,
   groupCreateRules,
   groupUpdateRules,
+  tournamentTeamCreateRules,
+  tournamentMatchCreateRules,
   groupRefereesUpdateRules,
 } from '../validators/tournamentAdminValidators.js';
 
@@ -121,5 +123,22 @@ router.put(
  *     summary: List tournament teams assignments
  */
 router.get('/teams', auth, authorize('ADMIN'), controller.listTournamentTeams);
+router.post(
+  '/teams',
+  auth,
+  authorize('ADMIN'),
+  tournamentTeamCreateRules,
+  validate,
+  controller.createTournamentTeam
+);
+router.get('/matches', auth, authorize('ADMIN'), controller.listTournamentMatches);
+router.post(
+  '/matches',
+  auth,
+  authorize('ADMIN'),
+  tournamentMatchCreateRules,
+  validate,
+  controller.createTournamentMatch
+);
 
 export default router;

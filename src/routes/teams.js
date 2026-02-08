@@ -8,6 +8,7 @@ import teamStaffController from '../controllers/teamStaffController.js';
 import requireSportSchoolManager from '../middlewares/requireSportSchoolManager.js';
 import { addTeamStaffRules } from '../validators/teamStaffValidators.js';
 import validate from '../middlewares/validate.js';
+import { teamCreateRules } from '../validators/teamValidators.js';
 
 const router = express.Router();
 
@@ -24,6 +25,14 @@ router.get(
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
   controller.list
+);
+router.post(
+  '/',
+  auth,
+  authorize('ADMIN'),
+  teamCreateRules,
+  validate,
+  controller.create
 );
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);
 

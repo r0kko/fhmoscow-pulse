@@ -11,7 +11,7 @@ TournamentTeam.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    external_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+    external_id: { type: DataTypes.INTEGER, allowNull: true, unique: true },
     tournament_id: { type: DataTypes.UUID },
     tournament_group_id: { type: DataTypes.UUID },
     team_id: { type: DataTypes.UUID },

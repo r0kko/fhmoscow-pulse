@@ -13,6 +13,7 @@ const userTeamFindOneMock = jest.fn();
 const userTeamUpdateMock = jest.fn();
 const syncStaffRoleMock = jest.fn();
 const userClubFindOneMock = jest.fn();
+const clubFindByPkMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
@@ -29,6 +30,7 @@ beforeEach(() => {
   userTeamUpdateMock.mockReset();
   syncStaffRoleMock.mockReset();
   userClubFindOneMock.mockReset();
+  clubFindByPkMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/externalModels/index.js', () => ({
@@ -56,7 +58,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserTeam: { findOne: userTeamFindOneMock },
   UserClub: { findOne: userClubFindOneMock },
   SportSchoolPosition: {},
-  Club: { findAll: jest.fn().mockResolvedValue([]) },
+  Club: { findAll: jest.fn().mockResolvedValue([]), findByPk: clubFindByPkMock },
 }));
 
 jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
@@ -112,4 +114,25 @@ test('removeUserTeam updates audit and removes link', async () => {
   await service.removeUserTeam('u1', 't1', 'actor');
   expect(userTeamUpdateMock).toHaveBeenCalledWith({ updated_by: 'actor' });
   expect(userRemoveTeamMock).toHaveBeenCalledWith({ id: 't1' });
+});
+
+test('createManual creates a team only for manual club', async () => {
+  clubFindByPkMock.mockResolvedValue({ id: 'c1', external_id: null });
+  teamCreateMock.mockResolvedValue({ id: 't2' });
+  teamFindByPkMock.mockResolvedValue({ id: 't2', name: 'Команда' });
+
+  const out = await service.createManual(
+    { club_id: 'c1', name: 'Команда', birth_year: 2012 },
+    'actor'
+  );
+
+  expect(teamCreateMock).toHaveBeenCalledWith({
+    external_id: null,
+    club_id: 'c1',
+    name: 'Команда',
+    birth_year: 2012,
+    created_by: 'actor',
+    updated_by: 'actor',
+  });
+  expect(out).toEqual({ id: 't2', name: 'Команда' });
 });

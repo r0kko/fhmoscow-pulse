@@ -7,7 +7,15 @@ export default {
       id: club.id,
       external_id: club.external_id,
       name: club.name,
+      club_type_id: club.club_type_id || null,
     };
+    if (club.ClubType) {
+      out.club_type = {
+        id: club.ClubType.id,
+        alias: club.ClubType.alias,
+        name: club.ClubType.name,
+      };
+    }
     if (club.Teams) {
       out.teams = club.Teams.map((t) => teamMapper.toPublic(t));
     }

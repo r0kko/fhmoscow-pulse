@@ -83,6 +83,13 @@ export const ERROR_MESSAGES = {
   match_lineup_staff_exists: 'Представитель уже присутствует в заявке',
   match_lineup_conflict: 'Состав был изменён другим пользователем',
   team_not_found: 'Команда не найдена',
+  club_not_found: 'Клуб не найден',
+  club_type_not_found: 'Тип клуба не найден',
+  club_is_imported:
+    'Клуб импортирован из внешней системы. Добавление команд недоступно.',
+  invalid_club_name: 'Укажите корректное название клуба',
+  invalid_team_name: 'Укажите корректное название команды',
+  invalid_birth_year: 'Укажите корректный год рождения',
   team_locked: 'Команда заблокирована для изменений',
   team_player_not_found: 'Игрок команды не найден',
   team_staff_not_found: 'Представитель команды не найден',
@@ -187,6 +194,14 @@ export const ERROR_MESSAGES = {
   invalid_referee_payment_type: 'Некорректный способ расчетов с судьями',
   tournament_is_imported:
     'Турнир импортирован из внешней системы. Изменение структуры недоступно.',
+  group_tournament_mismatch: 'Группа не принадлежит выбранному турниру',
+  stage_tournament_mismatch: 'Этап не принадлежит выбранному турниру',
+  match_teams_must_differ: 'Для матча нужно выбрать две разные команды',
+  match_team_not_in_tournament:
+    'Обе команды должны быть добавлены в выбранный турнир',
+  home_team_group_required:
+    'Первая команда должна быть добавлена в группу выбранного этапа',
+  date_start_must_be_iso_datetime: 'Укажите корректные дату и время матча',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

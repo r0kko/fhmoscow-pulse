@@ -2,27 +2,25 @@ import { DataTypes, Model } from 'sequelize';
 
 import sequelize from '../config/database.js';
 
-class Team extends Model {}
+class ClubType extends Model {}
 
-Team.init(
+ClubType.init(
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    club_id: { type: DataTypes.UUID },
-    external_id: { type: DataTypes.INTEGER, allowNull: true, unique: true },
+    alias: { type: DataTypes.STRING(64), allowNull: false, unique: true },
     name: { type: DataTypes.STRING(255), allowNull: false },
-    birth_year: { type: DataTypes.INTEGER },
   },
   {
     sequelize,
-    modelName: 'Team',
-    tableName: 'teams',
+    modelName: 'ClubType',
+    tableName: 'club_types',
     paranoid: true,
     underscored: true,
   }
 );
 
-export default Team;
+export default ClubType;

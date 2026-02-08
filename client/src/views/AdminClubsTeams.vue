@@ -20,6 +20,15 @@ const q = ref('');
 const loading = ref(false);
 const syncing = ref(false);
 const error = ref('');
+const clubTypes = ref([]);
+const clubTypesLoading = ref(false);
+const createClubOpen = ref(false);
+const createClubLoading = ref(false);
+const createClubError = ref('');
+const createClubForm = ref({
+  name: '',
+  club_type_id: '',
+});
 
 // Detail state
 const seasons = ref([]); // seasons for selected club
@@ -28,6 +37,18 @@ const seasonsLoading = ref(false);
 const seasonsError = ref('');
 const activeSeasonId = ref('');
 const countsLoading = ref(false);
+const updateClubTypeLoading = ref(false);
+const updateClubTypeError = ref('');
+const updateClubTypeForm = ref({ club_type_id: '' });
+const manualTeams = ref([]);
+const manualTeamsLoading = ref(false);
+const manualTeamsError = ref('');
+const createTeamLoading = ref(false);
+const createTeamError = ref('');
+const createTeamForm = ref({
+  name: '',
+  birth_year: '',
+});
 
 // Toast
 const { showToast } = useToast();
@@ -42,8 +63,46 @@ const selectedClub = computed(() => {
   return clubs.value.find((c) => String(c.id) === selectedClubId.value) || null;
 });
 const inDetail = computed(() => Boolean(selectedClubId.value));
+const selectedClubIsImported = computed(
+  () => selectedClub.value?.external_id != null
+);
+const defaultYouthClubTypeId = computed(() => {
+  const youth = (clubTypes.value || []).find((type) => type.alias === 'YOUTH');
+  return youth?.id || clubTypes.value?.[0]?.id || '';
+});
 
 // global toast via useToast()
+
+function resetCreateClubForm() {
+  createClubForm.value = {
+    name: '',
+    club_type_id: defaultYouthClubTypeId.value,
+  };
+  createClubError.value = '';
+}
+
+function resetCreateTeamForm() {
+  createTeamForm.value = {
+    name: '',
+    birth_year: '',
+  };
+  createTeamError.value = '';
+}
+
+function syncUpdateClubTypeForm() {
+  updateClubTypeForm.value = {
+    club_type_id:
+      selectedClub.value?.club_type_id || defaultYouthClubTypeId.value || '',
+  };
+  updateClubTypeError.value = '';
+}
+
+function toggleCreateClub() {
+  createClubOpen.value = !createClubOpen.value;
+  if (createClubOpen.value) {
+    resetCreateClubForm();
+  }
+}
 
 async function loadClubs() {
   loading.value = true;
@@ -70,6 +129,24 @@ async function loadClubs() {
     total.value = 0;
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadClubTypes() {
+  clubTypesLoading.value = true;
+  try {
+    const res = await apiFetch('/clubs/types');
+    clubTypes.value = res.types || [];
+    if (!createClubForm.value.club_type_id) {
+      createClubForm.value.club_type_id = defaultYouthClubTypeId.value;
+    }
+    if (inDetail.value) {
+      syncUpdateClubTypeForm();
+    }
+  } catch (_) {
+    clubTypes.value = [];
+  } finally {
+    clubTypesLoading.value = false;
   }
 }
 
@@ -147,6 +224,8 @@ async function loadClubSeasons() {
   if (!selectedClubId.value) return;
   // Ensure we can render the club name in breadcrumb even when deep-linked with pagination not covering it
   await ensureClubLoaded();
+  syncUpdateClubTypeForm();
+  resetCreateTeamForm();
   seasonsLoading.value = true;
   seasonsError.value = '';
   try {
@@ -158,11 +237,12 @@ async function loadClubSeasons() {
     const active = filtered.find((s) => s.active);
     selectedSeasonId.value = (active || filtered[0])?.id || '';
     // Preload grounds counts for all teams in this club (once per club)
-    await loadTeamGroundCounts();
+    await Promise.all([loadTeamGroundCounts(), loadManualTeams()]);
   } catch (e) {
     seasons.value = [];
     selectedSeasonId.value = '';
     seasonsError.value = e.message || 'Не удалось загрузить данные по сезонам';
+    await loadManualTeams();
   } finally {
     seasonsLoading.value = false;
   }
@@ -180,6 +260,26 @@ async function ensureClubLoaded() {
     clubs.value = Array.from(map.values());
   } catch (_) {
     // no-op; breadcrumb will fall back to generic label
+  }
+}
+
+async function loadManualTeams() {
+  if (!selectedClubId.value) return;
+  manualTeamsLoading.value = true;
+  manualTeamsError.value = '';
+  try {
+    const params = new URLSearchParams({
+      club_id: String(selectedClubId.value),
+      status: 'ALL',
+      limit: '1000',
+    });
+    const res = await apiFetch(`/teams?${params.toString()}`);
+    manualTeams.value = res.teams || [];
+  } catch (e) {
+    manualTeams.value = [];
+    manualTeamsError.value = e.message || 'Ошибка загрузки команд клуба';
+  } finally {
+    manualTeamsLoading.value = false;
   }
 }
 
@@ -212,8 +312,107 @@ async function syncAll() {
   }
 }
 
+async function submitCreateClub() {
+  if (createClubLoading.value) return;
+  const name = String(createClubForm.value.name || '').trim();
+  if (!name) {
+    createClubError.value = 'Укажите название клуба';
+    return;
+  }
+  const clubTypeId =
+    createClubForm.value.club_type_id || defaultYouthClubTypeId.value;
+  if (!clubTypeId) {
+    createClubError.value = 'Выберите тип клуба';
+    return;
+  }
+  createClubLoading.value = true;
+  createClubError.value = '';
+  try {
+    const res = await apiFetch('/clubs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        club_type_id: clubTypeId,
+      }),
+    });
+    const created = res.club || null;
+    showToast('Клуб создан');
+    createClubOpen.value = false;
+    resetCreateClubForm();
+    await loadClubs();
+    if (created) {
+      openClub(created);
+    }
+  } catch (e) {
+    createClubError.value = e.message || 'Ошибка создания клуба';
+  } finally {
+    createClubLoading.value = false;
+  }
+}
+
+async function saveClubType() {
+  if (!selectedClubId.value || updateClubTypeLoading.value) return;
+  if (!updateClubTypeForm.value.club_type_id) {
+    updateClubTypeError.value = 'Выберите тип клуба';
+    return;
+  }
+  updateClubTypeLoading.value = true;
+  updateClubTypeError.value = '';
+  try {
+    const res = await apiFetch(`/clubs/${selectedClubId.value}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        club_type_id: updateClubTypeForm.value.club_type_id,
+      }),
+    });
+    const updated = res.club || null;
+    if (updated) {
+      clubs.value = clubs.value.map((club) =>
+        String(club.id) === String(updated.id) ? { ...club, ...updated } : club
+      );
+    }
+    showToast('Тип клуба сохранён');
+  } catch (e) {
+    updateClubTypeError.value = e.message || 'Ошибка сохранения типа клуба';
+  } finally {
+    updateClubTypeLoading.value = false;
+  }
+}
+
+async function submitCreateTeam() {
+  if (createTeamLoading.value || !selectedClubId.value) return;
+  const name = String(createTeamForm.value.name || '').trim();
+  if (!name) {
+    createTeamError.value = 'Укажите название команды';
+    return;
+  }
+  createTeamLoading.value = true;
+  createTeamError.value = '';
+  try {
+    await apiFetch('/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        club_id: selectedClubId.value,
+        name,
+        birth_year: createTeamForm.value.birth_year || null,
+      }),
+    });
+    showToast('Команда добавлена');
+    resetCreateTeamForm();
+    await Promise.all([loadClubSeasons(), loadClubs()]);
+  } catch (e) {
+    createTeamError.value = e.message || 'Ошибка создания команды';
+  } finally {
+    createTeamLoading.value = false;
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([loadActiveSeason(), loadClubs()]);
+  await Promise.all([loadActiveSeason(), loadClubTypes(), loadClubs()]);
+  resetCreateClubForm();
   if (selectedClubId.value) await loadClubSeasons();
 });
 
@@ -237,9 +436,26 @@ watch(
   () => route.query.club_id,
   async () => {
     // If we already have clubs loaded, just refresh seasons for the selected club
-    if (selectedClubId.value) await loadClubSeasons();
+    if (selectedClubId.value) {
+      await loadClubSeasons();
+      return;
+    }
+    seasons.value = [];
+    selectedSeasonId.value = '';
+    manualTeams.value = [];
+    manualTeamsError.value = '';
+    syncUpdateClubTypeForm();
   }
 );
+
+watch([selectedClubId, clubTypes], () => {
+  if (inDetail.value) {
+    syncUpdateClubTypeForm();
+  } else {
+    updateClubTypeForm.value = { club_type_id: defaultYouthClubTypeId.value };
+    updateClubTypeError.value = '';
+  }
+});
 
 // Grounds count per team (map)
 const teamGroundCounts = ref({}); // { [teamId]: number }
@@ -310,6 +526,15 @@ async function loadTeamGroundCounts() {
             </div>
             <div class="col-12 col-sm-auto">
               <button
+                class="btn btn-brand w-100"
+                type="button"
+                @click="toggleCreateClub"
+              >
+                {{ createClubOpen ? 'Скрыть форму' : 'Добавить клуб' }}
+              </button>
+            </div>
+            <div class="col-12 col-sm-auto">
+              <button
                 class="btn btn-outline-secondary w-100"
                 :disabled="syncing"
                 @click="syncAll"
@@ -320,6 +545,64 @@ async function loadTeamGroundCounts() {
                 ></span>
                 Синхронизировать
               </button>
+            </div>
+          </div>
+          <div
+            v-if="createClubOpen"
+            class="card border-0 shadow-sm mb-3 bg-light-subtle"
+          >
+            <div class="card-body">
+              <div class="fw-semibold mb-2">Новый клуб</div>
+              <div v-if="createClubError" class="alert alert-danger mb-2">
+                {{ createClubError }}
+              </div>
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-5">
+                  <label class="form-label">Название клуба</label>
+                  <input
+                    v-model="createClubForm.name"
+                    type="text"
+                    class="form-control"
+                    placeholder="Название клуба"
+                    @input="createClubError = ''"
+                  />
+                </div>
+                <div class="col-12 col-lg-4">
+                  <label class="form-label">Тип клуба</label>
+                  <select
+                    v-model="createClubForm.club_type_id"
+                    class="form-select"
+                    :disabled="clubTypesLoading"
+                  >
+                    <option value="">Выберите тип</option>
+                    <option
+                      v-for="type in clubTypes"
+                      :key="type.id"
+                      :value="type.id"
+                    >
+                      {{ type.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12 col-lg-3">
+                  <button
+                    type="button"
+                    class="btn btn-brand w-100"
+                    :disabled="
+                      createClubLoading ||
+                      !createClubForm.name.trim() ||
+                      !createClubForm.club_type_id
+                    "
+                    @click="submitCreateClub"
+                  >
+                    <span
+                      v-if="createClubLoading"
+                      class="spinner-border spinner-border-sm me-2"
+                    ></span>
+                    Создать клуб
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -343,6 +626,9 @@ async function loadTeamGroundCounts() {
                 >
                   <div class="card-body">
                     <div class="card-title mb-1 fw-semibold">{{ c.name }}</div>
+                    <div class="small text-muted mb-2">
+                      Тип: {{ c.club_type?.name || '—' }}
+                    </div>
                     <div
                       class="small text-muted d-flex align-items-center flex-wrap gap-3"
                     >
@@ -412,6 +698,142 @@ async function loadTeamGroundCounts() {
             </div>
           </div>
 
+          <div class="card border-0 shadow-sm mb-3 bg-light-subtle">
+            <div class="card-body">
+              <div class="fw-semibold mb-2">Настройки клуба</div>
+              <div v-if="updateClubTypeError" class="alert alert-danger mb-2">
+                {{ updateClubTypeError }}
+              </div>
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-6">
+                  <label class="form-label">Тип клуба</label>
+                  <select
+                    v-model="updateClubTypeForm.club_type_id"
+                    class="form-select"
+                    :disabled="updateClubTypeLoading || clubTypesLoading"
+                  >
+                    <option value="">Выберите тип</option>
+                    <option
+                      v-for="type in clubTypes"
+                      :key="type.id"
+                      :value="type.id"
+                    >
+                      {{ type.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12 col-lg-3">
+                  <button
+                    type="button"
+                    class="btn btn-brand w-100"
+                    :disabled="
+                      updateClubTypeLoading || !updateClubTypeForm.club_type_id
+                    "
+                    @click="saveClubType"
+                  >
+                    <span
+                      v-if="updateClubTypeLoading"
+                      class="spinner-border spinner-border-sm me-2"
+                    ></span>
+                    Сохранить тип
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm mb-3 bg-light-subtle">
+            <div class="card-body">
+              <div
+                class="d-flex align-items-center justify-content-between mb-2"
+              >
+                <div class="fw-semibold">Команды клуба</div>
+                <span class="badge bg-light text-muted border">
+                  {{ manualTeams.length }}
+                </span>
+              </div>
+
+              <div v-if="manualTeamsError" class="alert alert-danger mb-2">
+                {{ manualTeamsError }}
+              </div>
+              <div
+                v-if="selectedClubIsImported"
+                class="alert alert-info small mb-2"
+              >
+                Клуб импортирован из внешней системы. Добавление команд вручную
+                недоступно.
+              </div>
+              <div v-else class="row g-2 align-items-end mb-3">
+                <div class="col-12 col-lg-5">
+                  <label class="form-label">Название команды</label>
+                  <input
+                    v-model="createTeamForm.name"
+                    type="text"
+                    class="form-control"
+                    placeholder="Название команды"
+                    @input="createTeamError = ''"
+                  />
+                </div>
+                <div class="col-12 col-lg-3">
+                  <label class="form-label">Год</label>
+                  <input
+                    v-model="createTeamForm.birth_year"
+                    type="number"
+                    class="form-control"
+                    min="1900"
+                    max="2100"
+                    placeholder="Год рождения"
+                    @input="createTeamError = ''"
+                  />
+                </div>
+                <div class="col-12 col-lg-4">
+                  <button
+                    type="button"
+                    class="btn btn-brand w-100"
+                    :disabled="createTeamLoading || !createTeamForm.name.trim()"
+                    @click="submitCreateTeam"
+                  >
+                    <span
+                      v-if="createTeamLoading"
+                      class="spinner-border spinner-border-sm me-2"
+                    ></span>
+                    Добавить команду
+                  </button>
+                </div>
+                <div v-if="createTeamError" class="col-12">
+                  <div class="text-danger small">{{ createTeamError }}</div>
+                </div>
+              </div>
+
+              <BrandSpinner v-if="manualTeamsLoading" label="Загрузка" />
+              <div v-else>
+                <div v-if="manualTeams.length" class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Команда</th>
+                        <th>Год</th>
+                        <th>Источник</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="team in manualTeams" :key="team.id">
+                        <td>{{ team.name }}</td>
+                        <td>{{ team.birth_year || '—' }}</td>
+                        <td>
+                          {{ team.external_id != null ? 'Импорт' : 'Ручная' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="text-muted small">
+                  Команды пока не добавлены.
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="seasonsError" class="alert alert-danger mb-2">
             {{ seasonsError }}
           </div>
@@ -421,7 +843,7 @@ async function loadTeamGroundCounts() {
               v-if="!(seasons && seasons.length)"
               class="alert alert-info mb-0"
             >
-              Пока нет доступных команд.
+              По сезону пока нет данных о заявках игроков.
             </div>
             <template v-else>
               <ul class="nav nav-pills mb-3" role="tablist">

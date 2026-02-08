@@ -1222,9 +1222,9 @@ onMounted(() => {
                               'Без турнира'
                             }}
                           </span>
-                          <span v-if="match.group"
-                            >· {{ match.group.name }}</span
-                          >
+                          <span v-if="match.group">
+                            · {{ match.group.name }}
+                          </span>
                         </div>
                         <div class="match-warnings">
                           <div

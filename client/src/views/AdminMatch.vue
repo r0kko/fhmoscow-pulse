@@ -129,12 +129,21 @@ const statusAlias = computed(() =>
 );
 const isCancelled = computed(() => statusAlias.value === 'CANCELLED');
 const isPostponed = computed(() => statusAlias.value === 'POSTPONED');
+const isProfessionalCompetition = computed(
+  () => match.value?.competition_type?.alias === 'PRO'
+);
 
 const penaltiesDisabled = computed(
   () => !!match.value?.double_protocol && match.value?.season_active === false
 );
 
 const statusChip = computed(() => {
+  if (isProfessionalCompetition.value) {
+    return {
+      text: 'Профессиональный матч',
+      cls: 'bg-info-subtle text-info border',
+    };
+  }
   if (acceptedExists.value)
     return {
       text: 'Согласовано',
@@ -193,12 +202,38 @@ const breadcrumbs = computed(() => [
   { label: 'Матч' },
 ]);
 
-const agreementsTileDisabled = computed(() => isCancelled.value);
-const agreementsTileNote = computed(() => (isCancelled.value ? 'Отмена' : ''));
+const agreementsTileDisabled = computed(
+  () => isCancelled.value || isProfessionalCompetition.value
+);
+const agreementsTileNote = computed(() =>
+  isProfessionalCompetition.value
+    ? 'Недоступно для профсоревнований'
+    : isCancelled.value
+      ? 'Отмена'
+      : ''
+);
 const agreementsTileLocked = computed(() => false);
-const lineupsTileDisabled = computed(() => isCancelled.value);
-const lineupsTileNote = computed(() => (isCancelled.value ? 'Отмена' : ''));
+const lineupsTileDisabled = computed(
+  () => isCancelled.value || isProfessionalCompetition.value
+);
+const lineupsTileNote = computed(() =>
+  isProfessionalCompetition.value
+    ? 'Недоступно для профсоревнований'
+    : isCancelled.value
+      ? 'Отмена'
+      : ''
+);
 const lineupsTileLocked = computed(() => false);
+const appealsTileDisabled = computed(
+  () => isCancelled.value || isProfessionalCompetition.value
+);
+const appealsTileNote = computed(() =>
+  isProfessionalCompetition.value
+    ? 'Недоступно для профсоревнований'
+    : isCancelled.value
+      ? 'Отмена'
+      : ''
+);
 
 async function loadAgreements() {
   if (!matchId.value) return;
@@ -235,7 +270,11 @@ async function loadMatchPage() {
     match.value = mres.match || null;
     reschedDate.value = '';
     reschedError.value = '';
-    await loadAgreements();
+    if (isProfessionalCompetition.value) {
+      agreements.value = [];
+    } else {
+      await loadAgreements();
+    }
     await loadPenalties();
   } catch (e) {
     error.value = e.message || 'Ошибка загрузки данных';
@@ -356,7 +395,16 @@ onMounted(loadMatchPage);
       </div>
 
       <div
-        v-if="isPostponed"
+        v-if="isProfessionalCompetition"
+        class="alert alert-info"
+        role="alert"
+      >
+        Для профессиональных соревнований функции согласования времени, составов
+        и обращений по матчу отключены.
+      </div>
+
+      <div
+        v-if="isPostponed && !isProfessionalCompetition"
         class="card section-card tile fade-in shadow-sm mb-3"
       >
         <div class="card-body">
@@ -448,6 +496,7 @@ onMounted(loadMatchPage);
           <h2 class="card-title h5 mb-3">Управление матчем</h2>
           <div v-edge-fade class="scroll-container">
             <MenuTile
+              v-if="!isProfessionalCompetition"
               title="Согласование времени"
               icon="bi-calendar-check"
               :to="`/admin/matches/${matchId}/agreements`"
@@ -456,6 +505,7 @@ onMounted(loadMatchPage);
               :locked="agreementsTileLocked"
             />
             <MenuTile
+              v-if="!isProfessionalCompetition"
               title="Составы на матч"
               icon="bi-people"
               :to="`/admin/matches/${matchId}/lineups`"
@@ -471,11 +521,12 @@ onMounted(loadMatchPage);
               :note="isCancelled ? 'Отмена' : ''"
             />
             <MenuTile
+              v-if="!isProfessionalCompetition"
               title="Обращения по матчу"
               icon="bi-chat-dots"
               :to="`/admin/matches/${matchId}/appeals`"
-              :placeholder="isCancelled"
-              :note="isCancelled ? 'Отмена' : ''"
+              :placeholder="appealsTileDisabled"
+              :note="appealsTileNote"
             />
           </div>
         </div>

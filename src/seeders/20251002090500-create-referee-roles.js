@@ -50,10 +50,16 @@ module.exports = {
         group: 'Судьи в бригаде',
         sort_order: 4,
       },
-      { name: 'Судья видеоповторов', group: 'Судьи в бригаде', sort_order: 5 },
+      { name: 'Судья видеоповторов', group: 'Руководство', sort_order: 2 },
       { name: 'Сотрудник департамента', group: 'Руководство', sort_order: 1 },
-      { name: 'Наставник', group: 'Руководство', sort_order: 2 },
-      { name: 'Видео-наставник', group: 'Руководство', sort_order: 3 },
+      { name: 'Инспектор матча', group: 'Руководство', sort_order: 3 },
+      { name: 'Наставник', group: 'Руководство', sort_order: 4 },
+      { name: 'Видео-наставник', group: 'Руководство', sort_order: 5 },
+      { name: 'Представитель КХЛ', group: 'Руководство', sort_order: 6 },
+      { name: 'Представитель ФХР', group: 'Руководство', sort_order: 7 },
+      { name: 'Текстовая трансляция', group: 'Руководство', sort_order: 8 },
+      { name: 'Статистик', group: 'Руководство', sort_order: 9 },
+      { name: 'Диктор', group: 'Руководство', sort_order: 10 },
     ];
 
     const groupByName = new Map(groups.map((g) => [g.name, g.id]));
@@ -82,8 +88,14 @@ module.exports = {
         'Судья координатор рекламной паузы',
         'Судья видеоповторов',
         'Сотрудник департамента',
+        'Инспектор матча',
         'Наставник',
         'Видео-наставник',
+        'Представитель КХЛ',
+        'Представитель ФХР',
+        'Текстовая трансляция',
+        'Статистик',
+        'Диктор',
       ],
     });
     await queryInterface.bulkDelete('referee_role_groups', {

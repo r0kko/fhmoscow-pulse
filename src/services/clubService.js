@@ -1,8 +1,9 @@
 import { Op } from 'sequelize';
 
-import { Club } from '../models/index.js';
+import { Club, ClubType } from '../models/index.js';
 import { Club as ExtClub } from '../externalModels/index.js';
 import sequelize from '../config/database.js';
+import ServiceError from '../errors/ServiceError.js';
 import {
   statusFilters,
   ensureArchivedImported,
@@ -12,6 +13,8 @@ import {
 } from '../utils/sync.js';
 import logger from '../../logger.js';
 
+const CLUB_TYPE_ALIAS_YOUTH = 'YOUTH';
+
 function coerceIsMoscow(value) {
   if (value == null) return false;
   if (typeof value === 'boolean') return value;
@@ -19,6 +22,33 @@ function coerceIsMoscow(value) {
   const normalized = String(value).trim().toLowerCase();
   if (!normalized) return false;
   return ['1', 'true', 't', 'yes', 'y'].includes(normalized);
+}
+
+function normalizeClubName(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) throw new ServiceError('invalid_club_name', 400);
+  return normalized;
+}
+
+async function resolveClubType(typeId) {
+  if (!typeId) return null;
+  const type = await ClubType.findByPk(typeId);
+  if (!type) throw new ServiceError('club_type_not_found', 404);
+  return type;
+}
+
+async function resolveDefaultClubTypeId(transaction) {
+  const type = await ClubType.findOne({
+    where: { alias: CLUB_TYPE_ALIAS_YOUTH },
+    attributes: ['id'],
+    ...(transaction ? { transaction } : {}),
+  });
+  if (!type) throw new ServiceError('club_type_not_found', 404);
+  return type.id;
+}
+
+async function listTypes() {
+  return ClubType.findAll({ order: [['name', 'ASC']] });
 }
 
 async function syncExternal(options = {}) {
@@ -82,6 +112,7 @@ async function syncExternal(options = {}) {
 
   if (knownIds.length) {
     await sequelize.transaction(async (tx) => {
+      const defaultClubTypeId = await resolveDefaultClubTypeId(tx);
       const locals = await Club.findAll({
         where: { external_id: { [Op.in]: knownIds } },
         paranoid: false,
@@ -97,6 +128,7 @@ async function syncExternal(options = {}) {
             {
               external_id: c.id,
               name: c.short_name,
+              club_type_id: defaultClubTypeId,
               is_moscow: isMoscow,
               created_by: actorId,
               updated_by: actorId,
@@ -113,6 +145,7 @@ async function syncExternal(options = {}) {
         }
         const updates = {};
         if (local.name !== c.short_name) updates.name = c.short_name;
+        if (!local.club_type_id) updates.club_type_id = defaultClubTypeId;
         const isMoscow = coerceIsMoscow(c.is_moscow);
         if (local.is_moscow !== isMoscow) updates.is_moscow = isMoscow;
         if (Object.keys(updates).length) {
@@ -129,6 +162,7 @@ async function syncExternal(options = {}) {
           extArchived,
           (c) => ({
             name: c.short_name,
+            club_type_id: defaultClubTypeId,
             is_moscow: coerceIsMoscow(c.is_moscow),
           }),
           actorId,
@@ -197,7 +231,10 @@ async function syncExternal(options = {}) {
 }
 
 async function listAll() {
-  return Club.findAll({ order: [['name', 'ASC']] });
+  return Club.findAll({
+    include: [{ model: ClubType, required: false }],
+    order: [['name', 'ASC']],
+  });
 }
 
 /**
@@ -218,7 +255,7 @@ async function list(options = {}) {
     const term = `%${options.search}%`;
     where.name = { [Op.iLike]: term };
   }
-  const include = [];
+  const include = [{ model: ClubType, required: false }];
   if (options.includeTeams) {
     const { Team } = await import('../models/index.js');
     include.push({ model: Team, required: false });
@@ -237,4 +274,55 @@ async function list(options = {}) {
   });
 }
 
-export default { syncExternal, listAll, list };
+async function createManual(data = {}, actorId = null) {
+  const name = normalizeClubName(data.name);
+  let clubTypeId = data.club_type_id || null;
+  if (clubTypeId) {
+    await resolveClubType(clubTypeId);
+  } else {
+    clubTypeId = await resolveDefaultClubTypeId();
+  }
+  const club = await Club.create({
+    external_id: null,
+    name,
+    club_type_id: clubTypeId,
+    is_moscow: coerceIsMoscow(data.is_moscow),
+    created_by: actorId,
+    updated_by: actorId,
+  });
+  return Club.findByPk(club.id, {
+    include: [{ model: ClubType, required: false }],
+  });
+}
+
+async function updateClub(id, data = {}, actorId = null) {
+  const club = await Club.findByPk(id);
+  if (!club) throw new ServiceError('club_not_found', 404);
+
+  const updates = { updated_by: actorId };
+  if (data.name !== undefined) {
+    updates.name = normalizeClubName(data.name);
+  }
+  if (data.club_type_id !== undefined) {
+    const clubTypeId = data.club_type_id || null;
+    if (!clubTypeId) throw new ServiceError('club_type_not_found', 404);
+    await resolveClubType(clubTypeId);
+    updates.club_type_id = clubTypeId;
+  }
+  if (data.is_moscow !== undefined) {
+    updates.is_moscow = coerceIsMoscow(data.is_moscow);
+  }
+  await club.update(updates, { returning: false });
+  return Club.findByPk(club.id, {
+    include: [{ model: ClubType, required: false }],
+  });
+}
+
+export default {
+  syncExternal,
+  listAll,
+  list,
+  listTypes,
+  createManual,
+  updateClub,
+};

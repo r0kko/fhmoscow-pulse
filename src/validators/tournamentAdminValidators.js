@@ -67,6 +67,24 @@ export const groupUpdateRules = [
     .isInt({ min: 0, max: 1440 }),
 ];
 
+export const tournamentTeamCreateRules = [
+  body('tournament_id').isUUID(),
+  body('group_id').isUUID(),
+  body('team_id').isUUID(),
+];
+
+export const tournamentMatchCreateRules = [
+  body('tournament_id').isUUID(),
+  body('stage_id').isUUID(),
+  body('home_team_id').isUUID(),
+  body('away_team_id').isUUID(),
+  body('ground_id').optional({ nullable: true }).isUUID(),
+  body('date_start')
+    .isISO8601()
+    .withMessage('date_start_must_be_iso_datetime')
+    .notEmpty(),
+];
+
 export const groupRefereesUpdateRules = [
   body('roles').isArray().withMessage('referee_roles_required'),
   body('roles').custom((arr) => {

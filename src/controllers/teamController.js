@@ -8,6 +8,14 @@ import { withJobMetrics } from '../config/metrics.js';
 import { runWithSyncState } from '../services/syncStateService.js';
 
 export default {
+  async create(req, res) {
+    try {
+      const team = await teamService.createManual(req.body, req.user?.id);
+      return res.status(201).json({ team: teamMapper.toPublic(team) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async list(req, res) {
     try {
       const {

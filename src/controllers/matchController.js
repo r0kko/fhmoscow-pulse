@@ -120,6 +120,7 @@ export async function get(req, res, next) {
       Address,
       TournamentType,
       ScheduleManagementType,
+      CompetitionType,
       Club,
       GameStatus,
       MatchBroadcastLink,
@@ -164,10 +165,11 @@ export async function get(req, res, next) {
         },
         {
           model: Tournament,
-          attributes: ['name', 'type_id'],
+          attributes: ['name', 'type_id', 'competition_type_id'],
           include: [
             { model: TournamentType, attributes: ['double_protocol'] },
             { model: ScheduleManagementType, attributes: ['alias', 'name'] },
+            { model: CompetitionType, attributes: ['id', 'alias', 'name'] },
           ],
         },
         { model: Stage, attributes: ['name'] },
@@ -250,6 +252,16 @@ export async function get(req, res, next) {
             ? m.AwayTeam.Club.is_moscow
             : null,
         tournament: m.Tournament?.name || null,
+        competition_type:
+          m.Tournament?.CompetitionType != null
+            ? {
+                id: m.Tournament.CompetitionType.id,
+                alias: m.Tournament.CompetitionType.alias,
+                name: m.Tournament.CompetitionType.name,
+              }
+            : null,
+        is_professional_competition:
+          m.Tournament?.CompetitionType?.alias === 'PRO',
         double_protocol: !!m.Tournament?.TournamentType?.double_protocol,
         stage: m.Stage?.name || null,
         group: m.TournamentGroup?.name || null,

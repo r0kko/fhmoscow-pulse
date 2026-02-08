@@ -130,6 +130,48 @@ export default {
       return sendError(res, err);
     }
   },
+  async createTournamentTeam(req, res) {
+    try {
+      const team = await svc.assignTeamToGroup(req.body, req.user?.id);
+      return res.status(201).json({ team: map.toPublicTournamentTeam(team) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async listTournamentMatches(req, res) {
+    try {
+      const {
+        page = '1',
+        limit = '100',
+        tournament_id,
+        stage_id,
+        status,
+      } = req.query;
+      const { rows, count } = await svc.listTournamentMatches({
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        tournament_id,
+        stage_id,
+        status,
+      });
+      return res.json({
+        matches: rows.map(map.toPublicTournamentMatch),
+        total: count,
+      });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async createTournamentMatch(req, res) {
+    try {
+      const match = await svc.createMatchSchedule(req.body, req.user?.id);
+      return res
+        .status(201)
+        .json({ match: map.toPublicTournamentMatch(match) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async createTournament(req, res) {
     try {
       const tournament = await svc.createTournament(req.body, req.user?.id);

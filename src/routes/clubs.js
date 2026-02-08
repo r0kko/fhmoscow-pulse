@@ -6,11 +6,15 @@ import controller from '../controllers/clubController.js';
 import accessScope from '../middlewares/accessScope.js';
 import clubStaffController from '../controllers/clubStaffController.js';
 import requireSportSchoolManager from '../middlewares/requireSportSchoolManager.js';
+import validate from '../middlewares/validate.js';
+import {
+  clubCreateRules,
+  clubUpdateRules,
+} from '../validators/clubValidators.js';
 import {
   addClubStaffRules,
   updateClubStaffPositionRules,
 } from '../validators/clubStaffValidators.js';
-import validate from '../middlewares/validate.js';
 
 const router = express.Router();
 
@@ -28,6 +32,23 @@ router.get(
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
   accessScope,
   controller.list
+);
+router.get('/types', auth, authorize('ADMIN'), controller.listTypes);
+router.post(
+  '/',
+  auth,
+  authorize('ADMIN'),
+  clubCreateRules,
+  validate,
+  controller.create
+);
+router.patch(
+  '/:id',
+  auth,
+  authorize('ADMIN'),
+  clubUpdateRules,
+  validate,
+  controller.update
 );
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);
 

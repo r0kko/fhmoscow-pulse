@@ -91,6 +91,7 @@ import TeamPlayer from './teamPlayer.js';
 import AvailabilityType from './availabilityType.js';
 import UserAvailability from './userAvailability.js';
 import Club from './club.js';
+import ClubType from './clubType.js';
 import Staff from './staff.js';
 import StaffCategory from './staffCategory.js';
 import ClubStaff from './clubStaff.js';
@@ -150,6 +151,9 @@ User.hasMany(UserClub, { foreignKey: 'user_id' });
 UserClub.belongsTo(User, { foreignKey: 'user_id' });
 Club.hasMany(UserClub, { foreignKey: 'club_id' });
 UserClub.belongsTo(Club, { foreignKey: 'club_id' });
+
+ClubType.hasMany(Club, { foreignKey: 'club_type_id' });
+Club.belongsTo(ClubType, { foreignKey: 'club_type_id' });
 
 /* clubs ↔ teams */
 Club.hasMany(Team, { foreignKey: 'club_id' });
@@ -776,6 +780,7 @@ export {
   UserTeam,
   UserClub,
   Club,
+  ClubType,
   Player,
   PlayerRole,
   PlayerPhotoRequest,

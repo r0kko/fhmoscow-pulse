@@ -19,6 +19,7 @@ const matchRefereeNotificationUpdateMock = jest.fn();
 const refereeRoleGroupFindByPkMock = jest.fn();
 const refereeRoleGroupFindAllMock = jest.fn();
 const refereeRoleFindAllMock = jest.fn();
+const tournamentTeamFindAllMock = jest.fn();
 const userFindAllMock = jest.fn();
 const listForUsersMock = jest.fn();
 
@@ -43,6 +44,7 @@ beforeEach(() => {
   refereeRoleGroupFindByPkMock.mockReset();
   refereeRoleGroupFindAllMock.mockReset();
   refereeRoleFindAllMock.mockReset();
+  tournamentTeamFindAllMock.mockReset();
   userFindAllMock.mockReset();
   listForUsersMock.mockReset();
   transactionMock.mockClear();
@@ -76,6 +78,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Tournament: {},
   Stage: {},
   TournamentGroup: {},
+  TournamentTeam: { findAll: tournamentTeamFindAllMock },
   Tour: {},
   Season: {},
   RefereeRole: { findAll: refereeRoleFindAllMock },
@@ -134,17 +137,27 @@ function makeRole(group) {
 }
 
 function makeMatch(overrides = {}) {
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(overrides, key);
+  const tournamentGroupId = hasOwn('tournament_group_id')
+    ? overrides.tournament_group_id
+    : 'tg1';
+  const tournamentGroup = hasOwn('TournamentGroup')
+    ? overrides.TournamentGroup
+    : {
+        id: 'tg1',
+        name: 'Группа А',
+        match_duration_minutes: overrides.match_duration_minutes ?? 30,
+      };
   return {
     id: overrides.id || 'm1',
     date_start: overrides.date_start || TEST_DATE_START,
-    tournament_group_id: overrides.tournament_group_id || 'tg1',
+    tournament_id: overrides.tournament_id || 't1',
+    team1_id: overrides.team1_id || 'team1',
+    team2_id: overrides.team2_id || 'team2',
+    tournament_group_id: tournamentGroupId,
     Tournament: { id: 't1', name: 'Кубок' },
     Stage: { id: 's1', name: 'Этап 1' },
-    TournamentGroup: {
-      id: 'tg1',
-      name: 'Группа А',
-      match_duration_minutes: overrides.match_duration_minutes ?? 30,
-    },
+    TournamentGroup: tournamentGroup,
     Tour: { id: 'tour1', name: '1 тур' },
     Ground: {
       id: 'g1',
@@ -220,6 +233,53 @@ test('listMatchesByDate maps requirements and assignments', async () => {
   );
 });
 
+test('listMatchesByDate derives group context for manual match without tournament_group_id', async () => {
+  matchFindAllMock.mockResolvedValue([
+    makeMatch({
+      id: 'm-manual',
+      tournament_group_id: null,
+      TournamentGroup: null,
+    }),
+  ]);
+  tournamentTeamFindAllMock.mockResolvedValue([
+    {
+      tournament_id: 't1',
+      team_id: 'team1',
+      tournament_group_id: 'tg-manual',
+      TournamentGroup: {
+        id: 'tg-manual',
+        name: 'Ручная группа',
+        match_duration_minutes: 40,
+      },
+    },
+  ]);
+  const group = makeRoleGroup();
+  const role = makeRole(group);
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg-manual',
+      count: 1,
+      referee_role_id: 'r1',
+      RefereeRole: role,
+    },
+  ]);
+  matchRefereeFindAllMock.mockResolvedValue([]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  const result = await service.listMatchesByDate(TEST_DATE);
+
+  expect(tournamentTeamFindAllMock).toHaveBeenCalled();
+  expect(result.matches).toHaveLength(1);
+  const match = result.matches[0];
+  expect(match.group).toEqual({
+    id: 'tg-manual',
+    name: 'Ручная группа',
+  });
+  expect(match.duration_minutes).toBe(40);
+  expect(match.duration_missing).toBe(false);
+  expect(match.referee_requirements[0].id).toBe('rg1');
+});
+
 test('updateMatchReferees saves draft assignments', async () => {
   matchFindByPkMock.mockResolvedValue(
     makeMatch({ match_duration_minutes: 60 })
@@ -271,6 +331,59 @@ test('updateMatchReferees saves draft assignments', async () => {
   );
   expect(result.assignments[0].status).toBe('DRAFT');
   expect(result.draft_clear_group_ids).toEqual([]);
+});
+
+test('updateMatchReferees uses fallback tournament group for manual match', async () => {
+  matchFindByPkMock.mockResolvedValue(
+    makeMatch({
+      id: 'm-manual',
+      tournament_group_id: null,
+      TournamentGroup: null,
+    })
+  );
+  tournamentTeamFindAllMock.mockResolvedValue([
+    {
+      tournament_id: 't1',
+      team_id: 'team1',
+      tournament_group_id: 'tg-fallback',
+      TournamentGroup: {
+        id: 'tg-fallback',
+        name: 'Группа fallback',
+        match_duration_minutes: 60,
+      },
+    },
+  ]);
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    { tournament_group_id: 'tg-fallback', referee_role_id: 'r1', count: 1 },
+  ]);
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u1',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    { user_id: 'u1', AvailabilityType: { alias: 'FREE' } },
+  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  await service.updateMatchReferees(
+    'm-manual',
+    [{ role_id: 'r1', user_id: 'u1' }],
+    'admin',
+    { roleGroupId: 'rg1' }
+  );
+
+  expect(tournamentGroupRefereeFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { tournament_group_id: 'tg-fallback' },
+    })
+  );
 });
 
 test('updateMatchReferees rejects unavailable referees', async () => {

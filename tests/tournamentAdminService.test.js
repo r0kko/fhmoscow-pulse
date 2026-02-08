@@ -48,6 +48,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TournamentGroupReferee: {},
   Season: {},
   Team: {},
+  Ground: {},
+  Match: { findAndCountAll: jest.fn(), create: jest.fn(), findByPk: jest.fn() },
+  GameStatus: { findOne: jest.fn() },
 }));
 
 const { default: svc } =

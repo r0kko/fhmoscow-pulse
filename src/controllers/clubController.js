@@ -8,6 +8,20 @@ import { withJobMetrics } from '../config/metrics.js';
 import { runWithSyncState } from '../services/syncStateService.js';
 
 export default {
+  async listTypes(_req, res) {
+    try {
+      const types = await clubService.listTypes();
+      return res.json({
+        types: types.map((type) => ({
+          id: type.id,
+          alias: type.alias,
+          name: type.name,
+        })),
+      });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async list(req, res) {
     try {
       const {
@@ -124,6 +138,26 @@ export default {
       return res.status(409).json({ error: 'sync_in_progress' });
     } catch (err) {
       return sendError(res, err);
+    }
+  },
+  async create(req, res) {
+    try {
+      const club = await clubService.createManual(req.body, req.user?.id);
+      return res.status(201).json({ club: clubMapper.toPublic(club) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async update(req, res) {
+    try {
+      const club = await clubService.updateClub(
+        req.params.id,
+        req.body,
+        req.user?.id
+      );
+      return res.json({ club: clubMapper.toPublic(club) });
+    } catch (err) {
+      return sendError(res, err, 404);
     }
   },
 };

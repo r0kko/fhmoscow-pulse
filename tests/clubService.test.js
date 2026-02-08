@@ -7,6 +7,7 @@ const clubCreateMock = jest.fn();
 const clubUpdateMock = jest.fn();
 const clubFindAllMock = jest.fn();
 const clubCountMock = jest.fn();
+const clubTypeFindOneMock = jest.fn();
 
 beforeEach(() => {
   extFindAllMock.mockReset();
@@ -15,6 +16,7 @@ beforeEach(() => {
   clubUpdateMock.mockReset();
   clubFindAllMock.mockReset();
   clubCountMock.mockReset().mockResolvedValue(0);
+  clubTypeFindOneMock.mockReset().mockResolvedValue({ id: 'type-youth' });
   clubUpdateMock.mockResolvedValue([0]);
   clubFindAllMock.mockResolvedValue([]);
 });
@@ -40,6 +42,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     findAll: clubFindAllMock,
     count: clubCountMock,
   },
+  ClubType: {
+    findOne: clubTypeFindOneMock,
+    findByPk: jest.fn(),
+    findAll: jest.fn(),
+  },
 }));
 
 const { default: service } = await import('../src/services/clubService.js');
@@ -50,13 +57,14 @@ test('syncExternal upserts active clubs and soft deletes missing ones', async ()
   // External fetch is invoked (active + archive); we don't assert exact where shape
   expect(extFindAllMock).toHaveBeenCalled();
   expect(clubCreateMock).toHaveBeenCalledWith(
-    {
+    expect.objectContaining({
       external_id: 11,
       name: 'HC Spartak',
+      club_type_id: 'type-youth',
       is_moscow: false,
       created_by: 'admin',
       updated_by: 'admin',
-    },
+    }),
     expect.objectContaining({ transaction: expect.any(Object) })
   );
   const calls = clubUpdateMock.mock.calls;

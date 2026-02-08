@@ -13,6 +13,9 @@ import {
   TournamentGroupReferee,
   Season,
   Team,
+  Match,
+  GameStatus,
+  Ground,
 } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 import sequelize from '../config/database.js';
@@ -20,6 +23,7 @@ import {
   MATCH_FORMAT_VALUES,
   REFEREE_PAYMENT_VALUES,
 } from '../utils/tournamentSettings.js';
+import { utcToMoscow } from '../utils/time.js';
 
 function statusToParanoid(status) {
   const s = String(status || 'ACTIVE').toUpperCase();
@@ -149,6 +153,23 @@ function assertManualTournament(tournament) {
   }
 }
 
+function normalizeDateStart(value) {
+  if (!value) throw new ServiceError('date_required', 400);
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ServiceError('invalid_date', 400);
+  }
+  return parsed;
+}
+
+function toMoscowDateOnlyString(utcDate) {
+  const msk = utcToMoscow(utcDate) || utcDate;
+  const y = msk.getUTCFullYear();
+  const m = String(msk.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(msk.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 async function ensureTournament(id) {
   if (!id) return null;
   const tournament = await Tournament.findByPk(id);
@@ -274,6 +295,43 @@ async function listTournamentTeams({
   });
 }
 
+async function listTournamentMatches({
+  page = 1,
+  limit = 100,
+  tournament_id,
+  stage_id,
+  status,
+}) {
+  const p = Math.max(1, parseInt(page, 10));
+  const l = Math.max(1, parseInt(limit, 10));
+  const offset = (p - 1) * l;
+
+  const where = {};
+  if (tournament_id) where.tournament_id = tournament_id;
+  if (stage_id) where.stage_id = stage_id;
+
+  const { paranoid, onlyArchived } = statusToParanoid(status);
+  if (onlyArchived) where.deleted_at = { [Op.ne]: null };
+
+  return Match.findAndCountAll({
+    where,
+    paranoid,
+    include: [
+      { model: Tournament },
+      { model: Stage },
+      { model: Ground },
+      { model: Team, as: 'HomeTeam' },
+      { model: Team, as: 'AwayTeam' },
+    ],
+    order: [
+      ['date_start', 'ASC'],
+      ['created_at', 'ASC'],
+    ],
+    limit: l,
+    offset,
+  });
+}
+
 export default {
   async listTypes() {
     return TournamentType.findAll({ order: [['name', 'ASC']] });
@@ -288,6 +346,7 @@ export default {
   listStages,
   listGroups,
   listTournamentTeams,
+  listTournamentMatches,
   async createTournament(data = {}, actorId = null) {
     const name = normalizeString(data.name);
     if (!name) throw new ServiceError('invalid_tournament_name', 400);
@@ -473,6 +532,132 @@ export default {
 
     await group.update(updates, { returning: false });
     return group;
+  },
+  async assignTeamToGroup(data = {}, actorId = null) {
+    const tournamentId = data.tournament_id;
+    const groupId = data.group_id;
+    const teamId = data.team_id;
+    if (!tournamentId) throw new ServiceError('tournament_not_found', 404);
+    if (!groupId) throw new ServiceError('group_not_found', 404);
+    if (!teamId) throw new ServiceError('team_not_found', 404);
+
+    const [tournament, group, team] = await Promise.all([
+      ensureTournament(tournamentId),
+      ensureGroup(groupId),
+      Team.findByPk(teamId),
+    ]);
+    assertManualTournament(tournament);
+    if (!team) throw new ServiceError('team_not_found', 404);
+    if (group.tournament_id !== tournament.id) {
+      throw new ServiceError('group_tournament_mismatch', 400);
+    }
+
+    const existing = await TournamentTeam.findOne({
+      where: { tournament_id: tournament.id, team_id: team.id },
+      paranoid: false,
+    });
+    if (existing) {
+      if (existing.deletedAt) {
+        await existing.restore();
+      }
+      await existing.update(
+        {
+          tournament_group_id: group.id,
+          updated_by: actorId,
+        },
+        { returning: false }
+      );
+      return TournamentTeam.findByPk(existing.id, {
+        include: [{ model: Tournament }, { model: TournamentGroup }, { model: Team }],
+      });
+    }
+
+    const created = await TournamentTeam.create({
+      external_id: null,
+      tournament_id: tournament.id,
+      tournament_group_id: group.id,
+      team_id: team.id,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+    return TournamentTeam.findByPk(created.id, {
+      include: [{ model: Tournament }, { model: TournamentGroup }, { model: Team }],
+    });
+  },
+  async createMatchSchedule(data = {}, actorId = null) {
+    const tournamentId = data.tournament_id;
+    const stageId = data.stage_id;
+    const homeTeamId = data.home_team_id;
+    const awayTeamId = data.away_team_id;
+    const groundId = data.ground_id || null;
+    if (!tournamentId) throw new ServiceError('tournament_not_found', 404);
+    if (!stageId) throw new ServiceError('stage_not_found', 404);
+    if (!homeTeamId || !awayTeamId) {
+      throw new ServiceError('team_not_found', 404);
+    }
+    if (homeTeamId === awayTeamId) {
+      throw new ServiceError('match_teams_must_differ', 400);
+    }
+
+    const [tournament, stage, teams, ground] = await Promise.all([
+      ensureTournament(tournamentId),
+      ensureStage(stageId),
+      TournamentTeam.findAll({
+        where: {
+          tournament_id: tournamentId,
+          team_id: { [Op.in]: [homeTeamId, awayTeamId] },
+        },
+        attributes: ['team_id', 'tournament_group_id'],
+      }),
+      groundId ? Ground.findByPk(groundId, { attributes: ['id'] }) : null,
+    ]);
+    assertManualTournament(tournament);
+    if (stage.tournament_id !== tournament.id) {
+      throw new ServiceError('stage_tournament_mismatch', 400);
+    }
+    if (groundId && !ground) {
+      throw new ServiceError('ground_not_found', 404);
+    }
+    const assignedTeamIds = new Set(teams.map((team) => team.team_id));
+    if (!assignedTeamIds.has(homeTeamId) || !assignedTeamIds.has(awayTeamId)) {
+      throw new ServiceError('match_team_not_in_tournament', 400);
+    }
+    const homeAssignment = teams.find((team) => team.team_id === homeTeamId);
+    const resolvedTournamentGroupId = homeAssignment?.tournament_group_id;
+    if (!resolvedTournamentGroupId) {
+      throw new ServiceError('home_team_group_required', 400);
+    }
+
+    const dateStart = normalizeDateStart(data.date_start);
+    const scheduledStatus = await GameStatus.findOne({
+      where: { alias: 'SCHEDULED' },
+      attributes: ['id'],
+    });
+
+    const created = await Match.create({
+      external_id: null,
+      date_start: dateStart,
+      scheduled_date: toMoscowDateOnlyString(dateStart),
+      game_status_id: scheduledStatus?.id || null,
+      tournament_id: tournament.id,
+      stage_id: stage.id,
+      tournament_group_id: resolvedTournamentGroupId,
+      season_id: tournament.season_id || null,
+      ground_id: groundId,
+      team1_id: homeTeamId,
+      team2_id: awayTeamId,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+    return Match.findByPk(created.id, {
+      include: [
+        { model: Tournament },
+        { model: Stage },
+        { model: Ground },
+        { model: Team, as: 'HomeTeam' },
+        { model: Team, as: 'AwayTeam' },
+      ],
+    });
   },
   async listRefereeRoleGroups() {
     return RefereeRoleGroup.findAll({

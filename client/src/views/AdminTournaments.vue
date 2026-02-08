@@ -19,6 +19,7 @@ const competitionTypeOptions = ref([]);
 const scheduleManagementOptions = ref([]);
 const matchFormatOptions = ref([]);
 const refereePaymentOptions = ref([]);
+const groundOptions = ref([]);
 const selectedSeasonId = ref(String(route.query.season_id || ''));
 
 // Tournaments
@@ -166,6 +167,32 @@ const detailTeamsVisible = computed(() => {
   );
 });
 
+const tournamentTeamAssignmentsByTeamId = computed(() => {
+  const map = new Map();
+  for (const assignment of tournamentTeams.value || []) {
+    if (assignment.team?.id) {
+      map.set(assignment.team.id, assignment);
+    }
+  }
+  return map;
+});
+
+const scheduleTeamOptions = computed(() => {
+  return [...(tournamentTeams.value || [])]
+    .filter((assignment) => assignment.team?.id)
+    .sort((a, b) => (a.team?.name || '').localeCompare(b.team?.name || ''));
+});
+
+const clubTeamsVisible = computed(() => {
+  const term = normalizeSearchTerm(addTeamSearch.value);
+  return (clubTeamsCatalog.value || [])
+    .filter((team) => {
+      const haystack = `${team.name || ''} ${team.club?.name || ''}`;
+      return matchesSearch(haystack, term);
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+});
+
 // Helper maps for chips
 const seasonNameById = computed(
   () => new Map((seasonOptions.value || []).map((s) => [String(s.id), s.name]))
@@ -233,6 +260,26 @@ const detailTeamsError = ref('');
 const detailStageSearch = ref('');
 const detailGroupSearch = ref('');
 const detailTeamSearch = ref('');
+const tournamentTeams = ref([]);
+const tournamentTeamsLoading = ref(false);
+const tournamentTeamsError = ref('');
+const clubTeamsCatalog = ref([]);
+const clubTeamsCatalogLoading = ref(false);
+const addTeamSearch = ref('');
+const addTeamForm = ref({ team_id: '' });
+const addTeamLoading = ref(false);
+const addTeamError = ref('');
+const stageMatches = ref([]);
+const stageMatchesLoading = ref(false);
+const stageMatchesError = ref('');
+const createMatchForm = ref({
+  date_start: '',
+  ground_id: '',
+  home_team_id: '',
+  away_team_id: '',
+});
+const createMatchLoading = ref(false);
+const createMatchError = ref('');
 
 const isImportedTournament = computed(
   () => detailTournament.value?.external_id != null
@@ -280,9 +327,14 @@ function closeDetail() {
   detailStages.value = [];
   detailGroups.value = [];
   detailTeams.value = [];
+  tournamentTeams.value = [];
+  stageMatches.value = [];
+  clubTeamsCatalog.value = [];
   detailStagesError.value = '';
   detailGroupsError.value = '';
   detailTeamsError.value = '';
+  tournamentTeamsError.value = '';
+  stageMatchesError.value = '';
   detailMode.value = 'structure';
   settingsStages.value = [];
   settingsGroups.value = [];
@@ -297,6 +349,8 @@ function closeDetail() {
   createGroupOpen.value = false;
   resetCreateStageForm();
   resetCreateGroupForm();
+  resetAssignTeamForm();
+  resetCreateMatchForm();
   detailStageSearch.value = '';
   detailGroupSearch.value = '';
   detailTeamSearch.value = '';
@@ -357,30 +411,74 @@ function formatDurationMinutes(total) {
   return `${mins} мин`;
 }
 
+function formatTeamForSelect(team) {
+  const assignment = tournamentTeamAssignmentsByTeamId.value.get(team.id);
+  if (!assignment) {
+    return team.club?.name
+      ? `${team.name} (${team.club.name})`
+      : (team.name ?? 'Команда');
+  }
+  const groupName = assignment.group?.name || 'без названия';
+  if (
+    detailGroup.value?.id &&
+    assignment.tournament_group_id === detailGroup.value.id
+  ) {
+    return `${team.name} (уже в текущей группе)`;
+  }
+  return `${team.name} (сейчас в группе: ${groupName})`;
+}
+
+function formatMatchDateTime(value) {
+  if (!value) return '—';
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  });
+}
+
 async function openTournamentDetail(t) {
   detailTournament.value = t;
   detailStage.value = null;
   detailGroup.value = null;
+  stageMatches.value = [];
   detailStagesError.value = '';
   detailGroupsError.value = '';
   detailTeamsError.value = '';
+  tournamentTeamsError.value = '';
+  stageMatchesError.value = '';
   detailMode.value = 'structure';
   resetMainSettings();
   createStageOpen.value = false;
   createGroupOpen.value = false;
   resetCreateStageForm();
   resetCreateGroupForm();
+  resetAssignTeamForm();
+  resetCreateMatchForm();
   detailStageSearch.value = '';
   detailGroupSearch.value = '';
   detailTeamSearch.value = '';
-  await Promise.all([loadDetailStages(), loadDetailGroups()]);
+  await Promise.all([
+    loadDetailStages(),
+    loadDetailGroups(),
+    loadTournamentTeams(),
+    loadClubTeamsCatalog(),
+  ]);
 }
 
 function backToTournamentStages() {
   detailGroup.value = null;
   detailTeams.value = [];
+  stageMatches.value = [];
   detailTeamSearch.value = '';
   detailTeamsError.value = '';
+  addTeamError.value = '';
+  resetAssignTeamForm();
 }
 
 function backToTournamentsList() {
@@ -391,15 +489,20 @@ async function openStageDetail(s) {
   detailStage.value = s;
   detailGroup.value = null;
   detailTeams.value = [];
+  stageMatches.value = [];
   detailGroupSearch.value = '';
   detailTeamSearch.value = '';
   detailGroupsError.value = '';
   detailTeamsError.value = '';
+  stageMatchesError.value = '';
+  resetAssignTeamForm();
+  resetCreateMatchForm();
   createGroupOpen.value = false;
   resetCreateGroupForm();
-  if (!detailGroups.value.length) {
-    await loadDetailGroups();
-  }
+  const jobs = [];
+  if (!detailGroups.value.length) jobs.push(loadDetailGroups());
+  jobs.push(loadStageMatches());
+  await Promise.all(jobs);
 }
 
 async function openGroupDetail(g) {
@@ -407,6 +510,10 @@ async function openGroupDetail(g) {
   createGroupOpen.value = false;
   detailTeamSearch.value = '';
   detailTeamsError.value = '';
+  addTeamError.value = '';
+  if (!clubTeamsCatalog.value.length) {
+    await loadClubTeamsCatalog();
+  }
   await loadDetailTeams();
 }
 
@@ -414,6 +521,10 @@ function openTournamentStructure() {
   detailMode.value = 'structure';
   if (!detailStages.value.length) loadDetailStages();
   if (!detailGroups.value.length) loadDetailGroups();
+  if (!tournamentTeams.value.length) loadTournamentTeams();
+  if (detailStage.value && detailStage.value.id !== 'unassigned') {
+    loadStageMatches();
+  }
 }
 
 async function openTournamentSettings() {
@@ -728,6 +839,22 @@ function resetCreateGroupForm() {
   createGroupError.value = '';
 }
 
+function resetAssignTeamForm() {
+  addTeamForm.value = { team_id: '' };
+  addTeamSearch.value = '';
+  addTeamError.value = '';
+}
+
+function resetCreateMatchForm() {
+  createMatchForm.value = {
+    date_start: '',
+    ground_id: '',
+    home_team_id: '',
+    away_team_id: '',
+  };
+  createMatchError.value = '';
+}
+
 async function submitCreateGroup() {
   if (
     createGroupLoading.value ||
@@ -773,6 +900,99 @@ async function submitCreateGroup() {
     createGroupError.value = e.message || 'Ошибка создания группы';
   } finally {
     createGroupLoading.value = false;
+  }
+}
+
+async function submitAssignTeamToGroup() {
+  if (
+    addTeamLoading.value ||
+    !detailTournament.value ||
+    !detailGroup.value ||
+    !addTeamForm.value.team_id
+  ) {
+    return;
+  }
+  addTeamLoading.value = true;
+  addTeamError.value = '';
+  try {
+    await apiFetch('/tournaments/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tournament_id: detailTournament.value.id,
+        group_id: detailGroup.value.id,
+        team_id: addTeamForm.value.team_id,
+      }),
+    });
+    showToast('Команда добавлена в группу');
+    addTeamForm.value.team_id = '';
+    await Promise.all([
+      loadDetailTeams(),
+      loadTournamentTeams(),
+      loadStageMatches(),
+    ]);
+  } catch (e) {
+    addTeamError.value = e.message || 'Ошибка добавления команды';
+  } finally {
+    addTeamLoading.value = false;
+  }
+}
+
+async function submitCreateStageMatch() {
+  if (
+    createMatchLoading.value ||
+    !detailTournament.value ||
+    !detailStage.value ||
+    detailStage.value.id === 'unassigned'
+  ) {
+    return;
+  }
+  if (!createMatchForm.value.date_start) {
+    createMatchError.value = 'Укажите дату и время матча';
+    return;
+  }
+  if (
+    !createMatchForm.value.home_team_id ||
+    !createMatchForm.value.away_team_id
+  ) {
+    createMatchError.value = 'Выберите обе команды';
+    return;
+  }
+  if (
+    createMatchForm.value.home_team_id === createMatchForm.value.away_team_id
+  ) {
+    createMatchError.value = 'Для матча нужны две разные команды';
+    return;
+  }
+
+  const parsedDate = new Date(`${createMatchForm.value.date_start}:00+03:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    createMatchError.value = 'Укажите корректные дату и время';
+    return;
+  }
+
+  createMatchLoading.value = true;
+  createMatchError.value = '';
+  try {
+    await apiFetch('/tournaments/matches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tournament_id: detailTournament.value.id,
+        stage_id: detailStage.value.id,
+        ground_id: createMatchForm.value.ground_id || null,
+        home_team_id: createMatchForm.value.home_team_id,
+        away_team_id: createMatchForm.value.away_team_id,
+        date_start: parsedDate.toISOString(),
+      }),
+    });
+    showToast('Матч добавлен в расписание');
+    resetCreateMatchForm();
+    await loadStageMatches();
+  } catch (e) {
+    createMatchError.value = e.message || 'Ошибка добавления матча';
+  } finally {
+    createMatchLoading.value = false;
   }
 }
 
@@ -837,14 +1057,82 @@ async function loadDetailTeams() {
   }
 }
 
+async function loadTournamentTeams() {
+  if (!detailTournament.value) return;
+  tournamentTeamsLoading.value = true;
+  tournamentTeamsError.value = '';
+  try {
+    const p = new URLSearchParams({
+      page: '1',
+      limit: '1000',
+      tournament_id: detailTournament.value.id,
+    });
+    const r = await apiFetch(`/tournaments/teams?${p.toString()}`);
+    tournamentTeams.value = r.teams || [];
+  } catch (e) {
+    tournamentTeams.value = [];
+    tournamentTeamsError.value = e.message || 'Ошибка загрузки команд турнира';
+  } finally {
+    tournamentTeamsLoading.value = false;
+  }
+}
+
+async function loadClubTeamsCatalog() {
+  clubTeamsCatalogLoading.value = true;
+  try {
+    const p = new URLSearchParams({
+      page: '1',
+      limit: '1000',
+      status: 'ACTIVE',
+    });
+    const r = await apiFetch(`/teams?${p.toString()}`);
+    clubTeamsCatalog.value = r.teams || [];
+  } catch (_) {
+    clubTeamsCatalog.value = [];
+  } finally {
+    clubTeamsCatalogLoading.value = false;
+  }
+}
+
+async function loadStageMatches() {
+  if (
+    !detailTournament.value ||
+    !detailStage.value ||
+    detailStage.value.id === 'unassigned'
+  ) {
+    stageMatches.value = [];
+    stageMatchesError.value = '';
+    return;
+  }
+  stageMatchesLoading.value = true;
+  stageMatchesError.value = '';
+  try {
+    const p = new URLSearchParams({
+      page: '1',
+      limit: '1000',
+      tournament_id: detailTournament.value.id,
+      stage_id: detailStage.value.id,
+    });
+    const r = await apiFetch(`/tournaments/matches?${p.toString()}`);
+    stageMatches.value = r.matches || [];
+  } catch (e) {
+    stageMatches.value = [];
+    stageMatchesError.value = e.message || 'Ошибка загрузки расписания';
+  } finally {
+    stageMatchesLoading.value = false;
+  }
+}
+
 async function loadFilters() {
   try {
-    const [seasonsRes, activeRes, typesRes, settingsRes] = await Promise.all([
-      apiFetch('/seasons?limit=1000'),
-      apiFetch('/seasons/active'),
-      apiFetch('/tournaments/types'),
-      apiFetch('/tournaments/settings-options'),
-    ]);
+    const [seasonsRes, activeRes, typesRes, settingsRes, groundsRes] =
+      await Promise.all([
+        apiFetch('/seasons?limit=1000'),
+        apiFetch('/seasons/active'),
+        apiFetch('/tournaments/types'),
+        apiFetch('/tournaments/settings-options'),
+        apiFetch('/grounds?limit=1000&order_by=name&order=ASC'),
+      ]);
     seasonOptions.value = (seasonsRes.seasons || []).map((s) => ({
       id: s.id,
       name: s.name,
@@ -868,6 +1156,10 @@ async function loadFilters() {
     }));
     matchFormatOptions.value = settingsRes.match_formats || [];
     refereePaymentOptions.value = settingsRes.referee_payment_types || [];
+    groundOptions.value = (groundsRes.grounds || []).map((ground) => ({
+      id: ground.id,
+      name: ground.name || 'Без названия',
+    }));
     if (!selectedSeasonId.value && activeRes?.season?.id) {
       selectedSeasonId.value = String(activeRes.season.id);
     }
@@ -958,10 +1250,7 @@ watch(search, () => {
               aria-current="page"
             >
               Этап:
-              {{
-                detailStage.name ||
-                '#' + (detailStage.external_id || detailStage.id)
-              }}
+              {{ detailStage.name || 'Без названия' }}
             </li>
             <li v-else-if="detailStage && detailGroup" class="breadcrumb-item">
               <button
@@ -970,10 +1259,7 @@ watch(search, () => {
                 @click="backToTournamentStages"
               >
                 Этап:
-                {{
-                  detailStage.name ||
-                  '#' + (detailStage.external_id || detailStage.id)
-                }}
+                {{ detailStage.name || 'Без названия' }}
               </button>
             </li>
             <li
@@ -1382,8 +1668,9 @@ watch(search, () => {
                 v-if="isImportedTournament"
                 class="alert alert-info small mb-3"
               >
-                Турнир импортирован из внешней системы. Добавление этапов и
-                групп недоступно.
+                Турнир импортирован из внешней системы. Редактирование
+                структуры, добавление команд и ручное расписание матчей
+                недоступны.
               </div>
               <div class="row g-3">
                 <div class="col-12 col-lg-4">
@@ -1479,19 +1766,11 @@ watch(search, () => {
                               class="d-flex align-items-center justify-content-between"
                             >
                               <div class="fw-semibold">
-                                {{ s.name || '#' + (s.external_id || s.id) }}
+                                {{ s.name || 'Этап без названия' }}
                               </div>
                               <span class="badge bg-light text-muted border">
                                 {{ detailGroupCountsByStage.get(s.id) || 0 }}
                               </span>
-                            </div>
-                            <div class="small text-muted">
-                              ID:
-                              {{
-                                s.id === 'unassigned'
-                                  ? '—'
-                                  : s.external_id || s.id
-                              }}
                             </div>
                           </button>
                         </div>
@@ -1513,7 +1792,7 @@ watch(search, () => {
                           <div class="small text-muted">
                             {{
                               detailStage
-                                ? `Этап: ${detailStage.name || '#' + (detailStage.external_id || detailStage.id)}`
+                                ? `Этап: ${detailStage.name || 'Без названия'}`
                                 : 'Выберите этап'
                             }}
                           </div>
@@ -1649,9 +1928,6 @@ watch(search, () => {
                                 }}
                               </span>
                             </div>
-                            <div class="small text-muted">
-                              ID: {{ g.external_id || g.id }}
-                            </div>
                           </button>
                         </div>
                         <div v-else class="text-muted small">
@@ -1703,6 +1979,65 @@ watch(search, () => {
                       >
                         {{ detailTeamsError }}
                       </div>
+                      <div
+                        v-if="detailGroup && !isImportedTournament"
+                        class="border rounded-3 p-2 mb-2 bg-light-subtle"
+                      >
+                        <div class="small fw-semibold mb-1">
+                          Добавить команду в группу
+                        </div>
+                        <div v-if="addTeamError" class="text-danger small mb-1">
+                          {{ addTeamError }}
+                        </div>
+                        <div class="input-group input-group-sm mb-2">
+                          <span class="input-group-text"
+                            ><i class="bi bi-search" aria-hidden="true"></i
+                          ></span>
+                          <input
+                            v-model="addTeamSearch"
+                            type="search"
+                            class="form-control"
+                            placeholder="Поиск по названию команды или клуба"
+                          />
+                        </div>
+                        <select
+                          v-model="addTeamForm.team_id"
+                          class="form-select form-select-sm mb-2"
+                          :disabled="addTeamLoading || clubTeamsCatalogLoading"
+                        >
+                          <option value="">Выберите команду</option>
+                          <option
+                            v-for="team in clubTeamsVisible"
+                            :key="team.id"
+                            :value="team.id"
+                          >
+                            {{ formatTeamForSelect(team) }}
+                          </option>
+                        </select>
+                        <button
+                          type="button"
+                          class="btn btn-brand btn-sm w-100"
+                          :disabled="
+                            addTeamLoading ||
+                            clubTeamsCatalogLoading ||
+                            !addTeamForm.team_id
+                          "
+                          @click="submitAssignTeamToGroup"
+                        >
+                          <span
+                            v-if="addTeamLoading"
+                            class="spinner-border spinner-border-sm me-2"
+                          ></span>
+                          Добавить в группу
+                        </button>
+                      </div>
+                      <div
+                        v-else-if="detailGroup && isImportedTournament"
+                        class="text-muted small mb-2"
+                      >
+                        Для импортированных турниров добавление команд в группы
+                        недоступно.
+                      </div>
                       <BrandSpinner
                         v-if="detailTeamsLoading"
                         label="Загрузка"
@@ -1727,6 +2062,172 @@ watch(search, () => {
                         </div>
                         <div v-else class="text-muted small">
                           Команды не найдены.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-if="detailStage && detailStage.id !== 'unassigned'"
+                  class="col-12"
+                >
+                  <div class="card section-card shadow-sm mt-1">
+                    <div class="card-body">
+                      <div
+                        class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2"
+                      >
+                        <div>
+                          <div class="fw-semibold">Расписание матчей этапа</div>
+                          <div class="small text-muted">
+                            {{ detailStage?.name || 'Этап без названия' }}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        v-if="stageMatchesError"
+                        class="text-danger small mb-2"
+                      >
+                        {{ stageMatchesError }}
+                      </div>
+                      <div
+                        v-if="!isImportedTournament"
+                        class="border rounded-3 p-3 mb-3 bg-light-subtle"
+                      >
+                        <div
+                          v-if="createMatchError"
+                          class="text-danger small mb-2"
+                        >
+                          {{ createMatchError }}
+                        </div>
+                        <div class="row g-2 align-items-end">
+                          <div class="col-12 col-lg-3">
+                            <label class="form-label">Дата и время</label>
+                            <input
+                              v-model="createMatchForm.date_start"
+                              type="datetime-local"
+                              class="form-control"
+                              :disabled="createMatchLoading"
+                            />
+                          </div>
+                          <div class="col-12 col-lg-3">
+                            <label class="form-label">Стадион</label>
+                            <select
+                              v-model="createMatchForm.ground_id"
+                              class="form-select"
+                              :disabled="createMatchLoading"
+                            >
+                              <option value="">Не указан</option>
+                              <option
+                                v-for="ground in groundOptions"
+                                :key="ground.id"
+                                :value="ground.id"
+                              >
+                                {{ ground.name }}
+                              </option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-lg-3">
+                            <label class="form-label">Команда 1</label>
+                            <select
+                              v-model="createMatchForm.home_team_id"
+                              class="form-select"
+                              :disabled="
+                                createMatchLoading || tournamentTeamsLoading
+                              "
+                            >
+                              <option value="">Выберите команду</option>
+                              <option
+                                v-for="assignment in scheduleTeamOptions"
+                                :key="assignment.id"
+                                :value="assignment.team.id"
+                              >
+                                {{ assignment.team.name }}
+                              </option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-lg-2">
+                            <label class="form-label">Команда 2</label>
+                            <select
+                              v-model="createMatchForm.away_team_id"
+                              class="form-select"
+                              :disabled="
+                                createMatchLoading || tournamentTeamsLoading
+                              "
+                            >
+                              <option value="">Выберите команду</option>
+                              <option
+                                v-for="assignment in scheduleTeamOptions"
+                                :key="`away-${assignment.id}`"
+                                :value="assignment.team.id"
+                              >
+                                {{ assignment.team.name }}
+                              </option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-lg-1 d-grid">
+                            <button
+                              type="button"
+                              class="btn btn-brand"
+                              :disabled="
+                                createMatchLoading ||
+                                tournamentTeamsLoading ||
+                                !createMatchForm.date_start ||
+                                !createMatchForm.home_team_id ||
+                                !createMatchForm.away_team_id
+                              "
+                              @click="submitCreateStageMatch"
+                            >
+                              <span
+                                v-if="createMatchLoading"
+                                class="spinner-border spinner-border-sm me-2"
+                              ></span>
+                              Добавить
+                            </button>
+                          </div>
+                        </div>
+                        <div
+                          v-if="tournamentTeamsError"
+                          class="text-danger small mt-2"
+                        >
+                          {{ tournamentTeamsError }}
+                        </div>
+                      </div>
+                      <div v-else class="text-muted small mb-3">
+                        Для импортированных турниров ручное добавление матчей
+                        недоступно.
+                      </div>
+                      <BrandSpinner
+                        v-if="stageMatchesLoading"
+                        label="Загрузка расписания"
+                      />
+                      <div v-else>
+                        <div
+                          v-if="stageMatches.length"
+                          class="table-responsive"
+                        >
+                          <table class="table table-sm align-middle mb-0">
+                            <thead>
+                              <tr>
+                                <th>Дата и время</th>
+                                <th>Стадион</th>
+                                <th>Команда 1</th>
+                                <th>Команда 2</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="match in stageMatches" :key="match.id">
+                                <td>
+                                  {{ formatMatchDateTime(match.date_start) }}
+                                </td>
+                                <td>{{ match.ground?.name || '—' }}</td>
+                                <td>{{ match.home_team?.name || '—' }}</td>
+                                <td>{{ match.away_team?.name || '—' }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <div v-else class="text-muted small">
+                          Матчи на этапе пока не добавлены.
                         </div>
                       </div>
                     </div>
@@ -1908,9 +2409,6 @@ watch(search, () => {
                             >
                               <div class="fw-semibold">
                                 {{ g.name || 'Группа' }}
-                              </div>
-                              <div class="small text-muted">
-                                Идентификатор: {{ g.external_id || g.id }}
                               </div>
                             </div>
                             <div class="small text-muted mt-1">

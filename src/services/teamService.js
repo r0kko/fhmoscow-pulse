@@ -23,6 +23,21 @@ import { isSportSchoolClubWidePosition } from '../utils/sportSchoolPositions.js'
 
 import { syncStaffRole } from './sportSchoolRoleService.js';
 
+function normalizeTeamName(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) throw new ServiceError('invalid_team_name', 400);
+  return normalized;
+}
+
+function normalizeBirthYear(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1900 || parsed > 2100) {
+    throw new ServiceError('invalid_birth_year', 400);
+  }
+  return parsed;
+}
+
 async function syncExternal(options = {}) {
   const { actorId, mode, since, fullResync } = normalizeSyncOptions(options);
 
@@ -325,10 +340,31 @@ async function removeUserTeam(userId, teamId, actorId = null) {
   await syncStaffRole(userId, actorId);
 }
 
+async function createManual(data = {}, actorId = null) {
+  const clubId = data.club_id || null;
+  if (!clubId) throw new ServiceError('club_not_found', 404);
+  const club = await Club.findByPk(clubId);
+  if (!club) throw new ServiceError('club_not_found', 404);
+  if (club.external_id != null) {
+    throw new ServiceError('club_is_imported', 409);
+  }
+
+  const team = await Team.create({
+    external_id: null,
+    club_id: club.id,
+    name: normalizeTeamName(data.name),
+    birth_year: normalizeBirthYear(data.birth_year),
+    created_by: actorId,
+    updated_by: actorId,
+  });
+  return Team.findByPk(team.id, { include: [Club] });
+}
+
 export default {
   syncExternal,
   listAll,
   list,
+  createManual,
   listUserTeams,
   addUserTeam,
   removeUserTeam,
