@@ -124,15 +124,30 @@ export async function sendMail(
 }
 
 export async function sendVerificationEmail(user, code) {
-  await queueMailFromTemplate(user, renderVerificationEmail, [code], 'verification');
+  await queueMailFromTemplate(
+    user,
+    renderVerificationEmail,
+    [code],
+    'verification'
+  );
 }
 
 export async function sendSignTypeSelectionEmail(user, code) {
-  await queueMailFromTemplate(user, renderSignTypeSelectionEmail, [code], 'sign_type');
+  await queueMailFromTemplate(
+    user,
+    renderSignTypeSelectionEmail,
+    [code],
+    'sign_type'
+  );
 }
 
 export async function sendPasswordResetEmail(user, code) {
-  await queueMailFromTemplate(user, renderPasswordResetEmail, [code], 'password_reset');
+  await queueMailFromTemplate(
+    user,
+    renderPasswordResetEmail,
+    [code],
+    'password_reset'
+  );
 }
 
 export async function sendUserCreatedByAdminEmail(user, tempPassword) {

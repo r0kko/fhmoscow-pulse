@@ -2,13 +2,12 @@ import { UserStatus } from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
 
 import emailService from './emailService.js';
-import {
-  issueCodeForUser,
-  verifyCodeForUser,
-} from './emailCodeService.js';
+import { issueCodeForUser, verifyCodeForUser } from './emailCodeService.js';
 
 function purposeForType(type = 'verify') {
-  const normalized = String(type || 'verify').trim().toLowerCase();
+  const normalized = String(type || 'verify')
+    .trim()
+    .toLowerCase();
   if (normalized === 'sign-type') return 'sign_type';
   if (normalized === 'doc-sign') return 'doc_sign';
   return 'verify';
@@ -21,7 +20,11 @@ export async function sendCode(user, type = 'verify', context = {}) {
       await emailService.sendSignTypeSelectionEmail(user, code);
     } else if (type === 'doc-sign') {
       // Expect context.document with minimal info { id, number, name }
-      await emailService.sendDocumentSignCodeEmail(user, context.document, code);
+      await emailService.sendDocumentSignCodeEmail(
+        user,
+        context.document,
+        code
+      );
     } else {
       await emailService.sendVerificationEmail(user, code);
     }

@@ -139,7 +139,9 @@ describe('passwordResetRateLimiters middleware', () => {
     expect(finishOpts.max).toBe(10);
     expect(finishOpts.windowMs).toBe(900000);
 
-    expect(incRateLimitedMock).toHaveBeenCalledWith('password_reset_start_email');
+    expect(incRateLimitedMock).toHaveBeenCalledWith(
+      'password_reset_start_email'
+    );
     expect(incRateLimitedMock).toHaveBeenCalledWith('password_reset_start_ip');
     expect(incRateLimitedMock).toHaveBeenCalledWith('password_reset_finish');
     expect(sendErrorMock).toHaveBeenCalledWith(

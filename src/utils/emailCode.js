@@ -24,13 +24,17 @@ function safeBuffer(hex) {
 }
 
 export function normalizeEmailCodePurpose(raw = 'verify') {
-  const value = String(raw || 'verify').trim().toLowerCase();
+  const value = String(raw || 'verify')
+    .trim()
+    .toLowerCase();
   if (!value) return 'verify';
   return value.replace(/-/g, '_');
 }
 
 export function normalizeEmailCodeInput(code) {
-  return String(code || '').replace(/\D+/g, '').slice(0, 6);
+  return String(code || '')
+    .replace(/\D+/g, '')
+    .slice(0, 6);
 }
 
 export function generateSixDigitCode() {
@@ -43,7 +47,10 @@ export function hashEmailCode({ code, recordId, userId, purpose = 'verify' }) {
   const normalizedPurpose = normalizeEmailCodePurpose(purpose);
   const normalizedCode = normalizeEmailCodeInput(code);
   const payload = `${normalizedPurpose}:${userId}:${recordId}:${normalizedCode}`;
-  return crypto.createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
+  return crypto
+    .createHmac('sha256', secret)
+    .update(payload, 'utf8')
+    .digest('hex');
 }
 
 export function verifyEmailCodeHash(

@@ -9,12 +9,14 @@ function toBool(val, defaultVal = false) {
 }
 
 export function isLockoutEnabled() {
-  const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+  const isProd =
+    String(process.env.NODE_ENV || '').toLowerCase() === 'production';
   return toBool(process.env.AUTH_LOCKOUT_ENABLED, isProd);
 }
 
 export function isRateLimitEnabled(kind = 'global') {
-  const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+  const isProd =
+    String(process.env.NODE_ENV || '').toLowerCase() === 'production';
   const globalDefault = toBool(process.env.RATE_LIMIT_ENABLED, isProd);
   const envName = `RATE_LIMIT_${String(kind).toUpperCase()}_ENABLED`;
   if (Object.prototype.hasOwnProperty.call(process.env, envName)) {

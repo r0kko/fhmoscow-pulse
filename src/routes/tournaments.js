@@ -131,7 +131,12 @@ router.post(
   validate,
   controller.createTournamentTeam
 );
-router.get('/matches', auth, authorize('ADMIN'), controller.listTournamentMatches);
+router.get(
+  '/matches',
+  auth,
+  authorize('ADMIN'),
+  controller.listTournamentMatches
+);
 router.post(
   '/matches',
   auth,

@@ -11,6 +11,7 @@ import {
   Club,
   Ground,
   Tournament,
+  CompetitionType,
   Stage,
   TournamentGroup,
   TournamentTeam,
@@ -505,7 +506,17 @@ export async function listMatchesByDate(dateKey) {
       },
     },
     include: [
-      { model: Tournament, attributes: ['id', 'name', 'full_name'] },
+      {
+        model: Tournament,
+        attributes: ['id', 'name', 'full_name', 'competition_type_id'],
+        include: [
+          {
+            model: CompetitionType,
+            attributes: ['id', 'alias', 'name'],
+            required: false,
+          },
+        ],
+      },
       { model: Stage, attributes: ['id', 'name'] },
       {
         model: TournamentGroup,
@@ -646,6 +657,13 @@ export async function listMatchesByDate(dateKey) {
             id: m.Tournament.id,
             name: m.Tournament.name,
             short_name: m.Tournament.name || m.Tournament.full_name,
+            competition_type: m.Tournament.CompetitionType
+              ? {
+                  id: m.Tournament.CompetitionType.id,
+                  alias: m.Tournament.CompetitionType.alias,
+                  name: m.Tournament.CompetitionType.name,
+                }
+              : null,
           }
         : null,
       stage: m.Stage ? { id: m.Stage.id, name: m.Stage.name } : null,

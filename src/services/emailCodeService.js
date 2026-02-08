@@ -77,7 +77,11 @@ export async function issueCodeForUser(
     await deliver(code);
   } catch (err) {
     await EmailCode.destroy({ where: { id } });
-    throw new ServiceError('email_send_failed', 500, err?.message || String(err));
+    throw new ServiceError(
+      'email_send_failed',
+      500,
+      err?.message || String(err)
+    );
   }
 
   return { code, expiresAt };
@@ -128,8 +132,13 @@ export async function verifyCodeForUser(
 
   if (!matchesCode(record, rawCode, purpose, user.id)) {
     const nextAttempts = Number(record.attempt_count || 0) + 1;
-    if (nextAttempts >= Math.max(1, Number(maxAttempts || EMAIL_CODE_MAX_ATTEMPTS))) {
-      const lockUntil = new Date(now.getTime() + Math.max(60_000, Number(cooldownMs)));
+    if (
+      nextAttempts >=
+      Math.max(1, Number(maxAttempts || EMAIL_CODE_MAX_ATTEMPTS))
+    ) {
+      const lockUntil = new Date(
+        now.getTime() + Math.max(60_000, Number(cooldownMs))
+      );
       await record.update({
         attempt_count: nextAttempts,
         consumed_at: now,

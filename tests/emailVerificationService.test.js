@@ -25,9 +25,8 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
 }));
 
 const { hashEmailCode } = await import('../src/utils/emailCode.js');
-const { sendCode, verifyCode, verifyCodeOnly } = await import(
-  '../src/services/emailVerificationService.js'
-);
+const { sendCode, verifyCode, verifyCodeOnly } =
+  await import('../src/services/emailVerificationService.js');
 
 function createRecord({
   id = 'rec-v1',
@@ -100,7 +99,11 @@ test('sendCode rejects during active cooldown', async () => {
 
 test('verifyCode confirms user when code matches', async () => {
   const user = { id: 'u1', update: jest.fn() };
-  const record = createRecord({ userId: 'u1', purpose: 'verify', code: '123456' });
+  const record = createRecord({
+    userId: 'u1',
+    purpose: 'verify',
+    code: '123456',
+  });
   findOneMock.mockResolvedValue(record);
   destroyMock.mockResolvedValue(1);
   statusFindMock.mockResolvedValue({ id: 'ACTIVE' });

@@ -76,7 +76,10 @@ test('verifyCode succeeds with correct code hash', async () => {
   await verifyCode(user, '123456');
 
   expect(record.update).toHaveBeenCalledWith(
-    expect.objectContaining({ consumed_at: expect.any(Date), locked_until: null })
+    expect.objectContaining({
+      consumed_at: expect.any(Date),
+      locked_until: null,
+    })
   );
   expect(destroyMock).toHaveBeenCalled();
 });

@@ -75,7 +75,8 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
   default: { transaction: jest.fn(async (cb) => cb({})) },
 }));
 
-const { default: svc } = await import('../src/services/tournamentAdminService.js');
+const { default: svc } =
+  await import('../src/services/tournamentAdminService.js');
 
 test('assignTeamToGroup rejects imported tournaments', async () => {
   tournamentFindByPkMock.mockResolvedValue({ id: 't1', external_id: 7 });

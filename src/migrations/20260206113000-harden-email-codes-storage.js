@@ -42,8 +42,14 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeIndex('email_codes', 'email_codes_active_lookup_idx');
-    await queryInterface.removeIndex('email_codes', 'email_codes_user_purpose_idx');
+    await queryInterface.removeIndex(
+      'email_codes',
+      'email_codes_active_lookup_idx'
+    );
+    await queryInterface.removeIndex(
+      'email_codes',
+      'email_codes_user_purpose_idx'
+    );
     await queryInterface.changeColumn('email_codes', 'code', {
       type: Sequelize.STRING(6),
       allowNull: false,

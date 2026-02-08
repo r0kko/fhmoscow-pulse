@@ -22,7 +22,9 @@ function getRateLimitSecret() {
 }
 
 function normalizeEmail(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function hashEmail(value) {
@@ -58,7 +60,9 @@ function finishKey(req) {
 }
 
 function buildStore(prefix) {
-  return enabled && process.env.RATE_LIMIT_USE_REDIS === 'true' && isRedisWritable()
+  return enabled &&
+    process.env.RATE_LIMIT_USE_REDIS === 'true' &&
+    isRedisWritable()
     ? new RedisRateLimitStore({ prefix })
     : undefined;
 }
@@ -100,7 +104,10 @@ const finishWindowMs = parseInt(
   process.env.PASSWORD_RESET_FINISH_RATE_WINDOW_MS || '900000',
   10
 );
-const finishMax = parseInt(process.env.PASSWORD_RESET_FINISH_RATE_MAX || '10', 10);
+const finishMax = parseInt(
+  process.env.PASSWORD_RESET_FINISH_RATE_MAX || '10',
+  10
+);
 
 export const passwordResetStartEmailRateLimiter = enabled
   ? rateLimit({

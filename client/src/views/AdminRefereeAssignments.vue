@@ -5,6 +5,9 @@ import { apiFetch } from '../api';
 const roleGroups = ref([]);
 const matches = ref([]);
 const referees = ref([]);
+const competitionTypeOptions = ref([]);
+const matchSearch = ref('');
+const selectedCompetitionTypeId = ref('');
 const DATE_STORAGE_KEY = 'adminRefereeAssignmentsDate';
 const GROUPS_STORAGE_KEY = 'adminRefereeAssignmentsGroups';
 const selectedDate = ref(loadStoredDate() || todayKey());
@@ -19,7 +22,12 @@ const publishingDay = ref(false);
 const publishError = ref('');
 const publishSuccess = ref('');
 
-const hasMatches = computed(() => matches.value.length > 0);
+const hasAnyMatches = computed(() => matches.value.length > 0);
+const hasActiveMatchFilters = computed(
+  () =>
+    String(matchSearch.value || '').trim().length > 0 ||
+    Boolean(selectedCompetitionTypeId.value)
+);
 const canAssignGroup = computed(() => selectedGroups.value.length > 0);
 const selectedGroupIds = computed(
   () => new Set(selectedGroups.value.filter(Boolean))
@@ -76,7 +84,7 @@ const roleColumns = computed(() => {
   const columns = [];
   groups.forEach((group) => {
     (group.roles || []).forEach((role) => {
-      const used = matches.value.some(
+      const used = filteredMatches.value.some(
         (match) => requiredCount(match, role.id) > 0
       );
       if (used) {
@@ -190,8 +198,54 @@ const assignmentsGridStyle = computed(() => {
   };
 });
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim();
+}
+
+function buildMatchSearchIndex(match) {
+  return normalizeSearchText(
+    [
+      match.match_number,
+      match.team1?.name,
+      match.team2?.name,
+      match.tournament?.short_name,
+      match.tournament?.name,
+      match.tournament?.competition_type?.name,
+      match.stage?.name,
+      match.group?.name,
+      match.tour?.name,
+      match.ground?.name,
+    ]
+      .filter(Boolean)
+      .join(' ')
+  );
+}
+
+const filteredMatches = computed(() => {
+  const term = normalizeSearchText(matchSearch.value);
+  const competitionTypeId = String(selectedCompetitionTypeId.value || '');
+  return matches.value.filter((match) => {
+    if (competitionTypeId) {
+      const matchCompetitionTypeId = String(
+        match?.tournament?.competition_type?.id || ''
+      );
+      if (
+        !matchCompetitionTypeId ||
+        matchCompetitionTypeId !== competitionTypeId
+      )
+        return false;
+    }
+    if (!term) return true;
+    return buildMatchSearchIndex(match).includes(term);
+  });
+});
+
+const hasMatches = computed(() => filteredMatches.value.length > 0);
+
 const groupedMatches = computed(() => {
-  const list = [...matches.value];
+  const list = [...filteredMatches.value];
   list.sort((a, b) => {
     const arenaA = (a.ground?.name || 'Без арены').trim();
     const arenaB = (b.ground?.name || 'Без арены').trim();
@@ -229,6 +283,11 @@ const groupedMatches = computed(() => {
   });
   return grouped;
 });
+
+function resetMatchFilters() {
+  matchSearch.value = '';
+  selectedCompetitionTypeId.value = '';
+}
 
 const dayPublishState = computed(() => {
   if (!canAssignGroup.value) {
@@ -957,6 +1016,15 @@ async function loadGroups() {
   }
 }
 
+async function loadCompetitionTypes() {
+  try {
+    const data = await apiFetch('/tournaments/settings-options');
+    competitionTypeOptions.value = data.competition_types || [];
+  } catch (_) {
+    competitionTypeOptions.value = [];
+  }
+}
+
 async function loadMatches() {
   loadingMatches.value = true;
   error.value = '';
@@ -1031,6 +1099,7 @@ watch(
 
 onMounted(() => {
   loadGroups();
+  loadCompetitionTypes();
   loadMatches();
   loadReferees();
 });
@@ -1077,9 +1146,56 @@ onMounted(() => {
               </div>
             </div>
           </div>
+          <div class="row g-3 align-items-end mt-1">
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Поиск по матчу</label>
+              <div class="input-group">
+                <span class="input-group-text" aria-hidden="true">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  v-model="matchSearch"
+                  type="search"
+                  class="form-control"
+                  placeholder="Команды, турнир, этап, группа, арена, номер матча"
+                  aria-label="Поиск по матчу"
+                />
+              </div>
+            </div>
+            <div class="col-12 col-lg-4">
+              <label class="form-label">Тип соревнований</label>
+              <select
+                v-model="selectedCompetitionTypeId"
+                class="form-select"
+                aria-label="Фильтр по типу соревнований"
+              >
+                <option value="">Все типы</option>
+                <option
+                  v-for="type in competitionTypeOptions"
+                  :key="type.id"
+                  :value="type.id"
+                >
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-12 col-lg-2 d-grid">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="!hasActiveMatchFilters"
+                @click="resetMatchFilters"
+              >
+                Сбросить фильтры
+              </button>
+            </div>
+          </div>
           <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
             <span class="badge bg-light text-dark">
-              Матчей: {{ matches.length }}
+              Матчей: {{ filteredMatches.length }}
+              <template v-if="hasActiveMatchFilters">
+                из {{ matches.length }}
+              </template>
             </span>
             <span
               v-if="canAssignGroup"
@@ -1135,8 +1251,22 @@ onMounted(() => {
         <div class="spinner-border" role="status"></div>
       </div>
 
-      <div v-else-if="!hasMatches" class="alert alert-light" role="alert">
+      <div v-else-if="!hasAnyMatches" class="alert alert-light" role="alert">
         На выбранную дату нет матчей.
+      </div>
+      <div
+        v-else-if="hasActiveMatchFilters && !hasMatches"
+        class="alert alert-light d-flex flex-wrap justify-content-between align-items-center gap-2"
+        role="alert"
+      >
+        <span>По заданным фильтрам матчи не найдены.</span>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          @click="resetMatchFilters"
+        >
+          Сбросить фильтры
+        </button>
       </div>
 
       <div
@@ -1152,7 +1282,7 @@ onMounted(() => {
         class="alert alert-secondary"
         role="alert"
       >
-        Для выбранных групп на эту дату нет настроенных ролей.
+        Для выбранных групп и фильтров нет настроенных ролей.
       </div>
 
       <div v-else class="assignments-layout">

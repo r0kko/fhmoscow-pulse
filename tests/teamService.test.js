@@ -58,7 +58,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   UserTeam: { findOne: userTeamFindOneMock },
   UserClub: { findOne: userClubFindOneMock },
   SportSchoolPosition: {},
-  Club: { findAll: jest.fn().mockResolvedValue([]), findByPk: clubFindByPkMock },
+  Club: {
+    findAll: jest.fn().mockResolvedValue([]),
+    findByPk: clubFindByPkMock,
+  },
 }));
 
 jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({

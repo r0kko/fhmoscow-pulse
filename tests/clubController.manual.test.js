@@ -29,7 +29,8 @@ jest.unstable_mockModule('../src/mappers/clubMapper.js', () => ({
   default: { toPublic: (x) => x },
 }));
 
-const { default: controller } = await import('../src/controllers/clubController.js');
+const { default: controller } =
+  await import('../src/controllers/clubController.js');
 
 function resMock() {
   return { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -49,7 +50,10 @@ test('listTypes returns mapped dictionary', async () => {
 test('create delegates to service with actor', async () => {
   createManualMock.mockResolvedValue({ id: 'club-1' });
   const res = resMock();
-  await controller.create({ body: { name: 'Клуб' }, user: { id: 'admin' } }, res);
+  await controller.create(
+    { body: { name: 'Клуб' }, user: { id: 'admin' } },
+    res
+  );
   expect(createManualMock).toHaveBeenCalledWith({ name: 'Клуб' }, 'admin');
   expect(res.status).toHaveBeenCalledWith(201);
   expect(res.json).toHaveBeenCalledWith({ club: { id: 'club-1' } });
@@ -59,7 +63,11 @@ test('update delegates to service with id/body/actor', async () => {
   updateClubMock.mockResolvedValue({ id: 'club-9' });
   const res = resMock();
   await controller.update(
-    { params: { id: 'club-9' }, body: { club_type_id: 'type-1' }, user: { id: 'u1' } },
+    {
+      params: { id: 'club-9' },
+      body: { club_type_id: 'type-1' },
+      user: { id: 'u1' },
+    },
     res
   );
   expect(updateClubMock).toHaveBeenCalledWith(

@@ -568,7 +568,11 @@ export default {
         { returning: false }
       );
       return TournamentTeam.findByPk(existing.id, {
-        include: [{ model: Tournament }, { model: TournamentGroup }, { model: Team }],
+        include: [
+          { model: Tournament },
+          { model: TournamentGroup },
+          { model: Team },
+        ],
       });
     }
 
@@ -581,7 +585,11 @@ export default {
       updated_by: actorId,
     });
     return TournamentTeam.findByPk(created.id, {
-      include: [{ model: Tournament }, { model: TournamentGroup }, { model: Team }],
+      include: [
+        { model: Tournament },
+        { model: TournamentGroup },
+        { model: Team },
+      ],
     });
   },
   async createMatchSchedule(data = {}, actorId = null) {

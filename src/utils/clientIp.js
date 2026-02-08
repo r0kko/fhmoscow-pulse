@@ -11,7 +11,9 @@ function readHeader(req, headerName) {
 }
 
 function normalizeIp(raw) {
-  const input = String(raw || '').split(',')[0].trim();
+  const input = String(raw || '')
+    .split(',')[0]
+    .trim();
   if (!input) return '';
 
   // [IPv6]:port -> IPv6
@@ -43,7 +45,11 @@ function headerIp(req, name) {
 }
 
 export function getClientIp(req) {
-  const source = String(process.env.RATE_LIMIT_IP_SOURCE || 'req_ip')
+  const envSource = process.env.RATE_LIMIT_IP_SOURCE;
+  const isProd =
+    String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+  const defaultSource = isProd ? 'auto' : 'req_ip';
+  const source = String(envSource || defaultSource)
     .trim()
     .toLowerCase();
 

@@ -57,7 +57,9 @@ test('start sends code when user exists', async () => {
   const res = createRes();
   await controller.start(req, res);
   expect(sendCodeMock).toHaveBeenCalledWith(user);
-  expect(res.json).toHaveBeenCalledWith({ message: 'if_account_exists_code_sent' });
+  expect(res.json).toHaveBeenCalledWith({
+    message: 'if_account_exists_code_sent',
+  });
 });
 
 test('start returns neutral response when user missing', async () => {
@@ -66,7 +68,9 @@ test('start returns neutral response when user missing', async () => {
   const res = createRes();
   await controller.start(req, res);
   expect(res.status).not.toHaveBeenCalled();
-  expect(res.json).toHaveBeenCalledWith({ message: 'if_account_exists_code_sent' });
+  expect(res.json).toHaveBeenCalledWith({
+    message: 'if_account_exists_code_sent',
+  });
 });
 
 test('start returns 400 on validation errors', async () => {
@@ -94,7 +98,11 @@ test('finish resets password when code valid', async () => {
 test('finish returns invalid_code for unknown user (anti-enumeration)', async () => {
   findUserMock.mockResolvedValue(null);
   const req = {
-    body: { email: 'nobody@example.com', code: '123456', password: 'Passw0rd1' },
+    body: {
+      email: 'nobody@example.com',
+      code: '123456',
+      password: 'Passw0rd1',
+    },
   };
   const res = createRes();
   await controller.finish(req, res);

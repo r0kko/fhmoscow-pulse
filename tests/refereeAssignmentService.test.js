@@ -76,6 +76,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Club: {},
   Ground: {},
   Tournament: {},
+  CompetitionType: {},
   Stage: {},
   TournamentGroup: {},
   TournamentTeam: { findAll: tournamentTeamFindAllMock },
