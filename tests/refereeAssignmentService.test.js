@@ -654,6 +654,60 @@ test('listAssignmentsForUser returns published assignments grouped by match', as
   expect(match.assignments[0]).toEqual(
     expect.objectContaining({ status: 'PUBLISHED' })
   );
+  expect(result.day_summary).toEqual({
+    total: 1,
+    published: 1,
+    confirmed: 0,
+    needs_confirmation: true,
+  });
+});
+
+test('listAssignmentsForUser includes mixed day summary for confirmed and published', async () => {
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('PUBLISHED'),
+        MatchRefereeStatus: publishedStatus,
+        RefereeRole: makeRole(makeRoleGroup()),
+        Match: makeMatch(),
+      },
+      {
+        ...makeAssignment('CONFIRMED'),
+        id: 'a2',
+        match_id: 'm2',
+        MatchRefereeStatus: confirmedStatus,
+        RefereeRole: makeRole(makeRoleGroup()),
+        Match: makeMatch({
+          id: 'm2',
+          date_start: new Date(`${TEST_DATE}T12:00:00Z`),
+        }),
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('PUBLISHED'),
+        MatchRefereeStatus: publishedStatus,
+        RefereeRole: makeRole(makeRoleGroup()),
+        User: makeAssignment('PUBLISHED').User,
+      },
+      {
+        ...makeAssignment('CONFIRMED'),
+        id: 'a2',
+        match_id: 'm2',
+        MatchRefereeStatus: confirmedStatus,
+        RefereeRole: makeRole(makeRoleGroup()),
+        User: makeAssignment('PUBLISHED').User,
+      },
+    ]);
+
+  const result = await service.listAssignmentsForUser('u1', TEST_DATE);
+
+  expect(result.day_summary).toEqual({
+    total: 2,
+    published: 1,
+    confirmed: 1,
+    needs_confirmation: true,
+  });
 });
 
 test('listAssignmentDatesForUser groups assignments by day', async () => {
@@ -681,6 +735,22 @@ test('listAssignmentDatesForUser groups assignments by day', async () => {
   ]);
 });
 
+test('listAssignmentsForUser keeps past day hidden in self-flow', async () => {
+  const result = await service.listAssignmentsForUser('u1', '2000-01-01');
+
+  expect(matchRefereeFindAllMock).not.toHaveBeenCalled();
+  expect(result).toEqual({
+    date: '2000-01-01',
+    matches: [],
+    day_summary: {
+      total: 0,
+      published: 0,
+      confirmed: 0,
+      needs_confirmation: false,
+    },
+  });
+});
+
 test('confirmAssignmentsForDate updates published assignments for day', async () => {
   matchRefereeFindAllMock.mockResolvedValue([
     { match_id: 'm1', status_id: publishedStatus.id, Match: { id: 'm1' } },
@@ -700,12 +770,29 @@ test('confirmAssignmentsForDate updates published assignments for day', async ()
   expect(result.confirmed_matches).toEqual(['m1']);
 });
 
-test('confirmAssignmentsForDate fails without published assignments', async () => {
+test('confirmAssignmentsForDate fails when day has no assignments at all', async () => {
   matchRefereeFindAllMock.mockResolvedValue([]);
 
   await expect(
     service.confirmAssignmentsForDate(TEST_DATE, 'u1')
   ).rejects.toMatchObject({ code: 'referee_assignments_missing' });
+});
+
+test('confirmAssignmentsForDate is idempotent for already confirmed day', async () => {
+  matchRefereeFindAllMock.mockResolvedValue([
+    { match_id: 'm1', status_id: confirmedStatus.id, Match: { id: 'm1' } },
+  ]);
+
+  const result = await service.confirmAssignmentsForDate(TEST_DATE, 'u1');
+
+  expect(matchRefereeUpdateMock).not.toHaveBeenCalled();
+  expect(result).toEqual(
+    expect.objectContaining({
+      confirmed_count: 0,
+      already_confirmed: true,
+      confirmed_matches: [],
+    })
+  );
 });
 
 test('confirmAssignmentsForMatch updates published assignments', async () => {

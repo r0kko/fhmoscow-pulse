@@ -5,32 +5,69 @@ import matchAdminService, {
 } from '../services/matchAdminService.js';
 import { sendError } from '../utils/api.js';
 
+const MAX_QUERY_SEARCH_LEN = 80;
+const MAX_QUERY_LIST_SIZE = 30;
+const MAX_QUERY_VALUE_LEN = 120;
+
+function pickQueryValue(value) {
+  if (Array.isArray(value)) return value.at(-1);
+  return value;
+}
+
+function normalizeString(value, maxLength = MAX_QUERY_VALUE_LEN) {
+  return String(value ?? '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeArrayParam(value) {
+  const source = Array.isArray(value) ? value : value != null ? [value] : [];
+  const result = [];
+  const seen = new Set();
+  for (const raw of source) {
+    const normalized = normalizeString(raw);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+    if (result.length >= MAX_QUERY_LIST_SIZE) break;
+  }
+  return result;
+}
+
 async function calendar(req, res, next) {
   try {
-    const q = (req.query.q || '').toString();
-    const arr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
-    const homeClubs = arr(req.query.home_club).map((x) => String(x));
-    const awayClubs = arr(req.query.away_club).map((x) => String(x));
-    const tournaments = arr(req.query.tournament).map((x) => String(x));
-    const groups = arr(req.query.group).map((x) => String(x));
-    const stadiums = arr(req.query.stadium).map((x) => String(x));
+    const q = normalizeString(
+      pickQueryValue(req.query.q),
+      MAX_QUERY_SEARCH_LEN
+    );
+    const homeClubs = normalizeArrayParam(req.query.home_club);
+    const awayClubs = normalizeArrayParam(req.query.away_club);
+    const tournaments = normalizeArrayParam(req.query.tournament);
+    const groups = normalizeArrayParam(req.query.group);
+    const stadiums = normalizeArrayParam(req.query.stadium);
     const gameDays = ['1', 'true', 'yes'].includes(
-      String(req.query.game_days || '').toLowerCase()
+      normalizeString(pickQueryValue(req.query.game_days), 8).toLowerCase()
     );
     const anchorCandidate =
-      req.query.anchor || req.query.start || req.query.start_date || null;
+      pickQueryValue(req.query.anchor) ||
+      pickQueryValue(req.query.start) ||
+      pickQueryValue(req.query.start_date) ||
+      null;
     let anchorDate = null;
     if (anchorCandidate) {
       const parsed = new Date(anchorCandidate);
       if (!Number.isNaN(parsed.getTime())) anchorDate = parsed;
     }
-    const directionRaw = String(req.query.direction || '').toLowerCase();
+    const directionRaw = normalizeString(
+      pickQueryValue(req.query.direction),
+      16
+    ).toLowerCase();
     const direction = ['backward', 'both', 'forward'].includes(directionRaw)
       ? directionRaw
       : 'forward';
     if (gameDays) {
-      const countRaw = parseInt(req.query.count, 10);
-      const horizonRaw = parseInt(req.query.horizon, 10);
+      const countRaw = parseInt(pickQueryValue(req.query.count), 10);
+      const horizonRaw = parseInt(pickQueryValue(req.query.horizon), 10);
       const count = Number.isFinite(countRaw)
         ? Math.min(Math.max(countRaw, 1), 31)
         : 10;
@@ -59,7 +96,7 @@ async function calendar(req, res, next) {
         anchor: anchorDate ? anchorDate.toISOString() : null,
       });
     }
-    const raw = parseInt(req.query.days, 10);
+    const raw = parseInt(pickQueryValue(req.query.days), 10);
     const days = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), 31) : 10;
     const { matches, range } = await matchAdminService.listNextDays({
       days,

@@ -190,8 +190,8 @@ defineExpose({ show, hide });
               <span class="modal-filter-title">Диапазон</span>
               <p class="text-muted small mb-1">
                 Календарь всегда показывает
-                {{ props.formatDaysLabel(props.defaultDayWindow) }} матчей от
-                выбранной опорной даты.
+                {{ props.formatDaysLabel(props.defaultDayWindow) }}
+                игровых дней от выбранной опорной даты.
               </p>
             </div>
           </div>
@@ -228,19 +228,19 @@ defineExpose({ show, hide });
                   </button>
                 </div>
                 <div class="mt-2 d-flex flex-wrap gap-1">
-                  <span
+                  <button
                     v-for="value in draft.homeClubs"
                     :key="`h-${value}`"
-                    class="badge bg-light text-muted border"
-                    role="button"
-                    tabindex="0"
+                    type="button"
+                    class="badge bg-light text-muted border selected-chip"
                     :aria-label="`Удалить фильтр Хозяин: ${value}`"
                     @click="emit('removeHome', value)"
                     @keydown.enter.prevent="emit('removeHome', value)"
+                    @keydown.space.prevent="emit('removeHome', value)"
                   >
                     {{ value }}
                     <i class="bi bi-x-lg ms-1" aria-hidden="true"></i>
-                  </span>
+                  </button>
                 </div>
               </div>
               <div class="col-12 col-md-6">
@@ -272,19 +272,19 @@ defineExpose({ show, hide });
                   </button>
                 </div>
                 <div class="mt-2 d-flex flex-wrap gap-1">
-                  <span
+                  <button
                     v-for="value in draft.awayClubs"
                     :key="`a-${value}`"
-                    class="badge bg-light text-muted border"
-                    role="button"
-                    tabindex="0"
+                    type="button"
+                    class="badge bg-light text-muted border selected-chip"
                     :aria-label="`Удалить фильтр Гость: ${value}`"
                     @click="emit('removeAway', value)"
                     @keydown.enter.prevent="emit('removeAway', value)"
+                    @keydown.space.prevent="emit('removeAway', value)"
                   >
                     {{ value }}
                     <i class="bi bi-x-lg ms-1" aria-hidden="true"></i>
-                  </span>
+                  </button>
                 </div>
               </div>
               <div class="col-12 col-md-4">
@@ -316,19 +316,19 @@ defineExpose({ show, hide });
                   </button>
                 </div>
                 <div class="mt-2 d-flex flex-wrap gap-1">
-                  <span
+                  <button
                     v-for="value in draft.tournaments"
                     :key="`t-${value}`"
-                    class="badge bg-light text-muted border"
-                    role="button"
-                    tabindex="0"
+                    type="button"
+                    class="badge bg-light text-muted border selected-chip"
                     :aria-label="`Удалить фильтр Соревнование: ${value}`"
                     @click="emit('removeTournament', value)"
                     @keydown.enter.prevent="emit('removeTournament', value)"
+                    @keydown.space.prevent="emit('removeTournament', value)"
                   >
                     {{ value }}
                     <i class="bi bi-x-lg ms-1" aria-hidden="true"></i>
-                  </span>
+                  </button>
                 </div>
               </div>
               <div class="col-12 col-md-4">
@@ -360,19 +360,19 @@ defineExpose({ show, hide });
                   </button>
                 </div>
                 <div class="mt-2 d-flex flex-wrap gap-1">
-                  <span
+                  <button
                     v-for="value in draft.groups"
                     :key="`g-${value}`"
-                    class="badge bg-light text-muted border"
-                    role="button"
-                    tabindex="0"
+                    type="button"
+                    class="badge bg-light text-muted border selected-chip"
                     :aria-label="`Удалить фильтр Группа: ${value}`"
                     @click="emit('removeGroup', value)"
                     @keydown.enter.prevent="emit('removeGroup', value)"
+                    @keydown.space.prevent="emit('removeGroup', value)"
                   >
                     {{ value }}
                     <i class="bi bi-x-lg ms-1" aria-hidden="true"></i>
-                  </span>
+                  </button>
                 </div>
               </div>
               <div class="col-12 col-md-4">
@@ -404,19 +404,19 @@ defineExpose({ show, hide });
                   </button>
                 </div>
                 <div class="mt-2 d-flex flex-wrap gap-1">
-                  <span
+                  <button
                     v-for="value in draft.stadiums"
                     :key="`s-${value}`"
-                    class="badge bg-light text-muted border"
-                    role="button"
-                    tabindex="0"
+                    type="button"
+                    class="badge bg-light text-muted border selected-chip"
                     :aria-label="`Удалить фильтр Стадион: ${value}`"
                     @click="emit('removeStadium', value)"
                     @keydown.enter.prevent="emit('removeStadium', value)"
+                    @keydown.space.prevent="emit('removeStadium', value)"
                   >
                     {{ value }}
                     <i class="bi bi-x-lg ms-1" aria-hidden="true"></i>
-                  </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -520,6 +520,10 @@ defineExpose({ show, hide });
 
 .anchor-row .btn-group {
   flex-wrap: nowrap;
+}
+
+.selected-chip {
+  cursor: pointer;
 }
 
 @media (max-width: 767.98px) {

@@ -38,6 +38,61 @@ function normalizeDirection(raw) {
   return 'forward';
 }
 
+function arrify(v) {
+  return Array.isArray(v)
+    ? v.map((x) => String(x).trim()).filter(Boolean)
+    : String(v || '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
+}
+
+function buildCalendarAndFilters({
+  q = '',
+  homeClubs = [],
+  awayClubs = [],
+  tournaments = [],
+  groups = [],
+  stadiums = [],
+  homeClub = '',
+  awayClub = '',
+  tournament = '',
+  groupName = '',
+  stadium = '',
+}) {
+  const search = (q || '').trim();
+  const ands = [];
+  const homeList = [...arrify(homeClubs), ...arrify(homeClub)];
+  const awayList = [...arrify(awayClubs), ...arrify(awayClub)];
+  const tournList = [...arrify(tournaments), ...arrify(tournament)];
+  const groupList = [...arrify(groups), ...arrify(groupName)];
+  const stadList = [...arrify(stadiums), ...arrify(stadium)];
+  if (search) {
+    ands.push({
+      [Op.or]: [
+        { '$HomeTeam.name$': { [Op.iLike]: `%${search}%` } },
+        { '$AwayTeam.name$': { [Op.iLike]: `%${search}%` } },
+        { '$Tournament.name$': { [Op.iLike]: `%${search}%` } },
+        { '$TournamentGroup.name$': { [Op.iLike]: `%${search}%` } },
+        { '$Tour.name$': { [Op.iLike]: `%${search}%` } },
+        { '$Ground.name$': { [Op.iLike]: `%${search}%` } },
+        { '$HomeTeam.Club.name$': { [Op.iLike]: `%${search}%` } },
+        { '$AwayTeam.Club.name$': { [Op.iLike]: `%${search}%` } },
+      ],
+    });
+  }
+  if (homeList.length)
+    ands.push({ '$HomeTeam.Club.name$': { [Op.in]: homeList } });
+  if (awayList.length)
+    ands.push({ '$AwayTeam.Club.name$': { [Op.in]: awayList } });
+  if (tournList.length)
+    ands.push({ '$Tournament.name$': { [Op.in]: tournList } });
+  if (groupList.length)
+    ands.push({ '$TournamentGroup.name$': { [Op.in]: groupList } });
+  if (stadList.length) ands.push({ '$Ground.name$': { [Op.in]: stadList } });
+  return ands;
+}
+
 /**
  * List matches for the next N days (Moscow time), enriched with agreement flags.
  * Admin scope: returns all matches in the range.
@@ -88,6 +143,9 @@ export async function listNextDays({
       'tournament_group_id',
       'tour_id',
       'scheduled_date',
+      'score_team1',
+      'score_team2',
+      'technical_winner',
     ],
     where,
     include: [
@@ -117,43 +175,19 @@ export async function listNextDays({
     distinct: true,
   };
 
-  const search = (q || '').trim();
-  const ands = [];
-  const arrify = (v) =>
-    Array.isArray(v)
-      ? v.map((x) => String(x).trim()).filter(Boolean)
-      : String(v || '')
-          .split(',')
-          .map((x) => x.trim())
-          .filter(Boolean);
-  const homeList = [...arrify(homeClubs), ...arrify(homeClub)];
-  const awayList = [...arrify(awayClubs), ...arrify(awayClub)];
-  const tournList = [...arrify(tournaments), ...arrify(tournament)];
-  const groupList = [...arrify(groups), ...arrify(groupName)];
-  const stadList = [...arrify(stadiums), ...arrify(stadium)];
-  if (search) {
-    ands.push({
-      [Op.or]: [
-        { '$HomeTeam.name$': { [Op.like]: `%${search}%` } },
-        { '$AwayTeam.name$': { [Op.like]: `%${search}%` } },
-        { '$Tournament.name$': { [Op.like]: `%${search}%` } },
-        { '$TournamentGroup.name$': { [Op.like]: `%${search}%` } },
-        { '$Tour.name$': { [Op.like]: `%${search}%` } },
-        { '$Ground.name$': { [Op.like]: `%${search}%` } },
-        { '$HomeTeam.Club.name$': { [Op.like]: `%${search}%` } },
-        { '$AwayTeam.Club.name$': { [Op.like]: `%${search}%` } },
-      ],
-    });
-  }
-  if (homeList.length)
-    ands.push({ '$HomeTeam.Club.name$': { [Op.in]: homeList } });
-  if (awayList.length)
-    ands.push({ '$AwayTeam.Club.name$': { [Op.in]: awayList } });
-  if (tournList.length)
-    ands.push({ '$Tournament.name$': { [Op.in]: tournList } });
-  if (groupList.length)
-    ands.push({ '$TournamentGroup.name$': { [Op.in]: groupList } });
-  if (stadList.length) ands.push({ '$Ground.name$': { [Op.in]: stadList } });
+  const ands = buildCalendarAndFilters({
+    q,
+    homeClubs,
+    awayClubs,
+    tournaments,
+    groups,
+    stadiums,
+    homeClub,
+    awayClub,
+    tournament,
+    groupName,
+    stadium,
+  });
   if (ands.length) findOptions.where[Op.and] = ands;
 
   const rowsRaw = await Match.findAll(findOptions);
@@ -218,6 +252,9 @@ export async function listNextDays({
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
       scheduled_date: m.scheduled_date || null,
+      score_team1: m.score_team1 ?? null,
+      score_team2: m.score_team2 ?? null,
+      technical_winner: m.technical_winner || null,
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,
@@ -288,88 +325,51 @@ export async function listNextGameDays({
     },
   };
 
-  const findOptions = {
-    attributes: [
-      'id',
-      'date_start',
-      'team1_id',
-      'team2_id',
-      'ground_id',
-      'tournament_id',
-      'tournament_group_id',
-      'tour_id',
-    ],
+  const lightFindOptions = {
+    attributes: ['id', 'date_start'],
     where,
     include: [
       {
         model: Team,
         as: 'HomeTeam',
-        attributes: ['name'],
-        include: [{ model: Club, attributes: ['name'] }],
+        attributes: [],
+        include: [{ model: Club, attributes: [] }],
       },
       {
         model: Team,
         as: 'AwayTeam',
-        attributes: ['name'],
-        include: [{ model: Club, attributes: ['name'] }],
+        attributes: [],
+        include: [{ model: Club, attributes: [] }],
       },
-      { model: Ground, attributes: ['name'] },
-      {
-        model: Tournament,
-        attributes: ['name'],
-        include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
-      },
-      { model: TournamentGroup, attributes: ['name'] },
-      { model: Tour, attributes: ['name'] },
-      { model: GameStatus, attributes: ['name', 'alias'] },
+      { model: Ground, attributes: [] },
+      { model: Tournament, attributes: [] },
+      { model: TournamentGroup, attributes: [] },
+      { model: Tour, attributes: [] },
     ],
     order: [['date_start', 'ASC']],
     distinct: true,
+    subQuery: false,
   };
 
-  const search = (q || '').trim();
-  const ands = [];
-  const arrify = (v) =>
-    Array.isArray(v)
-      ? v.map((x) => String(x).trim()).filter(Boolean)
-      : String(v || '')
-          .split(',')
-          .map((x) => x.trim())
-          .filter(Boolean);
-  const homeList = [...arrify(homeClubs), ...arrify(homeClub)];
-  const awayList = [...arrify(awayClubs), ...arrify(awayClub)];
-  const tournList = [...arrify(tournaments), ...arrify(tournament)];
-  const groupList = [...arrify(groups), ...arrify(groupName)];
-  const stadList = [...arrify(stadiums), ...arrify(stadium)];
-  if (search) {
-    ands.push({
-      [Op.or]: [
-        { '$HomeTeam.name$': { [Op.like]: `%${search}%` } },
-        { '$AwayTeam.name$': { [Op.like]: `%${search}%` } },
-        { '$Tournament.name$': { [Op.like]: `%${search}%` } },
-        { '$TournamentGroup.name$': { [Op.like]: `%${search}%` } },
-        { '$Tour.name$': { [Op.like]: `%${search}%` } },
-        { '$Ground.name$': { [Op.like]: `%${search}%` } },
-        { '$HomeTeam.Club.name$': { [Op.like]: `%${search}%` } },
-        { '$AwayTeam.Club.name$': { [Op.like]: `%${search}%` } },
-      ],
-    });
-  }
-  if (homeList.length)
-    ands.push({ '$HomeTeam.Club.name$': { [Op.in]: homeList } });
-  if (awayList.length)
-    ands.push({ '$AwayTeam.Club.name$': { [Op.in]: awayList } });
-  if (tournList.length)
-    ands.push({ '$Tournament.name$': { [Op.in]: tournList } });
-  if (groupList.length)
-    ands.push({ '$TournamentGroup.name$': { [Op.in]: groupList } });
-  if (stadList.length) ands.push({ '$Ground.name$': { [Op.in]: stadList } });
-  if (ands.length) findOptions.where[Op.and] = ands;
+  const ands = buildCalendarAndFilters({
+    q,
+    homeClubs,
+    awayClubs,
+    tournaments,
+    groups,
+    stadiums,
+    homeClub,
+    awayClub,
+    tournament,
+    groupName,
+    stadium,
+  });
+  if (ands.length) lightFindOptions.where[Op.and] = ands;
 
-  const rowsRaw = await Match.findAll(findOptions);
+  const rowsLight = await Match.findAll(lightFindOptions);
 
   const byDayKey = new Map();
-  for (const m of rowsRaw) {
+  for (const m of rowsLight) {
     const msk = utcToMoscow(m.date_start) || new Date(m.date_start);
     const key = Date.UTC(
       msk.getUTCFullYear(),
@@ -377,7 +377,7 @@ export async function listNextGameDays({
       msk.getUTCDate()
     );
     if (!byDayKey.has(key)) byDayKey.set(key, []);
-    byDayKey.get(key).push(m);
+    byDayKey.get(key).push(m.id);
   }
 
   const allKeysAsc = [...byDayKey.keys()].sort((a, b) => a - b);
@@ -408,14 +408,56 @@ export async function listNextGameDays({
     keys = source.slice(0, desiredCount);
   }
 
-  const selected = keys.flatMap((k) =>
-    (byDayKey.get(k) || []).sort(
-      (a, b) => new Date(a.date_start) - new Date(b.date_start)
-    )
-  );
+  const selectedIds = keys.flatMap((k) => byDayKey.get(k) || []);
+  const matchIds = [...new Set(selectedIds)];
+  let selected = [];
+  if (matchIds.length) {
+    const detailedRows = await Match.findAll({
+      attributes: [
+        'id',
+        'date_start',
+        'team1_id',
+        'team2_id',
+        'ground_id',
+        'tournament_id',
+        'tournament_group_id',
+        'tour_id',
+        'score_team1',
+        'score_team2',
+        'technical_winner',
+      ],
+      where: { id: { [Op.in]: matchIds } },
+      include: [
+        {
+          model: Team,
+          as: 'HomeTeam',
+          attributes: ['name'],
+          include: [{ model: Club, attributes: ['name'] }],
+        },
+        {
+          model: Team,
+          as: 'AwayTeam',
+          attributes: ['name'],
+          include: [{ model: Club, attributes: ['name'] }],
+        },
+        { model: Ground, attributes: ['name'] },
+        {
+          model: Tournament,
+          attributes: ['name'],
+          include: [{ model: ScheduleManagementType, attributes: ['alias'] }],
+        },
+        { model: TournamentGroup, attributes: ['name'] },
+        { model: Tour, attributes: ['name'] },
+        { model: GameStatus, attributes: ['name', 'alias'] },
+      ],
+      order: [['date_start', 'ASC']],
+      distinct: true,
+    });
+    const byId = new Map(detailedRows.map((row) => [row.id, row]));
+    selected = matchIds.map((id) => byId.get(id)).filter(Boolean);
+  }
 
   // Enrich with agreement flags for selected matches only
-  const matchIds = selected.map((m) => m.id);
   const flagsByMatch = new Map();
   if (matchIds.length) {
     const agrs = await MatchAgreement.findAll({
@@ -473,6 +515,9 @@ export async function listNextGameDays({
       tournament: m.Tournament?.name || null,
       group: m.TournamentGroup?.name || null,
       tour: m.Tour?.name || null,
+      score_team1: m.score_team1 ?? null,
+      score_team2: m.score_team2 ?? null,
+      technical_winner: m.technical_winner || null,
       status: m.GameStatus
         ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
         : null,

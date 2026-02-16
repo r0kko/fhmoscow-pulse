@@ -1,6 +1,16 @@
 declare module '@playwright/test' {
+  interface Route {
+    fulfill(options: {
+      status?: number;
+      contentType?: string;
+      body?: string;
+    }): Promise<void>;
+  }
+
   interface Locator {
     toBeVisible(): Promise<void>;
+    toHaveCount(count: number): Promise<void>;
+    click(): Promise<void>;
   }
 
   interface RoleOptions {
@@ -8,9 +18,18 @@ declare module '@playwright/test' {
     level?: number;
   }
 
+  interface TextOptions {
+    exact?: boolean;
+  }
+
   interface Page {
     goto(url: string, options?: Record<string, unknown>): Promise<void>;
+    route(
+      url: string | RegExp,
+      handler: (route: Route) => Promise<void> | void
+    ): Promise<void>;
     getByRole(role: string, options?: RoleOptions): Locator;
+    getByText(text: string | RegExp, options?: TextOptions): Locator;
   }
 
   interface TestArgs {
@@ -22,5 +41,6 @@ declare module '@playwright/test' {
   export const test: (name: string, fn: TestFn) => void;
   export const expect: (locator: Locator) => {
     toBeVisible(): Promise<void>;
+    toHaveCount(count: number): Promise<void>;
   };
 }

@@ -870,7 +870,16 @@ export async function listAssignmentsForUser(userId, dateKey) {
   if (!bounds) throw new ServiceError('invalid_date', 400);
   const todayKey = moscowTodayKey();
   if (todayKey && normalized < todayKey) {
-    return { date: normalized, matches: [] };
+    return {
+      date: normalized,
+      matches: [],
+      day_summary: {
+        total: 0,
+        published: 0,
+        confirmed: 0,
+        needs_confirmation: false,
+      },
+    };
   }
   const statusInfo = await resolveAssignmentStatuses();
   const statusIds = [statusInfo.published.id];
@@ -931,7 +940,16 @@ export async function listAssignmentsForUser(userId, dateKey) {
   });
 
   if (!userAssignments.length) {
-    return { date: normalized, matches: [] };
+    return {
+      date: normalized,
+      matches: [],
+      day_summary: {
+        total: 0,
+        published: 0,
+        confirmed: 0,
+        needs_confirmation: false,
+      },
+    };
   }
 
   const matchesById = new Map();
@@ -1056,7 +1074,25 @@ export async function listAssignmentsForUser(userId, dateKey) {
     return tA - tB;
   });
 
-  return { date: normalized, matches };
+  const publishedMatches = matches.filter((match) =>
+    (match.assignments || []).some(
+      (assignment) =>
+        assignment.user?.id === userId && assignment.status === PUBLISHED_STATUS_ALIAS
+    )
+  ).length;
+  const totalMatches = matches.length;
+  const confirmedMatches = Math.max(0, totalMatches - publishedMatches);
+
+  return {
+    date: normalized,
+    matches,
+    day_summary: {
+      total: totalMatches,
+      published: publishedMatches,
+      confirmed: confirmedMatches,
+      needs_confirmation: publishedMatches > 0,
+    },
+  };
 }
 
 export async function getMatchDetailsForUser(matchId, userId) {
@@ -1274,12 +1310,12 @@ export async function confirmAssignmentsForDate(dateKey, userId) {
     throw new ServiceError('referee_statuses_missing', 500);
   }
 
-  const publishedRows = await MatchReferee.findAll({
+  const dayRows = await MatchReferee.findAll({
     where: {
       user_id: userId,
-      status_id: statusInfo.published.id,
+      status_id: { [Op.in]: [statusInfo.published.id, statusInfo.confirmed.id] },
     },
-    attributes: ['match_id'],
+    attributes: ['match_id', 'status_id'],
     include: [
       {
         model: Match,
@@ -1295,12 +1331,25 @@ export async function confirmAssignmentsForDate(dateKey, userId) {
     ],
   });
 
+  if (!dayRows.length) {
+    throw new ServiceError('referee_assignments_missing', 400);
+  }
+
   const matchIds = Array.from(
-    new Set(publishedRows.map((row) => row.match_id))
+    new Set(
+      dayRows
+        .filter((row) => row.status_id === statusInfo.published.id)
+        .map((row) => row.match_id)
+    )
   );
 
   if (!matchIds.length) {
-    throw new ServiceError('referee_assignments_missing', 400);
+    return {
+      date: normalized,
+      confirmed_matches: [],
+      confirmed_count: 0,
+      already_confirmed: true,
+    };
   }
 
   await MatchReferee.update(

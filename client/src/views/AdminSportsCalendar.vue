@@ -10,13 +10,13 @@ import {
   type Ref,
 } from 'vue';
 import {
-  RouterLink,
   useRoute,
   useRouter,
   type LocationQuery,
   type LocationQueryValue,
 } from 'vue-router';
 import { apiFetch } from '../api';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import TabSelector from '../components/TabSelector.vue';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
 import { MOSCOW_TZ, toDayKey } from '../utils/time';
@@ -37,7 +37,8 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_DAY_WINDOW = 14;
-const SEARCH_DEBOUNCE_MS = 1300;
+const DEFAULT_HORIZON_DAYS = DEFAULT_DAY_WINDOW * 4;
+const SEARCH_DEBOUNCE_MS = 350;
 const SEARCH_PERSIST_GRACE_MS = 1500;
 const pluralRules = new Intl.PluralRules('ru-RU');
 
@@ -90,9 +91,12 @@ const statusOptions = [
   { value: 'accepted', label: 'Согласовано', icon: 'bi-check2-circle' },
 ] as const satisfies ReadonlyArray<StatusOption & { value: StatusFilterScope }>;
 
-type MatchesSearchPredicate = (match: CalendarMatch) => boolean;
+const breadcrumbItems = Object.freeze([
+  { label: 'Администрирование', to: '/admin' },
+  { label: 'Управление спортивной частью', disabled: true },
+  { label: 'Календарь игр' },
+]);
 
-const dayWindow = ref<number>(DEFAULT_DAY_WINDOW);
 const timeScope = ref<TimeScope>('upcoming');
 const statusScope = ref<StatusFilterScope>('all');
 const anchorDate = ref(toMoscowDateInputValue(new Date()));
@@ -103,6 +107,7 @@ const error = ref('');
 const activeDayKey = ref<number | null>(null);
 const pendingDayKey = ref<number | null>(null);
 const search = ref('');
+const searchApplied = ref('');
 
 const selectedHomeClubs = ref<string[]>([]);
 const selectedAwayClubs = ref<string[]>([]);
@@ -126,7 +131,6 @@ const draft = reactive<CalendarFilterDraft>({
   stadiumCand: '',
   statusScope: 'all',
   timeScope: 'upcoming',
-  dayWindow: DEFAULT_DAY_WINDOW,
   anchorDate: toMoscowDateInputValue(new Date()),
 });
 
@@ -161,7 +165,6 @@ const calendarQuerySnapshot = computed<Record<string, string | string[]>>(
 
 interface CalendarPersistedState {
   anchorDate: string;
-  dayWindow: number;
   timeScope: TimeScope;
   statusScope: StatusFilterScope;
   search: string;
@@ -173,11 +176,10 @@ interface CalendarPersistedState {
   activeDayKey: number | null;
 }
 
-const CALENDAR_STATE_VERSION = 1;
+const CALENDAR_STATE_VERSION = 2;
 const CALENDAR_STATE_STORAGE_KEY = `admin-sports-calendar-state-v${CALENDAR_STATE_VERSION}`;
 const QUERY_KEYS = {
   anchor: 'anchor',
-  dayWindow: 'window',
   timeScope: 'time',
   statusScope: 'status',
   search: 'q',
@@ -211,7 +213,6 @@ const filtersSummaryText = computed(() => {
 const directionParam = computed(() =>
   timeScope.value === 'past' ? 'backward' : 'forward'
 );
-const horizonDays = computed(() => Math.max(dayWindow.value * 4, 45));
 const anchorDateIso = computed(() =>
   anchorDate.value ? `${anchorDate.value}T00:00:00Z` : ''
 );
@@ -226,15 +227,6 @@ const scopeOptions = [
 const timeScopeTabs = computed(() =>
   scopeOptions.map((option) => ({ key: option.value, label: option.label }))
 );
-
-const searchMatcher = computed<MatchesSearchPredicate | null>(() =>
-  buildSearchMatcher(search.value)
-);
-const matchesAfterSearch = computed<CalendarMatch[]>(() => {
-  const matcher = searchMatcher.value;
-  const list = matches.value || [];
-  return matcher ? list.filter(matcher) : list;
-});
 
 function isAttentionMatch(match: CalendarMatch): boolean {
   if (!match) return false;
@@ -251,7 +243,7 @@ function isAttentionMatch(match: CalendarMatch): boolean {
 
 const matchesAfterStatus = computed<CalendarMatch[]>(() => {
   const scope = statusScope.value;
-  const base = matchesAfterSearch.value;
+  const base = matches.value || [];
   if (scope === 'all') return base;
   if (scope === 'accepted')
     return base.filter((match) => match.agreement_accepted);
@@ -270,7 +262,7 @@ interface StatusCounters {
 }
 
 const statusCounters = computed<StatusCounters>(() => {
-  const list = matchesAfterSearch.value;
+  const list = matches.value;
   let accepted = 0;
   let pending = 0;
   let attention = 0;
@@ -321,11 +313,10 @@ const dayTabs = computed<DayTab[]>(() => {
     }
   });
   const keysSorted = [...counts.keys()].sort((a, b) => a - b);
-  const windowSize = dayWindow.value;
   const keys =
     directionParam.value === 'backward'
-      ? keysSorted.slice(-windowSize)
-      : keysSorted.slice(0, windowSize);
+      ? keysSorted.slice(-DEFAULT_DAY_WINDOW)
+      : keysSorted.slice(0, DEFAULT_DAY_WINDOW);
   const todayKey = toDayKey(new Date().toISOString(), MOSCOW_TZ);
   return keys.map((key) => {
     const offset = todayKey == null ? 0 : (key - todayKey) / DAY_MS;
@@ -490,6 +481,19 @@ const persistedStateSnapshot = computed<CalendarPersistedState>(() =>
   createStateSnapshot()
 );
 
+const loadTriggerKey = computed(() =>
+  JSON.stringify({
+    direction: directionParam.value,
+    anchorDate: anchorDate.value,
+    search: searchApplied.value,
+    home: selectedHomeClubs.value,
+    away: selectedAwayClubs.value,
+    tournaments: selectedTournaments.value,
+    groups: selectedGroups.value,
+    stadiums: selectedStadiums.value,
+  })
+);
+
 function queuePersistence(state: CalendarPersistedState): void {
   if (persistencePaused) {
     pendingPersistenceState = state;
@@ -546,6 +550,14 @@ watch(
   { deep: true, flush: 'post' }
 );
 
+watch(
+  () => loadTriggerKey.value,
+  () => {
+    if (suppressReload) return;
+    void loadMatches();
+  }
+);
+
 async function loadMatches(): Promise<void> {
   const token = ++requestToken;
   loading.value = true;
@@ -553,11 +565,11 @@ async function loadMatches(): Promise<void> {
   try {
     const params = new URLSearchParams();
     params.set('game_days', 'true');
-    params.set('count', String(dayWindow.value));
-    params.set('horizon', String(horizonDays.value));
+    params.set('count', String(DEFAULT_DAY_WINDOW));
+    params.set('horizon', String(DEFAULT_HORIZON_DAYS));
     params.set('direction', directionParam.value);
     if (anchorDate.value) params.set('anchor', anchorDate.value);
-    if (search.value.trim()) params.set('q', search.value.trim());
+    if (searchApplied.value.trim()) params.set('q', searchApplied.value.trim());
     for (const club of selectedHomeClubs.value || [])
       params.append('home_club', club);
     for (const club of selectedAwayClubs.value || [])
@@ -590,31 +602,28 @@ async function loadMatches(): Promise<void> {
 }
 
 watch(
-  () => [timeScope.value, dayWindow.value, anchorDate.value],
-  () => {
-    if (suppressReload) return;
-    void loadMatches();
-  }
-);
-
-watch(
   () => search.value,
   (query: string) => {
     if (skipSearchWatcher) {
       skipSearchWatcher = false;
       return;
     }
+    if (suppressReload) return;
     pausePersistenceTemporarily();
     if (searchTimer) {
       clearTimeout(searchTimer);
       searchTimer = undefined;
     }
-    if (suppressReload) return;
-    const delay = query?.trim() ? SEARCH_DEBOUNCE_MS : 0;
-    searchTimer = setTimeout(() => {
-      void loadMatches();
+    const trimmed = query.trim();
+    if (!trimmed) {
+      searchApplied.value = '';
       flushPendingPersistence();
-    }, delay);
+      return;
+    }
+    searchTimer = setTimeout(() => {
+      searchApplied.value = trimmed;
+      flushPendingPersistence();
+    }, SEARCH_DEBOUNCE_MS);
   }
 );
 
@@ -626,7 +635,6 @@ function setDraftFromState(): void {
   draft.stadiums = [...selectedStadiums.value];
   draft.statusScope = statusScope.value;
   draft.timeScope = timeScope.value;
-  draft.dayWindow = dayWindow.value;
   draft.anchorDate = anchorDate.value;
   draft.homeCand = '';
   draft.awayCand = '';
@@ -648,11 +656,8 @@ function applyFilters(): void {
   selectedStadiums.value = [...draft.stadiums];
   statusScope.value = draft.statusScope;
   timeScope.value = draft.timeScope;
-  dayWindow.value = DEFAULT_DAY_WINDOW;
-  draft.dayWindow = DEFAULT_DAY_WINDOW;
   anchorDate.value = draft.anchorDate || '';
   filtersModal.value?.hide();
-  void loadMatches();
 }
 
 function resetDraft(): void {
@@ -668,7 +673,6 @@ function resetDraft(): void {
   draft.stadiumCand = '';
   draft.statusScope = 'all';
   draft.timeScope = 'upcoming';
-  draft.dayWindow = DEFAULT_DAY_WINDOW;
   draft.anchorDate = toMoscowDateInputValue(new Date());
 }
 
@@ -696,15 +700,20 @@ function submitSearchNow(): void {
     clearTimeout(searchTimer);
     searchTimer = undefined;
   }
-  void loadMatches();
+  searchApplied.value = search.value.trim();
   flushPendingPersistence();
 }
 
 function clearSearchQuery(): void {
-  if (!search.value) return;
+  if (!search.value && !searchApplied.value) return;
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+    searchTimer = undefined;
+  }
   skipSearchWatcher = true;
   search.value = '';
-  submitSearchNow();
+  searchApplied.value = '';
+  flushPendingPersistence();
 }
 
 function toggleDraftStatus(scope: StatusFilterScope): void {
@@ -718,6 +727,7 @@ function toggleDraftStatus(scope: StatusFilterScope): void {
 function resetAllFilters(): void {
   suppressReload = true;
   search.value = '';
+  searchApplied.value = '';
   selectedHomeClubs.value = [];
   selectedAwayClubs.value = [];
   selectedTournaments.value = [];
@@ -725,7 +735,6 @@ function resetAllFilters(): void {
   selectedStadiums.value = [];
   statusScope.value = 'all';
   timeScope.value = 'upcoming';
-  dayWindow.value = DEFAULT_DAY_WINDOW;
   anchorDate.value = toMoscowDateInputValue(new Date());
   range.value = null;
   activeDayKey.value = null;
@@ -739,7 +748,6 @@ function resetAllFilters(): void {
 }
 
 function removeHeaderChip(chip: CalendarFilterChip): void {
-  let requiresReload = true;
   const remove = (refList: Ref<string[]>) => {
     const arr = refList.value || [];
     const idx = arr.indexOf(chip.value);
@@ -763,12 +771,15 @@ function removeHeaderChip(chip: CalendarFilterChip): void {
       break;
     case 'status':
       statusScope.value = 'all';
-      requiresReload = false;
       break;
     default:
-      requiresReload = false;
+      break;
   }
-  if (requiresReload) void loadMatches();
+}
+
+function retryLoad(): void {
+  if (suppressReload) return;
+  void loadMatches();
 }
 
 function addUnique(list: string[], value: string): void {
@@ -886,69 +897,9 @@ function toSortedUnique<T>(
   );
 }
 
-function buildSearchMatcher(query: string): MatchesSearchPredicate | null {
-  const normalized = (query || '').trim().toLowerCase();
-  if (!normalized) return null;
-  const tokens = normalized.split(/\s+/).filter(Boolean);
-  if (!tokens.length) return null;
-  const lev = (a: string, b: string) => {
-    if (a === b) return 0;
-    const m = a.length;
-    const n = b.length;
-    if (m === 0) return n;
-    if (n === 0) return m;
-    const prev = Array.from({ length: n + 1 }, (_, index) => index);
-    const curr = Array.from({ length: n + 1 }, () => 0);
-    for (let i = 1; i <= m; i += 1) {
-      curr[0] = i;
-      for (let j = 1; j <= n; j += 1) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        const insertCost = curr[j - 1]! + 1;
-        const deleteCost = prev[j]! + 1;
-        const replaceCost = prev[j - 1]! + cost;
-        curr[j] = Math.min(insertCost, deleteCost, replaceCost);
-      }
-      for (let j = 0; j <= n; j += 1) {
-        prev[j] = curr[j]!;
-      }
-    }
-    return prev[n] ?? Number.POSITIVE_INFINITY;
-  };
-  const fuzzyIncludes = (hay: string, needle: string) => {
-    if (!needle) return true;
-    if (!hay) return false;
-    if (hay.includes(needle)) return true;
-    if (needle.length >= 4) {
-      for (let i = 0; i <= hay.length - needle.length; i += 1) {
-        const segment = hay.slice(i, i + needle.length);
-        if (lev(segment, needle) <= 1) return true;
-      }
-    }
-    return false;
-  };
-  return (match: CalendarMatch) => {
-    const fields = [
-      match.team1,
-      match.team2,
-      match.home_club,
-      match.away_club,
-      match.tournament,
-      match.group,
-      match.tour,
-      match.stadium,
-    ]
-      .map((field) => (field ?? '').toString().toLowerCase())
-      .filter(Boolean);
-    return tokens.every((token) =>
-      fields.some((field) => fuzzyIncludes(field, token))
-    );
-  };
-}
-
 function getDefaultCalendarState(): CalendarPersistedState {
   return {
     anchorDate: toMoscowDateInputValue(new Date()),
-    dayWindow: DEFAULT_DAY_WINDOW,
     timeScope: 'upcoming',
     statusScope: 'all',
     search: '',
@@ -994,7 +945,6 @@ function sanitizePersistedState(
       anchorDate = toMoscowDateInputValue(rawAnchor) || fallback.anchorDate;
     }
   }
-  const clampDayWindow = (): number => fallback.dayWindow;
   const normalizeSearch = (): string => {
     if (!hasOwn(candidate, 'search')) return fallback.search;
     return (candidate['search'] ?? '').toString().slice(0, 120);
@@ -1015,7 +965,6 @@ function sanitizePersistedState(
   };
   return {
     anchorDate,
-    dayWindow: clampDayWindow(),
     timeScope: normalizeTimeScope(),
     statusScope: normalizeStatusScope(),
     search: normalizeSearch(),
@@ -1092,7 +1041,6 @@ function parseStateFromQuery(
   query: LocationQuery
 ): Partial<CalendarPersistedState> | null {
   const anchor = queryValueToString(query[QUERY_KEYS.anchor]);
-  const dayWindowParam = queryValueToNumber(query[QUERY_KEYS.dayWindow]);
   const timeScopeParam = queryValueToString(query[QUERY_KEYS.timeScope]);
   const statusScopeParam = queryValueToString(query[QUERY_KEYS.statusScope]);
   const searchParam = queryValueToString(query[QUERY_KEYS.search]);
@@ -1104,7 +1052,6 @@ function parseStateFromQuery(
   const stadiums = queryValueToArray(query[QUERY_KEYS.stadium]);
   const hasAny =
     anchor !== undefined ||
-    dayWindowParam !== undefined ||
     timeScopeParam !== undefined ||
     statusScopeParam !== undefined ||
     searchParam !== undefined ||
@@ -1117,7 +1064,6 @@ function parseStateFromQuery(
   if (!hasAny) return null;
   const partial: Partial<CalendarPersistedState> = {};
   if (anchor !== undefined) partial.anchorDate = anchor;
-  if (dayWindowParam !== undefined) partial.dayWindow = dayWindowParam;
   if (timeScopeParam !== undefined)
     partial.timeScope = timeScopeParam as TimeScope;
   if (statusScopeParam !== undefined)
@@ -1200,13 +1146,13 @@ function queriesMatch(
 
 function applyCalendarState(state: CalendarPersistedState): void {
   search.value = state.search || '';
+  searchApplied.value = (state.search || '').trim();
   selectedHomeClubs.value = [...state.selectedHomeClubs];
   selectedAwayClubs.value = [...state.selectedAwayClubs];
   selectedTournaments.value = [...state.selectedTournaments];
   selectedGroups.value = [...state.selectedGroups];
   selectedStadiums.value = [...state.selectedStadiums];
   anchorDate.value = state.anchorDate;
-  dayWindow.value = state.dayWindow;
   timeScope.value = state.timeScope;
   statusScope.value = state.statusScope;
   activeDayKey.value = state.activeDayKey;
@@ -1215,7 +1161,6 @@ function applyCalendarState(state: CalendarPersistedState): void {
 function createStateSnapshot(): CalendarPersistedState {
   return {
     anchorDate: anchorDate.value,
-    dayWindow: dayWindow.value,
     timeScope: timeScope.value,
     statusScope: statusScope.value,
     search: search.value,
@@ -1384,17 +1329,7 @@ onUnmounted(() => {
 <template>
   <div class="calendar-page py-3">
     <div class="container">
-      <nav aria-label="breadcrumb" class="mb-2">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/admin">Администрирование</RouterLink>
-          </li>
-          <li class="breadcrumb-item">Управление спортивной частью</li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Календарь игр
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumbs class="mb-2" :items="breadcrumbItems" />
 
       <h1 class="mb-3">Календарь игр</h1>
 
@@ -1431,14 +1366,20 @@ onUnmounted(() => {
           </div>
 
           <div v-if="error" class="alert alert-danger" role="alert">
-            {{ error }}
+            <div>{{ error }}</div>
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm mt-2"
+              @click="retryLoad"
+            >
+              Повторить
+            </button>
           </div>
-          <div v-else-if="loading" class="text-center py-3">
-            <div
-              class="spinner-border spinner-brand"
-              role="status"
-              aria-hidden="true"
-            ></div>
+          <div v-else-if="loading" class="py-2" aria-live="polite">
+            <div class="skeleton-line mb-2" style="width: 45%"></div>
+            <div class="skeleton-line mb-2" style="width: 88%"></div>
+            <div class="skeleton-line mb-2" style="width: 72%"></div>
+            <div class="skeleton-line" style="width: 90%"></div>
           </div>
           <template v-else>
             <div

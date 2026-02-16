@@ -23,7 +23,6 @@ export interface CalendarFilterDraft {
   stadiumCand: string;
   statusScope: StatusFilterScope;
   timeScope: TimeScope;
-  dayWindow: number;
   anchorDate: string;
 }
 

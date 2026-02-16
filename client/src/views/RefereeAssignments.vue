@@ -1,5 +1,12 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+} from 'vue';
 import { useRouter } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import { apiFetch } from '../api';
@@ -8,6 +15,8 @@ import Breadcrumbs from '../components/Breadcrumbs.vue';
 import TabSelector from '../components/TabSelector.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
 import metroIcon from '../assets/metro.svg';
+import { REFEREE_ASSIGNMENTS_V2_UI_ENABLED } from '../utils/featureFlags';
+import { trackRefereeAssignmentsTelemetry } from '../utils/refereeAssignmentsTelemetry';
 import { withHttp } from '../utils/url';
 import {
   formatMskDateLong,
@@ -19,16 +28,25 @@ import {
 const DATE_STORAGE_KEY = 'refereeAssignmentsActiveDate';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const EMPTY_ASSIGNMENTS = Object.freeze([]);
 
 const dates = ref([]);
 const matches = ref([]);
+const daySummary = ref(null);
 const loadingDates = ref(false);
 const loadingMatches = ref(false);
 const error = ref('');
 const activeDate = ref(loadStoredDate(DATE_STORAGE_KEY));
+const announceMessage = ref('');
+const confirmTriggerRef = ref(null);
+const isRefereeAssignmentsV2UiEnabled = REFEREE_ASSIGNMENTS_V2_UI_ENABLED;
+const isMobileViewport = ref(false);
 
 const confirmModalRef = ref(null);
 let confirmModal;
+let confirmModalHiddenHandler;
+let mobileMediaQuery;
+let mobileMediaQueryHandler;
 const confirming = ref(false);
 const confirmError = ref('');
 const router = useRouter();
@@ -42,6 +60,13 @@ const normalizedMatches = computed(() =>
     const assignments = Array.isArray(match.assignments)
       ? match.assignments
       : [];
+    const roleAssignments = new Map();
+    assignments.forEach((assignment) => {
+      const roleId = assignment.role?.id;
+      if (!roleId) return;
+      if (!roleAssignments.has(roleId)) roleAssignments.set(roleId, []);
+      roleAssignments.get(roleId).push(assignment);
+    });
     const userAssignments = assignments.filter(
       (a) => a.user?.id === currentUserId.value
     );
@@ -71,6 +96,7 @@ const normalizedMatches = computed(() =>
       start_seconds: startSeconds,
       end_seconds: endSeconds,
       status,
+      role_assignments: roleAssignments,
     };
   })
 );
@@ -104,31 +130,71 @@ const activeDayKey = computed({
   },
 });
 
-const publishedCount = computed(
-  () => normalizedMatches.value.filter((m) => m.status === 'PUBLISHED').length
-);
 const activeDayMeta = computed(() =>
   dates.value.find((entry) => entry.date === activeDate.value)
 );
-const dayNeedsConfirmation = computed(() => {
-  if (activeDayMeta.value) return (activeDayMeta.value.published || 0) > 0;
-  return publishedCount.value > 0;
+const fallbackDaySummary = computed(() => {
+  const total = normalizedMatches.value.length;
+  const published = normalizedMatches.value.filter(
+    (m) => m.status === 'PUBLISHED'
+  ).length;
+  return {
+    total,
+    published,
+    confirmed: Math.max(0, total - published),
+    needs_confirmation: published > 0,
+  };
 });
+const currentDaySummary = computed(() => {
+  const summary = normalizeDaySummary(daySummary.value);
+  return summary || fallbackDaySummary.value;
+});
+const pendingMatchesCount = computed(() => currentDaySummary.value.published);
+const totalMatchesCount = computed(() => currentDaySummary.value.total);
+const dayNeedsConfirmation = computed(
+  () => currentDaySummary.value.needs_confirmation
+);
 const dayHasAssignments = computed(() => {
+  if (currentDaySummary.value.total > 0) return true;
   if (activeDayMeta.value) return (activeDayMeta.value.total || 0) > 0;
-  return normalizedMatches.value.length > 0;
+  return false;
 });
 const dayIsConfirmed = computed(
   () => dayHasAssignments.value && !dayNeedsConfirmation.value
 );
-const canConfirmDay = computed(
-  () => dayNeedsConfirmation.value && !confirming.value
-);
 const confirmButtonLabel = computed(() =>
   dayIsConfirmed.value
     ? 'Назначения подтверждены'
-    : 'Подтвердить назначения за день'
+    : pendingMatchesCount.value > 0
+      ? `Подтвердить назначения (${pendingMatchesCount.value})`
+      : 'Подтвердить назначения за день'
 );
+const dayStatusTitle = computed(() => {
+  if (!dayHasAssignments.value) return 'На этот день назначений нет';
+  if (dayNeedsConfirmation.value) {
+    return `Нужно подтвердить ${pendingMatchesCount.value} ${
+      pendingMatchesCount.value === 1 ? 'матч' : 'матча'
+    }`;
+  }
+  return 'Все назначения на день подтверждены';
+});
+const dayStatusMeta = computed(() => {
+  if (!dayHasAssignments.value) return '';
+  return `Всего матчей: ${totalMatchesCount.value}`;
+});
+const showMobileConfirmBar = computed(
+  () =>
+    isRefereeAssignmentsV2UiEnabled &&
+    dayHasAssignments.value &&
+    isMobileViewport.value
+);
+const liveMessage = computed(() => {
+  if (confirming.value) return 'Подтверждаем назначения за выбранный день';
+  if (loadingDates.value || loadingMatches.value) return 'Загружаем назначения';
+  if (confirmError.value) return confirmError.value;
+  if (error.value) return error.value;
+  return announceMessage.value;
+});
 
 const currentUserId = computed(() => auth.user?.id || '');
 
@@ -182,29 +248,41 @@ const roleColumns = computed(() => {
   });
 });
 
-const assignmentsByMatchRole = computed(() => {
-  const map = new Map();
-  normalizedMatches.value.forEach((match) => {
-    const roleMap = new Map();
-    (match.assignments || []).forEach((assignment) => {
-      const roleId = assignment.role?.id;
-      if (!roleId) return;
-      if (!roleMap.has(roleId)) roleMap.set(roleId, []);
-      roleMap.get(roleId).push(assignment);
-    });
-    map.set(match.id, roleMap);
-  });
-  return map;
-});
-
 onMounted(() => {
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function'
+  ) {
+    mobileMediaQuery = window.matchMedia('(max-width: 767.98px)');
+    isMobileViewport.value = mobileMediaQuery.matches;
+    mobileMediaQueryHandler = (event) => {
+      isMobileViewport.value = event.matches;
+    };
+    mobileMediaQuery.addEventListener('change', mobileMediaQueryHandler);
+  }
   if (confirmModalRef.value) {
     confirmModal = new Modal(confirmModalRef.value);
+    confirmModalHiddenHandler = () => {
+      restoreConfirmTriggerFocus();
+    };
+    confirmModalRef.value.addEventListener(
+      'hidden.bs.modal',
+      confirmModalHiddenHandler
+    );
   }
   void loadDates();
 });
 
 onBeforeUnmount(() => {
+  if (mobileMediaQuery && mobileMediaQueryHandler) {
+    mobileMediaQuery.removeEventListener('change', mobileMediaQueryHandler);
+  }
+  if (confirmModalRef.value && confirmModalHiddenHandler) {
+    confirmModalRef.value.removeEventListener(
+      'hidden.bs.modal',
+      confirmModalHiddenHandler
+    );
+  }
   if (confirmModal) confirmModal.dispose();
 });
 
@@ -212,6 +290,9 @@ watch(
   () => activeDate.value,
   () => {
     saveStoredDate(DATE_STORAGE_KEY, activeDate.value);
+    announceMessage.value = '';
+    confirmError.value = '';
+    daySummary.value = null;
     if (loadingDates.value) return;
     if (activeDate.value) void loadAssignments();
   }
@@ -232,6 +313,7 @@ async function loadDates() {
     if (!dates.value.length) {
       activeDate.value = '';
       matches.value = [];
+      daySummary.value = null;
       return;
     }
     const stored = activeDate.value;
@@ -256,6 +338,7 @@ async function loadAssignments() {
   const todayKey = getMoscowDateKey();
   if (todayKey && activeDate.value < todayKey) {
     matches.value = [];
+    daySummary.value = null;
     return;
   }
   loadingMatches.value = true;
@@ -264,6 +347,7 @@ async function loadAssignments() {
     const params = new URLSearchParams({ date: activeDate.value });
     const data = await apiFetch(`/referee-assignments/my?${params}`);
     matches.value = Array.isArray(data.matches) ? data.matches : [];
+    daySummary.value = normalizeDaySummary(data.day_summary);
   } catch (e) {
     error.value = e.message || 'Не удалось загрузить назначения';
   } finally {
@@ -271,7 +355,11 @@ async function loadAssignments() {
   }
 }
 
-function openConfirmDay() {
+function openConfirmDay(event) {
+  if (event?.currentTarget instanceof HTMLElement) {
+    confirmTriggerRef.value = event.currentTarget;
+  }
+  if (!dayNeedsConfirmation.value || confirming.value) return;
   confirmError.value = '';
   if (!confirmModal) {
     confirmModal = new Modal(confirmModalRef.value);
@@ -288,18 +376,44 @@ async function confirmDayAssignments() {
   if (!activeDate.value) return;
   confirming.value = true;
   confirmError.value = '';
+  let shouldRestoreFocus = false;
+  const startedAt = nowMs();
   try {
-    await apiFetch('/referee-assignments/my/confirm', {
+    const data = await apiFetch('/referee-assignments/my/confirm', {
       method: 'POST',
       body: JSON.stringify({ date: activeDate.value }),
     });
+    applyOptimisticConfirmation(data.confirmed_matches);
+    const confirmedCount = Number(data?.confirmed_count) || 0;
+    announceMessage.value =
+      confirmedCount > 0
+        ? `Подтверждено матчей: ${confirmedCount}`
+        : 'Назначения на день уже подтверждены';
+    trackRefereeAssignmentsTelemetry({
+      action: 'confirm_day',
+      status: 'success',
+      durationMs: nowMs() - startedAt,
+      date: activeDate.value,
+      confirmedCount,
+    });
     confirmModal?.hide();
+    shouldRestoreFocus = true;
     await loadAssignments();
-    await loadDates();
   } catch (e) {
     confirmError.value = e.message || 'Не удалось подтвердить назначения';
+    trackRefereeAssignmentsTelemetry({
+      action: 'confirm_day',
+      status: 'error',
+      durationMs: nowMs() - startedAt,
+      date: activeDate.value,
+      errorCode: e?.code || null,
+    });
   } finally {
     confirming.value = false;
+    if (shouldRestoreFocus) {
+      await nextTick();
+      restoreConfirmTriggerFocus();
+    }
   }
 }
 
@@ -366,13 +480,105 @@ function refereeLabel(user) {
 }
 
 function assignmentsForRole(match, roleId) {
-  return assignmentsByMatchRole.value.get(match.id)?.get(roleId) ?? [];
+  return match.role_assignments?.get(roleId) ?? EMPTY_ASSIGNMENTS;
 }
 
 function dayLabel(dateKey) {
   if (!dateKey) return 'Без даты';
   const date = new Date(`${dateKey}T00:00:00+03:00`);
   return formatMskDateLong(date.toISOString());
+}
+
+function matchStatusLabel(match) {
+  if (match.status === 'PUBLISHED') return 'Требуется подтверждение';
+  if (match.status === 'CONFIRMED') return 'Подтверждено';
+  return '';
+}
+
+function normalizeDaySummary(value) {
+  if (!value || typeof value !== 'object') return null;
+  const total = Number.isFinite(value.total) ? Number(value.total) : 0;
+  const published = Number.isFinite(value.published)
+    ? Number(value.published)
+    : 0;
+  const confirmed = Number.isFinite(value.confirmed)
+    ? Number(value.confirmed)
+    : Math.max(0, total - published);
+  const needsConfirmation =
+    typeof value.needs_confirmation === 'boolean'
+      ? value.needs_confirmation
+      : published > 0;
+  return {
+    total: Math.max(0, total),
+    published: Math.max(0, published),
+    confirmed: Math.max(0, confirmed),
+    needs_confirmation: needsConfirmation,
+  };
+}
+
+function applyOptimisticConfirmation(confirmedMatches) {
+  const ids = new Set(
+    Array.isArray(confirmedMatches)
+      ? confirmedMatches.map((matchId) => String(matchId))
+      : []
+  );
+  const hasSpecificIds = ids.size > 0;
+  const userId = currentUserId.value;
+  matches.value = matches.value.map((match) => {
+    const shouldConfirmMatch = hasSpecificIds
+      ? ids.has(String(match.id))
+      : true;
+    if (!shouldConfirmMatch) return match;
+    const nextAssignments = (match.assignments || []).map((assignment) => {
+      if (assignment.user?.id !== userId) return assignment;
+      if (assignment.status !== 'PUBLISHED') return assignment;
+      return {
+        ...assignment,
+        status: 'CONFIRMED',
+      };
+    });
+    return {
+      ...match,
+      assignments: nextAssignments,
+    };
+  });
+
+  const summary = currentDaySummary.value;
+  daySummary.value = {
+    total: summary.total,
+    published: 0,
+    confirmed: summary.total,
+    needs_confirmation: false,
+  };
+  dates.value = dates.value.map((entry) => {
+    if (entry.date !== activeDate.value) return entry;
+    return {
+      ...entry,
+      published: 0,
+      confirmed: Number.isFinite(entry.total)
+        ? Number(entry.total)
+        : summary.total,
+    };
+  });
+}
+
+function restoreConfirmTriggerFocus() {
+  const trigger =
+    document.querySelector('[data-confirm-day-trigger="true"]') ||
+    confirmTriggerRef.value;
+  if (!(trigger instanceof HTMLElement)) return;
+  if ('disabled' in trigger && trigger.disabled) return;
+  trigger.focus();
+}
+
+function nowMs() {
+  if (
+    typeof performance !== 'undefined' &&
+    Number.isFinite(performance.now())
+  ) {
+    return performance.now();
+  }
+  return Date.now();
 }
 
 function getMoscowDateKey() {
@@ -549,7 +755,13 @@ function formatTabLines(date, offset) {
       <h1 class="mb-3">Назначения</h1>
 
       <section class="card section-card tile fade-in shadow-sm">
-        <div class="card-body assignments-results">
+        <div
+          class="card-body assignments-results"
+          :class="{ 'with-mobile-sticky': showMobileConfirmBar }"
+        >
+          <p class="visually-hidden" aria-live="polite" aria-atomic="true">
+            {{ liveMessage }}
+          </p>
           <div v-if="dayTabs.length" class="results-header">
             <TabSelector
               v-model="activeDayKey"
@@ -558,6 +770,12 @@ function formatTabLines(date, offset) {
               :nav-fill="false"
               justify="start"
             />
+          </div>
+          <div v-if="dayTabs.length" class="day-status-card" role="status">
+            <div class="day-status-title">{{ dayStatusTitle }}</div>
+            <div v-if="dayStatusMeta" class="day-status-meta">
+              {{ dayStatusMeta }}
+            </div>
           </div>
 
           <div v-if="error" class="alert alert-danger" role="alert">
@@ -637,6 +855,10 @@ function formatTabLines(date, offset) {
 
                     <div class="table-responsive">
                       <table class="table table-sm assignments-table">
+                        <caption class="visually-hidden">
+                          Назначения судей на выбранный день. В таблице указано
+                          время матча, команды и состав бригады по ролям.
+                        </caption>
                         <colgroup>
                           <col class="col-time" />
                           <col class="col-match" />
@@ -664,12 +886,6 @@ function formatTabLines(date, offset) {
                             v-for="match in arena.matches"
                             :key="match.id"
                             class="match-row"
-                            role="button"
-                            tabindex="0"
-                            :aria-label="`Открыть матч ${matchTitle(match)}`"
-                            @click="openMatchDetails(match.id)"
-                            @keydown.enter="openMatchDetails(match.id)"
-                            @keydown.space.prevent="openMatchDetails(match.id)"
                           >
                             <td class="col-time">
                               <div class="time-text">
@@ -677,12 +893,30 @@ function formatTabLines(date, offset) {
                               </div>
                             </td>
                             <td class="col-match">
-                              <div class="match-teams">
-                                {{ matchTitle(match) }}
-                              </div>
-                              <div class="match-meta text-muted">
-                                {{ formatMatchMeta(match) }}
-                              </div>
+                              <button
+                                type="button"
+                                class="match-link-btn"
+                                :aria-label="`Открыть матч ${matchTitle(match)}`"
+                                @click="openMatchDetails(match.id)"
+                              >
+                                <span class="match-teams">
+                                  {{ matchTitle(match) }}
+                                </span>
+                                <span class="match-meta text-muted">
+                                  {{ formatMatchMeta(match) }}
+                                </span>
+                                <span
+                                  v-if="matchStatusLabel(match)"
+                                  class="match-own-status"
+                                  :class="{
+                                    'is-pending': match.status === 'PUBLISHED',
+                                    'is-confirmed':
+                                      match.status === 'CONFIRMED',
+                                  }"
+                                >
+                                  {{ matchStatusLabel(match) }}
+                                </span>
+                              </button>
                             </td>
                             <td
                               v-for="role in roleColumns"
@@ -732,8 +966,38 @@ function formatTabLines(date, offset) {
                       'is-confirmed': !dayNeedsConfirmation,
                     }"
                     type="button"
-                    :disabled="!canConfirmDay"
-                    @click="openConfirmDay"
+                    data-confirm-day-trigger="true"
+                    :disabled="confirming"
+                    :aria-disabled="
+                      !dayNeedsConfirmation
+                        ? 'true'
+                        : confirming
+                          ? 'true'
+                          : undefined
+                    "
+                    @click="openConfirmDay($event)"
+                  >
+                    {{ confirmButtonLabel }}
+                  </button>
+                </div>
+                <div v-if="showMobileConfirmBar" class="mobile-confirm-sticky">
+                  <button
+                    class="btn confirm-day-btn"
+                    :class="{
+                      'is-pending': dayNeedsConfirmation,
+                      'is-confirmed': !dayNeedsConfirmation,
+                    }"
+                    type="button"
+                    data-confirm-day-trigger="true"
+                    :disabled="confirming"
+                    :aria-disabled="
+                      !dayNeedsConfirmation
+                        ? 'true'
+                        : confirming
+                          ? 'true'
+                          : undefined
+                    "
+                    @click="openConfirmDay($event)"
                   >
                     {{ confirmButtonLabel }}
                   </button>
@@ -763,7 +1027,7 @@ function formatTabLines(date, offset) {
             type="button"
             class="btn-close"
             data-bs-dismiss="modal"
-            aria-label="Close"
+            aria-label="Закрыть"
           ></button>
         </div>
         <div class="modal-body">
@@ -807,6 +1071,13 @@ function formatTabLines(date, offset) {
 .assignments-results {
   display: grid;
   gap: 1rem;
+  --assignments-surface: var(--bs-light, #f8f9fa);
+  --assignments-border: var(--border-subtle, #e6eaf0);
+  --assignments-emphasis-bg: var(--bs-danger, #dc3545);
+  --assignments-emphasis-text: #fff;
+  --assignments-ok-bg: var(--bs-success-bg-subtle, #d1e7dd);
+  --assignments-ok-border: var(--bs-success-border-subtle, #c3e6cb);
+  --assignments-ok-text: var(--bs-success-text-emphasis, #1b4d2b);
 }
 
 .results-header {
@@ -830,10 +1101,10 @@ function formatTabLines(date, offset) {
 }
 
 .arena-block {
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
+  border: 1px solid var(--assignments-border);
+  border-radius: var(--radius-tile, 0.75rem);
   padding: 0.75rem 0.9rem;
-  background: #f8f9fa;
+  background: var(--assignments-surface);
 }
 
 .travel-divider {
@@ -914,7 +1185,7 @@ function formatTabLines(date, offset) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--assignments-border);
   background: #fff;
 }
 
@@ -945,10 +1216,6 @@ function formatTabLines(date, offset) {
   background: transparent;
 }
 
-.match-row {
-  cursor: pointer;
-}
-
 .match-row:hover {
   background-color: rgba(17, 56, 103, 0.04);
 }
@@ -957,9 +1224,8 @@ function formatTabLines(date, offset) {
   background-color: rgba(17, 56, 103, 0.04);
 }
 
-.match-row:focus-visible {
-  outline: 2px solid var(--brand-color, #113867);
-  outline-offset: 2px;
+.match-row:focus-within {
+  background-color: rgba(17, 56, 103, 0.06);
 }
 
 .col-time {
@@ -988,10 +1254,43 @@ col.col-role {
 }
 
 .match-meta {
+  display: block;
   font-size: 0.8rem;
   line-height: 1.2;
   word-break: break-word;
   hyphens: auto;
+}
+
+.match-link-btn {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  border-radius: var(--radius-sm, 0.5rem);
+}
+
+.match-link-btn:focus-visible {
+  outline: 2px solid var(--brand-color, #113867);
+  outline-offset: 2px;
+}
+
+.match-own-status {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.match-own-status.is-pending {
+  color: var(--bs-danger, #dc3545);
+}
+
+.match-own-status.is-confirmed {
+  color: var(--assignments-ok-text);
 }
 
 .referee-list {
@@ -1029,6 +1328,24 @@ col.col-role {
   font-weight: 600;
 }
 
+.day-status-card {
+  border: 1px solid var(--assignments-border);
+  border-radius: var(--radius-sm, 0.5rem);
+  padding: 0.55rem 0.7rem;
+  background: var(--assignments-surface);
+}
+
+.day-status-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.day-status-meta {
+  margin-top: 0.12rem;
+  font-size: 0.79rem;
+  color: #6c757d;
+}
+
 .day-footer {
   display: flex;
   justify-content: flex-end;
@@ -1046,15 +1363,15 @@ col.col-role {
 }
 
 .confirm-day-btn.is-pending {
-  background-color: var(--bs-danger, #dc3545);
-  border-color: var(--bs-danger, #dc3545);
-  color: #fff;
+  background-color: var(--assignments-emphasis-bg);
+  border-color: var(--assignments-emphasis-bg);
+  color: var(--assignments-emphasis-text);
 }
 
 .confirm-day-btn.is-confirmed {
-  background-color: #d1e7dd;
-  border-color: #c3e0d2;
-  color: #1b4d2b;
+  background-color: var(--assignments-ok-bg);
+  border-color: var(--assignments-ok-border);
+  color: var(--assignments-ok-text);
 }
 
 .confirm-day-btn:disabled {
@@ -1062,15 +1379,19 @@ col.col-role {
 }
 
 .confirm-day-btn.is-confirmed:disabled {
-  background-color: #d1e7dd;
-  border-color: #c3e0d2;
-  color: #1b4d2b;
+  background-color: var(--assignments-ok-bg);
+  border-color: var(--assignments-ok-border);
+  color: var(--assignments-ok-text);
 }
 
 .confirm-day-btn.is-pending:disabled {
-  background-color: var(--bs-danger, #dc3545);
-  border-color: var(--bs-danger, #dc3545);
-  color: #fff;
+  background-color: var(--assignments-emphasis-bg);
+  border-color: var(--assignments-emphasis-bg);
+  color: var(--assignments-emphasis-text);
+}
+
+.mobile-confirm-sticky {
+  display: none;
 }
 
 @media (max-width: 1199.98px) {
@@ -1197,6 +1518,24 @@ col.col-role {
     justify-content: stretch;
   }
   .day-footer .btn {
+    width: 100%;
+  }
+  .assignments-results.with-mobile-sticky .day-footer {
+    display: none;
+  }
+  .mobile-confirm-sticky {
+    display: block;
+    position: sticky;
+    bottom: 0;
+    padding-top: 0.45rem;
+    padding-bottom: calc(0.35rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.95) 40%
+    );
+  }
+  .mobile-confirm-sticky .btn {
     width: 100%;
   }
 }
