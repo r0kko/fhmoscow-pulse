@@ -144,14 +144,29 @@ function moscowDateKey(date) {
 function buildDateKeysRange(fromDate, toDate) {
   if (!fromDate || !toDate) return [];
   const keys = [];
-  let cursor = new Date(`${fromDate}T00:00:00+03:00`);
-  const end = new Date(`${toDate}T00:00:00+03:00`);
-  if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) {
+  const parseDateKeyUtc = (value) => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const [, yearText, monthText, dayText] = match;
+    return Date.UTC(
+      Number(yearText),
+      Number(monthText) - 1,
+      Number(dayText)
+    );
+  };
+  let cursor = parseDateKeyUtc(fromDate);
+  const end = parseDateKeyUtc(toDate);
+  if (cursor === null || end === null) {
     return [];
   }
   while (cursor <= end) {
-    keys.push(cursor.toISOString().slice(0, 10));
-    cursor = new Date(cursor.getTime() + DAY_MS);
+    const date = new Date(cursor);
+    keys.push(
+      `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(
+        date.getUTCDate()
+      )}`
+    );
+    cursor += DAY_MS;
   }
   return keys;
 }
@@ -334,6 +349,7 @@ function availabilityAllowsInterval(availability, startSeconds, endSeconds) {
   const from = parseTimeSeconds(availability.from_time);
   const to = parseTimeSeconds(availability.to_time);
   const mode = derivePartialMode(availability.from_time, availability.to_time);
+  if (from === null && to === null) return true;
 
   if (mode === 'BEFORE') return to !== null && endSeconds <= to;
   if (mode === 'AFTER') return from !== null && startSeconds >= from;

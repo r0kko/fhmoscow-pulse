@@ -222,7 +222,13 @@ function professionalAvailabilityLabel(referee, matchDateKeys = []) {
 const availableReferees = computed(() => {
   const countsMap = assignmentCountsByReferee.value;
   const roleAliases = allowedRefereeRoles.value;
-  const matchDateKeys = publicationDateKeys.value;
+  const matchDateKeys = Array.from(
+    new Set(
+      matches.value
+        .map((match) => String(match?.msk_date || '').trim())
+        .filter(Boolean)
+    )
+  ).sort();
 
   return referees.value
     .filter((ref) => {
@@ -301,7 +307,10 @@ const dateWindowRange = computed(() => {
 const publicationDateKeys = computed(() => {
   const keys = new Set();
   matches.value.forEach((match) => {
-    const key = match?.msk_date || '';
+    if (!isMatchAssignable(match)) return;
+    const status = matchStatusForGroups(match);
+    if (!status.hasDraft) return;
+    const key = String(match?.msk_date || '').trim();
     if (key) keys.add(key);
   });
   return Array.from(keys).sort();
@@ -394,6 +403,7 @@ const dayPublishState = computed(() => {
       incomplete: 0,
       total: 0,
       hasDraft: false,
+      daysToPublish: 0,
     };
   }
   const relevantMatches = matches.value.filter((match) =>
@@ -406,6 +416,7 @@ const dayPublishState = computed(() => {
       incomplete: 0,
       total: 0,
       hasDraft: false,
+      daysToPublish: 0,
     };
   }
   let hasDraft = false;
@@ -422,23 +433,37 @@ const dayPublishState = computed(() => {
       incomplete,
       total: relevantMatches.length,
       hasDraft,
+      daysToPublish: 0,
+    };
+  }
+  const daysToPublish = publicationDateKeys.value.length;
+  if (!daysToPublish) {
+    return {
+      disabled: true,
+      message: 'Нет измененных дней для отправки',
+      incomplete,
+      total: relevantMatches.length,
+      hasDraft,
+      daysToPublish: 0,
     };
   }
   if (incomplete > 0) {
     return {
       disabled: false,
-      message: `Есть незаполненные назначения: ${incomplete}`,
+      message: `К отправке ${daysToPublish} дн., есть незаполненные назначения: ${incomplete}`,
       incomplete,
       total: relevantMatches.length,
       hasDraft,
+      daysToPublish,
     };
   }
   return {
     disabled: false,
-    message: '',
+    message: `К отправке ${daysToPublish} дн.`,
     incomplete,
     total: relevantMatches.length,
     hasDraft,
+    daysToPublish,
   };
 });
 
@@ -695,6 +720,7 @@ function availabilityAllowsInterval(availability, startSeconds, endSeconds) {
   const from = parseTimeSeconds(availability.from_time);
   const to = parseTimeSeconds(availability.to_time);
   const mode = derivePartialMode(availability.from_time, availability.to_time);
+  if (from === null && to === null) return true;
 
   if (mode === 'BEFORE') return to !== null && endSeconds <= to;
   if (mode === 'AFTER') return from !== null && startSeconds >= from;
@@ -732,6 +758,8 @@ const assignmentWindowsByUser = computed(() => {
   const map = new Map();
   matches.value.forEach((match) => {
     const window = matchTimeWindow(match);
+    const dateKey = String(match?.msk_date || '').trim();
+    if (!dateKey) return;
     if (!window) return;
     effectiveAssignments(match).forEach((a) => {
       const userId = a.user?.id;
@@ -739,6 +767,7 @@ const assignmentWindowsByUser = computed(() => {
       if (!map.has(userId)) map.set(userId, []);
       map.get(userId).push({
         matchId: match.id,
+        dateKey,
         start: window.start,
         end: window.end,
       });
@@ -747,10 +776,11 @@ const assignmentWindowsByUser = computed(() => {
   return map;
 });
 
-function hasConflict(userId, matchId, startSeconds, endSeconds) {
+function hasConflict(userId, matchId, dateKey, startSeconds, endSeconds) {
   const windows = assignmentWindowsByUser.value.get(userId) || [];
   return windows.some(
     (w) =>
+      w.dateKey === dateKey &&
       w.matchId !== matchId &&
       intervalOverlaps(startSeconds, endSeconds, w.start, w.end)
   );
@@ -782,7 +812,7 @@ function resolveRefereeMatchAvailability(referee, match) {
   }
   const window = matchTimeWindow(match);
   if (!window) return { available: false, reason: 'не указано время матча' };
-  if (hasConflict(referee.id, match.id, window.start, window.end)) {
+  if (hasConflict(referee.id, match.id, dateKey, window.start, window.end)) {
     return { available: false, reason: 'занят другим матчем' };
   }
   if (!availabilityAllowsInterval(availability, window.start, window.end)) {
@@ -1598,8 +1628,7 @@ onMounted(() => {
 }
 
 .referee-panel {
-  position: sticky;
-  top: 1rem;
+  position: static;
 }
 
 .referee-list {
