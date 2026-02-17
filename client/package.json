@@ -12,7 +12,7 @@
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --reporter=dot --pool=forks --maxWorkers=1"
+    "test:coverage": "vitest run --coverage --reporter=dot --reporter=hanging-process --pool=forks --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
@@ -28,6 +28,7 @@
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-vue": "^6.0.4",
+    "@vitest/coverage-istanbul": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
     "@vue/test-utils": "^2.4.6",
     "eslint": "^9.39.2",

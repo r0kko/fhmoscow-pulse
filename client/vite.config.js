@@ -19,6 +19,8 @@ const proxyConfig = {
   },
 };
 
+const coverageProvider = process.env.CI ? 'istanbul' : 'v8';
+
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -73,7 +75,7 @@ export default defineConfig({
     include: ['tests/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['tests/e2e/**'],
     coverage: {
-      provider: 'v8',
+      provider: coverageProvider,
       reporter: ['text', 'lcov'],
       reportsDirectory: '../coverage/client',
       // Focus unit coverage on shared UI primitives and client-side helpers.
