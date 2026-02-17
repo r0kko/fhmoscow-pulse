@@ -105,7 +105,11 @@ test('calendar uses listNextDays branch for plain days mode', async () => {
       homeClubs: ['Клуб A'],
     })
   );
-  expect(json).toHaveBeenCalledWith({ matches: [{ id: 'm1' }], range: {}, days: 1 });
+  expect(json).toHaveBeenCalledWith({
+    matches: [{ id: 'm1' }],
+    range: {},
+    days: 1,
+  });
 });
 
 test('calendar forwards service failures to next()', async () => {

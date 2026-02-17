@@ -6,11 +6,11 @@ export default {
     try {
       const user = await userService.setStatus(
         req.user.id,
-        'AWAITING_CONFIRMATION',
+        'ACTIVE',
         req.user.id
       );
       return res.json({
-        user: { id: user.id, status: 'AWAITING_CONFIRMATION' },
+        user: { id: user.id, status: 'ACTIVE' },
       });
     } catch (err) {
       return sendError(res, err);

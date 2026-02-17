@@ -4,17 +4,49 @@ import { uuidParam } from './paramsValidators.js';
 
 export const refereeAssignmentsListRules = [
   query('date')
+    .optional({ nullable: true })
     .isString()
-    .notEmpty()
-    .withMessage('date_required')
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage('invalid_date'),
+  query('from')
+    .optional({ nullable: true })
+    .isString()
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('invalid_from_date'),
+  query('to')
+    .optional({ nullable: true })
+    .isString()
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('invalid_to_date'),
+  query('competition_alias')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('invalid_competition_alias'),
+  query().custom((_, { req }) => {
+    const date = req.query?.date;
+    const from = req.query?.from;
+    const to = req.query?.to;
+    if (date || (from && to)) return true;
+    throw new Error('date_or_range_required');
+  }),
 ];
 
 export const refereeAssignmentsListRefereesRules = [
   ...refereeAssignmentsListRules,
   query('role_group_id').optional({ nullable: true }).isUUID(),
   query('search').optional({ nullable: true }).isString(),
+  query('only_leagues_access')
+    .optional({ nullable: true })
+    .isIn(['0', '1', 'true', 'false'])
+    .withMessage('invalid_only_leagues_access'),
+  query('role_alias')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 64 })
+    .withMessage('invalid_role_alias'),
   query('limit').optional({ nullable: true }).isInt({ min: 0, max: 10000 }),
 ];
 

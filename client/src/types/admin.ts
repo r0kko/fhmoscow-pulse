@@ -1,8 +1,4 @@
-export type AdminUserStatus =
-  | 'ACTIVE'
-  | 'INACTIVE'
-  | 'AWAITING_CONFIRMATION'
-  | string;
+export type AdminUserStatus = 'ACTIVE' | 'INACTIVE' | string;
 
 export interface AdminUserSummary {
   id: string;

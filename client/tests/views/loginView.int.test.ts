@@ -29,10 +29,6 @@ const demoRoutes: RouteRecordRaw[] = [
   { path: '/', component: { template: '<div>home</div>' } },
   { path: '/login', component: LoginView },
   { path: '/change-password', component: { template: '<div>change</div>' } },
-  {
-    path: '/awaiting-confirmation',
-    component: { template: '<div>await</div>' },
-  },
   { path: '/complete-profile', component: { template: '<div>complete</div>' } },
   { path: '/register', component: { template: '<div>register</div>' } },
   { path: '/password-reset', component: { template: '<div>reset</div>' } },
@@ -144,5 +140,82 @@ describe('Login View (integration)', () => {
     await nextTick();
     expect(screen.queryByText('Неверные учётные данные')).toBeNull();
     expect(auth.user).toBeNull();
+  });
+
+  it('shows temporary lockout message and countdown', async () => {
+    vi.useFakeTimers();
+    const retryAfterMs = 65000;
+    server.use(
+      http.post('*/auth/login', async () =>
+        HttpResponse.json(
+          {
+            error: 'account_locked_temporary',
+            details: { reason: 'temporary_lock', retryAfterMs },
+          },
+          { status: 401 }
+        )
+      )
+    );
+
+    const router = createRouterInstance();
+    router.push('/login');
+    await router.isReady();
+
+    render(LoginView, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    const phoneInput = screen.getByLabelText('Телефон');
+    await fireEvent.update(phoneInput, '79991234567');
+
+    const passwordInput = screen.getByLabelText('Пароль');
+    await fireEvent.update(passwordInput, 'wrong');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
+
+    expect(
+      await screen.findByText('Слишком много попыток. Попробуйте позже.')
+    ).toBeTruthy();
+    expect(screen.getByText(/Повторите через 1 мин 5 сек/)).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'Получить помощь/восстановить пароль',
+      })
+    ).toBeTruthy();
+
+    vi.advanceTimersByTime(1000);
+    await nextTick();
+    expect(screen.queryByText(/Повторите через 1 мин 4 сек/)).toBeTruthy();
+  });
+
+  it('shows deactivation message without countdown', async () => {
+    server.use(
+      http.post('*/auth/login', async () =>
+        HttpResponse.json({ error: 'account_inactive' }, { status: 401 })
+      )
+    );
+
+    const router = createRouterInstance();
+    router.push('/login');
+    await router.isReady();
+
+    render(LoginView, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    const phoneInput = screen.getByLabelText('Телефон');
+    await fireEvent.update(phoneInput, '79991234567');
+
+    const passwordInput = screen.getByLabelText('Пароль');
+    await fireEvent.update(passwordInput, 'wrong');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
+
+    expect(await screen.findByText('Аккаунт деактивирован')).toBeTruthy();
+    expect(screen.queryByText('Повторите через 1 мин 5 сек')).toBeNull();
   });
 });

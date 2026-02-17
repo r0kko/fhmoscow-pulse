@@ -113,9 +113,6 @@ defineExpose({ open, close });
                 <option value="">Все статусы</option>
                 <option value="ACTIVE">Активные</option>
                 <option value="INACTIVE">Заблокированные</option>
-                <option value="AWAITING_CONFIRMATION">
-                  Требуют подтверждения
-                </option>
               </select>
             </div>
             <div class="col-12 col-sm-6">

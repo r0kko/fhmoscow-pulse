@@ -25,4 +25,12 @@ export function isRateLimitEnabled(kind = 'global') {
   return globalDefault;
 }
 
-export default { isLockoutEnabled, isRateLimitEnabled };
+export function isAuthLockoutErrorV2Enabled() {
+  return toBool(process.env.AUTH_LOCKOUT_ERROR_V2, false);
+}
+
+export default {
+  isLockoutEnabled,
+  isRateLimitEnabled,
+  isAuthLockoutErrorV2Enabled,
+};

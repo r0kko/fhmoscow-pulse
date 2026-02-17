@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 
+function errorObject(code, details = {}, reason = null) {
+  const err = new Error(code);
+  err.code = code;
+  if (reason) err.reason = reason;
+  if (Object.keys(details).length > 0) err.details = details;
+  return err;
+}
+
 const validationResultMock = jest.fn();
 const verifyCredentials = jest.fn();
 const issueTokens = jest.fn();
@@ -15,6 +23,7 @@ const getRefreshTokenCandidates = jest.fn();
 const sendError = jest.fn();
 const isStaffOnly = jest.fn();
 const syncStaffRole = jest.fn();
+const ORIGINAL_ENV = { ...process.env };
 
 const res = () => {
   const obj = {};
@@ -46,6 +55,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  process.env = { ...ORIGINAL_ENV };
 });
 
 jest.unstable_mockModule('express-validator', () => ({
@@ -152,6 +162,99 @@ test('login issues tokens and propagates status-based extras', async () => {
       capabilities: { is_staff_only: false },
     })
   );
+});
+
+test('login maps inactive account to inactive reason', async () => {
+  const resp = res();
+  validationResultMock.mockReturnValueOnce({ isEmpty: () => true });
+  verifyCredentials.mockRejectedValueOnce(
+    errorObject('account_inactive', { reason: 'inactive' }, 'inactive')
+  );
+  await controller.login({ body: { phone: '1', password: 'p' } }, resp);
+  expect(incAuthLogin).toHaveBeenCalledWith('inactive');
+  expect(sendError).toHaveBeenCalledWith(
+    resp,
+    expect.objectContaining({
+      code: 'account_inactive',
+      details: { reason: 'inactive' },
+    }),
+    401
+  );
+  expect(resp.locals?.observability).toMatchObject({
+    reason: 'inactive',
+    attempts_left: undefined,
+    retry_after_ms: undefined,
+  });
+});
+
+test('login maps temporary lockout and includes legacy code when v2 is off', async () => {
+  const resp = res();
+  process.env.AUTH_LOCKOUT_ERROR_V2 = 'false';
+  validationResultMock.mockReturnValueOnce({ isEmpty: () => true });
+  verifyCredentials.mockRejectedValueOnce(
+    errorObject('account_locked', {
+      reason: 'temporary_lock',
+      retryAfterMs: 65000,
+      remainingAttempts: 0,
+    })
+  );
+  await controller.login({ body: { phone: '1', password: 'p' } }, resp);
+  expect(incAuthLogin).toHaveBeenCalledWith('temporary_lock');
+  expect(resp.locals?.observability).toMatchObject({
+    reason: 'temporary_lock',
+    attempts_left: 0,
+    retry_after_ms: 65000,
+  });
+  expect(sendError).toHaveBeenCalledWith(
+    resp,
+    expect.objectContaining({
+      code: 'account_locked',
+      details: {
+        reason: 'temporary_lock',
+        retryAfterMs: 65000,
+        remainingAttempts: 0,
+      },
+    }),
+    401
+  );
+  delete process.env.AUTH_LOCKOUT_ERROR_V2;
+});
+
+test('login maps temporary lockout to v2 code', async () => {
+  const resp = res();
+  process.env.AUTH_LOCKOUT_ERROR_V2 = 'true';
+  validationResultMock.mockReturnValueOnce({ isEmpty: () => true });
+  verifyCredentials.mockRejectedValueOnce(
+    errorObject(
+      'account_locked_temporary',
+      {
+        reason: 'temporary_lock',
+        retryAfterMs: 30000,
+        remainingAttempts: 0,
+      },
+      'temporary_lock'
+    )
+  );
+  await controller.login({ body: { phone: '1', password: 'p' } }, resp);
+  expect(incAuthLogin).toHaveBeenCalledWith('temporary_lock');
+  expect(sendError).toHaveBeenCalledWith(
+    resp,
+    expect.objectContaining({
+      code: 'account_locked_temporary',
+      details: {
+        reason: 'temporary_lock',
+        retryAfterMs: 30000,
+        remainingAttempts: 0,
+      },
+    }),
+    401
+  );
+  expect(resp.locals?.observability).toMatchObject({
+    reason: 'temporary_lock',
+    attempts_left: 0,
+    retry_after_ms: 30000,
+  });
+  delete process.env.AUTH_LOCKOUT_ERROR_V2;
 });
 
 test('refresh rejects when cookies missing and increments metric', async () => {

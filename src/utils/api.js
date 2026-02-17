@@ -24,9 +24,10 @@ export function sendError(res, err, defaultStatus = 400) {
   if (!res.locals) {
     res.locals = {};
   }
-  if (!res.locals.body) {
-    res.locals.body = { error: code };
-  }
+  const body = { error: code };
+  if (err?.details !== undefined) body.details = err.details;
+  if (err?.legacyCode !== undefined) body.legacy_code = err.legacyCode;
+  res.locals.body = body;
   if (err?.retryAfter) {
     // Seconds per RFC for Retry-After
     const secs = Math.max(1, Math.ceil(Number(err.retryAfter)));
@@ -34,5 +35,5 @@ export function sendError(res, err, defaultStatus = 400) {
       res.set('Retry-After', String(secs));
     }
   }
-  return res.status(status).json({ error: code });
+  return res.status(status).json(body);
 }

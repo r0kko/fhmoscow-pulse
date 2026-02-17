@@ -235,7 +235,12 @@ groups:
 
       # Spike in invalid logins
       - alert: LoginFailureSpike
-        expr: increase(auth_login_attempts_total{result="invalid"}[5m]) > 20
+        expr: |
+          sum(
+            increase(auth_login_attempts_total{
+              reason=~"bad_credentials|inactive|temporary_lock|ip_rate_limited"
+            }[5m])
+          ) > 20
         for: 5m
         labels:
           severity: ticket

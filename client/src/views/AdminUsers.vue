@@ -29,7 +29,7 @@ import type {
 type AdminTabKey = 'users' | 'profiles';
 type SortField = 'last_name' | 'phone' | 'email' | 'birth_date' | 'status';
 type SortOrder = 'asc' | 'desc';
-type BulkAction = 'block' | 'unblock' | 'approve';
+type BulkAction = 'block' | 'unblock';
 
 interface TaxationInfoInstance {
   openModal: () => void;
@@ -359,30 +359,12 @@ async function unblockUser(id: string): Promise<void> {
   confirmRef.value?.open();
 }
 
-async function approveUser(id: string): Promise<void> {
-  confirmTitle.value = 'Подтверждение аккаунта';
-  confirmMessage.value = 'Подтвердить пользователя и активировать аккаунт?';
-  confirmAction = async () => {
-    try {
-      await apiFetch(`/users/${id}/approve`, { method: 'POST' });
-      showToast('Пользователь подтвержден');
-      await loadUsers();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Ошибка при подтверждении';
-      showToast(msg);
-    }
-  };
-  confirmRef.value?.open();
-}
-
 function statusClass(status: string): string {
   switch (status) {
     case 'ACTIVE':
       return 'bg-success';
     case 'INACTIVE':
       return 'bg-danger';
-    case 'AWAITING_CONFIRMATION':
-      return 'bg-warning text-dark';
     default:
       return 'bg-secondary';
   }
@@ -460,10 +442,6 @@ async function bulk(action: BulkAction): Promise<void> {
       title: 'Разблокировка пользователей',
       text: `Разблокировать выбранных пользователей (${ids.length})?`,
     },
-    approve: {
-      title: 'Подтверждение пользователей',
-      text: `Подтвердить выбранных пользователей (${ids.length})?`,
-    },
   };
   confirmTitle.value = messages[action].title;
   confirmMessage.value = messages[action].text;
@@ -472,8 +450,6 @@ async function bulk(action: BulkAction): Promise<void> {
       block: (id: string) => apiFetch(`/users/${id}/block`, { method: 'POST' }),
       unblock: (id: string) =>
         apiFetch(`/users/${id}/unblock`, { method: 'POST' }),
-      approve: (id: string) =>
-        apiFetch(`/users/${id}/approve`, { method: 'POST' }),
     };
     const results = await Promise.allSettled(
       ids.map((id) => endpoints[action](id))
@@ -545,16 +521,6 @@ async function bulk(action: BulkAction): Promise<void> {
                 @click="bulk('unblock')"
               >
                 <i class="bi bi-unlock-fill"></i>
-              </button>
-              <button
-                type="button"
-                class="btn btn-outline-secondary"
-                :disabled="!anySelected"
-                v-bind="tooltipAttrs"
-                title="Подтвердить выбранных"
-                @click="bulk('approve')"
-              >
-                <i class="bi bi-check-lg"></i>
               </button>
             </div>
             <button class="btn btn-brand" @click="openCreate">
@@ -830,16 +796,6 @@ async function bulk(action: BulkAction): Promise<void> {
                     >
                       <i class="bi bi-unlock-fill"></i>
                     </button>
-                    <button
-                      v-if="u.status === 'AWAITING_CONFIRMATION'"
-                      class="btn btn-sm btn-success"
-                      aria-label="Подтвердить пользователя"
-                      v-bind="tooltipAttrs"
-                      title="Подтвердить"
-                      @click="approveUser(u.id)"
-                    >
-                      <i class="bi bi-check-lg"></i>
-                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -912,14 +868,6 @@ async function bulk(action: BulkAction): Promise<void> {
                     @click="unblockUser(u.id)"
                   >
                     <i class="bi bi-unlock-fill"></i>
-                  </button>
-                  <button
-                    v-if="u.status === 'AWAITING_CONFIRMATION'"
-                    class="btn btn-sm btn-success"
-                    aria-label="Подтвердить пользователя"
-                    @click="approveUser(u.id)"
-                  >
-                    <i class="bi bi-check-lg"></i>
                   </button>
                 </div>
               </div>

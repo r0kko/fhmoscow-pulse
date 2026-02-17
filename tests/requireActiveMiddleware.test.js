@@ -30,34 +30,30 @@ test('blocks incomplete registration', async () => {
   expect(next).not.toHaveBeenCalled();
 });
 
-test('blocks awaiting confirmation', async () => {
+test('treats unknown status as access_denied', async () => {
   const req = {
     user: {
-      getUserStatus: jest
-        .fn()
-        .mockResolvedValue({ alias: 'AWAITING_CONFIRMATION' }),
+      getUserStatus: jest.fn().mockResolvedValue({ alias: 'SUSPENDED' }),
     },
   };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
   await requireActive(req, res, next);
   expect(res.status).toHaveBeenCalledWith(403);
-  expect(res.json).toHaveBeenCalledWith({ error: 'awaiting_confirmation' });
+  expect(res.json).toHaveBeenCalledWith({ error: 'access_denied' });
 });
 
-test('blocks when email unconfirmed', async () => {
+test('treats inactive status as access_denied', async () => {
   const req = {
     user: {
-      getUserStatus: jest
-        .fn()
-        .mockResolvedValue({ alias: 'EMAIL_UNCONFIRMED' }),
+      getUserStatus: jest.fn().mockResolvedValue({ alias: 'INACTIVE' }),
     },
   };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
   await requireActive(req, res, next);
   expect(res.status).toHaveBeenCalledWith(403);
-  expect(res.json).toHaveBeenCalledWith({ error: 'email_unconfirmed' });
+  expect(res.json).toHaveBeenCalledWith({ error: 'access_denied' });
 });
 
 test('blocks when status unknown', async () => {

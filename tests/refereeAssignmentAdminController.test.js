@@ -66,12 +66,25 @@ test('listReferees passes filters', async () => {
   listRefereesMock.mockResolvedValue({ referees: [] });
   const res = mockRes();
   await controller.listReferees(
-    { query: { date: '2024-02-10', role_group_id: 'g1', search: 'Иванов' } },
+    {
+      query: {
+        date: '2024-02-10',
+        role_group_id: 'g1',
+        search: 'Иванов',
+        competition_alias: 'PRO',
+        only_leagues_access: 'true',
+      },
+    },
     res
   );
   expect(listRefereesMock).toHaveBeenCalledWith({
     dateKey: '2024-02-10',
+    from: undefined,
+    to: undefined,
     roleGroupId: 'g1',
+    roleAlias: undefined,
+    competitionAlias: 'PRO',
+    onlyLeaguesAccess: true,
     search: 'Иванов',
     limit: undefined,
   });

@@ -16,7 +16,50 @@ import {
 } from '../utils/cookie.js';
 import { UserStatus } from '../models/index.js';
 import { sendError } from '../utils/api.js';
+import { isAuthLockoutErrorV2Enabled } from '../config/featureFlags.js';
 import { isStaffOnly } from '../utils/roles.js';
+
+function normalizeRetryAfterMs(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.floor(parsed);
+}
+
+function resolveAuthLoginReason(err) {
+  const code = String(err?.code || '').toLowerCase();
+  const reason = String(
+    err?.reason || err?.details?.reason || ''
+  ).toLowerCase();
+  if (code === 'account_inactive' || reason === 'inactive') return 'inactive';
+  if (
+    code === 'account_locked_temporary' ||
+    code === 'account_locked' ||
+    reason === 'temporary_lock'
+  ) {
+    return 'temporary_lock';
+  }
+  if (code === 'invalid_credentials') return 'bad_credentials';
+  return 'unknown';
+}
+
+function buildLoginErrorPayload(err) {
+  if (!err) return {};
+  const details = err.details || {};
+  const normalized = {
+    ...err,
+    details: { ...details },
+  };
+  if (!isAuthLockoutErrorV2Enabled() && err.legacyCode) {
+    normalized.legacyCode = err.legacyCode;
+  }
+  if (!normalized.retryAfter && normalized.retryAfterMs) {
+    normalized.retryAfter = Math.max(
+      1,
+      Math.ceil(normalizeRetryAfterMs(normalized.retryAfterMs) / 1000)
+    );
+  }
+  return normalized;
+}
 
 /* ---------- controller ---------------------------------------------------- */
 export default {
@@ -35,7 +78,7 @@ export default {
       await user.increment('token_version');
       const updated = await user.reload({ include: [UserStatus] });
       const { accessToken, refreshToken } = authService.issueTokens(updated);
-      incAuthLogin('success');
+      incAuthLogin('ok');
       incTokenIssued('access');
       incTokenIssued('refresh');
       const roles = (await updated.getRoles({ attributes: ['alias'] })).map(
@@ -62,8 +105,6 @@ export default {
       const alias = updated.UserStatus?.alias;
       if (alias?.startsWith('REGISTRATION_STEP_')) {
         extra.next_step = parseInt(alias.split('_').pop(), 10);
-      } else if (alias === 'AWAITING_CONFIRMATION') {
-        extra.awaiting_confirmation = true;
       } else if (updated.password_change_required) {
         extra.must_change_password = true;
       }
@@ -78,12 +119,25 @@ export default {
         ...extra,
       });
     } catch (err) {
+      const reason = resolveAuthLoginReason(err);
+      const payload = buildLoginErrorPayload(err);
       try {
-        incAuthLogin('invalid');
+        incAuthLogin(reason);
       } catch (_e) {
         /* noop */
       }
-      return sendError(res, err, 401);
+      try {
+        const details = payload?.details || {};
+        res.locals = res.locals || {};
+        res.locals.observability = {
+          reason,
+          attempts_left: details.remainingAttempts,
+          retry_after_ms: details.retryAfterMs,
+        };
+      } catch (_e) {
+        /* noop */
+      }
+      return sendError(res, payload, 401);
     }
   },
 

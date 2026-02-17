@@ -16,8 +16,17 @@ export default {
 
   async listMatches(req, res) {
     try {
-      const { date } = req.query;
-      const data = await refereeAssignmentService.listMatchesByDate(date);
+      const { date, from, to, competition_alias } = req.query;
+      const data = await refereeAssignmentService.listMatchesByDate(
+        from || to || competition_alias
+          ? {
+              date,
+              from,
+              to,
+              competitionAlias: competition_alias,
+            }
+          : date
+      );
       return res.json(data);
     } catch (err) {
       return sendError(res, err);
@@ -26,10 +35,27 @@ export default {
 
   async listReferees(req, res) {
     try {
-      const { date, role_group_id, search, limit } = req.query;
+      const {
+        date,
+        from,
+        to,
+        role_group_id,
+        search,
+        limit,
+        role_alias,
+        competition_alias,
+        only_leagues_access,
+      } = req.query;
+      const onlyLeaguesAccess =
+        only_leagues_access === '1' || only_leagues_access === 'true';
       const data = await refereeAssignmentService.listRefereesByDate({
         dateKey: date,
+        from,
+        to,
+        roleAlias: role_alias,
         roleGroupId: role_group_id || null,
+        competitionAlias: competition_alias || '',
+        onlyLeaguesAccess,
         search: search || '',
         limit,
       });

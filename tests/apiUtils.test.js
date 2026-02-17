@@ -22,6 +22,21 @@ test('sendError uses internal_error when no details provided', () => {
   expect(res.json).toHaveBeenCalledWith({ error: 'internal_error' });
 });
 
+test('sendError passes details and legacy_code through body', () => {
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  sendError(res, {
+    status: 401,
+    code: 'account_locked_temporary',
+    legacyCode: 'account_locked_temporary',
+    details: { retryAfterMs: 30000, remainingAttempts: 0 },
+  });
+  expect(res.json).toHaveBeenCalledWith({
+    error: 'account_locked_temporary',
+    details: { retryAfterMs: 30000, remainingAttempts: 0 },
+    legacy_code: 'account_locked_temporary',
+  });
+});
+
 test('sendError sets Retry-After header when provided', () => {
   const res = {
     status: jest.fn().mockReturnThis(),

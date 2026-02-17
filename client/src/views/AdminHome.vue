@@ -2,7 +2,12 @@
 import { computed } from 'vue';
 import { auth } from '../auth';
 import MenuTile from '../components/MenuTile.vue';
-import { ADMIN_ROLES, FHMO_MEDIA_CONTENT_ROLES, hasRole } from '../utils/roles';
+import {
+  ADMIN_ROLES,
+  ADMINISTRATOR_ROLES,
+  FHMO_MEDIA_CONTENT_ROLES,
+  hasRole,
+} from '../utils/roles';
 import { resolveCalendarReturnLocation } from '../utils/adminCalendarNavigation';
 
 const userSections = [
@@ -39,7 +44,23 @@ const sportsSections = [
   },
 ];
 
+const professionalLeagueSections = [
+  {
+    title: 'Назначение судей',
+    icon: 'bi-person-check',
+    to: '/admin/professional-leagues/referee-assignments',
+  },
+  {
+    title: 'Список судей',
+    icon: 'bi-card-checklist',
+    to: '/admin/professional-leagues/referees',
+  },
+];
+
 const hasAdminAccess = computed(() => hasRole(auth.roles, ADMIN_ROLES));
+const hasProfessionalLeaguesAccess = computed(() =>
+  hasRole(auth.roles, [...ADMINISTRATOR_ROLES, 'BRIGADE_REFEREE_SPECIALIST'])
+);
 const isSuperAdmin = computed(() => auth.roles.includes('ADMIN'));
 const canModeratePhotos = computed(
   () => isSuperAdmin.value || hasRole(auth.roles, FHMO_MEDIA_CONTENT_ROLES)
@@ -117,6 +138,27 @@ const systemSections = computed(() => {
           <div v-edge-fade class="scroll-container">
             <MenuTile
               v-for="item in refereeSections"
+              :key="item.to"
+              :to="item.to"
+              :title="item.title"
+              :icon="item.icon"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="hasProfessionalLeaguesAccess"
+        class="card section-card mb-2 menu-section"
+      >
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-trophy text-brand me-2" aria-hidden="true"></i>
+            Профессиональные лиги
+          </h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="item in professionalLeagueSections"
               :key="item.to"
               :to="item.to"
               :title="item.title"

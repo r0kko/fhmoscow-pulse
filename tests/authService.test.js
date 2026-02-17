@@ -71,6 +71,7 @@ const user = {
   increment: incrementMock,
   reload: reloadMock,
 };
+const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(async () => {
   updateMock.mockClear();
@@ -81,6 +82,11 @@ beforeEach(async () => {
   user.token_version = 0;
   // clear mocked redis storage (attempts + lockout keys)
   store.clear();
+  process.env = { ...ORIGINAL_ENV };
+});
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV };
 });
 
 test('verifyCredentials returns user when valid', async () => {
@@ -181,6 +187,56 @@ test('rotateTokens rejects inactive user', async () => {
   findStatusMock.mockResolvedValue({ id: 'i' });
   const { refreshToken } = authService.issueTokens(user);
   await expect(authService.rotateTokens(refreshToken)).rejects.toThrow(
-    'account_locked'
+    'account_inactive'
   );
+});
+
+test('verifyCredentials returns temporary lockout error when threshold exceeded (v1)', async () => {
+  findStatusMock.mockResolvedValue({ id: 'active' });
+  findOneMock.mockResolvedValue(user);
+  compareMock.mockResolvedValue(false);
+  process.env.AUTH_LOCKOUT_ENABLED = 'true';
+  process.env.AUTH_LOCKOUT_ERROR_V2 = 'false';
+  for (let i = 0; i < 9; i++) {
+    await expect(authService.verifyCredentials('a', 'b')).rejects.toMatchObject(
+      {
+        code: 'invalid_credentials',
+        reason: 'bad_credentials',
+      }
+    );
+  }
+  await expect(authService.verifyCredentials('a', 'b')).rejects.toMatchObject({
+    code: 'account_locked',
+    reason: 'temporary_lock',
+    details: {
+      reason: 'temporary_lock',
+      remainingAttempts: 0,
+    },
+    retryAfterMs: expect.any(Number),
+  });
+  expect(store.get(`login_block:${user.id}`)).not.toBeNull();
+  delete process.env.AUTH_LOCKOUT_ENABLED;
+  delete process.env.AUTH_LOCKOUT_ERROR_V2;
+});
+
+test('verifyCredentials returns temporary lockout v2 code when enabled', async () => {
+  findStatusMock.mockResolvedValue({ id: 'active' });
+  findOneMock.mockResolvedValue(user);
+  compareMock.mockResolvedValue(false);
+  process.env.AUTH_LOCKOUT_ENABLED = 'true';
+  process.env.AUTH_LOCKOUT_ERROR_V2 = 'true';
+  for (let i = 0; i < 10; i++) {
+    await authService.verifyCredentials('a', 'b').catch(() => {});
+  }
+  const err = await authService.verifyCredentials('a', 'b').catch((e) => e);
+  expect(err).toMatchObject({
+    code: 'account_locked_temporary',
+    reason: 'temporary_lock',
+  });
+  expect(err.details).toMatchObject({
+    reason: 'temporary_lock',
+    remainingAttempts: 0,
+  });
+  delete process.env.AUTH_LOCKOUT_ENABLED;
+  delete process.env.AUTH_LOCKOUT_ERROR_V2;
 });

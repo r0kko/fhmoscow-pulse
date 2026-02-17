@@ -21,6 +21,9 @@ const refereeRoleGroupFindAllMock = jest.fn();
 const refereeRoleFindAllMock = jest.fn();
 const tournamentTeamFindAllMock = jest.fn();
 const userFindAllMock = jest.fn();
+const seasonFindOneMock = jest.fn();
+const competitionTypeFindAllMock = jest.fn();
+const leaguesAccessFindAllMock = jest.fn();
 const listForUsersMock = jest.fn();
 
 const transactionMock = jest.fn(async (cb) => cb({}));
@@ -46,6 +49,9 @@ beforeEach(() => {
   refereeRoleFindAllMock.mockReset();
   tournamentTeamFindAllMock.mockReset();
   userFindAllMock.mockReset();
+  seasonFindOneMock.mockReset();
+  competitionTypeFindAllMock.mockReset();
+  leaguesAccessFindAllMock.mockReset();
   listForUsersMock.mockReset();
   transactionMock.mockClear();
   matchRefereeStatusFindAllMock.mockResolvedValue([
@@ -57,6 +63,9 @@ beforeEach(() => {
   refereeRoleGroupFindAllMock.mockResolvedValue([makeRoleGroup()]);
   refereeRoleFindAllMock.mockResolvedValue([]);
   matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+  seasonFindOneMock.mockResolvedValue({ id: 'season-active' });
+  competitionTypeFindAllMock.mockResolvedValue([]);
+  leaguesAccessFindAllMock.mockResolvedValue([]);
 });
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -76,12 +85,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Club: {},
   Ground: {},
   Tournament: {},
-  CompetitionType: {},
+  CompetitionType: { findAll: competitionTypeFindAllMock },
   Stage: {},
   TournamentGroup: {},
   TournamentTeam: { findAll: tournamentTeamFindAllMock },
   Tour: {},
-  Season: {},
+  Season: { findOne: seasonFindOneMock },
   RefereeRole: { findAll: refereeRoleFindAllMock },
   RefereeRoleGroup: {
     findByPk: refereeRoleGroupFindByPkMock,
@@ -111,6 +120,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   User: { findAll: userFindAllMock },
   Role: {},
   UserStatus: {},
+  LeaguesAccess: { findAll: leaguesAccessFindAllMock },
 }));
 
 const service = await import('../src/services/refereeAssignmentService.js');
@@ -279,6 +289,58 @@ test('listMatchesByDate derives group context for manual match without tournamen
   expect(match.duration_minutes).toBe(40);
   expect(match.duration_missing).toBe(false);
   expect(match.referee_requirements[0].id).toBe('rg1');
+});
+
+test('listRefereesByDate applies leagues access filter for active season', async () => {
+  competitionTypeFindAllMock.mockResolvedValue([{ id: 'ct-pro' }]);
+  leaguesAccessFindAllMock.mockResolvedValue([{ user_id: 'u2' }]);
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u2',
+      last_name: 'Петров',
+      first_name: 'Пётр',
+      patronymic: 'Петрович',
+      Roles: [{ alias: 'BRIGADE_REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    {
+      user_id: 'u2',
+      date: TEST_DATE,
+      AvailabilityType: { alias: 'FREE' },
+      from_time: null,
+      to_time: null,
+    },
+  ]);
+
+  const result = await service.listRefereesByDate({
+    date: TEST_DATE,
+    onlyLeaguesAccess: true,
+    competitionAlias: 'PRO',
+    limit: 0,
+  });
+
+  expect(seasonFindOneMock).toHaveBeenCalledWith(
+    expect.objectContaining({ where: { active: true } })
+  );
+  expect(leaguesAccessFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        season_id: 'season-active',
+        competition_type_id: { [Op.in]: ['ct-pro'] },
+      },
+    })
+  );
+  expect(userFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        id: { [Op.in]: ['u2'] },
+      }),
+    })
+  );
+  expect(result.referees).toHaveLength(1);
+  expect(result.referees[0].id).toBe('u2');
 });
 
 test('updateMatchReferees saves draft assignments', async () => {

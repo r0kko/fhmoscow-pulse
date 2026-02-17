@@ -28,7 +28,10 @@ import {
 const app = express();
 // Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-*
 // Use a bounded number of hops to reduce spoofing risk if edge misconfigures.
-const TRUST_PROXY_HOPS = parseInt(process.env.TRUST_PROXY_HOPS || '2', 10);
+const rawTrustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS || '2', 10);
+const TRUST_PROXY_HOPS = Number.isInteger(rawTrustProxyHops) && rawTrustProxyHops >= 0
+  ? rawTrustProxyHops
+  : 1;
 app.set('trust proxy', TRUST_PROXY_HOPS);
 
 app.use(express.json());

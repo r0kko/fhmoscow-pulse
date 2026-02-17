@@ -1,5 +1,9 @@
 import net from 'node:net';
 
+import logger from '../../logger.js';
+
+import { hashRateLimitIdentifier } from './rateLimitKeys.js';
+
 function readHeader(req, headerName) {
   try {
     const value = req?.headers?.[headerName];
@@ -52,23 +56,49 @@ export function getClientIp(req) {
   const source = String(envSource || defaultSource)
     .trim()
     .toLowerCase();
+  const logSuspicious = (reason, candidate) => {
+    if (process.env.NODE_ENV === 'test') return;
+    try {
+      logger.warn(
+        'Suspicious client IP source: %s, candidate: %s',
+        reason,
+        candidate
+      );
+    } catch (_e) {
+      /* noop */
+    }
+  };
+  const candidate = headerIp(req, 'cf-connecting-ip');
+  const clientIpFromSource = () => {
+    if (source === 'cf_connecting_ip') return candidate;
+    if (source === 'true_client_ip') return headerIp(req, 'true-client-ip');
+    if (source === 'x_real_ip') return headerIp(req, 'x-real-ip');
+    if (source === 'x_forwarded_for') return headerIp(req, 'x-forwarded-for');
+    if (source === 'auto') {
+      return (
+        candidate ||
+        headerIp(req, 'true-client-ip') ||
+        headerIp(req, 'x-real-ip') ||
+        headerIp(req, 'x-forwarded-for') ||
+        reqIp(req)
+      );
+    }
+    return reqIp(req);
+  };
 
-  if (source === 'cf_connecting_ip') return headerIp(req, 'cf-connecting-ip');
-  if (source === 'true_client_ip') return headerIp(req, 'true-client-ip');
-  if (source === 'x_real_ip') return headerIp(req, 'x-real-ip');
-  if (source === 'x_forwarded_for') return headerIp(req, 'x-forwarded-for');
-
-  if (source === 'auto') {
-    return (
-      headerIp(req, 'cf-connecting-ip') ||
-      headerIp(req, 'true-client-ip') ||
-      headerIp(req, 'x-real-ip') ||
-      headerIp(req, 'x-forwarded-for') ||
-      reqIp(req)
-    );
+  const ip = clientIpFromSource();
+  if (!ip && source !== 'req_ip' && source !== 'auto') {
+    logSuspicious(`invalid_${source}`, source);
+    return '';
   }
+  if (!ip && source === 'auto') {
+    logSuspicious('auto-no-valid-ip', 'all');
+  }
+  return ip;
+}
 
-  return reqIp(req);
+export function getHashedClientIp(req) {
+  return hashRateLimitIdentifier(getClientIp(req));
 }
 
 export default { getClientIp };

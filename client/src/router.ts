@@ -8,7 +8,6 @@ import {
 import Login from './views/Login.vue';
 import Register from './views/Register.vue';
 import ProfileWizard from './views/ProfileWizard.vue';
-import AwaitingConfirmation from './views/AwaitingConfirmation.vue';
 import { auth, clearAuth, fetchCurrentUser } from './auth';
 import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
@@ -56,6 +55,8 @@ import TrainingAttendance from './views/TrainingAttendance.vue';
 import AdminCourses from './views/AdminCourses.vue';
 import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
 import AdminRefereeAssignments from './views/AdminRefereeAssignments.vue';
+import AdminProfessionalRefereeAssignments from './views/AdminProfessionalRefereeAssignments.vue';
+import AdminProfessionalLeagueReferees from './views/AdminProfessionalLeagueReferees.vue';
 import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
 import AdminMatch from './views/AdminMatch.vue';
 import AdminSystemOps from './views/AdminSystemOps.vue';
@@ -294,6 +295,24 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Назначение судей',
+    },
+  },
+  {
+    path: '/admin/professional-leagues/referee-assignments',
+    component: AdminProfessionalRefereeAssignments,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Назначение судей',
+    },
+  },
+  {
+    path: '/admin/professional-leagues/referees',
+    component: AdminProfessionalLeagueReferees,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Список судей',
     },
   },
   {
@@ -564,11 +583,6 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, title: 'Заполнение профиля' },
   },
   {
-    path: '/awaiting-confirmation',
-    component: AwaitingConfirmation,
-    meta: { requiresAuth: true, hideLayout: true, title: 'Подтверждение' },
-  },
-  {
     path: '/forbidden',
     component: Forbidden,
     meta: { hideLayout: true, title: 'Доступ запрещён' },
@@ -683,14 +697,6 @@ export async function navigationGuard(
     to.path !== '/complete-profile'
   ) {
     return next('/complete-profile');
-  }
-
-  if (
-    isAuthenticated &&
-    auth.user?.status === 'AWAITING_CONFIRMATION' &&
-    to.path !== '/awaiting-confirmation'
-  ) {
-    return next('/awaiting-confirmation');
   }
 
   return next();

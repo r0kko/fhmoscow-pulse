@@ -206,9 +206,7 @@ test('getUser returns user', async () => {
 test('createUser passes data to model', async () => {
   createMock.mockResolvedValue(user);
   const active = { id: 'a1' };
-  const unconfirmed = { id: 'u1' };
   statusFindMock.mockResolvedValueOnce(active); // ACTIVE
-  statusFindMock.mockResolvedValueOnce(unconfirmed); // EMAIL_UNCONFIRMED
   findOneMock.mockResolvedValueOnce(null); // phone
   findOneMock.mockResolvedValueOnce(null); // email
   findOneMock.mockResolvedValueOnce(null); // name + birthdate
@@ -226,7 +224,7 @@ test('createUser passes data to model', async () => {
   const res = await service.createUser(data);
   expect(createMock).toHaveBeenCalledWith({
     ...data,
-    status_id: unconfirmed.id,
+    status_id: active.id,
     created_by: null,
     updated_by: null,
   });

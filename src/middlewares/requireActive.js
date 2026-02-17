@@ -15,13 +15,5 @@ export default async function requireActive(req, res, next) {
     return res.status(403).json({ error: 'registration_incomplete', step });
   }
 
-  if (alias === 'AWAITING_CONFIRMATION') {
-    return res.status(403).json({ error: 'awaiting_confirmation' });
-  }
-
-  if (alias === 'EMAIL_UNCONFIRMED') {
-    return res.status(403).json({ error: 'email_unconfirmed' });
-  }
-
   return res.status(403).json({ error: 'access_denied' });
 }

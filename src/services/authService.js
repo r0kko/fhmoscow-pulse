@@ -9,7 +9,10 @@ import {
   verifyRefreshToken,
 } from '../utils/jwt.js';
 import { LOGIN_MAX_ATTEMPTS } from '../config/auth.js';
-import { isLockoutEnabled } from '../config/featureFlags.js';
+import {
+  isAuthLockoutErrorV2Enabled,
+  isLockoutEnabled,
+} from '../config/featureFlags.js';
 import { incRefreshReuse, incSecurityEvent } from '../config/metrics.js';
 
 import {
@@ -28,15 +31,40 @@ async function verifyCredentials(phone, password) {
 
   const inactive = await UserStatus.findOne({ where: { alias: 'INACTIVE' } });
   if (inactive && user.status_id === inactive.id) {
-    throw new ServiceError('account_locked', 401);
+    const err = new ServiceError('account_inactive', 401);
+    err.reason = 'inactive';
+    err.details = {
+      reason: 'inactive',
+    };
+    throw err;
   }
 
   // Temporary lockout check (optional, disabled by default for UX)
   if (isLockoutEnabled()) {
     if (await lockout.isLocked(user.id)) {
       const ttlMs = await lockout.getTtlMs(user.id);
-      const err = new ServiceError('account_locked', 401);
-      if (ttlMs > 0) err.retryAfter = Math.ceil(ttlMs / 1000);
+      const retryAfter = Math.max(1, Math.ceil(ttlMs / 1000));
+      const code = isAuthLockoutErrorV2Enabled()
+        ? 'account_locked_temporary'
+        : 'account_locked';
+      const err = new ServiceError(code, 401);
+      err.reason = 'temporary_lock';
+      err.retryAfter = retryAfter;
+      err.retryAfterMs = ttlMs;
+      err.remainingAttempts = 0;
+      err.details = {
+        reason: 'temporary_lock',
+        remainingAttempts: 0,
+        retryAfterMs: ttlMs,
+      };
+      if (!isAuthLockoutErrorV2Enabled()) {
+        err.legacyCode = 'account_locked_temporary';
+      }
+      try {
+        incSecurityEvent('temporary_lock');
+      } catch (_e) {
+        /* noop */
+      }
       throw err;
     }
   }
@@ -45,18 +73,48 @@ async function verifyCredentials(phone, password) {
   if (!ok) {
     if (isLockoutEnabled()) {
       const count = await attempts.markFailed(user.id);
+      const remainingAttempts = Math.max(LOGIN_MAX_ATTEMPTS - count, 0);
       if (count >= LOGIN_MAX_ATTEMPTS) {
         // Enforce temporary lockout via Redis; do not change persistent status
         await lockout.lock(user.id);
         await attempts.clear(user.id);
-        const err = new ServiceError('account_locked', 401);
-        // best-effort TTL for Retry-After header
-        const ttlMs = await lockout.getTtlMs(user.id);
-        if (ttlMs > 0) err.retryAfter = Math.ceil(ttlMs / 1000);
+        const lockTtlMs = await lockout.getTtlMs(user.id);
+        const retryAfter = Math.max(1, Math.ceil(lockTtlMs / 1000));
+        const code = isAuthLockoutErrorV2Enabled()
+          ? 'account_locked_temporary'
+          : 'account_locked';
+        const err = new ServiceError(code, 401);
+        err.reason = 'temporary_lock';
+        err.retryAfter = retryAfter;
+        err.retryAfterMs = lockTtlMs;
+        err.remainingAttempts = 0;
+        err.details = {
+          reason: 'temporary_lock',
+          remainingAttempts: 0,
+          retryAfterMs: lockTtlMs,
+        };
+        if (!isAuthLockoutErrorV2Enabled()) {
+          err.legacyCode = 'account_locked_temporary';
+        }
+        try {
+          incSecurityEvent('temporary_lock');
+        } catch (_e) {
+          /* noop */
+        }
         throw err;
       }
+      const err = new ServiceError('invalid_credentials', 401);
+      err.reason = 'bad_credentials';
+      err.remainingAttempts = remainingAttempts;
+      err.details = {
+        reason: 'bad_credentials',
+        remainingAttempts,
+      };
+      throw err;
     }
-    throw new ServiceError('invalid_credentials', 401);
+    const err = new ServiceError('invalid_credentials', 401);
+    err.reason = 'bad_credentials';
+    throw err;
   }
 
   if (isLockoutEnabled()) {
@@ -136,7 +194,12 @@ async function rotateTokens(refreshToken) {
 
   const inactive = await UserStatus.findOne({ where: { alias: 'INACTIVE' } });
   if (inactive && user.status_id === inactive.id) {
-    throw new ServiceError('account_locked', 401);
+    const err = new ServiceError('account_inactive', 401);
+    err.reason = 'inactive';
+    err.details = {
+      reason: 'inactive',
+    };
+    throw err;
   }
 
   // Mark provided refresh as used (single-use semantics)

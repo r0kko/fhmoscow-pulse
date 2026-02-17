@@ -8,7 +8,7 @@ beforeAll(async () => {
 });
 
 test('auth and mail counters increment without throwing', () => {
-  expect(() => metrics.incAuthLogin('success')).not.toThrow();
+  expect(() => metrics.incAuthLogin('ok')).not.toThrow();
   expect(() => metrics.incAuthRefresh('invalid')).not.toThrow();
   expect(() => metrics.incTokenIssued('access')).not.toThrow();
   expect(() => metrics.incEmailSent('ok', 'verification')).not.toThrow();

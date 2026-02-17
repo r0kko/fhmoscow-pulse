@@ -2,6 +2,8 @@ export const ERROR_MESSAGES = {
   unauthorized: 'Требуется авторизация',
   internal_error: 'Произошла ошибка сервера. Попробуйте позже.',
   account_locked: 'Аккаунт заблокирован',
+  account_inactive: 'Аккаунт деактивирован',
+  account_locked_temporary: 'Слишком много попыток. Попробуйте позже.',
   already_confirmed: 'Электронная почта уже подтверждена',
   bank_account_exists: 'Банковский счёт уже указан',
   bank_account_invalid: 'Неверные реквизиты счёта',

@@ -224,8 +224,8 @@ async function ensureInit() {
     // Auth and mail metrics (corporate visibility)
     authLoginAttempts = new client.Counter({
       name: 'auth_login_attempts_total',
-      help: 'Login attempts grouped by result',
-      labelNames: ['result'], // success|invalid
+      help: 'Login attempts grouped by reason',
+      labelNames: ['reason'], // ok|inactive|temporary_lock|bad_credentials|ip_rate_limited
       registers: [register],
     });
     authRefreshTotal = new client.Counter({
@@ -730,10 +730,11 @@ export function getRuntimeStates() {
 }
 
 // Auth & mail helpers
-export function incAuthLogin(result) {
+export function incAuthLogin(reason) {
   if (!metricsAvailable) return;
   try {
-    authLoginAttempts.inc({ result });
+    const safeReason = safeMetricLabel(String(reason || 'unknown'));
+    authLoginAttempts.inc({ reason: safeReason });
   } catch (_e) {
     /* noop */
   }

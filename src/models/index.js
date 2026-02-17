@@ -41,6 +41,7 @@ import RefereeGroupUser from './refereeGroupUser.js';
 import TrainingRefereeGroup from './trainingRefereeGroup.js';
 import Course from './course.js';
 import UserCourse from './userCourse.js';
+import LeaguesAccess from './leaguesAccess.js';
 import TrainingCourse from './trainingCourse.js';
 import MedicalCenter from './medicalCenter.js';
 import MedicalExam from './medicalExam.js';
@@ -532,6 +533,14 @@ UserCourse.belongsTo(Course, { foreignKey: 'course_id' });
 User.hasOne(UserCourse, { foreignKey: 'user_id' });
 UserCourse.belongsTo(User, { foreignKey: 'user_id' });
 
+/* leagues access */
+Season.hasMany(LeaguesAccess, { foreignKey: 'season_id' });
+LeaguesAccess.belongsTo(Season, { foreignKey: 'season_id' });
+CompetitionType.hasMany(LeaguesAccess, { foreignKey: 'competition_type_id' });
+LeaguesAccess.belongsTo(CompetitionType, { foreignKey: 'competition_type_id' });
+User.hasMany(LeaguesAccess, { foreignKey: 'user_id' });
+LeaguesAccess.belongsTo(User, { foreignKey: 'user_id' });
+
 /* medical centers */
 MedicalCenter.belongsTo(Address, { foreignKey: 'address_id' });
 Address.hasMany(MedicalCenter, { foreignKey: 'address_id' });
@@ -806,6 +815,7 @@ export {
   GroundTeam,
   Course,
   UserCourse,
+  LeaguesAccess,
   AvailabilityType,
   UserAvailability,
   NormativeValueType,

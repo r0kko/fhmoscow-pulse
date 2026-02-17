@@ -77,6 +77,21 @@ TLS завершается в nginx, конфигурации лежат в `inf
 - Группы настроек: БД, JWT/сессии, CORS/CSRF, email, Redis, S3, внешняя БД.
 - Swagger `/api-docs` по умолчанию ограничен приватными сетями.
 
+## Аутентификация и блокировки логина
+- `authService` различает причины неуспешного логина и пишет метрики `auth_login_attempts_total{reason=...}`:
+  - `inactive` (учётка деактивирована),
+  - `temporary_lock` (временная блокировка после лимита попыток),
+  - `bad_credentials` (неверный пароль),
+  - `ip_rate_limited` (сработал rate limit по IP),
+  - `ok` (успешный вход).
+- Новые коды ошибок:
+  - `account_inactive` — деактивированная учётка;
+  - `account_locked_temporary` — временная блокировка по попыткам.
+- `AUTH_LOCKOUT_ERROR_V2` включает выдачу `account_locked_temporary` в API и UI;
+  до включения используется обратная совместимость через `account_locked`.
+- Для корректной работы IP-цепочки за CDN/NGINX проверьте `TRUST_PROXY_HOPS`, `RATE_LIMIT_IP_SOURCE`
+  и соответствующие `set_real_ip_from`/`real_ip_header` в nginx-конфиге.
+
 ## Наблюдаемость
 - Метрики: `GET /metrics` (опциональный Basic Auth).
 - Health/ready/live: `GET /health`, `GET /ready`, `GET /live`.

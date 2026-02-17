@@ -167,7 +167,7 @@ describe('authController', () => {
     });
   });
 
-  test('login returns awaiting_confirmation flag', async () => {
+  test('login returns user status as-is', async () => {
     const user = {
       id: '2',
       increment: jest.fn().mockResolvedValue(undefined),
@@ -175,7 +175,7 @@ describe('authController', () => {
       reload: jest.fn().mockResolvedValue({
         id: '2',
         getRoles: jest.fn().mockResolvedValue([{ alias: 'USER' }]),
-        UserStatus: { alias: 'AWAITING_CONFIRMATION' },
+        UserStatus: { alias: 'SUSPENDED' },
       }),
     };
     verifyCredentialsMock.mockResolvedValue(user);
@@ -187,10 +187,9 @@ describe('authController', () => {
 
     expect(res.json).toHaveBeenCalledWith({
       access_token: 'access',
-      user: { id: '2', status: 'AWAITING_CONFIRMATION' },
+      user: { id: '2', status: 'SUSPENDED' },
       roles: ['USER'],
       capabilities: { is_staff_only: false },
-      awaiting_confirmation: true,
     });
   });
 
@@ -221,7 +220,7 @@ describe('authController', () => {
     const loaded = {
       id: '1',
       getRoles: jest.fn().mockResolvedValue([{ alias: 'ADMIN' }]),
-      UserStatus: { alias: 'AWAITING_CONFIRMATION' },
+      UserStatus: { alias: 'SUSPENDED' },
     };
     const req = {
       user: {
@@ -235,7 +234,7 @@ describe('authController', () => {
     expect(req.user.reload).toHaveBeenCalled();
     expect(toPublicMock).toHaveBeenCalledWith(loaded);
     expect(res.json).toHaveBeenCalledWith({
-      user: { id: '1', status: 'AWAITING_CONFIRMATION' },
+      user: { id: '1', status: 'SUSPENDED' },
       roles: ['ADMIN'],
       capabilities: { is_staff_only: false },
     });

@@ -28,10 +28,7 @@ async function createUser(data, actorId = null) {
   }
   const sex = await Sex.findByPk(data.sex_id);
   if (!sex) throw new ServiceError('sex_not_found', 404);
-  const [activeStatus, unconfirmedStatus] = await Promise.all([
-    UserStatus.findOne({ where: { alias: 'ACTIVE' } }),
-    UserStatus.findOne({ where: { alias: 'EMAIL_UNCONFIRMED' } }),
-  ]);
+  const activeStatus = await UserStatus.findOne({ where: { alias: 'ACTIVE' } });
 
   const activeWhere = { deleted_at: null, status_id: activeStatus.id };
 
@@ -52,10 +49,9 @@ async function createUser(data, actorId = null) {
   if (emailExisting) throw new ServiceError('email_exists');
   if (personalExisting) throw new ServiceError('user_exists');
 
-  const status = unconfirmedStatus || activeStatus;
   return await User.create({
     ...data,
-    status_id: status.id,
+    status_id: activeStatus.id,
     created_by: actorId,
     updated_by: actorId,
   });

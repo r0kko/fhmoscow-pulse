@@ -25,6 +25,7 @@ import {
   MatchRefereeStatus,
   MatchRefereeDraftClear,
   GameStatus,
+  LeaguesAccess,
   User,
   Role,
   UserStatus,
@@ -71,6 +72,53 @@ function normalizeDateKey(dateKey) {
   return value;
 }
 
+function normalizeDateRangeFilter({ date, from, to } = {}) {
+  if (date) {
+    const normalized = normalizeDateKey(date);
+    const bounds = moscowDayBounds(normalized);
+    if (!bounds) throw new ServiceError('invalid_date', 400);
+    return {
+      fromDate: normalized,
+      toDate: normalized,
+      start: bounds.start,
+      endExclusive: bounds.endExclusive,
+    };
+  }
+
+  if (!from || !to) {
+    throw new ServiceError('date_or_range_required', 400);
+  }
+
+  const normalizedFrom = normalizeDateKey(from);
+  const normalizedTo = normalizeDateKey(to);
+  if (normalizedFrom > normalizedTo) {
+    throw new ServiceError('invalid_date_range', 400);
+  }
+  const startBounds = moscowDayBounds(normalizedFrom);
+  const endBounds = moscowDayBounds(normalizedTo);
+  if (!startBounds || !endBounds) {
+    throw new ServiceError('invalid_date', 400);
+  }
+  return {
+    fromDate: normalizedFrom,
+    toDate: normalizedTo,
+    start: startBounds.start,
+    endExclusive: endBounds.endExclusive,
+  };
+}
+
+function normalizeDateKeyFromValue(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const asDate = moscowDateKey(value);
+    if (asDate) return asDate;
+    return `${value.getUTCFullYear()}-${pad2(
+      value.getUTCMonth() + 1
+    )}-${pad2(value.getUTCDate())}`;
+  }
+  return String(value).trim().slice(0, 10);
+}
+
 function moscowDayBounds(dateKey) {
   const start = new Date(`${dateKey}T00:00:00+03:00`);
   if (Number.isNaN(start.getTime())) return null;
@@ -91,6 +139,135 @@ function moscowDateKey(date) {
   const msk = utcToMoscow(date);
   if (!msk) return null;
   return msk.toISOString().slice(0, 10);
+}
+
+function buildDateKeysRange(fromDate, toDate) {
+  if (!fromDate || !toDate) return [];
+  const keys = [];
+  let cursor = new Date(`${fromDate}T00:00:00+03:00`);
+  const end = new Date(`${toDate}T00:00:00+03:00`);
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) {
+    return [];
+  }
+  while (cursor <= end) {
+    keys.push(cursor.toISOString().slice(0, 10));
+    cursor = new Date(cursor.getTime() + DAY_MS);
+  }
+  return keys;
+}
+
+function buildDefaultAvailabilityByDate(dateKeys = []) {
+  const entry = {
+    status: 'FREE',
+    from_time: null,
+    to_time: null,
+    partial_mode: null,
+    preset: true,
+  };
+  const map = {};
+  for (const dateKey of dateKeys) {
+    map[dateKey] = { ...entry };
+  }
+  return map;
+}
+
+function buildCompetitionAliasFilters(rawAlias) {
+  const value = String(rawAlias || '').trim();
+  if (!value) return [];
+  const filter = resolveCompetitionFilter(value);
+  return Array.isArray(filter?.aliasFilterAliases)
+    ? filter.aliasFilterAliases
+    : [];
+}
+
+function buildCompetitionTypeWhere(rawAlias) {
+  const aliases = buildCompetitionAliasFilters(rawAlias);
+  if (!aliases.length) return null;
+  return {
+    alias: {
+      [Op.in]: aliases,
+    },
+  };
+}
+
+function buildCompetitionNameFallbackWhere(rawAlias) {
+  const raw = String(rawAlias || '').trim();
+  const filter = resolveCompetitionFilter(raw);
+  return filter?.nameFilter || null;
+}
+
+const KNOWN_COMPETITION_ALIASES = new Set([
+  'YOUTH',
+  'AMATEUR',
+  'STUDENT',
+  'PRO',
+  'COMMERCIAL',
+]);
+
+function resolveCompetitionFilter(rawAlias) {
+  const raw = String(rawAlias || '').trim();
+  if (!raw) return { hasFilter: false };
+
+  const upper = raw.toUpperCase();
+  const normalized = upper.replace(/[%_]/g, '');
+  const isProLike =
+    upper === 'PRO' ||
+    upper === 'PROFESSIONAL' ||
+    upper === 'ПРО' ||
+    upper.includes('ПРОФ') ||
+    upper.includes('PROF');
+  if (isProLike) {
+    return {
+      hasFilter: true,
+      strict: true,
+      aliasFilterAliases: ['PRO'],
+      aliasFilter: { alias: { [Op.in]: ['PRO'] } },
+      nameFilter: null,
+    };
+  }
+
+  if (KNOWN_COMPETITION_ALIASES.has(upper)) {
+    return {
+      hasFilter: true,
+      strict: true,
+      aliasFilterAliases: [upper],
+      aliasFilter: { alias: { [Op.in]: [upper] } },
+      nameFilter: null,
+    };
+  }
+
+  if (normalized.length < 3) {
+    return { hasFilter: true, strict: false };
+  }
+
+  return {
+    hasFilter: true,
+    strict: false,
+    aliasFilterAliases: [],
+    aliasFilter: null,
+    nameFilter: {
+      [Op.or]: [{ name: { [Op.iLike]: `%${normalized}%` } }],
+    },
+  };
+}
+
+async function resolveCompetitionTypeIds(rawAlias = '') {
+  const aliasValue = String(rawAlias || '').trim() || 'PRO';
+  const strictWhere = buildCompetitionTypeWhere(aliasValue);
+  if (strictWhere) {
+    const rows = await CompetitionType.findAll({
+      where: strictWhere,
+      attributes: ['id'],
+    });
+    if (rows.length) return rows.map((row) => row.id);
+  }
+  const fallbackWhere = buildCompetitionNameFallbackWhere(aliasValue);
+  if (!fallbackWhere) return [];
+  const fallbackRows = await CompetitionType.findAll({
+    where: fallbackWhere,
+    attributes: ['id'],
+  });
+  return fallbackRows.map((row) => row.id);
 }
 
 function moscowTodayKey() {
@@ -412,7 +589,7 @@ function collectChangedUserIds(before = [], after = []) {
   return affected;
 }
 
-function formatUser(u, availability) {
+function formatUser(u, availability, availabilityByDate = null) {
   return {
     id: u.id,
     last_name: u.last_name,
@@ -420,6 +597,7 @@ function formatUser(u, availability) {
     patronymic: u.patronymic,
     roles: (u.Roles || []).map((r) => r.alias),
     availability,
+    availability_by_date: availabilityByDate,
   };
 }
 
@@ -493,29 +671,114 @@ export async function listRoleGroups() {
   });
 }
 
-export async function listMatchesByDate(dateKey) {
-  const normalized = normalizeDateKey(dateKey);
-  const bounds = moscowDayBounds(normalized);
-  if (!bounds) throw new ServiceError('invalid_date', 400);
+export async function listMatchesByDate(params = {}) {
+  const {
+    date,
+    from,
+    to,
+    competitionAlias = '',
+    dateKey,
+  } = typeof params === 'string' ? { date: params } : params || {};
+  const filters = normalizeDateRangeFilter({
+    date: date || dateKey,
+    from,
+    to,
+  });
+  const hasCompetitionAliasFilter = Boolean(
+    String(competitionAlias || '').trim()
+  );
+  const normalizedCompetitionAlias = String(competitionAlias || '')
+    .trim()
+    .toUpperCase();
+  const competitionAliases = buildCompetitionAliasFilters(
+    normalizedCompetitionAlias
+  );
+  const fallbackAliasesWhere =
+    buildCompetitionNameFallbackWhere(competitionAlias);
+  const competitionTypeInclude = {
+    model: CompetitionType,
+    attributes: ['id', 'alias', 'name'],
+    required: false,
+  };
+  const baseCompetitionAliasWhere = buildCompetitionTypeWhere(competitionAlias);
+  const tournamentIds = [];
+  let isStrictCompetitionFilter = false;
+  const tournamentWhere = {};
+  if (competitionAliases.length) {
+    let tournamentWhereFromAlias = (
+      await Tournament.findAll({
+        attributes: ['id'],
+        include: [
+          {
+            model: CompetitionType,
+            attributes: [],
+            required: true,
+            where: baseCompetitionAliasWhere,
+          },
+        ],
+      })
+    ).map((row) => row.id);
+    if (tournamentWhereFromAlias.length) {
+      isStrictCompetitionFilter = true;
+    }
+    if (!tournamentWhereFromAlias.length && fallbackAliasesWhere) {
+      const tournamentWhereFromName = (
+        await Tournament.findAll({
+          attributes: ['id'],
+          where: fallbackAliasesWhere,
+          include: [
+            { model: CompetitionType, attributes: [], required: false },
+          ],
+        })
+      ).map((row) => row.id);
+
+      tournamentWhereFromAlias = tournamentWhereFromName;
+    }
+    if (!tournamentWhereFromAlias.length) {
+      return { date: filters.fromDate, date_to: filters.toDate, matches: [] };
+    }
+    tournamentIds.push(...tournamentWhereFromAlias);
+  }
+  if (hasCompetitionAliasFilter && !competitionAliases.length) {
+    let tournamentWhereFromName = [];
+    if (fallbackAliasesWhere) {
+      tournamentWhereFromName = (
+        await Tournament.findAll({
+          attributes: ['id'],
+          where: fallbackAliasesWhere,
+          include: [
+            { model: CompetitionType, attributes: [], required: false },
+          ],
+        })
+      ).map((row) => row.id);
+    }
+    if (!tournamentWhereFromName.length) {
+      return { date: filters.fromDate, date_to: filters.toDate, matches: [] };
+    }
+    tournamentIds.push(...tournamentWhereFromName);
+  }
+  if (isStrictCompetitionFilter) {
+    competitionTypeInclude.required = true;
+    competitionTypeInclude.where = baseCompetitionAliasWhere;
+  }
+  if (tournamentIds.length) {
+    const uniqueTournamentIds = [...new Set(tournamentIds)];
+    tournamentWhere.tournament_id = { [Op.in]: uniqueTournamentIds };
+  }
 
   const matches = await Match.findAll({
     where: {
+      ...tournamentWhere,
       date_start: {
-        [Op.gte]: bounds.start,
-        [Op.lt]: bounds.endExclusive,
+        [Op.gte]: filters.start,
+        [Op.lt]: filters.endExclusive,
       },
     },
     include: [
       {
         model: Tournament,
         attributes: ['id', 'name', 'full_name', 'competition_type_id'],
-        include: [
-          {
-            model: CompetitionType,
-            attributes: ['id', 'alias', 'name'],
-            required: false,
-          },
-        ],
+        include: [competitionTypeInclude],
       },
       { model: Stage, attributes: ['id', 'name'] },
       {
@@ -700,16 +963,30 @@ export async function listMatchesByDate(dateKey) {
     };
   });
 
-  return { date: normalized, matches: result };
+  return {
+    date: filters.fromDate,
+    date_to: filters.toDate,
+    matches: result,
+  };
 }
 
 export async function listRefereesByDate({
+  date,
   dateKey,
+  from,
+  to,
+  roleAlias = '',
+  competitionAlias = '',
+  onlyLeaguesAccess = false,
   roleGroupId = null,
   search = '',
   limit = 200,
 } = {}) {
-  const normalized = normalizeDateKey(dateKey);
+  const filters = normalizeDateRangeFilter({
+    date: date || dateKey,
+    from,
+    to,
+  });
   const DEFAULT_LIMIT = 200;
   const MAX_LIMIT = 10000;
   const limitProvided = limit !== undefined && limit !== null;
@@ -731,14 +1008,61 @@ export async function listRefereesByDate({
     ];
   }
 
+  const normalizedRoleAlias = String(roleAlias || '')
+    .trim()
+    .toUpperCase();
+  const roleFilter = normalizedRoleAlias
+    ? [normalizedRoleAlias]
+    : REFEREE_ROLES;
   void roleGroupId;
+
+  if (onlyLeaguesAccess) {
+    const activeSeason = await Season.findOne({
+      where: { active: true },
+      attributes: ['id'],
+    });
+    if (!activeSeason?.id) {
+      return {
+        date: filters.fromDate,
+        date_to: filters.toDate,
+        referees: [],
+      };
+    }
+    const competitionTypeIds =
+      await resolveCompetitionTypeIds(competitionAlias);
+    if (!competitionTypeIds.length) {
+      return {
+        date: filters.fromDate,
+        date_to: filters.toDate,
+        referees: [],
+      };
+    }
+    const accessRows = await LeaguesAccess.findAll({
+      where: {
+        season_id: activeSeason.id,
+        competition_type_id: { [Op.in]: competitionTypeIds },
+      },
+      attributes: ['user_id'],
+    });
+    const allowedUserIds = [
+      ...new Set(accessRows.map((row) => row.user_id).filter(Boolean)),
+    ];
+    if (!allowedUserIds.length) {
+      return {
+        date: filters.fromDate,
+        date_to: filters.toDate,
+        referees: [],
+      };
+    }
+    where.id = { [Op.in]: allowedUserIds };
+  }
 
   const userQuery = {
     where,
     include: [
       {
         model: Role,
-        where: { alias: REFEREE_ROLES },
+        where: { alias: roleFilter },
         through: { attributes: [] },
         required: true,
       },
@@ -756,42 +1080,78 @@ export async function listRefereesByDate({
   if (maxLimit !== null) userQuery.limit = maxLimit;
 
   const users = await User.findAll(userQuery);
+  const uniqueUsers = [];
+  const seenUserIds = new Set();
+  users.forEach((user) => {
+    if (!user?.id || seenUserIds.has(user.id)) return;
+    seenUserIds.add(user.id);
+    uniqueUsers.push(user);
+  });
 
-  const userIds = users.map((u) => u.id);
-  const availRecords = await listAvailabilities(
-    userIds,
-    normalized,
-    normalized
-  );
-  const availMap = new Map();
+  const userIds = uniqueUsers.map((u) => u.id);
+  const dateRangeKeys = buildDateKeysRange(filters.fromDate, filters.toDate);
+  const availRecords = userIds.length
+    ? await listAvailabilities(userIds, filters.fromDate, filters.toDate)
+    : [];
+  const availByUserAndDate = new Map();
   for (const rec of availRecords) {
-    availMap.set(rec.user_id, {
+    const userId = rec?.user_id;
+    if (!userId) continue;
+    const day = normalizeDateKeyFromValue(rec.date);
+    if (!day) continue;
+    const byDate = availByUserAndDate.get(userId) || {};
+    byDate[day] = {
       status: rec.AvailabilityType?.alias || 'FREE',
       from_time: rec.from_time ?? null,
       to_time: rec.to_time ?? null,
       partial_mode: derivePartialMode(rec.from_time, rec.to_time),
       preset: true,
-    });
+    };
+    availByUserAndDate.set(userId, byDate);
   }
 
-  const referees = users.map((u) => {
-    const availability = availMap.get(u.id) || {
-      status: 'FREE',
-      from_time: null,
-      to_time: null,
-      partial_mode: null,
-      preset: false,
+  const referees = uniqueUsers.map((u) => {
+    const availabilityByDate = {
+      ...buildDefaultAvailabilityByDate(dateRangeKeys),
+      ...(availByUserAndDate.get(u.id) || {}),
     };
-    return formatUser(u, availability);
+    const dates = dateRangeKeys.length
+      ? dateRangeKeys
+      : Object.keys(availabilityByDate).sort();
+    const baseAvailability = dates.length
+      ? availabilityByDate[dates[0]]
+      : {
+          status: 'FREE',
+          from_time: null,
+          to_time: null,
+          partial_mode: null,
+          preset: false,
+        };
+    const preferredDate = dates.find((dateKey) => {
+      const entry = availabilityByDate[dateKey];
+      return entry?.preset && ['FREE', 'PARTIAL'].includes(entry?.status);
+    });
+    const selectedAvailability = preferredDate
+      ? availabilityByDate[preferredDate]
+      : baseAvailability;
+    return {
+      ...formatUser(u, selectedAvailability),
+      availability_by_date: availabilityByDate,
+    };
   });
 
-  const available = referees.filter(
-    (ref) =>
-      ref.availability?.preset &&
-      ['FREE', 'PARTIAL'].includes(ref.availability.status)
-  );
+  const available = referees.filter((ref) => {
+    const availabilityEntries = Object.values(ref.availability_by_date || {});
+    return availabilityEntries.some(
+      (entry) => entry?.preset && ['FREE', 'PARTIAL'].includes(entry?.status)
+    );
+  });
 
-  return { date: normalized, referees: available };
+  return {
+    date: filters.fromDate,
+    date_to: filters.toDate,
+    referees: available,
+  };
 }
 
 export async function listAssignmentDatesForUser(userId) {
@@ -1077,7 +1437,8 @@ export async function listAssignmentsForUser(userId, dateKey) {
   const publishedMatches = matches.filter((match) =>
     (match.assignments || []).some(
       (assignment) =>
-        assignment.user?.id === userId && assignment.status === PUBLISHED_STATUS_ALIAS
+        assignment.user?.id === userId &&
+        assignment.status === PUBLISHED_STATUS_ALIAS
     )
   ).length;
   const totalMatches = matches.length;
@@ -1313,7 +1674,9 @@ export async function confirmAssignmentsForDate(dateKey, userId) {
   const dayRows = await MatchReferee.findAll({
     where: {
       user_id: userId,
-      status_id: { [Op.in]: [statusInfo.published.id, statusInfo.confirmed.id] },
+      status_id: {
+        [Op.in]: [statusInfo.published.id, statusInfo.confirmed.id],
+      },
     },
     attributes: ['match_id', 'status_id'],
     include: [

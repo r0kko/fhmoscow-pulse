@@ -1,16 +1,19 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 import { incRateLimited } from '../config/metrics.js';
+import { incAuthLogin } from '../config/metrics.js';
 import { isRedisWritable } from '../config/redis.js';
 import { sendError } from '../utils/api.js';
 import { isRateLimitEnabled } from '../config/featureFlags.js';
 import { getClientIp } from '../utils/clientIp.js';
+import { hashRateLimitIdentifier } from '../utils/rateLimitKeys.js';
 
 import RedisRateLimitStore from './stores/redisRateLimitStore.js';
 
 function loginKey(req) {
   const ip = getClientIp(req);
-  const acct = (req.body?.phone || req.body?.email || '').toString().trim();
+  const rawAcct = (req.body?.phone || req.body?.email || '').toString().trim();
+  const acct = hashRateLimitIdentifier(rawAcct);
   // Pair IP with account identifier to reduce NAT collisions while
   // still constraining per-source
   const ipKey = ipKeyGenerator(ip, 64);
@@ -42,6 +45,7 @@ const middleware = rateLimit({
   },
   handler: (req, res, _next, options) => {
     incRateLimited('login');
+    incAuthLogin('ip_rate_limited');
     return sendError(res, {
       status: 429,
       code: 'rate_limited',
