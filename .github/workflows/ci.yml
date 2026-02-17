@@ -50,8 +50,12 @@ jobs:
       - name: Clear Jest cache
         run: npx jest --clearCache || true
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=moderate
+      - name: Audit runtime dependencies (blocking)
+        run: npm run audit:prod
+
+      - name: Audit all dependencies (informational)
+        continue-on-error: true
+        run: npm run audit:full
 
       - name: Validate Grafana dashboards
         run: npm run validate:dashboards

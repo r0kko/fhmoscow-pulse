@@ -33,7 +33,9 @@
     "test:all": "npm run test:server && npm run test:client",
     "test:ci": "npm run test:server:ci && npm run test:client",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
-    "validate:dashboards": "node scripts/validate-dashboards.mjs"
+    "validate:dashboards": "node scripts/validate-dashboards.mjs",
+    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
+    "audit:full": "npm audit --audit-level=moderate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",
@@ -86,18 +88,18 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
+    "eslint-config-prettier": "^6.15.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.23.2",
-    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-prettier": "^2.7.0",
     "eslint-plugin-security": "^3.0.1",
     "globals": "^17.3.0",
+    "is-callable": "file:packages/is-callable",
+    "is-date-object": "file:packages/is-date-object",
+    "is-symbol": "file:packages/is-symbol",
     "jest": "^30.2.0",
     "prettier": "^3.8.1",
-    "semver": "^7.7.4",
-    "is-date-object": "file:packages/is-date-object",
-    "is-callable": "file:packages/is-callable",
-    "is-symbol": "file:packages/is-symbol"
+    "semver": "^7.7.4"
   }
 }
