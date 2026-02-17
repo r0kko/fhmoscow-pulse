@@ -148,11 +148,7 @@ function buildDateKeysRange(fromDate, toDate) {
     const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) return null;
     const [, yearText, monthText, dayText] = match;
-    return Date.UTC(
-      Number(yearText),
-      Number(monthText) - 1,
-      Number(dayText)
-    );
+    return Date.UTC(Number(yearText), Number(monthText) - 1, Number(dayText));
   };
   let cursor = parseDateKeyUtc(fromDate);
   const end = parseDateKeyUtc(toDate);
