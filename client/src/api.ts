@@ -335,7 +335,7 @@ export function resetApiRuntimeForTests() {
     /* ignore */
   }
   if (typeof window !== 'undefined') {
-    window.__csrfHmac = undefined;
+    delete window.__csrfHmac;
   }
 }
 
