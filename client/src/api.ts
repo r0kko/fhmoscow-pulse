@@ -312,6 +312,33 @@ export function clearAccessToken() {
   }
 }
 
+// Test helper: ensure no background timers or transient auth flags leak
+// between Vitest files, which can keep workers alive in CI coverage runs.
+export function resetApiRuntimeForTests() {
+  accessToken = null;
+  refreshPromise = null;
+  setRefreshFailed(false);
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+  if (csrfTimerId) {
+    clearTimeout(csrfTimerId);
+    csrfTimerId = null;
+  }
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('csrfHmac');
+      sessionStorage.removeItem('refreshFailed');
+    }
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== 'undefined') {
+    window.__csrfHmac = undefined;
+  }
+}
+
 export function getAccessToken(): string | null {
   return accessToken;
 }

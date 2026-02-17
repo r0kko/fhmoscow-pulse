@@ -12,7 +12,7 @@
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --reporter=dot"
+    "test:coverage": "vitest run --coverage --reporter=dot --pool=forks --maxWorkers=1"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
