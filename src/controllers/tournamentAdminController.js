@@ -60,6 +60,14 @@ export default {
       return sendError(res, err);
     }
   },
+  async getTournament(req, res) {
+    try {
+      const tournament = await svc.getTournamentById(req.params.id);
+      return res.json({ tournament: map.toPublicTournament(tournament) });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
 
   async listStages(req, res) {
     try {
@@ -143,20 +151,35 @@ export default {
       const {
         page = '1',
         limit = '100',
+        search,
+        q,
         tournament_id,
         stage_id,
+        without_stage,
+        date_from,
+        date_to,
         status,
+        sort,
       } = req.query;
-      const { rows, count } = await svc.listTournamentMatches({
+      const { rows, count, summary, days } = await svc.listTournamentMatches({
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
+        search: search || q || undefined,
         tournament_id,
         stage_id,
+        without_stage,
+        date_from,
+        date_to,
         status,
+        sort,
       });
       return res.json({
         matches: rows.map(map.toPublicTournamentMatch),
         total: count,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        summary,
+        days,
       });
     } catch (err) {
       return sendError(res, err);
@@ -170,6 +193,26 @@ export default {
         .json({ match: map.toPublicTournamentMatch(match) });
     } catch (err) {
       return sendError(res, err);
+    }
+  },
+  async updateTournamentMatch(req, res) {
+    try {
+      const match = await svc.updateTournamentMatch(
+        req.params.id,
+        req.body,
+        req.user?.id
+      );
+      return res.json({ match: map.toPublicTournamentMatch(match) });
+    } catch (err) {
+      return sendError(res, err, 404);
+    }
+  },
+  async deleteTournamentMatch(req, res) {
+    try {
+      await svc.deleteTournamentMatch(req.params.id, req.user?.id);
+      return res.json({ ok: true });
+    } catch (err) {
+      return sendError(res, err, 404);
     }
   },
   async createTournament(req, res) {

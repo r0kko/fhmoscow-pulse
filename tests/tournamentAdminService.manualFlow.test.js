@@ -10,6 +10,8 @@ const ttCreateMock = jest.fn();
 const ttFindAllMock = jest.fn();
 const matchCreateMock = jest.fn();
 const matchFindByPkMock = jest.fn();
+const matchFindAndCountAllMock = jest.fn();
+const matchFindAllMock = jest.fn();
 const gameStatusFindOneMock = jest.fn();
 const groundFindByPkMock = jest.fn();
 
@@ -24,6 +26,8 @@ beforeEach(() => {
   ttFindAllMock.mockReset();
   matchCreateMock.mockReset();
   matchFindByPkMock.mockReset();
+  matchFindAndCountAllMock.mockReset();
+  matchFindAllMock.mockReset();
   gameStatusFindOneMock.mockReset();
   groundFindByPkMock.mockReset();
 });
@@ -61,7 +65,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Team: { findByPk: teamFindByPkMock },
   Ground: { findByPk: groundFindByPkMock },
   Match: {
-    findAndCountAll: jest.fn(),
+    findAndCountAll: matchFindAndCountAllMock,
+    findAll: matchFindAllMock,
     create: matchCreateMock,
     findByPk: matchFindByPkMock,
   },
@@ -226,4 +231,78 @@ test('createMatchSchedule rejects when first team has no group assignment', asyn
       date_start: '2026-02-07T10:30:00.000Z',
     })
   ).rejects.toMatchObject({ code: 'home_team_group_required' });
+});
+
+test('listTournamentMatches returns summary and day aggregates', async () => {
+  matchFindAndCountAllMock.mockResolvedValue({
+    rows: [{ id: 'm1' }],
+    count: 1,
+  });
+  matchFindAllMock.mockResolvedValue([
+    {
+      date_start: '2099-01-10T10:00:00.000Z',
+      GameStatus: { alias: 'SCHEDULED' },
+    },
+    {
+      date_start: '2020-01-10T10:00:00.000Z',
+      GameStatus: { alias: 'CANCELLED' },
+    },
+  ]);
+
+  const out = await svc.listTournamentMatches({
+    tournament_id: 't1',
+    page: 1,
+    limit: 20,
+  });
+
+  expect(out.rows).toEqual([{ id: 'm1' }]);
+  expect(out.count).toBe(1);
+  expect(out.summary.total).toBe(2);
+  expect(out.summary.cancelled).toBe(1);
+  expect(out.days).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ day: '2020-01-10', count: 1 }),
+      expect.objectContaining({ day: '2099-01-10', count: 1 }),
+    ])
+  );
+});
+
+test('updateTournamentMatch updates date/ground for manual match', async () => {
+  matchFindByPkMock
+    .mockResolvedValueOnce({
+      id: 'm7',
+      external_id: null,
+      tournament_id: 't1',
+      GameStatus: { alias: 'SCHEDULED' },
+      Tournament: { id: 't1', external_id: null },
+      update: jest.fn().mockResolvedValue(),
+    })
+    .mockResolvedValueOnce({ id: 'm7' });
+  groundFindByPkMock.mockResolvedValue({ id: 'g1' });
+
+  const out = await svc.updateTournamentMatch(
+    'm7',
+    { date_start: '2026-02-07T10:30:00.000Z', ground_id: 'g1' },
+    'admin-9'
+  );
+  expect(groundFindByPkMock).toHaveBeenCalledWith('g1', {
+    attributes: ['id'],
+  });
+  expect(out).toEqual({ id: 'm7' });
+});
+
+test('deleteTournamentMatch rejects finished games', async () => {
+  matchFindByPkMock.mockResolvedValue({
+    id: 'm8',
+    external_id: null,
+    tournament_id: 't1',
+    GameStatus: { alias: 'FINISHED' },
+    Tournament: { id: 't1', external_id: null },
+  });
+
+  await expect(
+    svc.deleteTournamentMatch('m8', 'admin-2')
+  ).rejects.toMatchObject({
+    code: 'match_finished_cannot_delete',
+  });
 });

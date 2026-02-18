@@ -29,6 +29,10 @@ import SchoolGrounds from './views/SchoolGrounds.vue';
 import AdminClubsTeams from './views/AdminClubsTeams.vue';
 import AdminSportSchools from './views/AdminSportSchools.vue';
 import AdminTournaments from './views/AdminTournaments.vue';
+import AdminTournamentLayout from './views/AdminTournamentLayout.vue';
+import AdminTournamentStructureView from './views/AdminTournamentStructureView.vue';
+import AdminTournamentScheduleView from './views/AdminTournamentScheduleView.vue';
+import AdminTournamentSettingsView from './views/AdminTournamentSettingsView.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import SchoolPastMatches from './views/SchoolPastMatches.vue';
 import SchoolMatchAgreements from './views/SchoolMatchAgreements.vue';
@@ -419,6 +423,39 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/tournaments',
     component: AdminTournaments,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Турниры' },
+  },
+  {
+    path: '/admin/tournaments/:tournamentId',
+    component: AdminTournamentLayout,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Турнир' },
+    children: [
+      {
+        path: '',
+        redirect: (to) => ({
+          name: 'adminTournamentStructure',
+          params: { tournamentId: to.params['tournamentId'] },
+          query: to.query,
+        }),
+      },
+      {
+        path: 'structure',
+        name: 'adminTournamentStructure',
+        component: AdminTournamentStructureView,
+        meta: { title: 'Турнир: структура' },
+      },
+      {
+        path: 'schedule',
+        name: 'adminTournamentSchedule',
+        component: AdminTournamentScheduleView,
+        meta: { title: 'Турнир: расписание' },
+      },
+      {
+        path: 'settings',
+        name: 'adminTournamentSettings',
+        component: AdminTournamentSettingsView,
+        meta: { title: 'Турнир: настройки' },
+      },
+    ],
   },
   {
     path: '/admin/sport-schools',

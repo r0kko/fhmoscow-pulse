@@ -67,6 +67,7 @@ export default {
       };
     }
     if (t.counts) out.counts = t.counts;
+    if (t.flags) out.flags = t.flags;
     return out;
   },
 
@@ -156,6 +157,9 @@ export default {
       ground_id: match.ground_id || null,
       home_team_id: match.team1_id || null,
       away_team_id: match.team2_id || null,
+      score_team1: match.score_team1 ?? null,
+      score_team2: match.score_team2 ?? null,
+      technical_winner: match.technical_winner || null,
     };
     if (match.Tournament) {
       out.tournament = {
@@ -169,10 +173,23 @@ export default {
         name: match.Stage.name || null,
       };
     }
+    if (match.TournamentGroup) {
+      out.tournament_group = {
+        id: match.TournamentGroup.id,
+        name: match.TournamentGroup.name || null,
+      };
+    }
     if (match.Ground) {
       out.ground = {
         id: match.Ground.id,
         name: match.Ground.name || null,
+      };
+    }
+    if (match.GameStatus) {
+      out.game_status = {
+        id: match.GameStatus.id,
+        alias: match.GameStatus.alias || null,
+        name: match.GameStatus.name || null,
       };
     }
     if (match.HomeTeam) {

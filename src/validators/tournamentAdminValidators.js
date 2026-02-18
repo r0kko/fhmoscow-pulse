@@ -85,6 +85,22 @@ export const tournamentMatchCreateRules = [
     .notEmpty(),
 ];
 
+export const tournamentMatchUpdateRules = [
+  body('date_start')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('date_start_must_be_iso_datetime'),
+  body('ground_id').optional({ nullable: true }).isUUID(),
+  body().custom((payload) => {
+    const hasDate = Object.hasOwn(payload || {}, 'date_start');
+    const hasGround = Object.hasOwn(payload || {}, 'ground_id');
+    if (!hasDate && !hasGround) {
+      throw new Error('match_update_payload_required');
+    }
+    return true;
+  }),
+];
+
 export const groupRefereesUpdateRules = [
   body('roles').isArray().withMessage('referee_roles_required'),
   body('roles').custom((arr) => {

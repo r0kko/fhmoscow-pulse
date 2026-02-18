@@ -3,6 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import BrandSpinner from '../components/BrandSpinner.vue';
 import PageNav from '../components/PageNav.vue';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
+import BaseTile from '../components/BaseTile.vue';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
 import { loadPageSize, savePageSize } from '../utils/pageSize';
@@ -10,6 +12,8 @@ import { loadPageSize, savePageSize } from '../utils/pageSize';
 const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
+const MOSCOW_TZ = 'Europe/Moscow';
+const weekdayLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 // Shared search
 const search = ref(route.query.q || '');
@@ -210,6 +214,179 @@ const filterChips = computed(() => {
   return chips;
 });
 
+const detailBreadcrumbs = computed(() => {
+  if (!detailTournament.value) {
+    return [
+      { label: 'Администрирование', to: '/admin' },
+      { label: 'Управление спортивной частью', disabled: true },
+      { label: 'Турниры' },
+    ];
+  }
+
+  const items = [
+    { label: 'Администрирование', to: '/admin' },
+    { label: 'Управление спортивной частью', disabled: true },
+    { label: 'Турниры', disabled: true },
+    { label: detailTournament.value.name || 'Турнир' },
+  ];
+
+  if (detailMode.value === 'structure' && detailStage.value) {
+    items.push({
+      label: `Этап: ${detailStage.value.name || 'Без названия'}`,
+    });
+  }
+  if (detailMode.value === 'structure' && detailGroup.value) {
+    items.push({
+      label: detailGroup.value.name || 'Группа',
+    });
+  }
+
+  return items;
+});
+
+const tournamentSummary = computed(() => ({
+  stages:
+    detailStages.value.length || detailTournament.value?.counts?.stages || 0,
+  groups:
+    detailGroups.value.length || detailTournament.value?.counts?.groups || 0,
+  teams:
+    tournamentTeams.value.length || detailTournament.value?.counts?.teams || 0,
+  matches: tournamentMatches.value.length,
+}));
+
+const detailModeTiles = computed(() => [
+  {
+    key: 'structure',
+    title: 'Структура',
+    subtitle: `${tournamentSummary.value.stages} этапов · ${tournamentSummary.value.groups} групп`,
+    icon: 'bi-diagram-3',
+  },
+  {
+    key: 'schedule',
+    title: 'Расписание',
+    subtitle: `${tournamentSummary.value.matches} матчей в календаре`,
+    icon: 'bi-calendar3',
+  },
+  {
+    key: 'settings',
+    title: 'Настройки',
+    subtitle: 'Параметры турнира, групп и судейства',
+    icon: 'bi-sliders2',
+  },
+]);
+
+const scheduleStageOptions = computed(() => {
+  const options = [{ id: '', name: 'Все этапы' }];
+  for (const stage of detailStages.value || []) {
+    options.push({
+      id: stage.id,
+      name: stage.name || 'Этап без названия',
+    });
+  }
+  if (detailGroups.value.some((group) => !group.stage_id)) {
+    options.push({ id: 'unassigned', name: 'Матчи без этапа' });
+  }
+  return options;
+});
+
+const scheduleMatchesFiltered = computed(() => {
+  if (!scheduleStageFilter.value) return tournamentMatches.value || [];
+  if (scheduleStageFilter.value === 'unassigned') {
+    return (tournamentMatches.value || []).filter((match) => !match.stage_id);
+  }
+  return (tournamentMatches.value || []).filter(
+    (match) =>
+      String(match.stage_id || '') === String(scheduleStageFilter.value)
+  );
+});
+
+const scheduleMatchesSorted = computed(() => {
+  return [...scheduleMatchesFiltered.value].sort(
+    (a, b) =>
+      new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
+  );
+});
+
+const scheduleBucketsByDay = computed(() => {
+  const map = new Map();
+  for (const match of scheduleMatchesSorted.value) {
+    const dayKey = toMoscowDayKey(match.date_start);
+    if (!dayKey) continue;
+    if (!map.has(dayKey)) map.set(dayKey, []);
+    map.get(dayKey).push(match);
+  }
+  return map;
+});
+
+const todayMoscowDay = computed(() => toMoscowDayKey(new Date().toISOString()));
+
+const scheduleMonthKeys = computed(() => {
+  const keys = new Set();
+  for (const dayKey of scheduleBucketsByDay.value.keys()) {
+    keys.add(dayKey.slice(0, 7));
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+});
+
+const activeScheduleMonth = computed(() => {
+  if (scheduleMonthAnchor.value) return scheduleMonthAnchor.value;
+  const todayMonth = todayMoscowDay.value?.slice(0, 7);
+  if (todayMonth && scheduleMonthKeys.value.includes(todayMonth))
+    return todayMonth;
+  return scheduleMonthKeys.value[0] || todayMonth || formatMonthKey(new Date());
+});
+
+const scheduleCurrentMonthMatchDays = computed(() => {
+  const monthKey = activeScheduleMonth.value;
+  const keys = [...scheduleBucketsByDay.value.keys()]
+    .filter((day) => day.startsWith(monthKey))
+    .sort((a, b) => a.localeCompare(b));
+  return keys;
+});
+
+const activeScheduleDay = computed(() => {
+  const selected = scheduleSelectedDayKey.value;
+  if (selected && selected.startsWith(activeScheduleMonth.value))
+    return selected;
+
+  const todayKey = todayMoscowDay.value;
+  if (
+    todayKey &&
+    todayKey.startsWith(activeScheduleMonth.value) &&
+    scheduleBucketsByDay.value.has(todayKey)
+  ) {
+    return todayKey;
+  }
+  return (
+    scheduleCurrentMonthMatchDays.value[0] || `${activeScheduleMonth.value}-01`
+  );
+});
+
+const scheduleDayMatches = computed(
+  () => scheduleBucketsByDay.value.get(activeScheduleDay.value) || []
+);
+
+const scheduleCalendarCells = computed(() =>
+  buildCalendarCells(
+    activeScheduleMonth.value,
+    scheduleBucketsByDay.value,
+    activeScheduleDay.value,
+    todayMoscowDay.value
+  )
+);
+
+const scheduleMonthLabel = computed(() =>
+  formatMonthLabel(activeScheduleMonth.value)
+);
+
+const schedulePastMatchesCount = computed(
+  () => scheduleMatchesSorted.value.filter((match) => isPastMatch(match)).length
+);
+
+const scheduleUpcomingMatchesCount = computed(
+  () => scheduleMatchesSorted.value.length - schedulePastMatchesCount.value
+);
+
 function clearChip(key) {
   if (key === 'q') search.value = '';
   if (key === 'season') selectedSeasonId.value = '';
@@ -280,6 +457,12 @@ const createMatchForm = ref({
 });
 const createMatchLoading = ref(false);
 const createMatchError = ref('');
+const tournamentMatches = ref([]);
+const tournamentMatchesLoading = ref(false);
+const tournamentMatchesError = ref('');
+const scheduleStageFilter = ref('');
+const scheduleMonthAnchor = ref('');
+const scheduleSelectedDayKey = ref('');
 
 const isImportedTournament = computed(
   () => detailTournament.value?.external_id != null
@@ -329,13 +512,18 @@ function closeDetail() {
   detailTeams.value = [];
   tournamentTeams.value = [];
   stageMatches.value = [];
+  tournamentMatches.value = [];
   clubTeamsCatalog.value = [];
   detailStagesError.value = '';
   detailGroupsError.value = '';
   detailTeamsError.value = '';
   tournamentTeamsError.value = '';
   stageMatchesError.value = '';
+  tournamentMatchesError.value = '';
   detailMode.value = 'structure';
+  scheduleStageFilter.value = '';
+  scheduleMonthAnchor.value = '';
+  scheduleSelectedDayKey.value = '';
   settingsStages.value = [];
   settingsGroups.value = [];
   settingsEdits.value = {};
@@ -442,33 +630,148 @@ function formatMatchDateTime(value) {
   });
 }
 
+function formatMatchTime(value) {
+  if (!value) return '—:—';
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '—:—';
+  return dt.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: MOSCOW_TZ,
+  });
+}
+
+function getMoscowParts(value) {
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MOSCOW_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(dt);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+  if (!year || !month || !day) return null;
+  return { year, month, day };
+}
+
+function toMoscowDayKey(value) {
+  const parts = getMoscowParts(value);
+  return parts ? `${parts.year}-${parts.month}-${parts.day}` : '';
+}
+
+function formatMonthKey(dateLike) {
+  const parts = getMoscowParts(dateLike);
+  if (!parts) return '';
+  return `${parts.year}-${parts.month}`;
+}
+
+function shiftMonthKey(monthKey, delta) {
+  const [yearRaw, monthRaw] = String(monthKey || '').split('-');
+  const year = Number.parseInt(yearRaw, 10);
+  const month = Number.parseInt(monthRaw, 10);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    month < 1 ||
+    month > 12
+  ) {
+    return formatMonthKey(new Date());
+  }
+  const dt = new Date(Date.UTC(year, month - 1 + delta, 1));
+  const nextYear = dt.getUTCFullYear();
+  const nextMonth = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  return `${nextYear}-${nextMonth}`;
+}
+
+function formatMonthLabel(monthKey) {
+  const [yearRaw, monthRaw] = String(monthKey || '').split('-');
+  const year = Number.parseInt(yearRaw, 10);
+  const month = Number.parseInt(monthRaw, 10);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return 'Календарь';
+  const dt = new Date(Date.UTC(year, month - 1, 1));
+  return dt.toLocaleDateString('ru-RU', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: MOSCOW_TZ,
+  });
+}
+
+function isPastMatch(match) {
+  const ts = new Date(match?.date_start || '').getTime();
+  if (!Number.isFinite(ts)) return false;
+  return ts < Date.now();
+}
+
+function formatScheduleDayTitle(dayKey) {
+  const [yearRaw, monthRaw, dayRaw] = String(dayKey || '').split('-');
+  const year = Number.parseInt(yearRaw, 10);
+  const month = Number.parseInt(monthRaw, 10);
+  const day = Number.parseInt(dayRaw, 10);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
+    return 'Выберите день';
+  }
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  return dt.toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: MOSCOW_TZ,
+  });
+}
+
+function buildCalendarCells(monthKey, matchesByDay, activeDayKey, todayDayKey) {
+  const [yearRaw, monthRaw] = String(monthKey || '').split('-');
+  const year = Number.parseInt(yearRaw, 10);
+  const month = Number.parseInt(monthRaw, 10);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return [];
+
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const leadingOffset = (firstDay.getUTCDay() + 6) % 7;
+  const cells = [];
+
+  for (let idx = 0; idx < leadingOffset; idx += 1) {
+    cells.push({ key: `pad-${idx}`, inMonth: false });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dayKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const matches = matchesByDay.get(dayKey) || [];
+    cells.push({
+      key: dayKey,
+      inMonth: true,
+      day,
+      dayKey,
+      matchCount: matches.length,
+      hasMatches: matches.length > 0,
+      isSelected: dayKey === activeDayKey,
+      isToday: dayKey === todayDayKey,
+      isPast: dayKey < todayDayKey,
+    });
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({ key: `tail-${cells.length}`, inMonth: false });
+  }
+
+  return cells;
+}
+
 async function openTournamentDetail(t) {
-  detailTournament.value = t;
-  detailStage.value = null;
-  detailGroup.value = null;
-  stageMatches.value = [];
-  detailStagesError.value = '';
-  detailGroupsError.value = '';
-  detailTeamsError.value = '';
-  tournamentTeamsError.value = '';
-  stageMatchesError.value = '';
-  detailMode.value = 'structure';
-  resetMainSettings();
-  createStageOpen.value = false;
-  createGroupOpen.value = false;
-  resetCreateStageForm();
-  resetCreateGroupForm();
-  resetAssignTeamForm();
-  resetCreateMatchForm();
-  detailStageSearch.value = '';
-  detailGroupSearch.value = '';
-  detailTeamSearch.value = '';
-  await Promise.all([
-    loadDetailStages(),
-    loadDetailGroups(),
-    loadTournamentTeams(),
-    loadClubTeamsCatalog(),
-  ]);
+  const tournamentId = t?.id ? String(t.id) : '';
+  if (!tournamentId) return;
+  await router.push({
+    name: 'adminTournamentStructure',
+    params: { tournamentId },
+  });
 }
 
 function backToTournamentStages() {
@@ -527,11 +830,44 @@ function openTournamentStructure() {
   }
 }
 
+async function openTournamentSchedule() {
+  detailMode.value = 'schedule';
+  createStageOpen.value = false;
+  createGroupOpen.value = false;
+  if (!detailStages.value.length) {
+    await loadDetailStages();
+  }
+  await loadTournamentMatches();
+}
+
 async function openTournamentSettings() {
   detailMode.value = 'settings';
   createStageOpen.value = false;
   createGroupOpen.value = false;
   await loadTournamentSettings();
+}
+
+function openTournamentMode(mode) {
+  if (mode === 'structure') {
+    openTournamentStructure();
+    return;
+  }
+  if (mode === 'schedule') {
+    openTournamentSchedule();
+    return;
+  }
+  openTournamentSettings();
+}
+
+function shiftScheduleMonth(delta) {
+  scheduleMonthAnchor.value = shiftMonthKey(activeScheduleMonth.value, delta);
+}
+
+function jumpScheduleToToday() {
+  const todayKey = todayMoscowDay.value;
+  if (!todayKey) return;
+  scheduleMonthAnchor.value = todayKey.slice(0, 7);
+  scheduleSelectedDayKey.value = todayKey;
 }
 
 async function loadTournamentSettings() {
@@ -988,7 +1324,7 @@ async function submitCreateStageMatch() {
     });
     showToast('Матч добавлен в расписание');
     resetCreateMatchForm();
-    await loadStageMatches();
+    await Promise.all([loadStageMatches(), loadTournamentMatches()]);
   } catch (e) {
     createMatchError.value = e.message || 'Ошибка добавления матча';
   } finally {
@@ -1123,6 +1459,28 @@ async function loadStageMatches() {
   }
 }
 
+async function loadTournamentMatches() {
+  if (!detailTournament.value) return;
+  tournamentMatchesLoading.value = true;
+  tournamentMatchesError.value = '';
+  try {
+    const params = new URLSearchParams({
+      page: '1',
+      limit: '2000',
+      tournament_id: detailTournament.value.id,
+    });
+    const response = await apiFetch(
+      `/tournaments/matches?${params.toString()}`
+    );
+    tournamentMatches.value = response.matches || [];
+  } catch (e) {
+    tournamentMatches.value = [];
+    tournamentMatchesError.value = e.message || 'Ошибка загрузки календаря';
+  } finally {
+    tournamentMatchesLoading.value = false;
+  }
+}
+
 async function loadFilters() {
   try {
     const [seasonsRes, activeRes, typesRes, settingsRes, groundsRes] =
@@ -1195,83 +1553,24 @@ watch(search, () => {
   }, 300);
 });
 
+watch(scheduleStageFilter, () => {
+  scheduleSelectedDayKey.value = '';
+  const todayMonth =
+    todayMoscowDay.value?.slice(0, 7) || formatMonthKey(new Date());
+  if (scheduleMonthKeys.value.includes(todayMonth)) {
+    scheduleMonthAnchor.value = todayMonth;
+    return;
+  }
+  scheduleMonthAnchor.value = scheduleMonthKeys.value[0] || todayMonth;
+});
+
 // Quick transitions: click counts now open tournament detail
 </script>
 
 <template>
   <div class="py-4 admin-tournaments-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/admin">Администрирование</RouterLink>
-          </li>
-          <li
-            v-if="!detailTournament"
-            class="breadcrumb-item active"
-            aria-current="page"
-          >
-            Турниры
-          </li>
-          <template v-else>
-            <li class="breadcrumb-item">
-              <button
-                type="button"
-                class="btn btn-link p-0 align-baseline text-decoration-none"
-                @click="backToTournamentsList"
-              >
-                Турниры
-              </button>
-            </li>
-            <li
-              v-if="!detailStage && !detailGroup"
-              class="breadcrumb-item active"
-              aria-current="page"
-            >
-              {{ detailTournament.name }}
-            </li>
-            <li v-else class="breadcrumb-item">
-              <button
-                type="button"
-                class="btn btn-link p-0 align-baseline text-decoration-none"
-                @click="
-                  (() => {
-                    detailStage = null;
-                    detailGroup = null;
-                  })()
-                "
-              >
-                {{ detailTournament.name }}
-              </button>
-            </li>
-            <li
-              v-if="detailStage && !detailGroup"
-              class="breadcrumb-item active"
-              aria-current="page"
-            >
-              Этап:
-              {{ detailStage.name || 'Без названия' }}
-            </li>
-            <li v-else-if="detailStage && detailGroup" class="breadcrumb-item">
-              <button
-                type="button"
-                class="btn btn-link p-0 align-baseline text-decoration-none"
-                @click="backToTournamentStages"
-              >
-                Этап:
-                {{ detailStage.name || 'Без названия' }}
-              </button>
-            </li>
-            <li
-              v-if="detailGroup"
-              class="breadcrumb-item active"
-              aria-current="page"
-            >
-              {{ detailGroup.name || 'Группа' }}
-            </li>
-          </template>
-        </ol>
-      </nav>
+      <Breadcrumbs class="mb-2" :items="detailBreadcrumbs" />
       <h1 class="mb-3 text-start">Турниры</h1>
 
       <div v-if="!detailTournament">
@@ -1588,76 +1887,91 @@ watch(search, () => {
       </div>
       <div v-else>
         <div
-          class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2"
+          class="card section-card tile fade-in shadow-sm mb-3 tournament-hub"
         >
-          <div class="d-flex align-items-center gap-3 flex-wrap">
-            <h2 class="h5 mb-0">
-              {{
-                detailMode === 'settings'
-                  ? 'Настройки групп'
-                  : detailGroup
-                    ? 'Команды'
-                    : detailStage
-                      ? 'Группы'
-                      : 'Этапы'
-              }}
-            </h2>
-            <div class="btn-group btn-group-sm" role="group">
+          <div class="card-body">
+            <div
+              class="d-flex align-items-start justify-content-between gap-3 flex-wrap"
+            >
+              <div>
+                <h2 class="h4 mb-1">{{ detailTournament.name }}</h2>
+                <div class="small text-muted d-flex flex-wrap gap-2">
+                  <span>Сезон: {{ detailTournament.season?.name || '—' }}</span>
+                  <span>Год: {{ detailTournament.birth_year || '—' }}</span>
+                  <span>Команд: {{ tournamentSummary.teams }}</span>
+                </div>
+              </div>
               <button
                 type="button"
-                class="btn"
-                :class="
-                  detailMode === 'structure'
-                    ? 'btn-brand'
-                    : 'btn-outline-secondary'
-                "
-                @click="openTournamentStructure"
+                class="btn btn-outline-secondary btn-sm"
+                @click="backToTournamentsList"
               >
-                Структура
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :class="
-                  detailMode === 'settings'
-                    ? 'btn-brand'
-                    : 'btn-outline-secondary'
-                "
-                @click="openTournamentSettings"
-              >
-                Настройки
+                К списку турниров
               </button>
             </div>
+            <div class="row g-2 mt-1">
+              <div
+                v-for="tile in detailModeTiles"
+                :key="tile.key"
+                class="col-12 col-md-6 col-xl-4"
+              >
+                <BaseTile
+                  role="button"
+                  :extra-class="[
+                    'h-100 mode-tile',
+                    detailMode === tile.key ? 'mode-tile--active' : '',
+                  ]"
+                  :aria-label="`Открыть раздел ${tile.title}`"
+                  @click="openTournamentMode(tile.key)"
+                >
+                  <div class="card-body">
+                    <div
+                      class="d-flex align-items-start justify-content-between"
+                    >
+                      <div>
+                        <div class="fw-semibold">{{ tile.title }}</div>
+                        <div class="small text-muted mt-1">
+                          {{ tile.subtitle }}
+                        </div>
+                      </div>
+                      <i :class="`bi ${tile.icon} fs-4 text-brand`"></i>
+                    </div>
+                  </div>
+                </BaseTile>
+              </div>
+            </div>
           </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <RouterLink
-              class="btn btn-outline-secondary btn-sm"
-              :to="{
-                path: '/admin/sports-calendar',
-                query: detailGroup
-                  ? {
-                      tournament: detailTournament.name,
-                      group: detailGroup.name || '',
-                    }
-                  : { tournament: detailTournament.name },
-              }"
-            >
-              Календарь {{ detailGroup ? 'группы' : 'турнира' }}
-            </RouterLink>
-            <button
-              v-if="detailGroup"
-              class="btn btn-outline-secondary btn-sm"
-              @click="backToTournamentStages"
-            >
-              К группам
-            </button>
-            <button
-              v-else-if="detailStage"
-              class="btn btn-outline-secondary btn-sm"
-              @click="detailStage = null"
-            >
-              К этапам
-            </button>
+          <div class="card-body pt-0">
+            <div class="d-flex gap-2 flex-wrap">
+              <RouterLink
+                class="btn btn-outline-secondary btn-sm"
+                :to="{
+                  path: '/admin/sports-calendar',
+                  query: detailGroup
+                    ? {
+                        tournament: detailTournament.name,
+                        group: detailGroup.name || '',
+                      }
+                    : { tournament: detailTournament.name },
+                }"
+              >
+                Календарь {{ detailGroup ? 'группы' : 'турнира' }}
+              </RouterLink>
+              <button
+                v-if="detailGroup"
+                class="btn btn-outline-secondary btn-sm"
+                @click="backToTournamentStages"
+              >
+                К группам
+              </button>
+              <button
+                v-else-if="detailStage"
+                class="btn btn-outline-secondary btn-sm"
+                @click="detailStage = null"
+              >
+                К этапам
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2235,7 +2549,275 @@ watch(search, () => {
                 </div>
               </div>
             </template>
-            <template v-else>
+            <template v-else-if="detailMode === 'schedule'">
+              <div class="row g-3 align-items-end mb-3">
+                <div class="col-12 col-lg-4">
+                  <label class="form-label">Этап</label>
+                  <select
+                    v-model="scheduleStageFilter"
+                    class="form-select"
+                    aria-label="Фильтр расписания по этапу"
+                  >
+                    <option
+                      v-for="option in scheduleStageOptions"
+                      :key="option.id || 'all'"
+                      :value="option.id"
+                    >
+                      {{ option.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-12 col-lg-8">
+                  <label class="form-label">Календарь</label>
+                  <div class="d-flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      aria-label="Предыдущий месяц"
+                      @click="shiftScheduleMonth(-1)"
+                    >
+                      <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                    </button>
+                    <div class="form-control text-center fw-semibold">
+                      {{ scheduleMonthLabel }}
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      aria-label="Следующий месяц"
+                      @click="shiftScheduleMonth(1)"
+                    >
+                      <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-brand"
+                      @click="jumpScheduleToToday"
+                    >
+                      Сегодня
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-if="tournamentMatchesError"
+                class="alert alert-danger mb-3"
+              >
+                {{ tournamentMatchesError }}
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-12 col-md-4">
+                  <div class="border rounded-3 p-2 h-100 schedule-metric">
+                    <div class="small text-muted">Матчей всего</div>
+                    <div class="h5 mb-0">
+                      {{ scheduleMatchesSorted.length }}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="border rounded-3 p-2 h-100 schedule-metric">
+                    <div class="small text-muted">Предстоящие</div>
+                    <div class="h5 mb-0">
+                      {{ scheduleUpcomingMatchesCount }}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="border rounded-3 p-2 h-100 schedule-metric">
+                    <div class="small text-muted">Прошедшие</div>
+                    <div class="h5 mb-0">{{ schedulePastMatchesCount }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <BrandSpinner
+                v-if="tournamentMatchesLoading"
+                label="Загрузка календаря турнира"
+              />
+              <template v-else>
+                <div class="row g-3">
+                  <div class="col-12 col-lg-5">
+                    <div class="border rounded-3 p-3 h-100">
+                      <div class="calendar-weekdays mb-2">
+                        <span
+                          v-for="weekday in weekdayLabels"
+                          :key="weekday"
+                          class="calendar-weekday"
+                        >
+                          {{ weekday }}
+                        </span>
+                      </div>
+                      <div class="calendar-grid">
+                        <template
+                          v-for="cell in scheduleCalendarCells"
+                          :key="cell.key"
+                        >
+                          <button
+                            v-if="cell.inMonth"
+                            type="button"
+                            class="calendar-cell"
+                            :class="{
+                              'calendar-cell--selected': cell.isSelected,
+                              'calendar-cell--today': cell.isToday,
+                              'calendar-cell--has-matches': cell.hasMatches,
+                              'calendar-cell--past': cell.isPast,
+                            }"
+                            :aria-label="`Выбрать ${cell.day}`"
+                            @click="scheduleSelectedDayKey = cell.dayKey"
+                          >
+                            <span class="calendar-day-number">{{
+                              cell.day
+                            }}</span>
+                            <span
+                              v-if="cell.matchCount"
+                              class="badge bg-light text-muted border"
+                            >
+                              {{ cell.matchCount }}
+                            </span>
+                          </button>
+                          <div
+                            v-else
+                            class="calendar-cell calendar-cell--empty"
+                          ></div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-lg-7">
+                    <div class="border rounded-3 p-3 h-100">
+                      <div
+                        class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2"
+                      >
+                        <div>
+                          <div class="fw-semibold">
+                            {{ formatScheduleDayTitle(activeScheduleDay) }}
+                          </div>
+                          <div class="small text-muted">
+                            Матчей за день: {{ scheduleDayMatches.length }}
+                          </div>
+                        </div>
+                        <RouterLink
+                          class="btn btn-outline-secondary btn-sm"
+                          :to="{
+                            path: '/admin/sports-calendar',
+                            query: { tournament: detailTournament.name },
+                          }"
+                        >
+                          Открыть общий календарь
+                        </RouterLink>
+                      </div>
+
+                      <div
+                        v-if="scheduleDayMatches.length"
+                        class="list-group list-group-flush"
+                      >
+                        <div
+                          v-for="match in scheduleDayMatches"
+                          :key="`day-${match.id}`"
+                          class="list-group-item px-0 schedule-match-item"
+                        >
+                          <div
+                            class="d-flex align-items-start justify-content-between gap-2 flex-wrap"
+                          >
+                            <div>
+                              <div class="fw-semibold">
+                                {{ match.home_team?.name || '—' }} —
+                                {{ match.away_team?.name || '—' }}
+                              </div>
+                              <div class="small text-muted">
+                                {{
+                                  match.stage?.name
+                                    ? `Этап: ${match.stage.name}`
+                                    : 'Этап не указан'
+                                }}
+                                ·
+                                {{ match.ground?.name || 'Стадион не указан' }}
+                              </div>
+                            </div>
+                            <div class="text-end">
+                              <div class="fw-semibold">
+                                {{ formatMatchTime(match.date_start) }}
+                              </div>
+                              <span
+                                class="badge"
+                                :class="
+                                  isPastMatch(match)
+                                    ? 'text-bg-secondary'
+                                    : 'badge-brand'
+                                "
+                              >
+                                {{
+                                  isPastMatch(match)
+                                    ? 'Прошедший'
+                                    : 'Предстоящий'
+                                }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else class="text-muted small">
+                        На выбранный день матчи не назначены.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border rounded-3 p-3 mt-3">
+                  <div class="fw-semibold mb-2">Лента матчей турнира</div>
+                  <div
+                    v-if="scheduleMatchesSorted.length"
+                    class="table-responsive"
+                  >
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Дата и время</th>
+                          <th>Этап</th>
+                          <th>Матч</th>
+                          <th>Стадион</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="match in scheduleMatchesSorted"
+                          :key="`all-${match.id}`"
+                        >
+                          <td>{{ formatMatchDateTime(match.date_start) }}</td>
+                          <td>{{ match.stage?.name || '—' }}</td>
+                          <td>
+                            {{ match.home_team?.name || '—' }} —
+                            {{ match.away_team?.name || '—' }}
+                          </td>
+                          <td>{{ match.ground?.name || '—' }}</td>
+                          <td>
+                            <span
+                              class="badge"
+                              :class="
+                                isPastMatch(match)
+                                  ? 'text-bg-secondary'
+                                  : 'badge-brand'
+                              "
+                            >
+                              {{
+                                isPastMatch(match) ? 'Прошедший' : 'Предстоящий'
+                              }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div v-else class="text-muted small">
+                    В этом фильтре пока нет матчей.
+                  </div>
+                </div>
+              </template>
+            </template>
+            <template v-else-if="detailMode === 'settings'">
               <div v-if="settingsError" class="alert alert-danger mb-2">
                 {{ settingsError }}
               </div>
@@ -2600,5 +3182,103 @@ watch(search, () => {
 }
 .hierarchy-item.active .badge.text-muted {
   color: var(--brand-color) !important;
+}
+
+.tournament-hub {
+  background:
+    radial-gradient(
+      circle at right top,
+      rgba(17, 56, 103, 0.08),
+      rgba(17, 56, 103, 0) 45%
+    ),
+    #fff;
+}
+
+.mode-tile {
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.mode-tile .card-body {
+  min-height: 112px;
+}
+
+.mode-tile--active {
+  border-color: var(--brand-color) !important;
+  background: rgba(17, 56, 103, 0.06);
+}
+
+.mode-tile--active .text-muted {
+  color: rgba(17, 56, 103, 0.9) !important;
+}
+
+.schedule-metric {
+  background: rgba(17, 56, 103, 0.03);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.calendar-cell {
+  min-height: 72px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.calendar-cell--empty {
+  visibility: hidden;
+}
+
+.calendar-cell--has-matches {
+  border-color: rgba(17, 56, 103, 0.32);
+}
+
+.calendar-cell--selected {
+  border-color: var(--brand-color);
+  box-shadow: 0 0 0 1px rgba(17, 56, 103, 0.28);
+}
+
+.calendar-cell--today {
+  background: rgba(17, 56, 103, 0.06);
+}
+
+.calendar-cell--past .calendar-day-number {
+  color: var(--bs-secondary-color);
+}
+
+.calendar-day-number {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.schedule-match-item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.schedule-match-item:last-child {
+  border-bottom: 0;
 }
 </style>

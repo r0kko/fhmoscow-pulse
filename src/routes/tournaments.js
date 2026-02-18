@@ -12,6 +12,7 @@ import {
   groupUpdateRules,
   tournamentTeamCreateRules,
   tournamentMatchCreateRules,
+  tournamentMatchUpdateRules,
   groupRefereesUpdateRules,
 } from '../validators/tournamentAdminValidators.js';
 
@@ -145,5 +146,20 @@ router.post(
   validate,
   controller.createTournamentMatch
 );
+router.patch(
+  '/matches/:id',
+  auth,
+  authorize('ADMIN'),
+  tournamentMatchUpdateRules,
+  validate,
+  controller.updateTournamentMatch
+);
+router.delete(
+  '/matches/:id',
+  auth,
+  authorize('ADMIN'),
+  controller.deleteTournamentMatch
+);
+router.get('/:id', auth, authorize('ADMIN'), controller.getTournament);
 
 export default router;

@@ -298,9 +298,14 @@ async function listTournamentTeams({
 async function listTournamentMatches({
   page = 1,
   limit = 100,
+  search,
   tournament_id,
   stage_id,
+  without_stage,
+  date_from,
+  date_to,
   status,
+  sort = 'ASC',
 }) {
   const p = Math.max(1, parseInt(page, 10));
   const l = Math.max(1, parseInt(limit, 10));
@@ -308,28 +313,155 @@ async function listTournamentMatches({
 
   const where = {};
   if (tournament_id) where.tournament_id = tournament_id;
-  if (stage_id) where.stage_id = stage_id;
+  if (without_stage === true || String(without_stage) === 'true') {
+    where.stage_id = null;
+  } else if (stage_id) {
+    where.stage_id = stage_id;
+  }
+  if (date_from) {
+    const parsed = new Date(date_from);
+    if (!Number.isNaN(parsed.getTime())) {
+      where.date_start = { ...(where.date_start || {}), [Op.gte]: parsed };
+    }
+  }
+  if (date_to) {
+    const parsed = new Date(date_to);
+    if (!Number.isNaN(parsed.getTime())) {
+      where.date_start = { ...(where.date_start || {}), [Op.lte]: parsed };
+    }
+  }
 
-  const { paranoid, onlyArchived } = statusToParanoid(status);
+  const statusValue = String(status || 'ACTIVE').toUpperCase();
+  const matchScope = ['UPCOMING', 'PAST', 'CANCELLED'].includes(statusValue)
+    ? statusValue
+    : null;
+  const { paranoid, onlyArchived } = statusToParanoid(
+    matchScope ? 'ACTIVE' : status
+  );
   if (onlyArchived) where.deleted_at = { [Op.ne]: null };
+  if (matchScope === 'UPCOMING') {
+    where.date_start = { ...(where.date_start || {}), [Op.gte]: new Date() };
+  }
+  if (matchScope === 'PAST') {
+    where.date_start = { ...(where.date_start || {}), [Op.lt]: new Date() };
+  }
+  const include = [
+    { model: Tournament },
+    { model: Stage, required: false },
+    { model: TournamentGroup },
+    { model: Ground, required: false },
+    { model: GameStatus, attributes: ['id', 'name', 'alias'] },
+    { model: Team, as: 'HomeTeam', required: false },
+    { model: Team, as: 'AwayTeam', required: false },
+  ];
+  if (search) {
+    const term = `%${search}%`;
+    where[Op.or] = [
+      { '$HomeTeam.name$': { [Op.iLike]: term } },
+      { '$AwayTeam.name$': { [Op.iLike]: term } },
+      { '$Ground.name$': { [Op.iLike]: term } },
+      { '$Stage.name$': { [Op.iLike]: term } },
+    ];
+  }
+  if (matchScope === 'CANCELLED') {
+    include[4] = {
+      model: GameStatus,
+      attributes: ['id', 'name', 'alias'],
+      where: { alias: 'CANCELLED' },
+      required: true,
+    };
+  }
 
-  return Match.findAndCountAll({
+  const orderDirection =
+    String(sort || '').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+  const result = await Match.findAndCountAll({
     where,
     paranoid,
-    include: [
-      { model: Tournament },
-      { model: Stage },
-      { model: Ground },
-      { model: Team, as: 'HomeTeam' },
-      { model: Team, as: 'AwayTeam' },
-    ],
+    include,
     order: [
-      ['date_start', 'ASC'],
-      ['created_at', 'ASC'],
+      ['date_start', orderDirection],
+      ['created_at', orderDirection],
     ],
     limit: l,
     offset,
+    distinct: true,
   });
+
+  const statsInclude = [
+    { model: GameStatus, attributes: ['alias'] },
+    { model: Stage, attributes: ['name'], required: false },
+    { model: Ground, attributes: ['name'], required: false },
+    { model: Team, as: 'HomeTeam', attributes: ['name'], required: false },
+    { model: Team, as: 'AwayTeam', attributes: ['name'], required: false },
+  ];
+
+  const statsRows = await Match.findAll({
+    where,
+    paranoid,
+    include: statsInclude,
+    attributes: ['date_start'],
+    order: [['date_start', 'ASC']],
+  });
+  const nowTs = Date.now();
+  const summary = {
+    total: statsRows.length,
+    upcoming: 0,
+    past: 0,
+    cancelled: 0,
+  };
+  const byDay = new Map();
+  for (const row of statsRows) {
+    const date = row.date_start ? new Date(row.date_start) : null;
+    if (!date || Number.isNaN(date.getTime())) continue;
+    const isPast = date.getTime() < nowTs;
+    if (isPast) summary.past += 1;
+    else summary.upcoming += 1;
+    if ((row.GameStatus?.alias || '').toUpperCase() === 'CANCELLED') {
+      summary.cancelled += 1;
+    }
+    const mskDate = utcToMoscow(date) || date;
+    const y = mskDate.getUTCFullYear();
+    const m = String(mskDate.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(mskDate.getUTCDate()).padStart(2, '0');
+    const day = `${y}-${m}-${d}`;
+    byDay.set(day, (byDay.get(day) || 0) + 1);
+  }
+  const days = [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([day, count]) => ({ day, count }));
+
+  return {
+    rows: result.rows,
+    count: result.count,
+    summary,
+    days,
+  };
+}
+
+async function getTournamentById(id) {
+  const tournament = await Tournament.findByPk(id, {
+    include: [
+      { model: Season },
+      { model: TournamentType },
+      { model: CompetitionType },
+      { model: ScheduleManagementType },
+    ],
+  });
+  if (!tournament) throw new ServiceError('tournament_not_found', 404);
+  const [stages, groups, teams, matches] = await Promise.all([
+    Stage.count({ where: { tournament_id: id } }),
+    TournamentGroup.count({ where: { tournament_id: id } }),
+    TournamentTeam.count({ where: { tournament_id: id } }),
+    Match.count({ where: { tournament_id: id } }),
+  ]);
+  const plain = tournament.get({ plain: true });
+  plain.counts = { stages, groups, teams, matches };
+  plain.flags = {
+    imported: plain.external_id != null,
+    manual: plain.external_id == null,
+  };
+  return plain;
 }
 
 export default {
@@ -347,6 +479,7 @@ export default {
   listGroups,
   listTournamentTeams,
   listTournamentMatches,
+  getTournamentById,
   async createTournament(data = {}, actorId = null) {
     const name = normalizeString(data.name);
     if (!name) throw new ServiceError('invalid_tournament_name', 400);
@@ -661,11 +794,90 @@ export default {
       include: [
         { model: Tournament },
         { model: Stage },
+        { model: TournamentGroup },
         { model: Ground },
+        { model: GameStatus },
         { model: Team, as: 'HomeTeam' },
         { model: Team, as: 'AwayTeam' },
       ],
     });
+  },
+  async updateTournamentMatch(id, data = {}, actorId = null) {
+    const match = await Match.findByPk(id, {
+      include: [{ model: Tournament }, { model: GameStatus }],
+    });
+    if (!match) throw new ServiceError('match_not_found', 404);
+    if (match.external_id != null) {
+      throw new ServiceError('match_is_imported', 409);
+    }
+    const tournament =
+      match.Tournament || (await ensureTournament(match.tournament_id));
+    assertManualTournament(tournament);
+
+    const statusAlias = String(match.GameStatus?.alias || '').toUpperCase();
+    if (statusAlias === 'FINISHED' || statusAlias === 'LIVE') {
+      throw new ServiceError('match_status_locked', 409);
+    }
+
+    const updates = { updated_by: actorId };
+    if (Object.hasOwn(data, 'date_start')) {
+      const dateStart = normalizeDateStart(data.date_start);
+      updates.date_start = dateStart;
+      updates.scheduled_date = toMoscowDateOnlyString(dateStart);
+    }
+    if (Object.hasOwn(data, 'ground_id')) {
+      if (!data.ground_id) {
+        updates.ground_id = null;
+      } else {
+        const ground = await Ground.findByPk(data.ground_id, {
+          attributes: ['id'],
+        });
+        if (!ground) throw new ServiceError('ground_not_found', 404);
+        updates.ground_id = ground.id;
+      }
+    }
+
+    await match.update(updates, { returning: false });
+    return Match.findByPk(match.id, {
+      include: [
+        { model: Tournament },
+        { model: Stage },
+        { model: TournamentGroup },
+        { model: Ground },
+        { model: GameStatus },
+        { model: Team, as: 'HomeTeam' },
+        { model: Team, as: 'AwayTeam' },
+      ],
+    });
+  },
+  async deleteTournamentMatch(id, actorId = null) {
+    const match = await Match.findByPk(id, {
+      include: [{ model: Tournament }, { model: GameStatus }],
+      paranoid: false,
+    });
+    if (!match) throw new ServiceError('match_not_found', 404);
+    if (match.deletedAt || match.deleted_at) return true;
+    if (match.external_id != null) {
+      throw new ServiceError('match_is_imported', 409);
+    }
+    const tournament =
+      match.Tournament || (await ensureTournament(match.tournament_id));
+    assertManualTournament(tournament);
+
+    const statusAlias = String(match.GameStatus?.alias || '').toUpperCase();
+    if (statusAlias === 'FINISHED') {
+      throw new ServiceError('match_finished_cannot_delete', 409);
+    }
+
+    if (actorId && Object.hasOwn(match, 'updated_by')) {
+      try {
+        await match.update({ updated_by: actorId }, { returning: false });
+      } catch (_) {
+        /* empty */
+      }
+    }
+    await match.destroy();
+    return true;
   },
   async listRefereeRoleGroups() {
     return RefereeRoleGroup.findAll({
