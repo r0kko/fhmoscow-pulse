@@ -330,7 +330,10 @@ export async function applyESignStamp(doc, info) {
     textH = Math.ceil(doc.currentLineHeight(true)) || 9;
     let maxTextWidth = w1;
     for (let lineIndex = 1; lineIndex < textLines.length; lineIndex += 1) {
-      maxTextWidth = Math.max(maxTextWidth, doc.widthOfString(textLines[lineIndex]));
+      maxTextWidth = Math.max(
+        maxTextWidth,
+        doc.widthOfString(textLines[lineIndex])
+      );
     }
     const dividerGapTop = hasOrgDivider ? 2 : 0;
     const dividerGapBottom = hasOrgDivider ? 2 : 0;

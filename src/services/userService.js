@@ -132,7 +132,10 @@ async function listUsers(options = {}) {
 
   const order =
     sortField === 'status'
-      ? [[{ model: UserStatus }, 'alias', sortOrder], ['last_name', 'ASC']]
+      ? [
+          [{ model: UserStatus }, 'alias', sortOrder],
+          ['last_name', 'ASC'],
+        ]
       : [[sortField, sortOrder]];
 
   return User.findAndCountAll({

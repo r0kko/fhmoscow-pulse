@@ -88,7 +88,13 @@ function ensureValid(req, res) {
   return false;
 }
 
-function observeAndLog(action, requestId, entityId, startedAtMs, level = 'info') {
+function observeAndLog(
+  action,
+  requestId,
+  entityId,
+  startedAtMs,
+  level = 'info'
+) {
   const latencyMs = Math.max(0, nowMs() - startedAtMs);
   logger[level]('profile_workspace_event', {
     request_id: requestId || null,
@@ -135,7 +141,12 @@ async function updateAddress(userId, type, payload, actorId) {
     // If address is absent, create below.
   }
 
-  const created = await addressService.createForUser(userId, type, payload, actorId);
+  const created = await addressService.createForUser(
+    userId,
+    type,
+    payload,
+    actorId
+  );
   return addressMapper.toPublic(created);
 }
 
@@ -161,13 +172,21 @@ async function updateBankAccount(userId, payload, actorId) {
   const existing = await bankAccountService.getByUser(userId);
 
   if (!existing) {
-    const created = await bankAccountService.createForUser(userId, data, actorId);
+    const created = await bankAccountService.createForUser(
+      userId,
+      data,
+      actorId
+    );
     return bankAccountMapper.toPublic(created);
   }
 
   if (existing.number !== data.number || existing.bic !== data.bic) {
     await bankAccountService.removeForUser(userId, actorId);
-    const created = await bankAccountService.createForUser(userId, data, actorId);
+    const created = await bankAccountService.createForUser(
+      userId,
+      data,
+      actorId
+    );
     return bankAccountMapper.toPublic(created);
   }
 
@@ -213,7 +232,12 @@ export default {
     try {
       await userService.updateUser(req.params.id, req.body, req.user.id);
       const user = await userService.getUser(req.params.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ user: userMapper.toPublic(user) });
@@ -239,13 +263,19 @@ export default {
     const section = 'passport';
     try {
       const existing = await passportService.getByUser(req.params.id);
-      if (existing) await passportService.removeByUser(req.params.id, req.user.id);
+      if (existing)
+        await passportService.removeByUser(req.params.id, req.user.id);
       const passport = await passportService.createForUser(
         req.params.id,
         req.body,
         req.user.id
       );
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ passport: passportMapper.toPublic(passport) });
@@ -271,7 +301,12 @@ export default {
     const section = 'inn';
     try {
       const inn = await updateInn(req.params.id, req.body.number, req.user.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ inn });
@@ -296,8 +331,17 @@ export default {
     const startedAt = nowMs();
     const section = 'snils';
     try {
-      const snils = await updateSnils(req.params.id, req.body.number, req.user.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const snils = await updateSnils(
+        req.params.id,
+        req.body.number,
+        req.user.id
+      );
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ snils });
@@ -322,8 +366,17 @@ export default {
     const startedAt = nowMs();
     const section = 'bank_account';
     try {
-      const account = await updateBankAccount(req.params.id, req.body, req.user.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const account = await updateBankAccount(
+        req.params.id,
+        req.body,
+        req.user.id
+      );
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ account });
@@ -347,14 +400,29 @@ export default {
     if (!ensureValid(req, res)) return;
     const type = String(req.params.type || '').toUpperCase();
     if (!ADDRESS_TYPES.has(type)) {
-      return sendWorkspaceError(req, res, { message: 'address_type_not_found' }, 404);
+      return sendWorkspaceError(
+        req,
+        res,
+        { message: 'address_type_not_found' },
+        404
+      );
     }
 
     const startedAt = nowMs();
     const section = `address_${type.toLowerCase()}`;
     try {
-      const address = await updateAddress(req.params.id, type, req.body, req.user.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const address = await updateAddress(
+        req.params.id,
+        type,
+        req.body,
+        req.user.id
+      );
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ address });
@@ -384,7 +452,12 @@ export default {
         fns: !source || source === 'fns' || source === 'all',
       };
       const preview = await taxationService.previewForUser(req.params.id, opts);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ preview: taxationMapper.toPublic(preview) });
@@ -408,8 +481,16 @@ export default {
     const startedAt = nowMs();
     const section = 'taxation';
     try {
-      const taxation = await taxationService.updateForUser(req.params.id, req.user.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const taxation = await taxationService.updateForUser(
+        req.params.id,
+        req.user.id
+      );
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({ taxation: taxationMapper.toPublic(taxation) });
@@ -455,16 +536,21 @@ export default {
             {
               field: 'roles',
               code: 'invalid_fhmo_roles',
-              message: 'Для сотрудника Федерации можно выбрать только одну должность',
+              message:
+                'Для сотрудника Федерации можно выбрать только одну должность',
             },
           ]
         );
       }
 
       const user = await userService.getUser(req.params.id);
-      const currentRoles = new Set((user.Roles || []).map((role) => role.alias));
+      const currentRoles = new Set(
+        (user.Roles || []).map((role) => role.alias)
+      );
 
-      const toAdd = [...desiredRoles].filter((alias) => !currentRoles.has(alias));
+      const toAdd = [...desiredRoles].filter(
+        (alias) => !currentRoles.has(alias)
+      );
       const toRemove = [...currentRoles].filter(
         (alias) => !desiredRoles.has(alias)
       );
@@ -477,7 +563,12 @@ export default {
       }
 
       const updatedUser = await userService.getUser(req.params.id);
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({
@@ -515,7 +606,11 @@ export default {
 
       for (const clubId of existingClubIds) {
         if (!desiredClubs.has(clubId)) {
-          await clubUserService.removeUserClub(req.params.id, clubId, req.user.id);
+          await clubUserService.removeUserClub(
+            req.params.id,
+            clubId,
+            req.user.id
+          );
         }
       }
       for (const clubId of desiredClubs) {
@@ -543,7 +638,12 @@ export default {
         teamService.listUserTeams(req.params.id),
       ]);
 
-      const latencyMs = observeAndLog(section, req.id, req.params.id, startedAt);
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
       incProfileSectionUpdate(section, 'success');
       observeProfileSectionUpdateDuration(section, latencyMs / 1000);
       return res.json({

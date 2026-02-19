@@ -249,7 +249,10 @@ function buildEffectiveAssignmentRows(assignments, draftClearGroupIds) {
       bucket.drafts.push(assignment);
       return;
     }
-    if (assignment.status === 'PUBLISHED' || assignment.status === 'CONFIRMED') {
+    if (
+      assignment.status === 'PUBLISHED' ||
+      assignment.status === 'CONFIRMED'
+    ) {
       bucket.published.push(assignment);
     }
   });
@@ -2754,7 +2757,12 @@ async function regenerate(documentId, actorId) {
                 include: [
                   {
                     model: Models.Role,
-                    attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
+                    attributes: [
+                      'alias',
+                      'name',
+                      'departmentName',
+                      'displayOrder',
+                    ],
                     through: { attributes: [] },
                     required: false,
                   },
@@ -2999,7 +3007,8 @@ async function createProLeagueMatchRefereeAssignmentsDocument(
           sort_order: row.RefereeRole.sort_order ?? null,
           group_id: row.RefereeRole.referee_role_group_id || null,
           group_name: row.RefereeRole.RefereeRoleGroup?.name || null,
-          group_sort_order: row.RefereeRole.RefereeRoleGroup?.sort_order ?? null,
+          group_sort_order:
+            row.RefereeRole.RefereeRoleGroup?.sort_order ?? null,
         }
       : null,
     user: row.User

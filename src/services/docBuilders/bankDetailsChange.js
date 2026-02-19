@@ -277,11 +277,9 @@ export default async function buildBankDetailsChangePdf(
     if (esign) {
       const signer = esign.signer || null;
       const signerFio =
-        [
-          signer?.last_name,
-          signer?.first_name,
-          signer?.patronymic,
-        ].filter(Boolean).join(' ') || `${fio(user)}`;
+        [signer?.last_name, signer?.first_name, signer?.patronymic]
+          .filter(Boolean)
+          .join(' ') || `${fio(user)}`;
       await applyESignStamp(doc, {
         fio: signerFio,
         signedAt: esign.signedAt,

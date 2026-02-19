@@ -922,7 +922,10 @@ export function observeProfileWorkspaceLoadDuration(seconds = 0) {
   }
 }
 
-export function incProfileSectionUpdate(section = 'unknown', status = 'success') {
+export function incProfileSectionUpdate(
+  section = 'unknown',
+  status = 'success'
+) {
   if (!metricsAvailable) return;
   try {
     profileSectionUpdateTotal.inc({

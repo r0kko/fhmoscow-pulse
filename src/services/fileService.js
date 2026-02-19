@@ -56,10 +56,7 @@ async function putObjectWithRetry(
       return;
     } catch (err) {
       lastError = err;
-      if (
-        attempt >= attempts ||
-        (!retryAll && !isRetryableS3Error(err))
-      ) {
+      if (attempt >= attempts || (!retryAll && !isRetryableS3Error(err))) {
         break;
       }
       await sleep(150 * attempt);

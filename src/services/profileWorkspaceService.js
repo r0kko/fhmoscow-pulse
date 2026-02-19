@@ -1,9 +1,4 @@
-import {
-  Task,
-  TaskStatus,
-  Ticket,
-  TicketStatus,
-} from '../models/index.js';
+import { Task, TaskStatus, Ticket, TicketStatus } from '../models/index.js';
 import userMapper from '../mappers/userMapper.js';
 import passportMapper from '../mappers/passportMapper.js';
 import innMapper from '../mappers/innMapper.js';
@@ -35,13 +30,16 @@ function buildCompleteness(profile) {
     inn: Boolean(profile.inn),
     snils: Boolean(profile.snils),
     bank_account: Boolean(profile.bank_account),
-    addresses: Boolean(profile.addresses?.REGISTRATION && profile.addresses?.RESIDENCE),
+    addresses: Boolean(
+      profile.addresses?.REGISTRATION && profile.addresses?.RESIDENCE
+    ),
     taxation: Boolean(profile.taxation),
   };
 
   const keys = Object.keys(checks);
   const completed = keys.filter((key) => checks[key]).length;
-  const score = keys.length > 0 ? Math.round((completed / keys.length) * 100) : 0;
+  const score =
+    keys.length > 0 ? Math.round((completed / keys.length) * 100) : 0;
   const missing = keys.filter((key) => !checks[key]);
 
   return { score, missing };

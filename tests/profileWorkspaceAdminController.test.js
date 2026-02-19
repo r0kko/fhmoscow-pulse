@@ -95,14 +95,38 @@ jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
   },
 }));
 
-jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/innMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/snilsMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/bankAccountMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/taxationMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/addressMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/clubMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
-jest.unstable_mockModule('../src/mappers/teamMapper.js', () => ({ __esModule: true, default: { toPublic: (v) => v } }));
+jest.unstable_mockModule('../src/mappers/passportMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/innMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/snilsMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/bankAccountMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/taxationMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/addressMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/clubMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/teamMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
 
 jest.unstable_mockModule('../src/config/metrics.js', () => ({
   __esModule: true,

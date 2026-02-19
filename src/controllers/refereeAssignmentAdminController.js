@@ -132,9 +132,10 @@ export default {
 
   async getMatchAssignmentsSheet(req, res) {
     try {
-      const data = await documentService.getProLeagueMatchRefereeAssignmentsSheet(
-        req.params.id
-      );
+      const data =
+        await documentService.getProLeagueMatchRefereeAssignmentsSheet(
+          req.params.id
+        );
       return res.json(data);
     } catch (err) {
       return sendError(res, err);

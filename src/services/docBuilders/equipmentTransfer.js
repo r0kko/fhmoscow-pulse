@@ -270,11 +270,9 @@ export default async function buildEquipmentTransferPdf(
     if (esign) {
       const signer = esign.signer || null;
       const signerFio =
-        [
-          signer?.last_name,
-          signer?.first_name,
-          signer?.patronymic,
-        ].filter(Boolean).join(' ') || fullName;
+        [signer?.last_name, signer?.first_name, signer?.patronymic]
+          .filter(Boolean)
+          .join(' ') || fullName;
       await applyESignStamp(doc, {
         fio: signerFio,
         signedAt: esign.signedAt,

@@ -120,7 +120,8 @@ jest.unstable_mockModule('../src/mappers/teamMapper.js', () => ({
   default: { toPublic: (v) => v },
 }));
 
-const { default: service } = await import('../src/services/profileWorkspaceService.js');
+const { default: service } =
+  await import('../src/services/profileWorkspaceService.js');
 
 beforeEach(() => {
   getUserMock.mockReset();
@@ -143,7 +144,9 @@ test('getWorkspace builds completeness and permissions', async () => {
   getSnilsByUserMock.mockResolvedValue({ id: 's-1' });
   getBankByUserMock.mockResolvedValue(null);
   getTaxByUserMock.mockResolvedValue(null);
-  getAddressForUserMock.mockResolvedValueOnce({ id: 'a1' }).mockResolvedValueOnce(null);
+  getAddressForUserMock
+    .mockResolvedValueOnce({ id: 'a1' })
+    .mockResolvedValueOnce(null);
   listUserClubsMock.mockResolvedValue([{ id: 'club-1', name: 'Клуб 1' }]);
   listUserTeamsMock.mockResolvedValue([{ id: 'team-1', name: 'Команда 1' }]);
 
@@ -151,13 +154,21 @@ test('getWorkspace builds completeness and permissions', async () => {
   const oldTaskDate = new Date(now - 16 * 24 * 60 * 60 * 1000).toISOString();
   const freshTaskDate = new Date(now - 1 * 24 * 60 * 60 * 1000).toISOString();
   taskFindAllMock.mockResolvedValue([
-    { TaskStatus: { alias: 'PENDING' }, updated_at: oldTaskDate, updatedAt: oldTaskDate },
+    {
+      TaskStatus: { alias: 'PENDING' },
+      updated_at: oldTaskDate,
+      updatedAt: oldTaskDate,
+    },
     {
       TaskStatus: { alias: 'PENDING' },
       updated_at: freshTaskDate,
       updatedAt: freshTaskDate,
     },
-    { TaskStatus: { alias: 'COMPLETED' }, updated_at: oldTaskDate, updatedAt: oldTaskDate },
+    {
+      TaskStatus: { alias: 'COMPLETED' },
+      updated_at: oldTaskDate,
+      updatedAt: oldTaskDate,
+    },
   ]);
   ticketFindAllMock.mockResolvedValue([
     { TicketStatus: { alias: 'CREATED' } },

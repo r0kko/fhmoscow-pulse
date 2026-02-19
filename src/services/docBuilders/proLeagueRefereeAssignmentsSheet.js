@@ -42,7 +42,10 @@ function drawVerticalSplitters(doc, x, y, widths, height) {
   let cursor = x;
   widths.slice(0, -1).forEach((width) => {
     cursor += width;
-    doc.moveTo(cursor, y).lineTo(cursor, y + height).stroke();
+    doc
+      .moveTo(cursor, y)
+      .lineTo(cursor, y + height)
+      .stroke();
   });
 }
 
@@ -58,10 +61,9 @@ function drawHeaderBand(doc, fonts, table, labels) {
   const rowTop = doc.y;
   const headerHeight = Math.max(
     24,
-    ...labels.map((label, index) =>
-      Math.ceil(
-        doc.heightOfString(label, headerTextOptions[index])
-      ) +
+    ...labels.map(
+      (label, index) =>
+        Math.ceil(doc.heightOfString(label, headerTextOptions[index])) +
         cellPaddingY * 2
     )
   );
@@ -83,7 +85,8 @@ function drawHeaderBand(doc, fonts, table, labels) {
   labels.forEach((label, index) => {
     const options = headerTextOptions[index];
     const textHeight = Math.ceil(doc.heightOfString(label, options));
-    const textY = rowTop + Math.max(cellPaddingY, (headerHeight - textHeight) / 2);
+    const textY =
+      rowTop + Math.max(cellPaddingY, (headerHeight - textHeight) / 2);
     doc
       .font(fonts.bold)
       .fontSize(9.5)
@@ -109,10 +112,9 @@ function drawDataRow(doc, fonts, table, row) {
   }));
   const rowHeight = Math.max(
     22,
-    ...values.map((value, index) =>
-      Math.ceil(
-        doc.heightOfString(value, textOptions[index])
-      ) +
+    ...values.map(
+      (value, index) =>
+        Math.ceil(doc.heightOfString(value, textOptions[index])) +
         cellPaddingY * 2
     )
   );
@@ -138,11 +140,9 @@ function drawDataRow(doc, fonts, table, row) {
     const textX = colX + cellPaddingX;
     const textWidth = table.widths[index] - cellPaddingX * 2;
     const align = aligns[index] || 'left';
-    const isMultilineCenter = align === 'center' && String(value).includes('\n');
-    doc
-      .font(fonts.regular)
-      .fontSize(10)
-      .fillColor('#111827');
+    const isMultilineCenter =
+      align === 'center' && String(value).includes('\n');
+    doc.font(fonts.regular).fontSize(10).fillColor('#111827');
     if (isMultilineCenter) {
       const lines = String(value)
         .split(/\r?\n/g)
@@ -151,7 +151,8 @@ function drawDataRow(doc, fonts, table, row) {
       const lineHeight = Math.ceil(doc.currentLineHeight(true));
       const blockHeight = lineHeight * (lines.length || 1);
       let lineY =
-        rowTop + Math.max(cellPaddingY, Math.floor((rowHeight - blockHeight) / 2));
+        rowTop +
+        Math.max(cellPaddingY, Math.floor((rowHeight - blockHeight) / 2));
       (lines.length ? lines : [String(value)]).forEach((line) => {
         const lineWidth = Math.ceil(doc.widthOfString(line));
         const lineX = Math.max(
@@ -290,7 +291,8 @@ export default async function buildProLeagueRefereeAssignmentsSheetPdf(
   };
 
   const headerLabels = ['№', 'ФИО', 'Амплуа', 'Автомобиль'];
-  const renderTableHeader = () => drawHeaderBand(doc, fonts, table, headerLabels);
+  const renderTableHeader = () =>
+    drawHeaderBand(doc, fonts, table, headerLabels);
   renderTableHeader();
 
   const minBottomY = doc.page.height - doc.page.margins.bottom - 40;
@@ -299,7 +301,14 @@ export default async function buildProLeagueRefereeAssignmentsSheetPdf(
         index: index + 1,
         ...row,
       }))
-    : [{ index: 1, role: '—', referee: 'Назначения не указаны', vehicles: '—' }];
+    : [
+        {
+          index: 1,
+          role: '—',
+          referee: 'Назначения не указаны',
+          vehicles: '—',
+        },
+      ];
 
   dataRows.forEach((row) => {
     ensurePageForTable(doc, minBottomY, renderTableHeader);
