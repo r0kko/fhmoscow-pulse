@@ -216,7 +216,9 @@ const brigadeRoleColumns = computed(() =>
 );
 
 const assignmentSheetStatus = computed(() => {
-  const alias = String(assignmentSheet.value?.status?.alias || '').toUpperCase();
+  const alias = String(
+    assignmentSheet.value?.status?.alias || ''
+  ).toUpperCase();
   if (!assignmentSheet.value) {
     return {
       label: 'Не сформирован',
@@ -1026,7 +1028,9 @@ onMounted(() => {
             >
               <div>
                 <h2 class="h6 mb-1">Документы</h2>
-                <div class="small text-muted">Лист назначений судей на матч</div>
+                <div class="small text-muted">
+                  Лист назначений судей на матч
+                </div>
               </div>
               <span class="badge" :class="assignmentSheetStatus.badgeClass">
                 <span
@@ -1065,7 +1069,9 @@ onMounted(() => {
                 <i
                   v-else
                   class="bi"
-                  :class="assignmentSheet ? 'bi-arrow-repeat' : 'bi-file-earmark-plus'"
+                  :class="
+                    assignmentSheet ? 'bi-arrow-repeat' : 'bi-file-earmark-plus'
+                  "
                   aria-hidden="true"
                 ></i>
                 {{ assignmentSheetActionLabel }}

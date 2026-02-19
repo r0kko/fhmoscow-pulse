@@ -342,7 +342,9 @@ const teamOptionsById = computed(
   () => new Map(teamOptions.value.map((item) => [item.id, item.name]))
 );
 
-const workspaceTaxation = computed(() => workspace.value?.profile.taxation ?? null);
+const workspaceTaxation = computed(
+  () => workspace.value?.profile.taxation ?? null
+);
 
 const activeModalTitle = computed(() => {
   const tile = activeWorkspaceTile.value;
@@ -416,11 +418,14 @@ const federationDepartmentAlias = ref('');
 const federationPositionAlias = ref('');
 
 const federationSelectedCount = computed(
-  () => roleSelection.value.filter((alias) => isFederationRoleAlias(alias)).length
+  () =>
+    roleSelection.value.filter((alias) => isFederationRoleAlias(alias)).length
 );
 
 const otherSelectedCount = computed(
-  () => otherRoles.value.filter((role) => roleSelection.value.includes(role.id)).length
+  () =>
+    otherRoles.value.filter((role) => roleSelection.value.includes(role.id))
+      .length
 );
 
 const federationPositionsByDepartment = computed(() => {
@@ -496,7 +501,10 @@ function onFederationEmploymentChange(checked: boolean): void {
     return;
   }
 
-  if (!federationDepartmentAlias.value && federationRoleDepartments.value.length) {
+  if (
+    !federationDepartmentAlias.value &&
+    federationRoleDepartments.value.length
+  ) {
     federationDepartmentAlias.value = federationRoleDepartments.value[0]!.key;
   }
 }
@@ -1132,11 +1140,11 @@ async function validateCurrentSection(): Promise<boolean> {
         ? 'Внутри Федерации можно назначить только одну должность'
         : employmentDepartmentMissing
           ? 'Выберите отдел сотрудника Федерации'
-        : employmentRoleMissing
-          ? 'Выберите должность сотрудника Федерации'
-          : invalidDepartmentRole
-            ? 'Должность не относится к выбранному отделу'
-        : ''
+          : employmentRoleMissing
+            ? 'Выберите должность сотрудника Федерации'
+            : invalidDepartmentRole
+              ? 'Должность не относится к выбранному отделу'
+              : ''
     );
     return !fieldError('roles', 'roles');
   }
@@ -1196,7 +1204,9 @@ async function loadClubsCatalog(query = linksSearch.clubQuery): Promise<void> {
   const requestSeq = ++clubSearchRequestSeq;
   linksSearch.clubsLoading = true;
   try {
-    const data = await apiFetch<ClubsResponse>(buildLinksSearchPath('clubs', query));
+    const data = await apiFetch<ClubsResponse>(
+      buildLinksSearchPath('clubs', query)
+    );
     if (requestSeq !== clubSearchRequestSeq) return;
 
     clubsCatalog.value = (data.clubs || []).map((item) => ({
@@ -1214,7 +1224,9 @@ async function loadTeamsCatalog(query = linksSearch.teamQuery): Promise<void> {
   const requestSeq = ++teamSearchRequestSeq;
   linksSearch.teamsLoading = true;
   try {
-    const data = await apiFetch<TeamsResponse>(buildLinksSearchPath('teams', query));
+    const data = await apiFetch<TeamsResponse>(
+      buildLinksSearchPath('teams', query)
+    );
     if (requestSeq !== teamSearchRequestSeq) return;
 
     teamsCatalog.value = (data.teams || []).map((item) => ({
@@ -2550,7 +2562,8 @@ onBeforeUnmount(() => {
                     <div>
                       <h3 class="h6 mb-1">Сотрудники Федерации</h3>
                       <p class="small text-muted mb-0">
-                        Формат назначения: сотрудник Федерации → отдел → должность
+                        Формат назначения: сотрудник Федерации → отдел →
+                        должность
                       </p>
                     </div>
                     <div class="workspace-role-counter">
@@ -2564,7 +2577,8 @@ onBeforeUnmount(() => {
                       <label
                         class="workspace-role-option workspace-role-toggle border rounded p-3 d-flex align-items-center gap-2 mb-0"
                         :class="{
-                          'workspace-role-option--checked': federationEmployment,
+                          'workspace-role-option--checked':
+                            federationEmployment,
                           'workspace-role-option--disabled':
                             !sections.roles.editing || !canEditRolesPermission,
                         }"
@@ -2574,8 +2588,7 @@ onBeforeUnmount(() => {
                           type="checkbox"
                           :checked="federationEmployment"
                           :disabled="
-                            !sections.roles.editing ||
-                            !canEditRolesPermission
+                            !sections.roles.editing || !canEditRolesPermission
                           "
                           @change="
                             onFederationEmploymentChange(
@@ -2583,12 +2596,17 @@ onBeforeUnmount(() => {
                             )
                           "
                         />
-                        <span class="workspace-role-label">Сотрудник Федерации</span>
+                        <span class="workspace-role-label"
+                          >Сотрудник Федерации</span
+                        >
                       </label>
                     </div>
 
                     <div class="col-12 col-lg-4">
-                      <label class="form-label" for="federation-department-select">
+                      <label
+                        class="form-label"
+                        for="federation-department-select"
+                      >
                         Отдел
                       </label>
                       <select
@@ -2624,7 +2642,10 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="col-12 col-lg-4">
-                      <label class="form-label" for="federation-position-select">
+                      <label
+                        class="form-label"
+                        for="federation-position-select"
+                      >
                         Должность
                       </label>
                       <select
@@ -2668,8 +2689,8 @@ onBeforeUnmount(() => {
                     v-if="hasMultipleFederationRoles"
                     class="alert alert-warning mt-3 mb-0"
                   >
-                    У пользователя уже несколько должностей Федерации.
-                    Сохраните профиль с одной выбранной должностью.
+                    У пользователя уже несколько должностей Федерации. Сохраните
+                    профиль с одной выбранной должностью.
                   </div>
                 </section>
 
@@ -2693,7 +2714,7 @@ onBeforeUnmount(() => {
                     Дополнительные роли не найдены.
                   </div>
 
-                  <div class="row g-2" v-else>
+                  <div v-else class="row g-2">
                     <div
                       v-for="role in otherRoles"
                       :key="role.id"
@@ -2705,21 +2726,21 @@ onBeforeUnmount(() => {
                           'workspace-role-option--checked':
                             roleSelection.includes(role.id),
                           'workspace-role-option--disabled':
-                            !sections.roles.editing ||
-                            !canEditRolesPermission,
+                            !sections.roles.editing || !canEditRolesPermission,
                         }"
                       >
                         <input
                           v-model="roleSelection"
                           :disabled="
-                            !sections.roles.editing ||
-                            !canEditRolesPermission
+                            !sections.roles.editing || !canEditRolesPermission
                           "
                           class="form-check-input workspace-role-checkbox mt-1 flex-shrink-0"
                           type="checkbox"
                           :value="role.id"
                         />
-                        <span class="workspace-role-label">{{ role.name }}</span>
+                        <span class="workspace-role-label">{{
+                          role.name
+                        }}</span>
                       </label>
                     </div>
                   </div>
@@ -2736,7 +2757,9 @@ onBeforeUnmount(() => {
               </div>
               <div class="row g-3">
                 <div class="col-12 col-xl-6">
-                  <section class="workspace-links-card border rounded-3 p-3 h-100">
+                  <section
+                    class="workspace-links-card border rounded-3 p-3 h-100"
+                  >
                     <div class="workspace-links-card__head">
                       <label class="form-label mb-0" for="club-selection"
                         >Клубы</label
@@ -2796,7 +2819,9 @@ onBeforeUnmount(() => {
                     </select>
 
                     <div class="form-text mt-2">
-                      <span v-if="linksSearch.clubsLoading">Поиск клубов...</span>
+                      <span v-if="linksSearch.clubsLoading"
+                        >Поиск клубов...</span
+                      >
                       <span v-else-if="clubOptions.length"
                         >Показано: {{ clubOptions.length }}</span
                       >
@@ -2835,7 +2860,9 @@ onBeforeUnmount(() => {
                   </section>
                 </div>
                 <div class="col-12 col-xl-6">
-                  <section class="workspace-links-card border rounded-3 p-3 h-100">
+                  <section
+                    class="workspace-links-card border rounded-3 p-3 h-100"
+                  >
                     <div class="workspace-links-card__head">
                       <label class="form-label mb-0" for="team-selection"
                         >Команды</label
@@ -2928,7 +2955,9 @@ onBeforeUnmount(() => {
                             @click="removeTeamLink(teamId)"
                           >
                             <i class="bi bi-x-lg" aria-hidden="true"></i>
-                            <span class="visually-hidden">Отвязать команду</span>
+                            <span class="visually-hidden"
+                              >Отвязать команду</span
+                            >
                           </button>
                         </span>
                       </div>
@@ -2960,7 +2989,9 @@ onBeforeUnmount(() => {
                     </div>
                   </article>
                   <article class="workspace-tax-card">
-                    <div class="workspace-tax-card__label">Дата регистрации</div>
+                    <div class="workspace-tax-card__label">
+                      Дата регистрации
+                    </div>
                     <div class="workspace-tax-card__value">
                       {{ workspaceTaxation.registration_date || '—' }}
                     </div>
@@ -2978,10 +3009,13 @@ onBeforeUnmount(() => {
                     </div>
                   </article>
                   <article class="workspace-tax-card">
-                    <div class="workspace-tax-card__label">Статусы источников</div>
+                    <div class="workspace-tax-card__label">
+                      Статусы источников
+                    </div>
                     <div class="workspace-tax-card__chips">
                       <span class="badge text-bg-light"
-                        >DaData: {{ workspaceTaxation.statuses?.dadata ?? '—' }}</span
+                        >DaData:
+                        {{ workspaceTaxation.statuses?.dadata ?? '—' }}</span
                       >
                       <span class="badge text-bg-light"
                         >ФНС: {{ workspaceTaxation.statuses?.fns ?? '—' }}</span
@@ -3018,7 +3052,8 @@ onBeforeUnmount(() => {
                   </div>
                   <div class="workspace-tax-preview__chips">
                     <span class="badge text-bg-light"
-                      >DaData: {{ taxationPreview.statuses?.dadata ?? '—' }}</span
+                      >DaData:
+                      {{ taxationPreview.statuses?.dadata ?? '—' }}</span
                     >
                     <span class="badge text-bg-light"
                       >ФНС: {{ taxationPreview.statuses?.fns ?? '—' }}</span
