@@ -275,10 +275,20 @@ export default async function buildBankDetailsChangePdf(
   for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(range.start + i);
     if (esign) {
+      const signer = esign.signer || null;
+      const signerFio =
+        [
+          signer?.last_name,
+          signer?.first_name,
+          signer?.patronymic,
+        ].filter(Boolean).join(' ') || `${fio(user)}`;
       await applyESignStamp(doc, {
-        fio: `${fio(user)}`,
+        fio: signerFio,
         signedAt: esign.signedAt,
-        userId: user.id,
+        userId: signer?.id || user.id,
+        signerPosition: signer?.position || null,
+        signerDepartment: signer?.department || null,
+        signerOrganization: signer?.organization || null,
         // Include identifiers to standardize QR payload across documents
         docId: meta.docId,
         signId: esign.signId,

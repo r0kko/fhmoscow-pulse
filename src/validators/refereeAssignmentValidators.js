@@ -108,3 +108,13 @@ export const refereeAssignmentsPublishDayRules = [
     .isUUID()
     .withMessage('referee_role_group_required'),
 ];
+
+export const refereeAssignmentsCreateSheetRules = [
+  ...uuidParam('id'),
+  body('signer_user_id')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('user_not_found'),
+];
+
+export const refereeAssignmentsSheetStatusRules = [...uuidParam('id')];

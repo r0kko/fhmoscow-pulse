@@ -294,7 +294,7 @@ defineExpose({ openModal });
         </div>
       </div>
       <p v-else class="mb-0 text-muted">
-        {{ error || 'Tax information is missing' }}
+        {{ error || 'Налоговая информация отсутствует' }}
       </p>
     </div>
   </div>

@@ -10,6 +10,8 @@ import {
   refereeAssignmentsListRefereesRules,
   refereeAssignmentsUpdateRules,
   refereeAssignmentsPublishDayRules,
+  refereeAssignmentsCreateSheetRules,
+  refereeAssignmentsSheetStatusRules,
   refereeAssignmentsSelfListRules,
   refereeAssignmentsSelfConfirmRules,
   refereeAssignmentsSelfMatchRules,
@@ -47,6 +49,22 @@ router.post(
   auth,
   authorize('ADMIN'),
   controller.publishMatchReferees
+);
+router.get(
+  '/matches/:id/assignment-sheet',
+  auth,
+  authorize('ADMIN'),
+  refereeAssignmentsSheetStatusRules,
+  validate,
+  controller.getMatchAssignmentsSheet
+);
+router.post(
+  '/matches/:id/assignment-sheet',
+  auth,
+  authorize('ADMIN'),
+  refereeAssignmentsCreateSheetRules,
+  validate,
+  controller.createMatchAssignmentsSheet
 );
 router.post(
   '/publish',

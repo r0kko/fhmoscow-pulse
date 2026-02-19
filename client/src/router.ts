@@ -22,7 +22,7 @@ import RefereeAssignmentMatch from './views/RefereeAssignmentMatch.vue';
 import Normatives from './views/Normatives.vue';
 import AdminUsers from './views/AdminUsers.vue';
 import AdminHome from './views/AdminHome.vue';
-import AdminUserEdit from './views/AdminUserEdit.vue';
+import AdminUserWorkspace from './views/AdminUserWorkspace.vue';
 import AdminUserCreate from './views/AdminUserCreate.vue';
 import AdminGrounds from './views/AdminGrounds.vue';
 import SchoolGrounds from './views/SchoolGrounds.vue';
@@ -61,6 +61,8 @@ import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
 import AdminRefereeAssignments from './views/AdminRefereeAssignments.vue';
 import AdminProfessionalRefereeAssignments from './views/AdminProfessionalRefereeAssignments.vue';
 import AdminProfessionalLeagueReferees from './views/AdminProfessionalLeagueReferees.vue';
+import AdminProfessionalLeagueMatch from './views/AdminProfessionalLeagueMatch.vue';
+import AdminProfessionalLeagueMatchReferees from './views/AdminProfessionalLeagueMatchReferees.vue';
 import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
 import AdminMatch from './views/AdminMatch.vue';
 import AdminSystemOps from './views/AdminSystemOps.vue';
@@ -311,6 +313,24 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/professional-leagues/matches/:id',
+    component: AdminProfessionalLeagueMatch,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Матч',
+    },
+  },
+  {
+    path: '/admin/professional-leagues/matches/:id/referees',
+    component: AdminProfessionalLeagueMatchReferees,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Судьи матча',
+    },
+  },
+  {
     path: '/admin/professional-leagues/referees',
     component: AdminProfessionalLeagueReferees,
     meta: {
@@ -335,11 +355,11 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/admin/users/:id',
-    component: AdminUserEdit,
+    component: AdminUserWorkspace,
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: 'Редактирование пользователя',
+      title: 'Рабочее место пользователя',
     },
   },
   {

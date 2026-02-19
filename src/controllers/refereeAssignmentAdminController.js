@@ -1,4 +1,5 @@
 import refereeAssignmentService from '../services/refereeAssignmentService.js';
+import documentService from '../services/documentService.js';
 import map from '../mappers/tournamentMapper.js';
 import { sendError } from '../utils/api.js';
 
@@ -106,6 +107,33 @@ export default {
         req.body?.date,
         req.user.id,
         { roleGroupIds: groupIds }
+      );
+      return res.json(data);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async createMatchAssignmentsSheet(req, res) {
+    try {
+      const data =
+        await documentService.createProLeagueMatchRefereeAssignmentsDocument(
+          req.params.id,
+          req.user.id,
+          {
+            signerUserId: req.body?.signer_user_id || null,
+          }
+        );
+      return res.status(201).json(data);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async getMatchAssignmentsSheet(req, res) {
+    try {
+      const data = await documentService.getProLeagueMatchRefereeAssignmentsSheet(
+        req.params.id
       );
       return res.json(data);
     } catch (err) {

@@ -28,7 +28,11 @@ export interface ApiFetchOptions extends RequestInit, RetryOptions {
   timeoutMs?: number;
 }
 
-type ErrorPayload = { error?: string | null; details?: unknown };
+type ErrorPayload = {
+  error?: string | null;
+  details?: unknown;
+  field_errors?: unknown;
+};
 
 function normalizeHeaders(headers: HeadersInit | undefined): HeadersMap {
   if (!headers) return {};
@@ -530,7 +534,17 @@ function createHttpError({
   const err = new Error(fullMessage) as ApiError;
   err.code = data?.error || fallbackCode;
   if (reqId) err.requestId = reqId;
-  if (data?.details !== undefined) err.details = data.details;
+  if (data?.details !== undefined || data?.field_errors !== undefined) {
+    const baseDetails =
+      data?.details && typeof data.details === 'object'
+        ? { ...(data.details as Record<string, unknown>) }
+        : {};
+    if (data?.field_errors !== undefined) {
+      baseDetails['field_errors'] = data.field_errors;
+    }
+    err.details =
+      Object.keys(baseDetails).length > 0 ? baseDetails : data?.details;
+  }
   return err;
 }
 

@@ -6,6 +6,8 @@ const listRefereesMock = jest.fn();
 const updateMatchMock = jest.fn();
 const publishMatchMock = jest.fn();
 const publishDayMock = jest.fn();
+const createSheetMock = jest.fn();
+const getSheetMock = jest.fn();
 const sendErrorMock = jest.fn();
 
 beforeEach(() => {
@@ -15,6 +17,8 @@ beforeEach(() => {
   updateMatchMock.mockReset();
   publishMatchMock.mockReset();
   publishDayMock.mockReset();
+  createSheetMock.mockReset();
+  getSheetMock.mockReset();
   sendErrorMock.mockReset();
 });
 
@@ -27,6 +31,14 @@ jest.unstable_mockModule('../src/services/refereeAssignmentService.js', () => ({
     updateMatchReferees: updateMatchMock,
     publishMatchReferees: publishMatchMock,
     publishAssignmentsForDate: publishDayMock,
+  },
+}));
+
+jest.unstable_mockModule('../src/services/documentService.js', () => ({
+  __esModule: true,
+  default: {
+    createProLeagueMatchRefereeAssignmentsDocument: createSheetMock,
+    getProLeagueMatchRefereeAssignmentsSheet: getSheetMock,
   },
 }));
 
@@ -145,6 +157,50 @@ test('publishDay forwards payload', async () => {
     roleGroupIds: ['rg1'],
   });
   expect(res.json).toHaveBeenCalledWith({ published_count: 1 });
+});
+
+test('createMatchAssignmentsSheet forwards payload', async () => {
+  createSheetMock.mockResolvedValue({
+    document: { id: 'doc1' },
+    file: { id: 'file1', url: 'https://example.com/file.pdf' },
+  });
+  const res = mockRes();
+  await controller.createMatchAssignmentsSheet(
+    {
+      params: { id: 'm1' },
+      user: { id: 'admin' },
+      body: { signer_user_id: 'u-fhmo' },
+    },
+    res
+  );
+  expect(createSheetMock).toHaveBeenCalledWith('m1', 'admin', {
+    signerUserId: 'u-fhmo',
+  });
+  expect(res.status).toHaveBeenCalledWith(201);
+  expect(res.json).toHaveBeenCalledWith({
+    document: { id: 'doc1' },
+    file: { id: 'file1', url: 'https://example.com/file.pdf' },
+  });
+});
+
+test('getMatchAssignmentsSheet returns payload', async () => {
+  getSheetMock.mockResolvedValue({
+    sheet: {
+      id: 'doc1',
+      number: '26.02/978',
+      status: { alias: 'AWAITING_SIGNATURE', name: 'Ожидает подписания' },
+    },
+  });
+  const res = mockRes();
+  await controller.getMatchAssignmentsSheet({ params: { id: 'm1' } }, res);
+  expect(getSheetMock).toHaveBeenCalledWith('m1');
+  expect(res.json).toHaveBeenCalledWith({
+    sheet: {
+      id: 'doc1',
+      number: '26.02/978',
+      status: { alias: 'AWAITING_SIGNATURE', name: 'Ожидает подписания' },
+    },
+  });
 });
 
 test('listMatches sends errors', async () => {

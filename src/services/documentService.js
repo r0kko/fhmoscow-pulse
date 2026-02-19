@@ -15,6 +15,7 @@ import {
 } from '../models/index.js';
 import * as Models from '../models/index.js';
 import ServiceError from '../errors/ServiceError.js';
+import { FHMO_STAFF_ROLES } from '../utils/roles.js';
 import {
   applyFonts,
   applyFirstPageHeader,
@@ -26,6 +27,7 @@ import fileService from './fileService.js';
 import emailService from './emailService.js';
 import buildBankDetailsChangePdf from './docBuilders/bankDetailsChange.js';
 import buildEquipmentTransferPdf from './docBuilders/equipmentTransfer.js';
+import buildProLeagueRefereeAssignmentsSheetPdf from './docBuilders/proLeagueRefereeAssignmentsSheet.js';
 
 function formatDateHuman(date) {
   if (!date) return '«__» __________ ____ г.';
@@ -66,6 +68,231 @@ function parseJsonSafe(value, fallback = {}) {
   } catch (_e) {
     return fallback;
   }
+}
+
+const PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS =
+  'PRO_LEAGUE_MATCH_REFEREE_ASSIGNMENTS_SHEET';
+const PRO_LEAGUE_ASSIGNMENTS_DOC_NAME = 'Лист назначений судей на матч';
+const PRO_LEAGUE_ASSIGNMENTS_DOC_KIND =
+  'PRO_LEAGUE_MATCH_REFEREE_ASSIGNMENTS_SHEET';
+const PRO_LEAGUE_ASSIGNMENTS_STATUS_ALIASES = [
+  'DRAFT',
+  'PUBLISHED',
+  'CONFIRMED',
+];
+
+function normalizeText(value, fallback = '—') {
+  const text = String(value || '').trim();
+  return text || fallback;
+}
+
+function normalizeVehicleNumber(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function formatMoscowDateTimeLong(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+    .formatToParts(date)
+    .reduce((acc, part) => {
+      if (part.type !== 'literal') acc[part.type] = part.value;
+      return acc;
+    }, {});
+  const datePart =
+    parts.day && parts.month && parts.year
+      ? `${parts.day} ${parts.month} ${parts.year}`
+      : '—';
+  const timePart = new Intl.DateTimeFormat('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+  return `${datePart} в ${timePart}`;
+}
+
+function hasFederationRole(user) {
+  const roles = Array.isArray(user?.Roles) ? user.Roles : [];
+  return roles.some((role) => FHMO_STAFF_ROLES.includes(role?.alias));
+}
+
+const FHMO_STAMP_ORGANIZATION = 'РОО "Федерация хоккея Москвы"';
+
+function cleanStampText(value) {
+  const text = String(value || '').trim();
+  return text || null;
+}
+
+function pickFederationRole(user) {
+  const roles = Array.isArray(user?.Roles) ? user.Roles : [];
+  const federationRoles = roles.filter((role) =>
+    FHMO_STAFF_ROLES.includes(role?.alias)
+  );
+  if (!federationRoles.length) return null;
+  return federationRoles.sort((a, b) => {
+    const aPriority = FHMO_STAFF_ROLES.indexOf(a?.alias);
+    const bPriority = FHMO_STAFF_ROLES.indexOf(b?.alias);
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+    const aOrder = Number.isFinite(a?.displayOrder) ? a.displayOrder : 999999;
+    const bOrder = Number.isFinite(b?.displayOrder) ? b.displayOrder : 999999;
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+    return String(a?.name || '').localeCompare(String(b?.name || ''), 'ru');
+  })[0];
+}
+
+function buildStampSigner(user) {
+  if (!user) return null;
+  const federationRole = pickFederationRole(user);
+  return {
+    id: user.id || null,
+    last_name: user.last_name || null,
+    first_name: user.first_name || null,
+    patronymic: user.patronymic || null,
+    position: cleanStampText(federationRole?.name),
+    department: cleanStampText(federationRole?.departmentName),
+    organization: federationRole ? FHMO_STAMP_ORGANIZATION : null,
+  };
+}
+
+async function loadUserWithRoles(userId) {
+  if (!userId) return null;
+  return User.findByPk(userId, {
+    attributes: ['id', 'email', 'last_name', 'first_name', 'patronymic'],
+    include: [
+      {
+        model: Models.Role,
+        attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
+        through: { attributes: [] },
+        required: false,
+      },
+    ],
+  });
+}
+
+async function loadSimpleUserSign(userId) {
+  if (!userId) return null;
+  const sign = await UserSignType.findOne({
+    where: { user_id: userId },
+    include: [{ model: SignType, attributes: ['id', 'alias', 'name'] }],
+    order: [['sign_created_date', 'DESC']],
+  });
+  if (!sign || sign.SignType?.alias !== 'SIMPLE_ELECTRONIC') return null;
+  return sign;
+}
+
+async function findFallbackFederationSigner() {
+  const signs = await UserSignType.findAll({
+    include: [
+      {
+        model: SignType,
+        attributes: ['id', 'alias', 'name'],
+        where: { alias: 'SIMPLE_ELECTRONIC' },
+        required: true,
+      },
+      {
+        model: User,
+        attributes: ['id', 'email', 'last_name', 'first_name', 'patronymic'],
+        required: true,
+        include: [
+          {
+            model: Models.Role,
+            attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
+            through: { attributes: [] },
+            where: { alias: { [Op.in]: FHMO_STAFF_ROLES } },
+            required: true,
+          },
+        ],
+      },
+    ],
+    // Keep ordering on base model only to avoid Postgres FROM-clause issues
+    // when Sequelize builds a subquery for LIMIT + include.
+    order: [['sign_created_date', 'DESC']],
+    subQuery: false,
+    limit: 1,
+  });
+  if (!signs.length) return null;
+  return {
+    signer: signs[0].User,
+    signerSign: signs[0],
+  };
+}
+
+function buildEffectiveAssignmentRows(assignments, draftClearGroupIds) {
+  const grouped = new Map();
+  const ungrouped = [];
+
+  assignments.forEach((assignment) => {
+    const groupId = assignment.role?.group_id || null;
+    if (!groupId) {
+      ungrouped.push(assignment);
+      return;
+    }
+    if (!grouped.has(groupId)) {
+      grouped.set(groupId, { drafts: [], published: [] });
+    }
+    const bucket = grouped.get(groupId);
+    if (assignment.status === 'DRAFT') {
+      bucket.drafts.push(assignment);
+      return;
+    }
+    if (assignment.status === 'PUBLISHED' || assignment.status === 'CONFIRMED') {
+      bucket.published.push(assignment);
+    }
+  });
+
+  const clearSet = new Set(draftClearGroupIds || []);
+  const result = [...ungrouped];
+  grouped.forEach((bucket, groupId) => {
+    const useDraft = clearSet.has(groupId) || bucket.drafts.length > 0;
+    result.push(...(useDraft ? bucket.drafts : bucket.published));
+  });
+  return result;
+}
+
+function sortAssignmentRows(rows) {
+  return [...rows].sort((left, right) => {
+    const leftGroupOrder = Number(left.role?.group_sort_order ?? 9999);
+    const rightGroupOrder = Number(right.role?.group_sort_order ?? 9999);
+    if (leftGroupOrder !== rightGroupOrder) {
+      return leftGroupOrder - rightGroupOrder;
+    }
+    const leftGroup = String(left.role?.group_name || '');
+    const rightGroup = String(right.role?.group_name || '');
+    const byGroup = leftGroup.localeCompare(rightGroup, 'ru', {
+      sensitivity: 'base',
+    });
+    if (byGroup !== 0) return byGroup;
+
+    const leftRoleOrder = Number(left.role?.sort_order ?? 9999);
+    const rightRoleOrder = Number(right.role?.sort_order ?? 9999);
+    if (leftRoleOrder !== rightRoleOrder) {
+      return leftRoleOrder - rightRoleOrder;
+    }
+    const byRole = String(left.role?.name || '').localeCompare(
+      String(right.role?.name || ''),
+      'ru',
+      { sensitivity: 'base' }
+    );
+    if (byRole !== 0) return byRole;
+
+    return fio(left.user).localeCompare(fio(right.user), 'ru', {
+      sensitivity: 'base',
+    });
+  });
 }
 
 /* istanbul ignore next */
@@ -2149,9 +2376,6 @@ async function sendSignCode(user, documentId) {
 }
 
 async function signWithCode(user, documentId, code) {
-  if (!/^[0-9]{6}$/.test(String(code || ''))) {
-    throw new ServiceError('invalid_code', 400);
-  }
   const doc = await Document.findByPk(documentId, {
     include: [
       { model: DocumentStatus, attributes: ['alias', 'name', 'id'] },
@@ -2168,6 +2392,12 @@ async function signWithCode(user, documentId, code) {
   if (doc.recipient_id !== user.id) throw new ServiceError('forbidden', 403);
   if (doc.SignType?.alias !== 'SIMPLE_ELECTRONIC')
     throw new ServiceError('unsupported_sign_type', 400);
+  if (doc.DocumentStatus?.alias === 'SIGNED') {
+    return;
+  }
+  if (!/^[0-9]{6}$/.test(String(code || ''))) {
+    throw new ServiceError('invalid_code', 400);
+  }
   if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE')
     throw new ServiceError('document_status_invalid', 400);
   const { verifyCodeOnly } = await import('./emailVerificationService.js');
@@ -2175,7 +2405,19 @@ async function signWithCode(user, documentId, code) {
   // proceed with signing and stamping
   await sign(user, documentId);
   // After status update and sign record creation, regenerate with stamp
-  await regenerateSigned(documentId, user.id);
+  try {
+    await regenerateSigned(documentId, user.id);
+  } catch (err) {
+    if (err?.code === 's3_upload_failed') {
+      console.error('Signed document regeneration failed', {
+        documentId,
+        userId: user.id,
+        code: err.code,
+      });
+    } else {
+      throw err;
+    }
+  }
 
   // Post-sign automation for specific document types
   const after = await Document.findByPk(documentId, {
@@ -2286,6 +2528,14 @@ async function regenerateSigned(documentId, actorId) {
           'patronymic',
           'birth_date',
         ],
+        include: [
+          {
+            model: Models.Role,
+            attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
+            through: { attributes: [] },
+            required: false,
+          },
+        ],
       },
     ],
   });
@@ -2301,7 +2551,7 @@ async function regenerateSigned(documentId, actorId) {
   const esign = {
     signId: lastSign.id,
     signedAt: lastSign.created_at,
-    signer: doc.recipient,
+    signer: buildStampSigner(doc.recipient),
   };
   let pdf;
   const metaCommon = {
@@ -2329,6 +2579,9 @@ async function regenerateSigned(documentId, actorId) {
       payload?.equipment || {},
       metaCommon
     );
+  } else if (doc.DocumentType.alias === PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS) {
+    const payload = parseJsonSafe(doc.description)?.payload || {};
+    pdf = await buildProLeagueRefereeAssignmentsSheetPdf(payload, metaCommon);
   } else {
     pdf = await createPdfBuffer(doc.name);
   }
@@ -2493,9 +2746,28 @@ async function regenerate(documentId, actorId) {
           const lastSign = await DocumentUserSign.findOne({
             where: { document_id: documentId },
             order: [['created_at', 'DESC']],
+            include: [
+              {
+                model: User,
+                attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+                required: false,
+                include: [
+                  {
+                    model: Models.Role,
+                    attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
+                    through: { attributes: [] },
+                    required: false,
+                  },
+                ],
+              },
+            ],
           });
           if (!lastSign) return null;
-          return { signId: lastSign.id, signedAt: lastSign.created_at };
+          return {
+            signId: lastSign.id,
+            signedAt: lastSign.created_at,
+            signer: buildStampSigner(lastSign.User || doc.recipient),
+          };
         })()
       : null;
   if (doc.DocumentType.alias === 'PERSONAL_DATA_CONSENT') {
@@ -2540,6 +2812,14 @@ async function regenerate(documentId, actorId) {
         esign,
       }
     );
+  } else if (doc.DocumentType.alias === PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS) {
+    const payload = parseDocDescription().payload || {};
+    pdf = await buildProLeagueRefereeAssignmentsSheetPdf(payload, {
+      docId: doc.id,
+      number: doc.number,
+      documentDate: doc.document_date,
+      esign,
+    });
   } else {
     pdf = await createPdfBuffer(doc.name);
   }
@@ -2574,6 +2854,357 @@ function createPdfBuffer(text) {
     doc.text(text);
     doc.end();
   });
+}
+
+async function createProLeagueMatchRefereeAssignmentsDocument(
+  matchId,
+  actorId,
+  { signerUserId = null } = {}
+) {
+  const match = await Models.Match.findByPk(matchId, {
+    attributes: ['id', 'date_start', 'ground_id'],
+    include: [
+      {
+        model: Models.Tournament,
+        attributes: ['id', 'name', 'full_name'],
+        include: [
+          {
+            model: Models.CompetitionType,
+            attributes: ['id', 'alias', 'name'],
+            required: false,
+          },
+        ],
+      },
+      { model: Models.Team, as: 'HomeTeam', attributes: ['id', 'name'] },
+      { model: Models.Team, as: 'AwayTeam', attributes: ['id', 'name'] },
+      {
+        model: Models.Ground,
+        attributes: ['id', 'name'],
+        required: false,
+        include: [
+          {
+            model: Models.Address,
+            attributes: ['result'],
+            required: false,
+          },
+        ],
+      },
+    ],
+  });
+  if (!match) throw new ServiceError('match_not_found', 404);
+  if (match.Tournament?.CompetitionType?.alias !== 'PRO') {
+    throw new ServiceError('match_not_professional', 400);
+  }
+
+  let signer = null;
+  let signerSign = null;
+
+  if (signerUserId) {
+    signer = await loadUserWithRoles(signerUserId);
+    if (!signer) throw new ServiceError('user_not_found', 404);
+    if (!hasFederationRole(signer)) {
+      throw new ServiceError('federation_signer_required', 400);
+    }
+    signerSign = await loadSimpleUserSign(signer.id);
+    if (!signerSign) {
+      throw new ServiceError('sign_type_simple_required', 400);
+    }
+  } else {
+    const actorUser = await loadUserWithRoles(actorId);
+    if (actorUser && hasFederationRole(actorUser)) {
+      const actorSign = await loadSimpleUserSign(actorUser.id);
+      if (actorSign) {
+        signer = actorUser;
+        signerSign = actorSign;
+      }
+    }
+    if (!signer || !signerSign) {
+      const fallback = await findFallbackFederationSigner();
+      if (!fallback) {
+        throw new ServiceError('federation_signer_not_found', 400);
+      }
+      signer = fallback.signer;
+      signerSign = fallback.signerSign;
+    }
+  }
+
+  const statusRows = await Models.MatchRefereeStatus.findAll({
+    where: { alias: { [Op.in]: PRO_LEAGUE_ASSIGNMENTS_STATUS_ALIASES } },
+    attributes: ['id', 'alias'],
+  });
+  const statusIdByAlias = new Map(
+    statusRows.map((status) => [status.alias, status.id])
+  );
+  const statusIds = PRO_LEAGUE_ASSIGNMENTS_STATUS_ALIASES.map((alias) =>
+    statusIdByAlias.get(alias)
+  ).filter(Boolean);
+  if (!statusIds.length) {
+    throw new ServiceError('referee_statuses_missing', 500);
+  }
+
+  const assignmentRows = await Models.MatchReferee.findAll({
+    where: {
+      match_id: match.id,
+      status_id: { [Op.in]: statusIds },
+    },
+    include: [
+      {
+        model: Models.MatchRefereeStatus,
+        attributes: ['alias'],
+        required: false,
+      },
+      {
+        model: Models.RefereeRole,
+        attributes: ['id', 'name', 'sort_order', 'referee_role_group_id'],
+        include: [
+          {
+            model: Models.RefereeRoleGroup,
+            attributes: ['id', 'name', 'sort_order'],
+            required: false,
+          },
+        ],
+        required: false,
+      },
+      {
+        model: User,
+        attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+        required: false,
+      },
+    ],
+    order: [
+      [{ model: Models.MatchRefereeStatus }, 'alias', 'ASC'],
+      [
+        { model: Models.RefereeRole },
+        { model: Models.RefereeRoleGroup },
+        'sort_order',
+        'ASC',
+      ],
+      [{ model: Models.RefereeRole }, 'sort_order', 'ASC'],
+      [{ model: User }, 'last_name', 'ASC'],
+      [{ model: User }, 'first_name', 'ASC'],
+    ],
+  });
+
+  const draftClearRows = await Models.MatchRefereeDraftClear.findAll({
+    where: { match_id: match.id },
+    attributes: ['referee_role_group_id'],
+  });
+
+  const assignments = assignmentRows.map((row) => ({
+    status: row.MatchRefereeStatus?.alias || null,
+    role: row.RefereeRole
+      ? {
+          id: row.RefereeRole.id,
+          name: row.RefereeRole.name,
+          sort_order: row.RefereeRole.sort_order ?? null,
+          group_id: row.RefereeRole.referee_role_group_id || null,
+          group_name: row.RefereeRole.RefereeRoleGroup?.name || null,
+          group_sort_order: row.RefereeRole.RefereeRoleGroup?.sort_order ?? null,
+        }
+      : null,
+    user: row.User
+      ? {
+          id: row.User.id,
+          last_name: row.User.last_name,
+          first_name: row.User.first_name,
+          patronymic: row.User.patronymic,
+        }
+      : null,
+  }));
+
+  const effectiveAssignments = sortAssignmentRows(
+    buildEffectiveAssignmentRows(
+      assignments,
+      draftClearRows.map((row) => row.referee_role_group_id)
+    )
+  ).filter((assignment) => assignment.user?.id && assignment.role?.name);
+
+  if (!effectiveAssignments.length) {
+    throw new ServiceError('referee_assignments_missing', 400);
+  }
+
+  const assignedUserIds = Array.from(
+    new Set(effectiveAssignments.map((assignment) => assignment.user.id))
+  );
+  const vehicles = assignedUserIds.length
+    ? await Models.Vehicle.findAll({
+        where: { user_id: { [Op.in]: assignedUserIds } },
+        attributes: ['user_id', 'number'],
+        order: [['number', 'ASC']],
+      })
+    : [];
+  const vehiclesByUserId = new Map();
+  vehicles.forEach((vehicle) => {
+    if (!vehiclesByUserId.has(vehicle.user_id)) {
+      vehiclesByUserId.set(vehicle.user_id, []);
+    }
+    vehiclesByUserId.get(vehicle.user_id).push(vehicle);
+  });
+
+  const rows = effectiveAssignments.map((assignment) => {
+    const userVehicles = vehiclesByUserId.get(assignment.user.id) || [];
+    const allNumbers = userVehicles
+      .map((vehicle) => normalizeVehicleNumber(vehicle.number))
+      .filter(Boolean);
+    const vehicleNumbers = Array.from(new Set(allNumbers)).join('\n');
+    return {
+      role: normalizeText(assignment.role.name),
+      referee: normalizeText(fio(assignment.user)),
+      vehicles: normalizeText(vehicleNumbers || '—'),
+    };
+  });
+
+  const payload = {
+    title: 'Лист назначений судей на матч',
+    leagueName:
+      match.Tournament?.full_name ||
+      match.Tournament?.name ||
+      match.Tournament?.CompetitionType?.name ||
+      'Профессиональная лига',
+    teams: `${normalizeText(match.HomeTeam?.name)} — ${normalizeText(match.AwayTeam?.name)}`,
+    dateTime: formatMoscowDateTimeLong(match.date_start),
+    arenaAddress:
+      normalizeText(match.Ground?.Address?.result || '', '') ||
+      'Адрес арены не указан',
+    rows,
+  };
+
+  let docType = await DocumentType.findOne({
+    where: { alias: PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS },
+    attributes: ['id', 'name', 'alias', 'generated'],
+  });
+  if (!docType) {
+    docType = await DocumentType.create({
+      name: PRO_LEAGUE_ASSIGNMENTS_DOC_NAME,
+      alias: PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS,
+      generated: true,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  }
+
+  const existingSheets = await Document.findAll({
+    where: {
+      document_type_id: docType.id,
+      [Op.and]: [
+        {
+          description: {
+            [Op.like]: `%"kind":"${PRO_LEAGUE_ASSIGNMENTS_DOC_KIND}"%`,
+          },
+        },
+        {
+          description: {
+            [Op.like]: `%"match_id":"${match.id}"%`,
+          },
+        },
+      ],
+    },
+    attributes: ['id'],
+    order: [['created_at', 'DESC']],
+  });
+
+  for (const existingSheet of existingSheets) {
+    // For pro league assignments sheet we allow replacement even after signing.
+    await remove(existingSheet.id, actorId, {
+      allowSignedSimpleDelete: true,
+    });
+  }
+
+  const awaitingStatus = await DocumentStatus.findOne({
+    where: { alias: 'AWAITING_SIGNATURE' },
+    attributes: ['id', 'name', 'alias'],
+  });
+  if (!awaitingStatus) {
+    throw new ServiceError('document_status_not_found', 500);
+  }
+
+  const initialPdf = await createPdfBuffer(PRO_LEAGUE_ASSIGNMENTS_DOC_NAME);
+  const initialFile = await fileService.saveGeneratedPdf(
+    initialPdf,
+    `${PRO_LEAGUE_ASSIGNMENTS_DOC_NAME}.pdf`,
+    actorId
+  );
+
+  const created = await Document.create({
+    recipient_id: signer.id,
+    document_type_id: docType.id,
+    status_id: awaitingStatus.id,
+    file_id: initialFile.id,
+    sign_type_id: signerSign.SignType.id,
+    name: PRO_LEAGUE_ASSIGNMENTS_DOC_NAME,
+    description: JSON.stringify({
+      kind: PRO_LEAGUE_ASSIGNMENTS_DOC_KIND,
+      payload,
+      match_id: match.id,
+      tournament_id: match.Tournament?.id || null,
+    }),
+    document_date: new Date(),
+    created_by: actorId,
+    updated_by: actorId,
+  });
+
+  let regenerated;
+  try {
+    regenerated = await regenerate(created.id, actorId);
+  } catch {
+    regenerated = {
+      file: {
+        id: initialFile.id,
+        url: await fileService.getDownloadUrl(initialFile),
+      },
+    };
+  }
+
+  const outDoc = await Document.findByPk(created.id, {
+    include: [
+      { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
+      { model: SignType, attributes: ['name', 'alias'] },
+    ],
+  });
+
+  try {
+    if (signer?.email) {
+      await emailService.sendDocumentAwaitingSignatureEmail(signer, {
+        id: outDoc.id,
+        number: outDoc.number,
+        name: outDoc.name,
+        SignType: outDoc.SignType
+          ? { alias: outDoc.SignType.alias, name: outDoc.SignType.name }
+          : null,
+      });
+    }
+  } catch {
+    // Do not fail the request if notification fails
+  }
+
+  return {
+    document: {
+      id: outDoc.id,
+      number: outDoc.number,
+      name: outDoc.name,
+      documentDate: outDoc.document_date,
+      documentType: outDoc.DocumentType
+        ? {
+            name: outDoc.DocumentType.name,
+            alias: outDoc.DocumentType.alias,
+            generated: outDoc.DocumentType.generated,
+          }
+        : null,
+      signType: outDoc.SignType
+        ? { name: outDoc.SignType.name, alias: outDoc.SignType.alias }
+        : null,
+      status: awaitingStatus
+        ? { name: awaitingStatus.name, alias: awaitingStatus.alias }
+        : null,
+      recipient: {
+        id: signer.id,
+        last_name: signer.last_name,
+        first_name: signer.first_name,
+        patronymic: signer.patronymic,
+      },
+    },
+    file: regenerated.file,
+  };
 }
 
 async function generateInitial(user, signTypeId) {
@@ -2671,7 +3302,8 @@ async function update(documentId, data, actorId) {
   return doc;
 }
 
-async function remove(documentId, actorId) {
+async function remove(documentId, actorId, options = {}) {
+  const allowSignedSimpleDelete = options?.allowSignedSimpleDelete === true;
   const doc = await Document.findByPk(documentId, {
     include: [
       { model: DocumentStatus, attributes: ['alias'] },
@@ -2683,6 +3315,7 @@ async function remove(documentId, actorId) {
   }
   // Forbid deleting documents signed with SIMPLE_ELECTRONIC and status SIGNED
   if (
+    !allowSignedSimpleDelete &&
     doc?.SignType?.alias === 'SIMPLE_ELECTRONIC' &&
     doc?.DocumentStatus?.alias === 'SIGNED'
   ) {
@@ -2694,6 +3327,96 @@ async function remove(documentId, actorId) {
   if (fileId) {
     await fileService.removeFile(fileId);
   }
+}
+
+async function getProLeagueMatchRefereeAssignmentsSheet(matchId) {
+  const match = await Models.Match.findByPk(matchId, {
+    attributes: ['id'],
+    include: [
+      {
+        model: Models.Tournament,
+        attributes: ['id'],
+        include: [
+          {
+            model: Models.CompetitionType,
+            attributes: ['alias'],
+            required: false,
+          },
+        ],
+      },
+    ],
+  });
+  if (!match) throw new ServiceError('match_not_found', 404);
+  if (match.Tournament?.CompetitionType?.alias !== 'PRO') {
+    throw new ServiceError('match_not_professional', 400);
+  }
+
+  const docType = await DocumentType.findOne({
+    where: { alias: PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS },
+    attributes: ['id'],
+  });
+  if (!docType) return { sheet: null };
+
+  const sheet = await Document.findOne({
+    where: {
+      document_type_id: docType.id,
+      [Op.and]: [
+        {
+          description: {
+            [Op.like]: `%"kind":"${PRO_LEAGUE_ASSIGNMENTS_DOC_KIND}"%`,
+          },
+        },
+        {
+          description: {
+            [Op.like]: `%"match_id":"${match.id}"%`,
+          },
+        },
+      ],
+    },
+    include: [
+      { model: DocumentStatus, attributes: ['name', 'alias'] },
+      { model: File, attributes: ['id', 'key'] },
+    ],
+    attributes: ['id', 'number', 'document_date', 'created_at', 'updated_at'],
+    order: [['created_at', 'DESC']],
+  });
+  if (!sheet) return { sheet: null };
+
+  let file = null;
+  if (sheet.File) {
+    const safeName =
+      `${PRO_LEAGUE_ASSIGNMENTS_DOC_NAME} · №${sheet.number || ''}.pdf`.replace(
+        /[\\/:*?"<>|]/g,
+        ' '
+      );
+    try {
+      file = {
+        id: sheet.File.id,
+        url: await fileService.getDownloadUrl(sheet.File, {
+          filename: safeName,
+        }),
+      };
+    } catch {
+      file = { id: sheet.File.id, url: null };
+    }
+  }
+
+  return {
+    sheet: {
+      id: sheet.id,
+      number: sheet.number || null,
+      documentDate: sheet.document_date,
+      createdAt: sheet.created_at,
+      updatedAt: sheet.updated_at,
+      status: sheet.DocumentStatus
+        ? {
+            name: sheet.DocumentStatus.name,
+            alias: sheet.DocumentStatus.alias,
+          }
+        : null,
+      file,
+    },
+  };
 }
 
 export default {
@@ -2709,6 +3432,8 @@ export default {
   generateInitial,
   update,
   remove,
+  createProLeagueMatchRefereeAssignmentsDocument,
+  getProLeagueMatchRefereeAssignmentsSheet,
   async createContractApplicationDocument(userId, actorId) {
     const user = await User.findByPk(userId, {
       attributes: [

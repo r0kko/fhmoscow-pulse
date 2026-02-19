@@ -268,10 +268,20 @@ export default async function buildEquipmentTransferPdf(
   for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(range.start + i);
     if (esign) {
+      const signer = esign.signer || null;
+      const signerFio =
+        [
+          signer?.last_name,
+          signer?.first_name,
+          signer?.patronymic,
+        ].filter(Boolean).join(' ') || fullName;
       await applyESignStamp(doc, {
-        fio: fullName,
+        fio: signerFio,
         signedAt: esign.signedAt,
-        userId: user?.id,
+        userId: signer?.id || user?.id,
+        signerPosition: signer?.position || null,
+        signerDepartment: signer?.department || null,
+        signerOrganization: signer?.organization || null,
         docId: meta.docId,
         signId: esign.signId,
         page: i + 1,

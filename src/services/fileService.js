@@ -26,6 +26,48 @@ function isTestEnvWithoutS3() {
   return Boolean(process.env.JEST_WORKER_ID) && !process.env.S3_BUCKET;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableS3Error(err) {
+  const status = Number(err?.$metadata?.httpStatusCode || 0);
+  if (status >= 500 || status === 429 || status === 408) return true;
+  if (err?.$retryable) return true;
+  const name = String(err?.name || '').toLowerCase();
+  if (
+    name.includes('timeout') ||
+    name.includes('network') ||
+    name.includes('throttl')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function putObjectWithRetry(
+  input,
+  { attempts = 3, retryAll = false } = {}
+) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await s3.send(new PutObjectCommand(input));
+      return;
+    } catch (err) {
+      lastError = err;
+      if (
+        attempt >= attempts ||
+        (!retryAll && !isRetryableS3Error(err))
+      ) {
+        break;
+      }
+      await sleep(150 * attempt);
+    }
+  }
+  throw lastError;
+}
+
 const PLAYER_PHOTO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 const PLAYER_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const PLAYER_PHOTO_MIN_DIMENSION = 800; // px
@@ -320,16 +362,24 @@ async function uploadDocument(file, actorId) {
   }
   const key = `documents/${uuidv4()}${path.extname(file.originalname)}`;
   try {
-    await s3.send(
-      new PutObjectCommand({
+    await putObjectWithRetry(
+      {
         Bucket: getS3Bucket(),
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
-      })
+        ContentLength: Buffer.byteLength(file.buffer || Buffer.alloc(0)),
+      },
+      { attempts: 5, retryAll: true }
     );
   } catch (err) {
-    console.error('S3 upload failed', err);
+    console.error('S3 upload failed', {
+      bucket: getS3Bucket(),
+      key,
+      name: err?.name || null,
+      message: err?.message || null,
+      status: err?.$metadata?.httpStatusCode || null,
+    });
     throw new ServiceError('s3_upload_failed');
   }
   return await File.create({
@@ -420,16 +470,24 @@ async function saveGeneratedPdf(buffer, name, actorId) {
   }
   const key = `documents/${uuidv4()}.pdf`;
   try {
-    await s3.send(
-      new PutObjectCommand({
+    await putObjectWithRetry(
+      {
         Bucket: getS3Bucket(),
         Key: key,
         Body: buffer,
         ContentType: 'application/pdf',
-      })
+        ContentLength: Buffer.byteLength(buffer),
+      },
+      { attempts: 5, retryAll: true }
     );
   } catch (err) {
-    console.error('S3 upload failed', err);
+    console.error('S3 upload failed', {
+      bucket: getS3Bucket(),
+      key,
+      name: err?.name || null,
+      message: err?.message || null,
+      status: err?.$metadata?.httpStatusCode || null,
+    });
     throw new ServiceError('s3_upload_failed');
   }
   return await File.create({

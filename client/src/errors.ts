@@ -17,6 +17,11 @@ export const ERROR_MESSAGES = {
   email_exists: 'Email уже зарегистрирован',
   inn_exists: 'ИНН уже зарегистрирован',
   inn_not_found: 'ИНН не найден',
+  invalid_inn: 'ИНН указан некорректно',
+  invalid_snils: 'СНИЛС указан некорректно',
+  invalid_format: 'Некорректный формат поля',
+  invalid_number: 'Некорректный номер счёта',
+  invalid_bic: 'Некорректный БИК',
   invalid_code: 'Неверный код',
   code_required: 'Введите 6-значный код из письма',
   invalid_credentials: 'Неверные учётные данные',
@@ -58,6 +63,8 @@ export const ERROR_MESSAGES = {
   referee_group_not_found: 'Группа судей не найдена',
   access_denied: 'Доступ запрещен',
   invalid_address: 'Некорректный адрес',
+  address_type_not_found: 'Тип адреса не найден',
+  address_not_found: 'Адрес не найден',
   user_exists: 'Пользователь уже существует',
   user_not_found: 'Пользователь не найден',
   player_not_found: 'Игрок не найден',
@@ -163,11 +170,21 @@ export const ERROR_MESSAGES = {
   referee_assignments_missing: 'Черновик назначения не найден',
   referee_assignments_incomplete:
     'Заполните все слоты перед отправкой назначения',
+  match_assignments_sheet_exists:
+    'Для этого матча лист назначений уже сформирован',
+  document_delete_forbidden_signed_simple:
+    'Нельзя перегенерировать: предыдущий лист уже подписан простой электронной подписью',
+  federation_signer_required:
+    'Документ может подписать только сотрудник федерации',
+  federation_signer_not_found:
+    'Не найден сотрудник федерации с настроенной простой электронной подписью',
   invalid_clear_flag: 'Некорректный параметр отмены назначения',
   referee_statuses_missing:
     'Конфигурация статусов назначений недоступна. Обратитесь в поддержку',
   match_schedule_missing: 'У матча не указаны дата и время',
   match_duration_missing: 'Укажите длительность матча для группы',
+  match_not_professional:
+    'Документ доступен только для матчей профессиональных соревнований',
   date_required: 'Укажите дату',
   invalid_date: 'Некорректная дата',
   match_role_required: 'Выберите амплуа для всех выбранных игроков',

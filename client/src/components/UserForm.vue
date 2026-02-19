@@ -275,9 +275,9 @@ const selectedSexName = computed(() => {
 
 <template>
   <div>
-    <div v-if="props.frame" class="card mb-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between mb-3">
+    <div :class="{ 'card mb-4': props.frame }">
+      <div :class="{ 'card-body': props.frame }">
+        <div v-if="props.frame" class="d-flex justify-content-between mb-3">
           <h2 class="card-title h5 mb-0">Основные данные и контакты</h2>
           <button
             v-if="!editing && !props.locked"
@@ -428,6 +428,7 @@ const selectedSexName = computed(() => {
               </div>
             </div>
           </div>
+
           <div v-if="props.showSex" class="row g-3 mt-3">
             <div class="col">
               <label class="form-label">Пол</label>
@@ -480,203 +481,11 @@ const selectedSexName = computed(() => {
             </div>
           </div>
         </fieldset>
-        <div v-if="editing" class="mt-3">
+
+        <div v-if="editing && props.frame" class="mt-3">
           <slot name="actions"></slot>
         </div>
       </div>
-    </div>
-    <div v-else>
-      <fieldset :disabled="!editing">
-        <div class="row row-cols-1 row-cols-sm-2 g-3">
-          <template v-if="props.singleFio">
-            <div class="col">
-              <div class="form-floating">
-                <input
-                  id="fio2"
-                  v-model="fioInput"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.fio }"
-                  placeholder="Фамилия Имя Отчество"
-                  required
-                  @blur="onFioSingleBlur"
-                />
-                <label for="fio2">ФИО</label>
-                <div class="invalid-feedback">{{ errors.fio }}</div>
-              </div>
-              <small v-if="fioQc === 1" class="text-warning d-block mt-1"
-                >Проверьте результат: распознано с допущениями</small
-              >
-            </div>
-          </template>
-          <template v-else>
-            <div class="col position-relative">
-              <div class="form-floating">
-                <input
-                  id="lastName2"
-                  v-model="form.last_name"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.last_name }"
-                  placeholder="Фамилия"
-                  required
-                  @blur="onFioBlur"
-                />
-                <label for="lastName2">Фамилия</label>
-                <div class="invalid-feedback">{{ errors.last_name }}</div>
-              </div>
-              <ul
-                v-if="suggestions.last_name.length"
-                class="list-group position-absolute w-100"
-                style="z-index: 1050"
-              >
-                <li
-                  v-for="s in suggestions.last_name"
-                  :key="s.value"
-                  class="list-group-item p-0"
-                >
-                  <button
-                    type="button"
-                    class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
-                    @mousedown.prevent="applySuggestion(s)"
-                  >
-                    {{ s.data.surname }}
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div class="col position-relative">
-              <div class="form-floating">
-                <input
-                  id="firstName2"
-                  v-model="form.first_name"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.first_name }"
-                  placeholder="Имя"
-                  required
-                  @blur="onFioBlur"
-                />
-                <label for="firstName2">Имя</label>
-                <div class="invalid-feedback">{{ errors.first_name }}</div>
-              </div>
-              <ul
-                v-if="suggestions.first_name.length"
-                class="list-group position-absolute w-100"
-                style="z-index: 1050"
-              >
-                <li
-                  v-for="s in suggestions.first_name"
-                  :key="s.value"
-                  class="list-group-item p-0"
-                >
-                  <button
-                    type="button"
-                    class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
-                    @mousedown.prevent="applySuggestion(s)"
-                  >
-                    {{ s.data.name }}
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div class="col position-relative">
-              <div class="form-floating">
-                <input
-                  id="patronymic2"
-                  v-model="form.patronymic"
-                  class="form-control"
-                  placeholder="Отчество"
-                  @blur="onFioBlur"
-                />
-                <label for="patronymic2">Отчество</label>
-              </div>
-              <ul
-                v-if="suggestions.patronymic.length"
-                class="list-group position-absolute w-100"
-                style="z-index: 1050"
-              >
-                <li
-                  v-for="s in suggestions.patronymic"
-                  :key="s.value"
-                  class="list-group-item p-0"
-                >
-                  <button
-                    type="button"
-                    class="list-group-item list-group-item-action w-100 text-start border-0 bg-transparent"
-                    @mousedown.prevent="applySuggestion(s)"
-                  >
-                    {{ s.data.patronymic }}
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </template>
-          <div class="col">
-            <div class="form-floating">
-              <input
-                id="birthDate"
-                v-model="form.birth_date"
-                type="date"
-                class="form-control"
-                :class="{ 'is-invalid': errors.birth_date }"
-                placeholder="Дата рождения"
-                required
-              />
-              <label for="birthDate">Дата рождения</label>
-              <div class="invalid-feedback">{{ errors.birth_date }}</div>
-            </div>
-          </div>
-        </div>
-        <div v-if="props.showSex" class="row g-3 mt-3">
-          <div class="col">
-            <label class="form-label">Пол</label>
-            <select
-              v-model="form.sex_id"
-              class="form-select"
-              :class="{ 'is-invalid': errors.sex_id }"
-              :required="props.requireSex && props.showSex"
-            >
-              <option value="" disabled>Выберите...</option>
-              <option v-for="s in props.sexes" :key="s.id" :value="s.id">
-                {{ s.name }}
-              </option>
-            </select>
-            <div class="invalid-feedback">{{ errors.sex_id }}</div>
-          </div>
-        </div>
-
-        <div class="row row-cols-1 row-cols-sm-2 g-3 mt-3">
-          <div class="col">
-            <div class="form-floating">
-              <input
-                id="phone"
-                v-model="phoneInput"
-                class="form-control"
-                :class="{ 'is-invalid': errors.phone }"
-                placeholder="Телефон"
-                required
-                @input="onPhoneInput"
-                @keydown="onPhoneKeydown"
-              />
-              <label for="phone">Телефон</label>
-              <div class="invalid-feedback">{{ errors.phone }}</div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="form-floating">
-              <input
-                id="email"
-                v-model="form.email"
-                type="email"
-                class="form-control"
-                :class="{ 'is-invalid': errors.email }"
-                placeholder="Email"
-                required
-              />
-              <label for="email">Email</label>
-              <div class="invalid-feedback">{{ errors.email }}</div>
-            </div>
-          </div>
-        </div>
-      </fieldset>
     </div>
 
     <p v-if="isNew" class="text-muted">

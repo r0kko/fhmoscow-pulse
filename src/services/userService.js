@@ -69,6 +69,7 @@ async function listUsers(options = {}) {
     'phone',
     'birth_date',
     'createdAt',
+    'status',
   ].includes(options.sort)
     ? options.sort
     : 'last_name';
@@ -129,10 +130,15 @@ async function listUsers(options = {}) {
     include.push({ model: UserCourse, include: [Course], required: false });
   }
 
+  const order =
+    sortField === 'status'
+      ? [[{ model: UserStatus }, 'alias', sortOrder], ['last_name', 'ASC']]
+      : [[sortField, sortOrder]];
+
   return User.findAndCountAll({
     include,
     where,
-    order: [[sortField, sortOrder]],
+    order,
     distinct: true,
     subQuery: false,
     limit,

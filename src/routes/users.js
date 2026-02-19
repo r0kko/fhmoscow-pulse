@@ -1,4 +1,5 @@
 import express from 'express';
+import { body } from 'express-validator';
 
 import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
@@ -18,6 +19,7 @@ import userTeamController from '../controllers/userTeamController.js';
 import userClubController from '../controllers/userClubController.js';
 import sportSchoolAdminController from '../controllers/sportSchoolAdminController.js';
 import sportSchoolSelfController from '../controllers/sportSchoolSelfController.js';
+import profileWorkspaceAdminController from '../controllers/profileWorkspaceAdminController.js';
 import {
   createUserRules,
   updateUserRules,
@@ -41,6 +43,25 @@ import { addClubRules } from '../validators/userClubValidators.js';
 import validate from '../middlewares/validate.js';
 
 const router = express.Router();
+const profileRolesRules = [
+  body('roles').isArray().withMessage('validation_error'),
+  body('roles.*').isString().notEmpty().withMessage('validation_error'),
+];
+const profileSportSchoolsRules = [
+  body('club_ids').isArray().withMessage('validation_error'),
+  body('club_ids.*').optional().isUUID().withMessage('validation_error'),
+  body('team_ids').isArray().withMessage('validation_error'),
+  body('team_ids.*').optional().isUUID().withMessage('validation_error'),
+];
+
+function sendDeprecatedProfileEndpoint(req, res) {
+  return res.status(410).json({
+    error: 'endpoint_removed',
+    message: `Endpoint "${req.method} ${req.originalUrl}" has been deprecated. Use /users/:id/profile-workspace and section endpoints.`,
+    details: { endpoint: req.originalUrl },
+    request_id: req.id || null,
+  });
+}
 
 /**
  * @swagger
@@ -134,6 +155,104 @@ router.get(
  *         description: User data
  */
 router.get('/:id', auth, authorize('ADMIN'), admin.get);
+
+router.get(
+  '/:id/profile-workspace',
+  auth,
+  authorize('ADMIN'),
+  profileWorkspaceAdminController.getWorkspace
+);
+
+router.patch(
+  '/:id/profile/personal',
+  auth,
+  authorize('ADMIN'),
+  updateUserRules,
+  profileWorkspaceAdminController.updatePersonal
+);
+
+router.put(
+  '/:id/profile/passport',
+  auth,
+  authorize('ADMIN'),
+  createPassportRules,
+  profileWorkspaceAdminController.upsertPassport
+);
+
+router.put(
+  '/:id/profile/inn',
+  auth,
+  authorize('ADMIN'),
+  innRules,
+  profileWorkspaceAdminController.upsertInn
+);
+
+router.put(
+  '/:id/profile/snils',
+  auth,
+  authorize('ADMIN'),
+  snilsRules,
+  profileWorkspaceAdminController.upsertSnils
+);
+
+router.put(
+  '/:id/profile/bank-account',
+  auth,
+  authorize('ADMIN'),
+  bankAccountRules,
+  profileWorkspaceAdminController.upsertBankAccount
+);
+
+router.put(
+  '/:id/profile/address/:type',
+  auth,
+  authorize('ADMIN'),
+  addressRules,
+  profileWorkspaceAdminController.upsertAddress
+);
+
+router.post(
+  '/:id/profile/taxation/check',
+  auth,
+  authorize('ADMIN'),
+  profileWorkspaceAdminController.checkTaxation
+);
+
+router.put(
+  '/:id/profile/taxation',
+  auth,
+  authorize('ADMIN'),
+  profileWorkspaceAdminController.upsertTaxation
+);
+
+router.put(
+  '/:id/profile/roles',
+  auth,
+  authorize('ADMIN'),
+  profileRolesRules,
+  profileWorkspaceAdminController.updateRoles
+);
+
+router.put(
+  '/:id/profile/sport-schools',
+  auth,
+  authorize('ADMIN'),
+  profileSportSchoolsRules,
+  profileWorkspaceAdminController.updateSportSchools
+);
+
+router.all('/:id/inn', sendDeprecatedProfileEndpoint);
+router.all('/:id/snils', sendDeprecatedProfileEndpoint);
+router.all('/:id/bank-account', sendDeprecatedProfileEndpoint);
+router.all('/:id/taxation', sendDeprecatedProfileEndpoint);
+router.all('/:id/taxation/check', sendDeprecatedProfileEndpoint);
+router.all('/:id/address/:type', sendDeprecatedProfileEndpoint);
+router.all('/:id/roles/:roleAlias', sendDeprecatedProfileEndpoint);
+router.all('/:id/clubs', sendDeprecatedProfileEndpoint);
+router.all('/:id/clubs/:clubId', sendDeprecatedProfileEndpoint);
+router.all('/:id/teams', sendDeprecatedProfileEndpoint);
+router.all('/:id/teams/:teamId', sendDeprecatedProfileEndpoint);
+router.all('/:id/sport-schools', sendDeprecatedProfileEndpoint);
 
 /**
  * @swagger
@@ -518,7 +637,14 @@ router.get(
  *       201:
  *         description: Created
  */
-router.post('/:id/inn', auth, authorize('ADMIN'), innRules, innAdmin.create);
+router.post(
+  '/:id/inn',
+  auth,
+  authorize('ADMIN'),
+  innRules,
+  validate,
+  innAdmin.create
+);
 /**
  * @swagger
  * /users/{id}/inn:
@@ -536,7 +662,14 @@ router.post('/:id/inn', auth, authorize('ADMIN'), innRules, innAdmin.create);
  *       200:
  *         description: Updated
  */
-router.put('/:id/inn', auth, authorize('ADMIN'), innRules, innAdmin.update);
+router.put(
+  '/:id/inn',
+  auth,
+  authorize('ADMIN'),
+  innRules,
+  validate,
+  innAdmin.update
+);
 /**
  * @swagger
  * /users/{id}/inn:
@@ -1078,24 +1211,6 @@ router.get(
   auth,
   authorize('ADMIN'),
   medicalCertificateAdmin.get
-);
-
-/**
- * @swagger
- * /users/profile-completion:
- *   get:
- *     security:
- *       - bearerAuth: []
- *     summary: List profile completion for referees
- *     responses:
- *       200:
- *         description: Array of profile statuses
- */
-router.get(
-  '/profile-completion',
-  auth,
-  authorize('ADMIN'),
-  profileCompletionAdmin.list
 );
 
 /**

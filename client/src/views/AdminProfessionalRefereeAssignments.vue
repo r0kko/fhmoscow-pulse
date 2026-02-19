@@ -284,6 +284,32 @@ const assignmentsGridStyle = computed(() => {
 const MONTH_LOOKAHEAD_DAYS = 30;
 const MATCH_DAY_KEY_TODAY_LABEL = 'Без даты';
 
+function toDayTimestamp(dateKey) {
+  const match = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [, yearText, monthText, dayText] = match;
+  return Date.UTC(
+    Number(yearText),
+    Number(monthText) - 1,
+    Number(dayText),
+    0,
+    0,
+    0,
+    0
+  );
+}
+
+function professionalMatchTo(match) {
+  const dayTimestamp = toDayTimestamp(match?.msk_date);
+  if (!dayTimestamp) {
+    return `/admin/professional-leagues/matches/${match.id}`;
+  }
+  return {
+    path: `/admin/professional-leagues/matches/${match.id}`,
+    query: { day: String(dayTimestamp) },
+  };
+}
+
 const dateWindowKeys = computed(() => {
   const start = todayKey();
   const keys = [];
@@ -1470,10 +1496,18 @@ onMounted(() => {
                       </div>
                       <div class="cell col-match" role="cell">
                         <div class="match-teams">
-                          <span class="fw-semibold">
+                          <router-link
+                            class="fw-semibold match-link"
+                            :to="professionalMatchTo(match)"
+                            :aria-label="`Открыть матч: ${match.team1?.name || '—'} — ${match.team2?.name || '—'}`"
+                          >
                             {{ match.team1?.name || '—' }} —
                             {{ match.team2?.name || '—' }}
-                          </span>
+                            <i
+                              class="bi bi-box-arrow-up-right ms-1"
+                              aria-hidden="true"
+                            ></i>
+                          </router-link>
                         </div>
                         <div class="match-sub text-muted">
                           <span>
@@ -1814,6 +1848,19 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.85rem;
+}
+
+.match-link {
+  color: #111827;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.match-link:hover {
+  color: var(--brand-color, #0057b8);
+  text-decoration: underline;
 }
 
 .match-sub {

@@ -106,3 +106,22 @@ test('remove deletes document and file when allowed', async () => {
   expect(destroyMock).toHaveBeenCalled();
   expect(removeFileMock).toHaveBeenCalledWith(99);
 });
+
+test('remove can bypass signed simple restriction for internal replacement flow', async () => {
+  const updateMock = jest.fn().mockResolvedValue({});
+  const destroyMock = jest.fn().mockResolvedValue({});
+  documentFindByPk.mockResolvedValueOnce({
+    id: 'doc-6',
+    file_id: 7,
+    SignType: { alias: 'SIMPLE_ELECTRONIC' },
+    DocumentStatus: { alias: 'SIGNED' },
+    update: updateMock,
+    destroy: destroyMock,
+  });
+  await documentService.remove('doc-6', 'actor-4', {
+    allowSignedSimpleDelete: true,
+  });
+  expect(updateMock).toHaveBeenCalledWith({ updated_by: 'actor-4' });
+  expect(destroyMock).toHaveBeenCalled();
+  expect(removeFileMock).toHaveBeenCalledWith(7);
+});

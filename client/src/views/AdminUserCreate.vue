@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter, RouterLink } from 'vue-router';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { apiFetch } from '../api';
 import UserForm from '../components/UserForm.vue';
+import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { useToast } from '../utils/toast';
 
 const sexes = ref([]);
@@ -21,6 +22,11 @@ const user = ref({
 const formRef = ref(null);
 const loading = ref(false);
 const { showToast } = useToast();
+const breadcrumbs = computed(() => [
+  { label: 'Администрирование', to: '/admin' },
+  { label: 'Пользователи', to: '/admin/users' },
+  { label: 'Создание пользователя' },
+]);
 
 onMounted(loadSexes);
 
@@ -86,17 +92,7 @@ async function copyToClipboard(text) {
 
 <template>
   <div class="container mt-4">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <RouterLink to="/admin">Администрирование</RouterLink>
-        </li>
-        <li class="breadcrumb-item">
-          <RouterLink to="/admin/users">Пользователи</RouterLink>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Создание</li>
-      </ol>
-    </nav>
+    <Breadcrumbs :items="breadcrumbs" />
     <h1 class="mb-3">Новый пользователь</h1>
     <div class="card section-card tile fade-in shadow-sm">
       <div class="card-body">
@@ -108,8 +104,8 @@ async function copyToClipboard(text) {
             :is-new="true"
             :sexes="sexes"
             :single-fio="true"
-            :show-sex="false"
-            :require-sex="false"
+            :show-sex="true"
+            :require-sex="true"
             :frame="false"
           />
           <div class="mt-3">

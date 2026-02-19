@@ -21,6 +21,8 @@ function makeDocStub({ page = { width: 595, height: 842 } } = {}) {
       rectCalls.push({ x, y, w, h });
       return doc;
     }),
+    moveTo: jest.fn(() => doc),
+    lineTo: jest.fn(() => doc),
     fill: jest.fn(() => doc),
     image: jest.fn((...args) => {
       imageCalls.push(args);
@@ -155,4 +157,31 @@ test('QR always remains within inner box boundaries', async () => {
   expect(qrRect.y).toBeGreaterThanOrEqual(innerY);
   expect(qrRect.x + qrRect.w).toBeLessThanOrEqual(innerRight);
   expect(qrRect.y + qrRect.h).toBeLessThanOrEqual(innerBottom);
+});
+
+test('federation stamp renders organization divider and separate role lines', async () => {
+  const { applyESignStamp } = await setupWithMeta();
+  const doc = makeDocStub();
+  await applyESignStamp(doc, {
+    fio: 'Иванов Иван Иванович',
+    signedAt: new Date('2024-05-20T12:34:00+03:00').toISOString(),
+    userId: 'u1',
+    docId: 'd1',
+    signId: 's1',
+    signerPosition: 'Главный специалист',
+    signerDepartment: 'Судейский департамент',
+    signerOrganization: 'РОО "Федерация хоккея Москвы"',
+    page: 1,
+    total: 1,
+  });
+  const renderedText = textCalls.map((call) => String(call[0]));
+  expect(renderedText.some((line) => line === 'Главный специалист')).toBe(true);
+  expect(renderedText.some((line) => line === 'Судейский департамент')).toBe(
+    true
+  );
+  expect(
+    renderedText.some((line) => line.includes('РОО "Федерация хоккея Москвы"'))
+  ).toBe(true);
+  expect(doc.moveTo).toHaveBeenCalled();
+  expect(doc.lineTo).toHaveBeenCalled();
 });

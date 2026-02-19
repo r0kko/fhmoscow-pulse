@@ -43,11 +43,12 @@ export function isValidSnils(value: string): boolean {
 }
 
 export function formatSnils(digits: string): string {
+  const digitsOnly = digits.replace(/\D/g, '').slice(0, 11);
   let output = '';
-  if (digits.length > 0) output += digits.slice(0, 3);
-  if (digits.length >= 3) output += `-${digits.slice(3, 6)}`;
-  if (digits.length >= 6) output += `-${digits.slice(6, 9)}`;
-  if (digits.length >= 9) output += ` ${digits.slice(9, 11)}`;
+  if (digitsOnly.length > 0) output += digitsOnly.slice(0, 3);
+  if (digitsOnly.length >= 3) output += `-${digitsOnly.slice(3, 6)}`;
+  if (digitsOnly.length >= 6) output += `-${digitsOnly.slice(6, 9)}`;
+  if (digitsOnly.length >= 9) output += ` ${digitsOnly.slice(9, 11)}`;
   return output;
 }
 

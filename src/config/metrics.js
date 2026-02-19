@@ -45,6 +45,11 @@ let csrfRejectedTotal = null;
 let httpErrorCodeTotal = null;
 let refreshReuseDetected = null;
 let securityEvents = null;
+let profileWorkspaceLoadTotal = null;
+let profileWorkspaceLoadDuration = null;
+let profileSectionUpdateTotal = null;
+let profileSectionUpdateDuration = null;
+let profileSectionUpdateErrorTotal = null;
 let businessUsersTotal = null;
 let businessDocumentsTotal = null;
 let businessDocumentsPending = null;
@@ -311,6 +316,37 @@ async function ensureInit() {
       name: 'http_error_code_total',
       help: 'Application error responses grouped by code and status class',
       labelNames: ['code', 'status'], // e.g., EBADCSRFTOKEN, unauthorized, 403, 401
+      registers: [register],
+    });
+    profileWorkspaceLoadTotal = new client.Counter({
+      name: 'profile_workspace_load_total',
+      help: 'Profile workspace loads grouped by status',
+      labelNames: ['status'], // success|error
+      registers: [register],
+    });
+    profileWorkspaceLoadDuration = new client.Histogram({
+      name: 'profile_workspace_load_duration_seconds',
+      help: 'Profile workspace load duration in seconds',
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+      registers: [register],
+    });
+    profileSectionUpdateTotal = new client.Counter({
+      name: 'profile_section_update_total',
+      help: 'Profile section updates grouped by section and status',
+      labelNames: ['section', 'status'], // success|error
+      registers: [register],
+    });
+    profileSectionUpdateDuration = new client.Histogram({
+      name: 'profile_section_update_duration_seconds',
+      help: 'Profile section update duration in seconds',
+      labelNames: ['section'],
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+      registers: [register],
+    });
+    profileSectionUpdateErrorTotal = new client.Counter({
+      name: 'profile_section_update_error_total',
+      help: 'Profile section update errors grouped by section and error code',
+      labelNames: ['section', 'code'],
       registers: [register],
     });
     businessUsersTotal = new client.Gauge({
@@ -863,6 +899,66 @@ export function incSecurityEvent(type = 'reuse') {
   if (!metricsAvailable) return;
   try {
     securityEvents.inc({ type });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incProfileWorkspaceLoad(status = 'success') {
+  if (!metricsAvailable) return;
+  try {
+    profileWorkspaceLoadTotal.inc({ status: safeMetricLabel(status) });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function observeProfileWorkspaceLoadDuration(seconds = 0) {
+  if (!metricsAvailable) return;
+  try {
+    profileWorkspaceLoadDuration.observe(Number(seconds) || 0);
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incProfileSectionUpdate(section = 'unknown', status = 'success') {
+  if (!metricsAvailable) return;
+  try {
+    profileSectionUpdateTotal.inc({
+      section: safeMetricLabel(section),
+      status: safeMetricLabel(status),
+    });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function observeProfileSectionUpdateDuration(
+  section = 'unknown',
+  seconds = 0
+) {
+  if (!metricsAvailable) return;
+  try {
+    profileSectionUpdateDuration.observe(
+      { section: safeMetricLabel(section) },
+      Number(seconds) || 0
+    );
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incProfileSectionUpdateError(
+  section = 'unknown',
+  code = 'unknown'
+) {
+  if (!metricsAvailable) return;
+  try {
+    profileSectionUpdateErrorTotal.inc({
+      section: safeMetricLabel(section),
+      code: safeMetricLabel(code),
+    });
   } catch (_e) {
     /* noop */
   }

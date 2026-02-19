@@ -229,21 +229,21 @@ export async function applyESignStamp(doc, info) {
   const margin = 30;
   const bandHeight = 44; // must match footer band
   // Stamp sizing (configurable)
-  const stampHeight = Math.max(56, PDF_META?.stampHeight || 66);
+  const stampHeightBase = Math.max(56, PDF_META?.stampHeight || 66);
   const stampWidthMax = Math.max(220, PDF_META?.stampWidth || 270);
   const stampWidthMin = Math.max(160, PDF_META?.stampWidthMin || 220);
   const padX = Math.max(6, PDF_META?.stampPadX || 10);
   const padY = Math.max(4, PDF_META?.stampPadY || 8);
   const qrGap = Math.max(6, PDF_META?.stampGap || 10);
-  // Overlay above the footer band without altering content margins
-  const y = doc.page.height - margin - bandHeight - stampHeight - 6;
   // Inner content box initial (excludes outer padding). Width may shrink.
   let stampWidth = stampWidthMax;
   let innerWidth = stampWidth - 2 * padX;
-  const innerHeight = stampHeight - 2 * padY;
   // Prepare texts to measure available width for QR
   const title = 'ДОКУМЕНТ ПОДПИСАН ЭП';
   const fio = String(info.fio || '');
+  const signerPosition = String(info.signerPosition || '').trim();
+  const signerDepartment = String(info.signerDepartment || '').trim();
+  const signerOrganization = String(info.signerOrganization || '').trim();
   let dtText = '';
   try {
     const d = new Date(info.signedAt || Date.now());
@@ -281,12 +281,28 @@ export async function applyESignStamp(doc, info) {
   } catch {
     /* ignore date format errors */
   }
+  const dtLine = `Дата подписания: ${dtText || '—'}`;
   const pageInfo = `Страница № ${info.page || 1} из ${info.total || 1}`;
+  const textLines = [
+    title,
+    fio,
+    signerPosition || null,
+    signerDepartment || null,
+    signerOrganization || null,
+    dtLine,
+    pageInfo,
+  ].filter(Boolean);
+  const hasOrgDivider = Boolean(signerOrganization);
+  const qrMin = Math.max(28, PDF_META?.qrMinSize || 40);
   // Measure max text width at 8pt, bold for title
   const prevFont = doc._font?.name || null;
   const prevSize = doc._fontSize || null;
   // Precompute fallback positions to ensure defined values
-  let qrSize = Math.max(28, PDF_META?.qrMinSize || 40);
+  let textH = 9;
+  let stampHeight = stampHeightBase;
+  let innerHeight = stampHeight - 2 * padY;
+  let y = doc.page.height - margin - bandHeight - stampHeight - 6;
+  let qrSize = qrMin;
   let qrX = 0;
   let qrY = y + padY;
   let textX = 0;
@@ -301,7 +317,7 @@ export async function applyESignStamp(doc, info) {
         doc.font('Helvetica-Bold');
       }
     }
-    const w1 = doc.widthOfString(title);
+    const w1 = doc.widthOfString(textLines[0] || '');
     try {
       doc.font('SB-Regular');
     } catch {
@@ -311,14 +327,27 @@ export async function applyESignStamp(doc, info) {
         doc.font('Helvetica');
       }
     }
-    const w2 = doc.widthOfString(fio || '');
-    const w3 = doc.widthOfString(`Дата подписания: ${dtText}`);
-    const w4 = doc.widthOfString(pageInfo);
-    const maxTextWidth = Math.max(w1, w2, w3, w4);
+    textH = Math.ceil(doc.currentLineHeight(true)) || 9;
+    let maxTextWidth = w1;
+    for (let lineIndex = 1; lineIndex < textLines.length; lineIndex += 1) {
+      maxTextWidth = Math.max(maxTextWidth, doc.widthOfString(textLines[lineIndex]));
+    }
+    const dividerGapTop = hasOrgDivider ? 2 : 0;
+    const dividerGapBottom = hasOrgDivider ? 2 : 0;
+    const dividerHeight = hasOrgDivider ? 1 : 0;
+    const estimatedTextHeight =
+      textH * textLines.length +
+      Math.max(0, textLines.length - 1) +
+      dividerGapTop +
+      dividerGapBottom +
+      dividerHeight;
+    stampHeight = Math.max(stampHeightBase, 2 * padY + estimatedTextHeight);
+    innerHeight = stampHeight - 2 * padY;
+    y = doc.page.height - margin - bandHeight - stampHeight - 6;
+    qrY = y + padY;
     // Compute QR size bounds by height and remaining width in the inner box
     const qrMaxByHeight = Math.max(24, innerHeight);
     const qrMaxByWidth = Math.max(16, innerWidth - qrGap - maxTextWidth);
-    const qrMin = Math.max(28, PDF_META?.qrMinSize || 40);
     // Target an aesthetically balanced ratio of the inner box
     const rawRatio = Number.isFinite(PDF_META?.qrIdealRatio)
       ? PDF_META.qrIdealRatio
@@ -338,11 +367,10 @@ export async function applyESignStamp(doc, info) {
       } catch {
         /* ignore font sizing */
       }
-      const w1s = doc.widthOfString(title);
-      const w2s = doc.widthOfString(fio || '');
-      const w3s = doc.widthOfString(`Дата подписания: ${dtText}`);
-      const w4s = doc.widthOfString(pageInfo);
-      const maxS = Math.max(w1s, w2s, w3s, w4s);
+      const maxS = textLines.reduce(
+        (acc, line) => Math.max(acc, doc.widthOfString(line)),
+        0
+      );
       const widthBudget2 = Math.max(16, innerWidth - qrGap - maxS);
       const idealByInner2 = Math.floor(
         Math.min(innerWidth, innerHeight) * ratio
@@ -559,56 +587,94 @@ export async function applyESignStamp(doc, info) {
   }
   // Text content — brand blue (layout synced with QR height)
   try {
-    // Smaller type and tight rhythm. Compute spacing so 4 lines equal QR height
     doc.fontSize(8).fillColor(BRAND_BLUE);
-    // Measure regular line height
-    let textH;
-    try {
-      doc.font('SB-Regular');
-      textH = Math.ceil(doc.currentLineHeight(true));
-    } catch {
-      textH = Math.ceil(doc.currentLineHeight(true));
-    }
-    const totalText = textH * 4;
-    const remaining = Math.max(0, qrSize - totalText);
-    const gap = Math.floor(remaining / 3);
-    const rem = remaining - gap * 3;
-    const line1Y = qrY + Math.floor(rem / 2);
-    const line2Y = line1Y + textH + gap;
-    const line3Y = line2Y + textH + gap;
-    const line4Y = line3Y + textH + gap;
-    // Bold title with safe fallbacks
-    try {
-      doc.font('SB-Bold');
-    } catch {
+    const regularFont = () => {
       try {
-        doc.font('Default-Bold');
+        doc.font('SB-Regular');
       } catch {
         try {
-          doc.font('Helvetica-Bold');
+          doc.font('Default-Regular');
         } catch {
-          /* keep current */
+          try {
+            doc.font('Helvetica');
+          } catch {
+            /* keep current */
+          }
         }
       }
-    }
-    doc.text(title, textX, line1Y, { lineBreak: false });
-    // Regular for the rest
-    try {
-      doc.font('SB-Regular');
-    } catch {
+    };
+    const boldFont = () => {
       try {
-        doc.font('Default-Regular');
+        doc.font('SB-Bold');
       } catch {
         try {
-          doc.font('Helvetica');
+          doc.font('Default-Bold');
         } catch {
-          /* keep current */
+          try {
+            doc.font('Helvetica-Bold');
+          } catch {
+            /* keep current */
+          }
         }
       }
+    };
+    regularFont();
+    const measuredTextH = Math.ceil(doc.currentLineHeight(true));
+    const lineHeight = Number.isFinite(measuredTextH) ? measuredTextH : textH;
+    let lineGap = textLines.length > 4 ? 1 : 2;
+    const dividerGapTop = hasOrgDivider ? 2 : 0;
+    const dividerGapBottom = hasOrgDivider ? 2 : 0;
+    const dividerHeight = hasOrgDivider ? 1 : 0;
+    let blockHeight =
+      lineHeight * textLines.length +
+      lineGap * (textLines.length - 1) +
+      dividerGapTop +
+      dividerGapBottom +
+      dividerHeight;
+    if (blockHeight > qrSize && lineGap > 0) {
+      lineGap = 0;
+      blockHeight =
+        lineHeight * textLines.length +
+        lineGap * (textLines.length - 1) +
+        dividerGapTop +
+        dividerGapBottom +
+        dividerHeight;
     }
-    doc.text(fio, textX, line2Y, { lineBreak: false });
-    doc.text(`Дата подписания: ${dtText}`, textX, line3Y, { lineBreak: false });
-    doc.text(pageInfo, textX, line4Y, { lineBreak: false });
+    const offsetY = Math.max(0, Math.floor((qrSize - blockHeight) / 2));
+    const maxTextWidth = Math.max(
+      24,
+      Math.floor(x + stampWidth - padX - textX)
+    );
+    let lineY = qrY + offsetY;
+    const orgLineIndex = signerOrganization
+      ? textLines.findIndex((line) => line === signerOrganization)
+      : -1;
+    textLines.forEach((line, index) => {
+      if (index === 0) boldFont();
+      else regularFont();
+      doc.text(line, textX, lineY, {
+        width: maxTextWidth,
+        lineBreak: false,
+        ellipsis: true,
+      });
+      lineY += lineHeight + lineGap;
+      if (hasOrgDivider && index === orgLineIndex) {
+        lineY += dividerGapTop;
+        const dividerY = lineY;
+        try {
+          doc
+            .save()
+            .lineWidth(0.5)
+            .moveTo(textX, dividerY)
+            .lineTo(textX + maxTextWidth, dividerY)
+            .stroke(BRAND_BLUE)
+            .restore();
+        } catch {
+          /* noop */
+        }
+        lineY += dividerHeight + dividerGapBottom;
+      }
+    });
   } catch {
     /* noop */
   }
