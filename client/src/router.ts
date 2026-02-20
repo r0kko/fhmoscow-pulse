@@ -114,7 +114,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/verify',
     component: Verify,
-    meta: { hideLayout: true, title: 'Проверка документа' },
+    meta: { public: true, hideLayout: true, title: 'Проверка документа' },
   },
   {
     path: '/school',
@@ -671,6 +671,13 @@ export async function navigationGuard(
   _from: RouteLocationNormalized,
   next: NavigationGuardNext
 ): Promise<void> {
+  const meta = to.meta;
+  const isPublicRoute = Boolean((meta as Record<string, unknown>)['public']);
+
+  if (isPublicRoute) {
+    return next();
+  }
+
   const isAuthenticated = Boolean(auth.token);
   let roles = auth.roles || [];
 
@@ -684,7 +691,6 @@ export async function navigationGuard(
     }
   }
 
-  const meta = to.meta;
   const hasAdmin = roles.some((r) => adminRoles.includes(r));
   const hasReferee = roles.some((r) => refereeRoles.includes(r));
   const hasStaff = roles.some((r) => staffRoles.includes(r));

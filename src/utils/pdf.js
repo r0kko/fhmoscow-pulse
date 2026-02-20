@@ -454,14 +454,14 @@ export async function applyESignStamp(doc, info) {
       const { buildShortVerifyUrl } =
         await import('../services/shortLinkService.js');
       try {
-        return await buildShortVerifyUrl({ d, s, u });
+        return await buildShortVerifyUrl({ d, s, u, signedAt: info.signedAt });
       } catch {
         // If short links disabled/unavailable, fallback to long verify URL
-        return buildVerifyUrl({ d, s, u });
+        return buildVerifyUrl({ d, s, u, signedAt: info.signedAt });
       }
     } catch {
       try {
-        return buildVerifyUrl({ d, s, u });
+        return buildVerifyUrl({ d, s, u, signedAt: info.signedAt });
       } catch {
         return `DOC:${String(d)};SIGN:${String(s)};USER:${String(u)}`;
       }

@@ -207,6 +207,24 @@ function isLeadershipRole(role) {
   return /руковод|инспектор|комиссар/.test(roleName);
 }
 
+function leadershipRoleGroupId() {
+  const group = roleGroups.value.find((entry) =>
+    /руковод/.test(
+      String(entry?.name || '')
+        .trim()
+        .toLowerCase()
+    )
+  );
+  return group?.id || '';
+}
+
+function isLeadershipRoleId(roleId) {
+  const groupName = String(roleGroupNameByRoleId.value.get(roleId) || '')
+    .trim()
+    .toLowerCase();
+  return /руковод/.test(groupName);
+}
+
 const leadershipRoleColumns = computed(() =>
   roleColumns.value.filter((role) => isLeadershipRole(role))
 );
@@ -333,10 +351,13 @@ const currentAssignments = computed(() => {
   });
 });
 
-const matchOptions = computed(() => {
+function matchOptionsForRole(roleId) {
   if (!matchRecord.value) return [];
-  const base = referees.value.filter((referee) =>
-    isRefereeAvailable(referee, matchRecord.value)
+  const ignoreAvailability = isLeadershipRoleId(roleId);
+  const base = referees.value.filter(
+    (referee) =>
+      ignoreAvailability ||
+      isRefereeAvailable(referee, matchRecord.value, roleId)
   );
   const byId = new Map(referees.value.map((referee) => [referee.id, referee]));
   const selected = new Set();
@@ -371,7 +392,9 @@ const matchOptions = computed(() => {
       sensitivity: 'base',
     })
   );
-});
+}
+
+const matchOptions = computed(() => matchOptionsForRole(null));
 
 function toMoscowDateKey(iso) {
   if (!iso) return '';
@@ -499,10 +522,17 @@ function hasConflict(
   );
 }
 
-function resolveRefereeMatchAvailability(referee, match) {
+function resolveRefereeMatchAvailability(
+  referee,
+  match,
+  { ignoreAvailability = false } = {}
+) {
   if (!referee || !match) return { available: false };
   if (match.schedule_missing || match.duration_missing) {
     return { available: false };
+  }
+  if (ignoreAvailability) {
+    return { available: true };
   }
   const dateKey = String(match?.msk_date || '').trim();
   const availabilityByDate = referee?.availability_by_date || {};
@@ -523,8 +553,10 @@ function resolveRefereeMatchAvailability(referee, match) {
   return { available: true };
 }
 
-function isRefereeAvailable(referee, match) {
-  return resolveRefereeMatchAvailability(referee, match).available;
+function isRefereeAvailable(referee, match, roleId = null) {
+  return resolveRefereeMatchAvailability(referee, match, {
+    ignoreAvailability: isLeadershipRoleId(roleId),
+  }).available;
 }
 
 function refereeLabel(user) {
@@ -700,6 +732,10 @@ async function loadRefereesByDate(dateKey) {
       competition_alias: 'PRO',
       only_leagues_access: '1',
     });
+    const leadershipGroupId = leadershipRoleGroupId();
+    if (leadershipGroupId) {
+      params.set('role_group_id', leadershipGroupId);
+    }
     const data = await apiFetch(`/referee-assignments/referees?${params}`);
     referees.value = data.referees || [];
   } finally {
@@ -862,11 +898,11 @@ async function createAssignmentsSheetDocument() {
       : '';
     actionSuccess.value = hadSheet
       ? numberLabel
-        ? `Лист назначений переформирован (${numberLabel}) и отправлен на подписание сотруднику федерации.`
-        : 'Лист назначений переформирован и отправлен на подписание сотруднику федерации.'
+        ? `Лист назначений переформирован (${numberLabel}) и автоматически подписан сотрудником федерации.`
+        : 'Лист назначений переформирован и автоматически подписан сотрудником федерации.'
       : numberLabel
-        ? `Лист назначений сформирован (${numberLabel}) и отправлен на подписание сотруднику федерации.`
-        : 'Лист назначений сформирован и отправлен на подписание сотруднику федерации.';
+        ? `Лист назначений сформирован (${numberLabel}) и автоматически подписан сотрудником федерации.`
+        : 'Лист назначений сформирован и автоматически подписан сотрудником федерации.';
     await loadAssignmentsSheetStatus();
     if (data?.file?.url) {
       window.open(data.file.url, '_blank', 'noopener,noreferrer');
@@ -1050,7 +1086,8 @@ onMounted(() => {
                 Дата: {{ formatSheetDate(assignmentSheet.documentDate) }}
               </div>
               <div class="mt-1">
-                Подписать лист назначений может только сотрудник федерации.
+                Подписание выполняется автоматически сотрудником федерации
+                отдела организации судейства.
               </div>
             </div>
 
@@ -1173,7 +1210,9 @@ onMounted(() => {
                           >
                             <option value="">Свободно</option>
                             <option
-                              v-for="refereeOption in matchOptions"
+                              v-for="refereeOption in matchOptionsForRole(
+                                role.id
+                              )"
                               :key="refereeOption.id"
                               :value="refereeOption.id"
                             >
@@ -1229,7 +1268,9 @@ onMounted(() => {
                           >
                             <option value="">Свободно</option>
                             <option
-                              v-for="refereeOption in matchOptions"
+                              v-for="refereeOption in matchOptionsForRole(
+                                role.id
+                              )"
                               :key="refereeOption.id"
                               :value="refereeOption.id"
                             >

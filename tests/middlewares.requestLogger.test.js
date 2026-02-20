@@ -137,6 +137,9 @@ describe('requestLogger middleware', () => {
     expect(maskUrl('/path?token=abc&safe=1')).toBe(
       '/path?token=redacted&safe=1'
     );
+    expect(maskUrl('/verify?t=abc123&safe=1')).toBe(
+      '/verify?t=redacted&safe=1'
+    );
     expect(maskUrl('not a url')).toBe('not a url');
 
     const truncated = clampJsonBytes({ huge: 'x'.repeat(100) }, 10);

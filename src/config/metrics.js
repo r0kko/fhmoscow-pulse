@@ -56,6 +56,9 @@ let businessDocumentsPending = null;
 let businessMatchesUpcoming = null;
 let businessTrainingsUpcoming = null;
 let businessDocumentsOverdue = null;
+let verifyRequestsTotal = null;
+let verifyRequestDuration = null;
+let shortLinkResolveTotal = null;
 
 let businessCollectorTimer = null;
 let businessCollectorStarted = false;
@@ -310,6 +313,25 @@ async function ensureInit() {
       name: 'security_events_total',
       help: 'Security events grouped by type',
       labelNames: ['type'], // reuse|lockout|ip_mismatch|state_loss
+      registers: [register],
+    });
+    verifyRequestsTotal = new client.Counter({
+      name: 'verify_requests_total',
+      help: 'Public document verification requests grouped by result',
+      labelNames: ['result', 'token_version', 'source'],
+      registers: [register],
+    });
+    verifyRequestDuration = new client.Histogram({
+      name: 'verify_request_duration_seconds',
+      help: 'Public verification request duration',
+      labelNames: ['result'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      registers: [register],
+    });
+    shortLinkResolveTotal = new client.Counter({
+      name: 'shortlink_resolve_total',
+      help: 'Short-link resolve attempts grouped by result',
+      labelNames: ['result'],
       registers: [register],
     });
     httpErrorCodeTotal = new client.Counter({
@@ -899,6 +921,44 @@ export function incSecurityEvent(type = 'reuse') {
   if (!metricsAvailable) return;
   try {
     securityEvents.inc({ type });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incVerifyRequest(
+  result = 'invalid',
+  tokenVersion = 'unknown',
+  source = 'query'
+) {
+  if (!metricsAvailable) return;
+  try {
+    verifyRequestsTotal.inc({
+      result: safeMetricLabel(result),
+      token_version: safeMetricLabel(tokenVersion),
+      source: safeMetricLabel(source),
+    });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function observeVerifyRequestDuration(result = 'invalid', seconds = 0) {
+  if (!metricsAvailable) return;
+  try {
+    verifyRequestDuration.observe(
+      { result: safeMetricLabel(result) },
+      Number(seconds) || 0
+    );
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incShortLinkResolve(result = 'not_found') {
+  if (!metricsAvailable) return;
+  try {
+    shortLinkResolveTotal.inc({ result: safeMetricLabel(result) });
   } catch (_e) {
     /* noop */
   }

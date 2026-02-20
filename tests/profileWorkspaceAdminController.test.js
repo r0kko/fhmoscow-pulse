@@ -88,6 +88,11 @@ jest.unstable_mockModule('../src/services/teamService.js', () => ({
   default: {},
 }));
 
+jest.unstable_mockModule('../src/services/vehicleService.js', () => ({
+  __esModule: true,
+  default: {},
+}));
+
 jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
   __esModule: true,
   default: {
@@ -124,6 +129,10 @@ jest.unstable_mockModule('../src/mappers/clubMapper.js', () => ({
   default: { toPublic: (v) => v },
 }));
 jest.unstable_mockModule('../src/mappers/teamMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
+jest.unstable_mockModule('../src/mappers/vehicleMapper.js', () => ({
   __esModule: true,
   default: { toPublic: (v) => v },
 }));

@@ -19,6 +19,7 @@ const SECTION_KEYS: ProfileSectionKey[] = [
   'taxation',
   'roles',
   'sport_schools',
+  'vehicles',
 ];
 
 function createSectionState(): ProfileSectionState {
@@ -321,6 +322,27 @@ export function useAdminUserWorkspace() {
     );
   }
 
+  async function updateVehicles(
+    userId: string,
+    payload: {
+      vehicles: Array<{
+        id?: string | null;
+        vehicle: string;
+        number: string;
+        is_active: boolean;
+      }>;
+    }
+  ) {
+    return runSectionMutation('vehicles', async () =>
+      apiFetch<{
+        vehicles: AdminUserProfileWorkspace['profile']['vehicles'];
+      }>(`/users/${userId}/profile/vehicles`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      })
+    );
+  }
+
   onScopeDispose(() => {
     abortWorkspaceLoad();
   });
@@ -345,5 +367,6 @@ export function useAdminUserWorkspace() {
     upsertTaxation,
     updateRoles,
     updateSportSchools,
+    updateVehicles,
   };
 }

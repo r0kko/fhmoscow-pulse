@@ -93,6 +93,7 @@ describe('NavBar', () => {
   });
 
   it('fetches current user when not yet hydrated', async () => {
+    authModule.auth.token = 'token';
     const fetchSpy = vi
       .spyOn(authModule, 'fetchCurrentUser')
       .mockResolvedValue(undefined);
@@ -114,10 +115,34 @@ describe('NavBar', () => {
     fetchSpy.mockRestore();
   });
 
-  it('falls back to logout when hydration fails', async () => {
+  it('does not fetch current user when token is missing', async () => {
+    const fetchSpy = vi
+      .spyOn(authModule, 'fetchCurrentUser')
+      .mockResolvedValue(undefined);
+
+    const router = createTestRouter();
+    router.push('/');
+
+    render(NavBar, {
+      global: {
+        plugins: [router],
+      },
+    });
+    await router.isReady();
+
+    await waitFor(() => {
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('clears auth without logout when hydration fails', async () => {
+    authModule.auth.token = 'token';
     const fetchSpy = vi
       .spyOn(authModule, 'fetchCurrentUser')
       .mockRejectedValue(new Error('unauthorized'));
+    const clearSpy = vi.spyOn(authModule, 'clearAuth');
 
     const router = createTestRouter();
     router.push('/');
@@ -131,15 +156,16 @@ describe('NavBar', () => {
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalled();
-      expect(apiFetchMock).toHaveBeenCalledWith('/auth/logout', {
-        method: 'POST',
-      });
+      expect(clearSpy).toHaveBeenCalled();
     });
 
-    await waitFor(() => {
-      expect(router.currentRoute.value.fullPath).toBe('/login');
+    expect(apiFetchMock).not.toHaveBeenCalledWith('/auth/logout', {
+      method: 'POST',
     });
+    expect(router.currentRoute.value.fullPath).toBe('/');
+    expect(initCsrfMock).toHaveBeenCalled();
 
+    clearSpy.mockRestore();
     fetchSpy.mockRestore();
   });
 });

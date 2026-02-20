@@ -812,11 +812,18 @@ function hasConflict(userId, matchId, dateKey, startSeconds, endSeconds) {
   );
 }
 
-function resolveRefereeMatchAvailability(referee, match) {
+function resolveRefereeMatchAvailability(
+  referee,
+  match,
+  { ignoreAvailability = false } = {}
+) {
   if (!referee) return { available: false, reason: 'судья не найден' };
   if (!match) return { available: false, reason: 'матч не найден' };
   if (match.schedule_missing || match.duration_missing) {
     return { available: false, reason: 'не хватает времени матча' };
+  }
+  if (ignoreAvailability) {
+    return { available: true, reason: '' };
   }
   const dateKey = match?.msk_date || '';
   const availabilityByDate = referee?.availability_by_date || null;
@@ -847,11 +854,13 @@ function resolveRefereeMatchAvailability(referee, match) {
   return { available: true, reason: '' };
 }
 
-function isRefereeAvailable(referee, match) {
-  return resolveRefereeMatchAvailability(referee, match).available;
+function isRefereeAvailable(referee, match, roleId = null) {
+  return resolveRefereeMatchAvailability(referee, match, {
+    ignoreAvailability: isLeadershipRoleId(roleId),
+  }).available;
 }
 
-function refereeLabel(referee, match) {
+function refereeLabel(referee, match, roleId = null) {
   const last = referee?.last_name || '';
   const first = referee?.first_name || '';
   const patronymic = referee?.patronymic || '';
@@ -861,7 +870,9 @@ function refereeLabel(referee, match) {
     .join(' ');
   const base = [last, initials].filter(Boolean).join(' ').trim();
   if (!match) return base;
-  const availability = resolveRefereeMatchAvailability(referee, match);
+  const availability = resolveRefereeMatchAvailability(referee, match, {
+    ignoreAvailability: isLeadershipRoleId(roleId),
+  });
   if (availability.available) return base;
   return `${base} · недоступен (${availability.reason})`;
 }
@@ -1025,6 +1036,17 @@ function roleGroupIdForRole(roleId) {
   return roleGroupByRoleId.value.get(roleId) || null;
 }
 
+function isLeadershipRoleId(roleId) {
+  if (!roleId) return false;
+  const groupId = roleGroupIdForRole(roleId);
+  if (!groupId) return false;
+  const group = roleGroups.value.find((entry) => entry.id === groupId);
+  const name = String(group?.name || '')
+    .trim()
+    .toLowerCase();
+  return /руковод/.test(name);
+}
+
 async function saveMatchAssignments(match, roleId) {
   if (!match || !canAssignGroup.value) return;
   if (match.schedule_missing || match.duration_missing) return;
@@ -1153,7 +1175,7 @@ function isDraftComplete(match) {
   return true;
 }
 
-function matchOptions(match) {
+function matchOptions(match, roleId = null) {
   const reserved = reservedUserIds(match);
   const roleAliases = allowedRefereeRoles.value;
   const base = referees.value.filter(
@@ -1161,7 +1183,7 @@ function matchOptions(match) {
       !reserved.has(ref.id) &&
       (!roleAliases.size ||
         (ref.roles || []).some((alias) => roleAliases.has(alias))) &&
-      isRefereeAvailable(ref, match)
+      isRefereeAvailable(ref, match, roleId)
   );
   const byId = new Map(referees.value.map((ref) => [ref.id, ref]));
   const selectedIds = new Set();
@@ -1214,6 +1236,17 @@ function isBrigadeRoleGroup(group) {
   return name.includes('бригад');
 }
 
+function leadershipRoleGroupId() {
+  const group = roleGroups.value.find((entry) =>
+    /руковод/.test(
+      String(entry?.name || '')
+        .trim()
+        .toLowerCase()
+    )
+  );
+  return group?.id || '';
+}
+
 async function loadMatches() {
   loadingMatches.value = true;
   error.value = '';
@@ -1255,6 +1288,10 @@ async function loadReferees() {
       competition_alias: 'PRO',
       only_leagues_access: '1',
     });
+    const leadershipGroupId = leadershipRoleGroupId();
+    if (leadershipGroupId) {
+      params.set('role_group_id', leadershipGroupId);
+    }
     const data = await apiFetch(`/referee-assignments/referees?${params}`);
     referees.value = data.referees || [];
   } catch (_) {
@@ -1585,11 +1622,14 @@ onMounted(() => {
                           >
                             <option value="">Свободно</option>
                             <option
-                              v-for="refereeOption in matchOptions(match)"
+                              v-for="refereeOption in matchOptions(
+                                match,
+                                role.id
+                              )"
                               :key="refereeOption.id"
                               :value="refereeOption.id"
                             >
-                              {{ refereeLabel(refereeOption, match) }}
+                              {{ refereeLabel(refereeOption, match, role.id) }}
                             </option>
                           </select>
                         </div>

@@ -24,7 +24,8 @@ export type ProfileSectionKey =
   | 'addresses'
   | 'taxation'
   | 'roles'
-  | 'sport_schools';
+  | 'sport_schools'
+  | 'vehicles';
 
 export interface AdminUserWorkspaceUser {
   id: string;
@@ -122,6 +123,14 @@ export interface TeamLink {
   birth_year?: number | null;
 }
 
+export interface VehicleInfo {
+  id: string;
+  brand: string;
+  model?: string | null;
+  number: string;
+  is_active: boolean;
+}
+
 export interface ProfileCompleteness {
   score: number;
   missing: string[];
@@ -139,6 +148,7 @@ export interface AdminUserProfileWorkspace {
       RESIDENCE: AddressInfo | null;
     };
     taxation: TaxationInfo | null;
+    vehicles: VehicleInfo[];
     sport_school_links: {
       clubs: ClubLink[];
       teams: TeamLink[];

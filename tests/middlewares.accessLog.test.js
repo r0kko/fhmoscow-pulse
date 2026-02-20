@@ -178,4 +178,31 @@ describe('accessLog middleware', () => {
     expect(parsed.client_ip).toBe('203.0.113.77');
     expect(parsed.error_code).toBeUndefined();
   });
+
+  test('redacts sensitive query params in access path', async () => {
+    await loadModule('production');
+    accessLog();
+
+    const req = { headers: {}, connection: { remoteAddress: '10.10.0.1' } };
+    const res = { getHeader: jest.fn(() => '') };
+    const tokens = {
+      date: jest.fn(() => '2024-11-05T10:00:00.000Z'),
+      method: jest.fn(() => 'GET'),
+      url: jest.fn(() => '/verify?t=very-secret-token&safe=1'),
+      route: jest.fn(() => '/verify'),
+      status: jest.fn(() => '200'),
+      res: jest.fn(() => '0'),
+      'response-time': jest.fn(() => '1'),
+      'remote-addr': jest.fn(() => '198.51.100.1'),
+      'user-agent': jest.fn(() => 'curl/8.0'),
+      referrer: jest.fn(() => ''),
+      reqid: jest.fn(() => 'req-2'),
+      errorcode: jest.fn(() => ''),
+    };
+
+    const output = capturedFormat(tokens, req, res);
+    const parsed = JSON.parse(output);
+
+    expect(parsed.path).toBe('/verify?t=redacted&safe=1');
+  });
 });

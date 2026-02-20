@@ -15,6 +15,7 @@ const SENSITIVE_KEYS = [
   'refreshToken',
   'access_token',
   'token',
+  't',
   'code',
   // Personal identifiers
   'snils',

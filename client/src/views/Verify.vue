@@ -1,134 +1,236 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const loading = ref(true);
-const ok = ref(false);
-const error = ref('');
+const result = ref('invalid');
+const message = ref('');
 const data = ref(null);
 
-function getToken() {
+function reasonMessage(reason) {
+  const r = String(reason || '')
+    .trim()
+    .toLowerCase();
+  if (r === 'invalid_code') {
+    return 'Некорректная короткая ссылка. Проверьте QR-код и повторите сканирование.';
+  }
+  if (r === 'not_found') {
+    return 'Ссылка недействительна или устарела. Запросите актуальную копию документа.';
+  }
+  return 'Не удалось подтвердить подлинность документа.';
+}
+
+function messageFromResult(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  if (normalized === 'valid') return 'Подпись документа подтверждена.';
+  if (normalized === 'expired') {
+    return 'Срок действия QR-кода истек. Запросите актуальную копию документа.';
+  }
+  if (normalized === 'not_found') {
+    return 'Документ не найден. Проверьте QR-код или используйте актуальную версию.';
+  }
+  if (normalized === 'revoked') {
+    return 'Документ больше не находится в подписанном состоянии.';
+  }
+  if (normalized === 'mismatch') {
+    return 'Данные подписи не совпадают с документом.';
+  }
+  return 'Не удалось подтвердить подлинность документа.';
+}
+
+function getLocationState() {
   try {
-    const u = new URL(window.location.href);
-    return u.searchParams.get('t') || '';
-  } catch (_) {
-    return '';
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+    const searchParams = url.searchParams;
+    const token = hashParams.get('t') || searchParams.get('t') || '';
+    const reason = hashParams.get('reason') || searchParams.get('reason') || '';
+    return { url, hashParams, searchParams, token, reason };
+  } catch {
+    return {
+      url: null,
+      hashParams: new URLSearchParams(),
+      searchParams: new URLSearchParams(),
+      token: '',
+      reason: '',
+    };
   }
 }
 
-async function verify() {
+function scrubTokenFromAddress(state) {
+  if (!state?.url) return;
+  state.searchParams.delete('t');
+  state.hashParams.delete('t');
+  const hash = state.hashParams.toString();
+  const search = state.searchParams.toString();
+  const next =
+    state.url.pathname +
+    (search ? `?${search}` : '') +
+    (hash ? `#${hash}` : '');
+  window.history.replaceState(null, '', next);
+}
+
+async function verifyDocument() {
   loading.value = true;
-  error.value = '';
-  ok.value = false;
   data.value = null;
-  const t = getToken();
-  if (!t) {
-    error.value = 'Отсутствует параметр t';
+  result.value = 'invalid';
+  message.value = '';
+
+  const state = getLocationState();
+  const token = String(state.token || '').trim();
+
+  if (!token) {
     loading.value = false;
+    result.value = 'invalid';
+    message.value = reasonMessage(state.reason);
     return;
   }
+
   try {
+    scrubTokenFromAddress(state);
     const { API_BASE } = await import('../api');
-    const res = await fetch(`${API_BASE}/verify?t=${encodeURIComponent(t)}`, {
-      credentials: 'include',
+    const res = await fetch(`${API_BASE}/verify`, {
+      method: 'GET',
+      headers: { 'X-Verify-Token': token },
+      credentials: 'omit',
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json?.ok) {
-      error.value = json?.error || 'Документ не подтверждён';
-    } else {
-      ok.value = true;
+    if (res.ok && json?.ok) {
+      result.value = 'valid';
       data.value = json;
+      message.value = json?.message || messageFromResult('valid');
+    } else {
+      result.value = String(json?.result || 'invalid').toLowerCase();
+      message.value =
+        String(json?.message || '').trim() || messageFromResult(result.value);
     }
-  } catch (_) {
-    error.value = 'Ошибка сети';
+  } catch {
+    result.value = 'invalid';
+    message.value = 'Ошибка сети при проверке. Попробуйте снова позже.';
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(() => verify());
-
-function formatSignedAt(sign) {
+function formatDateMsk(value) {
   try {
-    const str = sign?.signedAtMsk || sign?.signedAt;
-    if (!str) return '—';
-    // If server provided localized MSK string — trust and show as-is
-    if (typeof str === 'string' && /\d{2}\.\d{2}\.\d{4}/.test(str)) {
-      return str;
-    }
-    const d = new Date(str);
-    if (Number.isNaN(d.getTime())) return '—';
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
     return new Intl.DateTimeFormat('ru-RU', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: 'Europe/Moscow',
       hour12: false,
-    }).format(d);
+      timeZone: 'Europe/Moscow',
+    }).format(date);
   } catch {
     return '—';
   }
 }
+
+const statusClass = computed(() =>
+  result.value === 'valid' ? 'alert alert-success' : 'alert alert-danger'
+);
+
+const signedAtText = computed(() => {
+  if (data.value?.signature?.signedAtMsk)
+    return data.value.signature.signedAtMsk;
+  const formatted = formatDateMsk(data.value?.signature?.signedAt);
+  return formatted === '—' ? '' : formatted;
+});
+
+onMounted(() => {
+  void verifyDocument();
+});
 </script>
 
 <template>
-  <div id="main" class="container py-5" tabindex="-1">
+  <div class="container py-5">
     <div class="row justify-content-center">
-      <div class="col-md-8 col-lg-7 col-xl-6">
-        <div class="card section-card tile p-3 p-md-4">
-          <div class="card-body">
-            <h1 class="h4 mb-3">Проверка документа</h1>
-            <p class="text-muted small mb-4">
-              Отсканируйте QR‑код в документе. Эта страница подтверждает
-              подлинность подписи и реквизиты документа.
-            </p>
-            <div v-if="loading" class="d-flex align-items-center gap-2">
-              <span class="spinner-border" aria-hidden="true"></span>
-              <span>Проверяем…</span>
+      <div class="col-12 col-md-10 col-lg-8">
+        <article class="card section-card tile">
+          <div class="card-body p-4 p-md-5">
+            <header class="mb-4">
+              <h1 class="h4 mb-2">Проверка электронной подписи документа</h1>
+              <p class="text-muted mb-0">
+                Страница доступна без авторизации. Проверка выполняется по
+                защищенному QR-коду документа.
+              </p>
+            </header>
+
+            <div
+              v-if="loading"
+              class="d-flex align-items-center gap-2"
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              <span>Проверяем документ…</span>
             </div>
+
             <template v-else>
-              <div v-if="ok && data" class="alert alert-success" role="status">
-                Документ подтверждён.
+              <div :class="statusClass" role="status" aria-live="polite">
+                {{ message }}
               </div>
-              <div v-else class="alert alert-danger" role="alert">
-                Не удалось подтвердить документ:
-                {{ error || 'неизвестная ошибка' }}
-              </div>
-              <div v-if="ok && data">
+
+              <section v-if="result === 'valid' && data" class="mt-4">
                 <dl class="row mb-0">
                   <dt class="col-sm-4">Документ</dt>
                   <dd class="col-sm-8">{{ data.document?.name || '—' }}</dd>
+
                   <dt class="col-sm-4">Номер</dt>
                   <dd class="col-sm-8">{{ data.document?.number || '—' }}</dd>
-                  <dt class="col-sm-4">Статус</dt>
-                  <dd class="col-sm-8">{{ data.status }}</dd>
+
+                  <dt class="col-sm-4">Дата документа</dt>
+                  <dd class="col-sm-8">
+                    {{ formatDateMsk(data.document?.documentDate) }}
+                  </dd>
+
                   <dt class="col-sm-4">Подписант</dt>
                   <dd class="col-sm-8">{{ data.signer?.fio || '—' }}</dd>
-                  <dt class="col-sm-4">Дата подписания</dt>
-                  <dd class="col-sm-8">{{ formatSignedAt(data.sign) }}</dd>
+
+                  <dt class="col-sm-4">Вид подписи</dt>
+                  <dd class="col-sm-8">{{ data.signature?.type || '—' }}</dd>
+
+                  <template v-if="signedAtText">
+                    <dt class="col-sm-4">Дата подписания</dt>
+                    <dd class="col-sm-8">{{ signedAtText }}</dd>
+                  </template>
+
+                  <dt class="col-sm-4">Проверено</dt>
+                  <dd class="col-sm-8">{{ formatDateMsk(data.verifiedAt) }}</dd>
                 </dl>
-                <hr />
-                <details>
-                  <summary class="mb-2">Что это?</summary>
-                  <p class="text-muted small mb-0">
-                    QR‑код содержит защищённую ссылку с подписью (HMAC). Сервер
-                    подтверждает, что данные не изменялись и подпись принадлежит
-                    указанному подписанту. Мы не показываем лишние персональные
-                    данные.
-                  </p>
-                </details>
+              </section>
+
+              <div class="mt-4 d-flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="btn btn-outline-brand"
+                  @click="verifyDocument"
+                >
+                  Проверить повторно
+                </button>
               </div>
+
+              <details class="mt-4">
+                <summary>Как работает проверка</summary>
+                <p class="text-muted small mb-0 mt-2">
+                  QR-код содержит подписанный токен. Сервер проверяет
+                  целостность токена и соответствие данных подписанному
+                  документу.
+                </p>
+              </details>
             </template>
           </div>
-        </div>
+        </article>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.section-card {
-  border-radius: var(--tile-radius, 12px);
-}
-</style>

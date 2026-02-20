@@ -53,6 +53,16 @@ export default function validateEnv() {
     throw err;
   }
   if (
+    String(process.env.NODE_ENV || '').toLowerCase() === 'production' &&
+    !process.env.VERIFY_HMAC_SECRET
+  ) {
+    const err = new Error(
+      'VERIFY_HMAC_SECRET is required in production for QR verification'
+    );
+    err.code = 'ENV_INVALID';
+    throw err;
+  }
+  if (
     process.env.S3_BUCKET &&
     (!process.env.S3_ACCESS_KEY || !process.env.S3_SECRET_KEY)
   ) {

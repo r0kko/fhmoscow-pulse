@@ -53,6 +53,16 @@ const profileSportSchoolsRules = [
   body('team_ids').isArray().withMessage('validation_error'),
   body('team_ids.*').optional().isUUID().withMessage('validation_error'),
 ];
+const profileVehiclesRules = [
+  body('vehicles').isArray({ max: 3 }).withMessage('validation_error'),
+  body('vehicles.*.id')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('validation_error'),
+  body('vehicles.*.vehicle').isString().withMessage('validation_error'),
+  body('vehicles.*.number').isString().withMessage('validation_error'),
+  body('vehicles.*.is_active').isBoolean().withMessage('validation_error'),
+];
 
 function sendDeprecatedProfileEndpoint(req, res) {
   return res.status(410).json({
@@ -239,6 +249,14 @@ router.put(
   authorize('ADMIN'),
   profileSportSchoolsRules,
   profileWorkspaceAdminController.updateSportSchools
+);
+
+router.put(
+  '/:id/profile/vehicles',
+  auth,
+  authorize('ADMIN'),
+  profileVehiclesRules,
+  profileWorkspaceAdminController.updateVehicles
 );
 
 router.all('/:id/inn', sendDeprecatedProfileEndpoint);

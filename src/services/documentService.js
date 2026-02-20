@@ -75,6 +75,11 @@ const PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS =
 const PRO_LEAGUE_ASSIGNMENTS_DOC_NAME = 'Лист назначений судей на матч';
 const PRO_LEAGUE_ASSIGNMENTS_DOC_KIND =
   'PRO_LEAGUE_MATCH_REFEREE_ASSIGNMENTS_SHEET';
+const PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES = [
+  'FHMO_JUDGING_HEAD',
+  'FHMO_JUDGING_LEAD_SPECIALIST',
+  'FHMO_JUDGING_SPECIALIST',
+];
 const PRO_LEAGUE_ASSIGNMENTS_STATUS_ALIASES = [
   'DRAFT',
   'PUBLISHED',
@@ -121,11 +126,6 @@ function formatMoscowDateTimeLong(value) {
   return `${datePart} в ${timePart}`;
 }
 
-function hasFederationRole(user) {
-  const roles = Array.isArray(user?.Roles) ? user.Roles : [];
-  return roles.some((role) => FHMO_STAFF_ROLES.includes(role?.alias));
-}
-
 const FHMO_STAMP_ORGANIZATION = 'РОО "Федерация хоккея Москвы"';
 
 function cleanStampText(value) {
@@ -154,6 +154,27 @@ function pickFederationRole(user) {
   })[0];
 }
 
+function pickProLeagueAssignmentsSignerRole(user) {
+  const roles = Array.isArray(user?.Roles) ? user.Roles : [];
+  const judgingRoles = roles.filter((role) =>
+    PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES.includes(role?.alias)
+  );
+  if (!judgingRoles.length) return null;
+  return judgingRoles.sort((a, b) => {
+    const aPriority = PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES.indexOf(
+      a?.alias
+    );
+    const bPriority = PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES.indexOf(
+      b?.alias
+    );
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    const aOrder = Number.isFinite(a?.displayOrder) ? a.displayOrder : 999999;
+    const bOrder = Number.isFinite(b?.displayOrder) ? b.displayOrder : 999999;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return String(a?.name || '').localeCompare(String(b?.name || ''), 'ru');
+  })[0];
+}
+
 function buildStampSigner(user) {
   if (!user) return null;
   const federationRole = pickFederationRole(user);
@@ -166,32 +187,6 @@ function buildStampSigner(user) {
     department: cleanStampText(federationRole?.departmentName),
     organization: federationRole ? FHMO_STAMP_ORGANIZATION : null,
   };
-}
-
-async function loadUserWithRoles(userId) {
-  if (!userId) return null;
-  return User.findByPk(userId, {
-    attributes: ['id', 'email', 'last_name', 'first_name', 'patronymic'],
-    include: [
-      {
-        model: Models.Role,
-        attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
-        through: { attributes: [] },
-        required: false,
-      },
-    ],
-  });
-}
-
-async function loadSimpleUserSign(userId) {
-  if (!userId) return null;
-  const sign = await UserSignType.findOne({
-    where: { user_id: userId },
-    include: [{ model: SignType, attributes: ['id', 'alias', 'name'] }],
-    order: [['sign_created_date', 'DESC']],
-  });
-  if (!sign || sign.SignType?.alias !== 'SIMPLE_ELECTRONIC') return null;
-  return sign;
 }
 
 async function findFallbackFederationSigner() {
@@ -212,22 +207,55 @@ async function findFallbackFederationSigner() {
             model: Models.Role,
             attributes: ['alias', 'name', 'departmentName', 'displayOrder'],
             through: { attributes: [] },
-            where: { alias: { [Op.in]: FHMO_STAFF_ROLES } },
+            where: {
+              alias: { [Op.in]: PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES },
+            },
+            required: true,
+          },
+          {
+            model: Models.UserStatus,
+            attributes: ['alias'],
+            where: { alias: 'ACTIVE' },
             required: true,
           },
         ],
       },
     ],
-    // Keep ordering on base model only to avoid Postgres FROM-clause issues
-    // when Sequelize builds a subquery for LIMIT + include.
     order: [['sign_created_date', 'DESC']],
     subQuery: false,
-    limit: 1,
   });
   if (!signs.length) return null;
+  const candidates = signs
+    .map((sign) => {
+      const signer = sign.User;
+      const signerRole = pickProLeagueAssignmentsSignerRole(signer);
+      if (!signer?.id || !signerRole) return null;
+      return { signer, signerSign: sign, signerRole };
+    })
+    .filter(Boolean);
+  if (!candidates.length) return null;
+  candidates.sort((left, right) => {
+    const leftPriority = PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES.indexOf(
+      left.signerRole.alias
+    );
+    const rightPriority = PRO_LEAGUE_ASSIGNMENTS_SIGNER_ROLE_ALIASES.indexOf(
+      right.signerRole.alias
+    );
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+    const leftSignDate = new Date(
+      left.signerSign?.sign_created_date || 0
+    ).getTime();
+    const rightSignDate = new Date(
+      right.signerSign?.sign_created_date || 0
+    ).getTime();
+    if (leftSignDate !== rightSignDate) return rightSignDate - leftSignDate;
+    return fio(left.signer).localeCompare(fio(right.signer), 'ru', {
+      sensitivity: 'base',
+    });
+  });
   return {
-    signer: signs[0].User,
-    signerSign: signs[0],
+    signer: candidates[0].signer,
+    signerSign: candidates[0].signerSign,
   };
 }
 
@@ -2303,8 +2331,11 @@ async function sign(user, documentId) {
   if (existing) {
     throw new ServiceError('document_already_signed', 400);
   }
-  const userSign = await UserSignType.findOne({ where: { user_id: user.id } });
-  if (!userSign || userSign.sign_type_id !== doc.sign_type_id) {
+  const userSign = await UserSignType.findOne({
+    where: { user_id: user.id, sign_type_id: doc.sign_type_id },
+    order: [['sign_created_date', 'DESC']],
+  });
+  if (!userSign) {
     throw new ServiceError('sign_type_mismatch', 400);
   }
   // Only allow SIMPLE_ELECTRONIC and AWAITING_SIGNATURE for user-initiated sign
@@ -2867,8 +2898,10 @@ function createPdfBuffer(text) {
 async function createProLeagueMatchRefereeAssignmentsDocument(
   matchId,
   actorId,
-  { signerUserId = null } = {}
+  options = {}
 ) {
+  const signerUserId = options?.signerUserId || null;
+  void signerUserId;
   const match = await Models.Match.findByPk(matchId, {
     attributes: ['id', 'date_start', 'ground_id'],
     include: [
@@ -2904,37 +2937,12 @@ async function createProLeagueMatchRefereeAssignmentsDocument(
     throw new ServiceError('match_not_professional', 400);
   }
 
-  let signer = null;
-  let signerSign = null;
-
-  if (signerUserId) {
-    signer = await loadUserWithRoles(signerUserId);
-    if (!signer) throw new ServiceError('user_not_found', 404);
-    if (!hasFederationRole(signer)) {
-      throw new ServiceError('federation_signer_required', 400);
-    }
-    signerSign = await loadSimpleUserSign(signer.id);
-    if (!signerSign) {
-      throw new ServiceError('sign_type_simple_required', 400);
-    }
-  } else {
-    const actorUser = await loadUserWithRoles(actorId);
-    if (actorUser && hasFederationRole(actorUser)) {
-      const actorSign = await loadSimpleUserSign(actorUser.id);
-      if (actorSign) {
-        signer = actorUser;
-        signerSign = actorSign;
-      }
-    }
-    if (!signer || !signerSign) {
-      const fallback = await findFallbackFederationSigner();
-      if (!fallback) {
-        throw new ServiceError('federation_signer_not_found', 400);
-      }
-      signer = fallback.signer;
-      signerSign = fallback.signerSign;
-    }
+  const fallback = await findFallbackFederationSigner();
+  if (!fallback) {
+    throw new ServiceError('federation_signer_not_found', 400);
   }
+  const signer = fallback.signer;
+  const signerSign = fallback.signerSign;
 
   const statusRows = await Models.MatchRefereeStatus.findAll({
     where: { alias: { [Op.in]: PRO_LEAGUE_ASSIGNMENTS_STATUS_ALIASES } },
@@ -3152,39 +3160,44 @@ async function createProLeagueMatchRefereeAssignmentsDocument(
     updated_by: actorId,
   });
 
-  let regenerated;
+  const signerUser = {
+    id: signer.id,
+    token_version: 1,
+  };
+
+  await sign(signerUser, created.id);
+
   try {
-    regenerated = await regenerate(created.id, actorId);
-  } catch {
-    regenerated = {
-      file: {
-        id: initialFile.id,
-        url: await fileService.getDownloadUrl(initialFile),
-      },
-    };
+    await regenerateSigned(created.id, signer.id);
+  } catch (err) {
+    if (err?.code === 's3_upload_failed') {
+      console.error('Signed pro league assignments sheet regeneration failed', {
+        documentId: created.id,
+        userId: signer.id,
+        code: err.code,
+      });
+    } else {
+      throw err;
+    }
   }
 
   const outDoc = await Document.findByPk(created.id, {
     include: [
       { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
       { model: SignType, attributes: ['name', 'alias'] },
+      { model: DocumentStatus, attributes: ['name', 'alias'] },
+      { model: File, attributes: ['id', 'key'] },
     ],
   });
-
-  try {
-    if (signer?.email) {
-      await emailService.sendDocumentAwaitingSignatureEmail(signer, {
-        id: outDoc.id,
-        number: outDoc.number,
-        name: outDoc.name,
-        SignType: outDoc.SignType
-          ? { alias: outDoc.SignType.alias, name: outDoc.SignType.name }
-          : null,
-      });
-    }
-  } catch {
-    // Do not fail the request if notification fails
-  }
+  const filePayload = outDoc?.File
+    ? {
+        id: outDoc.File.id,
+        url: await fileService.getDownloadUrl(outDoc.File),
+      }
+    : {
+        id: initialFile.id,
+        url: await fileService.getDownloadUrl(initialFile),
+      };
 
   return {
     document: {
@@ -3202,8 +3215,11 @@ async function createProLeagueMatchRefereeAssignmentsDocument(
       signType: outDoc.SignType
         ? { name: outDoc.SignType.name, alias: outDoc.SignType.alias }
         : null,
-      status: awaitingStatus
-        ? { name: awaitingStatus.name, alias: awaitingStatus.alias }
+      status: outDoc.DocumentStatus
+        ? {
+            name: outDoc.DocumentStatus.name,
+            alias: outDoc.DocumentStatus.alias,
+          }
         : null,
       recipient: {
         id: signer.id,
@@ -3212,7 +3228,7 @@ async function createProLeagueMatchRefereeAssignmentsDocument(
         patronymic: signer.patronymic,
       },
     },
-    file: regenerated.file,
+    file: filePayload,
   };
 }
 

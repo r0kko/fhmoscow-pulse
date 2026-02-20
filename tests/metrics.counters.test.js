@@ -16,4 +16,9 @@ test('auth and mail counters increment without throwing', () => {
   expect(() => metrics.incCsrfAccepted('cookie')).not.toThrow();
   expect(() => metrics.incCsrfRejected('hmac_error')).not.toThrow();
   expect(() => metrics.incHttpErrorCode('EBADCSRFTOKEN', 403)).not.toThrow();
+  expect(() => metrics.incVerifyRequest('valid', '2', 'header')).not.toThrow();
+  expect(() =>
+    metrics.observeVerifyRequestDuration('valid', 0.05)
+  ).not.toThrow();
+  expect(() => metrics.incShortLinkResolve('ok')).not.toThrow();
 });

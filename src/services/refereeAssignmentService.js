@@ -38,6 +38,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DRAFT_STATUS_ALIAS = 'DRAFT';
 const PUBLISHED_STATUS_ALIAS = 'PUBLISHED';
 const CONFIRMED_STATUS_ALIAS = 'CONFIRMED';
+const PRO_COMPETITION_ALIAS = 'PRO';
+const LEADERSHIP_ROLE_GROUP_NAME = 'РУКОВОДСТВО';
 const ASSIGNMENT_STATUS_ALIASES = [
   DRAFT_STATUS_ALIAS,
   PUBLISHED_STATUS_ALIAS,
@@ -205,6 +207,37 @@ function buildCompetitionNameFallbackWhere(rawAlias) {
   const raw = String(rawAlias || '').trim();
   const filter = resolveCompetitionFilter(raw);
   return filter?.nameFilter || null;
+}
+
+function normalizeUpper(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase();
+}
+
+function isLeadershipRoleGroupName(name) {
+  return normalizeUpper(name) === LEADERSHIP_ROLE_GROUP_NAME;
+}
+
+function isLeadershipRoleGroup(roleGroup) {
+  return isLeadershipRoleGroupName(roleGroup?.name);
+}
+
+function isProfessionalCompetitionAlias(rawAlias) {
+  return buildCompetitionAliasFilters(rawAlias).includes(PRO_COMPETITION_ALIAS);
+}
+
+function isProfessionalCompetitionMatch(match) {
+  return (
+    normalizeUpper(match?.Tournament?.CompetitionType?.alias) ===
+    PRO_COMPETITION_ALIAS
+  );
+}
+
+function isProLeadershipAssignmentContext(match, roleGroup) {
+  return (
+    isProfessionalCompetitionMatch(match) && isLeadershipRoleGroup(roleGroup)
+  );
 }
 
 const KNOWN_COMPETITION_ALIASES = new Set([
@@ -1026,7 +1059,13 @@ export async function listRefereesByDate({
   const roleFilter = normalizedRoleAlias
     ? [normalizedRoleAlias]
     : REFEREE_ROLES;
-  void roleGroupId;
+  let isLeadershipRoleGroupRequested = false;
+  if (roleGroupId) {
+    const requestedRoleGroup = await RefereeRoleGroup.findByPk(roleGroupId, {
+      attributes: ['id', 'name'],
+    });
+    isLeadershipRoleGroupRequested = isLeadershipRoleGroup(requestedRoleGroup);
+  }
 
   if (onlyLeaguesAccess) {
     const activeSeason = await Season.findOne({
@@ -1152,12 +1191,20 @@ export async function listRefereesByDate({
     };
   });
 
-  const available = referees.filter((ref) => {
-    const availabilityEntries = Object.values(ref.availability_by_date || {});
-    return availabilityEntries.some(
-      (entry) => entry?.preset && ['FREE', 'PARTIAL'].includes(entry?.status)
-    );
-  });
+  const skipAvailabilityFilter =
+    isLeadershipRoleGroupRequested &&
+    isProfessionalCompetitionAlias(competitionAlias);
+  const available = skipAvailabilityFilter
+    ? referees
+    : referees.filter((ref) => {
+        const availabilityEntries = Object.values(
+          ref.availability_by_date || {}
+        );
+        return availabilityEntries.some(
+          (entry) =>
+            entry?.preset && ['FREE', 'PARTIAL'].includes(entry?.status)
+        );
+      });
 
   return {
     date: filters.fromDate,
@@ -1771,10 +1818,19 @@ export async function updateMatchReferees(
   const match = await Match.findByPk(matchId, {
     include: [
       { model: TournamentGroup, attributes: ['id', 'match_duration_minutes'] },
+      {
+        model: Tournament,
+        attributes: ['id', 'competition_type_id'],
+        include: [{ model: CompetitionType, attributes: ['id', 'alias'] }],
+      },
     ],
   });
   if (!match) throw new ServiceError('match_not_found', 404);
   if (!match.date_start) throw new ServiceError('match_schedule_missing', 400);
+  const applyProLeadershipRules = isProLeadershipAssignmentContext(
+    match,
+    roleGroup
+  );
 
   const matchGroupContextById = await resolveMatchGroupContext([match]);
   const matchGroupContext = matchGroupContextById.get(match.id) || null;
@@ -1888,32 +1944,34 @@ export async function updateMatchReferees(
   }
   const endSeconds = startSeconds + durationMinutes * 60;
 
-  const availabilityRecords = newUserIds.length
-    ? await listAvailabilities(newUserIds, mskDate, mskDate)
-    : [];
-  const availabilityMap = new Map();
-  for (const rec of availabilityRecords) {
-    availabilityMap.set(rec.user_id, {
-      status: rec.AvailabilityType?.alias || 'FREE',
-      from_time: rec.from_time ?? null,
-      to_time: rec.to_time ?? null,
-    });
-  }
+  if (newUserIds.length && !applyProLeadershipRules) {
+    const availabilityRecords = await listAvailabilities(
+      newUserIds,
+      mskDate,
+      mskDate
+    );
+    const availabilityMap = new Map();
+    for (const rec of availabilityRecords) {
+      availabilityMap.set(rec.user_id, {
+        status: rec.AvailabilityType?.alias || 'FREE',
+        from_time: rec.from_time ?? null,
+        to_time: rec.to_time ?? null,
+      });
+    }
 
-  for (const userId of newUserIds) {
-    const availability = availabilityMap.get(userId);
-    if (!availability) {
-      throw new ServiceError('referee_unavailable', 400);
+    for (const userId of newUserIds) {
+      const availability = availabilityMap.get(userId);
+      if (!availability) {
+        throw new ServiceError('referee_unavailable', 400);
+      }
+      if (availability.status !== 'FREE' && availability.status !== 'PARTIAL') {
+        throw new ServiceError('referee_unavailable', 400);
+      }
+      if (!availabilityAllowsInterval(availability, startSeconds, endSeconds)) {
+        throw new ServiceError('referee_unavailable', 400);
+      }
     }
-    if (availability.status !== 'FREE' && availability.status !== 'PARTIAL') {
-      throw new ServiceError('referee_unavailable', 400);
-    }
-    if (!availabilityAllowsInterval(availability, startSeconds, endSeconds)) {
-      throw new ServiceError('referee_unavailable', 400);
-    }
-  }
 
-  if (newUserIds.length) {
     const bounds = moscowDayBounds(mskDate);
     if (!bounds) throw new ServiceError('invalid_date', 400);
     const otherAssignments = await MatchReferee.findAll({
@@ -1976,39 +2034,41 @@ export async function updateMatchReferees(
     }
   }
 
-  const assignmentsByGroup = new Map();
-  for (const assignment of existingAssignments) {
-    const groupId = assignment.RefereeRole?.referee_role_group_id;
-    if (!groupId) continue;
-    if (!assignmentsByGroup.has(groupId)) {
-      assignmentsByGroup.set(groupId, {
-        drafts: new Set(),
-        published: new Set(),
-      });
+  if (!applyProLeadershipRules) {
+    const assignmentsByGroup = new Map();
+    for (const assignment of existingAssignments) {
+      const groupId = assignment.RefereeRole?.referee_role_group_id;
+      if (!groupId) continue;
+      if (!assignmentsByGroup.has(groupId)) {
+        assignmentsByGroup.set(groupId, {
+          drafts: new Set(),
+          published: new Set(),
+        });
+      }
+      const bucket = assignmentsByGroup.get(groupId);
+      if (assignment.status_id === statusInfo.draft.id) {
+        if (assignment.user_id) bucket.drafts.add(assignment.user_id);
+        continue;
+      }
+      if (
+        assignment.status_id === statusInfo.published.id ||
+        assignment.status_id === statusInfo.confirmed?.id
+      ) {
+        if (assignment.user_id) bucket.published.add(assignment.user_id);
+      }
     }
-    const bucket = assignmentsByGroup.get(groupId);
-    if (assignment.status_id === statusInfo.draft.id) {
-      if (assignment.user_id) bucket.drafts.add(assignment.user_id);
-      continue;
-    }
-    if (
-      assignment.status_id === statusInfo.published.id ||
-      assignment.status_id === statusInfo.confirmed?.id
-    ) {
-      if (assignment.user_id) bucket.published.add(assignment.user_id);
-    }
-  }
 
-  const occupiedByOtherGroup = new Set();
-  for (const [groupId, bucket] of assignmentsByGroup.entries()) {
-    if (groupId === roleGroup.id) continue;
-    const useDraft = clearedGroupIds.has(groupId) || bucket.drafts.size > 0;
-    const source = useDraft ? bucket.drafts : bucket.published;
-    source.forEach((id) => occupiedByOtherGroup.add(id));
-  }
-  for (const userId of userIds) {
-    if (occupiedByOtherGroup.has(userId)) {
-      throw new ServiceError('referee_user_already_assigned', 400);
+    const occupiedByOtherGroup = new Set();
+    for (const [groupId, bucket] of assignmentsByGroup.entries()) {
+      if (groupId === roleGroup.id) continue;
+      const useDraft = clearedGroupIds.has(groupId) || bucket.drafts.size > 0;
+      const source = useDraft ? bucket.drafts : bucket.published;
+      source.forEach((id) => occupiedByOtherGroup.add(id));
+    }
+    for (const userId of userIds) {
+      if (occupiedByOtherGroup.has(userId)) {
+        throw new ServiceError('referee_user_already_assigned', 400);
+      }
     }
   }
 
@@ -2098,9 +2158,17 @@ export async function updateMatchReferees(
 export async function publishMatchReferees(matchId, actorId) {
   const statusInfo = await resolveAssignmentStatuses();
   const match = await Match.findByPk(matchId, {
-    include: [{ model: TournamentGroup, attributes: ['id'] }],
+    include: [
+      { model: TournamentGroup, attributes: ['id'] },
+      {
+        model: Tournament,
+        attributes: ['id', 'competition_type_id'],
+        include: [{ model: CompetitionType, attributes: ['id', 'alias'] }],
+      },
+    ],
   });
   if (!match) throw new ServiceError('match_not_found', 404);
+  const isProMatch = isProfessionalCompetitionMatch(match);
   const matchGroupContextById = await resolveMatchGroupContext([match]);
   const matchGroupContext = matchGroupContextById.get(match.id) || null;
   const effectiveTournamentGroupId =
@@ -2125,10 +2193,40 @@ export async function publishMatchReferees(matchId, actorId) {
 
   const draftAssignments = await MatchReferee.findAll({
     where: { match_id: match.id, status_id: statusInfo.draft.id },
+    include: [
+      {
+        model: RefereeRole,
+        attributes: ['id', 'referee_role_group_id'],
+        include: [{ model: RefereeRoleGroup, attributes: ['id', 'name'] }],
+        required: false,
+      },
+    ],
   });
 
   if (!draftAssignments.length) {
     throw new ServiceError('referee_assignments_missing', 400);
+  }
+
+  const leadershipRoleIds = Array.from(
+    new Set(
+      draftAssignments
+        .filter((row) =>
+          isLeadershipRoleGroupName(row.RefereeRole?.RefereeRoleGroup?.name)
+        )
+        .map((row) => row.referee_role_id)
+        .filter(Boolean)
+    )
+  );
+  const nonLeadershipRoleIds = Array.from(
+    new Set(
+      draftAssignments
+        .map((row) => row.referee_role_id)
+        .filter((roleId) => roleId && !leadershipRoleIds.includes(roleId))
+    )
+  );
+  const autoConfirmLeadership = isProMatch && leadershipRoleIds.length > 0;
+  if (autoConfirmLeadership && !statusInfo.confirmed) {
+    throw new ServiceError('referee_statuses_missing', 500);
   }
 
   const counts = new Map();
@@ -2152,6 +2250,50 @@ export async function publishMatchReferees(matchId, actorId) {
       force: true,
       transaction: tx,
     });
+    if (autoConfirmLeadership) {
+      await MatchReferee.destroy({
+        where: {
+          match_id: match.id,
+          referee_role_id: { [Op.in]: leadershipRoleIds },
+          status_id: statusInfo.confirmed.id,
+        },
+        force: true,
+        transaction: tx,
+      });
+      if (nonLeadershipRoleIds.length) {
+        await MatchReferee.update(
+          {
+            status_id: statusInfo.published.id,
+            published_at: new Date(),
+            published_by: actorId,
+            updated_by: actorId,
+          },
+          {
+            where: {
+              match_id: match.id,
+              status_id: statusInfo.draft.id,
+              referee_role_id: { [Op.in]: nonLeadershipRoleIds },
+            },
+            transaction: tx,
+          }
+        );
+      }
+      await MatchReferee.update(
+        {
+          status_id: statusInfo.confirmed.id,
+          updated_by: actorId,
+        },
+        {
+          where: {
+            match_id: match.id,
+            status_id: statusInfo.draft.id,
+            referee_role_id: { [Op.in]: leadershipRoleIds },
+          },
+          transaction: tx,
+        }
+      );
+      return;
+    }
     await MatchReferee.update(
       {
         status_id: statusInfo.published.id,
@@ -2167,7 +2309,10 @@ export async function publishMatchReferees(matchId, actorId) {
   });
 
   const published = await MatchReferee.findAll({
-    where: { match_id: match.id, status_id: statusInfo.published.id },
+    where: {
+      match_id: match.id,
+      status_id: { [Op.in]: assignedStatusIds },
+    },
     include: [
       { model: MatchRefereeStatus, required: false },
       { model: RefereeRole, include: [RefereeRoleGroup] },
@@ -2192,9 +2337,18 @@ export async function publishMatchReferees(matchId, actorId) {
       matchIds: [match.id],
       statusIds: assignedStatusIds,
     });
+    const filterNotifications = (rows = []) => {
+      if (!isProMatch) return rows;
+      return rows.filter(
+        (row) =>
+          !isLeadershipRoleGroupName(row.RefereeRole?.RefereeRoleGroup?.name)
+      );
+    };
+    const beforeForNotifications = filterNotifications(beforeDetails);
+    const afterForNotifications = filterNotifications(afterDetails);
     notificationStats = await notifyRefereeAssignmentChanges({
-      before: beforeDetails,
-      after: afterDetails,
+      before: beforeForNotifications,
+      after: afterForNotifications,
       actorId,
     });
   } catch (err) {
@@ -2226,11 +2380,16 @@ export async function publishAssignmentsForDate(
 
   const existingGroups = await RefereeRoleGroup.findAll({
     where: { id: { [Op.in]: uniqueGroupIds } },
-    attributes: ['id'],
+    attributes: ['id', 'name'],
   });
   if (existingGroups.length !== uniqueGroupIds.length) {
     throw new ServiceError('referee_role_group_not_found', 404);
   }
+  const leadershipGroupIds = new Set(
+    existingGroups
+      .filter((group) => isLeadershipRoleGroupName(group.name))
+      .map((group) => group.id)
+  );
 
   const statusInfo = await resolveAssignmentStatuses();
   const bounds = moscowDayBounds(normalized);
@@ -2253,6 +2412,11 @@ export async function publishAssignmentsForDate(
     ],
     include: [
       { model: TournamentGroup, attributes: ['id', 'match_duration_minutes'] },
+      {
+        model: Tournament,
+        attributes: ['id', 'competition_type_id'],
+        include: [{ model: CompetitionType, attributes: ['id', 'alias'] }],
+      },
     ],
   });
 
@@ -2265,6 +2429,11 @@ export async function publishAssignmentsForDate(
   }
 
   const matchIds = matches.map((match) => match.id);
+  const proMatchIds = new Set(
+    matches
+      .filter((match) => isProfessionalCompetitionMatch(match))
+      .map((match) => match.id)
+  );
   const matchesById = new Map(matches.map((match) => [match.id, match]));
   const matchGroupContextById = await resolveMatchGroupContext(matches);
   const groupIds = Array.from(
@@ -2345,6 +2514,9 @@ export async function publishAssignmentsForDate(
       )
     )
   );
+  if (leadershipGroupIds.size && proMatchIds.size && !statusInfo.confirmed) {
+    throw new ServiceError('referee_statuses_missing', 500);
+  }
   const assignedStatusIds = [
     statusInfo.published.id,
     statusInfo.confirmed?.id,
@@ -2548,23 +2720,28 @@ export async function publishAssignmentsForDate(
             }
 
             if (usersToAdd.length) {
-              await MatchReferee.update(
-                {
-                  status_id: statusInfo.published.id,
-                  published_at: new Date(),
-                  published_by: actorId,
-                  updated_by: actorId,
+              const autoConfirmLeadership =
+                leadershipGroupIds.has(groupId) && proMatchIds.has(matchId);
+              const updatePayload = autoConfirmLeadership
+                ? {
+                    status_id: statusInfo.confirmed.id,
+                    updated_by: actorId,
+                  }
+                : {
+                    status_id: statusInfo.published.id,
+                    published_at: new Date(),
+                    published_by: actorId,
+                    updated_by: actorId,
+                  };
+              await MatchReferee.update(updatePayload, {
+                where: {
+                  match_id: matchId,
+                  referee_role_id: roleId,
+                  user_id: { [Op.in]: usersToAdd },
+                  status_id: statusInfo.draft.id,
                 },
-                {
-                  where: {
-                    match_id: matchId,
-                    referee_role_id: roleId,
-                    user_id: { [Op.in]: usersToAdd },
-                    status_id: statusInfo.draft.id,
-                  },
-                  transaction: tx,
-                }
-              );
+                transaction: tx,
+              });
             }
           }
         }
@@ -2624,25 +2801,65 @@ export async function publishAssignmentsForDate(
           statusIds: assignedStatusIds,
         })
       : [];
-    const affectedUserIds = collectChangedUserIds(beforeDetails, afterDetails);
+    const filterNotifications = (rows = []) =>
+      rows.filter((row) => {
+        const rowMatchId = row.match_id || row.Match?.id;
+        if (!rowMatchId || !proMatchIds.has(rowMatchId)) return true;
+        return !isLeadershipRoleGroupName(
+          row.RefereeRole?.RefereeRoleGroup?.name
+        );
+      });
+    const beforeForNotifications = filterNotifications(beforeDetails);
+    const afterForNotifications = filterNotifications(afterDetails);
+
+    const affectedUserIds = collectChangedUserIds(
+      beforeForNotifications,
+      afterForNotifications
+    );
     if (affectedUserIds.size && statusInfo.confirmed && matchIds.length) {
-      await MatchReferee.update(
-        {
-          status_id: statusInfo.published.id,
-          updated_by: actorId,
+      const rowsToRepublish = await MatchReferee.findAll({
+        where: {
+          match_id: { [Op.in]: matchIds },
+          user_id: { [Op.in]: Array.from(affectedUserIds.values()) },
+          status_id: statusInfo.confirmed.id,
         },
-        {
-          where: {
-            match_id: { [Op.in]: matchIds },
-            user_id: { [Op.in]: Array.from(affectedUserIds.values()) },
-            status_id: statusInfo.confirmed.id,
+        attributes: ['id', 'match_id'],
+        include: [
+          {
+            model: RefereeRole,
+            attributes: ['id', 'referee_role_group_id'],
+            required: false,
           },
-        }
-      );
+        ],
+      });
+      const republishIds = rowsToRepublish
+        .filter((row) => {
+          const groupId = row.RefereeRole?.referee_role_group_id || null;
+          return !(
+            groupId &&
+            leadershipGroupIds.has(groupId) &&
+            proMatchIds.has(row.match_id)
+          );
+        })
+        .map((row) => row.id)
+        .filter(Boolean);
+      if (republishIds.length) {
+        await MatchReferee.update(
+          {
+            status_id: statusInfo.published.id,
+            updated_by: actorId,
+          },
+          {
+            where: {
+              id: { [Op.in]: republishIds },
+            },
+          }
+        );
+      }
     }
     notificationStats = await notifyRefereeAssignmentChanges({
-      before: beforeDetails,
-      after: afterDetails,
+      before: beforeForNotifications,
+      after: afterForNotifications,
       actorId,
     });
   } catch (err) {

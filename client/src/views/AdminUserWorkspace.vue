@@ -33,6 +33,7 @@ import type {
   TeamsResponse,
   FieldError,
   TaxationInfo,
+  VehicleInfo,
 } from '../types/adminUserProfile';
 
 interface OptionItem {
@@ -53,6 +54,14 @@ interface RoleDepartmentGroup {
   key: string;
   name: string;
   roles: RoleOption[];
+}
+
+interface VehicleDraftItem {
+  id: string | null;
+  local_id: string;
+  vehicle: string;
+  number: string;
+  is_active: boolean;
 }
 
 const route = useRoute();
@@ -78,11 +87,18 @@ const {
   upsertTaxation,
   updateRoles,
   updateSportSchools,
+  updateVehicles,
 } = useAdminUserWorkspace();
 
 const userId = computed(() => String(route.params['id'] || ''));
 
-type WorkspaceTile = 'profile' | 'documents' | 'access' | 'links' | 'taxes';
+type WorkspaceTile =
+  | 'profile'
+  | 'documents'
+  | 'vehicles'
+  | 'access'
+  | 'links'
+  | 'taxes';
 type DocumentsSection =
   | 'passport'
   | 'inn'
@@ -124,6 +140,12 @@ const tiles = computed(() => {
             item
           )
         ).length === 0,
+    },
+    {
+      id: 'vehicles',
+      title: 'Автомобили',
+      iconClass: 'bi bi-car-front',
+      complete: current.profile.vehicles.length > 0,
     },
     {
       id: 'access',
@@ -239,6 +261,11 @@ const addressesDraft = reactive({
 const roleSelection = ref<string[]>([]);
 const clubSelection = ref<string[]>([]);
 const teamSelection = ref<string[]>([]);
+const vehiclesDraft = ref<VehicleDraftItem[]>([]);
+
+const VEHICLE_LIMIT = 3;
+const VEHICLE_NUMBER_REGEX =
+  /^[ABEKMHOPCTYXАВЕКМНОРСТУХ]\d{3}[ABEKMHOPCTYXАВЕКМНОРСТУХ]{2}\d{2,3}$/i;
 
 const sectionSnapshot = reactive<Record<ProfileSectionKey, string>>({
   personal: '',
@@ -250,6 +277,7 @@ const sectionSnapshot = reactive<Record<ProfileSectionKey, string>>({
   taxation: '',
   roles: '',
   sport_schools: '',
+  vehicles: '',
 });
 
 const breadcrumbs = computed(() => [
@@ -342,6 +370,83 @@ const teamOptionsById = computed(
   () => new Map(teamOptions.value.map((item) => [item.id, item.name]))
 );
 
+function nextVehicleLocalId(): string {
+  return `vehicle-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function mapVehicleToDraft(vehicle: VehicleInfo): VehicleDraftItem {
+  return {
+    id: vehicle.id,
+    local_id: vehicle.id || nextVehicleLocalId(),
+    vehicle: [vehicle.brand, vehicle.model].filter(Boolean).join(' ').trim(),
+    number: vehicle.number || '',
+    is_active: Boolean(vehicle.is_active),
+  };
+}
+
+function normalizeVehicleNumber(value: string): string {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-ZА-Я0-9]/g, '');
+}
+
+function vehiclePayload() {
+  return {
+    vehicles: vehiclesDraft.value.map((item) => ({
+      id: item.id || null,
+      vehicle: item.vehicle.trim(),
+      number: normalizeVehicleNumber(item.number),
+      is_active: Boolean(item.is_active),
+    })),
+  };
+}
+
+function vehicleFieldError(index: number, field: 'vehicle' | 'number'): string {
+  return fieldError('vehicles', `vehicles.${index}.${field}`);
+}
+
+const vehicleGeneralError = computed(() => fieldError('vehicles', 'vehicles'));
+
+function ensureSingleActiveVehicle(): void {
+  if (!vehiclesDraft.value.length) return;
+  if (vehiclesDraft.value.some((item) => item.is_active)) return;
+  vehiclesDraft.value[0]!.is_active = true;
+}
+
+function addVehicleDraft(): void {
+  if (vehiclesDraft.value.length >= VEHICLE_LIMIT) return;
+  vehiclesDraft.value.push({
+    id: null,
+    local_id: nextVehicleLocalId(),
+    vehicle: '',
+    number: '',
+    is_active: vehiclesDraft.value.length === 0,
+  });
+}
+
+function removeVehicleDraft(index: number): void {
+  const draft = vehiclesDraft.value[index];
+  if (!draft) return;
+  const removedActive = draft.is_active;
+  vehiclesDraft.value.splice(index, 1);
+  if (removedActive) {
+    ensureSingleActiveVehicle();
+  }
+}
+
+function setVehicleActive(index: number): void {
+  vehiclesDraft.value = vehiclesDraft.value.map((item, itemIndex) => ({
+    ...item,
+    is_active: itemIndex === index,
+  }));
+}
+
+function onVehicleNumberInput(index: number, event: Event): void {
+  const target = event.target as HTMLInputElement | null;
+  if (!target || !vehiclesDraft.value[index]) return;
+  vehiclesDraft.value[index]!.number = normalizeVehicleNumber(target.value);
+}
+
 const workspaceTaxation = computed(
   () => workspace.value?.profile.taxation ?? null
 );
@@ -364,6 +469,7 @@ const activeModalTitle = computed(() => {
     taxation: 'Налоги',
     roles: 'Роли и доступ',
     sport_schools: 'Клубы/команды',
+    vehicles: 'Автомобили',
   };
   return map[activeEditingSection.value];
 });
@@ -574,6 +680,8 @@ function hydrateDraftsFromWorkspace(data: AdminUserProfileWorkspace): void {
   teamSelection.value = data.profile.sport_school_links.teams.map(
     (item) => item.id
   );
+  vehiclesDraft.value = (data.profile.vehicles || []).map(mapVehicleToDraft);
+  ensureSingleActiveVehicle();
 
   taxationPreview.value = null;
 
@@ -586,6 +694,7 @@ function hydrateDraftsFromWorkspace(data: AdminUserProfileWorkspace): void {
   captureSnapshot('taxation', taxationPayload());
   captureSnapshot('roles', rolesPayload());
   captureSnapshot('sport_schools', sportSchoolsPayload());
+  captureSnapshot('vehicles', vehiclePayload());
 }
 
 function personalPayload() {
@@ -1153,6 +1262,67 @@ async function validateCurrentSection(): Promise<boolean> {
     return true;
   }
 
+  if (section === 'vehicles') {
+    setSectionFieldError('vehicles', 'vehicles', '');
+    const payload = vehiclePayload().vehicles;
+
+    if (payload.length > VEHICLE_LIMIT) {
+      setSectionFieldError(
+        'vehicles',
+        'vehicles',
+        `Можно сохранить не более ${VEHICLE_LIMIT} автомобилей`
+      );
+    }
+
+    const activeCount = payload.filter((item) => item.is_active).length;
+    if (payload.length > 0 && activeCount !== 1) {
+      setSectionFieldError(
+        'vehicles',
+        'vehicles',
+        'Выберите один активный автомобиль'
+      );
+    }
+
+    const seenNumbers = new Map<string, number[]>();
+    for (let index = 0; index < payload.length; index += 1) {
+      const item = payload[index]!;
+      const vehicleValue = item.vehicle.trim();
+      const number = normalizeVehicleNumber(item.number);
+
+      setSectionFieldError(
+        'vehicles',
+        `vehicles.${index}.vehicle`,
+        vehicleValue ? '' : 'Введите марку и модель'
+      );
+      setSectionFieldError(
+        'vehicles',
+        `vehicles.${index}.number`,
+        number && VEHICLE_NUMBER_REGEX.test(number)
+          ? ''
+          : 'Введите корректный госномер'
+      );
+
+      if (number) {
+        const indexes = seenNumbers.get(number) || [];
+        indexes.push(index);
+        seenNumbers.set(number, indexes);
+      }
+    }
+
+    for (const indexes of seenNumbers.values()) {
+      if (indexes.length < 2) continue;
+      for (const index of indexes) {
+        setSectionFieldError(
+          'vehicles',
+          `vehicles.${index}.number`,
+          'Госномер дублируется'
+        );
+      }
+    }
+
+    return sections.vehicles.fieldErrors.length === 0;
+  }
+
   return true;
 }
 
@@ -1293,6 +1463,11 @@ async function beginEdit(section: ProfileSectionKey): Promise<void> {
       captureSnapshot(section, sportSchoolsPayload());
     }
 
+    if (section === 'vehicles') {
+      ensureSingleActiveVehicle();
+      captureSnapshot(section, vehiclePayload());
+    }
+
     if (section === 'passport') captureSnapshot(section, passportPayload());
     if (section === 'inn') captureSnapshot(section, innPayload());
     if (section === 'snils') captureSnapshot(section, snilsPayload());
@@ -1315,6 +1490,7 @@ async function beginEdit(section: ProfileSectionKey): Promise<void> {
 function getSectionForTile(tile: WorkspaceTile): ProfileSectionKey {
   if (tile === 'profile') return 'personal';
   if (tile === 'documents') return 'passport';
+  if (tile === 'vehicles') return 'vehicles';
   if (tile === 'access') return 'roles';
   if (tile === 'links') return 'sport_schools';
   return 'taxation';
@@ -1669,6 +1845,11 @@ function resetDraftBySection(section: ProfileSectionKey): void {
     );
   }
 
+  if (section === 'vehicles') {
+    vehiclesDraft.value = (data.profile.vehicles || []).map(mapVehicleToDraft);
+    ensureSingleActiveVehicle();
+  }
+
   if (section === 'taxation') {
     taxationPreview.value = null;
   }
@@ -1728,6 +1909,8 @@ async function saveActiveEdit(): Promise<void> {
         club_ids: [...clubSelection.value],
         team_ids: [...teamSelection.value],
       });
+    } else if (section === 'vehicles') {
+      await updateVehicles(userId.value, vehiclePayload());
     }
 
     await loadWorkspace(userId.value);
@@ -1797,6 +1980,9 @@ watch(clubSelection, () => syncDirty('sport_schools', sportSchoolsPayload()), {
   deep: true,
 });
 watch(teamSelection, () => syncDirty('sport_schools', sportSchoolsPayload()), {
+  deep: true,
+});
+watch(vehiclesDraft, () => syncDirty('vehicles', vehiclePayload()), {
   deep: true,
 });
 watch(taxationPreview, () => syncDirty('taxation', taxationPayload()), {
@@ -2538,6 +2724,126 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
               </template>
+            </template>
+
+            <template v-if="activeWorkspaceTile === 'vehicles'">
+              <section class="workspace-vehicles">
+                <div class="workspace-vehicles__header mb-3">
+                  <div class="small text-muted">
+                    Максимум {{ VEHICLE_LIMIT }} автомобиля
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-brand"
+                    :disabled="
+                      !sections.vehicles.editing ||
+                      vehiclesDraft.length >= VEHICLE_LIMIT
+                    "
+                    @click="addVehicleDraft"
+                  >
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                    Добавить автомобиль
+                  </button>
+                </div>
+
+                <div v-if="vehicleGeneralError" class="alert alert-danger py-2">
+                  {{ vehicleGeneralError }}
+                </div>
+
+                <div
+                  v-if="!vehiclesDraft.length"
+                  class="workspace-vehicle-empty border rounded p-3 text-muted"
+                >
+                  Автомобили не добавлены. Добавьте минимум один автомобиль для
+                  назначения.
+                </div>
+
+                <div v-else class="workspace-vehicles__list">
+                  <article
+                    v-for="(vehicle, index) in vehiclesDraft"
+                    :key="vehicle.local_id"
+                    class="workspace-vehicle-card border rounded p-3"
+                  >
+                    <div class="row g-3 align-items-end">
+                      <div class="col-12 col-xl-5">
+                        <label class="form-label" :for="`vehicle-name-${index}`"
+                          >Марка и модель</label
+                        >
+                        <input
+                          :id="`vehicle-name-${index}`"
+                          v-model="vehicle.vehicle"
+                          class="form-control"
+                          :class="{
+                            'is-invalid': vehicleFieldError(index, 'vehicle'),
+                          }"
+                          :disabled="!sections.vehicles.editing"
+                          placeholder="Например: Toyota Camry"
+                        />
+                        <div
+                          v-if="vehicleFieldError(index, 'vehicle')"
+                          class="invalid-feedback d-block"
+                        >
+                          {{ vehicleFieldError(index, 'vehicle') }}
+                        </div>
+                      </div>
+                      <div class="col-12 col-xl-4">
+                        <label
+                          class="form-label"
+                          :for="`vehicle-number-${index}`"
+                          >Госномер</label
+                        >
+                        <input
+                          :id="`vehicle-number-${index}`"
+                          :value="vehicle.number"
+                          class="form-control"
+                          :class="{
+                            'is-invalid': vehicleFieldError(index, 'number'),
+                          }"
+                          maxlength="9"
+                          :disabled="!sections.vehicles.editing"
+                          placeholder="A123AA77"
+                          @input="onVehicleNumberInput(index, $event)"
+                        />
+                        <div
+                          v-if="vehicleFieldError(index, 'number')"
+                          class="invalid-feedback d-block"
+                        >
+                          {{ vehicleFieldError(index, 'number') }}
+                        </div>
+                      </div>
+                      <div
+                        class="col-12 col-xl-3 workspace-vehicle-card__actions"
+                      >
+                        <div class="form-check m-0">
+                          <input
+                            :id="`vehicle-active-${index}`"
+                            class="form-check-input"
+                            type="radio"
+                            name="workspace-active-vehicle"
+                            :checked="vehicle.is_active"
+                            :disabled="!sections.vehicles.editing"
+                            @change="setVehicleActive(index)"
+                          />
+                          <label
+                            class="form-check-label"
+                            :for="`vehicle-active-${index}`"
+                          >
+                            Активный
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          :disabled="!sections.vehicles.editing"
+                          @click="removeVehicleDraft(index)"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </section>
             </template>
 
             <template v-if="activeWorkspaceTile === 'access'">
@@ -3310,6 +3616,35 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
+.workspace-vehicles__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.workspace-vehicles__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.workspace-vehicle-card {
+  border-color: rgba(var(--bs-dark-rgb), 0.1) !important;
+  background: rgba(var(--bs-light-rgb), 0.16);
+}
+
+.workspace-vehicle-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.workspace-vehicle-empty {
+  background: rgba(var(--bs-light-rgb), 0.14);
+}
+
 .workspace-tax {
   display: flex;
   flex-direction: column;
@@ -3404,11 +3739,21 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .workspace-vehicles__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 767.98px) {
   .workspace-tax-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-vehicle-card__actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

@@ -46,11 +46,13 @@ const router = useRouter();
 const currentUser = computed<AuthUser | null>(() => auth.user);
 
 onMounted(async () => {
-  if (!auth.user) {
+  if (!auth.user && auth.token) {
     try {
       await fetchCurrentUser();
-    } catch (error) {
-      await logout();
+    } catch {
+      // Avoid logout calls when token is stale/missing during bootstrap.
+      clearAuth();
+      await initCsrf().catch(() => {});
     }
   }
 });

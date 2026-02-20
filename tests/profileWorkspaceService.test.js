@@ -9,6 +9,7 @@ const getTaxByUserMock = jest.fn();
 const getAddressForUserMock = jest.fn();
 const listUserClubsMock = jest.fn();
 const listUserTeamsMock = jest.fn();
+const listUserVehiclesMock = jest.fn();
 const taskFindAllMock = jest.fn();
 const ticketFindAllMock = jest.fn();
 
@@ -75,6 +76,13 @@ jest.unstable_mockModule('../src/services/teamService.js', () => ({
   },
 }));
 
+jest.unstable_mockModule('../src/services/vehicleService.js', () => ({
+  __esModule: true,
+  default: {
+    listForUser: listUserVehiclesMock,
+  },
+}));
+
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Task: { findAll: taskFindAllMock },
@@ -119,6 +127,10 @@ jest.unstable_mockModule('../src/mappers/teamMapper.js', () => ({
   __esModule: true,
   default: { toPublic: (v) => v },
 }));
+jest.unstable_mockModule('../src/mappers/vehicleMapper.js', () => ({
+  __esModule: true,
+  default: { toPublic: (v) => v },
+}));
 
 const { default: service } =
   await import('../src/services/profileWorkspaceService.js');
@@ -133,6 +145,7 @@ beforeEach(() => {
   getAddressForUserMock.mockReset();
   listUserClubsMock.mockReset();
   listUserTeamsMock.mockReset();
+  listUserVehiclesMock.mockReset();
   taskFindAllMock.mockReset();
   ticketFindAllMock.mockReset();
 });
@@ -149,6 +162,9 @@ test('getWorkspace builds completeness and permissions', async () => {
     .mockResolvedValueOnce(null);
   listUserClubsMock.mockResolvedValue([{ id: 'club-1', name: 'Клуб 1' }]);
   listUserTeamsMock.mockResolvedValue([{ id: 'team-1', name: 'Команда 1' }]);
+  listUserVehiclesMock.mockResolvedValue([
+    { id: 'veh-1', brand: 'Toyota', model: 'Camry', number: 'A123AA77' },
+  ]);
 
   const now = Date.now();
   const oldTaskDate = new Date(now - 16 * 24 * 60 * 60 * 1000).toISOString();
@@ -188,6 +204,9 @@ test('getWorkspace builds completeness and permissions', async () => {
   expect(result.profile.passport).toEqual({ id: 'p-1' });
   expect(result.profile.inn).toBeNull();
   expect(result.profile.snils).toEqual({ id: 's-1' });
+  expect(result.profile.vehicles).toEqual([
+    { id: 'veh-1', brand: 'Toyota', model: 'Camry', number: 'A123AA77' },
+  ]);
   expect(result.profile.addresses.REGISTRATION).toEqual({ id: 'a1' });
   expect(result.profile.addresses.RESIDENCE).toBeNull();
   expect(result.related.tasks_summary).toEqual({ open: 2, overdue: 1 });

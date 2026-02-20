@@ -29,9 +29,10 @@ const app = express();
 // Trust upstream proxies (DDoS/WAF/CDN + LB) to populate X-Forwarded-*
 // Use a bounded number of hops to reduce spoofing risk if edge misconfigures.
 const rawTrustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS || '2', 10);
-const TRUST_PROXY_HOPS = Number.isInteger(rawTrustProxyHops) && rawTrustProxyHops >= 0
-  ? rawTrustProxyHops
-  : 1;
+const TRUST_PROXY_HOPS =
+  Number.isInteger(rawTrustProxyHops) && rawTrustProxyHops >= 0
+    ? rawTrustProxyHops
+    : 1;
 app.set('trust proxy', TRUST_PROXY_HOPS);
 
 app.use(express.json());
@@ -67,6 +68,7 @@ export const corsOptions = {
   allowedHeaders: [
     'Content-Type',
     'Authorization',
+    'X-Verify-Token',
     'X-XSRF-TOKEN',
     'X-CSRF-TOKEN',
     'X-Request-Id',
@@ -106,7 +108,11 @@ if (process.env.NODE_ENV !== 'test') {
 }
 app.use(requestLogger);
 
-const swaggerMiddlewares = [apiDocsGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec)];
+const swaggerMiddlewares = [
+  apiDocsGuard,
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec),
+];
 if (swaggerContentSecurityPolicyMiddleware) {
   swaggerMiddlewares.unshift(swaggerContentSecurityPolicyMiddleware);
 }

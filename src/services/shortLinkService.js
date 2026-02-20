@@ -1,8 +1,11 @@
 import crypto from 'crypto';
+
+import { Op } from 'sequelize';
+
 import '../config/env.js';
 
-import ShortLink from '../models/shortLink.js';
 import logger from '../../logger.js';
+import ShortLink from '../models/shortLink.js';
 import { buildVerifyToken } from '../utils/verifyDocHmac.js';
 
 const memoryStore = new Map();
@@ -105,7 +108,7 @@ export async function getOrCreateForToken(token) {
   }
   // If reattempts failed, reuse an expired record by updating it
   const expired = await ShortLink.findOne({
-    where: { expires_at: { [ShortLink.sequelize.Op.lt]: new Date() } },
+    where: { expires_at: { [Op.lt]: new Date() } },
   });
   if (expired) {
     expired.token = token;
@@ -149,8 +152,8 @@ export async function resolveCode(code) {
   }
 }
 
-export async function buildShortVerifyUrl({ d, s, u }) {
-  const token = buildVerifyToken({ d, s, u });
+export async function buildShortVerifyUrl({ d, s, u, signedAt }) {
+  const token = buildVerifyToken({ d, s, u, signedAt }, { issuedAt: signedAt });
   const enabled =
     String(process.env.SHORTLINK_ENABLED || 'false').toLowerCase() === 'true';
   if (!enabled) throw new Error('shortlink_disabled');

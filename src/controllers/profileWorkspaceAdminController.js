@@ -12,6 +12,7 @@ import dadataService from '../services/dadataService.js';
 import addressService from '../services/addressService.js';
 import clubUserService from '../services/clubUserService.js';
 import teamService from '../services/teamService.js';
+import vehicleService from '../services/vehicleService.js';
 import userMapper from '../mappers/userMapper.js';
 import passportMapper from '../mappers/passportMapper.js';
 import innMapper from '../mappers/innMapper.js';
@@ -21,6 +22,7 @@ import taxationMapper from '../mappers/taxationMapper.js';
 import addressMapper from '../mappers/addressMapper.js';
 import clubMapper from '../mappers/clubMapper.js';
 import teamMapper from '../mappers/teamMapper.js';
+import vehicleMapper from '../mappers/vehicleMapper.js';
 import {
   incProfileSectionUpdate,
   incProfileSectionUpdateError,
@@ -31,6 +33,9 @@ import {
 import { FHMO_STAFF_ROLES } from '../utils/roles.js';
 
 const ADDRESS_TYPES = new Set(['REGISTRATION', 'RESIDENCE']);
+const VEHICLE_LIMIT = 3;
+const VEHICLE_NUMBER_REGEX =
+  /^[ABEKMHOPCTYXАВЕКМНОРСТУХ]\d{3}[ABEKMHOPCTYXАВЕКМНОРСТУХ]{2}\d{2,3}$/i;
 
 function nowMs() {
   return Date.now();
@@ -103,6 +108,20 @@ function observeAndLog(
     latency_ms: latencyMs,
   });
   return latencyMs;
+}
+
+function normalizeVehicleNumber(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-ZА-Я0-9]/g, '');
+}
+
+function fieldError(field, code, message = code) {
+  return {
+    field,
+    code,
+    message,
+  };
 }
 
 async function updateInn(userId, number, actorId) {
@@ -192,6 +211,120 @@ async function updateBankAccount(userId, payload, actorId) {
 
   const updated = await bankAccountService.updateForUser(userId, data, actorId);
   return bankAccountMapper.toPublic(updated);
+}
+
+async function normalizeVehiclesPayload(rawVehicles) {
+  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
+  const fieldErrors = [];
+
+  if (vehicles.length > VEHICLE_LIMIT) {
+    fieldErrors.push(
+      fieldError(
+        'vehicles',
+        'vehicle_limit',
+        `Можно сохранить не более ${VEHICLE_LIMIT} автомобилей`
+      )
+    );
+  }
+
+  const normalized = [];
+  for (let index = 0; index < vehicles.length; index += 1) {
+    const item = vehicles[index] || {};
+    const pathPrefix = `vehicles.${index}`;
+    const vehicleValue = String(item.vehicle || '').trim();
+    const number = normalizeVehicleNumber(item.number);
+
+    if (!vehicleValue) {
+      fieldErrors.push(
+        fieldError(
+          `${pathPrefix}.vehicle`,
+          'invalid_vehicle',
+          'Введите марку и модель'
+        )
+      );
+    }
+
+    if (!number || !VEHICLE_NUMBER_REGEX.test(number)) {
+      fieldErrors.push(
+        fieldError(
+          `${pathPrefix}.number`,
+          'invalid_number',
+          'Введите корректный госномер'
+        )
+      );
+    }
+
+    normalized.push({
+      id: item.id || null,
+      vehicle: vehicleValue,
+      number,
+      is_active: Boolean(item.is_active),
+    });
+  }
+
+  if (fieldErrors.length > 0) {
+    return { vehicles: normalized, fieldErrors };
+  }
+
+  const duplicateMap = new Map();
+  for (let index = 0; index < normalized.length; index += 1) {
+    const number = normalized[index].number;
+    const list = duplicateMap.get(number) || [];
+    list.push(index);
+    duplicateMap.set(number, list);
+  }
+  for (const indexes of duplicateMap.values()) {
+    if (indexes.length < 2) continue;
+    for (const idx of indexes) {
+      fieldErrors.push(
+        fieldError(
+          `vehicles.${idx}.number`,
+          'duplicate_number',
+          'Госномер дублируется'
+        )
+      );
+    }
+  }
+
+  const activeCount = normalized.filter((item) => item.is_active).length;
+  if (normalized.length > 0 && activeCount !== 1) {
+    fieldErrors.push(
+      fieldError(
+        'vehicles',
+        'invalid_active_vehicle',
+        'Выберите один активный автомобиль'
+      )
+    );
+  }
+
+  if (fieldErrors.length > 0) {
+    return { vehicles: normalized, fieldErrors };
+  }
+
+  const normalizedWithClean = [];
+  for (let index = 0; index < normalized.length; index += 1) {
+    const item = normalized[index];
+    const clean = await dadataService.cleanVehicle(item.vehicle);
+    if (!clean || clean.qc === 1 || clean.qc === 2) {
+      fieldErrors.push(
+        fieldError(
+          `vehicles.${index}.vehicle`,
+          'invalid_vehicle',
+          'Введите корректно марку и модель'
+        )
+      );
+      continue;
+    }
+    normalizedWithClean.push({
+      id: item.id,
+      brand: clean.brand,
+      model: clean.model,
+      number: item.number,
+      is_active: item.is_active,
+    });
+  }
+
+  return { vehicles: normalizedWithClean, fieldErrors };
 }
 
 export default {
@@ -651,6 +784,57 @@ export default {
           clubs: clubs.map(clubMapper.toPublic),
           teams: teams.map(teamMapper.toPublic),
         },
+      });
+    } catch (err) {
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt,
+        'warn'
+      );
+      const code = toErrorCode(err);
+      incProfileSectionUpdate(section, 'error');
+      incProfileSectionUpdateError(section, code);
+      observeProfileSectionUpdateDuration(section, latencyMs / 1000);
+      return sendWorkspaceError(req, res, err);
+    }
+  },
+
+  async updateVehicles(req, res) {
+    if (!ensureValid(req, res)) return;
+    const startedAt = nowMs();
+    const section = 'vehicles';
+    try {
+      const { vehicles, fieldErrors } = await normalizeVehiclesPayload(
+        req.body?.vehicles
+      );
+      if (fieldErrors.length > 0) {
+        return sendWorkspaceError(
+          req,
+          res,
+          { code: 'validation_error', status: 422 },
+          422,
+          fieldErrors
+        );
+      }
+
+      const updatedVehicles = await vehicleService.replaceForUser(
+        req.params.id,
+        vehicles,
+        req.user.id
+      );
+
+      const latencyMs = observeAndLog(
+        section,
+        req.id,
+        req.params.id,
+        startedAt
+      );
+      incProfileSectionUpdate(section, 'success');
+      observeProfileSectionUpdateDuration(section, latencyMs / 1000);
+      return res.json({
+        vehicles: updatedVehicles.map(vehicleMapper.toPublic),
       });
     } catch (err) {
       const latencyMs = observeAndLog(

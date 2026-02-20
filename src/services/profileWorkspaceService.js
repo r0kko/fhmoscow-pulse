@@ -8,6 +8,7 @@ import taxationMapper from '../mappers/taxationMapper.js';
 import addressMapper from '../mappers/addressMapper.js';
 import clubMapper from '../mappers/clubMapper.js';
 import teamMapper from '../mappers/teamMapper.js';
+import vehicleMapper from '../mappers/vehicleMapper.js';
 
 import userService from './userService.js';
 import passportService from './passportService.js';
@@ -18,6 +19,7 @@ import taxationService from './taxationService.js';
 import addressService from './addressService.js';
 import clubUserService from './clubUserService.js';
 import teamService from './teamService.js';
+import vehicleService from './vehicleService.js';
 
 const ADDRESS_TYPES = ['REGISTRATION', 'RESIDENCE'];
 const OPEN_TASK_STATUSES = new Set(['PENDING', 'IN_PROGRESS']);
@@ -34,6 +36,7 @@ function buildCompleteness(profile) {
       profile.addresses?.REGISTRATION && profile.addresses?.RESIDENCE
     ),
     taxation: Boolean(profile.taxation),
+    vehicles: Array.isArray(profile.vehicles) && profile.vehicles.length > 0,
   };
 
   const keys = Object.keys(checks);
@@ -123,6 +126,7 @@ async function getWorkspace(userId, actorUser) {
     addresses,
     clubs,
     teams,
+    vehicles,
     taskSummary,
     ticketSummary,
     actorRoles,
@@ -135,6 +139,7 @@ async function getWorkspace(userId, actorUser) {
     getAddresses(userId),
     clubUserService.listUserClubs(userId),
     teamService.listUserTeams(userId),
+    vehicleService.listForUser(userId),
     getTaskSummary(userId),
     getTicketSummary(userId),
     getRoleAliases(actorUser),
@@ -147,6 +152,7 @@ async function getWorkspace(userId, actorUser) {
     bank_account: bankAccountMapper.toPublic(bankAccount),
     addresses,
     taxation: taxationMapper.toPublic(taxation),
+    vehicles: vehicles.map(vehicleMapper.toPublic),
     sport_school_links: {
       clubs: clubs.map(clubMapper.toPublic),
       teams: teams.map(teamMapper.toPublic),

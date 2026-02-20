@@ -133,15 +133,19 @@ const TEST_DATE_NEXT = '2099-02-11';
 const TEST_DATE_START = new Date(`${TEST_DATE}T09:00:00Z`);
 const TEST_DATE_NEXT_START = new Date(`${TEST_DATE_NEXT}T09:00:00Z`);
 
-function makeRoleGroup() {
-  return { id: 'rg1', name: 'Судьи в поле', sort_order: 1 };
+function makeRoleGroup(overrides = {}) {
+  return {
+    id: overrides.id || 'rg1',
+    name: overrides.name || 'Судьи в поле',
+    sort_order: overrides.sort_order ?? 1,
+  };
 }
 
-function makeRole(group) {
+function makeRole(group, overrides = {}) {
   return {
-    id: 'r1',
-    name: 'Главный судья',
-    sort_order: 1,
+    id: overrides.id || 'r1',
+    name: overrides.name || 'Главный судья',
+    sort_order: overrides.sort_order ?? 1,
     referee_role_group_id: group.id,
     RefereeRoleGroup: group,
   };
@@ -159,6 +163,13 @@ function makeMatch(overrides = {}) {
         name: 'Группа А',
         match_duration_minutes: overrides.match_duration_minutes ?? 30,
       };
+  const tournament = hasOwn('Tournament')
+    ? overrides.Tournament
+    : {
+        id: 't1',
+        name: 'Кубок',
+        CompetitionType: { id: 'ct-youth', alias: 'YOUTH' },
+      };
   return {
     id: overrides.id || 'm1',
     date_start: overrides.date_start || TEST_DATE_START,
@@ -166,7 +177,7 @@ function makeMatch(overrides = {}) {
     team1_id: overrides.team1_id || 'team1',
     team2_id: overrides.team2_id || 'team2',
     tournament_group_id: tournamentGroupId,
-    Tournament: { id: 't1', name: 'Кубок' },
+    Tournament: tournament,
     Stage: { id: 's1', name: 'Этап 1' },
     TournamentGroup: tournamentGroup,
     Tour: { id: 'tour1', name: '1 тур' },
@@ -343,6 +354,46 @@ test('listRefereesByDate applies leagues access filter for active season', async
   expect(result.referees[0].id).toBe('u2');
 });
 
+test('listRefereesByDate keeps busy referees for pro leadership group', async () => {
+  const leadershipGroup = makeRoleGroup({
+    id: 'rg-lead',
+    name: 'Руководство',
+  });
+  refereeRoleGroupFindByPkMock.mockResolvedValue(leadershipGroup);
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u3',
+      last_name: 'Сидоров',
+      first_name: 'Сидор',
+      patronymic: 'Сидорович',
+      Roles: [{ alias: 'BRIGADE_REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    {
+      user_id: 'u3',
+      date: TEST_DATE,
+      AvailabilityType: { alias: 'BUSY' },
+      from_time: null,
+      to_time: null,
+    },
+  ]);
+
+  const result = await service.listRefereesByDate({
+    date: TEST_DATE,
+    competitionAlias: 'PRO',
+    roleGroupId: leadershipGroup.id,
+  });
+
+  expect(refereeRoleGroupFindByPkMock).toHaveBeenCalledWith(
+    leadershipGroup.id,
+    expect.objectContaining({ attributes: ['id', 'name'] })
+  );
+  expect(result.referees).toHaveLength(1);
+  expect(result.referees[0].availability.status).toBe('BUSY');
+});
+
 test('updateMatchReferees saves draft assignments', async () => {
   matchFindByPkMock.mockResolvedValue(
     makeMatch({ match_duration_minutes: 60 })
@@ -476,6 +527,142 @@ test('updateMatchReferees rejects unavailable referees', async () => {
   ).rejects.toMatchObject({ code: 'referee_unavailable' });
 });
 
+test('updateMatchReferees skips availability checks for pro leadership assignments', async () => {
+  const leadershipGroup = makeRoleGroup({
+    id: 'rg-lead',
+    name: 'Руководство',
+  });
+  const leadershipRole = makeRole(leadershipGroup, {
+    id: 'r-lead',
+    name: 'Инспектор матча',
+  });
+  refereeRoleGroupFindByPkMock.mockResolvedValue(leadershipGroup);
+  matchFindByPkMock.mockResolvedValue(
+    makeMatch({
+      match_duration_minutes: 60,
+      Tournament: {
+        id: 't1',
+        name: 'Кубок',
+        CompetitionType: { id: 'ct-pro', alias: 'PRO' },
+      },
+    })
+  );
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: leadershipRole.id,
+      count: 1,
+    },
+  ]);
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u1',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    { user_id: 'u1', AvailabilityType: { alias: 'BUSY' } },
+  ]);
+  matchRefereeFindAllMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+    {
+      ...makeAssignment('DRAFT'),
+      referee_role_id: leadershipRole.id,
+      status_id: draftStatus.id,
+      RefereeRole: leadershipRole,
+      MatchRefereeStatus: draftStatus,
+      user_id: 'u1',
+    },
+  ]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  const result = await service.updateMatchReferees(
+    'm1',
+    [{ role_id: leadershipRole.id, user_id: 'u1' }],
+    'admin',
+    { roleGroupId: leadershipGroup.id }
+  );
+
+  expect(listForUsersMock).not.toHaveBeenCalled();
+  expect(result.assignments[0].status).toBe('DRAFT');
+});
+
+test('updateMatchReferees allows occupied users for pro leadership assignments', async () => {
+  const leadershipGroup = makeRoleGroup({
+    id: 'rg-lead',
+    name: 'Руководство',
+  });
+  const fieldGroup = makeRoleGroup({ id: 'rg-field', name: 'Судьи в поле' });
+  const leadershipRole = makeRole(leadershipGroup, {
+    id: 'r-lead',
+    name: 'Инспектор матча',
+  });
+  const fieldRole = makeRole(fieldGroup, { id: 'r-field', name: 'Главный' });
+  refereeRoleGroupFindByPkMock.mockResolvedValue(leadershipGroup);
+  matchFindByPkMock.mockResolvedValue(
+    makeMatch({
+      Tournament: {
+        id: 't1',
+        name: 'Кубок',
+        CompetitionType: { id: 'ct-pro', alias: 'PRO' },
+      },
+    })
+  );
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: leadershipRole.id,
+      count: 1,
+    },
+  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([
+      {
+        match_id: 'm1',
+        referee_role_id: fieldRole.id,
+        user_id: 'u1',
+        status_id: publishedStatus.id,
+        RefereeRole: fieldRole,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('PUBLISHED'),
+        id: 'a1',
+        referee_role_id: fieldRole.id,
+        status_id: publishedStatus.id,
+        RefereeRole: fieldRole,
+        MatchRefereeStatus: publishedStatus,
+        user_id: 'u1',
+      },
+      {
+        ...makeAssignment('DRAFT'),
+        id: 'a2',
+        referee_role_id: leadershipRole.id,
+        status_id: draftStatus.id,
+        RefereeRole: leadershipRole,
+        MatchRefereeStatus: draftStatus,
+        user_id: 'u1',
+      },
+    ]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  const result = await service.updateMatchReferees(
+    'm1',
+    [{ role_id: leadershipRole.id, user_id: 'u1' }],
+    'admin',
+    { roleGroupId: leadershipGroup.id }
+  );
+
+  expect(result.assignments).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: expect.objectContaining({ id: leadershipRole.id }),
+      }),
+    ])
+  );
+});
+
 test('updateMatchReferees stores clear marker when clearing assignments', async () => {
   matchFindByPkMock.mockResolvedValue(makeMatch());
   tournamentGroupRefereeFindAllMock.mockResolvedValue([
@@ -543,6 +730,75 @@ test('publishMatchReferees promotes draft assignments', async () => {
   expect(result.assignments[0].status).toBe('PUBLISHED');
 });
 
+test('publishMatchReferees auto-confirms pro leadership drafts without notifications', async () => {
+  const leadershipGroup = makeRoleGroup({
+    id: 'rg-lead',
+    name: 'Руководство',
+  });
+  const leadershipRole = makeRole(leadershipGroup, {
+    id: 'r-lead',
+    name: 'Инспектор матча',
+  });
+  matchFindByPkMock.mockResolvedValue(
+    makeMatch({
+      Tournament: {
+        id: 't1',
+        name: 'Кубок',
+        CompetitionType: { id: 'ct-pro', alias: 'PRO' },
+      },
+    })
+  );
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: leadershipRole.id,
+      count: 1,
+    },
+  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      {
+        match_id: 'm1',
+        referee_role_id: leadershipRole.id,
+        status_id: draftStatus.id,
+        RefereeRole: leadershipRole,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('CONFIRMED'),
+        referee_role_id: leadershipRole.id,
+        status_id: confirmedStatus.id,
+        RefereeRole: leadershipRole,
+        MatchRefereeStatus: confirmedStatus,
+      },
+    ])
+    .mockResolvedValueOnce([]);
+
+  const result = await service.publishMatchReferees('m1', 'admin');
+
+  expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
+    expect.objectContaining({ status_id: confirmedStatus.id }),
+    expect.objectContaining({
+      where: expect.objectContaining({
+        match_id: 'm1',
+        status_id: draftStatus.id,
+        referee_role_id: { [Op.in]: [leadershipRole.id] },
+      }),
+      transaction: expect.any(Object),
+    })
+  );
+  expect(result.assignments[0].status).toBe('CONFIRMED');
+  expect(result.notifications).toEqual(
+    expect.objectContaining({
+      queued: 0,
+      published: 0,
+      cancelled: 0,
+    })
+  );
+});
+
 test('publishAssignmentsForDate publishes drafts for a role group', async () => {
   matchFindAllMock.mockResolvedValue([makeMatch()]);
   const group = makeRoleGroup();
@@ -600,6 +856,71 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
     })
   );
   expect(result.published_matches).toEqual(['m1']);
+});
+
+test('publishAssignmentsForDate auto-confirms pro leadership drafts', async () => {
+  const leadershipGroup = makeRoleGroup({
+    id: 'rg-lead',
+    name: 'Руководство',
+  });
+  const leadershipRole = makeRole(leadershipGroup, {
+    id: 'r-lead',
+    name: 'Инспектор матча',
+  });
+  refereeRoleGroupFindAllMock.mockResolvedValue([leadershipGroup]);
+  matchFindAllMock.mockResolvedValue([
+    makeMatch({
+      Tournament: {
+        id: 't1',
+        name: 'Кубок',
+        CompetitionType: { id: 'ct-pro', alias: 'PRO' },
+      },
+    }),
+  ]);
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: leadershipRole.id,
+      count: 1,
+      RefereeRole: leadershipRole,
+    },
+  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      {
+        match_id: 'm1',
+        referee_role_id: leadershipRole.id,
+        user_id: 'u1',
+        status_id: draftStatus.id,
+      },
+    ])
+    .mockResolvedValueOnce([]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+    roleGroupIds: [leadershipGroup.id],
+  });
+
+  expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
+    expect.objectContaining({ status_id: confirmedStatus.id }),
+    expect.objectContaining({
+      where: expect.objectContaining({
+        match_id: 'm1',
+        referee_role_id: leadershipRole.id,
+        user_id: { [Op.in]: ['u1'] },
+        status_id: draftStatus.id,
+      }),
+      transaction: expect.any(Object),
+    })
+  );
+  expect(result.notifications).toEqual(
+    expect.objectContaining({
+      queued: 0,
+      published: 0,
+      cancelled: 0,
+    })
+  );
 });
 
 test('publishAssignmentsForDate publishes available drafts despite gaps', async () => {

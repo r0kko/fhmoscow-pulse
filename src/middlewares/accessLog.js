@@ -3,6 +3,33 @@ import { context, trace } from '@opentelemetry/api';
 
 import { getClientIp } from '../utils/clientIp.js';
 
+const SENSITIVE_QUERY_KEYS = new Set([
+  'token',
+  'access_token',
+  'refresh_token',
+  'code',
+  't',
+]);
+
+function sanitizeUrl(url) {
+  try {
+    const raw = String(url || '');
+    const parsed = new URL(raw, 'http://local');
+    let changed = false;
+    for (const key of Array.from(parsed.searchParams.keys())) {
+      if (SENSITIVE_QUERY_KEYS.has(String(key).toLowerCase())) {
+        parsed.searchParams.set(key, 'redacted');
+        changed = true;
+      }
+    }
+    if (!changed) return raw;
+    const query = parsed.searchParams.toString();
+    return query ? `${parsed.pathname}?${query}` : parsed.pathname;
+  } catch {
+    return String(url || '');
+  }
+}
+
 // JSON access logs with low cardinality fields and correlation ID
 // Only enabled outside of test environment
 
@@ -20,7 +47,7 @@ const jsonFormat = (tokens, req, res) => {
     level: 'info',
     req_id: tokens.reqid(req, res),
     method: tokens.method(req, res),
-    path: tokens.url(req, res),
+    path: sanitizeUrl(tokens.url(req, res)),
     route: tokens.route(req, res),
     status: Number(tokens.status(req, res) || 0),
     status_class: `${String(tokens.status(req, res) || 0)[0]}xx`,
