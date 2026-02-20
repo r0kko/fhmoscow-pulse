@@ -1,6 +1,7 @@
 import { expect, jest, test } from '@jest/globals';
 
 const findOneMock = jest.fn();
+const userExternalIdFindAllMock = jest.fn();
 const createMock = jest.fn();
 const updateMock = jest.fn();
 
@@ -11,6 +12,9 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Snils: {
     findOne: findOneMock,
     create: createMock,
+  },
+  UserExternalId: {
+    findAll: userExternalIdFindAllMock,
   },
 }));
 

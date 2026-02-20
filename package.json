@@ -33,6 +33,7 @@
     "test:all": "npm run test:server && npm run test:client",
     "test:ci": "npm run test:server:ci && npm run test:client",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
+    "docs:openapi:generate": "node ./scripts/generateOpenApiSpec.mjs",
     "validate:dashboards": "node scripts/validate-dashboards.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "audit:full": "npm audit --audit-level=moderate"
@@ -40,7 +41,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",
     "@aws-sdk/s3-request-presigner": "^3.985.0",
-    "@jest/globals": "^30.2.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.69.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.208.0",
@@ -79,14 +79,13 @@
     "redis": "^5.10.0",
     "safe-regex": "^2.1.1",
     "sequelize": "^6.37.7",
-    "sequelize-cli": "^6.6.5",
-    "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",
     "winston": "^3.19.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@jest/globals": "^30.2.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^6.15.0",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -100,6 +99,8 @@
     "is-symbol": "file:packages/is-symbol",
     "jest": "^30.2.0",
     "prettier": "^3.8.1",
-    "semver": "^7.7.4"
+    "sequelize-cli": "^6.6.5",
+    "semver": "^7.7.4",
+    "swagger-jsdoc": "^6.2.8"
   }
 }

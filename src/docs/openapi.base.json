@@ -1,0 +1,2665 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "АСОУ ПД Пульс API",
+    "version": "1.0.0",
+    "description": "REST API for the АСОУ ПД Пульс application providing user management and authentication.\n\nError contract: most failures return { error: <code> }. Validation errors return { error: \"validation_error\", details: [{ field, code }] }.",
+    "contact": {
+      "email": "support@example.com"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "RateLimited": {
+        "description": "Too Many Requests (rate limit exceeded — may be enforced by API or upstream DDoS protection)",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait before retrying (advisory)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "default": {
+                "value": {
+                  "error": "rate_limited"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error code"
+          }
+        },
+        "required": ["error"]
+      },
+      "ValidationErrorDetail": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": ["field", "code"]
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": ["validation_error"],
+            "description": "Validation error code"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationErrorDetail"
+            }
+          }
+        },
+        "required": ["error", "details"]
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Log in a user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone", "password"],
+                "properties": {
+                  "phone": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Log out the current user",
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user info",
+        "responses": {
+          "200": {
+            "description": "Current user info"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "responses": {
+          "200": {
+            "description": "New access token. Requires a valid HTTP-only refresh cookie."
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Change current user's password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["current_password", "new_password"],
+                "properties": {
+                  "current_password": {
+                    "type": "string"
+                  },
+                  "new_password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed and new tokens issued"
+          }
+        }
+      }
+    },
+    "/auth/password-policy": {
+      "get": {
+        "summary": "Get current password policy metadata",
+        "responses": {
+          "200": {
+            "description": "Policy info"
+          }
+        }
+      }
+    },
+    "/auth/cookie-cleanup": {
+      "get": {
+        "summary": "Clear legacy/broken auth and CSRF cookies",
+        "responses": {
+          "200": {
+            "description": "Cookies cleared (best-effort)"
+          }
+        }
+      }
+    },
+    "/bank-accounts/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's bank account",
+        "responses": {
+          "200": {
+            "description": "Bank account info"
+          }
+        }
+      }
+    },
+    "/bank-accounts": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create bank account for current user",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete current user's bank account",
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      }
+    },
+    "/bank-accounts/change-request": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Request bank details change (creates ticket + statement)",
+        "responses": {
+          "201": {
+            "description": "Created ticket and document"
+          }
+        }
+      }
+    },
+    "/clubs": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List clubs (optionally include teams)"
+      }
+    },
+    "/clubs/{id}/sport-school-structure": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Detailed structure of sport school staff for a club"
+      }
+    },
+    "/clubs/{id}/staff": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List staff assigned to a club"
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Attach staff to a club"
+      }
+    },
+    "/clubs/{id}/staff/{userId}": {
+      "patch": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update staff position within a club"
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Detach staff from a club"
+      }
+    },
+    "/dadata/suggest-fio": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get FIO suggestions",
+        "responses": {
+          "200": {
+            "description": "Array of suggestions"
+          }
+        }
+      }
+    },
+    "/dadata/clean-fio": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Standardize FIO",
+        "responses": {
+          "200": {
+            "description": "Standardized object"
+          }
+        }
+      }
+    },
+    "/dadata/suggest-address": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get address suggestions",
+        "responses": {
+          "200": {
+            "description": "Array of suggestions"
+          }
+        }
+      }
+    },
+    "/dadata/clean-address": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Standardize address",
+        "responses": {
+          "200": {
+            "description": "Standardized object"
+          }
+        }
+      }
+    },
+    "/dadata/suggest-fms-unit": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get FMS unit suggestions",
+        "responses": {
+          "200": {
+            "description": "Array of suggestions"
+          }
+        }
+      }
+    },
+    "/dadata/clean-passport": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Validate passport number",
+        "responses": {
+          "200": {
+            "description": "Standardized object"
+          }
+        }
+      }
+    },
+    "/dadata/find-bank": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Find bank by BIC or name",
+        "responses": {
+          "200": {
+            "description": "Bank information"
+          }
+        }
+      }
+    },
+    "/dadata/find-organization": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Find organization by INN",
+        "responses": {
+          "200": {
+            "description": "Organization information"
+          }
+        }
+      }
+    },
+    "/dadata/clean-vehicle": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Standardize vehicle brand and model",
+        "responses": {
+          "200": {
+            "description": "Standardized object"
+          }
+        }
+      }
+    },
+    "/email/send-code": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Send email verification code",
+        "responses": {
+          "200": {
+            "description": "Code sent"
+          }
+        }
+      }
+    },
+    "/email/confirm": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Confirm email with code",
+        "responses": {
+          "200": {
+            "description": "Email confirmed"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check endpoint",
+        "responses": {
+          "200": {
+            "description": "Service status"
+          }
+        }
+      }
+    },
+    "/csrf-token": {
+      "get": {
+        "summary": "Retrieve CSRF token",
+        "responses": {
+          "200": {
+            "description": "Token value"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user information",
+        "responses": {
+          "200": {
+            "description": "Returns authenticated user info"
+          }
+        }
+      }
+    },
+    "/inns/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's INN",
+        "responses": {
+          "200": {
+            "description": "INN info"
+          }
+        }
+      }
+    },
+    "/inns": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create INN record for current user",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/matches/{id}/sync-penalties": {
+      "post": {
+        "summary": "Reconcile penalties (Нарушение) for a match from external DB",
+        "tags": ["Matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Internal match UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconciled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "upserts": {
+                      "type": "integer"
+                    },
+                    "softDeleted": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Match is not mapped to external or preconditions missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/matches/{id}/penalties": {
+      "get": {
+        "summary": "List penalties for a match (ordered by period/time)",
+        "tags": ["Matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Internal match UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of penalties",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "external_id": {
+                            "type": "integer"
+                          },
+                          "period": {
+                            "type": "integer"
+                          },
+                          "minute": {
+                            "type": "integer"
+                          },
+                          "second": {
+                            "type": "integer"
+                          },
+                          "clock": {
+                            "type": "string",
+                            "example": "12:34"
+                          },
+                          "team_penalty": {
+                            "type": "boolean"
+                          },
+                          "computed_period": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "player": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "external_id": {
+                                "type": "integer"
+                              },
+                              "full_name": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "violation": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "external_id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "full_name": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "minutes": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "external_id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "team_id": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "side": {
+                            "type": "string",
+                            "enum": ["home", "away"],
+                            "nullable": true
+                          },
+                          "minutes_value": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden for non-participants (non-admin), or disabled for non-current double protocol matches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/passports/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's passport",
+        "responses": {
+          "200": {
+            "description": "Passport info"
+          }
+        }
+      }
+    },
+    "/passports": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create passport for current user",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete current user's passport",
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      }
+    },
+    "/password-reset/start": {
+      "post": {
+        "summary": "Request password reset code (neutral response)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Neutral response to avoid account enumeration"
+          }
+        }
+      }
+    },
+    "/password-reset/finish": {
+      "post": {
+        "summary": "Reset password with 6-digit email code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "code", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "6-digit numeric code"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password updated"
+          }
+        }
+      }
+    },
+    "/profile/complete": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Mark profile as complete",
+        "responses": {
+          "200": {
+            "description": "Profile completed"
+          }
+        }
+      }
+    },
+    "/profile/progress": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set profile completion step",
+        "responses": {
+          "200": {
+            "description": "Step updated"
+          }
+        }
+      }
+    },
+    "/referee-group-users": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List all referees with their group",
+        "responses": {
+          "200": {
+            "description": "Array of referees"
+          }
+        }
+      }
+    },
+    "/referee-group-users/{id}": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set referee group for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated referee"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove referee from group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated referee"
+          }
+        }
+      }
+    },
+    "/register/start": {
+      "post": {
+        "summary": "Begin user registration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification code sent"
+          }
+        }
+      }
+    },
+    "/register/finish": {
+      "post": {
+        "summary": "Complete user registration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "code", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration completed"
+          }
+        }
+      }
+    },
+    "/roles": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List available roles",
+        "responses": {
+          "200": {
+            "description": "Array of roles"
+          }
+        }
+      }
+    },
+    "/sign-types": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List available signature types",
+        "responses": {
+          "200": {
+            "description": "Array of sign types"
+          }
+        }
+      }
+    },
+    "/sign-types/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's sign type",
+        "responses": {
+          "200": {
+            "description": "Current sign type"
+          }
+        }
+      }
+    },
+    "/sign-types/send-code": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Send email code for sign type selection",
+        "responses": {
+          "200": {
+            "description": "Code sent"
+          }
+        }
+      }
+    },
+    "/sign-types/users": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List users with their sign types",
+        "responses": {
+          "200": {
+            "description": "Array of users"
+          }
+        }
+      }
+    },
+    "/sign-types/select": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Select sign type for current user",
+        "responses": {
+          "200": {
+            "description": "Selected sign type"
+          }
+        }
+      }
+    },
+    "/snils/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's SNILS",
+        "responses": {
+          "200": {
+            "description": "SNILS info"
+          }
+        }
+      }
+    },
+    "/snils": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create SNILS record for current user",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/sport-schools/assignments": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List club/team assignments with staff overview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search by club or team name"
+          },
+          {
+            "in": "query",
+            "name": "birth_year",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Team birth year filter"
+          },
+          {
+            "in": "query",
+            "name": "has_staff",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", ""]
+            },
+            "description": "Filter by presence of staff on a team"
+          },
+          {
+            "in": "query",
+            "name": "staff",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search by staff full name"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated items with club, team and staff"
+          }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List current user's tasks",
+        "responses": {
+          "200": {
+            "description": "Array of tasks"
+          }
+        }
+      }
+    },
+    "/taxations/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's taxation info",
+        "responses": {
+          "200": {
+            "description": "Taxation details"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update taxation info",
+        "responses": {
+          "200": {
+            "description": "Updated taxation"
+          }
+        }
+      }
+    },
+    "/taxations/me/check": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Validate taxation data",
+        "responses": {
+          "200": {
+            "description": "Validation result"
+          }
+        }
+      }
+    },
+    "/teams": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List teams"
+      }
+    },
+    "/teams/{id}/staff": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List staff assigned to a team"
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Attach staff to a team"
+      }
+    },
+    "/teams/{id}/staff/{userId}": {
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Detach staff from a team"
+      }
+    },
+    "/tickets/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List my tickets",
+        "responses": {
+          "200": {
+            "description": "Array of tickets"
+          }
+        }
+      }
+    },
+    "/tickets": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create ticket",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type_alias": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created ticket"
+          }
+        }
+      }
+    },
+    "/tournaments": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List tournaments with optional aggregates"
+      }
+    },
+    "/tournaments/stages": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List stages (across tournaments)"
+      }
+    },
+    "/tournaments/groups": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List tournament groups"
+      }
+    },
+    "/tournaments/teams": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List tournament teams assignments"
+      }
+    },
+    "/users/me": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user data",
+        "responses": {
+          "200": {
+            "description": "Current user info"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update current user data",
+        "responses": {
+          "200": {
+            "description": "Updated user"
+          }
+        }
+      }
+    },
+    "/users/me/sport-schools": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current user's sport school links overview (clubs/teams)",
+        "responses": {
+          "200": {
+            "description": "Links summary"
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List users",
+        "responses": {
+          "200": {
+            "description": "Array of users"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create user",
+        "responses": {
+          "201": {
+            "description": "Created user with invitation delivery status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object"
+                    },
+                    "delivery": {
+                      "type": "object",
+                      "properties": {
+                        "invited": {
+                          "type": "boolean"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": ["email"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["sent", "queued", "failed"]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/profile-completion": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List profile completion for referees",
+        "responses": {
+          "200": {
+            "description": "Array of profile statuses"
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user by ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User data"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated user"
+          }
+        }
+      }
+    },
+    "/users/{id}/block": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Block user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User blocked"
+          }
+        }
+      }
+    },
+    "/users/{id}/unblock": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Unblock user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User unblocked"
+          }
+        }
+      }
+    },
+    "/users/{id}/invite-resend": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Re-send admin invitation email with a new temporary password",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated invitation delivery status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object"
+                    },
+                    "delivery": {
+                      "type": "object",
+                      "properties": {
+                        "invited": {
+                          "type": "boolean"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": ["email"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["sent", "queued", "failed"]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many resend attempts"
+          }
+        }
+      }
+    },
+    "/users/{id}/approve": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Approve user registration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User approved"
+          }
+        }
+      }
+    },
+    "/users/{id}/reset-password": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Reset user password",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Password reset"
+          }
+        }
+      }
+    },
+    "/users/{id}/roles/{roleAlias}": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Assign role to user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roleAlias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role assigned"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove role from user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roleAlias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role removed"
+          }
+        }
+      }
+    },
+    "/users/{id}/teams": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List teams for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of teams"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add team to user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team added"
+          }
+        }
+      }
+    },
+    "/users/{id}/teams/{teamId}": {
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove team from user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team removed"
+          }
+        }
+      }
+    },
+    "/users/{id}/clubs": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List clubs for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of clubs"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add club to user (sport school staff)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Club added"
+          }
+        }
+      }
+    },
+    "/users/{id}/clubs/{clubId}": {
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove club from user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "clubId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Club removed"
+          }
+        }
+      }
+    },
+    "/users/{id}/sport-schools": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's sport school links overview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Links summary"
+          }
+        }
+      }
+    },
+    "/users/{id}/inn": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add INN for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user's INN",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove user's INN",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's INN",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "INN info"
+          }
+        }
+      }
+    },
+    "/users/{id}/snils": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add SNILS for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user's SNILS",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove user's SNILS",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's SNILS",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SNILS info"
+          }
+        }
+      }
+    },
+    "/users/{id}/bank-account": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add bank account for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user's bank account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove user's bank account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's bank account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank account info"
+          }
+        }
+      }
+    },
+    "/users/{id}/taxation": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's taxation info",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Taxation info"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user's taxation info",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated taxation"
+          }
+        }
+      }
+    },
+    "/users/{id}/taxation/check": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Validate taxation data for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validation result"
+          }
+        }
+      }
+    },
+    "/users/{id}/passport": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add passport for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's passport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passport info"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete user's passport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      }
+    },
+    "/users/{id}/address/{type}": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add address for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user's address",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove user's address",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's address",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address info"
+          }
+        }
+      }
+    },
+    "/users/{id}/medical-certificate": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Add medical certificate for user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update user's medical certificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove user's medical certificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get user's medical certificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Certificate info"
+          }
+        }
+      }
+    },
+    "/users/{id}/tasks": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List user's tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of tasks"
+          }
+        }
+      }
+    },
+    "/verify": {
+      "get": {
+        "summary": "Verify a signed document token",
+        "description": "Validates a signed verification token embedded in a document QR and returns\npublic confirmation details if valid. No authentication required.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Verify-Token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Signed verification token (preferred transport)"
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Legacy signed token query parameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification result"
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}
