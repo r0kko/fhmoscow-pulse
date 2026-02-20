@@ -767,12 +767,20 @@ export async function navigationGuard(
 
 router.beforeEach(navigationGuard);
 
-router.afterEach((to) => {
+let lastMainFocusKey: string | null = null;
+
+router.afterEach((to, _from, failure) => {
   if (typeof document !== 'undefined') {
     const base = 'Пульс';
     const meta = to.meta;
     document.title =
       meta.title && meta.title.length > 0 ? `${meta.title} — ${base}` : base;
+
+    if (failure) return;
+    const focusKey = `${to.path}::${String(to.hash || '')}`;
+    if (focusKey === lastMainFocusKey) return;
+    lastMainFocusKey = focusKey;
+
     // Move focus to <main> for screen reader users after route change
     // Use rAF to ensure the view is rendered
     requestAnimationFrame(() => {

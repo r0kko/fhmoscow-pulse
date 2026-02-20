@@ -25,6 +25,7 @@ interface RetryOptions {
 
 export interface ApiFetchOptions extends RequestInit, RetryOptions {
   redirectOn401?: boolean;
+  retryOn401?: boolean;
   timeoutMs?: number;
 }
 
@@ -535,15 +536,28 @@ function createHttpError({
   err.code = data?.error || fallbackCode;
   if (reqId) err.requestId = reqId;
   if (data?.details !== undefined || data?.field_errors !== undefined) {
-    const baseDetails =
-      data?.details && typeof data.details === 'object'
-        ? { ...(data.details as Record<string, unknown>) }
-        : {};
-    if (data?.field_errors !== undefined) {
-      baseDetails['field_errors'] = data.field_errors;
+    let detailsPayload: unknown = data?.details;
+    if (Array.isArray(data?.details)) {
+      detailsPayload = [...data.details];
+    } else if (data?.details && typeof data.details === 'object') {
+      detailsPayload = { ...(data.details as Record<string, unknown>) };
     }
-    err.details =
-      Object.keys(baseDetails).length > 0 ? baseDetails : data?.details;
+    if (data?.field_errors !== undefined) {
+      if (detailsPayload == null) {
+        detailsPayload = { field_errors: data.field_errors };
+      } else if (Array.isArray(detailsPayload)) {
+        detailsPayload = {
+          details: detailsPayload,
+          field_errors: data.field_errors,
+        };
+      } else if (typeof detailsPayload === 'object') {
+        detailsPayload = {
+          ...(detailsPayload as Record<string, unknown>),
+          field_errors: data.field_errors,
+        };
+      }
+    }
+    err.details = detailsPayload;
   }
   return err;
 }
@@ -554,6 +568,7 @@ export async function apiFetch<T = unknown>(
 ): Promise<T> {
   const {
     redirectOn401 = true,
+    retryOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
     _ddosRetried = false,
@@ -663,7 +678,7 @@ export async function apiFetch<T = unknown>(
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
 
   if (res.status === 401) {
-    if (path !== '/auth/refresh' && !refreshFailed) {
+    if (retryOn401 && path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
       if (refreshed) {
         return apiFetch(path, options);
@@ -703,6 +718,7 @@ export async function apiFetchForm<T = unknown>(
 ): Promise<T> {
   const {
     redirectOn401 = true,
+    retryOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
     _ddosRetried = false,
@@ -808,7 +824,7 @@ export async function apiFetchForm<T = unknown>(
   }
   const reqId = res.headers?.get && res.headers.get('X-Request-Id');
   if (res.status === 401) {
-    if (path !== '/auth/refresh' && !refreshFailed) {
+    if (retryOn401 && path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
       if (refreshed) {
         return apiFetchForm(path, form, options);
@@ -843,6 +859,7 @@ export async function apiFetchBlob(
 ): Promise<Blob> {
   const {
     redirectOn401 = true,
+    retryOn401 = true,
     _csrfRetried = false,
     _429Retried = false,
     _ddosRetried = false,
@@ -953,7 +970,7 @@ export async function apiFetchBlob(
   }
 
   if (res.status === 401) {
-    if (path !== '/auth/refresh' && !refreshFailed) {
+    if (retryOn401 && path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
       if (refreshed) {
         return apiFetchBlob(path, options);

@@ -8,11 +8,11 @@ test('sendError uses provided status and code', () => {
   expect(res.json).toHaveBeenCalledWith({ error: 'not_found' });
 });
 
-test('sendError falls back to message and default status', () => {
+test('sendError falls back to internal_error and default status', () => {
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   sendError(res, { message: 'oops' });
   expect(res.status).toHaveBeenCalledWith(400);
-  expect(res.json).toHaveBeenCalledWith({ error: 'oops' });
+  expect(res.json).toHaveBeenCalledWith({ error: 'internal_error' });
 });
 
 test('sendError uses internal_error when no details provided', () => {

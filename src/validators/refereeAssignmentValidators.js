@@ -37,6 +37,10 @@ export const refereeAssignmentsListRefereesRules = [
   ...refereeAssignmentsListRules,
   query('role_group_id').optional({ nullable: true }).isUUID(),
   query('search').optional({ nullable: true }).isString(),
+  query('require_preset_for_date')
+    .optional({ nullable: true })
+    .isIn(['0', '1', 'true', 'false'])
+    .withMessage('invalid_require_preset_for_date'),
   query('only_leagues_access')
     .optional({ nullable: true })
     .isIn(['0', '1', 'true', 'false'])

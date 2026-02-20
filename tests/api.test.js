@@ -17,12 +17,12 @@ test('sendError takes status and code from error', () => {
   expect(json).toHaveBeenCalledWith({ error: 'forbidden' });
 });
 
-test('sendError falls back to error message', () => {
+test('sendError falls back to internal_error without explicit code', () => {
   const json = jest.fn();
   const res = { status: jest.fn(() => ({ json })) };
   sendError(res, { message: 'bad', status: 401 });
   expect(res.status).toHaveBeenCalledWith(401);
-  expect(json).toHaveBeenCalledWith({ error: 'bad' });
+  expect(json).toHaveBeenCalledWith({ error: 'internal_error' });
 });
 
 test('sendError masks 5xx message with internal_error', () => {

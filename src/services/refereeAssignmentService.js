@@ -1023,6 +1023,7 @@ export async function listRefereesByDate({
   roleAlias = '',
   competitionAlias = '',
   onlyLeaguesAccess = false,
+  requirePresetForDate = false,
   roleGroupId = null,
   search = '',
   limit = 200,
@@ -1194,9 +1195,20 @@ export async function listRefereesByDate({
   const skipAvailabilityFilter =
     isLeadershipRoleGroupRequested &&
     isProfessionalCompetitionAlias(competitionAlias);
+  const strictDateKey = requirePresetForDate
+    ? normalizeDateKey(filters.fromDate)
+    : null;
   const available = skipAvailabilityFilter
     ? referees
     : referees.filter((ref) => {
+        if (strictDateKey) {
+          const strictEntry =
+            availByUserAndDate.get(ref.id)?.[strictDateKey] || null;
+          return (
+            strictEntry?.preset &&
+            ['FREE', 'PARTIAL'].includes(strictEntry?.status)
+          );
+        }
         const availabilityEntries = Object.values(
           ref.availability_by_date || {}
         );

@@ -224,7 +224,7 @@ test('finish returns weak_password when password invalid', async () => {
 test('finish returns error when code invalid or expired', async () => {
   const user = { id: 'u1' };
   findUserMock.mockResolvedValueOnce(user);
-  verifyCodeMock.mockRejectedValueOnce(new Error('invalid_code'));
+  verifyCodeMock.mockRejectedValueOnce({ code: 'invalid_code', status: 400 });
   const req = {
     body: { email: 't@example.com', code: 'bad', password: 'Pass' },
   };

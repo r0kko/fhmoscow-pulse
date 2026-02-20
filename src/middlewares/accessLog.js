@@ -9,6 +9,17 @@ const SENSITIVE_QUERY_KEYS = new Set([
   'refresh_token',
   'code',
   't',
+  'search',
+  'email',
+  'phone',
+  'full_name',
+  'fullname',
+  'first_name',
+  'last_name',
+  'patronymic',
+  'birth_date',
+  'fio',
+  'snils',
 ]);
 
 function sanitizeUrl(url) {

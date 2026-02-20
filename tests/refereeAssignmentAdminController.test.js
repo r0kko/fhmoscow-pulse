@@ -97,7 +97,35 @@ test('listReferees passes filters', async () => {
     roleAlias: undefined,
     competitionAlias: 'PRO',
     onlyLeaguesAccess: true,
+    requirePresetForDate: false,
     search: 'Иванов',
+    limit: undefined,
+  });
+  expect(res.json).toHaveBeenCalledWith({ referees: [] });
+});
+
+test('listReferees passes strict availability flag', async () => {
+  listRefereesMock.mockResolvedValue({ referees: [] });
+  const res = mockRes();
+  await controller.listReferees(
+    {
+      query: {
+        date: '2024-02-10',
+        require_preset_for_date: '1',
+      },
+    },
+    res
+  );
+  expect(listRefereesMock).toHaveBeenCalledWith({
+    dateKey: '2024-02-10',
+    from: undefined,
+    to: undefined,
+    roleGroupId: null,
+    roleAlias: undefined,
+    competitionAlias: '',
+    onlyLeaguesAccess: false,
+    requirePresetForDate: true,
+    search: '',
     limit: undefined,
   });
   expect(res.json).toHaveBeenCalledWith({ referees: [] });

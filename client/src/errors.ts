@@ -13,6 +13,9 @@ export const ERROR_MESSAGES = {
   sign_type_simple_required:
     'Требуется простая электронная подпись. Настройте её в разделе «Документы»',
   country_not_found: 'Страна не найдена',
+  delivery_exception:
+    'Не удалось отправить приглашение из-за временной ошибки сервиса',
+  delivery_failed: 'Не удалось отправить приглашение',
   document_type_not_found: 'Тип документа не найден',
   email_exists: 'Email уже зарегистрирован',
   inn_exists: 'ИНН уже зарегистрирован',
@@ -221,6 +224,8 @@ export const ERROR_MESSAGES = {
   home_team_group_required:
     'Первая команда должна быть добавлена в группу выбранного этапа',
   date_start_must_be_iso_datetime: 'Укажите корректные дату и время матча',
+  dadata_circuit_open:
+    'Подсказки DaData временно недоступны. Повторите попытку позже.',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

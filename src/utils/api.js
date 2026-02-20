@@ -2,15 +2,8 @@ import { incHttpErrorCode } from '../config/metrics.js';
 
 export function sendError(res, err, defaultStatus = 400) {
   const status = err?.status || defaultStatus;
-  let code;
-  if (err?.code) {
-    code = err.code;
-  } else if (status >= 500) {
-    // Не раскрываем внутренние детали для 5xx
-    code = 'internal_error';
-  } else {
-    code = err?.message || 'internal_error';
-  }
+  // Never leak raw exception messages to the API response.
+  const code = err?.code ? String(err.code) : 'internal_error';
   try {
     // Surface error code as response header for logs/drilldown
     if (typeof res.set === 'function') {
@@ -25,6 +18,10 @@ export function sendError(res, err, defaultStatus = 400) {
     res.locals = {};
   }
   const body = { error: code };
+  if (code === 'internal_error' && typeof res.get === 'function') {
+    const requestId = res.get('X-Request-Id');
+    if (requestId) body.request_id = String(requestId);
+  }
   if (err?.details !== undefined) body.details = err.details;
   if (err?.legacyCode !== undefined) body.legacy_code = err.legacyCode;
   res.locals.body = body;

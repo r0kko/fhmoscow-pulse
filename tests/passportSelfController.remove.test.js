@@ -21,7 +21,7 @@ test('remove deletes passport and returns 204', async () => {
 });
 
 test('remove returns 404 with error when service throws', async () => {
-  removeMock.mockRejectedValue(new Error('notfound'));
+  removeMock.mockRejectedValue({ code: 'notfound', status: 404 });
   const req = { user: { id: 'u2' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   await controller.remove(req, res);

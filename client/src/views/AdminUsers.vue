@@ -8,15 +8,17 @@ import {
   onBeforeUnmount,
 } from 'vue';
 import { useRouter } from 'vue-router';
+import Tooltip from 'bootstrap/js/dist/tooltip';
+
 import PageNav from '@/components/PageNav.vue';
-import { loadPageSize, savePageSize } from '../utils/pageSize';
-import { apiFetch } from '../api';
-import { useToast } from '../utils/toast';
+import TabSelector from '@/components/TabSelector.vue';
 import TaxationInfo from '@/components/TaxationInfo.vue';
 import ConfirmModal from '@/components/ConfirmModal.vue';
 import UsersFilterModal from '@/components/UsersFilterModal.vue';
-import Tooltip from 'bootstrap/js/dist/tooltip';
-import TabSelector from '@/components/TabSelector.vue';
+import Breadcrumbs from '@/components/Breadcrumbs.vue';
+import { loadPageSize, savePageSize } from '@/utils/pageSize';
+import { apiFetch } from '@/api';
+import { useToast } from '@/utils/toast';
 import type {
   AdminUserSummary,
   AdminUsersResponse,
@@ -24,7 +26,7 @@ import type {
   AdminProfileCompletionResponse,
   UserRoleOption,
   RolesResponse,
-} from '../types/admin';
+} from '@/types/admin';
 
 type AdminTabKey = 'users' | 'profiles';
 type SortField = 'last_name' | 'phone' | 'email' | 'birth_date' | 'status';
@@ -39,28 +41,55 @@ interface ConfirmModalInstance {
   open: () => void;
 }
 
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+
+const router = useRouter();
+const { showToast } = useToast();
+
+const breadcrumbs = computed(() => [
+  { label: 'Администрирование', to: '/admin' },
+  { label: 'Пользователи' },
+]);
+
 const users = ref<AdminUserSummary[]>([]);
 const total = ref(0);
 const error = ref('');
-const router = useRouter();
+const isLoading = ref(false);
 
 const activeTab = ref<AdminTabKey>('users');
+
 const completion = ref<AdminProfileCompletion[]>([]);
+const completionTotal = ref(0);
 const completionLoading = ref(false);
 const completionError = ref('');
 
-const isLoading = ref(false);
 const search = ref('');
+const searchDebounced = ref('');
 const statusFilter = ref('');
 const roleFilter = ref('');
 const currentPage = ref(1);
-const pageSize = ref<number>(loadPageSize('adminUsersPageSize', 8));
-const roles = ref<UserRoleOption[]>([]);
+const pageSize = ref<number>(
+  loadPageSize('adminUsersPageSize', DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS)
+);
 const sortField = ref<SortField>('last_name');
 const sortOrder = ref<SortOrder>('asc');
-const selected = ref<Set<string>>(new Set());
 
-const { showToast } = useToast();
+const completionSearch = ref('');
+const completionSearchDebounced = ref('');
+const completionStatusFilter = ref('');
+const completionHasSnilsFilter = ref('');
+const completionPage = ref(1);
+const completionPageSize = ref<number>(
+  loadPageSize(
+    'adminProfileCompletionPageSize',
+    DEFAULT_PAGE_SIZE,
+    PAGE_SIZE_OPTIONS
+  )
+);
+
+const roles = ref<UserRoleOption[]>([]);
+const selected = ref<Set<string>>(new Set());
 
 const taxModal = ref<TaxationInfoInstance | null>(null);
 const taxUserId = ref('');
@@ -71,17 +100,49 @@ const confirmMessage = ref('');
 let confirmAction: (() => Promise<void>) | null = null;
 
 const filtersOpen = ref(false);
+const isHydratingQuery = ref(true);
+const viewportWidth = ref(1024);
+const selectAllRef = ref<HTMLInputElement | null>(null);
+const usersSearchInputRef = ref<HTMLInputElement | null>(null);
+const completionSearchInputRef = ref<HTMLInputElement | null>(null);
+const pendingQuerySync = ref(false);
+
+type TooltipInstance = InstanceType<typeof Tooltip>;
+const tooltipInstances: TooltipInstance[] = [];
+
+const tooltipAttrs = Object.freeze({
+  'data-bs-toggle': 'tooltip',
+  'data-bs-placement': 'bottom',
+} as const);
 
 const activeFiltersCount = computed(() => {
   let count = 0;
+  if (search.value.trim()) count += 1;
   if (statusFilter.value) count += 1;
   if (roleFilter.value) count += 1;
+  return count;
+});
+
+const completionFiltersCount = computed(() => {
+  let count = 0;
+  if (completionSearch.value.trim()) count += 1;
+  if (completionStatusFilter.value) count += 1;
+  if (completionHasSnilsFilter.value) count += 1;
   return count;
 });
 
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(total.value / Math.max(pageSize.value, 1)))
 );
+const completionTotalPages = computed(() =>
+  Math.max(
+    1,
+    Math.ceil(completionTotal.value / Math.max(completionPageSize.value, 1))
+  )
+);
+
+const isUsersDesktop = computed(() => viewportWidth.value >= 992);
+const isProfileDesktop = computed(() => viewportWidth.value >= 576);
 
 const anySelected = computed(() => selected.value.size > 0);
 const allSelectedOnPage = computed<boolean>({
@@ -93,13 +154,81 @@ const allSelectedOnPage = computed<boolean>({
   },
 });
 
-type TooltipInstance = InstanceType<typeof Tooltip>;
-const tooltipInstances: TooltipInstance[] = [];
+const usersQueryState = computed(() => ({
+  search: searchDebounced.value,
+  status: statusFilter.value,
+  role: roleFilter.value,
+  page: currentPage.value,
+  limit: pageSize.value,
+  sort: sortField.value,
+  order: sortOrder.value,
+}));
 
-const tooltipAttrs = Object.freeze({
-  'data-bs-toggle': 'tooltip',
-  'data-bs-placement': 'bottom',
-} as const);
+const completionQueryState = computed(() => ({
+  search: completionSearchDebounced.value,
+  completionStatus: completionStatusFilter.value,
+  hasSnils: completionHasSnilsFilter.value,
+  page: completionPage.value,
+  limit: completionPageSize.value,
+}));
+
+const routeQueryState = computed(() => ({
+  tab: activeTab.value,
+  users: usersQueryState.value,
+  profiles: completionQueryState.value,
+}));
+
+function normalizePage(value: unknown, fallback = 1): number {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+function normalizePageSize(
+  value: unknown,
+  fallback = DEFAULT_PAGE_SIZE
+): number {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(parsed)) return parsed;
+  return fallback;
+}
+
+function normalizeSortField(value: unknown): SortField {
+  const v = String(value || '').trim();
+  if (['last_name', 'phone', 'email', 'birth_date', 'status'].includes(v)) {
+    return v as SortField;
+  }
+  return 'last_name';
+}
+
+function normalizeSortOrder(value: unknown): SortOrder {
+  return String(value || '')
+    .trim()
+    .toLowerCase() === 'desc'
+    ? 'desc'
+    : 'asc';
+}
+
+function normalizeCompletionStatus(value: unknown): string {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase();
+  return v === 'complete' || v === 'incomplete' ? v : '';
+}
+
+function normalizeHasSnils(value: unknown): string {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase();
+  return v === 'true' || v === 'false' ? v : '';
+}
+
+function updateViewportWidth(): void {
+  if (typeof window === 'undefined') return;
+  viewportWidth.value = window.innerWidth;
+}
+
 function disposeTooltips(): void {
   tooltipInstances.splice(0).forEach((instance) => {
     try {
@@ -122,8 +251,72 @@ function applyTooltips(): void {
   });
 }
 
+function syncSelectAllCheckbox(): void {
+  if (!selectAllRef.value) return;
+  selectAllRef.value.indeterminate =
+    anySelected.value && !allSelectedOnPage.value;
+}
+
 function updateActiveTab(value: string | number): void {
   activeTab.value = value as AdminTabKey;
+}
+
+function captureSearchFocus() {
+  if (typeof document === 'undefined') return null;
+  const active = document.activeElement;
+  if (active === usersSearchInputRef.value) {
+    const input = usersSearchInputRef.value;
+    return {
+      target: 'users' as const,
+      start: input?.selectionStart ?? null,
+      end: input?.selectionEnd ?? null,
+    };
+  }
+  if (active === completionSearchInputRef.value) {
+    const input = completionSearchInputRef.value;
+    return {
+      target: 'profiles' as const,
+      start: input?.selectionStart ?? null,
+      end: input?.selectionEnd ?? null,
+    };
+  }
+  return null;
+}
+
+function restoreSearchFocus(
+  state: {
+    target: 'users' | 'profiles';
+    start: number | null;
+    end: number | null;
+  } | null
+): void {
+  if (!state) return;
+  const focus = () => {
+    const el =
+      state.target === 'users'
+        ? usersSearchInputRef.value
+        : completionSearchInputRef.value;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    if (state.start === null || state.end === null) return;
+    try {
+      el.setSelectionRange(state.start, state.end);
+    } catch {
+      /* ignore unsupported inputs */
+    }
+  };
+
+  nextTick(() => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          focus();
+        });
+      });
+      return;
+    }
+    setTimeout(focus, 0);
+  });
 }
 
 async function loadRoles(): Promise<void> {
@@ -139,14 +332,15 @@ async function loadUsers(): Promise<void> {
   error.value = '';
   isLoading.value = true;
   try {
+    const state = usersQueryState.value;
     const params = new URLSearchParams({
-      search: search.value,
-      status: statusFilter.value,
-      role: roleFilter.value,
-      page: String(currentPage.value),
-      limit: String(pageSize.value),
-      sort: sortField.value,
-      order: sortOrder.value,
+      search: state.search,
+      status: state.status,
+      role: state.role,
+      page: String(state.page),
+      limit: String(state.limit),
+      sort: state.sort,
+      order: state.order,
     });
     const data = await apiFetch<AdminUsersResponse>(`/users?${params}`);
     users.value = data.users ?? [];
@@ -158,6 +352,7 @@ async function loadUsers(): Promise<void> {
   } finally {
     isLoading.value = false;
     applyTooltips();
+    syncSelectAllCheckbox();
   }
 }
 
@@ -165,123 +360,254 @@ async function loadCompletion(): Promise<void> {
   completionError.value = '';
   completionLoading.value = true;
   try {
+    const state = completionQueryState.value;
+    const params = new URLSearchParams({
+      page: String(state.page),
+      limit: String(state.limit),
+      search: state.search,
+      completionStatus: state.completionStatus,
+      hasSnils: state.hasSnils,
+    });
     const data = await apiFetch<AdminProfileCompletionResponse>(
-      '/users/profile-completion'
+      `/users/profile-completion?${params}`
     );
     completion.value = data.profiles ?? [];
+    completionTotal.value = Number.isFinite(data.meta?.total)
+      ? Number(data.meta?.total)
+      : completion.value.length;
+    if (Number.isFinite(data.meta?.page) && Number(data.meta?.page) > 0) {
+      completionPage.value = Number(data.meta?.page);
+    }
   } catch (e) {
     completionError.value = e instanceof Error ? e.message : String(e);
     completion.value = [];
+    completionTotal.value = 0;
   } finally {
     completionLoading.value = false;
   }
 }
 
-// Debounced search watcher
 let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 watch(search, () => {
   if (searchTimeout) clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     currentPage.value = 1;
-    void loadUsers();
-    syncQuery();
+    searchDebounced.value = search.value.trim();
+  }, 300);
+});
+
+let completionSearchTimeout: ReturnType<typeof setTimeout> | undefined;
+watch(completionSearch, () => {
+  if (completionSearchTimeout) clearTimeout(completionSearchTimeout);
+  completionSearchTimeout = setTimeout(() => {
+    completionPage.value = 1;
+    completionSearchDebounced.value = completionSearch.value.trim();
   }, 300);
 });
 
 watch([sortField, sortOrder, statusFilter, roleFilter, pageSize], () => {
   currentPage.value = 1;
-  void loadUsers();
-  syncQuery();
 });
 
-watch(pageSize, (val) => {
-  savePageSize('adminUsersPageSize', val);
+watch(
+  [completionStatusFilter, completionHasSnilsFilter, completionPageSize],
+  () => {
+    completionPage.value = 1;
+  }
+);
+
+watch(
+  [pageSize, completionPageSize],
+  ([usersSize, completionSize]) => {
+    savePageSize('adminUsersPageSize', usersSize);
+    savePageSize('adminProfileCompletionPageSize', completionSize);
+  },
+  { immediate: true }
+);
+
+watch(users, () => {
+  selected.value = new Set();
+  syncSelectAllCheckbox();
 });
 
-watch(currentPage, () => {
+watch(
+  () => [anySelected.value, allSelectedOnPage.value],
+  () => {
+    syncSelectAllCheckbox();
+  },
+  { immediate: true }
+);
+
+watch(usersQueryState, () => {
+  if (isHydratingQuery.value || activeTab.value !== 'users') return;
   void loadUsers();
+});
+
+watch(completionQueryState, () => {
+  if (isHydratingQuery.value || activeTab.value !== 'profiles') return;
+  void loadCompletion();
+});
+
+watch(routeQueryState, () => {
+  if (isHydratingQuery.value) return;
   syncQuery();
 });
 
 watch(activeTab, (tab) => {
-  if (
-    tab === 'profiles' &&
-    completion.value.length === 0 &&
-    !completionLoading.value
-  ) {
+  if (isHydratingQuery.value) return;
+  if (tab === 'profiles') {
     void loadCompletion();
+  } else {
+    void loadUsers();
   }
-  syncQuery();
 });
 
-watch(users, () => {
-  selected.value = new Set();
-});
-
-onMounted(() => {
+onMounted(async () => {
   try {
     const query = router.currentRoute.value.query;
     const tab = query['tab'];
     if (typeof tab === 'string' && (tab === 'users' || tab === 'profiles')) {
       activeTab.value = tab;
     }
-    const searchParam = query['search'];
-    if (typeof searchParam === 'string') search.value = searchParam;
-    const statusParam = query['status'];
-    if (typeof statusParam === 'string') statusFilter.value = statusParam;
-    const roleParam = query['role'];
-    if (typeof roleParam === 'string') roleFilter.value = roleParam;
-    const pageParam = query['page'];
-    if (typeof pageParam === 'string') {
-      const parsed = Number(pageParam);
-      if (Number.isFinite(parsed) && parsed > 0) currentPage.value = parsed;
+
+    if (typeof query['search'] === 'string') {
+      search.value = query['search'].trim();
+      searchDebounced.value = search.value;
     }
-    const limitParam = query['limit'];
-    if (typeof limitParam === 'string') {
-      const parsed = Number(limitParam);
-      if (Number.isFinite(parsed) && parsed > 0) pageSize.value = parsed;
+    if (typeof query['status'] === 'string')
+      statusFilter.value = query['status'];
+    if (typeof query['role'] === 'string') roleFilter.value = query['role'];
+
+    currentPage.value = normalizePage(query['page']);
+    pageSize.value = normalizePageSize(query['limit'], pageSize.value);
+    sortField.value = normalizeSortField(query['sort']);
+    sortOrder.value = normalizeSortOrder(query['order']);
+
+    if (typeof query['c_search'] === 'string') {
+      completionSearch.value = query['c_search'].trim();
+      completionSearchDebounced.value = completionSearch.value;
     }
-    const sortParam = query['sort'];
-    if (
-      typeof sortParam === 'string' &&
-      ['last_name', 'phone', 'email', 'birth_date', 'status'].includes(
-        sortParam
-      )
-    ) {
-      sortField.value = sortParam as SortField;
-    }
-    const orderParam = query['order'];
-    if (typeof orderParam === 'string') {
-      sortOrder.value = orderParam === 'desc' ? 'desc' : 'asc';
-    }
+    completionStatusFilter.value = normalizeCompletionStatus(query['c_status']);
+    completionHasSnilsFilter.value = normalizeHasSnils(query['c_snils']);
+    completionPage.value = normalizePage(query['c_page']);
+    completionPageSize.value = normalizePageSize(
+      query['c_limit'],
+      completionPageSize.value
+    );
   } catch {
     /* ignore malformed query */
   }
 
-  void loadUsers();
-  void loadRoles();
-  if (activeTab.value === 'profiles') void loadCompletion();
+  updateViewportWidth();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateViewportWidth, { passive: true });
+  }
+
+  isHydratingQuery.value = false;
+
+  await loadRoles();
+  if (activeTab.value === 'profiles') {
+    await loadCompletion();
+  } else {
+    await loadUsers();
+  }
+  syncQuery();
   applyTooltips();
 });
 
 onBeforeUnmount(() => {
   if (searchTimeout) clearTimeout(searchTimeout);
+  if (completionSearchTimeout) clearTimeout(completionSearchTimeout);
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateViewportWidth);
+  }
   disposeTooltips();
 });
 
 function syncQuery(): void {
-  router.replace({
-    query: {
-      tab: activeTab.value,
-      search: search.value || undefined,
-      status: statusFilter.value || undefined,
-      role: roleFilter.value || undefined,
-      page: currentPage.value !== 1 ? String(currentPage.value) : undefined,
-      limit: pageSize.value !== 8 ? String(pageSize.value) : undefined,
-      sort: sortField.value !== 'last_name' ? sortField.value : undefined,
-      order: sortOrder.value !== 'asc' ? sortOrder.value : undefined,
-    },
+  if (
+    typeof document !== 'undefined' &&
+    (document.activeElement === usersSearchInputRef.value ||
+      document.activeElement === completionSearchInputRef.value)
+  ) {
+    pendingQuerySync.value = true;
+    return;
+  }
+
+  const usersState = usersQueryState.value;
+  const profilesState = completionQueryState.value;
+  const focusState = captureSearchFocus();
+  pendingQuerySync.value = false;
+  void router
+    .replace({
+      query: {
+        tab: activeTab.value,
+        search: usersState.search || undefined,
+        status: usersState.status || undefined,
+        role: usersState.role || undefined,
+        page: usersState.page !== 1 ? String(usersState.page) : undefined,
+        limit:
+          usersState.limit !== DEFAULT_PAGE_SIZE
+            ? String(usersState.limit)
+            : undefined,
+        sort: usersState.sort !== 'last_name' ? usersState.sort : undefined,
+        order: usersState.order !== 'asc' ? usersState.order : undefined,
+        c_search: profilesState.search || undefined,
+        c_status: profilesState.completionStatus || undefined,
+        c_snils: profilesState.hasSnils || undefined,
+        c_page:
+          profilesState.page !== 1 ? String(profilesState.page) : undefined,
+        c_limit:
+          profilesState.limit !== DEFAULT_PAGE_SIZE
+            ? String(profilesState.limit)
+            : undefined,
+      },
+    })
+    .then(() => {
+      restoreSearchFocus(focusState);
+    })
+    .catch(() => {
+      restoreSearchFocus(focusState);
+    });
+}
+
+function flushPendingQuerySync(): void {
+  if (!pendingQuerySync.value) return;
+  syncQuery();
+}
+
+function isFocusMainSteal(event: FocusEvent): boolean {
+  const related = event.relatedTarget as HTMLElement | null;
+  return Boolean(related && related.id === 'main');
+}
+
+function restoreSearchCaretToEnd(el: HTMLInputElement | null): void {
+  if (!el) return;
+  nextTick(() => {
+    el.focus({ preventScroll: true });
+    try {
+      const pos = el.value.length;
+      el.setSelectionRange(pos, pos);
+    } catch {
+      /* ignore unsupported inputs */
+    }
   });
+}
+
+function onUsersSearchBlur(event: FocusEvent): void {
+  if (isFocusMainSteal(event)) {
+    restoreSearchCaretToEnd(usersSearchInputRef.value);
+    return;
+  }
+  flushPendingQuerySync();
+}
+
+function onCompletionSearchBlur(event: FocusEvent): void {
+  if (isFocusMainSteal(event)) {
+    restoreSearchCaretToEnd(completionSearchInputRef.value);
+    return;
+  }
+  flushPendingQuerySync();
 }
 
 function openFilters(): void {
@@ -298,14 +624,19 @@ function onFiltersApply({
   filtersOpen.value = false;
   statusFilter.value = st;
   roleFilter.value = rl;
-  currentPage.value = 1;
-  void loadUsers();
-  syncQuery();
 }
 
 function onFiltersReset(): void {
   filtersOpen.value = false;
   resetFilters();
+}
+
+function resetCompletionFilters(): void {
+  completionSearch.value = '';
+  completionSearchDebounced.value = '';
+  completionStatusFilter.value = '';
+  completionHasSnilsFilter.value = '';
+  completionPage.value = 1;
 }
 
 function openCreate(): void {
@@ -324,7 +655,9 @@ function openTaxStatus(id: string): void {
 }
 
 async function onTaxSaved(): Promise<void> {
-  await loadCompletion();
+  if (activeTab.value === 'profiles') {
+    await loadCompletion();
+  }
 }
 
 async function blockUser(id: string): Promise<void> {
@@ -403,24 +736,14 @@ function onConfirm(): void {
   if (action) void action();
 }
 
-function clearSearch(): void {
-  if (search.value) {
-    search.value = '';
-    currentPage.value = 1;
-    void loadUsers();
-    syncQuery();
-  }
-}
-
 function resetFilters(): void {
   search.value = '';
+  searchDebounced.value = '';
   statusFilter.value = '';
   roleFilter.value = '';
   sortField.value = 'last_name';
   sortOrder.value = 'asc';
   currentPage.value = 1;
-  void loadUsers();
-  syncQuery();
 }
 
 function toggleSelected(id: string): void {
@@ -469,16 +792,7 @@ async function bulk(action: BulkAction): Promise<void> {
 <template>
   <div class="py-3 admin-users-page">
     <div class="container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item">
-            <RouterLink to="/admin">Администрирование</RouterLink>
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">
-            Пользователи
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumbs :items="breadcrumbs" />
       <h1 class="mb-3">Пользователи</h1>
       <div class="card tile mb-3">
         <div class="card-body">
@@ -492,8 +806,9 @@ async function bulk(action: BulkAction): Promise<void> {
           />
         </div>
       </div>
+
       <div
-        v-show="activeTab === 'users'"
+        v-if="activeTab === 'users'"
         class="card section-card tile fade-in shadow-sm"
       >
         <div
@@ -501,7 +816,11 @@ async function bulk(action: BulkAction): Promise<void> {
         >
           <h2 class="h5 mb-0">Пользователи</h2>
           <div class="d-flex gap-2 align-items-center">
-            <div class="btn-group" role="group" aria-label="Групповые действия">
+            <div
+              class="btn-group d-none d-lg-inline-flex"
+              role="group"
+              aria-label="Групповые действия"
+            >
               <button
                 type="button"
                 class="btn btn-outline-secondary"
@@ -528,8 +847,8 @@ async function bulk(action: BulkAction): Promise<void> {
             </button>
           </div>
         </div>
+
         <div class="card-body">
-          <!-- Toolbar: search + filters -->
           <div class="toolbar mb-3 d-flex align-items-center gap-2">
             <div
               class="input-group input-group-sm flex-grow-1"
@@ -539,12 +858,14 @@ async function bulk(action: BulkAction): Promise<void> {
                 <i class="bi bi-search" aria-hidden="true"></i>
               </span>
               <input
-                v-model.trim="search"
+                ref="usersSearchInputRef"
+                v-model="search"
                 type="search"
                 class="form-control"
                 placeholder="Поиск по ФИО, телефону, email"
                 aria-label="Поиск по ФИО, телефону, email"
                 aria-describedby="users-search-addon"
+                @blur="onUsersSearchBlur"
               />
               <button
                 type="button"
@@ -558,19 +879,18 @@ async function bulk(action: BulkAction): Promise<void> {
               >
                 <i class="bi bi-funnel me-1" aria-hidden="true"></i>
                 <span>Фильтры</span>
-                <span
-                  v-if="activeFiltersCount"
-                  class="badge bg-secondary ms-2"
-                  >{{ activeFiltersCount }}</span
-                >
+                <span v-if="activeFiltersCount" class="badge bg-secondary ms-2">
+                  {{ activeFiltersCount }}
+                </span>
               </button>
             </div>
           </div>
 
           <div v-if="error" class="alert alert-danger mb-3">{{ error }}</div>
+
           <div
-            v-if="users.length || isLoading"
-            class="table-responsive d-none d-lg-block"
+            v-if="(users.length || isLoading) && isUsersDesktop"
+            class="table-responsive"
           >
             <table
               class="table admin-table table-hover table-striped align-middle mb-0"
@@ -583,6 +903,7 @@ async function bulk(action: BulkAction): Promise<void> {
                 <tr>
                   <th scope="col" class="text-center" style="width: 2.5rem">
                     <input
+                      ref="selectAllRef"
                       class="form-check-input brand-check"
                       type="checkbox"
                       :checked="allSelectedOnPage"
@@ -747,10 +1068,9 @@ async function bulk(action: BulkAction): Promise<void> {
                     />
                   </td>
                   <td class="text-nowrap">
-                    <span class="cell-text"
-                      >{{ u.last_name }} {{ u.first_name }}
-                      {{ u.patronymic }}</span
-                    >
+                    <span class="cell-text">
+                      {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
+                    </span>
                   </td>
                   <td class="d-none d-md-table-cell text-nowrap">
                     {{ formatPhone(u.phone) }}
@@ -762,9 +1082,9 @@ async function bulk(action: BulkAction): Promise<void> {
                     {{ formatDate(u.birth_date) }}
                   </td>
                   <td>
-                    <span class="badge" :class="statusClass(u.status)">{{
-                      u.status_name
-                    }}</span>
+                    <span class="badge" :class="statusClass(u.status)">
+                      {{ u.status_name }}
+                    </span>
                   </td>
                   <td class="text-end">
                     <button
@@ -799,9 +1119,8 @@ async function bulk(action: BulkAction): Promise<void> {
                   </td>
                 </tr>
               </tbody>
-              <!-- Skeleton rows -->
               <tbody v-else>
-                <tr v-for="i in pageSize" :key="'skel-' + i" aria-hidden="true">
+                <tr v-for="i in pageSize" :key="`skel-${i}`" aria-hidden="true">
                   <td></td>
                   <td><div class="skeleton-line w-75"></div></td>
                   <td class="d-none d-md-table-cell">
@@ -822,9 +1141,9 @@ async function bulk(action: BulkAction): Promise<void> {
               </tbody>
             </table>
           </div>
-          <!-- Mobile list rendering -->
-          <div v-if="users.length && !isLoading" class="d-block d-lg-none">
-            <div v-for="u in users" :key="'m-' + u.id" class="card mb-2">
+
+          <div v-if="users.length && !isLoading && !isUsersDesktop">
+            <div v-for="u in users" :key="`m-${u.id}`" class="card mb-2">
               <div class="card-body p-2">
                 <div
                   class="d-flex justify-content-between align-items-start mb-1"
@@ -832,15 +1151,16 @@ async function bulk(action: BulkAction): Promise<void> {
                   <h3 class="h6 mb-0 text-truncate" style="max-width: 75%">
                     {{ u.last_name }} {{ u.first_name }} {{ u.patronymic }}
                   </h3>
-                  <span class="badge" :class="statusClass(u.status)">{{
-                    u.status_name
-                  }}</span>
+                  <span class="badge" :class="statusClass(u.status)">
+                    {{ u.status_name }}
+                  </span>
                 </div>
-                <div class="small text-muted mb-1">
-                  <span v-if="u.phone" class="me-2">{{
-                    formatPhone(u.phone)
-                  }}</span>
-                  <span v-if="u.email" class="me-2">{{ u.email }}</span>
+                <div
+                  class="small text-muted mb-1 user-contacts"
+                  aria-label="Контактные данные"
+                >
+                  <span v-if="u.phone">{{ formatPhone(u.phone) }}</span>
+                  <span v-if="u.email">{{ u.email }}</span>
                   <span v-if="u.birth_date">{{
                     formatDate(u.birth_date)
                   }}</span>
@@ -873,7 +1193,8 @@ async function bulk(action: BulkAction): Promise<void> {
               </div>
             </div>
           </div>
-          <div v-else class="text-muted mb-0">
+
+          <div v-if="!users.length && !isLoading" class="text-muted mb-0">
             <p class="mb-2">
               {{
                 search || statusFilter || roleFilter
@@ -892,21 +1213,71 @@ async function bulk(action: BulkAction): Promise<void> {
           </div>
         </div>
       </div>
+
       <PageNav
         v-if="activeTab === 'users' && totalPages > 1"
         v-model:page="currentPage"
         v-model:page-size="pageSize"
         :total-pages="totalPages"
+        :sizes="[...PAGE_SIZE_OPTIONS]"
       />
 
       <div
-        v-show="activeTab === 'profiles'"
+        v-if="activeTab === 'profiles'"
         class="card section-card tile fade-in shadow-sm mt-3"
       >
         <div class="card-header">
           <h2 class="h5 mb-0">Заполнение профиля</h2>
         </div>
         <div class="card-body p-3">
+          <div class="toolbar mb-3 d-flex flex-wrap align-items-center gap-2">
+            <div
+              class="input-group input-group-sm"
+              style="min-width: 16rem; max-width: 24rem"
+            >
+              <span class="input-group-text">
+                <i class="bi bi-search" aria-hidden="true"></i>
+              </span>
+              <input
+                ref="completionSearchInputRef"
+                v-model="completionSearch"
+                type="search"
+                class="form-control"
+                placeholder="Поиск по ФИО, телефону, email"
+                aria-label="Поиск по заполненности профиля"
+                @blur="onCompletionSearchBlur"
+              />
+            </div>
+            <select
+              v-model="completionStatusFilter"
+              class="form-select form-select-sm"
+              style="max-width: 13rem"
+              aria-label="Статус заполненности"
+            >
+              <option value="">Все профили</option>
+              <option value="complete">Только заполненные</option>
+              <option value="incomplete">Только незаполненные</option>
+            </select>
+            <select
+              v-model="completionHasSnilsFilter"
+              class="form-select form-select-sm"
+              style="max-width: 12rem"
+              aria-label="Наличие СНИЛС"
+            >
+              <option value="">Любой СНИЛС</option>
+              <option value="true">СНИЛС есть</option>
+              <option value="false">СНИЛС отсутствует</option>
+            </select>
+            <button
+              v-if="completionFiltersCount"
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              @click="resetCompletionFilters"
+            >
+              Сбросить
+            </button>
+          </div>
+
           <div v-if="completionError" class="alert alert-danger mb-3">
             {{ completionError }}
           </div>
@@ -917,9 +1288,10 @@ async function bulk(action: BulkAction): Promise<void> {
               aria-label="Загрузка"
             ></div>
           </div>
+
           <div
-            v-if="completion.length"
-            class="table-responsive d-none d-sm-block"
+            v-if="completion.length && !completionLoading && isProfileDesktop"
+            class="table-responsive"
           >
             <table
               class="table admin-table table-hover table-striped align-middle mb-0"
@@ -927,13 +1299,13 @@ async function bulk(action: BulkAction): Promise<void> {
               <thead>
                 <tr>
                   <th>ФИО</th>
-                  <th class="d-none d-sm-table-cell">Дата рождения</th>
+                  <th>Дата рождения</th>
                   <th class="text-center">Паспорт</th>
                   <th class="text-center">ИНН</th>
                   <th class="text-center">СНИЛС</th>
                   <th class="text-center">Банк</th>
                   <th class="text-center">Адрес</th>
-                  <th class="d-none d-md-table-cell">Налоговый статус</th>
+                  <th>Налоговый статус</th>
                 </tr>
               </thead>
               <tbody>
@@ -941,9 +1313,7 @@ async function bulk(action: BulkAction): Promise<void> {
                   <td>
                     {{ p.last_name }} {{ p.first_name }} {{ p.patronymic }}
                   </td>
-                  <td class="d-none d-sm-table-cell">
-                    {{ formatDate(p.birth_date) }}
-                  </td>
+                  <td>{{ formatDate(p.birth_date) }}</td>
                   <td class="text-center">
                     <i
                       :class="
@@ -989,7 +1359,7 @@ async function bulk(action: BulkAction): Promise<void> {
                       "
                     ></i>
                   </td>
-                  <td class="d-none d-md-table-cell">
+                  <td>
                     <span v-if="p.taxation_type">{{ p.taxation_type }}</span>
                     <button
                       v-else-if="p.inn"
@@ -1003,7 +1373,10 @@ async function bulk(action: BulkAction): Promise<void> {
               </tbody>
             </table>
           </div>
-          <div v-if="completion.length" class="d-block d-sm-none">
+
+          <div
+            v-if="completion.length && !completionLoading && !isProfileDesktop"
+          >
             <div
               v-for="p in completion"
               :key="p.id"
@@ -1015,58 +1388,57 @@ async function bulk(action: BulkAction): Promise<void> {
                 </h6>
                 <p class="mb-1 small">{{ formatDate(p.birth_date) }}</p>
                 <div class="d-flex flex-wrap gap-1">
-                  <span
-                    ><i
+                  <span>
+                    <i
                       :class="
                         p.passport
                           ? 'bi bi-check-lg text-success'
                           : 'bi bi-x-lg text-danger'
                       "
                     ></i>
-                    Паспорт</span
-                  >
-                  <span
-                    ><i
+                    Паспорт
+                  </span>
+                  <span>
+                    <i
                       :class="
                         p.inn
                           ? 'bi bi-check-lg text-success'
                           : 'bi bi-x-lg text-danger'
                       "
                     ></i>
-                    ИНН</span
-                  >
-                  <span
-                    ><i
+                    ИНН
+                  </span>
+                  <span>
+                    <i
                       :class="
                         p.snils
                           ? 'bi bi-check-lg text-success'
                           : 'bi bi-x-lg text-danger'
                       "
                     ></i>
-                    СНИЛС</span
-                  >
-                  <span
-                    ><i
+                    СНИЛС
+                  </span>
+                  <span>
+                    <i
                       :class="
                         p.bank_account
                           ? 'bi bi-check-lg text-success'
                           : 'bi bi-x-lg text-danger'
                       "
                     ></i>
-                    Банк</span
-                  >
-                  <span
-                    ><i
+                    Банк
+                  </span>
+                  <span>
+                    <i
                       :class="
                         p.addresses
                           ? 'bi bi-check-lg text-success'
                           : 'bi bi-x-lg text-danger'
                       "
                     ></i>
-                    Адрес</span
-                  >
+                    Адрес
+                  </span>
                   <span>
-                    <i class="bi"></i>
                     <span v-if="p.taxation_type">{{ p.taxation_type }}</span>
                     <button
                       v-else-if="p.inn"
@@ -1082,19 +1454,33 @@ async function bulk(action: BulkAction): Promise<void> {
               </div>
             </div>
           </div>
-          <p v-else-if="!completionLoading" class="text-muted mb-0">
+
+          <p
+            v-if="!completion.length && !completionLoading"
+            class="text-muted mb-0"
+          >
             Нет данных.
           </p>
         </div>
       </div>
+
+      <PageNav
+        v-if="activeTab === 'profiles' && completionTotalPages > 1"
+        v-model:page="completionPage"
+        v-model:page-size="completionPageSize"
+        :total-pages="completionTotalPages"
+        :sizes="[...PAGE_SIZE_OPTIONS]"
+      />
     </div>
   </div>
+
   <TaxationInfo
     ref="taxModal"
     :user-id="taxUserId"
     modal-only
     @saved="onTaxSaved"
   />
+
   <ConfirmModal
     ref="confirmRef"
     :title="confirmTitle"
@@ -1104,6 +1490,7 @@ async function bulk(action: BulkAction): Promise<void> {
   >
     <p class="mb-0">{{ confirmMessage }}</p>
   </ConfirmModal>
+
   <UsersFilterModal
     v-model="filtersOpen"
     :status="statusFilter"
@@ -1124,15 +1511,10 @@ async function bulk(action: BulkAction): Promise<void> {
 .sortable i {
   margin-left: 4px;
 }
-/* Uses global .section-card and .tab-selector from brand.css */
 .profile-card {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
 }
-
-/* Mobile spacing handled globally */
-
-/* Column widths for better scanability */
 .fio-col {
   min-width: 16rem;
 }
@@ -1151,14 +1533,14 @@ async function bulk(action: BulkAction): Promise<void> {
 .actions-col {
   width: 10rem;
 }
-
-/* Prevent wrapping and enable ellipsis for long names */
 td .cell-text {
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* Uses global skeleton utilities in brand.css */
+.user-contacts > span + span::before {
+  content: '•';
+  margin: 0 0.35rem;
+}
 </style>

@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch, ref, computed } from 'vue';
+import { onBeforeUnmount, reactive, watch, ref, computed } from 'vue';
 import { suggestFio, cleanFio } from '../dadata';
 
 const props = defineProps({
@@ -26,7 +26,16 @@ const form = reactive({
 });
 
 const phoneInput = ref('');
-const errors = reactive({});
+const errors = reactive({
+  fio: '',
+  last_name: '',
+  first_name: '',
+  patronymic: '',
+  birth_date: '',
+  sex_id: '',
+  phone: '',
+  email: '',
+});
 const suggestions = reactive({
   last_name: [],
   first_name: [],
@@ -40,6 +49,49 @@ const timeouts = {
   first_name: null,
   patronymic: null,
 };
+const suggestAbort = {
+  last_name: null,
+  first_name: null,
+  patronymic: null,
+};
+const lastSuggestQuery = reactive({
+  last_name: '',
+  first_name: '',
+  patronymic: '',
+});
+const todayIso = new Date().toISOString().slice(0, 10);
+
+const fieldLabels = {
+  fio: 'ФИО',
+  last_name: 'Фамилия',
+  first_name: 'Имя',
+  patronymic: 'Отчество',
+  birth_date: 'Дата рождения',
+  sex_id: 'Пол',
+  phone: 'Телефон',
+  email: 'Email',
+};
+
+const fieldInputIds = {
+  fio: 'fio',
+  last_name: 'lastName',
+  first_name: 'firstName',
+  patronymic: 'patronymic',
+  birth_date: 'birthDate',
+  sex_id: 'sexSelect',
+  phone: 'phone',
+  email: 'email',
+};
+
+const validationOrder = [
+  'fio',
+  'last_name',
+  'first_name',
+  'birth_date',
+  'sex_id',
+  'phone',
+  'email',
+];
 
 watch(
   () => props.modelValue,
@@ -63,14 +115,33 @@ watch(form, (val) => {
 function updateSuggestions(field, part) {
   if (!editing.value) return;
   clearTimeout(timeouts[field]);
+  if (suggestAbort[field]) {
+    suggestAbort[field].abort();
+    suggestAbort[field] = null;
+  }
   const value = form[field];
   if (!value || value.length < 2) {
     suggestions[field] = [];
+    lastSuggestQuery[field] = '';
     return;
   }
   const query = value.trim();
+  if (query === lastSuggestQuery[field]) return;
   timeouts[field] = setTimeout(async () => {
-    suggestions[field] = await suggestFio(query, [part]);
+    const controller = new AbortController();
+    suggestAbort[field] = controller;
+    try {
+      suggestions[field] = await suggestFio(query, [part], {
+        signal: controller.signal,
+      });
+      lastSuggestQuery[field] = query;
+    } catch {
+      suggestions[field] = [];
+    } finally {
+      if (suggestAbort[field] === controller) {
+        suggestAbort[field] = null;
+      }
+    }
   }, 300);
 }
 
@@ -98,20 +169,51 @@ function formatPhone(digits) {
   return out;
 }
 
-function onPhoneInput(e) {
-  let digits = e.target.value.replace(/\D/g, '');
-  if (!digits.startsWith('7')) digits = '7' + digits.replace(/^7*/, '');
-  digits = digits.slice(0, 11);
-  form.phone = digits;
-  phoneInput.value = formatPhone(digits);
+function normalizePhoneDigits(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('8')) {
+    digits = `7${digits.slice(1)}`;
+  } else if (!digits.startsWith('7')) {
+    digits = `7${digits}`;
+  }
+  return digits.slice(0, 11);
 }
 
-function onPhoneKeydown(e) {
-  if (e.key === 'Backspace' || e.key === 'Delete') {
-    e.preventDefault();
-    form.phone = form.phone.slice(0, -1);
-    phoneInput.value = formatPhone(form.phone);
+function getCaretForDigitCount(formatted, digitCount) {
+  if (digitCount <= 0) return 0;
+  let count = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      count += 1;
+      if (count >= digitCount) return i + 1;
+    }
   }
+  return formatted.length;
+}
+
+function onPhoneInput(e) {
+  const target = e.target;
+  const rawValue = target.value || '';
+  const rawCaret = target.selectionStart ?? rawValue.length;
+  const digitsBeforeCaret = rawValue
+    .slice(0, rawCaret)
+    .replace(/\D/g, '').length;
+  const digits = normalizePhoneDigits(rawValue);
+  const normalizedDigitsBeforeCaret = Math.min(
+    digitsBeforeCaret,
+    digits.length
+  );
+  form.phone = digits;
+  const formatted = formatPhone(digits);
+  phoneInput.value = formatted;
+  const caretPos = getCaretForDigitCount(
+    formatted,
+    normalizedDigitsBeforeCaret
+  );
+  requestAnimationFrame(() => {
+    target.setSelectionRange(caretPos, caretPos);
+  });
 }
 
 async function onFioBlur() {
@@ -150,6 +252,9 @@ async function onFioBlur() {
   suggestions.last_name = [];
   suggestions.first_name = [];
   suggestions.patronymic = [];
+  lastSuggestQuery.last_name = '';
+  lastSuggestQuery.first_name = '';
+  lastSuggestQuery.patronymic = '';
 }
 
 async function onFioSingleBlur() {
@@ -217,9 +322,8 @@ function validate() {
   if (props.singleFio) {
     const ok =
       Boolean((form.last_name || '').trim()) &&
-      Boolean((form.first_name || '').trim()) &&
-      Boolean((form.patronymic || '').trim());
-    errors.fio = ok ? '' : 'Введите ФИО полностью (фамилия, имя, отчество)';
+      Boolean((form.first_name || '').trim());
+    errors.fio = ok ? '' : 'Введите минимум фамилию и имя';
     // Ensure part-specific errors do not block validation in single field mode
     errors.last_name = '';
     errors.first_name = '';
@@ -227,17 +331,15 @@ function validate() {
   } else {
     errors.last_name = form.last_name ? '' : 'Введите фамилию';
     errors.first_name = form.first_name ? '' : 'Введите имя';
-    if (props.isNew) {
-      errors.patronymic = form.patronymic ? '' : 'Введите отчество';
-    }
+    errors.patronymic = '';
   }
   errors.sex_id =
     props.showSex && props.requireSex && !form.sex_id ? 'Выберите пол' : '';
   if (!form.birth_date) {
     errors.birth_date = 'Введите дату рождения';
   } else {
-    const date = new Date(form.birth_date);
-    errors.birth_date = date <= new Date() ? '' : 'Введите корректную дату';
+    errors.birth_date =
+      form.birth_date <= todayIso ? '' : 'Введите корректную дату';
   }
   errors.phone = form.phone.length === 11 ? '' : 'Неверный номер';
   errors.email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)
@@ -259,17 +361,53 @@ function lock() {
 }
 
 function setFieldError(field, message) {
-  if (field && Object.prototype.hasOwnProperty.call(errors, field)) {
+  if (!field) return;
+  if (
+    props.singleFio &&
+    (field === 'last_name' || field === 'first_name' || field === 'patronymic')
+  ) {
+    errors.fio = message || '';
+    return;
+  }
+  if (Object.prototype.hasOwnProperty.call(errors, field)) {
     errors[field] = message || '';
   }
 }
 
-defineExpose({ validate, unlock, lock, editing, setFieldError });
+const errorSummary = computed(() =>
+  validationOrder
+    .filter((field) => Boolean(errors[field]))
+    .map((field) => ({
+      field,
+      label: fieldLabels[field] || field,
+      message: errors[field],
+    }))
+);
 
-const selectedSexName = computed(() => {
-  if (!form.sex_id || !Array.isArray(props.sexes)) return '';
-  const found = props.sexes.find((s) => s.id === form.sex_id);
-  return found ? found.name : '';
+function focusFirstInvalidField() {
+  const first = errorSummary.value[0];
+  if (!first) return;
+  const id = fieldInputIds[first.field];
+  if (!id) return;
+  const element = document.getElementById(id);
+  element?.focus?.();
+}
+
+defineExpose({
+  validate,
+  unlock,
+  lock,
+  editing,
+  setFieldError,
+  focusFirstInvalidField,
+  getErrorSummary: () => errorSummary.value,
+});
+
+onBeforeUnmount(() => {
+  Object.values(timeouts).forEach((timer) => {
+    if (timer) clearTimeout(timer);
+  });
+  Object.values(suggestAbort).forEach((controller) => controller?.abort?.());
 });
 </script>
 
@@ -290,6 +428,19 @@ const selectedSexName = computed(() => {
           </button>
         </div>
         <fieldset :disabled="!editing">
+          <div
+            v-if="errorSummary.length"
+            class="alert alert-danger py-2"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div class="fw-semibold mb-1">Проверьте поля формы:</div>
+            <ul class="mb-0 ps-3">
+              <li v-for="item in errorSummary" :key="item.field">
+                {{ item.label }}: {{ item.message }}
+              </li>
+            </ul>
+          </div>
           <div class="row row-cols-1 row-cols-sm-2 g-3">
             <template v-if="props.singleFio">
               <div class="col">
@@ -300,7 +451,8 @@ const selectedSexName = computed(() => {
                     class="form-control"
                     :class="{ 'is-invalid': errors.fio }"
                     placeholder="Фамилия Имя Отчество"
-                    required
+                    aria-required="true"
+                    autocomplete="name"
                     @blur="onFioSingleBlur"
                   />
                   <label for="fio">ФИО</label>
@@ -320,7 +472,8 @@ const selectedSexName = computed(() => {
                     class="form-control"
                     :class="{ 'is-invalid': errors.last_name }"
                     placeholder="Фамилия"
-                    required
+                    aria-required="true"
+                    autocomplete="family-name"
                     @blur="onFioBlur"
                   />
                   <label for="lastName">Фамилия</label>
@@ -354,7 +507,8 @@ const selectedSexName = computed(() => {
                     class="form-control"
                     :class="{ 'is-invalid': errors.first_name }"
                     placeholder="Имя"
-                    required
+                    aria-required="true"
+                    autocomplete="given-name"
                     @blur="onFioBlur"
                   />
                   <label for="firstName">Имя</label>
@@ -387,6 +541,7 @@ const selectedSexName = computed(() => {
                     v-model="form.patronymic"
                     class="form-control"
                     placeholder="Отчество"
+                    autocomplete="additional-name"
                     @blur="onFioBlur"
                   />
                   <label for="patronymic">Отчество</label>
@@ -421,7 +576,9 @@ const selectedSexName = computed(() => {
                   class="form-control"
                   :class="{ 'is-invalid': errors.birth_date }"
                   placeholder="Дата рождения"
-                  required
+                  aria-required="true"
+                  autocomplete="bday"
+                  :max="todayIso"
                 />
                 <label for="birthDate">Дата рождения</label>
                 <div class="invalid-feedback">{{ errors.birth_date }}</div>
@@ -433,10 +590,11 @@ const selectedSexName = computed(() => {
             <div class="col">
               <label class="form-label">Пол</label>
               <select
+                id="sexSelect"
                 v-model="form.sex_id"
                 class="form-select"
                 :class="{ 'is-invalid': errors.sex_id }"
-                :required="props.requireSex && props.showSex"
+                :aria-required="props.requireSex && props.showSex"
               >
                 <option value="" disabled>Выберите...</option>
                 <option v-for="s in props.sexes" :key="s.id" :value="s.id">
@@ -456,9 +614,10 @@ const selectedSexName = computed(() => {
                   class="form-control"
                   :class="{ 'is-invalid': errors.phone }"
                   placeholder="Телефон"
-                  required
+                  aria-required="true"
+                  autocomplete="tel"
+                  inputmode="tel"
                   @input="onPhoneInput"
-                  @keydown="onPhoneKeydown"
                 />
                 <label for="phone">Телефон</label>
                 <div class="invalid-feedback">{{ errors.phone }}</div>
@@ -469,11 +628,12 @@ const selectedSexName = computed(() => {
                 <input
                   id="email"
                   v-model="form.email"
-                  type="email"
+                  type="text"
                   class="form-control"
                   :class="{ 'is-invalid': errors.email }"
                   placeholder="Email"
-                  required
+                  aria-required="true"
+                  autocomplete="email"
                 />
                 <label for="email">Email</label>
                 <div class="invalid-feedback">{{ errors.email }}</div>

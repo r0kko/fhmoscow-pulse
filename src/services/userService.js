@@ -14,33 +14,107 @@ import { assertPassword } from '../utils/passwordPolicy.js';
 import { FHMO_STAFF_ROLES } from '../utils/roles.js';
 
 const FHMO_ROLE_SET = new Set(FHMO_STAFF_ROLES);
+const MIN_BIRTH_DATE = new Date('1945-01-01');
+const DEFAULT_LIST_LIMIT = 20;
+const MAX_LIST_LIMIT = 100;
+
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function normalizeEmail(value) {
+  return normalizeText(value).toLowerCase();
+}
+
+function normalizePhone(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 11 && digits.startsWith('8')) {
+    digits = `7${digits.slice(1)}`;
+  } else if (digits.length === 10) {
+    digits = `7${digits}`;
+  }
+  return digits.slice(0, 11);
+}
+
+function isValidBirthDate(value) {
+  const birth = new Date(value);
+  if (Number.isNaN(birth.getTime())) return false;
+  if (birth < MIN_BIRTH_DATE) return false;
+  return birth <= new Date();
+}
+
+function normalizeUserPayload(data = {}) {
+  const normalized = {
+    ...data,
+    first_name: normalizeText(data.first_name),
+    last_name: normalizeText(data.last_name),
+    patronymic: normalizeText(data.patronymic),
+    phone: normalizePhone(data.phone),
+    email: normalizeEmail(data.email),
+    birth_date: normalizeText(data.birth_date),
+  };
+  return normalized;
+}
+
+function mapUniqueErrorToServiceCode(err) {
+  const isUnique =
+    err?.name === 'SequelizeUniqueConstraintError' ||
+    err?.constructor?.name === 'UniqueConstraintError';
+  if (!isUnique) return null;
+
+  const fields = new Set(Object.keys(err?.fields || {}));
+  for (const item of err?.errors || []) {
+    if (item?.path) fields.add(item.path);
+  }
+  const context = `${String(err?.message || '')} ${String(
+    err?.parent?.constraint || ''
+  )}`.toLowerCase();
+
+  if (fields.has('phone') || context.includes('users_phone_key')) {
+    return 'phone_exists';
+  }
+  if (fields.has('email') || context.includes('users_email_key')) {
+    return 'email_exists';
+  }
+  if (
+    context.includes('uq_users_fullname_birth_date_active') ||
+    fields.has('last_name') ||
+    fields.has('first_name') ||
+    fields.has('birth_date')
+  ) {
+    return 'user_exists';
+  }
+  return null;
+}
 
 async function createUser(data, actorId = null) {
-  const birth = new Date(data.birth_date);
-  if (Number.isNaN(birth.getTime()) || birth < new Date('1945-01-01')) {
+  const normalized = normalizeUserPayload(data);
+  if (!isValidBirthDate(normalized.birth_date)) {
     throw new ServiceError('invalid_birth_date');
   }
-  if (!data.sex_id) {
+  if (!normalized.sex_id) {
     throw new ServiceError('sex_required');
   }
-  if (Object.prototype.hasOwnProperty.call(data, 'password')) {
-    assertPassword(data.password);
+  if (Object.prototype.hasOwnProperty.call(normalized, 'password')) {
+    assertPassword(normalized.password);
   }
-  const sex = await Sex.findByPk(data.sex_id);
+  const sex = await Sex.findByPk(normalized.sex_id);
   if (!sex) throw new ServiceError('sex_not_found', 404);
   const activeStatus = await UserStatus.findOne({ where: { alias: 'ACTIVE' } });
+  if (!activeStatus) throw new ServiceError('status_not_found', 404);
 
   const activeWhere = { deleted_at: null, status_id: activeStatus.id };
 
   const [phoneExisting, emailExisting, personalExisting] = await Promise.all([
-    User.findOne({ where: { phone: data.phone, ...activeWhere } }),
-    User.findOne({ where: { email: data.email, ...activeWhere } }),
+    User.findOne({ where: { phone: normalized.phone } }),
+    User.findOne({ where: { email: normalized.email } }),
     User.findOne({
       where: {
-        last_name: data.last_name,
-        first_name: data.first_name,
-        patronymic: data.patronymic,
-        birth_date: data.birth_date,
+        last_name: normalized.last_name,
+        first_name: normalized.first_name,
+        patronymic: normalized.patronymic,
+        birth_date: normalized.birth_date,
         ...activeWhere,
       },
     }),
@@ -49,17 +123,28 @@ async function createUser(data, actorId = null) {
   if (emailExisting) throw new ServiceError('email_exists');
   if (personalExisting) throw new ServiceError('user_exists');
 
-  return await User.create({
-    ...data,
-    status_id: activeStatus.id,
-    created_by: actorId,
-    updated_by: actorId,
-  });
+  try {
+    return await User.create({
+      ...normalized,
+      status_id: activeStatus.id,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  } catch (err) {
+    const code = mapUniqueErrorToServiceCode(err);
+    if (code) throw new ServiceError(code);
+    throw err;
+  }
 }
 
 async function listUsers(options = {}) {
-  const page = Math.max(1, parseInt(options.page || 1));
-  const limit = Math.max(1, parseInt(options.limit || 20));
+  const parsedPage = Number.parseInt(String(options.page || ''), 10);
+  const parsedLimit = Number.parseInt(String(options.limit || ''), 10);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const limit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, MAX_LIST_LIMIT)
+      : DEFAULT_LIST_LIMIT;
   const offset = (page - 1) * limit;
 
   const sortField = [
@@ -158,14 +243,47 @@ async function getUser(id) {
 async function updateUser(id, data, actorId = null) {
   const user = await User.findByPk(id);
   if (!user) throw new ServiceError('user_not_found', 404);
-  if (Object.prototype.hasOwnProperty.call(data, 'sex_id')) {
-    if (!data.sex_id) {
+  const normalized = {
+    ...data,
+    ...(Object.prototype.hasOwnProperty.call(data, 'first_name')
+      ? { first_name: normalizeText(data.first_name) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, 'last_name')
+      ? { last_name: normalizeText(data.last_name) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, 'patronymic')
+      ? { patronymic: normalizeText(data.patronymic) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, 'phone')
+      ? { phone: normalizePhone(data.phone) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, 'email')
+      ? { email: normalizeEmail(data.email) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, 'birth_date')
+      ? { birth_date: normalizeText(data.birth_date) }
+      : {}),
+  };
+  if (Object.prototype.hasOwnProperty.call(normalized, 'sex_id')) {
+    if (!normalized.sex_id) {
       throw new ServiceError('sex_required');
     }
-    const sex = await Sex.findByPk(data.sex_id);
+    const sex = await Sex.findByPk(normalized.sex_id);
     if (!sex) throw new ServiceError('sex_not_found', 404);
   }
-  await user.update({ ...data, updated_by: actorId });
+  if (
+    Object.prototype.hasOwnProperty.call(normalized, 'birth_date') &&
+    !isValidBirthDate(normalized.birth_date)
+  ) {
+    throw new ServiceError('invalid_birth_date');
+  }
+  try {
+    await user.update({ ...normalized, updated_by: actorId });
+  } catch (err) {
+    const code = mapUniqueErrorToServiceCode(err);
+    if (code) throw new ServiceError(code);
+    throw err;
+  }
   return user;
 }
 
@@ -185,6 +303,17 @@ async function resetPassword(id, password, actorId = null) {
   if (!user) throw new ServiceError('user_not_found', 404);
   assertPassword(password);
   user.password = password;
+  user.updated_by = actorId;
+  await user.save();
+  return user;
+}
+
+async function setTemporaryPassword(id, password, actorId = null) {
+  const user = await User.scope('withPassword').findByPk(id);
+  if (!user) throw new ServiceError('user_not_found', 404);
+  assertPassword(password);
+  user.password = password;
+  user.password_change_required = true;
   user.updated_by = actorId;
   await user.save();
   return user;
@@ -271,4 +400,5 @@ export default {
   assignRole,
   removeRole,
   bumpTokenVersion,
+  setTemporaryPassword,
 };

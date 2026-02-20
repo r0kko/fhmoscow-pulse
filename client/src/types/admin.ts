@@ -15,6 +15,12 @@ export interface AdminUserSummary {
 export interface AdminUsersResponse {
   users: AdminUserSummary[];
   total: number;
+  meta?: {
+    total: number;
+    page: number;
+    pages: number;
+    limit: number;
+  };
 }
 
 export interface UserRoleOption {
@@ -43,6 +49,12 @@ export interface AdminProfileCompletion {
 
 export interface AdminProfileCompletionResponse {
   profiles: AdminProfileCompletion[];
+  meta?: {
+    total: number;
+    page: number;
+    pages: number;
+    limit: number;
+  };
 }
 
 export interface AddressSummary {

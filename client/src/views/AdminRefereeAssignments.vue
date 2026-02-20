@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { apiFetch } from '../api';
 
 const roleGroups = ref([]);
@@ -18,9 +18,14 @@ const error = ref('');
 const drafts = ref({});
 const savingByMatch = ref({});
 const saveErrors = ref({});
+const refereesLoadError = ref('');
 const publishingDay = ref(false);
 const publishError = ref('');
 const publishSuccess = ref('');
+const saveRevisionByKey = ref({});
+const saveDebounceTimers = new Map();
+let matchesLoadSeq = 0;
+let refereesLoadSeq = 0;
 
 const hasAnyMatches = computed(() => matches.value.length > 0);
 const hasActiveMatchFilters = computed(
@@ -145,13 +150,51 @@ const allowedRefereeRoles = computed(() => {
   return aliases;
 });
 
+const knownRefereesForNaming = computed(() => {
+  const byId = new Map();
+  referees.value.forEach((ref) => {
+    if (!ref?.id) return;
+    byId.set(ref.id, ref);
+  });
+  matches.value.forEach((match) => {
+    (match.assignments || []).forEach((assignment) => {
+      const user = assignment?.user;
+      if (!user?.id || byId.has(user.id)) return;
+      byId.set(user.id, {
+        id: user.id,
+        last_name: user.last_name,
+        first_name: user.first_name,
+        patronymic: user.patronymic,
+        roles: [],
+      });
+    });
+  });
+  return [...byId.values()];
+});
+
+const lastFirstCounts = computed(() => {
+  const map = new Map();
+  knownRefereesForNaming.value.forEach((referee) => {
+    const last = normalizedNameKey(referee?.last_name);
+    const first = normalizedNameKey(referee?.first_name);
+    if (!last || !first) return;
+    const key = `${last}:${first}`;
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  return map;
+});
+
 const availableReferees = computed(() => {
   const countsMap = assignmentCountsByReferee.value;
   const roleAliases = allowedRefereeRoles.value;
   return referees.value
     .filter((ref) => {
-      const status = ref.availability?.status;
-      if (!ref.availability?.preset) return false;
+      const availability = resolveRefereeAvailabilityForDate(
+        ref,
+        selectedDate.value
+      );
+      const status = availability?.status;
+      if (!availability?.preset) return false;
       if (status !== 'FREE' && status !== 'PARTIAL') return false;
       if (!roleAliases.size) return true;
       const refRoles = new Set(ref.roles || []);
@@ -159,7 +202,9 @@ const availableReferees = computed(() => {
     })
     .map((ref) => ({
       ...ref,
-      availabilityLabel: availabilityLabel(ref.availability),
+      availabilityLabel: availabilityLabel(
+        resolveRefereeAvailabilityForDate(ref, selectedDate.value)
+      ),
       counts: countsMap.get(ref.id) || {
         draft: 0,
         published: 0,
@@ -197,6 +242,52 @@ const assignmentsGridStyle = computed(() => {
     minWidth: `${minWidth}px`,
   };
 });
+
+function normalizedNameKey(value) {
+  return String(value || '')
+    .trim()
+    .toLocaleLowerCase('ru');
+}
+
+function initialWithDot(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  return `${normalized.charAt(0).toUpperCase()}.`;
+}
+
+function resolveRefereeAvailabilityForDate(
+  referee,
+  dateKey = selectedDate.value
+) {
+  const normalizedDate = String(dateKey || '').trim();
+  if (normalizedDate) {
+    const byDate = referee?.availability_by_date || null;
+    if (byDate && byDate[normalizedDate]) return byDate[normalizedDate];
+  }
+  return referee?.availability || null;
+}
+
+function refereeDisplayName(referee) {
+  const last = String(referee?.last_name || '').trim();
+  const first = String(referee?.first_name || '').trim();
+  const patronymic = String(referee?.patronymic || '').trim();
+  const lastKey = normalizedNameKey(last);
+  const firstKey = normalizedNameKey(first);
+  const pairKey = lastKey && firstKey ? `${lastKey}:${firstKey}` : '';
+  const pairCount = pairKey ? lastFirstCounts.value.get(pairKey) || 0 : 0;
+  const base = [last, first].filter(Boolean).join(' ').trim();
+  if (pairCount > 1) {
+    const patronymicInitial = initialWithDot(patronymic);
+    const disambiguated = [last, first, patronymicInitial]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (disambiguated) return disambiguated;
+  }
+  return (
+    base || [last, first, patronymic].filter(Boolean).join(' ').trim() || '—'
+  );
+}
 
 function normalizeSearchText(value) {
   return String(value || '')
@@ -517,12 +608,34 @@ function initDrafts(list = []) {
   drafts.value = next;
 }
 
-function setSaving(matchId, val) {
-  savingByMatch.value = { ...savingByMatch.value, [matchId]: val };
-}
-
 function setSaveError(matchId, message) {
   saveErrors.value = { ...saveErrors.value, [matchId]: message };
+}
+
+function adjustSavingCounter(matchId, delta) {
+  const current = Number(savingByMatch.value[matchId] || 0);
+  const nextCount = current + delta;
+  const next = { ...savingByMatch.value };
+  if (nextCount > 0) next[matchId] = nextCount;
+  else delete next[matchId];
+  savingByMatch.value = next;
+}
+
+function makeSaveKey(matchId, groupId) {
+  return `${String(matchId)}:${String(groupId)}`;
+}
+
+function getSaveRevision(saveKey) {
+  return Number(saveRevisionByKey.value[saveKey] || 0);
+}
+
+function bumpSaveRevision(saveKey) {
+  const nextRevision = getSaveRevision(saveKey) + 1;
+  saveRevisionByKey.value = {
+    ...saveRevisionByKey.value,
+    [saveKey]: nextRevision,
+  };
+  return nextRevision;
 }
 
 function parseTimeSeconds(value) {
@@ -667,7 +780,10 @@ function hasConflict(userId, matchId, startSeconds, endSeconds) {
 function isRefereeAvailable(referee, match) {
   if (!referee) return false;
   if (!match || match.schedule_missing || match.duration_missing) return false;
-  const availability = referee.availability;
+  const availability = resolveRefereeAvailabilityForDate(
+    referee,
+    selectedDate.value
+  );
   if (!availability?.preset) return false;
   if (availability.status !== 'FREE' && availability.status !== 'PARTIAL') {
     return false;
@@ -679,14 +795,7 @@ function isRefereeAvailable(referee, match) {
 }
 
 function refereeLabel(referee, match) {
-  const last = referee?.last_name || '';
-  const first = referee?.first_name || '';
-  const patronymic = referee?.patronymic || '';
-  const initials = [first, patronymic]
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0)}.`)
-    .join(' ');
-  const base = [last, initials].filter(Boolean).join(' ').trim();
+  const base = refereeDisplayName(referee);
   if (!match || isRefereeAvailable(referee, match)) return base;
   return `${base} · недоступен`;
 }
@@ -725,6 +834,13 @@ function slotClass(match, roleId, index) {
   if (status === 'CONFIRMED') return 'select-confirmed';
   if (status === 'PUBLISHED') return 'select-published';
   return 'select-draft';
+}
+
+function slotAriaLabel(match, role, slotIndex) {
+  const left = match?.team1?.name || 'Команда 1';
+  const right = match?.team2?.name || 'Команда 2';
+  const roleName = role?.name || 'Судья';
+  return `${left} — ${right}, ${roleName}, слот ${slotIndex}`;
 }
 
 function applyClearMarkers(match, roleMap) {
@@ -798,13 +914,25 @@ function setSlotValue(match, roleId, index, value) {
     ...(primaryGroupId ? [primaryGroupId] : []),
   ];
   if (!groupsToSave.length) return;
-  (async () => {
-    for (const groupId of groupsToSave) {
-      const saveRoleId = roleIdByGroupId.value.get(groupId);
-      if (!saveRoleId) continue;
-      await saveMatchAssignments(match, saveRoleId);
-    }
-  })();
+  groupsToSave.forEach((groupId) => {
+    const saveRoleId = roleIdByGroupId.value.get(groupId);
+    if (!saveRoleId) return;
+    scheduleSaveMatchAssignments(match, saveRoleId);
+  });
+}
+
+function scheduleSaveMatchAssignments(match, roleId) {
+  const groupId = roleGroupIdForRole(roleId);
+  if (!groupId) return;
+  const saveKey = makeSaveKey(match.id, groupId);
+  const revision = bumpSaveRevision(saveKey);
+  const existingTimer = saveDebounceTimers.get(saveKey);
+  if (existingTimer) clearTimeout(existingTimer);
+  const timer = setTimeout(() => {
+    saveDebounceTimers.delete(saveKey);
+    void saveMatchAssignments(match, roleId, { saveKey, revision });
+  }, 350);
+  saveDebounceTimers.set(saveKey, timer);
 }
 
 function requiredCount(match, roleId) {
@@ -850,12 +978,19 @@ function roleGroupIdForRole(roleId) {
   return roleGroupByRoleId.value.get(roleId) || null;
 }
 
-async function saveMatchAssignments(match, roleId) {
+async function saveMatchAssignments(
+  match,
+  roleId,
+  { saveKey = null, revision = null } = {}
+) {
   if (!match || !canAssignGroup.value) return;
   if (match.schedule_missing || match.duration_missing) return;
   const groupId = roleGroupIdForRole(roleId);
   if (!groupId) return;
-  setSaving(match.id, true);
+  const resolvedSaveKey = saveKey || makeSaveKey(match.id, groupId);
+  const expectedRevision =
+    revision === null ? getSaveRevision(resolvedSaveKey) : revision;
+  adjustSavingCounter(match.id, 1);
   setSaveError(match.id, '');
   try {
     const payload = buildAssignmentsPayload(match.id, groupId);
@@ -870,14 +1005,16 @@ async function saveMatchAssignments(match, roleId) {
         }),
       }
     );
+    if (getSaveRevision(resolvedSaveKey) !== expectedRevision) return;
     match.assignments = data.assignments || [];
     match.draft_clear_group_ids = data.draft_clear_group_ids || [];
     resetMatchFlags(match);
     applyAssignmentsToDrafts(match.id, match.assignments);
   } catch (e) {
+    if (getSaveRevision(resolvedSaveKey) !== expectedRevision) return;
     setSaveError(match.id, e.message || 'Ошибка сохранения');
   } finally {
-    setSaving(match.id, false);
+    adjustSavingCounter(match.id, -1);
   }
 }
 
@@ -1026,35 +1163,46 @@ async function loadCompetitionTypes() {
 }
 
 async function loadMatches() {
+  const requestSeq = ++matchesLoadSeq;
   loadingMatches.value = true;
   error.value = '';
   try {
     const data = await apiFetch(
       `/referee-assignments/matches?date=${selectedDate.value}`
     );
+    if (requestSeq !== matchesLoadSeq) return;
     matches.value = normalizeMatches(data.matches || []);
     initDrafts(matches.value);
   } catch (e) {
+    if (requestSeq !== matchesLoadSeq) return;
     error.value = e.message || 'Ошибка загрузки матчей';
     matches.value = [];
   } finally {
+    if (requestSeq !== matchesLoadSeq) return;
     loadingMatches.value = false;
   }
 }
 
 async function loadReferees() {
   if (!selectedDate.value) return;
+  const requestSeq = ++refereesLoadSeq;
   loadingReferees.value = true;
+  refereesLoadError.value = '';
   try {
     const params = new URLSearchParams({
       date: selectedDate.value,
       limit: '0',
+      require_preset_for_date: '1',
     });
     const data = await apiFetch(`/referee-assignments/referees?${params}`);
+    if (requestSeq !== refereesLoadSeq) return;
     referees.value = data.referees || [];
-  } catch (_) {
+  } catch (e) {
+    if (requestSeq !== refereesLoadSeq) return;
     referees.value = [];
+    refereesLoadError.value = e.message || 'Ошибка загрузки судей';
   } finally {
+    if (requestSeq !== refereesLoadSeq) return;
     loadingReferees.value = false;
   }
 }
@@ -1102,6 +1250,11 @@ onMounted(() => {
   loadCompetitionTypes();
   loadMatches();
   loadReferees();
+});
+
+onUnmounted(() => {
+  saveDebounceTimers.forEach((timer) => clearTimeout(timer));
+  saveDebounceTimers.clear();
 });
 </script>
 
@@ -1409,6 +1562,7 @@ onMounted(() => {
                             ]"
                             :disabled="isAssignmentDisabled(match)"
                             :value="slotValue(match.id, role.id, slotIndex - 1)"
+                            :aria-label="slotAriaLabel(match, role, slotIndex)"
                             @change="
                               setSlotValue(
                                 match,
@@ -1445,8 +1599,14 @@ onMounted(() => {
                 {{ availableReferees.length }}
               </span>
             </div>
+            <div class="text-muted small mb-2">
+              Показаны судьи с отмеченной доступностью на выбранную дату.
+            </div>
             <div v-if="loadingReferees" class="text-muted small">
               Обновляем доступность...
+            </div>
+            <div v-else-if="refereesLoadError" class="text-danger small">
+              {{ refereesLoadError }}
             </div>
             <div v-else-if="!availableReferees.length" class="text-muted small">
               Нет свободных судей на выбранную дату.

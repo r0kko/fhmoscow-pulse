@@ -86,6 +86,19 @@ test('unblock updates user status to ACTIVE', async () => {
   expect(res.json).toHaveBeenCalledWith({ user: { id: '3' } });
 });
 
+test('unblock keeps success response even when activation email fails', async () => {
+  setStatusMock.mockResolvedValue({ id: '3' });
+  sendActivationEmailMock.mockRejectedValueOnce(new Error('smtp_down'));
+  const req = { params: { id: '3' }, user: { id: 'admin' }, id: 'req-1' };
+  const res = { json: jest.fn() };
+  await controller.unblock(req, res);
+  expect(setStatusMock).toHaveBeenCalledWith('3', 'ACTIVE', 'admin');
+  expect(res.json).toHaveBeenCalledWith({
+    user: { id: '3' },
+    notification: { status: 'failed', reason: 'activation_email_failed' },
+  });
+});
+
 test('resetPassword returns updated user', async () => {
   resetPasswordMock.mockResolvedValue({ id: '4' });
   const req = {

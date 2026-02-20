@@ -91,7 +91,7 @@ async function queueMailFromTemplate(
     user,
     metadata,
   });
-  await enqueueEmailJob({
+  return enqueueEmailJob({
     to: user.email,
     subject,
     text,
@@ -151,7 +151,7 @@ export async function sendPasswordResetEmail(user, code) {
 }
 
 export async function sendUserCreatedByAdminEmail(user, tempPassword) {
-  await queueMailFromTemplate(
+  return queueMailFromTemplate(
     user,
     renderUserCreatedByAdminEmail,
     [user, tempPassword],

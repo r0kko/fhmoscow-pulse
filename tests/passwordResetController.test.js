@@ -113,7 +113,7 @@ test('finish returns invalid_code for unknown user (anti-enumeration)', async ()
 test('finish returns error when code invalid', async () => {
   const user = { id: 'u1' };
   findUserMock.mockResolvedValue(user);
-  verifyCodeMock.mockRejectedValue(new Error('invalid_code'));
+  verifyCodeMock.mockRejectedValue({ code: 'invalid_code', status: 400 });
   const req = {
     body: { email: 't@example.com', code: 'bad', password: 'Pass' },
   };

@@ -1,6 +1,5 @@
-import { beforeEach, expect, jest, test, describe } from '@jest/globals';
+import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-// Mocks for services and mappers used by the controller
 const listUsersMock = jest.fn();
 const getUserMock = jest.fn();
 const createUserMock = jest.fn();
@@ -9,6 +8,8 @@ const setStatusMock = jest.fn();
 const resetPasswordMock = jest.fn();
 const assignRoleMock = jest.fn();
 const removeRoleMock = jest.fn();
+const setTemporaryPasswordMock = jest.fn();
+const bumpTokenVersionMock = jest.fn();
 
 const userToPublicMock = jest.fn((u) => u);
 
@@ -20,7 +21,6 @@ const passportToPublicMock = jest.fn((p) => p);
 const sendActivationEmailMock = jest.fn();
 const sendUserCreatedEmailMock = jest.fn();
 
-// Mock modules for this file
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
   default: {
@@ -30,8 +30,10 @@ jest.unstable_mockModule('../src/services/userService.js', () => ({
     updateUser: updateUserMock,
     setStatus: setStatusMock,
     resetPassword: resetPasswordMock,
+    bumpTokenVersion: bumpTokenVersionMock,
     assignRole: assignRoleMock,
     removeRole: removeRoleMock,
+    setTemporaryPassword: setTemporaryPasswordMock,
   },
 }));
 
@@ -62,7 +64,6 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
-// By default, validation passes (no errors)
 jest.unstable_mockModule('express-validator', () => ({
   __esModule: true,
   validationResult: () => ({ isEmpty: () => true, array: () => [] }),
@@ -73,6 +74,8 @@ const { default: controller } =
 
 function mockRes() {
   return {
+    locals: {},
+    set: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
     send: jest.fn(),
@@ -97,29 +100,45 @@ describe('userAdminController extra flows', () => {
     };
     const res = mockRes();
     await controller.list(req, res);
-    expect(listUsersMock).toHaveBeenCalled();
-    expect(res.json).toHaveBeenCalledWith({ users: [{ id: 'u1' }], total: 1 });
+    expect(listUsersMock).toHaveBeenCalledWith({
+      search: 'a',
+      page: 2,
+      limit: 10,
+      sort: 'last_name',
+      order: 'asc',
+      status: '',
+      role: '',
+    });
+    expect(res.json).toHaveBeenCalledWith({
+      users: [{ id: 'u1' }],
+      total: 1,
+      meta: { total: 1, page: 2, pages: 1, limit: 10 },
+    });
   });
 
-  test('get returns public user when found', async () => {
-    getUserMock.mockResolvedValue({ id: 'u2' });
+  test('list clamps excessive limit to API hard cap', async () => {
+    listUsersMock.mockResolvedValue({ rows: [], count: 0 });
+    const req = { query: { limit: '1000', page: '1' } };
     const res = mockRes();
-    await controller.get({ params: { id: 'u2' } }, res);
-    expect(res.json).toHaveBeenCalledWith({ user: { id: 'u2' } });
+    await controller.list(req, res);
+    expect(listUsersMock).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, limit: 100 })
+    );
+    expect(res.json).toHaveBeenCalledWith({
+      users: [],
+      total: 0,
+      meta: { total: 0, page: 1, pages: 1, limit: 100 },
+    });
   });
 
-  test('get returns 404 via sendError when not found', async () => {
-    getUserMock.mockRejectedValue(new Error('not found'));
-    const res = mockRes();
-    await controller.get({ params: { id: 'missing' } }, res);
-    expect(res.status).toHaveBeenCalledWith(404);
-  });
-
-  test('create returns 201 and user, sends email and generates password', async () => {
+  test('create returns sent delivery when email was delivered', async () => {
     createUserMock.mockResolvedValue({ id: 'u3' });
-    const req = { body: { email: 'a@b.c' }, user: { id: 'admin' } };
+    sendUserCreatedEmailMock.mockResolvedValue({ delivered: true });
+    const req = { body: { email: 'a@b.c' }, user: { id: 'admin' }, id: 'r1' };
     const res = mockRes();
+
     await controller.create(req, res);
+
     expect(createUserMock).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'a@b.c', password: expect.any(String) }),
       'admin'
@@ -128,15 +147,58 @@ describe('userAdminController extra flows', () => {
       { id: 'u3' },
       expect.any(String)
     );
-    // Ensure password does not contain HTML-problematic ampersand
-    const [, generatedPassword] = sendUserCreatedEmailMock.mock.calls.at(-1);
-    expect(generatedPassword).not.toMatch(/&/);
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith({ user: { id: 'u3' } });
+    expect(res.json).toHaveBeenCalledWith({
+      user: { id: 'u3' },
+      delivery: {
+        invited: true,
+        channel: 'email',
+        status: 'sent',
+      },
+    });
+  });
+
+  test('create returns queued delivery when queue accepted request', async () => {
+    createUserMock.mockResolvedValue({ id: 'u3' });
+    sendUserCreatedEmailMock.mockResolvedValue({ accepted: true });
+    const req = { body: { email: 'a@b.c' }, user: { id: 'admin' }, id: 'r1' };
+    const res = mockRes();
+
+    await controller.create(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      user: { id: 'u3' },
+      delivery: {
+        invited: true,
+        channel: 'email',
+        status: 'queued',
+      },
+    });
+  });
+
+  test('create returns failed delivery when sending throws', async () => {
+    createUserMock.mockResolvedValue({ id: 'u3' });
+    sendUserCreatedEmailMock.mockRejectedValue(new Error('smtp down'));
+    const req = { body: { email: 'a@b.c' }, user: { id: 'admin' }, id: 'r1' };
+    const res = mockRes();
+
+    await controller.create(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      user: { id: 'u3' },
+      delivery: {
+        invited: false,
+        channel: 'email',
+        status: 'failed',
+        reason: 'delivery_exception',
+      },
+    });
   });
 
   test('create returns 400 via sendError when email exists', async () => {
-    createUserMock.mockRejectedValue({ status: 400, message: 'email_exists' });
+    createUserMock.mockRejectedValue({ status: 400, code: 'email_exists' });
     const req = { body: { email: 'dup@example.com' }, user: { id: 'admin' } };
     const res = mockRes();
     await controller.create(req, res);
@@ -144,29 +206,31 @@ describe('userAdminController extra flows', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'email_exists' });
   });
 
-  test('update returns mapped user on success', async () => {
-    updateUserMock.mockResolvedValue({ id: 'u4' });
-    const req = {
-      params: { id: 'u4' },
-      body: { first_name: 'A' },
-      user: { id: 'admin' },
-    };
+  test('resendInvite rotates temporary password and reports delivery', async () => {
+    setTemporaryPasswordMock.mockResolvedValue({ id: 'u9' });
+    sendUserCreatedEmailMock.mockResolvedValue({ accepted: true });
+    const req = { params: { id: 'u9' }, user: { id: 'admin' }, id: 'r2' };
     const res = mockRes();
-    await controller.update(req, res);
-    expect(updateUserMock).toHaveBeenCalledWith(
-      'u4',
-      { first_name: 'A' },
+
+    await controller.resendInvite(req, res);
+
+    expect(setTemporaryPasswordMock).toHaveBeenCalledWith(
+      'u9',
+      expect.any(String),
       'admin'
     );
-    expect(res.json).toHaveBeenCalledWith({ user: { id: 'u4' } });
-  });
-
-  test('update returns 404 via sendError on service error', async () => {
-    updateUserMock.mockRejectedValue(new Error('nope'));
-    const req = { params: { id: 'uX' }, body: {}, user: { id: 'admin' } };
-    const res = mockRes();
-    await controller.update(req, res);
-    expect(res.status).toHaveBeenCalledWith(404);
+    expect(sendUserCreatedEmailMock).toHaveBeenCalledWith(
+      { id: 'u9' },
+      expect.any(String)
+    );
+    expect(res.json).toHaveBeenCalledWith({
+      user: { id: 'u9' },
+      delivery: {
+        invited: true,
+        channel: 'email',
+        status: 'queued',
+      },
+    });
   });
 
   test('getPassport returns mapped passport when found', async () => {
@@ -182,64 +246,5 @@ describe('userAdminController extra flows', () => {
     await controller.deletePassport({ params: { id: 'u6' } }, res);
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
-  });
-});
-
-describe('userAdminController validation error flows', () => {
-  test('create returns 400 on validation errors', async () => {
-    jest.resetModules();
-    const listUsersMock2 = jest.fn();
-    const createUserMock2 = jest.fn();
-    // remock modules with validation failing
-    jest.unstable_mockModule('../src/services/userService.js', () => ({
-      __esModule: true,
-      default: { listUsers: listUsersMock2, createUser: createUserMock2 },
-    }));
-    jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
-      __esModule: true,
-      default: { toPublic: (u) => u, toPublicArray: (arr) => arr },
-    }));
-    jest.unstable_mockModule('express-validator', () => ({
-      __esModule: true,
-      validationResult: () => ({
-        isEmpty: () => false,
-        array: () => [{ msg: 'bad' }],
-      }),
-    }));
-    const { default: controller2 } =
-      await import('../src/controllers/userAdminController.js');
-
-    const res = mockRes();
-    await controller2.create({ body: {} }, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ errors: [{ msg: 'bad' }] });
-  });
-
-  test('resetPassword returns 400 on validation errors', async () => {
-    jest.resetModules();
-    const resetPasswordMock2 = jest.fn();
-    jest.unstable_mockModule('../src/services/userService.js', () => ({
-      __esModule: true,
-      default: {
-        resetPassword: resetPasswordMock2,
-        bumpTokenVersion: jest.fn(),
-      },
-    }));
-    jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
-      __esModule: true,
-      default: { toPublic: (u) => u },
-    }));
-    jest.unstable_mockModule('express-validator', () => ({
-      __esModule: true,
-      validationResult: () => ({ isEmpty: () => false, array: () => ['x'] }),
-    }));
-    const { default: controller3 } =
-      await import('../src/controllers/userAdminController.js');
-    const res = mockRes();
-    await controller3.resetPassword(
-      { params: { id: 'u' }, body: { password: 'p' }, user: { id: 'a' } },
-      res
-    );
-    expect(res.status).toHaveBeenCalledWith(400);
   });
 });

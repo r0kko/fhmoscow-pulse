@@ -29,4 +29,22 @@ export async function findById(id) {
   }
 }
 
-export default { findByEmail, findById };
+export async function findByIds(ids) {
+  if (!isLegacyDbAvailable()) return [];
+  const unique = Array.from(
+    new Set((Array.isArray(ids) ? ids : []).map((id) => String(id).trim()))
+  ).filter(Boolean);
+  if (!unique.length) return [];
+  try {
+    const [rows] = await legacyDb.query(
+      'SELECT * FROM a_player WHERE id IN (?)',
+      [unique]
+    );
+    return Array.isArray(rows) ? rows : [];
+  } catch (err) {
+    logger.error('Legacy DB query failed: %s', err.message);
+    return [];
+  }
+}
+
+export default { findByEmail, findById, findByIds };

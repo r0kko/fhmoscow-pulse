@@ -3,37 +3,56 @@ import { context, trace } from '@opentelemetry/api';
 
 import logger from '../../logger.js';
 
-const SENSITIVE_KEYS = [
-  'password',
-  'new_password',
-  'old_password',
-  'password_confirmation',
-  'password_b64',
-  'pwd',
-  'p',
-  'refresh_token',
-  'refreshToken',
-  'access_token',
-  'token',
-  't',
-  'code',
-  // Personal identifiers
-  'snils',
-  'inn',
-  'passport',
-  'passport_series',
-  'passport_number',
-  'issuing_authority',
-  'issuing_authority_code',
-  // Banking
-  'bank_account',
-  'bank_card',
-  'card_number',
-  'account',
-  'iban',
-  'bic',
-  'swift',
-];
+const SENSITIVE_KEYS = new Set(
+  [
+    'password',
+    'new_password',
+    'old_password',
+    'password_confirmation',
+    'password_b64',
+    'pwd',
+    'p',
+    'refresh_token',
+    'refreshToken',
+    'access_token',
+    'token',
+    't',
+    'code',
+    // Personal identifiers
+    'snils',
+    'inn',
+    'passport',
+    'passport_series',
+    'passport_number',
+    'issuing_authority',
+    'issuing_authority_code',
+    // Banking
+    'bank_account',
+    'bank_card',
+    'card_number',
+    'account',
+    'iban',
+    'bic',
+    'swift',
+    // Common PII query/search keys
+    'search',
+    'email',
+    'phone',
+    'full_name',
+    'fullname',
+    'fullName',
+    'first_name',
+    'last_name',
+    'patronymic',
+    'birth_date',
+    'birthDate',
+    'fio',
+  ].map((key) => String(key).toLowerCase())
+);
+
+function isSensitiveKey(key) {
+  return SENSITIVE_KEYS.has(String(key || '').toLowerCase());
+}
 
 const DEFAULT_MAX_BODY_BYTES = parseInt(
   process.env.LOG_REQUEST_BODY_MAX_BYTES || '16384',
@@ -49,7 +68,7 @@ function redact(value) {
   if (value && typeof value === 'object') {
     const out = {};
     for (const [key, val] of Object.entries(value)) {
-      if (SENSITIVE_KEYS.includes(key)) continue;
+      if (isSensitiveKey(key)) continue;
       out[key] = redact(val);
     }
     return out;
@@ -63,7 +82,7 @@ function maskUrl(originalUrl) {
     const params = u.searchParams;
     let changed = false;
     for (const key of Array.from(params.keys())) {
-      if (SENSITIVE_KEYS.includes(key)) {
+      if (isSensitiveKey(key)) {
         params.set(key, 'redacted');
         changed = true;
       }

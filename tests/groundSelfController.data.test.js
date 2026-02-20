@@ -124,5 +124,5 @@ test('available handles internal errors via sendError', async () => {
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   await controller.available(req, res);
   expect(res.status).toHaveBeenCalledWith(400);
-  expect(res.json).toHaveBeenCalledWith({ error: 'boom' });
+  expect(res.json).toHaveBeenCalledWith({ error: 'internal_error' });
 });

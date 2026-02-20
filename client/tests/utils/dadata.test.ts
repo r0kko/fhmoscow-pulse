@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanAddress,
   findBankByBic,
+  resetDadataRuntimeForTests,
   suggestAddress,
   type AddressSuggestion,
 } from '@/dadata';
@@ -16,6 +17,7 @@ const apiFetchMock = vi.mocked(apiFetch);
 
 beforeEach(() => {
   apiFetchMock.mockReset();
+  resetDadataRuntimeForTests();
 });
 
 describe('dadata helpers', () => {
@@ -29,7 +31,11 @@ describe('dadata helpers', () => {
     expect(result).toEqual(suggestions);
     expect(apiFetchMock).toHaveBeenCalledWith(
       '/dadata/suggest-address',
-      expect.objectContaining({ method: 'POST' })
+      expect.objectContaining({
+        method: 'POST',
+        redirectOn401: false,
+        retryOn401: false,
+      })
     );
   });
 
@@ -55,5 +61,16 @@ describe('dadata helpers', () => {
 
     apiFetchMock.mockRejectedValueOnce(new Error('not found'));
     expect(await findBankByBic('bad')).toBeNull();
+  });
+
+  it('opens local circuit breaker after repeated failures', async () => {
+    apiFetchMock.mockRejectedValue(new Error('gateway timeout'));
+
+    await suggestAddress('Москва');
+    await suggestAddress('Москва');
+    await suggestAddress('Москва');
+    await suggestAddress('Москва');
+
+    expect(apiFetchMock).toHaveBeenCalledTimes(3);
   });
 });

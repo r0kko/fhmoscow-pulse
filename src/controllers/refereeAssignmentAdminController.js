@@ -46,9 +46,12 @@ export default {
         role_alias,
         competition_alias,
         only_leagues_access,
+        require_preset_for_date,
       } = req.query;
       const onlyLeaguesAccess =
         only_leagues_access === '1' || only_leagues_access === 'true';
+      const requirePresetForDate =
+        require_preset_for_date === '1' || require_preset_for_date === 'true';
       const data = await refereeAssignmentService.listRefereesByDate({
         dateKey: date,
         from,
@@ -57,6 +60,7 @@ export default {
         roleGroupId: role_group_id || null,
         competitionAlias: competition_alias || '',
         onlyLeaguesAccess,
+        requirePresetForDate,
         search: search || '',
         limit,
       });

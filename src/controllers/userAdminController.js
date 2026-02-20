@@ -2,12 +2,16 @@ import crypto from 'crypto';
 
 import { validationResult } from 'express-validator';
 
+import logger from '../../logger.js';
 import userService from '../services/userService.js';
 import passportService from '../services/passportService.js';
 import userMapper from '../mappers/userMapper.js';
 import passportMapper from '../mappers/passportMapper.js';
 import emailService from '../services/emailService.js';
 import { sendError } from '../utils/api.js';
+
+const DEFAULT_LIST_LIMIT = 20;
+const MAX_LIST_LIMIT = 100;
 
 export default {
   async list(req, res) {
@@ -20,10 +24,12 @@ export default {
       status = '',
       role = '',
     } = req.query;
+    const normalizedPage = normalizePage(page);
+    const normalizedLimit = normalizeLimit(limit);
     const { rows, count } = await userService.listUsers({
       search,
-      page: parseInt(page),
-      limit: parseInt(limit),
+      page: normalizedPage,
+      limit: normalizedLimit,
       sort,
       order,
       status,
@@ -32,6 +38,12 @@ export default {
     return res.json({
       users: userMapper.toPublicArray(rows),
       total: count,
+      meta: {
+        total: count,
+        page: normalizedPage,
+        pages: Math.max(1, Math.ceil(count / Math.max(normalizedLimit, 1))),
+        limit: normalizedLimit,
+      },
     });
   },
 
@@ -44,10 +56,6 @@ export default {
     }
   },
   async create(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     // Generate a strong temporary password server-side
     const tempPassword = generateTempPassword();
     const payload = {
@@ -57,13 +65,13 @@ export default {
     };
     try {
       const user = await userService.createUser(payload, req.user.id);
-      // Send credentials by email (do not expose password to the admin)
-      try {
-        await emailService.sendUserCreatedByAdminEmail(user, tempPassword);
-      } catch {
-        // Non-fatal: user is created even if email fails; logged inside emailService
-      }
-      return res.status(201).json({ user: userMapper.toPublic(user) });
+      const delivery = await sendInviteAndBuildDelivery(user, tempPassword, {
+        operation: 'user_create',
+        requestId: req.id || null,
+      });
+      return res
+        .status(201)
+        .json({ user: userMapper.toPublic(user), delivery });
     } catch (err) {
       // Typical cases: phone_exists, email_exists, user_exists, invalid_* (400)
       return sendError(res, err, 400);
@@ -71,10 +79,6 @@ export default {
   },
 
   async update(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
       const user = await userService.updateUser(
         req.params.id,
@@ -84,6 +88,24 @@ export default {
       return res.json({ user: userMapper.toPublic(user) });
     } catch (err) {
       return sendError(res, err, 404);
+    }
+  },
+
+  async resendInvite(req, res) {
+    const tempPassword = generateTempPassword();
+    try {
+      const user = await userService.setTemporaryPassword(
+        req.params.id,
+        tempPassword,
+        req.user.id
+      );
+      const delivery = await sendInviteAndBuildDelivery(user, tempPassword, {
+        operation: 'user_invite_resend',
+        requestId: req.id || null,
+      });
+      return res.json({ user: userMapper.toPublic(user), delivery });
+    } catch (err) {
+      return sendError(res, err, 400);
     }
   },
 
@@ -107,8 +129,13 @@ export default {
         'ACTIVE',
         req.user.id
       );
-      await emailService.sendAccountActivatedEmail(user);
-      return res.json({ user: userMapper.toPublic(user) });
+      const notification = await sendActivationEmailSafe(user, {
+        operation: 'user_unblock',
+        requestId: req.id || null,
+      });
+      const body = { user: userMapper.toPublic(user) };
+      if (notification) body.notification = notification;
+      return res.json(body);
     } catch (err) {
       return sendError(res, err, 404);
     }
@@ -121,8 +148,13 @@ export default {
         'ACTIVE',
         req.user.id
       );
-      await emailService.sendAccountActivatedEmail(user);
-      return res.json({ user: userMapper.toPublic(user) });
+      const notification = await sendActivationEmailSafe(user, {
+        operation: 'user_approve',
+        requestId: req.id || null,
+      });
+      const body = { user: userMapper.toPublic(user) };
+      if (notification) body.notification = notification;
+      return res.json(body);
     } catch (err) {
       return sendError(res, err, 404);
     }
@@ -237,4 +269,84 @@ function generateTempPassword(length = 12) {
     [picks[i], picks[j]] = [picks[j], picks[i]];
   }
   return picks.join('');
+}
+
+function normalizePage(value) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function normalizeLimit(value) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_LIST_LIMIT;
+  return Math.min(parsed, MAX_LIST_LIMIT);
+}
+
+async function sendActivationEmailSafe(
+  user,
+  { operation = 'user_status_activate', requestId = null } = {}
+) {
+  try {
+    await emailService.sendAccountActivatedEmail(user);
+    return null;
+  } catch (err) {
+    logger.warn('Account activation email failed', {
+      operation,
+      request_id: requestId,
+      user_id: user?.id || null,
+      reason: err?.code || err?.message || 'activation_email_failed',
+    });
+    return {
+      status: 'failed',
+      reason: 'activation_email_failed',
+    };
+  }
+}
+
+function mapDeliveryStatus(result) {
+  if (result?.delivered === true) return 'sent';
+  if (result?.accepted === true) return 'queued';
+  if (result?.reason === 'duplicate') return 'queued';
+  return 'failed';
+}
+
+async function sendInviteAndBuildDelivery(
+  user,
+  tempPassword,
+  { operation = 'user_create', requestId = null } = {}
+) {
+  const base = {
+    invited: false,
+    channel: 'email',
+    status: 'failed',
+  };
+  try {
+    const result = await emailService.sendUserCreatedByAdminEmail(
+      user,
+      tempPassword
+    );
+    const status = mapDeliveryStatus(result);
+    if (status === 'sent' || status === 'queued') {
+      return {
+        invited: true,
+        channel: 'email',
+        status,
+      };
+    }
+    logger.warn('User invite delivery failed', {
+      operation,
+      request_id: requestId,
+      user_id: user?.id || null,
+      reason: result?.reason || 'unknown',
+    });
+    return { ...base, reason: String(result?.reason || 'delivery_failed') };
+  } catch (err) {
+    logger.warn('User invite delivery exception', {
+      operation,
+      request_id: requestId,
+      user_id: user?.id || null,
+      reason: err?.code || err?.message || 'delivery_exception',
+    });
+    return { ...base, reason: 'delivery_exception' };
+  }
 }

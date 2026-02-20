@@ -24,7 +24,7 @@ const { default: controller } =
   await import('../src/controllers/passportSelfController.js');
 
 test('create returns 400 when service throws', async () => {
-  createMock.mockRejectedValue(new Error('db_error'));
+  createMock.mockRejectedValue({ code: 'db_error', status: 400 });
   const req = { user: { id: 'u1' }, body: { series: '11', number: '22' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   await controller.create(req, res);

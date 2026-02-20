@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import Pagination from './Pagination.vue';
 
 type PageNavProps = {
   page: number;
   totalPages: number;
   pageSize: number;
-  sizes?: number[];
+  sizes?: readonly number[];
   small?: boolean;
 };
 
@@ -30,19 +32,34 @@ function updatePageSize(event: Event): void {
   if (Number.isNaN(val)) return;
   emit('update:pageSize', val);
 }
+
+const normalizedSizes = computed(() => {
+  const base = (props.sizes ?? [])
+    .map((size) => Number(size))
+    .filter((size) => Number.isFinite(size) && size > 0);
+  return base.length ? Array.from(new Set(base)) : [5, 10, 20];
+});
+
+const currentPageSize = computed(() =>
+  normalizedSizes.value.includes(props.pageSize)
+    ? props.pageSize
+    : normalizedSizes.value[0]
+);
 </script>
 
 <template>
   <nav class="mt-3 page-nav d-flex align-items-center justify-content-between">
     <div class="page-size">
       <select
-        :value="pageSize"
+        :value="currentPageSize"
         class="form-select w-auto"
         :class="{ 'form-select-sm': small }"
         aria-label="Количество на странице"
         @change="updatePageSize"
       >
-        <option v-for="s in sizes" :key="s" :value="s">{{ s }}</option>
+        <option v-for="s in normalizedSizes" :key="s" :value="s">
+          {{ s }}
+        </option>
       </select>
     </div>
     <Pagination

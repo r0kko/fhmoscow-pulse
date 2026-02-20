@@ -394,6 +394,81 @@ test('listRefereesByDate keeps busy referees for pro leadership group', async ()
   expect(result.referees[0].availability.status).toBe('BUSY');
 });
 
+test('listRefereesByDate strict mode keeps only referees with explicit preset on selected date', async () => {
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u1',
+      last_name: 'Иванов',
+      first_name: 'Иван',
+      patronymic: 'Иванович',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+    {
+      id: 'u2',
+      last_name: 'Петров',
+      first_name: 'Пётр',
+      patronymic: 'Петрович',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    {
+      user_id: 'u1',
+      date: TEST_DATE,
+      AvailabilityType: { alias: 'FREE' },
+      from_time: null,
+      to_time: null,
+    },
+  ]);
+
+  const result = await service.listRefereesByDate({
+    date: TEST_DATE,
+    requirePresetForDate: true,
+  });
+
+  expect(result.referees).toHaveLength(1);
+  expect(result.referees[0].id).toBe('u1');
+});
+
+test('listRefereesByDate default mode keeps backward-compatible availability behavior', async () => {
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u1',
+      last_name: 'Иванов',
+      first_name: 'Иван',
+      patronymic: 'Иванович',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+    {
+      id: 'u2',
+      last_name: 'Петров',
+      first_name: 'Пётр',
+      patronymic: 'Петрович',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    {
+      user_id: 'u1',
+      date: TEST_DATE,
+      AvailabilityType: { alias: 'FREE' },
+      from_time: null,
+      to_time: null,
+    },
+  ]);
+
+  const result = await service.listRefereesByDate({
+    date: TEST_DATE,
+  });
+
+  expect(result.referees).toHaveLength(2);
+  expect(result.referees.map((item) => item.id)).toEqual(['u1', 'u2']);
+});
+
 test('updateMatchReferees saves draft assignments', async () => {
   matchFindByPkMock.mockResolvedValue(
     makeMatch({ match_duration_minutes: 60 })

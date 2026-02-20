@@ -34,6 +34,7 @@ import {
   createTaskRules,
   updateTaskRules,
 } from '../validators/taskValidators.js';
+import userInviteRateLimiter from '../middlewares/userInviteRateLimiter.js';
 import {
   createTicketRules,
   updateTicketRules,
@@ -281,7 +282,27 @@ router.all('/:id/sport-schools', sendDeprecatedProfileEndpoint);
  *     summary: Create user
  *     responses:
  *       201:
- *         description: Created user
+ *         description: Created user with invitation delivery status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                 delivery:
+ *                   type: object
+ *                   properties:
+ *                     invited:
+ *                       type: boolean
+ *                     channel:
+ *                       type: string
+ *                       enum: [email]
+ *                     status:
+ *                       type: string
+ *                       enum: [sent, queued, failed]
+ *                     reason:
+ *                       type: string
  */
 router.post(
   '/',
@@ -355,6 +376,53 @@ router.post('/:id/block', auth, authorize('ADMIN'), admin.block);
  *         description: User unblocked
  */
 router.post('/:id/unblock', auth, authorize('ADMIN'), admin.unblock);
+
+/**
+ * @swagger
+ * /users/{id}/invite-resend:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Re-send admin invitation email with a new temporary password
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated invitation delivery status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                 delivery:
+ *                   type: object
+ *                   properties:
+ *                     invited:
+ *                       type: boolean
+ *                     channel:
+ *                       type: string
+ *                       enum: [email]
+ *                     status:
+ *                       type: string
+ *                       enum: [sent, queued, failed]
+ *                     reason:
+ *                       type: string
+ *       429:
+ *         description: Too many resend attempts
+ */
+router.post(
+  '/:id/invite-resend',
+  auth,
+  authorize('ADMIN'),
+  userInviteRateLimiter,
+  admin.resendInvite
+);
 
 /**
  * @swagger
