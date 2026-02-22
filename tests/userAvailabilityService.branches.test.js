@@ -1,13 +1,18 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const findAllMock = jest.fn();
-const findOrCreateMock = jest.fn();
+const findOneMock = jest.fn();
+const createMock = jest.fn();
 const userFindMock = jest.fn();
 const availabilityTypeFindAllMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  UserAvailability: { findAll: findAllMock, findOrCreate: findOrCreateMock },
+  UserAvailability: {
+    findAll: findAllMock,
+    findOne: findOneMock,
+    create: createMock,
+  },
   User: { findByPk: userFindMock },
   AvailabilityType: { findAll: availabilityTypeFindAllMock },
 }));
@@ -17,7 +22,8 @@ const svcPath = '../src/services/userAvailabilityService.js';
 beforeEach(() => {
   jest.resetModules();
   findAllMock.mockReset();
-  findOrCreateMock.mockReset();
+  findOneMock.mockReset();
+  createMock.mockReset();
   userFindMock.mockReset();
   availabilityTypeFindAllMock.mockReset();
 });
@@ -140,4 +146,32 @@ test('getAvailabilityLocks returns expected flags far in future', async () => {
   expect(r.within96h).toBe(false);
   expect(r.limitedLocked).toBe(false);
   jest.useRealTimers();
+});
+
+test('setForUser retries on unique constraint and updates existing record', async () => {
+  userFindMock.mockResolvedValue({});
+  const updated = { update: jest.fn() };
+  findOneMock.mockResolvedValueOnce(null).mockResolvedValueOnce(updated);
+  const uniqueErr = Object.assign(new Error('duplicate'), {
+    name: 'SequelizeUniqueConstraintError',
+  });
+  createMock.mockRejectedValueOnce(uniqueErr);
+  availabilityTypeFindAllMock.mockResolvedValue([
+    { id: 'busy-id', alias: 'BUSY' },
+  ]);
+
+  const service = (await import(svcPath)).default;
+  await service.setForUser(
+    'u1',
+    [{ date: '2025-02-15', status: 'BUSY' }],
+    'actor'
+  );
+
+  expect(findOneMock).toHaveBeenCalledTimes(2);
+  expect(updated.update).toHaveBeenCalledWith({
+    type_id: 'busy-id',
+    from_time: null,
+    to_time: null,
+    updated_by: 'actor',
+  });
 });

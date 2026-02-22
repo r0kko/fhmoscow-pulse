@@ -139,6 +139,45 @@ test('listUsers clamps excessive limit to max cap', async () => {
   );
 });
 
+test('listUsers adds stable tie-breaker by id', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({ sort: 'last_name', order: 'asc' });
+  expect(findAndCountAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      order: [
+        ['last_name', 'ASC'],
+        ['id', 'ASC'],
+      ],
+    })
+  );
+});
+
+test('listUsersAll iterates over pages and returns full list', async () => {
+  findAndCountAllMock
+    .mockResolvedValueOnce({
+      rows: [{ id: 'u1' }, { id: 'u2' }],
+      count: 3,
+    })
+    .mockResolvedValueOnce({
+      rows: [{ id: 'u3' }],
+      count: 3,
+    });
+
+  const res = await service.listUsersAll({ role: ['REFEREE'], batchLimit: 2 });
+
+  expect(res).toEqual({
+    rows: [{ id: 'u1' }, { id: 'u2' }, { id: 'u3' }],
+    count: 3,
+  });
+  expect(findAndCountAllMock).toHaveBeenCalledTimes(2);
+  expect(findAndCountAllMock.mock.calls[0][0]).toEqual(
+    expect.objectContaining({ limit: 2, offset: 0 })
+  );
+  expect(findAndCountAllMock.mock.calls[1][0]).toEqual(
+    expect.objectContaining({ limit: 2, offset: 2 })
+  );
+});
+
 test('listUsers applies status filter', async () => {
   findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
   await service.listUsers({ status: 'ACTIVE' });

@@ -8,6 +8,7 @@ import userMapper from '../mappers/userMapper.js';
 import ServiceError from '../errors/ServiceError.js';
 import { hasRefereeRole } from '../utils/roles.js';
 import { utcToMoscow } from '../utils/time.js';
+import logger from '../../logger.js';
 
 function formatDate(d) {
   return d.toISOString().slice(0, 10);
@@ -18,6 +19,12 @@ function parseDateKey(dateStr) {
   const [year, month, day] = dateStr.split('-').map((value) => Number(value));
   if ([year, month, day].some((value) => Number.isNaN(value))) return null;
   return new Date(Date.UTC(year, month - 1, day));
+}
+
+function parsePositiveInt(value, fallback = null) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
 }
 
 function isAllDigits(text) {
@@ -173,6 +180,7 @@ export default {
 
   async adminGrid(req, res) {
     // Admin overview: referees' availability from today through end of following week
+    const requestStartedAt = Date.now();
     const todayKey = moscowTodayKey();
     const rangeStartDate = parseDateKey(todayKey) || new Date();
     const rangeEndDate =
@@ -186,6 +194,14 @@ export default {
         ? [rolesParam]
         : ['REFEREE', 'BRIGADE_REFEREE'];
     const status = req.query.status || 'ACTIVE';
+    const search =
+      typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const queryPage = parsePositiveInt(req.query.page);
+    const queryLimit = parsePositiveInt(req.query.limit);
+    const hasServerPagination = queryPage !== null || queryLimit !== null;
+    const page = queryPage || 1;
+    const limit = queryLimit || 20;
+    const effectiveLimit = Math.min(limit, 100);
 
     const dateParam = req.query.date;
     const rawDates = Array.isArray(dateParam)
@@ -201,15 +217,39 @@ export default {
       })
       .filter(Boolean);
 
-    // Fetch all matching users (cap at a reasonable upper bound)
-    const { rows } = await userService.listUsers({
-      role: roles,
-      status,
-      limit: 10000,
-      page: 1,
-      sort: 'last_name',
-      order: 'asc',
-    });
+    // Fetch users for the selected mode:
+    // - Backward-compatible mode (default): return all matching users.
+    // - Explicit pagination mode: return one page + meta.
+    const usersFetchStartedAt = Date.now();
+    const usersResult = hasServerPagination
+      ? await userService.listUsers({
+          role: roles,
+          status,
+          search,
+          limit,
+          page,
+          sort: 'last_name',
+          order: 'asc',
+        })
+      : await userService.listUsersAll({
+          role: roles,
+          status,
+          search,
+          sort: 'last_name',
+          order: 'asc',
+        });
+    const rows = usersResult.rows || [];
+    const usersTotal = Number(usersResult.count || 0);
+    const usersDurationMs = Date.now() - usersFetchStartedAt;
+    if (!hasServerPagination && rows.length < usersTotal) {
+      logger.warn('Admin availability grid users list may be truncated', {
+        endpoint: 'availabilities.admin-grid',
+        users_returned: rows.length,
+        expected_count: usersTotal,
+        duration_ms: usersDurationMs,
+      });
+    }
+
     const users = userMapper.toPublicArray(rows);
     const userIds = users.map((u) => u.id);
 
@@ -272,10 +312,29 @@ export default {
       };
     });
 
+    logger.info('Admin availability grid request completed', {
+      endpoint: 'availabilities.admin-grid',
+      duration_ms: Date.now() - requestStartedAt,
+      server_pagination: hasServerPagination,
+      users_returned: items.length,
+      expected_count: usersTotal,
+      page: hasServerPagination ? page : 1,
+      limit: hasServerPagination ? effectiveLimit : items.length,
+      dates_count: effectiveDates.length,
+    });
+
     res.json({
       dates: effectiveDates,
       availableDates,
       users: items,
+      meta: {
+        total: usersTotal,
+        page: hasServerPagination ? page : 1,
+        pages: hasServerPagination
+          ? Math.max(1, Math.ceil(usersTotal / Math.max(effectiveLimit, 1)))
+          : 1,
+        limit: hasServerPagination ? effectiveLimit : items.length,
+      },
     });
   },
 

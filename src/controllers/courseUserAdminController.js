@@ -5,6 +5,7 @@ import userService from '../services/userService.js';
 import userMapper from '../mappers/userMapper.js';
 import courseMapper from '../mappers/courseMapper.js';
 import { sendError } from '../utils/api.js';
+import logger from '../../logger.js';
 
 export default {
   async listAll(req, res) {
@@ -12,12 +13,21 @@ export default {
       const { search = '' } = req.query;
       const role = req.query.role;
       const roles = Array.isArray(role) ? role : role ? [role] : [];
-      const { rows } = await userService.listUsers({
+      const startedAt = Date.now();
+      const { rows, count } = await userService.listUsersAll({
         search,
         role: roles,
-        limit: 1000,
         includeCourse: true,
       });
+      const durationMs = Date.now() - startedAt;
+      if (rows.length < Number(count || 0)) {
+        logger.warn('Course users list may be truncated', {
+          endpoint: 'course-users.listAll',
+          users_returned: rows.length,
+          expected_count: Number(count || 0),
+          duration_ms: durationMs,
+        });
+      }
       const users = await Promise.all(
         rows.map(async (u) => {
           const course = u.UserCourse?.Course;

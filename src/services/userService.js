@@ -17,6 +17,7 @@ const FHMO_ROLE_SET = new Set(FHMO_STAFF_ROLES);
 const MIN_BIRTH_DATE = new Date('1945-01-01');
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 100;
+const DEFAULT_LIST_ALL_BATCH_LIMIT = MAX_LIST_LIMIT;
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -220,8 +221,13 @@ async function listUsers(options = {}) {
       ? [
           [{ model: UserStatus }, 'alias', sortOrder],
           ['last_name', 'ASC'],
+          ['first_name', 'ASC'],
+          ['id', 'ASC'],
         ]
-      : [[sortField, sortOrder]];
+      : [
+          [sortField, sortOrder],
+          ['id', 'ASC'],
+        ];
 
   return User.findAndCountAll({
     include,
@@ -232,6 +238,44 @@ async function listUsers(options = {}) {
     limit,
     offset,
   });
+}
+
+async function listUsersAll(options = {}) {
+  const parsedBatchLimit = Number.parseInt(
+    String(options.batchLimit || ''),
+    10
+  );
+  const batchLimit =
+    Number.isFinite(parsedBatchLimit) && parsedBatchLimit > 0
+      ? Math.min(parsedBatchLimit, MAX_LIST_LIMIT)
+      : DEFAULT_LIST_ALL_BATCH_LIMIT;
+
+  const firstPage = await listUsers({
+    ...options,
+    page: 1,
+    limit: batchLimit,
+  });
+  const rows = [...(firstPage.rows || [])];
+  const count = Number(firstPage.count || 0);
+  const pages = Math.max(1, Math.ceil(count / Math.max(batchLimit, 1)));
+  const seenIds = new Set(rows.map((row) => row?.id).filter(Boolean));
+
+  for (let currentPage = 2; currentPage <= pages; currentPage += 1) {
+    const pageResult = await listUsers({
+      ...options,
+      page: currentPage,
+      limit: batchLimit,
+    });
+    const pageRows = pageResult.rows || [];
+    if (!pageRows.length) break;
+    for (const row of pageRows) {
+      if (!row?.id || seenIds.has(row.id)) continue;
+      seenIds.add(row.id);
+      rows.push(row);
+    }
+  }
+
+  return { rows, count };
 }
 
 async function getUser(id) {
@@ -392,6 +436,7 @@ async function removeRole(userId, alias, actorId = null) {
 
 export default {
   listUsers,
+  listUsersAll,
   getUser,
   createUser,
   updateUser,

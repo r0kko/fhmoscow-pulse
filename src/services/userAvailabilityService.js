@@ -147,6 +147,57 @@ function getAvailabilityLocks(dateStr) {
   return { fullyLocked, limitedLocked, within96h };
 }
 
+function isUniqueConstraintError(err) {
+  return (
+    err?.name === 'SequelizeUniqueConstraintError' ||
+    err?.constructor?.name === 'UniqueConstraintError'
+  );
+}
+
+async function upsertUserDayAvailability({
+  userId,
+  day,
+  typeId,
+  from,
+  to,
+  actorId,
+}) {
+  const where = { user_id: userId, date: day.date };
+  const existing = await UserAvailability.findOne({ where });
+  if (existing) {
+    await existing.update({
+      type_id: typeId,
+      from_time: from,
+      to_time: to,
+      updated_by: actorId,
+    });
+    return existing;
+  }
+
+  try {
+    return await UserAvailability.create({
+      user_id: userId,
+      date: day.date,
+      type_id: typeId,
+      from_time: from,
+      to_time: to,
+      created_by: actorId,
+      updated_by: actorId,
+    });
+  } catch (err) {
+    if (!isUniqueConstraintError(err)) throw err;
+    const retry = await UserAvailability.findOne({ where });
+    if (!retry) throw err;
+    await retry.update({
+      type_id: typeId,
+      from_time: from,
+      to_time: to,
+      updated_by: actorId,
+    });
+    return retry;
+  }
+}
+
 async function setForUser(userId, days, actorId, options = {}) {
   const { enforcePolicy = false } = options;
   const user = await User.findByPk(userId);
@@ -183,24 +234,14 @@ async function setForUser(userId, days, actorId, options = {}) {
       from = null;
       to = null;
     }
-    const [record, created] = await UserAvailability.findOrCreate({
-      where: { user_id: userId, date: day.date },
-      defaults: {
-        type_id: typeId,
-        from_time: from,
-        to_time: to,
-        created_by: actorId,
-        updated_by: actorId,
-      },
+    const record = await upsertUserDayAvailability({
+      userId,
+      day,
+      typeId,
+      from,
+      to,
+      actorId,
     });
-    if (!created) {
-      await record.update({
-        type_id: typeId,
-        from_time: from,
-        to_time: to,
-        updated_by: actorId,
-      });
-    }
     results.push(record);
   }
   return results;

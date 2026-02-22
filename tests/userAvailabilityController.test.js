@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 
 const listUsersMock = jest.fn();
+const listUsersAllMock = jest.fn();
 const getUserMock = jest.fn();
 const toPublicArrayMock = jest.fn();
 const toPublicMock = jest.fn();
@@ -12,7 +13,11 @@ const getAvailabilityLocksMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
-  default: { listUsers: listUsersMock, getUser: getUserMock },
+  default: {
+    listUsers: listUsersMock,
+    listUsersAll: listUsersAllMock,
+    getUser: getUserMock,
+  },
 }));
 
 jest.unstable_mockModule('../src/mappers/userMapper.js', () => ({
@@ -33,6 +38,7 @@ const controllerPath = '../src/controllers/userAvailabilityController.js';
 beforeEach(() => {
   jest.resetModules();
   listUsersMock.mockReset();
+  listUsersAllMock.mockReset();
   getUserMock.mockReset();
   toPublicArrayMock.mockReset();
   toPublicMock.mockReset();
@@ -50,7 +56,10 @@ afterEach(() => {
 test('adminGrid returns filtered dates and the full calendar metadata', async () => {
   jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
 
-  listUsersMock.mockResolvedValue({ rows: [{ id: 'u1', roles: ['REFEREE'] }] });
+  listUsersAllMock.mockResolvedValue({
+    rows: [{ id: 'u1', roles: ['REFEREE'] }],
+    count: 1,
+  });
   toPublicArrayMock.mockReturnValue([
     {
       id: 'u1',
@@ -95,10 +104,24 @@ test('adminGrid returns filtered dates and the full calendar metadata', async ()
     '2024-04-01',
     '2024-04-03'
   );
+  expect(listUsersAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      role: ['REFEREE'],
+      status: 'ACTIVE',
+      sort: 'last_name',
+      order: 'asc',
+    })
+  );
 
   const payload = jsonMock.mock.calls[0][0];
   expect(payload.availableDates.at(0)).toBe('2024-04-01');
   expect(payload.dates).toEqual(['2024-04-01', '2024-04-03']);
+  expect(payload.meta).toMatchObject({
+    total: 1,
+    page: 1,
+    pages: 1,
+    limit: 1,
+  });
   expect(Object.keys(payload.users[0].availability)).toEqual([
     '2024-04-01',
     '2024-04-03',
@@ -161,7 +184,7 @@ test('list derives split partial mode when to_time is before from_time', async (
 test('adminGrid falls back to full range when requested dates miss the window', async () => {
   jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
 
-  listUsersMock.mockResolvedValue({ rows: [] });
+  listUsersAllMock.mockResolvedValue({ rows: [], count: 0 });
   toPublicArrayMock.mockReturnValue([]);
   listForUsersMock.mockResolvedValue([]);
 
@@ -180,6 +203,97 @@ test('adminGrid falls back to full range when requested dates miss the window', 
   const payload = jsonMock.mock.calls[0][0];
   expect(payload.dates).toEqual(payload.availableDates);
   expect(payload.availableDates.length).toBeGreaterThan(0);
+});
+
+test('adminGrid supports server pagination and forwards search query', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
+
+  listUsersMock.mockResolvedValue({
+    rows: [{ id: 'u-page-1', roles: ['REFEREE'] }],
+    count: 137,
+  });
+  toPublicArrayMock.mockReturnValue([
+    {
+      id: 'u-page-1',
+      last_name: 'Судья',
+      first_name: 'Пётр',
+      patronymic: 'Сергеевич',
+      roles: ['REFEREE'],
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([]);
+
+  const controller = (await import(controllerPath)).default;
+  const jsonMock = jest.fn();
+
+  await controller.adminGrid(
+    {
+      query: {
+        role: ['REFEREE', 'BRIGADE_REFEREE'],
+        page: '2',
+        limit: '50',
+        search: 'Пет',
+      },
+    },
+    { json: jsonMock }
+  );
+
+  expect(listUsersMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      role: ['REFEREE', 'BRIGADE_REFEREE'],
+      status: 'ACTIVE',
+      search: 'Пет',
+      page: 2,
+      limit: 50,
+      sort: 'last_name',
+      order: 'asc',
+    })
+  );
+  expect(listUsersAllMock).not.toHaveBeenCalled();
+  const payload = jsonMock.mock.calls[0][0];
+  expect(payload.meta).toMatchObject({
+    total: 137,
+    page: 2,
+    pages: 3,
+    limit: 50,
+  });
+});
+
+test('adminGrid returns more than 100 users when full mode is used', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
+
+  const allRows = Array.from({ length: 137 }, (_, i) => ({
+    id: `u-${i + 1}`,
+    roles: ['REFEREE'],
+  }));
+  listUsersAllMock.mockResolvedValue({ rows: allRows, count: 137 });
+  toPublicArrayMock.mockReturnValue(
+    allRows.map((u, idx) => ({
+      id: u.id,
+      last_name: idx < 100 ? `Петров-${idx}` : `Смирнов-${idx}`,
+      first_name: 'Иван',
+      patronymic: 'Иванович',
+      roles: ['REFEREE'],
+    }))
+  );
+  listForUsersMock.mockResolvedValue([]);
+
+  const controller = (await import(controllerPath)).default;
+  const jsonMock = jest.fn();
+
+  await controller.adminGrid(
+    { query: { role: 'REFEREE' } },
+    { json: jsonMock }
+  );
+
+  const payload = jsonMock.mock.calls[0][0];
+  expect(payload.users).toHaveLength(137);
+  expect(payload.meta).toMatchObject({
+    total: 137,
+    page: 1,
+    pages: 1,
+    limit: 137,
+  });
 });
 
 test('adminDetail returns editable window for a referee', async () => {
