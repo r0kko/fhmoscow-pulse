@@ -215,7 +215,7 @@ test('admin day publish asks confirmation for incomplete assignments', async ({
 
   await page.getByRole('button', { name: 'Подтвердить отправку' }).click();
   await expect.poll(() => publishBodies.length).toBe(1);
-  expect(publishBodies[0]?.allow_incomplete).toBe(true);
+  expect(publishBodies[0]?.['allow_incomplete']).toBe(true);
 });
 
 test('admin autosave applies server snapshot on 409 conflict', async ({
@@ -379,7 +379,9 @@ test('admin clears one role to "Свободно", keeps it empty, and publishes
   await selects.nth(0).selectOption('');
 
   await expect.poll(() => putBodies.length).toBe(1);
-  expect(putBodies[0]?.assignments).toEqual([{ role_id: 'r2', user_id: 'u2' }]);
+  expect(putBodies[0]?.['assignments']).toEqual([
+    { role_id: 'r2', user_id: 'u2' },
+  ]);
 
   await expect.poll(async () => await selects.nth(0).inputValue()).toBe('');
 
@@ -390,6 +392,6 @@ test('admin clears one role to "Свободно", keeps it empty, and publishes
   await page.getByRole('button', { name: 'Подтвердить отправку' }).click();
 
   await expect.poll(() => publishBodies.length).toBe(1);
-  expect(publishBodies[0]?.allow_incomplete).toBe(true);
+  expect(publishBodies[0]?.['allow_incomplete']).toBe(true);
   await expect(page.getByText(/Назначения опубликованы/)).toBeVisible();
 });

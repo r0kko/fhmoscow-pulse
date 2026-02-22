@@ -331,7 +331,13 @@ describe('AdminProfessionalRefereeAssignments view', () => {
     const selects = Array.from(
       container.querySelectorAll('.referee-select')
     ) as HTMLSelectElement[];
-    await fireEvent.update(selects[0], '');
+    const [firstSelect, secondSelect] = selects;
+    expect(firstSelect).toBeDefined();
+    expect(secondSelect).toBeDefined();
+    if (!firstSelect || !secondSelect) {
+      throw new Error('Expected two referee select inputs');
+    }
+    await fireEvent.update(firstSelect, '');
 
     await waitFor(
       () => {
@@ -339,13 +345,13 @@ describe('AdminProfessionalRefereeAssignments view', () => {
       },
       { timeout: 1500 }
     );
-    expect(putPayloads[0]?.assignments).toEqual([
+    expect(putPayloads[0]?.['assignments']).toEqual([
       { role_id: 'rb2', user_id: 'u2' },
     ]);
 
     await waitFor(() => {
-      expect(selects[0]?.value).toBe('');
-      expect(selects[1]?.value).toBe('u2');
+      expect(firstSelect.value).toBe('');
+      expect(secondSelect.value).toBe('u2');
     });
   });
 
@@ -401,7 +407,7 @@ describe('AdminProfessionalRefereeAssignments view', () => {
 
     await waitFor(() => {
       expect(publishBodies).toHaveLength(1);
-      expect(publishBodies[0]?.allow_incomplete).toBe(true);
+      expect(publishBodies[0]?.['allow_incomplete']).toBe(true);
     });
   });
 });

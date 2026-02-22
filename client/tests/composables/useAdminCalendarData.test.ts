@@ -85,14 +85,20 @@ describe('useAdminCalendarData', () => {
     await Promise.resolve();
 
     expect(signals).toHaveLength(2);
-    expect(signals[0].aborted).toBe(true);
-    expect(signals[1].aborted).toBe(false);
+    const [firstSignal, secondSignal] = signals;
+    expect(firstSignal).toBeDefined();
+    expect(secondSignal).toBeDefined();
+    if (!firstSignal || !secondSignal) {
+      throw new Error('Expected two abort signals for overlapping requests');
+    }
+    expect(firstSignal.aborted).toBe(true);
+    expect(secondSignal.aborted).toBe(false);
 
     first.resolve({});
     await firstRequest;
 
     vm.cancelPending();
-    expect(signals[1].aborted).toBe(true);
+    expect(secondSignal.aborted).toBe(true);
 
     second.resolve({});
     await secondRequest;

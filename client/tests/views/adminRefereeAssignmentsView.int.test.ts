@@ -691,7 +691,13 @@ describe('AdminRefereeAssignments view', () => {
     const selects = Array.from(
       container.querySelectorAll('.referee-select')
     ) as HTMLSelectElement[];
-    await fireEvent.update(selects[0], '');
+    const [firstSelect, secondSelect] = selects;
+    expect(firstSelect).toBeDefined();
+    expect(secondSelect).toBeDefined();
+    if (!firstSelect || !secondSelect) {
+      throw new Error('Expected two referee select inputs');
+    }
+    await fireEvent.update(firstSelect, '');
 
     await waitFor(
       () => {
@@ -699,13 +705,13 @@ describe('AdminRefereeAssignments view', () => {
       },
       { timeout: 1500 }
     );
-    expect(putPayloads[0]?.assignments).toEqual([
+    expect(putPayloads[0]?.['assignments']).toEqual([
       { role_id: 'r2', user_id: 'u2' },
     ]);
 
     await waitFor(() => {
-      expect(selects[0]?.value).toBe('');
-      expect(selects[1]?.value).toBe('u2');
+      expect(firstSelect.value).toBe('');
+      expect(secondSelect.value).toBe('u2');
     });
   });
 
@@ -763,7 +769,7 @@ describe('AdminRefereeAssignments view', () => {
         }
         if (url.pathname === '/referee-assignments/publish') {
           const payload = init?.body ? JSON.parse(String(init.body)) : {};
-          expect(payload.allow_incomplete).toBe(true);
+          expect(payload['allow_incomplete']).toBe(true);
           return { notifications: { queued: 0 } };
         }
         return {};
