@@ -1,6 +1,9 @@
-export type StatusFilterScope = 'all' | 'attention' | 'pending' | 'accepted';
+import type {
+  StatusFilterScope,
+  TimeScope,
+} from '../../types/adminSportsCalendar';
 
-export type TimeScope = 'upcoming' | 'past';
+export type { StatusFilterScope, TimeScope };
 
 export interface CalendarFilterChip {
   key: string;

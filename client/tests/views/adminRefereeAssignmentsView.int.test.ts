@@ -55,6 +55,7 @@ function makeMatch(date = '2030-01-01') {
       },
     ],
     draft_clear_group_ids: [],
+    draft_versions_by_group: { rg1: 'v1-initial' },
     team1: { id: 't1', name: 'Команда 1' },
     team2: { id: 't2', name: 'Команда 2' },
     ground: { id: 'g1', name: 'Арена 1' },
@@ -472,5 +473,332 @@ describe('AdminRefereeAssignments view', () => {
       expect(panelText).toContain('Петров');
       expect(panelText).not.toContain('Иванов');
     });
+  });
+
+  it('applies server snapshot on draft conflict (409)', async () => {
+    const date = '2030-01-01';
+    window.localStorage.setItem('adminRefereeAssignmentsDate', date);
+
+    apiFetchMock.mockImplementation(async (path: string) => {
+      const url = new URL(path, 'https://lk.fhmoscow.com');
+      if (url.pathname === '/referee-assignments/role-groups') {
+        return { groups: roleGroups };
+      }
+      if (url.pathname === '/tournaments/settings-options') {
+        return { competition_types: [] };
+      }
+      if (url.pathname === '/referee-assignments/matches') {
+        return { matches: [makeMatch(date)] };
+      }
+      if (url.pathname === '/referee-assignments/referees') {
+        return {
+          referees: [
+            makeReferee({
+              id: 'u1',
+              lastName: 'Иванов',
+              firstName: 'Иван',
+              patronymic: 'Иванович',
+              date,
+              availabilityOnDate: { status: 'FREE', preset: true },
+            }),
+            makeReferee({
+              id: 'u2',
+              lastName: 'Петров',
+              firstName: 'Пётр',
+              patronymic: 'Петрович',
+              date,
+              availabilityOnDate: { status: 'FREE', preset: true },
+            }),
+          ],
+        };
+      }
+      if (url.pathname === '/referee-assignments/matches/m1/referees') {
+        const err = new Error(
+          'Назначения уже изменены другим администратором. Данные обновлены.'
+        ) as Error & { code?: string; details?: unknown };
+        err.code = 'referee_assignments_conflict';
+        err.details = {
+          assignments: [
+            {
+              id: 'a2',
+              status: 'DRAFT',
+              role: { id: 'r1', group_id: 'rg1', name: 'Главный судья' },
+              user: {
+                id: 'u2',
+                last_name: 'Петров',
+                first_name: 'Пётр',
+                patronymic: 'Петрович',
+              },
+            },
+          ],
+          draft_clear_group_ids: [],
+          draft_version: 'v1-new',
+          draft_versions_by_group: { rg1: 'v1-new' },
+        };
+        throw err;
+      }
+      return {};
+    });
+
+    const { container } = await renderView();
+
+    await waitFor(() => {
+      expect(container.querySelector('.referee-select')).not.toBeNull();
+    });
+
+    const select = container.querySelector(
+      '.referee-select'
+    ) as HTMLSelectElement;
+    await fireEvent.update(select, 'u1');
+
+    await waitFor(() => {
+      expect(select.value).toBe('u2');
+    });
+  });
+
+  it('keeps cleared role empty after autosave when same group still has another draft role', async () => {
+    const date = '2030-01-01';
+    window.localStorage.setItem('adminRefereeAssignmentsDate', date);
+    const putPayloads: Array<Record<string, unknown>> = [];
+
+    apiFetchMock.mockImplementation(
+      async (path: string, init?: RequestInit) => {
+        const url = new URL(path, 'https://lk.fhmoscow.com');
+        if (url.pathname === '/referee-assignments/role-groups') {
+          return {
+            groups: [
+              {
+                id: 'rg1',
+                name: 'Судьи в поле',
+                roles: [
+                  { id: 'r1', name: 'Главный судья' },
+                  { id: 'r2', name: 'Линейный судья' },
+                ],
+              },
+            ],
+          };
+        }
+        if (url.pathname === '/tournaments/settings-options') {
+          return { competition_types: [] };
+        }
+        if (url.pathname === '/referee-assignments/matches') {
+          return {
+            matches: [
+              {
+                ...makeMatch(date),
+                assignments: [
+                  {
+                    id: 'a1',
+                    status: 'DRAFT',
+                    role: { id: 'r1', group_id: 'rg1', name: 'Главный судья' },
+                    user: {
+                      id: 'u1',
+                      last_name: 'Иванов',
+                      first_name: 'Иван',
+                      patronymic: 'Иванович',
+                    },
+                  },
+                  {
+                    id: 'a2',
+                    status: 'DRAFT',
+                    role: { id: 'r2', group_id: 'rg1', name: 'Линейный судья' },
+                    user: {
+                      id: 'u2',
+                      last_name: 'Петров',
+                      first_name: 'Пётр',
+                      patronymic: 'Петрович',
+                    },
+                  },
+                ],
+                referee_requirements: [
+                  {
+                    id: 'rg1',
+                    roles: [
+                      { id: 'r1', count: 1 },
+                      { id: 'r2', count: 1 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
+        }
+        if (url.pathname === '/referee-assignments/referees') {
+          return {
+            referees: [
+              makeReferee({
+                id: 'u1',
+                lastName: 'Иванов',
+                firstName: 'Иван',
+                patronymic: 'Иванович',
+                date,
+                availabilityOnDate: { status: 'FREE', preset: true },
+              }),
+              makeReferee({
+                id: 'u2',
+                lastName: 'Петров',
+                firstName: 'Пётр',
+                patronymic: 'Петрович',
+                date,
+                availabilityOnDate: { status: 'FREE', preset: true },
+              }),
+            ],
+          };
+        }
+        if (url.pathname === '/referee-assignments/matches/m1/referees') {
+          const payload = init?.body ? JSON.parse(String(init.body)) : {};
+          putPayloads.push(payload);
+          return {
+            assignments: [
+              {
+                id: 'a1-published',
+                status: 'PUBLISHED',
+                role: { id: 'r1', group_id: 'rg1', name: 'Главный судья' },
+                user: {
+                  id: 'u1',
+                  last_name: 'Иванов',
+                  first_name: 'Иван',
+                  patronymic: 'Иванович',
+                },
+              },
+              {
+                id: 'a2',
+                status: 'DRAFT',
+                role: { id: 'r2', group_id: 'rg1', name: 'Линейный судья' },
+                user: {
+                  id: 'u2',
+                  last_name: 'Петров',
+                  first_name: 'Пётр',
+                  patronymic: 'Петрович',
+                },
+              },
+            ],
+            draft_clear_group_ids: [],
+            draft_version: 'v2-new',
+            draft_versions_by_group: { rg1: 'v2-new' },
+          };
+        }
+        return {};
+      }
+    );
+
+    const { container } = await renderView();
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('.referee-select').length).toBe(2);
+    });
+
+    const selects = Array.from(
+      container.querySelectorAll('.referee-select')
+    ) as HTMLSelectElement[];
+    await fireEvent.update(selects[0], '');
+
+    await waitFor(
+      () => {
+        expect(putPayloads).toHaveLength(1);
+      },
+      { timeout: 1500 }
+    );
+    expect(putPayloads[0]?.assignments).toEqual([
+      { role_id: 'r2', user_id: 'u2' },
+    ]);
+
+    await waitFor(() => {
+      expect(selects[0]?.value).toBe('');
+      expect(selects[1]?.value).toBe('u2');
+    });
+  });
+
+  it('requires confirmation before publishing incomplete day assignments', async () => {
+    const date = '2030-01-01';
+    window.localStorage.setItem('adminRefereeAssignmentsDate', date);
+
+    apiFetchMock.mockImplementation(
+      async (path: string, init?: RequestInit) => {
+        const url = new URL(path, 'https://lk.fhmoscow.com');
+        if (url.pathname === '/referee-assignments/role-groups') {
+          return { groups: roleGroups };
+        }
+        if (url.pathname === '/tournaments/settings-options') {
+          return { competition_types: [] };
+        }
+        if (url.pathname === '/referee-assignments/matches') {
+          return {
+            matches: [
+              {
+                ...makeMatch(date),
+                referee_requirements: [
+                  { id: 'rg1', roles: [{ id: 'r1', count: 2 }] },
+                ],
+                assignments: [
+                  {
+                    id: 'a1',
+                    status: 'DRAFT',
+                    role: { id: 'r1', group_id: 'rg1', name: 'Главный судья' },
+                    user: {
+                      id: 'u1',
+                      last_name: 'Иванов',
+                      first_name: 'Иван',
+                      patronymic: 'Иванович',
+                    },
+                  },
+                ],
+              },
+            ],
+          };
+        }
+        if (url.pathname === '/referee-assignments/referees') {
+          return {
+            referees: [
+              makeReferee({
+                id: 'u1',
+                lastName: 'Иванов',
+                firstName: 'Иван',
+                patronymic: 'Иванович',
+                date,
+                availabilityOnDate: { status: 'FREE', preset: true },
+              }),
+            ],
+          };
+        }
+        if (url.pathname === '/referee-assignments/publish') {
+          const payload = init?.body ? JSON.parse(String(init.body)) : {};
+          expect(payload.allow_incomplete).toBe(true);
+          return { notifications: { queued: 0 } };
+        }
+        return {};
+      }
+    );
+
+    const { container } = await renderView();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Отправить назначения за день' })
+      ).toBeEnabled();
+    });
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Отправить назначения за день' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Отправить неполные назначения?')
+      ).toBeInTheDocument();
+    });
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Подтвердить отправку' })
+    );
+
+    await waitFor(() => {
+      expect(
+        apiFetchMock.mock.calls.some(([path]) =>
+          String(path).includes('/referee-assignments/publish')
+        )
+      ).toBe(true);
+    });
+    expect(container.textContent || '').toContain('Назначения опубликованы');
   });
 });

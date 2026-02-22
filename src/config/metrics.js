@@ -59,6 +59,8 @@ let businessDocumentsOverdue = null;
 let verifyRequestsTotal = null;
 let verifyRequestDuration = null;
 let shortLinkResolveTotal = null;
+let adminCalendarRequestDuration = null;
+let adminCalendarEmptyTotal = null;
 
 let businessCollectorTimer = null;
 let businessCollectorStarted = false;
@@ -332,6 +334,24 @@ async function ensureInit() {
       name: 'shortlink_resolve_total',
       help: 'Short-link resolve attempts grouped by result',
       labelNames: ['result'],
+      registers: [register],
+    });
+    adminCalendarRequestDuration = new client.Histogram({
+      name: 'admin_calendar_request_duration_seconds',
+      help: 'Admin sports calendar API request duration',
+      labelNames: ['direction', 'has_search', 'count_bucket', 'horizon_bucket'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+      registers: [register],
+    });
+    adminCalendarEmptyTotal = new client.Counter({
+      name: 'admin_calendar_empty_total',
+      help: 'Admin sports calendar empty responses grouped by reason',
+      labelNames: [
+        'reason',
+        'direction',
+        'has_search',
+        'has_structural_filters',
+      ],
       registers: [register],
     });
     httpErrorCodeTotal = new client.Counter({
@@ -959,6 +979,54 @@ export function incShortLinkResolve(result = 'not_found') {
   if (!metricsAvailable) return;
   try {
     shortLinkResolveTotal.inc({ result: safeMetricLabel(result) });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function observeAdminCalendarRequest({
+  direction = 'forward',
+  hasSearch = false,
+  count = 0,
+  horizon = 0,
+  seconds = 0,
+} = {}) {
+  if (!metricsAvailable) return;
+  try {
+    const countNum = Number(count) || 0;
+    const horizonNum = Number(horizon) || 0;
+    const countBucket =
+      countNum <= 7 ? 'le_7' : countNum <= 14 ? 'le_14' : 'gt_14';
+    const horizonBucket =
+      horizonNum <= 31 ? 'le_31' : horizonNum <= 90 ? 'le_90' : 'gt_90';
+    adminCalendarRequestDuration.observe(
+      {
+        direction: safeMetricLabel(direction),
+        has_search: hasSearch ? 'true' : 'false',
+        count_bucket: countBucket,
+        horizon_bucket: horizonBucket,
+      },
+      Number(seconds) || 0
+    );
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incAdminCalendarEmpty({
+  reason = 'no_matches_in_range',
+  direction = 'forward',
+  hasSearch = false,
+  hasStructuralFilters = false,
+} = {}) {
+  if (!metricsAvailable) return;
+  try {
+    adminCalendarEmptyTotal.inc({
+      reason: safeMetricLabel(reason),
+      direction: safeMetricLabel(direction),
+      has_search: hasSearch ? 'true' : 'false',
+      has_structural_filters: hasStructuralFilters ? 'true' : 'false',
+    });
   } catch (_e) {
     /* noop */
   }

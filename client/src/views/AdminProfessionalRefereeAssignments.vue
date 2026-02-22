@@ -16,6 +16,8 @@ const saveErrors = ref({});
 const publishingDay = ref(false);
 const publishError = ref('');
 const publishSuccess = ref('');
+const showPublishConfirm = ref(false);
+const draftVersionByMatchGroup = ref({});
 const loadingProgressCurrent = ref(0);
 const loadingProgressTotal = ref(0);
 const loadingProgressLabel = ref('');
@@ -551,6 +553,7 @@ function normalizeMatches(list = []) {
       assignments: match.assignments || [],
       referee_requirements: match.referee_requirements || [],
       draft_clear_group_ids: match.draft_clear_group_ids || [],
+      draft_versions_by_group: match.draft_versions_by_group || {},
     };
     resetMatchFlags(normalized);
     return normalized;
@@ -592,48 +595,21 @@ function splitAssignmentsByGroup(assignments = []) {
   return { byGroup, ungrouped };
 }
 
-function collectRoleAssignments(assignments = []) {
+function buildRoleMapFromMatch(match) {
   const activeGroups = selectedGroupIds.value;
-  const draftByRole = new Map();
-  const publishedByRole = new Map();
-  const groupIdByRole = new Map();
-  if (!activeGroups.size) {
-    return { draftByRole, publishedByRole, groupIdByRole };
-  }
-  assignments.forEach((assignment) => {
+  if (!match || !activeGroups.size) return {};
+  const roleMap = {};
+  effectiveAssignments(match, activeGroups).forEach((assignment) => {
     const groupId = assignment.role?.group_id;
-    if (!groupId || !activeGroups.has(groupId)) return;
     const roleId = assignment.role?.id;
     const userId = assignment.user?.id;
-    if (!roleId || !userId) return;
-    groupIdByRole.set(roleId, groupId);
-    if (assignment.status === 'DRAFT') {
-      if (!draftByRole.has(roleId)) draftByRole.set(roleId, []);
-      draftByRole.get(roleId).push(assignment);
-      return;
+    if (!groupId || !activeGroups.has(groupId) || !roleId || !userId) return;
+    if (!roleMap[roleId]) {
+      roleMap[roleId] = [];
     }
-    if (
-      assignment.status === 'PUBLISHED' ||
-      assignment.status === 'CONFIRMED'
-    ) {
-      if (!publishedByRole.has(roleId)) publishedByRole.set(roleId, []);
-      publishedByRole.get(roleId).push(assignment);
-    }
+    roleMap[roleId].push(userId);
   });
-  return { draftByRole, publishedByRole, groupIdByRole };
-}
-
-function buildRoleMapFromAssignments(assignments = []) {
-  const { draftByRole, publishedByRole } = collectRoleAssignments(assignments);
-  const roleMap = {};
-  const roleIds = new Set([...draftByRole.keys(), ...publishedByRole.keys()]);
-  roleIds.forEach((roleId) => {
-    const source = draftByRole.has(roleId) ? draftByRole : publishedByRole;
-    const list = source.get(roleId) || [];
-    roleMap[roleId] = list
-      .map((assignment) => assignment.user?.id)
-      .filter(Boolean);
-  });
+  applyClearMarkers(match, roleMap);
   return roleMap;
 }
 
@@ -671,12 +647,18 @@ function matchStatusForGroups(match) {
 
 function initDrafts(list = []) {
   const next = {};
+  const nextVersions = {};
   list.forEach((match) => {
-    const roleMap = buildRoleMapFromAssignments(match.assignments || []);
-    applyClearMarkers(match, roleMap);
+    const roleMap = buildRoleMapFromMatch(match);
     next[match.id] = roleMap;
+    Object.entries(match.draft_versions_by_group || {}).forEach(
+      ([groupId, version]) => {
+        nextVersions[`${match.id}:${groupId}`] = String(version || '');
+      }
+    );
   });
   drafts.value = next;
+  draftVersionByMatchGroup.value = nextVersions;
 }
 
 function setSaving(matchId, val) {
@@ -685,6 +667,31 @@ function setSaving(matchId, val) {
 
 function setSaveError(matchId, message) {
   saveErrors.value = { ...saveErrors.value, [matchId]: message };
+}
+
+function makeSaveKey(matchId, groupId) {
+  return `${String(matchId)}:${String(groupId)}`;
+}
+
+function getDraftVersion(matchId, groupId) {
+  return draftVersionByMatchGroup.value[makeSaveKey(matchId, groupId)] || '';
+}
+
+function setDraftVersion(matchId, groupId, version) {
+  if (!matchId || !groupId) return;
+  draftVersionByMatchGroup.value = {
+    ...draftVersionByMatchGroup.value,
+    [makeSaveKey(matchId, groupId)]: String(version || ''),
+  };
+}
+
+function setDraftVersionsForMatch(matchId, versions = {}) {
+  if (!matchId || !versions || typeof versions !== 'object') return;
+  const next = { ...draftVersionByMatchGroup.value };
+  Object.entries(versions).forEach(([groupId, version]) => {
+    next[makeSaveKey(matchId, groupId)] = String(version || '');
+  });
+  draftVersionByMatchGroup.value = next;
 }
 
 function parseTimeSeconds(value) {
@@ -1023,17 +1030,24 @@ function buildAssignmentsPayload(matchId, groupId) {
   return payload;
 }
 
-function applyAssignmentsToDrafts(matchId, assignments) {
-  const roleMap = buildRoleMapFromAssignments(assignments || []);
-  const match = matches.value.find((item) => item.id === matchId);
-  if (match) {
-    applyClearMarkers(match, roleMap);
-  }
-  drafts.value = { ...drafts.value, [matchId]: roleMap };
+function applyAssignmentsToDrafts(match) {
+  if (!match?.id) return;
+  const roleMap = buildRoleMapFromMatch(match);
+  drafts.value = { ...drafts.value, [match.id]: roleMap };
 }
 
 function roleGroupIdForRole(roleId) {
   return roleGroupByRoleId.value.get(roleId) || null;
+}
+
+function roleGroupAlias(group) {
+  return String(group?.alias || '')
+    .trim()
+    .toUpperCase();
+}
+
+function isLeadershipRoleGroup(group) {
+  return roleGroupAlias(group) === 'LEADERSHIP';
 }
 
 function isLeadershipRoleId(roleId) {
@@ -1041,10 +1055,7 @@ function isLeadershipRoleId(roleId) {
   const groupId = roleGroupIdForRole(roleId);
   if (!groupId) return false;
   const group = roleGroups.value.find((entry) => entry.id === groupId);
-  const name = String(group?.name || '')
-    .trim()
-    .toLowerCase();
-  return /руковод/.test(name);
+  return isLeadershipRoleGroup(group);
 }
 
 async function saveMatchAssignments(match, roleId) {
@@ -1052,6 +1063,7 @@ async function saveMatchAssignments(match, roleId) {
   if (match.schedule_missing || match.duration_missing) return;
   const groupId = roleGroupIdForRole(roleId);
   if (!groupId) return;
+  const expectedDraftVersion = getDraftVersion(match.id, groupId);
   setSaving(match.id, true);
   setSaveError(match.id, '');
   try {
@@ -1064,14 +1076,36 @@ async function saveMatchAssignments(match, roleId) {
           assignments: payload,
           role_group_id: groupId,
           clear_published: payload.length === 0,
+          expected_draft_version: expectedDraftVersion || undefined,
         }),
       }
     );
     match.assignments = data.assignments || [];
     match.draft_clear_group_ids = data.draft_clear_group_ids || [];
+    match.draft_versions_by_group = data.draft_versions_by_group || {};
+    if (data.draft_versions_by_group) {
+      setDraftVersionsForMatch(match.id, data.draft_versions_by_group);
+    }
+    if (data.draft_version) {
+      setDraftVersion(match.id, groupId, data.draft_version);
+    }
     resetMatchFlags(match);
-    applyAssignmentsToDrafts(match.id, match.assignments);
+    applyAssignmentsToDrafts(match);
   } catch (e) {
+    if (e?.code === 'referee_assignments_conflict' && e?.details) {
+      const details = e.details || {};
+      match.assignments = details.assignments || [];
+      match.draft_clear_group_ids = details.draft_clear_group_ids || [];
+      match.draft_versions_by_group = details.draft_versions_by_group || {};
+      if (details.draft_versions_by_group) {
+        setDraftVersionsForMatch(match.id, details.draft_versions_by_group);
+      }
+      if (details.draft_version) {
+        setDraftVersion(match.id, groupId, details.draft_version);
+      }
+      resetMatchFlags(match);
+      applyAssignmentsToDrafts(match);
+    }
     setSaveError(match.id, e.message || 'Ошибка сохранения');
   } finally {
     setSaving(match.id, false);
@@ -1102,9 +1136,10 @@ function formatPublishNotificationSummary(stats) {
   return `Уведомления: ${parts.join(', ')}`;
 }
 
-async function publishDay() {
+async function publishDay(allowIncomplete = false) {
   if (!canAssignGroup.value) return;
   if (dayPublishState.value.disabled) return;
+  if (dayPublishState.value.incomplete > 0 && !allowIncomplete) return;
   publishError.value = '';
   publishSuccess.value = '';
   publishingDay.value = true;
@@ -1124,6 +1159,7 @@ async function publishDay() {
         body: JSON.stringify({
           date: dateKey,
           role_group_ids: selectedGroups.value,
+          allow_incomplete: allowIncomplete,
         }),
       });
       const stats = data?.notifications;
@@ -1147,6 +1183,25 @@ async function publishDay() {
   } finally {
     publishingDay.value = false;
   }
+}
+
+function onPublishDayClick() {
+  if (!canAssignGroup.value) return;
+  if (dayPublishState.value.disabled) return;
+  if (dayPublishState.value.incomplete > 0) {
+    showPublishConfirm.value = true;
+    return;
+  }
+  void publishDay(false);
+}
+
+function closePublishConfirm() {
+  showPublishConfirm.value = false;
+}
+
+function confirmPublishIncomplete() {
+  showPublishConfirm.value = false;
+  void publishDay(true);
 }
 
 function isMatchAssignable(match) {
@@ -1232,18 +1287,11 @@ async function loadGroups() {
 }
 
 function isBrigadeRoleGroup(group) {
-  const name = String(group?.name || '').toLowerCase();
-  return name.includes('бригад');
+  return roleGroupAlias(group) === 'BRIGADE';
 }
 
 function leadershipRoleGroupId() {
-  const group = roleGroups.value.find((entry) =>
-    /руковод/.test(
-      String(entry?.name || '')
-        .trim()
-        .toLowerCase()
-    )
-  );
+  const group = roleGroups.value.find((entry) => isLeadershipRoleGroup(entry));
   return group?.id || '';
 }
 
@@ -1424,7 +1472,7 @@ onMounted(() => {
                 class="btn btn-primary"
                 type="button"
                 :disabled="dayPublishState.disabled || publishingDay"
-                @click="publishDay"
+                @click="onPublishDayClick"
               >
                 <span
                   v-if="publishingDay"
@@ -1677,6 +1725,40 @@ onMounted(() => {
                 </div>
               </li>
             </ul>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="showPublishConfirm"
+        class="publish-confirm-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pro-publish-confirm-title"
+      >
+        <div class="publish-confirm-card">
+          <h2 id="pro-publish-confirm-title" class="h6 mb-2">
+            Отправить неполные назначения?
+          </h2>
+          <p class="text-muted small mb-3">
+            Есть незаполненные назначения: {{ dayPublishState.incomplete }}.
+            Будут отправлены только заполненные слоты.
+          </p>
+          <div class="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              @click="closePublishConfirm"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              @click="confirmPublishIncomplete"
+            >
+              Подтвердить отправку
+            </button>
           </div>
         </div>
       </div>
@@ -1968,6 +2050,26 @@ onMounted(() => {
 .referee-select:disabled {
   background-color: #f8f9fa;
   color: #9ca3af;
+}
+
+.publish-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(var(--bs-dark-rgb, 33, 37, 41), 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1050;
+}
+
+.publish-confirm-card {
+  width: min(420px, 100%);
+  background: var(--bs-body-bg, #fff);
+  border-radius: var(--radius-section, 1rem);
+  box-shadow: var(--shadow-tile);
+  border: 1px solid var(--border-subtle);
+  padding: 1rem;
 }
 
 @media (max-width: 991.98px) {

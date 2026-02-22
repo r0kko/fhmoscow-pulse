@@ -364,14 +364,9 @@ function formatScore(m) {
                 class="cell col-actions text-end"
                 role="cell"
               >
-                <RouterLink
-                  :to="buildDetailsLink(m.id)"
-                  class="inline-action"
-                  :title="`Открыть матч ${m.team1} — ${m.team2}`"
-                  aria-label="Открыть матч"
-                >
+                <span class="inline-action" aria-hidden="true">
                   <i class="bi bi-arrow-right-circle icon-indicator"></i>
-                </RouterLink>
+                </span>
               </div>
             </div>
           </div>
@@ -534,14 +529,7 @@ function formatScore(m) {
   color: var(--bs-primary);
   padding: 0.25rem;
   border-radius: 50%;
-  position: relative;
-  z-index: 2;
-}
-
-.inline-action:hover,
-.inline-action:focus-visible {
-  text-decoration: none;
-  background-color: rgba(0, 0, 0, 0.08);
+  opacity: 0.85;
 }
 
 /* Row background highlighting removed per new UX */

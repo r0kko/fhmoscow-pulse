@@ -29,6 +29,8 @@ const actionSuccess = ref('');
 const selectedDateKey = ref('');
 const drafts = ref({});
 const initialDraftSignature = ref('');
+const draftVersionsByGroup = ref({});
+const showPublishConfirm = ref(false);
 
 const matchId = computed(() => String(route.params.id || ''));
 
@@ -161,12 +163,23 @@ const isDraftComplete = computed(() => {
   );
 });
 
+const incompleteDraftSlots = computed(() => {
+  const state = normalizedDraftState(drafts.value);
+  let incomplete = 0;
+  Object.values(state).forEach((users) => {
+    users.forEach((userId) => {
+      if (!userId) incomplete += 1;
+    });
+  });
+  return incomplete;
+});
+
 const canPublish = computed(() => {
   if (!canEdit.value) return false;
   if (saving.value || publishing.value) return false;
   if (hasUnsavedChanges.value) return false;
-  if (!isDraftComplete.value) return false;
-  return hasDraftAssignments.value;
+  if (hasDraftAssignments.value) return true;
+  return (matchRecord.value?.draft_clear_group_ids || []).length > 0;
 });
 
 const canGenerateAssignmentsSheet = computed(() => {
@@ -176,12 +189,22 @@ const canGenerateAssignmentsSheet = computed(() => {
   return (matchRecord.value?.assignments || []).length > 0;
 });
 
-const roleGroupNameByRoleId = computed(() => {
+function roleGroupAlias(group) {
+  return String(group?.alias || '')
+    .trim()
+    .toUpperCase();
+}
+
+function isLeadershipRoleGroup(group) {
+  return roleGroupAlias(group) === 'LEADERSHIP';
+}
+
+const roleGroupAliasByRoleId = computed(() => {
   const map = new Map();
   roleGroups.value.forEach((group) => {
     (group.roles || []).forEach((role) => {
       if (role?.id) {
-        map.set(role.id, String(group?.name || '').trim());
+        map.set(role.id, roleGroupAlias(group));
       }
     });
   });
@@ -189,40 +212,16 @@ const roleGroupNameByRoleId = computed(() => {
 });
 
 function isLeadershipRole(role) {
-  const groupName = String(roleGroupNameByRoleId.value.get(role.id) || '')
-    .trim()
-    .toLowerCase();
-  const roleName = String(role?.name || '')
-    .trim()
-    .toLowerCase();
-
-  // Group-level classification has top priority.
-  if (/бригад/.test(groupName)) return false;
-  if (/руковод/.test(groupName)) return true;
-
-  // Secretary roles should remain in the brigade block unless explicitly grouped as leadership.
-  if (/секретар/.test(roleName)) return false;
-
-  // Fallback for legacy role names without stable groups.
-  return /руковод|инспектор|комиссар/.test(roleName);
+  return roleGroupAliasByRoleId.value.get(role?.id) === 'LEADERSHIP';
 }
 
 function leadershipRoleGroupId() {
-  const group = roleGroups.value.find((entry) =>
-    /руковод/.test(
-      String(entry?.name || '')
-        .trim()
-        .toLowerCase()
-    )
-  );
+  const group = roleGroups.value.find((entry) => isLeadershipRoleGroup(entry));
   return group?.id || '';
 }
 
 function isLeadershipRoleId(roleId) {
-  const groupName = String(roleGroupNameByRoleId.value.get(roleId) || '')
-    .trim()
-    .toLowerCase();
-  return /руковод/.test(groupName);
+  return roleGroupAliasByRoleId.value.get(roleId) === 'LEADERSHIP';
 }
 
 const leadershipRoleColumns = computed(() =>
@@ -634,52 +633,28 @@ function setSlotValue(roleId, index, value) {
   actionSuccess.value = '';
 }
 
-function buildRoleMapFromAssignments(assignments = []) {
+function buildRoleMapFromMatch(match) {
   const groupIds = requiredGroupIds.value;
-  const draftByRole = new Map();
-  const publishedByRole = new Map();
-
-  assignments.forEach((assignment) => {
+  if (!match || !groupIds.size) return {};
+  const roleMap = {};
+  effectiveAssignments(match).forEach((assignment) => {
     const groupId = assignment.role?.group_id;
     const roleId = assignment.role?.id;
     const userId = assignment.user?.id;
     if (!groupId || !groupIds.has(groupId) || !roleId || !userId) return;
-    if (assignment.status === 'DRAFT') {
-      if (!draftByRole.has(roleId)) draftByRole.set(roleId, []);
-      draftByRole.get(roleId).push(userId);
-      return;
+    if (!roleMap[roleId]) {
+      roleMap[roleId] = [];
     }
-    if (
-      assignment.status === 'PUBLISHED' ||
-      assignment.status === 'CONFIRMED'
-    ) {
-      if (!publishedByRole.has(roleId)) publishedByRole.set(roleId, []);
-      publishedByRole.get(roleId).push(userId);
-    }
+    roleMap[roleId].push(userId);
   });
-
-  const roleMap = {};
-  const roleIds = new Set([...draftByRole.keys(), ...publishedByRole.keys()]);
-  roleIds.forEach((roleId) => {
-    const source = draftByRole.has(roleId) ? draftByRole : publishedByRole;
-    roleMap[roleId] = [...(source.get(roleId) || [])];
-  });
-
-  const clearGroups = new Set(matchRecord.value?.draft_clear_group_ids || []);
-  activeRoleGroups.value.forEach((group) => {
-    if (!clearGroups.has(group.id)) return;
-    (group.roles || []).forEach((role) => {
-      roleMap[role.id] = [];
-    });
-  });
-
   return roleMap;
 }
 
 function initDraftsFromMatch() {
-  const roleMap = buildRoleMapFromAssignments(
-    matchRecord.value?.assignments || []
-  );
+  const roleMap = buildRoleMapFromMatch(matchRecord.value);
+  draftVersionsByGroup.value = {
+    ...(matchRecord.value?.draft_versions_by_group || {}),
+  };
   drafts.value = roleMap;
   initialDraftSignature.value = JSON.stringify(normalizedDraftState(roleMap));
 }
@@ -709,6 +684,7 @@ function normalizeMatches(list = []) {
     assignments: match.assignments || [],
     referee_requirements: match.referee_requirements || [],
     draft_clear_group_ids: match.draft_clear_group_ids || [],
+    draft_versions_by_group: match.draft_versions_by_group || {},
   }));
 }
 
@@ -827,6 +803,9 @@ async function saveDraftAssignments() {
     );
     for (const groupId of groupIds) {
       const assignments = buildAssignmentsPayload(groupId);
+      const expectedDraftVersion = String(
+        draftVersionsByGroup.value[groupId] || ''
+      );
       const data = await apiFetch(
         `/referee-assignments/matches/${matchId.value}/referees`,
         {
@@ -835,6 +814,7 @@ async function saveDraftAssignments() {
             assignments,
             role_group_id: groupId,
             clear_published: assignments.length === 0,
+            expected_draft_version: expectedDraftVersion || undefined,
           }),
         }
       );
@@ -842,20 +822,47 @@ async function saveDraftAssignments() {
         ...(matchRecord.value || {}),
         assignments: data.assignments || [],
         draft_clear_group_ids: data.draft_clear_group_ids || [],
+        draft_versions_by_group: data.draft_versions_by_group || {},
       };
+      draftVersionsByGroup.value = {
+        ...draftVersionsByGroup.value,
+        ...(data.draft_versions_by_group || {}),
+      };
+      if (data.draft_version) {
+        draftVersionsByGroup.value[groupId] = String(data.draft_version);
+      }
     }
     await refreshMatchFromDate(selectedDateKey.value);
     initDraftsFromMatch();
     actionSuccess.value = 'Черновик назначений сохранен.';
   } catch (e) {
+    if (
+      e?.code === 'referee_assignments_conflict' &&
+      e?.details &&
+      matchRecord.value
+    ) {
+      const details = e.details || {};
+      matchRecord.value = {
+        ...(matchRecord.value || {}),
+        assignments: details.assignments || [],
+        draft_clear_group_ids: details.draft_clear_group_ids || [],
+        draft_versions_by_group: details.draft_versions_by_group || {},
+      };
+      draftVersionsByGroup.value = {
+        ...draftVersionsByGroup.value,
+        ...(details.draft_versions_by_group || {}),
+      };
+      initDraftsFromMatch();
+    }
     actionError.value = e.message || 'Не удалось сохранить черновик';
   } finally {
     saving.value = false;
   }
 }
 
-async function publishAssignments() {
+async function publishAssignments(allowIncomplete = false) {
   if (!canPublish.value) return;
+  if (incompleteDraftSlots.value > 0 && !allowIncomplete) return;
   publishing.value = true;
   actionError.value = '';
   actionSuccess.value = '';
@@ -864,6 +871,9 @@ async function publishAssignments() {
       `/referee-assignments/matches/${matchId.value}/publish`,
       {
         method: 'POST',
+        body: JSON.stringify({
+          allow_incomplete: allowIncomplete,
+        }),
       }
     );
     const summary = formatPublishNotificationSummary(data?.notifications);
@@ -877,6 +887,24 @@ async function publishAssignments() {
   } finally {
     publishing.value = false;
   }
+}
+
+function onPublishAssignmentsClick() {
+  if (!canPublish.value) return;
+  if (incompleteDraftSlots.value > 0) {
+    showPublishConfirm.value = true;
+    return;
+  }
+  void publishAssignments(false);
+}
+
+function closePublishConfirm() {
+  showPublishConfirm.value = false;
+}
+
+function confirmPublishIncomplete() {
+  showPublishConfirm.value = false;
+  void publishAssignments(true);
 }
 
 async function createAssignmentsSheetDocument() {
@@ -1009,7 +1037,7 @@ onMounted(() => {
                   :disabled="!canPublish"
                   aria-label="Отправить назначения по матчу"
                   title="Отправить назначения"
-                  @click="publishAssignments"
+                  @click="onPublishAssignmentsClick"
                 >
                   <span
                     v-if="publishing"
@@ -1382,6 +1410,40 @@ onMounted(() => {
           </div>
         </div>
       </template>
+
+      <div
+        v-if="showPublishConfirm"
+        class="publish-confirm-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-publish-confirm-title"
+      >
+        <div class="publish-confirm-card">
+          <h2 id="match-publish-confirm-title" class="h6 mb-2">
+            Отправить неполные назначения?
+          </h2>
+          <p class="text-muted small mb-3">
+            Есть незаполненные слоты: {{ incompleteDraftSlots }}. Будут
+            отправлены только заполненные назначения.
+          </p>
+          <div class="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              @click="closePublishConfirm"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              @click="confirmPublishIncomplete"
+            >
+              Подтвердить отправку
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -1467,6 +1529,26 @@ onMounted(() => {
 
 .status-badge {
   margin-top: 0.35rem;
+}
+
+.publish-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1050;
+}
+
+.publish-confirm-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: var(--radius-section, 1rem);
+  box-shadow: var(--shadow-tile);
+  border: 1px solid var(--border-subtle);
+  padding: 1rem;
 }
 
 @media (max-width: 575.98px) {

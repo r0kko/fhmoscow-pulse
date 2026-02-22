@@ -131,6 +131,15 @@ test('listNextGameDays supports forward direction with custom anchor and two-pha
     '2024-02-10T00:00:00.000Z',
     '2024-02-11T00:00:00.000Z',
   ]);
+  expect(result.meta).toEqual({
+    attention_days: 7,
+    search_max_len: 80,
+    direction: 'forward',
+  });
+  expect(result.day_tabs).toEqual([
+    { day_key: 1707523200000, count: 1, attention_count: 1 },
+    { day_key: 1707609600000, count: 1, attention_count: 0 },
+  ]);
   expect(result.matches.map((m) => m.id)).toEqual(['m2', 'm3']);
   expect(result.matches[0]).toMatchObject({
     score_team1: 1,
@@ -202,6 +211,22 @@ test('listNextGameDays applies case-insensitive search via ILIKE', async () => {
   });
 });
 
+test('listNextGameDays does not apply heavy search clause for 1-char queries', async () => {
+  matchFindAllMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  agreementFindAllMock.mockResolvedValue([]);
+
+  await listNextGameDays({
+    q: 'A',
+    count: 2,
+    horizonDays: 10,
+  });
+
+  const findOptions = matchFindAllMock.mock.calls[0][0];
+  const ands = findOptions.where?.[Op.and] || [];
+  const searchClause = ands.find((clause) => clause[Op.or]);
+  expect(searchClause).toBeUndefined();
+});
+
 test('listNextGameDays merges multi-value filters for clubs/tournaments/groups/stadiums', async () => {
   matchFindAllMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
   agreementFindAllMock.mockResolvedValue([]);
@@ -224,4 +249,54 @@ test('listNextGameDays merges multi-value filters for clubs/tournaments/groups/s
       { '$Ground.name$': { [Op.in]: ['Арена 1'] } },
     ])
   );
+});
+
+test('listNextGameDays handles Moscow midnight boundary correctly', async () => {
+  matchFindAllMock
+    .mockResolvedValueOnce([
+      makeLightMatch('z1', '2024-02-09T20:59:59Z'), // 23:59:59 MSK on Feb 9
+      makeLightMatch('z2', '2024-02-09T21:00:00Z'), // 00:00:00 MSK on Feb 10
+    ])
+    .mockResolvedValueOnce([makeMatch('z2', '2024-02-09T21:00:00Z')]);
+  agreementFindAllMock.mockResolvedValue([]);
+
+  const result = await listNextGameDays({
+    count: 1,
+    horizonDays: 3,
+    anchorDate: '2024-02-10',
+    direction: 'forward',
+  });
+
+  expect(result.game_days).toEqual(['2024-02-10T00:00:00.000Z']);
+  expect(result.matches.map((m) => m.id)).toEqual(['z2']);
+  expect(result.day_tabs).toEqual([
+    { day_key: 1707523200000, count: 1, attention_count: 1 },
+  ]);
+});
+
+test('listNextGameDays returns sparse set without over-fetch loops', async () => {
+  matchFindAllMock
+    .mockResolvedValueOnce([
+      makeLightMatch('s1', '2024-02-06T11:00:00Z'),
+      makeLightMatch('s2', '2024-02-08T11:00:00Z'),
+    ])
+    .mockResolvedValueOnce([
+      makeMatch('s1', '2024-02-06T11:00:00Z'),
+      makeMatch('s2', '2024-02-08T11:00:00Z'),
+    ]);
+  agreementFindAllMock.mockResolvedValue([]);
+
+  const result = await listNextGameDays({
+    count: 5,
+    horizonDays: 10,
+    anchorDate: '2024-02-20',
+    direction: 'forward',
+  });
+
+  expect(matchFindAllMock).toHaveBeenCalledTimes(2);
+  expect(result.matches.map((m) => m.id)).toEqual(['s1', 's2']);
+  expect(result.game_days).toEqual([
+    '2024-02-06T00:00:00.000Z',
+    '2024-02-08T00:00:00.000Z',
+  ]);
 });

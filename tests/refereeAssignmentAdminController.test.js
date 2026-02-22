@@ -70,7 +70,7 @@ test('listRoleGroups returns service payload', async () => {
   await controller.listRoleGroups({}, res);
   expect(listRoleGroupsMock).toHaveBeenCalled();
   expect(res.json).toHaveBeenCalledWith({
-    groups: [{ id: 'rg1', name: 'Группа', roles: [] }],
+    groups: [{ id: 'rg1', name: 'Группа', alias: null, roles: [] }],
   });
 });
 
@@ -152,7 +152,11 @@ test('updateMatchReferees forwards payload', async () => {
     'm1',
     [{ role_id: 'r1', user_id: 'u1' }],
     'admin',
-    { roleGroupId: 'g1', clearPublished: false }
+    {
+      roleGroupId: 'g1',
+      clearPublished: false,
+      expectedDraftVersion: null,
+    }
   );
   expect(res.json).toHaveBeenCalledWith({
     assignments: [{ id: 'a1' }],
@@ -167,8 +171,26 @@ test('publishMatchReferees forwards actor', async () => {
     { params: { id: 'm1' }, user: { id: 'admin' } },
     res
   );
-  expect(publishMatchMock).toHaveBeenCalledWith('m1', 'admin');
+  expect(publishMatchMock).toHaveBeenCalledWith('m1', 'admin', {
+    allowIncomplete: false,
+  });
   expect(res.json).toHaveBeenCalledWith({ assignments: [{ id: 'a1' }] });
+});
+
+test('publishMatchReferees parses allow_incomplete string flag', async () => {
+  publishMatchMock.mockResolvedValue([{ id: 'a1' }]);
+  const res = mockRes();
+  await controller.publishMatchReferees(
+    {
+      params: { id: 'm1' },
+      user: { id: 'admin' },
+      body: { allow_incomplete: 'false' },
+    },
+    res
+  );
+  expect(publishMatchMock).toHaveBeenCalledWith('m1', 'admin', {
+    allowIncomplete: false,
+  });
 });
 
 test('publishDay forwards payload', async () => {
@@ -183,8 +205,29 @@ test('publishDay forwards payload', async () => {
   );
   expect(publishDayMock).toHaveBeenCalledWith('2024-02-10', 'admin', {
     roleGroupIds: ['rg1'],
+    allowIncomplete: true,
   });
   expect(res.json).toHaveBeenCalledWith({ published_count: 1 });
+});
+
+test('publishDay parses allow_incomplete string flag', async () => {
+  publishDayMock.mockResolvedValue({ published_count: 1 });
+  const res = mockRes();
+  await controller.publishDay(
+    {
+      user: { id: 'admin' },
+      body: {
+        date: '2024-02-10',
+        role_group_id: 'rg1',
+        allow_incomplete: 'false',
+      },
+    },
+    res
+  );
+  expect(publishDayMock).toHaveBeenCalledWith('2024-02-10', 'admin', {
+    roleGroupIds: ['rg1'],
+    allowIncomplete: false,
+  });
 });
 
 test('createMatchAssignmentsSheet forwards payload', async () => {

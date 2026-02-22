@@ -21,4 +21,12 @@ test('auth and mail counters increment without throwing', () => {
     metrics.observeVerifyRequestDuration('valid', 0.05)
   ).not.toThrow();
   expect(() => metrics.incShortLinkResolve('ok')).not.toThrow();
+  expect(() =>
+    metrics.incAdminCalendarEmpty({
+      reason: 'no_matches_in_range',
+      direction: 'forward',
+      hasSearch: false,
+      hasStructuralFilters: false,
+    })
+  ).not.toThrow();
 });

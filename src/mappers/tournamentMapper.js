@@ -1,3 +1,19 @@
+function normalizeUpper(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase();
+}
+
+function deriveRefereeRoleGroupAlias(group) {
+  const explicit = normalizeUpper(group?.alias);
+  if (explicit) return explicit;
+  const normalizedName = normalizeUpper(group?.name);
+  if (normalizedName === 'РУКОВОДСТВО') return 'LEADERSHIP';
+  if (normalizedName === 'СУДЬИ В БРИГАДЕ') return 'BRIGADE';
+  if (normalizedName === 'СУДЬИ В ПОЛЕ') return 'FIELD';
+  return null;
+}
+
 export default {
   toPublicType(t) {
     if (!t) return null;
@@ -214,6 +230,7 @@ export default {
     return {
       id: plain.id,
       name: plain.name,
+      alias: deriveRefereeRoleGroupAlias(plain),
       roles: (plain.RefereeRoles || plain.referee_roles || []).map((r) => ({
         id: r.id,
         name: r.name,

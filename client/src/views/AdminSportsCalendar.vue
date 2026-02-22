@@ -9,13 +9,8 @@ import {
   watch,
   type Ref,
 } from 'vue';
-import {
-  useRoute,
-  useRouter,
-  type LocationQuery,
-  type LocationQueryValue,
-} from 'vue-router';
-import { apiFetch } from '../api';
+import { useRoute, useRouter } from 'vue-router';
+
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import TabSelector from '../components/TabSelector.vue';
 import MatchesDayTiles from '../components/MatchesDayTiles.vue';
@@ -34,47 +29,38 @@ import {
   type CalendarReturnLocation,
   DEFAULT_CALENDAR_PATH,
 } from '../utils/adminCalendarNavigation';
+import { trackAdminSportsCalendarEvent } from '../utils/adminSportsCalendarTelemetry';
+import {
+  addUnique,
+  removeFrom,
+  toSortedUnique,
+} from '../composables/useAdminCalendarFilters';
+import { useAdminCalendarData } from '../composables/useAdminCalendarData';
+import {
+  buildQueryFromState,
+  CALENDAR_STATE_STORAGE_KEY,
+  getDefaultCalendarState,
+  parseStateFromQuery,
+  queriesMatch,
+  readStateFromStorage,
+  sanitizePersistedState,
+  toMoscowDateInputValue,
+  writeStateToStorage,
+} from '../composables/useAdminCalendarState';
+import type {
+  CalendarApiMeta,
+  CalendarDayTab,
+  CalendarMatch,
+  CalendarPersistedState,
+} from '../types/adminSportsCalendar';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_DAY_WINDOW = 14;
 const DEFAULT_HORIZON_DAYS = DEFAULT_DAY_WINDOW * 4;
+const EMPTY_STATE_SHIFT_DAYS = DEFAULT_DAY_WINDOW;
 const SEARCH_DEBOUNCE_MS = 350;
-const SEARCH_PERSIST_GRACE_MS = 1500;
+const SEARCH_MAX_LEN_FALLBACK = 80;
 const pluralRules = new Intl.PluralRules('ru-RU');
-
-interface CalendarMatch {
-  id: number;
-  date: string;
-  team1: string;
-  team2: string;
-  home_club?: string | null;
-  away_club?: string | null;
-  stadium?: string | null;
-  tournament?: string | null;
-  group?: string | null;
-  tour?: string | number | null;
-  urgent_unagreed?: boolean;
-  agreement_accepted?: boolean;
-  agreement_pending?: boolean;
-  agreements_allowed?: boolean;
-  status?: { alias?: string | null; name?: string | null } | null;
-  technical_winner?: string | null;
-  score_team1?: number | null;
-  score_team2?: number | null;
-  is_home?: boolean;
-  is_away?: boolean;
-  is_both_teams?: boolean;
-}
-
-interface CalendarRange {
-  start: string;
-  end_exclusive: string;
-}
-
-interface CalendarApiResponse {
-  matches?: CalendarMatch[];
-  range?: CalendarRange | null;
-}
 
 const statusOptions = [
   { value: 'all', label: 'Все матчи', icon: 'bi-collection' },
@@ -97,17 +83,28 @@ const breadcrumbItems = Object.freeze([
   { label: 'Календарь игр' },
 ]);
 
+const route = useRoute();
+const router = useRouter();
+const { loadCalendar, cancelPending } = useAdminCalendarData();
+
+const getNowDateValue = () => toMoscowDateInputValue(new Date(), MOSCOW_TZ);
+
 const timeScope = ref<TimeScope>('upcoming');
 const statusScope = ref<StatusFilterScope>('all');
-const anchorDate = ref(toMoscowDateInputValue(new Date()));
+const anchorDate = ref(getNowDateValue());
 const matches = ref<CalendarMatch[]>([]);
-const range = ref<CalendarRange | null>(null);
 const loading = ref(false);
 const error = ref('');
 const activeDayKey = ref<number | null>(null);
 const pendingDayKey = ref<number | null>(null);
 const search = ref('');
 const searchApplied = ref('');
+const serverDayTabs = ref<CalendarDayTab[]>([]);
+const apiMeta = ref<CalendarApiMeta>({
+  attention_days: 7,
+  search_max_len: SEARCH_MAX_LEN_FALLBACK,
+  direction: 'forward',
+});
 
 const selectedHomeClubs = ref<string[]>([]);
 const selectedAwayClubs = ref<string[]>([]);
@@ -131,7 +128,7 @@ const draft = reactive<CalendarFilterDraft>({
   stadiumCand: '',
   statusScope: 'all',
   timeScope: 'upcoming',
-  anchorDate: toMoscowDateInputValue(new Date()),
+  anchorDate: getNowDateValue(),
 });
 
 const draftModel = computed<CalendarFilterDraft>({
@@ -141,8 +138,6 @@ const draftModel = computed<CalendarFilterDraft>({
   },
 });
 
-const route = useRoute();
-const router = useRouter();
 const calendarQuerySnapshot = computed<Record<string, string | string[]>>(
   () => {
     const query = route.query;
@@ -163,35 +158,14 @@ const calendarQuerySnapshot = computed<Record<string, string | string[]>>(
   }
 );
 
-interface CalendarPersistedState {
-  anchorDate: string;
-  timeScope: TimeScope;
-  statusScope: StatusFilterScope;
-  search: string;
-  selectedHomeClubs: string[];
-  selectedAwayClubs: string[];
-  selectedTournaments: string[];
-  selectedGroups: string[];
-  selectedStadiums: string[];
-  activeDayKey: number | null;
+interface QueryConstraints {
+  hasSearch: boolean;
+  hasStructuralFilters: boolean;
+  hasNonDefaultPeriod: boolean;
+  hasNonDefaultAnchor: boolean;
 }
 
-const CALENDAR_STATE_VERSION = 2;
-const CALENDAR_STATE_STORAGE_KEY = `admin-sports-calendar-state-v${CALENDAR_STATE_VERSION}`;
-const QUERY_KEYS = {
-  anchor: 'anchor',
-  timeScope: 'time',
-  statusScope: 'status',
-  search: 'q',
-  activeDayKey: 'day',
-  home: 'home',
-  away: 'away',
-  tournament: 'tournament',
-  group: 'group',
-  stadium: 'stadium',
-} as const;
-
-const activeFiltersCount = computed(() => {
+const structuralFiltersCount = computed(() => {
   let n = 0;
   n += selectedHomeClubs.value.length;
   n += selectedAwayClubs.value.length;
@@ -202,15 +176,46 @@ const activeFiltersCount = computed(() => {
   return n;
 });
 
-const filtersSummaryText = computed(() => {
-  const count = activeFiltersCount.value;
-  if (!count) return 'Фильтры не применены';
-  const rule = pluralRules.select(count);
-  const suffix = rule === 'one' ? 'активен' : 'активны';
-  return `${count} ${formatFiltersLabel(count)} ${suffix}`;
+const effectiveQueryConstraints = computed<QueryConstraints>(() => {
+  const today = getNowDateValue();
+  return {
+    hasSearch: Boolean(searchApplied.value.trim()),
+    hasStructuralFilters: structuralFiltersCount.value > 0,
+    hasNonDefaultPeriod: timeScope.value !== 'upcoming',
+    hasNonDefaultAnchor: Boolean(
+      anchorDate.value && anchorDate.value !== today
+    ),
+  };
 });
 
-const directionParam = computed(() =>
+const activeFiltersCount = computed(() => {
+  const c = effectiveQueryConstraints.value;
+  let n = structuralFiltersCount.value;
+  if (c.hasSearch) n += 1;
+  if (c.hasNonDefaultPeriod) n += 1;
+  if (c.hasNonDefaultAnchor) n += 1;
+  return n;
+});
+
+const hasAnyActiveConstraints = computed(() => {
+  const c = effectiveQueryConstraints.value;
+  return (
+    c.hasSearch ||
+    c.hasStructuralFilters ||
+    c.hasNonDefaultPeriod ||
+    c.hasNonDefaultAnchor
+  );
+});
+
+const filtersSummaryText = computed(() => {
+  const count = activeFiltersCount.value;
+  if (!count) return 'Параметры не применены';
+  const rule = pluralRules.select(count);
+  const suffix = rule === 'one' ? 'активен' : 'активны';
+  return `${count} ${formatParamsLabel(count)} ${suffix}`;
+});
+
+const directionParam = computed<'forward' | 'backward'>(() =>
   timeScope.value === 'past' ? 'backward' : 'forward'
 );
 const anchorDateIso = computed(() =>
@@ -231,14 +236,13 @@ const timeScopeTabs = computed(() =>
 function isAttentionMatch(match: CalendarMatch): boolean {
   if (!match) return false;
   if (match.agreements_allowed === false) return false;
-  if (match.urgent_unagreed) return true;
-  const alias = (match.status?.alias || '').toUpperCase();
-  const schedulable = !['CANCELLED', 'FINISHED', 'LIVE'].includes(alias);
-  const agreed = Boolean(match.agreement_accepted);
-  const pending = Boolean(match.agreement_pending);
-  const diffMs = new Date(match.date || '').getTime() - Date.now();
-  const soon = Number.isFinite(diffMs) && diffMs >= 0 && diffMs < 10 * DAY_MS;
-  return schedulable && !agreed && (pending || soon);
+  if (match.needs_attention === true) return true;
+  if (match.urgent_unagreed === true) return true;
+  return Boolean(
+    match.agreement_pending &&
+    !match.agreement_accepted &&
+    match.agreements_allowed
+  );
 }
 
 const matchesAfterStatus = computed<CalendarMatch[]>(() => {
@@ -290,8 +294,7 @@ const statusCountMap = computed<Record<StatusFilterScope, number>>(() => {
 });
 
 function getStatusCount(scope: StatusFilterScope): number {
-  const map = statusCountMap.value;
-  return map?.[scope] ?? 0;
+  return statusCountMap.value?.[scope] ?? 0;
 }
 
 interface DayTab {
@@ -302,40 +305,58 @@ interface DayTab {
 }
 
 const dayTabs = computed<DayTab[]>(() => {
-  const counts = new Map<number, number>();
-  const attention = new Map<number, number>();
-  matchesAfterStatus.value.forEach((match) => {
-    const key = toDayKey(match.date, MOSCOW_TZ);
-    if (key == null) return;
-    counts.set(key, (counts.get(key) || 0) + 1);
-    if (isAttentionMatch(match)) {
-      attention.set(key, (attention.get(key) || 0) + 1);
-    }
-  });
-  const keysSorted = [...counts.keys()].sort((a, b) => a - b);
-  const keys =
-    directionParam.value === 'backward'
-      ? keysSorted.slice(-DEFAULT_DAY_WINDOW)
-      : keysSorted.slice(0, DEFAULT_DAY_WINDOW);
   const todayKey = toDayKey(new Date().toISOString(), MOSCOW_TZ);
-  return keys.map((key) => {
-    const offset = todayKey == null ? 0 : (key - todayKey) / DAY_MS;
-    const date = new Date(key);
-    const badge = attention.get(key) || 0;
+  const tabsSource =
+    statusScope.value === 'all' && serverDayTabs.value.length
+      ? serverDayTabs.value.map((item) => ({
+          key: item.day_key,
+          count: item.count,
+          attention: item.attention_count,
+        }))
+      : (() => {
+          const counts = new Map<number, number>();
+          const attention = new Map<number, number>();
+          matchesAfterStatus.value.forEach((match) => {
+            const key = toDayKey(match.date, MOSCOW_TZ);
+            if (key == null) return;
+            counts.set(key, (counts.get(key) || 0) + 1);
+            if (isAttentionMatch(match)) {
+              attention.set(key, (attention.get(key) || 0) + 1);
+            }
+          });
+          return [...counts.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([key, count]) => ({
+              key,
+              count,
+              attention: attention.get(key) || 0,
+            }));
+        })();
+  const sliced =
+    directionParam.value === 'backward'
+      ? tabsSource.slice(-DEFAULT_DAY_WINDOW)
+      : tabsSource.slice(0, DEFAULT_DAY_WINDOW);
+  return sliced.map((tab) => {
+    const offset = todayKey == null ? 0 : (tab.key - todayKey) / DAY_MS;
+    const date = new Date(tab.key);
     const { line1, line2 } = formatTabLines(date, offset);
     return {
-      key,
+      key: tab.key,
       label: line1,
       subLabel:
-        key === anchorKey.value && line2 !== 'Сегодня' ? 'Опорный день' : line2,
-      badge,
-    } satisfies DayTab;
+        tab.key === anchorKey.value && line2 !== 'Сегодня'
+          ? 'Опорный день'
+          : line2,
+      badge: tab.attention,
+    };
   });
 });
 
+let daySelectionPersistPending = false;
 const activeDayTabKey = computed<string | number>({
   get: () => (activeDayKey.value ?? '') as string | number,
   set: (value) => {
+    daySelectionPersistPending = true;
     if (value === '' || value == null) {
       activeDayKey.value = null;
       pendingDayKey.value = null;
@@ -358,6 +379,34 @@ const filteredDayItems = computed<CalendarMatch[]>(() => {
 });
 
 const selectedDayCount = computed<number>(() => filteredDayItems.value.length);
+type EmptyReason =
+  | 'none'
+  | 'no_matches_in_range'
+  | 'constrained_empty'
+  | 'selected_day_empty';
+
+const emptyReason = computed<EmptyReason>(() => {
+  if (loading.value || error.value) return 'none';
+  if (!dayTabs.value.length) {
+    return hasAnyActiveConstraints.value
+      ? 'constrained_empty'
+      : 'no_matches_in_range';
+  }
+  if (!filteredDayItems.value.length) {
+    return 'selected_day_empty';
+  }
+  return 'none';
+});
+
+const emptyStateTitle = computed(() => {
+  if (emptyReason.value === 'no_matches_in_range') {
+    return 'В выбранном диапазоне матчей нет.';
+  }
+  if (emptyReason.value === 'constrained_empty') {
+    return 'По текущим параметрам матчей не найдено.';
+  }
+  return '';
+});
 
 const homeClubOptions = computed<string[]>(() =>
   toSortedUnique(matches.value, (match) => match.home_club)
@@ -412,16 +461,6 @@ watch(
 );
 
 watch(
-  () => draft.homeClubs.length,
-  (len: number, prevLen: number) => {
-    if (prevLen > 0 && len === 0) {
-      draft.awayClubs = [];
-      draft.awayCand = '';
-    }
-  }
-);
-
-watch(
   () => draft.tournaments.length,
   (len: number, prevLen: number) => {
     if (prevLen > 0 && len === 0) {
@@ -451,20 +490,10 @@ watch(
       activeDayKey.value = anchorCandidate;
       return;
     }
-    if (directionParam.value === 'backward') {
-      activeDayKey.value = keys[keys.length - 1] ?? null;
-    } else {
-      activeDayKey.value = keys[0] ?? null;
-    }
-  }
-);
-
-watch(
-  () => activeDayKey.value,
-  (value) => {
-    if (pendingDayKey.value != null && pendingDayKey.value === value) {
-      pendingDayKey.value = null;
-    }
+    activeDayKey.value =
+      directionParam.value === 'backward'
+        ? (keys[keys.length - 1] ?? null)
+        : (keys[0] ?? null);
   }
 );
 
@@ -473,9 +502,6 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let requestToken = 0;
 let visibilityHandler: (() => void) | null = null;
 let skipSearchWatcher = false;
-let persistencePaused = false;
-let persistenceResumeTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingPersistenceState: CalendarPersistedState | null = null;
 
 const persistedStateSnapshot = computed<CalendarPersistedState>(() =>
   createStateSnapshot()
@@ -494,58 +520,24 @@ const loadTriggerKey = computed(() =>
   })
 );
 
-function queuePersistence(state: CalendarPersistedState): void {
-  if (persistencePaused) {
-    pendingPersistenceState = state;
-    return;
-  }
-  pendingPersistenceState = null;
-  persistCalendarState(state);
-}
-
-function pausePersistenceTemporarily(
-  delay: number = SEARCH_PERSIST_GRACE_MS
-): void {
-  persistencePaused = true;
-  if (persistenceResumeTimer) {
-    clearTimeout(persistenceResumeTimer);
-    persistenceResumeTimer = null;
-  }
-  persistenceResumeTimer = setTimeout(() => {
-    persistencePaused = false;
-    persistenceResumeTimer = null;
-    if (pendingPersistenceState) {
-      const snapshot = pendingPersistenceState;
-      pendingPersistenceState = null;
-      persistCalendarState(snapshot);
-    }
-  }, delay);
-}
-
-function flushPendingPersistence(): void {
-  if (persistenceResumeTimer) {
-    clearTimeout(persistenceResumeTimer);
-    persistenceResumeTimer = null;
-  }
-  const snapshot =
-    pendingPersistenceState ?? (!suppressReload ? createStateSnapshot() : null);
-  pendingPersistenceState = null;
-  persistencePaused = false;
-  if (!snapshot || suppressReload) {
-    if (snapshot) pendingPersistenceState = snapshot;
-    return;
-  }
-  persistCalendarState(snapshot);
-}
-
 watch(
   persistedStateSnapshot,
   (state) => {
-    if (suppressReload) {
-      pendingPersistenceState = state;
-      return;
+    if (suppressReload) return;
+    const safe = sanitizePersistedState(state, getNowDateValue(), (value) =>
+      toMoscowDateInputValue(value, MOSCOW_TZ)
+    );
+    writeStateToStorage(CALENDAR_STATE_STORAGE_KEY, safe);
+    const defaults = getDefaultCalendarState(getNowDateValue());
+    const query = buildQueryFromState(safe, defaults);
+    const location: CalendarReturnLocation = {
+      path: DEFAULT_CALENDAR_PATH,
+      query,
+    };
+    if (route.path === DEFAULT_CALENDAR_PATH && route.hash) {
+      location.hash = route.hash;
     }
-    queuePersistence(state);
+    storeCalendarReturnLocation(location);
   },
   { deep: true, flush: 'post' }
 );
@@ -558,42 +550,86 @@ watch(
   }
 );
 
+watch(
+  () => activeDayKey.value,
+  (value) => {
+    if (pendingDayKey.value != null && pendingDayKey.value === value) {
+      pendingDayKey.value = null;
+    }
+    if (!daySelectionPersistPending || suppressReload) return;
+    daySelectionPersistPending = false;
+    persistCurrentState({ replace: false, updateRoute: true });
+    trackAdminSportsCalendarEvent({
+      event: 'admin_sports_calendar_day_selected',
+      direction: directionParam.value,
+      filtersCount: activeFiltersCount.value,
+    });
+  }
+);
+
 async function loadMatches(): Promise<void> {
   const token = ++requestToken;
   loading.value = true;
   error.value = '';
   try {
-    const params = new URLSearchParams();
-    params.set('game_days', 'true');
-    params.set('count', String(DEFAULT_DAY_WINDOW));
-    params.set('horizon', String(DEFAULT_HORIZON_DAYS));
-    params.set('direction', directionParam.value);
-    if (anchorDate.value) params.set('anchor', anchorDate.value);
-    if (searchApplied.value.trim()) params.set('q', searchApplied.value.trim());
-    for (const club of selectedHomeClubs.value || [])
-      params.append('home_club', club);
-    for (const club of selectedAwayClubs.value || [])
-      params.append('away_club', club);
-    for (const tournament of selectedTournaments.value || [])
-      params.append('tournament', tournament);
-    for (const group of selectedGroups.value || [])
-      params.append('group', group);
-    for (const stadium of selectedStadiums.value || [])
-      params.append('stadium', stadium);
-    const res = (await apiFetch(
-      `/matches/admin/calendar?${params.toString()}`
-    )) as CalendarApiResponse;
+    const res = await loadCalendar({
+      dayWindow: DEFAULT_DAY_WINDOW,
+      horizonDays: DEFAULT_HORIZON_DAYS,
+      direction: directionParam.value,
+      anchorDate: anchorDate.value,
+      search: searchApplied.value,
+      homeClubs: selectedHomeClubs.value,
+      awayClubs: selectedAwayClubs.value,
+      tournaments: selectedTournaments.value,
+      groups: selectedGroups.value,
+      stadiums: selectedStadiums.value,
+    });
     if (token !== requestToken) return;
     matches.value = Array.isArray(res.matches) ? res.matches : [];
-    range.value = res.range ?? null;
+    serverDayTabs.value = Array.isArray(res.day_tabs) ? res.day_tabs : [];
+    apiMeta.value = {
+      attention_days: Number(res.meta?.attention_days || 7),
+      search_max_len: Number(
+        res.meta?.search_max_len || SEARCH_MAX_LEN_FALLBACK
+      ),
+      direction: res.meta?.direction === 'backward' ? 'backward' : 'forward',
+      result_count: Number(res.meta?.result_count ?? matches.value.length),
+      requested_anchor:
+        typeof res.meta?.requested_anchor === 'string' ||
+        res.meta?.requested_anchor === null
+          ? res.meta?.requested_anchor
+          : null,
+      requested_direction:
+        res.meta?.requested_direction === 'backward'
+          ? 'backward'
+          : res.meta?.requested_direction === 'both'
+            ? 'both'
+            : 'forward',
+      requested_count: Number(res.meta?.requested_count ?? DEFAULT_DAY_WINDOW),
+      requested_horizon: Number(
+        res.meta?.requested_horizon ?? DEFAULT_HORIZON_DAYS
+      ),
+      constraint_flags: {
+        has_search: Boolean(res.meta?.constraint_flags?.has_search),
+        has_structural_filters: Boolean(
+          res.meta?.constraint_flags?.has_structural_filters
+        ),
+      },
+    };
   } catch (err) {
-    if (token === requestToken) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Не удалось загрузить данные. Попробуйте обновить страницу.';
-      error.value = message;
-    }
+    if (token !== requestToken) return;
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'Не удалось загрузить данные. Попробуйте обновить страницу.';
+    error.value = message;
+    trackAdminSportsCalendarEvent({
+      event: 'admin_sports_calendar_load_failed',
+      status: 'error',
+      detail: message,
+      direction: directionParam.value,
+      filtersCount: activeFiltersCount.value,
+    });
   } finally {
     if (token === requestToken) {
       loading.value = false;
@@ -609,20 +645,28 @@ watch(
       return;
     }
     if (suppressReload) return;
-    pausePersistenceTemporarily();
+    const maxLen = Number(
+      apiMeta.value.search_max_len || SEARCH_MAX_LEN_FALLBACK
+    );
+    let effectiveQuery = query;
+    if (effectiveQuery.length > maxLen) {
+      effectiveQuery = effectiveQuery.slice(0, maxLen);
+      skipSearchWatcher = true;
+      search.value = effectiveQuery;
+    }
     if (searchTimer) {
       clearTimeout(searchTimer);
       searchTimer = undefined;
     }
-    const trimmed = query.trim();
+    const trimmed = effectiveQuery.trim();
     if (!trimmed) {
       searchApplied.value = '';
-      flushPendingPersistence();
+      persistCurrentState({ replace: true, updateRoute: true });
       return;
     }
     searchTimer = setTimeout(() => {
       searchApplied.value = trimmed;
-      flushPendingPersistence();
+      persistCurrentState({ replace: true, updateRoute: true });
     }, SEARCH_DEBOUNCE_MS);
   }
 );
@@ -658,6 +702,13 @@ function applyFilters(): void {
   timeScope.value = draft.timeScope;
   anchorDate.value = draft.anchorDate || '';
   filtersModal.value?.hide();
+  persistCurrentState({ replace: false, updateRoute: true });
+  trackAdminSportsCalendarEvent({
+    event: 'admin_sports_calendar_filters_applied',
+    status: 'success',
+    direction: directionParam.value,
+    filtersCount: activeFiltersCount.value,
+  });
 }
 
 function resetDraft(): void {
@@ -673,7 +724,7 @@ function resetDraft(): void {
   draft.stadiumCand = '';
   draft.statusScope = 'all';
   draft.timeScope = 'upcoming';
-  draft.anchorDate = toMoscowDateInputValue(new Date());
+  draft.anchorDate = getNowDateValue();
 }
 
 function handleModalReset(): void {
@@ -687,11 +738,11 @@ function shiftDraftAnchor(offsetDays: number): void {
     : new Date();
   if (Number.isNaN(base.getTime())) return;
   const shifted = new Date(base.getTime() + offsetDays * DAY_MS);
-  draft.anchorDate = toMoscowDateInputValue(shifted);
+  draft.anchorDate = toMoscowDateInputValue(shifted, MOSCOW_TZ);
 }
 
 function resetDraftAnchorToToday(): void {
-  draft.anchorDate = toMoscowDateInputValue(new Date());
+  draft.anchorDate = getNowDateValue();
 }
 
 function submitSearchNow(): void {
@@ -701,7 +752,7 @@ function submitSearchNow(): void {
     searchTimer = undefined;
   }
   searchApplied.value = search.value.trim();
-  flushPendingPersistence();
+  persistCurrentState({ replace: true, updateRoute: true });
 }
 
 function clearSearchQuery(): void {
@@ -713,7 +764,7 @@ function clearSearchQuery(): void {
   skipSearchWatcher = true;
   search.value = '';
   searchApplied.value = '';
-  flushPendingPersistence();
+  persistCurrentState({ replace: true, updateRoute: true });
 }
 
 function toggleDraftStatus(scope: StatusFilterScope): void {
@@ -735,15 +786,20 @@ function resetAllFilters(): void {
   selectedStadiums.value = [];
   statusScope.value = 'all';
   timeScope.value = 'upcoming';
-  anchorDate.value = toMoscowDateInputValue(new Date());
-  range.value = null;
+  anchorDate.value = getNowDateValue();
   activeDayKey.value = null;
   pendingDayKey.value = null;
   setDraftFromState();
   void nextTick(() => {
     suppressReload = false;
-    persistCurrentState({ replace: true });
+    persistCurrentState({ replace: false, updateRoute: true });
     void loadMatches();
+  });
+  trackAdminSportsCalendarEvent({
+    event: 'admin_sports_calendar_filters_reset',
+    status: 'success',
+    direction: directionParam.value,
+    filtersCount: 0,
   });
 }
 
@@ -772,25 +828,25 @@ function removeHeaderChip(chip: CalendarFilterChip): void {
     case 'status':
       statusScope.value = 'all';
       break;
+    case 'search':
+      search.value = '';
+      searchApplied.value = '';
+      break;
+    case 'period':
+      timeScope.value = 'upcoming';
+      break;
+    case 'anchor':
+      anchorDate.value = getNowDateValue();
+      break;
     default:
       break;
   }
+  persistCurrentState({ replace: false, updateRoute: true });
 }
 
 function retryLoad(): void {
   if (suppressReload) return;
   void loadMatches();
-}
-
-function addUnique(list: string[], value: string): void {
-  const val = (value ?? '').trim();
-  if (!val) return;
-  if (!list.includes(val)) list.push(val);
-}
-
-function removeFrom(list: string[], value: string): void {
-  const index = list.indexOf(value);
-  if (index >= 0) list.splice(index, 1);
 }
 
 function addHome(): void {
@@ -870,6 +926,30 @@ const activeFilterChips = computed<CalendarFilterChip[]>(() => {
   selectedStadiums.value.forEach((value) =>
     pushChip('stad', value, `Стадион: ${value}`, 'bi-geo-alt')
   );
+  if (effectiveQueryConstraints.value.hasSearch) {
+    pushChip(
+      'search',
+      searchApplied.value.trim(),
+      `Поиск: ${searchApplied.value.trim()}`,
+      'bi-search'
+    );
+  }
+  if (effectiveQueryConstraints.value.hasNonDefaultPeriod) {
+    pushChip(
+      'period',
+      timeScope.value,
+      `Период: ${timeScope.value === 'past' ? 'Прошедшие' : 'Предстоящие'}`,
+      'bi-clock-history'
+    );
+  }
+  if (effectiveQueryConstraints.value.hasNonDefaultAnchor) {
+    pushChip(
+      'anchor',
+      anchorDate.value,
+      `Опорная дата: ${anchorDate.value}`,
+      'bi-calendar-event'
+    );
+  }
   if (statusScope.value !== 'all') {
     const option = statusOptions.find((opt) => opt.value === statusScope.value);
     pushChip(
@@ -881,268 +961,6 @@ const activeFilterChips = computed<CalendarFilterChip[]>(() => {
   }
   return chips;
 });
-
-function toSortedUnique<T>(
-  list: ReadonlyArray<T> | null | undefined,
-  selector: (item: T) => string | null | undefined
-): string[] {
-  const items = new Set<string>();
-  (list ?? []).forEach((item) => {
-    const raw = selector(item);
-    const normalized = raw?.toString().trim();
-    if (normalized) items.add(normalized);
-  });
-  return Array.from(items).sort((a, b) =>
-    String(a).localeCompare(String(b), 'ru', { sensitivity: 'base' })
-  );
-}
-
-function getDefaultCalendarState(): CalendarPersistedState {
-  return {
-    anchorDate: toMoscowDateInputValue(new Date()),
-    timeScope: 'upcoming',
-    statusScope: 'all',
-    search: '',
-    selectedHomeClubs: [],
-    selectedAwayClubs: [],
-    selectedTournaments: [],
-    selectedGroups: [],
-    selectedStadiums: [],
-    activeDayKey: null,
-  };
-}
-
-function normalizePersistedList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const seen = new Set<string>();
-  value.forEach((item) => {
-    const normalized = (item ?? '').toString().trim();
-    if (normalized) seen.add(normalized);
-  });
-  return Array.from(seen);
-}
-
-function hasOwn(obj: Record<string, unknown>, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(obj, key);
-}
-
-function sanitizePersistedState(
-  input: Partial<CalendarPersistedState> | null | undefined
-): CalendarPersistedState {
-  const fallback = getDefaultCalendarState();
-  const candidate = (input ?? {}) as Record<string, unknown>;
-  const anchorProvided = hasOwn(candidate, 'anchorDate');
-  const rawAnchor = anchorProvided
-    ? (candidate['anchorDate'] ?? '').toString().trim()
-    : undefined;
-  let anchorDate = fallback.anchorDate;
-  if (anchorProvided) {
-    if (!rawAnchor) {
-      anchorDate = '';
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawAnchor)) {
-      anchorDate = rawAnchor;
-    } else {
-      anchorDate = toMoscowDateInputValue(rawAnchor) || fallback.anchorDate;
-    }
-  }
-  const normalizeSearch = (): string => {
-    if (!hasOwn(candidate, 'search')) return fallback.search;
-    return (candidate['search'] ?? '').toString().slice(0, 120);
-  };
-  const normalizeTimeScope = (): TimeScope =>
-    candidate['timeScope'] === 'past' ? 'past' : 'upcoming';
-  const allowedStatuses = statusOptions.map((option) => option.value);
-  const normalizeStatusScope = (): StatusFilterScope => {
-    const raw = candidate['statusScope'];
-    return allowedStatuses.includes(raw as StatusFilterScope)
-      ? (raw as StatusFilterScope)
-      : 'all';
-  };
-  const normalizeActiveDay = (): number | null => {
-    if (!hasOwn(candidate, 'activeDayKey')) return fallback.activeDayKey;
-    const raw = Number(candidate['activeDayKey']);
-    return Number.isFinite(raw) ? raw : null;
-  };
-  return {
-    anchorDate,
-    timeScope: normalizeTimeScope(),
-    statusScope: normalizeStatusScope(),
-    search: normalizeSearch(),
-    selectedHomeClubs: normalizePersistedList(candidate['selectedHomeClubs']),
-    selectedAwayClubs: normalizePersistedList(candidate['selectedAwayClubs']),
-    selectedTournaments: normalizePersistedList(
-      candidate['selectedTournaments']
-    ),
-    selectedGroups: normalizePersistedList(candidate['selectedGroups']),
-    selectedStadiums: normalizePersistedList(candidate['selectedStadiums']),
-    activeDayKey: normalizeActiveDay(),
-  };
-}
-
-function readStateFromStorage(): CalendarPersistedState | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.sessionStorage?.getItem(CALENDAR_STATE_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CalendarPersistedState>;
-    return sanitizePersistedState(parsed);
-  } catch {
-    return null;
-  }
-}
-
-function writeStateToStorage(state: CalendarPersistedState): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.sessionStorage?.setItem(
-      CALENDAR_STATE_STORAGE_KEY,
-      JSON.stringify(state)
-    );
-  } catch {
-    /* ignore storage errors */
-  }
-}
-
-function normalizeQueryValue(
-  value: LocationQueryValue | LocationQueryValue[] | undefined
-): LocationQueryValue | undefined {
-  if (Array.isArray(value)) return value.at(-1);
-  return value;
-}
-
-function queryValueToString(
-  value: LocationQueryValue | LocationQueryValue[] | undefined
-): string | undefined {
-  const normalized = normalizeQueryValue(value);
-  if (typeof normalized === 'string') return normalized;
-  if (normalized === null) return '';
-  return undefined;
-}
-
-function queryValueToNumber(
-  value: LocationQueryValue | LocationQueryValue[] | undefined
-): number | undefined {
-  const raw = queryValueToString(value);
-  if (raw == null || !raw.trim()) return undefined;
-  const num = Number.parseInt(raw, 10);
-  return Number.isFinite(num) ? num : undefined;
-}
-
-function queryValueToArray(
-  value: LocationQueryValue | LocationQueryValue[] | undefined
-): string[] {
-  const values = Array.isArray(value) ? value : [normalizeQueryValue(value)];
-  return values
-    .map((item) => (typeof item === 'string' ? item.trim() : ''))
-    .filter((item) => Boolean(item));
-}
-
-function parseStateFromQuery(
-  query: LocationQuery
-): Partial<CalendarPersistedState> | null {
-  const anchor = queryValueToString(query[QUERY_KEYS.anchor]);
-  const timeScopeParam = queryValueToString(query[QUERY_KEYS.timeScope]);
-  const statusScopeParam = queryValueToString(query[QUERY_KEYS.statusScope]);
-  const searchParam = queryValueToString(query[QUERY_KEYS.search]);
-  const activeDayParam = queryValueToNumber(query[QUERY_KEYS.activeDayKey]);
-  const home = queryValueToArray(query[QUERY_KEYS.home]);
-  const away = queryValueToArray(query[QUERY_KEYS.away]);
-  const tournaments = queryValueToArray(query[QUERY_KEYS.tournament]);
-  const groups = queryValueToArray(query[QUERY_KEYS.group]);
-  const stadiums = queryValueToArray(query[QUERY_KEYS.stadium]);
-  const hasAny =
-    anchor !== undefined ||
-    timeScopeParam !== undefined ||
-    statusScopeParam !== undefined ||
-    searchParam !== undefined ||
-    activeDayParam !== undefined ||
-    home.length > 0 ||
-    away.length > 0 ||
-    tournaments.length > 0 ||
-    groups.length > 0 ||
-    stadiums.length > 0;
-  if (!hasAny) return null;
-  const partial: Partial<CalendarPersistedState> = {};
-  if (anchor !== undefined) partial.anchorDate = anchor;
-  if (timeScopeParam !== undefined)
-    partial.timeScope = timeScopeParam as TimeScope;
-  if (statusScopeParam !== undefined)
-    partial.statusScope = statusScopeParam as StatusFilterScope;
-  if (searchParam !== undefined) partial.search = searchParam;
-  if (activeDayParam !== undefined) partial.activeDayKey = activeDayParam;
-  if (home.length) partial.selectedHomeClubs = home;
-  if (away.length) partial.selectedAwayClubs = away;
-  if (tournaments.length) partial.selectedTournaments = tournaments;
-  if (groups.length) partial.selectedGroups = groups;
-  if (stadiums.length) partial.selectedStadiums = stadiums;
-  return partial;
-}
-
-function buildQueryFromState(
-  state: CalendarPersistedState
-): Record<string, string | string[]> {
-  const defaults = getDefaultCalendarState();
-  const query: Record<string, string | string[]> = {};
-  if (state.anchorDate && state.anchorDate !== defaults.anchorDate) {
-    query[QUERY_KEYS.anchor] = state.anchorDate;
-  }
-  if (state.timeScope !== defaults.timeScope) {
-    query[QUERY_KEYS.timeScope] = state.timeScope;
-  }
-  if (state.statusScope !== defaults.statusScope) {
-    query[QUERY_KEYS.statusScope] = state.statusScope;
-  }
-  const trimmedSearch = state.search.trim();
-  if (trimmedSearch) {
-    query[QUERY_KEYS.search] = trimmedSearch;
-  }
-  if (state.activeDayKey != null) {
-    query[QUERY_KEYS.activeDayKey] = String(state.activeDayKey);
-  }
-  if (state.selectedHomeClubs.length) {
-    query[QUERY_KEYS.home] = [...state.selectedHomeClubs];
-  }
-  if (state.selectedAwayClubs.length) {
-    query[QUERY_KEYS.away] = [...state.selectedAwayClubs];
-  }
-  if (state.selectedTournaments.length) {
-    query[QUERY_KEYS.tournament] = [...state.selectedTournaments];
-  }
-  if (state.selectedGroups.length) {
-    query[QUERY_KEYS.group] = [...state.selectedGroups];
-  }
-  if (state.selectedStadiums.length) {
-    query[QUERY_KEYS.stadium] = [...state.selectedStadiums];
-  }
-  return query;
-}
-
-type QueryLike = Record<string, string | string[] | null | undefined>;
-
-function queryEntries(source: QueryLike): string[] {
-  const entries: string[] = [];
-  Object.entries(source).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((item) => {
-        if (item === undefined) return;
-        entries.push(`${key}=${item ?? ''}`);
-      });
-    } else if (value !== undefined) {
-      entries.push(`${key}=${value ?? ''}`);
-    }
-  });
-  return entries.sort();
-}
-
-function queriesMatch(
-  current: LocationQuery,
-  next: Record<string, string | string[] | undefined>
-): boolean {
-  const currentEntries = queryEntries(current as QueryLike);
-  const nextEntries = queryEntries(next as QueryLike);
-  if (currentEntries.length !== nextEntries.length) return false;
-  return currentEntries.every((entry, index) => entry === nextEntries[index]);
-}
 
 function applyCalendarState(state: CalendarPersistedState): void {
   search.value = state.search || '';
@@ -1175,15 +993,19 @@ function createStateSnapshot(): CalendarPersistedState {
 
 interface PersistOptions {
   replace?: boolean;
+  updateRoute?: boolean;
 }
 
 function persistCalendarState(
   state: CalendarPersistedState,
-  { replace = true }: PersistOptions = {}
+  { replace = true, updateRoute = true }: PersistOptions = {}
 ): void {
-  const safeState = sanitizePersistedState(state);
-  writeStateToStorage(safeState);
-  const query = buildQueryFromState(safeState);
+  const safeState = sanitizePersistedState(state, getNowDateValue(), (value) =>
+    toMoscowDateInputValue(value, MOSCOW_TZ)
+  );
+  writeStateToStorage(CALENDAR_STATE_STORAGE_KEY, safeState);
+  const defaults = getDefaultCalendarState(getNowDateValue());
+  const query = buildQueryFromState(safeState, defaults);
   const isCalendarRoute = route.path === DEFAULT_CALENDAR_PATH;
   const location: CalendarReturnLocation = {
     path: DEFAULT_CALENDAR_PATH,
@@ -1191,7 +1013,7 @@ function persistCalendarState(
   };
   if (isCalendarRoute && route.hash) location.hash = route.hash;
   storeCalendarReturnLocation(location);
-  if (!isCalendarRoute) return;
+  if (!updateRoute || !isCalendarRoute) return;
   if (queriesMatch(route.query, query)) return;
   const target = {
     path: DEFAULT_CALENDAR_PATH,
@@ -1206,47 +1028,60 @@ function persistCurrentState(options?: PersistOptions): void {
   persistCalendarState(createStateSnapshot(), options);
 }
 
+function shiftAnchorBy(offsetDays: number): void {
+  const base = anchorDate.value
+    ? new Date(`${anchorDate.value}T00:00:00Z`)
+    : new Date();
+  if (Number.isNaN(base.getTime())) return;
+  const shifted = new Date(base.getTime() + offsetDays * DAY_MS);
+  anchorDate.value = toMoscowDateInputValue(shifted, MOSCOW_TZ);
+  persistCurrentState({ replace: false, updateRoute: true });
+}
+
+function togglePeriodForEmptyState(): void {
+  timeScope.value = timeScope.value === 'past' ? 'upcoming' : 'past';
+  persistCurrentState({ replace: false, updateRoute: true });
+}
+
 function hydrateCalendarState(): void {
   suppressReload = true;
-  const base = getDefaultCalendarState();
-  const storageState = readStateFromStorage();
+  const base = getDefaultCalendarState(getNowDateValue());
+  const storageState = readStateFromStorage(
+    CALENDAR_STATE_STORAGE_KEY,
+    (input) =>
+      sanitizePersistedState(input, getNowDateValue(), (value) =>
+        toMoscowDateInputValue(value, MOSCOW_TZ)
+      )
+  );
   const queryState = parseStateFromQuery(route.query);
-  const resolved = sanitizePersistedState({
-    ...base,
-    ...(storageState ?? {}),
-    ...(queryState ?? {}),
-  });
+  if (
+    queryState &&
+    !queryState.anchorDate &&
+    typeof queryState.activeDayKey === 'number' &&
+    Number.isFinite(queryState.activeDayKey)
+  ) {
+    queryState.anchorDate = toMoscowDateInputValue(
+      new Date(queryState.activeDayKey),
+      MOSCOW_TZ
+    );
+  }
+  const resolved = sanitizePersistedState(
+    {
+      ...base,
+      ...(storageState ?? {}),
+      ...(queryState ?? {}),
+    },
+    getNowDateValue(),
+    (value) => toMoscowDateInputValue(value, MOSCOW_TZ)
+  );
   applyCalendarState(resolved);
   pendingDayKey.value = resolved.activeDayKey;
   setDraftFromState();
   void nextTick(() => {
     suppressReload = false;
-    persistCurrentState({ replace: true });
+    persistCurrentState({ replace: true, updateRoute: true });
     void loadMatches();
   });
-}
-
-function toMoscowDateInputValue(
-  value: string | Date | null | undefined
-): string {
-  const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return '';
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: MOSCOW_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-    .formatToParts(date)
-    .reduce<Record<string, string>>((acc, part) => {
-      if (part.type !== 'literal') acc[part.type] = part.value;
-      return acc;
-    }, {});
-  const year = parts['year'] ?? '';
-  const month = parts['month'] ?? '';
-  const day = parts['day'] ?? '';
-  if (!year || !month || !day) return '';
-  return `${year}-${month}-${day}`;
 }
 
 function formatDaysLabel(value: number): string {
@@ -1262,11 +1097,11 @@ function formatMatchesLabel(value: number): string {
   return 'матчей';
 }
 
-function formatFiltersLabel(value: number): string {
+function formatParamsLabel(value: number): string {
   const rule = pluralRules.select(value);
-  if (rule === 'one') return 'фильтр';
-  if (rule === 'few') return 'фильтра';
-  return 'фильтров';
+  if (rule === 'one') return 'параметр';
+  if (rule === 'few') return 'параметра';
+  return 'параметров';
 }
 
 function formatTabLines(
@@ -1298,6 +1133,10 @@ function formatTabLines(
 
 onMounted(() => {
   hydrateCalendarState();
+  trackAdminSportsCalendarEvent({
+    event: 'admin_sports_calendar_opened',
+    status: 'success',
+  });
   if (typeof document !== 'undefined') {
     visibilityHandler = () => {
       if (document.visibilityState === 'visible') {
@@ -1317,12 +1156,7 @@ onUnmounted(() => {
     clearTimeout(searchTimer);
     searchTimer = undefined;
   }
-  if (persistenceResumeTimer) {
-    clearTimeout(persistenceResumeTimer);
-    persistenceResumeTimer = null;
-  }
-  pendingPersistenceState = null;
-  persistencePaused = false;
+  cancelPending();
 });
 </script>
 
@@ -1383,12 +1217,46 @@ onUnmounted(() => {
           </div>
           <template v-else>
             <div
-              v-if="!dayTabs.length"
+              v-if="
+                emptyReason === 'no_matches_in_range' ||
+                emptyReason === 'constrained_empty'
+              "
               class="alert alert-light border small mb-0"
               role="status"
               aria-live="polite"
             >
-              Нет матчей по выбранным фильтрам в указанном диапазоне.
+              <p class="mb-2">{{ emptyStateTitle }}</p>
+              <div class="d-flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  @click="shiftAnchorBy(EMPTY_STATE_SHIFT_DAYS)"
+                >
+                  Сдвинуть диапазон на +{{ EMPTY_STATE_SHIFT_DAYS }} дней
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  @click="togglePeriodForEmptyState"
+                >
+                  Переключить период
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  @click="openFilters"
+                >
+                  Открыть фильтры
+                </button>
+                <button
+                  v-if="hasAnyActiveConstraints"
+                  type="button"
+                  class="btn btn-link btn-sm text-decoration-none"
+                  @click="resetAllFilters"
+                >
+                  Сбросить параметры
+                </button>
+              </div>
             </div>
             <template v-else>
               <MatchesDayTiles
@@ -1400,7 +1268,7 @@ onUnmounted(() => {
                 :details-query="calendarQuerySnapshot"
               />
               <p
-                v-if="!filteredDayItems.length"
+                v-if="emptyReason === 'selected_day_empty'"
                 class="mb-0 text-muted small text-center"
               >
                 На выбранный день матчей нет.

@@ -9,6 +9,7 @@ import {
   refereeAssignmentsListRules,
   refereeAssignmentsListRefereesRules,
   refereeAssignmentsUpdateRules,
+  refereeAssignmentsPublishMatchRules,
   refereeAssignmentsPublishDayRules,
   refereeAssignmentsCreateSheetRules,
   refereeAssignmentsSheetStatusRules,
@@ -48,6 +49,8 @@ router.post(
   '/matches/:id/publish',
   auth,
   authorize('ADMIN'),
+  refereeAssignmentsPublishMatchRules,
+  validate,
   controller.publishMatchReferees
 );
 router.get(

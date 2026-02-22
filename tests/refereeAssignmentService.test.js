@@ -151,6 +151,16 @@ function makeRole(group, overrides = {}) {
   };
 }
 
+function expectWhereToContainClause(where, clause) {
+  if (where?.[Op.or]) {
+    expect(where[Op.or]).toEqual(
+      expect.arrayContaining([expect.objectContaining(clause)])
+    );
+    return;
+  }
+  expect(where).toEqual(expect.objectContaining(clause));
+}
+
 function makeMatch(overrides = {}) {
   const hasOwn = (key) => Object.prototype.hasOwnProperty.call(overrides, key);
   const tournamentGroupId = hasOwn('tournament_group_id')
@@ -250,6 +260,9 @@ test('listMatchesByDate maps requirements and assignments', async () => {
   expect(match.msk_end_time).toBe('12:30');
   expect(match.has_draft).toBe(true);
   expect(match.has_published).toBe(true);
+  expect(match.draft_versions_by_group).toEqual(
+    expect.objectContaining({ rg1: expect.stringMatching(/^v1-/) })
+  );
   expect(match.referee_requirements[0].roles[0]).toEqual(
     expect.objectContaining({ id: 'r1', count: 2 })
   );
@@ -760,6 +773,49 @@ test('updateMatchReferees stores clear marker when clearing assignments', async 
   expect(result.draft_clear_group_ids).toEqual(['rg1']);
 });
 
+test('updateMatchReferees returns conflict on stale draft version', async () => {
+  const group = makeRoleGroup({ id: 'rg1' });
+  const role = makeRole(group, { id: 'r1' });
+  matchFindByPkMock.mockResolvedValue(makeMatch());
+  matchRefereeFindAllMock.mockResolvedValue([
+    {
+      id: 'a-current',
+      match_id: 'm1',
+      referee_role_id: role.id,
+      user_id: 'u-current',
+      status_id: draftStatus.id,
+      RefereeRole: role,
+      MatchRefereeStatus: draftStatus,
+    },
+  ]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  await expect(
+    service.updateMatchReferees(
+      'm1',
+      [{ role_id: role.id, user_id: 'u-next' }],
+      'admin',
+      {
+        roleGroupId: group.id,
+        expectedDraftVersion: 'v1-stale-version',
+      }
+    )
+  ).rejects.toMatchObject({
+    code: 'referee_assignments_conflict',
+    status: 409,
+  });
+  expect(matchRefereeFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      include: expect.arrayContaining([
+        expect.objectContaining({
+          attributes: ['id', 'last_name', 'first_name', 'patronymic'],
+        }),
+      ]),
+    })
+  );
+  expect(tournamentGroupRefereeFindAllMock).not.toHaveBeenCalled();
+});
+
 test('publishMatchReferees requires full slot coverage', async () => {
   matchFindByPkMock.mockResolvedValue(makeMatch());
   tournamentGroupRefereeFindAllMock.mockResolvedValue([
@@ -874,6 +930,120 @@ test('publishMatchReferees auto-confirms pro leadership drafts without notificat
   );
 });
 
+test('publishMatchReferees applies clear markers even without drafts', async () => {
+  const group = makeRoleGroup({ id: 'rg1', name: 'Судьи в поле' });
+  const role = makeRole(group, { id: 'r1' });
+  matchFindByPkMock.mockResolvedValue(makeMatch());
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: role.id,
+      count: 1,
+      RefereeRole: role,
+    },
+  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([
+    { referee_role_group_id: group.id },
+  ]);
+
+  const result = await service.publishMatchReferees('m1', 'admin');
+
+  expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        match_id: 'm1',
+        referee_role_id: { [Op.in]: [role.id] },
+        status_id: {
+          [Op.in]: [draftStatus.id, publishedStatus.id, confirmedStatus.id],
+        },
+      }),
+      force: true,
+      transaction: expect.any(Object),
+    })
+  );
+  expect(matchRefereeDraftClearDestroyMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        match_id: 'm1',
+        referee_role_group_id: { [Op.in]: [group.id] },
+      }),
+      force: true,
+      transaction: expect.any(Object),
+    })
+  );
+  expect(result.assignments).toEqual([]);
+});
+
+test('publishMatchReferees keeps omission as cleared when another role stays in draft', async () => {
+  const group = makeRoleGroup({ id: 'rg1', name: 'Судьи в поле' });
+  const mainRole = makeRole(group, { id: 'r1', name: 'Главный судья' });
+  const lineRole = makeRole(group, { id: 'r2', name: 'Линейный судья' });
+  matchFindByPkMock.mockResolvedValue(makeMatch());
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: mainRole.id,
+      count: 1,
+      RefereeRole: mainRole,
+    },
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: lineRole.id,
+      count: 1,
+      RefereeRole: lineRole,
+    },
+  ]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      {
+        match_id: 'm1',
+        referee_role_id: lineRole.id,
+        user_id: 'u2',
+        status_id: draftStatus.id,
+        RefereeRole: lineRole,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        ...makeAssignment('PUBLISHED'),
+        referee_role_id: lineRole.id,
+        RefereeRole: lineRole,
+        MatchRefereeStatus: publishedStatus,
+        User: {
+          id: 'u2',
+          last_name: 'Петров',
+          first_name: 'Пётр',
+          patronymic: 'Петрович',
+        },
+      },
+    ])
+    .mockResolvedValueOnce([]);
+
+  const result = await service.publishMatchReferees('m1', 'admin', {
+    allowIncomplete: true,
+  });
+
+  expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { match_id: 'm1', status_id: publishedStatus.id },
+    })
+  );
+  expect(result.assignments).toHaveLength(1);
+  expect(result.assignments[0]).toEqual(
+    expect.objectContaining({
+      role: expect.objectContaining({ id: lineRole.id }),
+      user: expect.objectContaining({ id: 'u2' }),
+    })
+  );
+});
+
 test('publishAssignmentsForDate publishes drafts for a role group', async () => {
   matchFindAllMock.mockResolvedValue([makeMatch()]);
   const group = makeRoleGroup();
@@ -907,26 +1077,26 @@ test('publishAssignmentsForDate publishes drafts for a role group', async () => 
     roleGroupIds: ['rg1'],
   });
 
-  expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: expect.objectContaining({
-        match_id: 'm1',
-        referee_role_id: 'r1',
-        user_id: { [Op.in]: ['u2'] },
-        status_id: { [Op.in]: [publishedStatus.id, confirmedStatus.id] },
-      }),
-      force: true,
-    })
+  const destroyCall = matchRefereeDestroyMock.mock.calls[0]?.[0] || {};
+  expect(destroyCall).toEqual(expect.objectContaining({ force: true }));
+  expectWhereToContainClause(destroyCall.where, {
+    match_id: 'm1',
+    referee_role_id: 'r1',
+    user_id: { [Op.in]: ['u2'] },
+    status_id: { [Op.in]: [publishedStatus.id, confirmedStatus.id] },
+  });
+  const publishUpdateCall = matchRefereeUpdateMock.mock.calls.find(
+    ([payload]) => payload?.status_id === publishedStatus.id
   );
-  expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
-    expect.objectContaining({ status_id: publishedStatus.id }),
+  expect(publishUpdateCall).toBeDefined();
+  expectWhereToContainClause(publishUpdateCall[1]?.where, {
+    match_id: 'm1',
+    referee_role_id: 'r1',
+    user_id: { [Op.in]: ['u1'] },
+    status_id: draftStatus.id,
+  });
+  expect(publishUpdateCall[1]).toEqual(
     expect.objectContaining({
-      where: expect.objectContaining({
-        match_id: 'm1',
-        referee_role_id: 'r1',
-        user_id: { [Op.in]: ['u1'] },
-        status_id: draftStatus.id,
-      }),
       transaction: expect.any(Object),
     })
   );
@@ -977,15 +1147,18 @@ test('publishAssignmentsForDate auto-confirms pro leadership drafts', async () =
     roleGroupIds: [leadershipGroup.id],
   });
 
-  expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
-    expect.objectContaining({ status_id: confirmedStatus.id }),
+  const confirmUpdateCall = matchRefereeUpdateMock.mock.calls.find(
+    ([payload]) => payload?.status_id === confirmedStatus.id
+  );
+  expect(confirmUpdateCall).toBeDefined();
+  expectWhereToContainClause(confirmUpdateCall[1]?.where, {
+    match_id: 'm1',
+    referee_role_id: leadershipRole.id,
+    user_id: { [Op.in]: ['u1'] },
+    status_id: draftStatus.id,
+  });
+  expect(confirmUpdateCall[1]).toEqual(
     expect.objectContaining({
-      where: expect.objectContaining({
-        match_id: 'm1',
-        referee_role_id: leadershipRole.id,
-        user_id: { [Op.in]: ['u1'] },
-        status_id: draftStatus.id,
-      }),
       transaction: expect.any(Object),
     })
   );
@@ -1024,19 +1197,60 @@ test('publishAssignmentsForDate publishes available drafts despite gaps', async 
     roleGroupIds: ['rg1'],
   });
 
-  expect(matchRefereeUpdateMock).toHaveBeenCalledWith(
-    expect.objectContaining({ status_id: publishedStatus.id }),
+  const publishUpdateCall = matchRefereeUpdateMock.mock.calls.find(
+    ([payload]) => payload?.status_id === publishedStatus.id
+  );
+  expect(publishUpdateCall).toBeDefined();
+  expectWhereToContainClause(publishUpdateCall[1]?.where, {
+    match_id: 'm1',
+    referee_role_id: 'r1',
+    user_id: { [Op.in]: ['u1'] },
+    status_id: draftStatus.id,
+  });
+  expect(publishUpdateCall[1]).toEqual(
     expect.objectContaining({
-      where: expect.objectContaining({
-        match_id: 'm1',
-        referee_role_id: 'r1',
-        user_id: { [Op.in]: ['u1'] },
-        status_id: draftStatus.id,
-      }),
       transaction: expect.any(Object),
     })
   );
   expect(result.published_matches).toEqual(['m1']);
+});
+
+test('publishAssignmentsForDate rejects incomplete drafts in strict mode', async () => {
+  matchFindAllMock.mockResolvedValue([makeMatch()]);
+  const group = makeRoleGroup();
+  const role = makeRole(group);
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: 'r1',
+      count: 2,
+      RefereeRole: role,
+    },
+  ]);
+  matchRefereeFindAllMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+    {
+      match_id: 'm1',
+      referee_role_id: 'r1',
+      user_id: 'u1',
+      status_id: draftStatus.id,
+    },
+  ]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  await expect(
+    service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+      roleGroupIds: ['rg1'],
+      allowIncomplete: false,
+    })
+  ).rejects.toMatchObject({
+    code: 'referee_assignments_incomplete',
+    details: {
+      incomplete_summary: expect.objectContaining({
+        incomplete_matches: 1,
+      }),
+    },
+  });
+  expect(matchRefereeUpdateMock).not.toHaveBeenCalled();
 });
 
 test('publishAssignmentsForDate clears published when draft clear exists', async () => {
@@ -1060,18 +1274,15 @@ test('publishAssignmentsForDate clears published when draft clear exists', async
     roleGroupIds: ['rg1'],
   });
 
-  expect(matchRefereeDestroyMock).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: expect.objectContaining({
-        match_id: 'm1',
-        referee_role_id: { [Op.in]: ['r1'] },
-        status_id: {
-          [Op.in]: [draftStatus.id, publishedStatus.id, confirmedStatus.id],
-        },
-      }),
-      force: true,
-    })
-  );
+  const destroyCall = matchRefereeDestroyMock.mock.calls[0]?.[0] || {};
+  expect(destroyCall).toEqual(expect.objectContaining({ force: true }));
+  expectWhereToContainClause(destroyCall.where, {
+    match_id: 'm1',
+    referee_role_id: { [Op.in]: ['r1'] },
+    status_id: {
+      [Op.in]: [draftStatus.id, publishedStatus.id, confirmedStatus.id],
+    },
+  });
   expect(matchRefereeDraftClearDestroyMock).toHaveBeenCalledWith(
     expect.objectContaining({
       where: expect.objectContaining({
@@ -1082,6 +1293,84 @@ test('publishAssignmentsForDate clears published when draft clear exists', async
     })
   );
   expect(result.published_matches).toEqual(['m1']);
+});
+
+test('publishAssignmentsForDate clears omitted role while publishing another role', async () => {
+  matchFindAllMock.mockResolvedValue([makeMatch()]);
+  const group = makeRoleGroup({ id: 'rg1', name: 'Судьи в поле' });
+  const mainRole = makeRole(group, { id: 'r1', name: 'Главный судья' });
+  const lineRole = makeRole(group, { id: 'r2', name: 'Линейный судья' });
+  tournamentGroupRefereeFindAllMock.mockResolvedValue([
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: mainRole.id,
+      count: 1,
+      RefereeRole: mainRole,
+    },
+    {
+      tournament_group_id: 'tg1',
+      referee_role_id: lineRole.id,
+      count: 1,
+      RefereeRole: lineRole,
+    },
+  ]);
+  matchRefereeFindAllMock
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      {
+        match_id: 'm1',
+        referee_role_id: mainRole.id,
+        user_id: 'u1',
+        status_id: publishedStatus.id,
+      },
+      {
+        match_id: 'm1',
+        referee_role_id: lineRole.id,
+        user_id: 'u2',
+        status_id: draftStatus.id,
+      },
+    ])
+    .mockResolvedValueOnce([]);
+  matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+  const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+    roleGroupIds: ['rg1'],
+    allowIncomplete: true,
+  });
+
+  const clearByOmissionCall = matchRefereeDestroyMock.mock.calls
+    .map((call) => call[0])
+    .find((args) => {
+      const clauses = args?.where?.[Op.or];
+      if (!Array.isArray(clauses)) return false;
+      return clauses.some(
+        (clause) => clause.match_id === 'm1' && clause.referee_role_id === 'r1'
+      );
+    });
+  expect(clearByOmissionCall).toBeDefined();
+  expectWhereToContainClause(clearByOmissionCall.where, {
+    match_id: 'm1',
+    referee_role_id: 'r1',
+    user_id: { [Op.in]: ['u1'] },
+    status_id: { [Op.in]: [publishedStatus.id, confirmedStatus.id] },
+  });
+  const publishUpdateCall = matchRefereeUpdateMock.mock.calls.find(
+    ([payload]) => payload?.status_id === publishedStatus.id
+  );
+  expect(publishUpdateCall).toBeDefined();
+  expectWhereToContainClause(publishUpdateCall[1]?.where, {
+    match_id: 'm1',
+    referee_role_id: lineRole.id,
+    user_id: { [Op.in]: ['u2'] },
+    status_id: draftStatus.id,
+  });
+  expect(result.published_matches).toEqual(['m1']);
+  expect(result.notifications).toEqual(
+    expect.objectContaining({
+      queued: expect.any(Number),
+      cancelled: expect.any(Number),
+    })
+  );
 });
 
 test('listAssignmentsForUser returns published assignments grouped by match', async () => {

@@ -46,14 +46,31 @@ const emit = defineEmits<{
 
 const modalRef = ref<HTMLElement | null>(null);
 let modalInstance: Modal | null = null;
+let returnFocusEl: HTMLElement | null = null;
+let hiddenHandlerAttached = false;
+
+function handleHidden(): void {
+  const target = returnFocusEl;
+  returnFocusEl = null;
+  if (target && typeof target.focus === 'function') {
+    target.focus();
+  }
+}
 
 function ensureModal(): void {
   if (!modalRef.value) return;
   if (modalInstance) return;
   modalInstance = new Modal(modalRef.value, { backdrop: true, focus: true });
+  if (!hiddenHandlerAttached) {
+    modalRef.value.addEventListener('hidden.bs.modal', handleHidden);
+    hiddenHandlerAttached = true;
+  }
 }
 
 function show(): void {
+  if (typeof document !== 'undefined') {
+    returnFocusEl = document.activeElement as HTMLElement | null;
+  }
   ensureModal();
   modalInstance?.show();
 }
@@ -64,8 +81,13 @@ function hide(): void {
 }
 
 onBeforeUnmount(() => {
+  if (modalRef.value && hiddenHandlerAttached) {
+    modalRef.value.removeEventListener('hidden.bs.modal', handleHidden);
+    hiddenHandlerAttached = false;
+  }
   modalInstance?.dispose();
   modalInstance = null;
+  returnFocusEl = null;
 });
 
 function handleShiftAnchor(multiplier: number): void {

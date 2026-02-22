@@ -182,8 +182,12 @@ export const ERROR_MESSAGES = {
   federation_signer_not_found:
     'Не найден сотрудник федерации с настроенной простой электронной подписью',
   invalid_clear_flag: 'Некорректный параметр отмены назначения',
+  invalid_draft_version: 'Данные назначения устарели, обновите страницу',
+  invalid_allow_incomplete: 'Некорректный параметр публикации',
   referee_statuses_missing:
     'Конфигурация статусов назначений недоступна. Обратитесь в поддержку',
+  referee_assignments_conflict:
+    'Назначения уже изменены другим администратором. Данные обновлены.',
   match_schedule_missing: 'У матча не указаны дата и время',
   match_duration_missing: 'Укажите длительность матча для группы',
   match_not_professional:

@@ -42,6 +42,7 @@ const navClass = computed(() => {
 });
 
 const navRef = ref<HTMLElement | null>(null);
+const tabButtonRefs = ref<Array<HTMLButtonElement | null>>([]);
 
 function selectTab(key: TabKey, disabled?: boolean): void {
   if (disabled) return;
@@ -75,6 +76,53 @@ function queueScroll(behavior: ScrollBehavior = 'auto'): void {
   });
 }
 
+function setTabButtonRef(index: number, el: HTMLButtonElement | null): void {
+  tabButtonRefs.value[index] = el;
+}
+
+function findNextEnabledIndex(
+  startIndex: number,
+  step: number,
+  total: number
+): number {
+  let checked = 0;
+  let cursor = startIndex;
+  while (checked < total) {
+    cursor = (cursor + step + total) % total;
+    if (!tabItems.value[cursor]?.disabled) return cursor;
+    checked += 1;
+  }
+  return startIndex;
+}
+
+function onTabKeydown(event: KeyboardEvent, index: number): void {
+  const total = tabItems.value.length;
+  if (!total) return;
+  let nextIndex: number | null = null;
+  if (event.key === 'ArrowRight') {
+    nextIndex = findNextEnabledIndex(index, 1, total);
+  } else if (event.key === 'ArrowLeft') {
+    nextIndex = findNextEnabledIndex(index, -1, total);
+  } else if (event.key === 'Home') {
+    nextIndex = tabItems.value.findIndex((tab) => !tab.disabled);
+  } else if (event.key === 'End') {
+    for (let i = total - 1; i >= 0; i -= 1) {
+      if (!tabItems.value[i]?.disabled) {
+        nextIndex = i;
+        break;
+      }
+    }
+  }
+  if (nextIndex == null || nextIndex < 0 || nextIndex >= total) return;
+  event.preventDefault();
+  const nextTab = tabItems.value[nextIndex];
+  if (!nextTab) return;
+  selectTab(nextTab.key, nextTab.disabled);
+  void nextTick(() => {
+    tabButtonRefs.value[nextIndex]?.focus();
+  });
+}
+
 onMounted(() => {
   queueScroll('auto');
 });
@@ -102,8 +150,9 @@ watch(
       role="tablist"
       :aria-label="ariaLabelText || undefined"
     >
-      <li v-for="t in tabItems" :key="String(t.key)" class="nav-item">
+      <li v-for="(t, index) in tabItems" :key="String(t.key)" class="nav-item">
         <button
+          :ref="(el) => setTabButtonRef(index, el as HTMLButtonElement | null)"
           type="button"
           class="nav-link"
           :class="{ active: currentValue === t.key, disabled: t.disabled }"
@@ -112,6 +161,7 @@ watch(
           :aria-disabled="t.disabled ? 'true' : undefined"
           @click="selectTab(t.key, t.disabled)"
           @keydown.enter="selectTab(t.key, t.disabled)"
+          @keydown="onTabKeydown($event, index)"
         >
           <span class="d-block lh-1 fw-semibold">
             {{ t.label }}

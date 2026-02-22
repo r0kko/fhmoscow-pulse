@@ -79,10 +79,23 @@ export const refereeAssignmentsUpdateRules = [
   body('assignments.*.role_id').isUUID().withMessage('referee_role_not_found'),
   body('assignments.*.user_id').isUUID().withMessage('user_not_found'),
   body('role_group_id').isUUID().withMessage('referee_role_group_required'),
+  body('expected_draft_version')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 128 })
+    .withMessage('invalid_draft_version'),
   body('clear_published')
     .optional({ nullable: true })
     .isBoolean()
     .withMessage('invalid_clear_flag'),
+];
+
+export const refereeAssignmentsPublishMatchRules = [
+  body('allow_incomplete')
+    .optional({ nullable: true })
+    .isBoolean()
+    .withMessage('invalid_allow_incomplete'),
 ];
 
 export const refereeAssignmentsPublishDayRules = [
@@ -111,6 +124,10 @@ export const refereeAssignmentsPublishDayRules = [
     .optional({ nullable: true })
     .isUUID()
     .withMessage('referee_role_group_required'),
+  body('allow_incomplete')
+    .optional({ nullable: true })
+    .isBoolean()
+    .withMessage('invalid_allow_incomplete'),
 ];
 
 export const refereeAssignmentsCreateSheetRules = [

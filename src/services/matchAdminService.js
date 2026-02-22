@@ -22,6 +22,16 @@ import { isAgreementsBlockedBySchedule } from '../utils/scheduleManagement.js';
 import externalSync from './externalMatchSyncService.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ATTENTION_DAYS = 7;
+const ATTENTION_WINDOW_MS = ATTENTION_DAYS * DAY_MS;
+export const CALENDAR_SEARCH_MAX_LEN = 80;
+export const CALENDAR_MIN_SEARCH_LEN = 2;
+
+function toMoscowDayKey(value) {
+  const msk = utcToMoscow(value) || new Date(value);
+  if (Number.isNaN(msk.getTime())) return null;
+  return Date.UTC(msk.getUTCFullYear(), msk.getUTCMonth(), msk.getUTCDate());
+}
 
 function startOfMoscowDay(value) {
   const base = value ? new Date(value) : new Date();
@@ -47,6 +57,110 @@ function arrify(v) {
         .filter(Boolean);
 }
 
+function isSchedulableStatus(aliasRaw) {
+  const alias = String(aliasRaw || '').toUpperCase();
+  return alias !== 'CANCELLED' && alias !== 'FINISHED' && alias !== 'LIVE';
+}
+
+function computeAttentionState({
+  agreementsAllowed,
+  accepted,
+  pending,
+  kickoffMs,
+  nowMs,
+  statusAlias,
+}) {
+  if (!agreementsAllowed || accepted) {
+    return { needsAttention: false, urgentUnagreed: false };
+  }
+  if (!isSchedulableStatus(statusAlias)) {
+    return { needsAttention: false, urgentUnagreed: false };
+  }
+  const soon =
+    Number.isFinite(kickoffMs) &&
+    kickoffMs >= nowMs &&
+    kickoffMs - nowMs < ATTENTION_WINDOW_MS;
+  return {
+    needsAttention: Boolean(pending || soon),
+    urgentUnagreed: Boolean(soon),
+  };
+}
+
+function buildDayTabs(matches = []) {
+  const byDay = new Map();
+  for (const match of matches) {
+    const key = toMoscowDayKey(match?.date);
+    if (key == null) continue;
+    const current = byDay.get(key) || { count: 0, attention_count: 0 };
+    current.count += 1;
+    if (match?.needs_attention) current.attention_count += 1;
+    byDay.set(key, current);
+  }
+  return [...byDay.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([day_key, value]) => ({
+      day_key,
+      count: value.count,
+      attention_count: value.attention_count,
+    }));
+}
+
+function mapCalendarMatches(rows, flagsByMatch, nowMskTs) {
+  return rows.map((m) => {
+    const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
+    const agreementsAllowed = !isAgreementsBlockedBySchedule(m);
+    const effectiveFlags = agreementsAllowed
+      ? flags
+      : { accepted: false, pending: false };
+    const accepted = Boolean(effectiveFlags.accepted);
+    const pending = Boolean(effectiveFlags.pending) && !accepted;
+    const kickoffMs = (
+      utcToMoscow(m.date_start) || new Date(m.date_start)
+    ).getTime();
+    const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
+    const attention = computeAttentionState({
+      agreementsAllowed,
+      accepted,
+      pending,
+      kickoffMs,
+      nowMs: nowMskTs,
+      statusAlias,
+    });
+    return {
+      id: m.id,
+      date: m.date_start,
+      stadium: m.Ground?.name || null,
+      team1: m.HomeTeam?.name || null,
+      team2: m.AwayTeam?.name || null,
+      home_club: m.HomeTeam?.Club?.name || null,
+      away_club: m.AwayTeam?.Club?.name || null,
+      tournament: m.Tournament?.name || null,
+      group: m.TournamentGroup?.name || null,
+      tour: m.Tour?.name || null,
+      scheduled_date: m.scheduled_date || null,
+      score_team1: m.score_team1 ?? null,
+      score_team2: m.score_team2 ?? null,
+      technical_winner: m.technical_winner || null,
+      status: m.GameStatus
+        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
+        : null,
+      agreement_accepted: accepted,
+      agreement_pending: pending,
+      needs_attention: attention.needsAttention,
+      urgent_unagreed: attention.urgentUnagreed,
+      agreements_allowed: agreementsAllowed,
+    };
+  });
+}
+
+function getCalendarMeta(direction = 'forward') {
+  return {
+    attention_days: ATTENTION_DAYS,
+    search_max_len: CALENDAR_SEARCH_MAX_LEN,
+    direction: normalizeDirection(direction),
+  };
+}
+
 function buildCalendarAndFilters({
   q = '',
   homeClubs = [],
@@ -61,13 +175,28 @@ function buildCalendarAndFilters({
   stadium = '',
 }) {
   const search = (q || '').trim();
+  const useSearch = search.length >= CALENDAR_MIN_SEARCH_LEN;
   const ands = [];
+  const includeNeeds = {
+    home: false,
+    away: false,
+    tournament: false,
+    group: false,
+    tour: false,
+    ground: false,
+  };
   const homeList = [...arrify(homeClubs), ...arrify(homeClub)];
   const awayList = [...arrify(awayClubs), ...arrify(awayClub)];
   const tournList = [...arrify(tournaments), ...arrify(tournament)];
   const groupList = [...arrify(groups), ...arrify(groupName)];
   const stadList = [...arrify(stadiums), ...arrify(stadium)];
-  if (search) {
+  if (useSearch) {
+    includeNeeds.home = true;
+    includeNeeds.away = true;
+    includeNeeds.tournament = true;
+    includeNeeds.group = true;
+    includeNeeds.tour = true;
+    includeNeeds.ground = true;
     ands.push({
       [Op.or]: [
         { '$HomeTeam.name$': { [Op.iLike]: `%${search}%` } },
@@ -81,16 +210,54 @@ function buildCalendarAndFilters({
       ],
     });
   }
-  if (homeList.length)
+  if (homeList.length) {
+    includeNeeds.home = true;
     ands.push({ '$HomeTeam.Club.name$': { [Op.in]: homeList } });
-  if (awayList.length)
+  }
+  if (awayList.length) {
+    includeNeeds.away = true;
     ands.push({ '$AwayTeam.Club.name$': { [Op.in]: awayList } });
-  if (tournList.length)
+  }
+  if (tournList.length) {
+    includeNeeds.tournament = true;
     ands.push({ '$Tournament.name$': { [Op.in]: tournList } });
-  if (groupList.length)
+  }
+  if (groupList.length) {
+    includeNeeds.group = true;
     ands.push({ '$TournamentGroup.name$': { [Op.in]: groupList } });
-  if (stadList.length) ands.push({ '$Ground.name$': { [Op.in]: stadList } });
-  return ands;
+  }
+  if (stadList.length) {
+    includeNeeds.ground = true;
+    ands.push({ '$Ground.name$': { [Op.in]: stadList } });
+  }
+  return { ands, includeNeeds };
+}
+
+function buildLightCalendarInclude(includeNeeds) {
+  const include = [];
+  if (includeNeeds.home) {
+    include.push({
+      model: Team,
+      as: 'HomeTeam',
+      attributes: [],
+      include: [{ model: Club, attributes: [] }],
+    });
+  }
+  if (includeNeeds.away) {
+    include.push({
+      model: Team,
+      as: 'AwayTeam',
+      attributes: [],
+      include: [{ model: Club, attributes: [] }],
+    });
+  }
+  if (includeNeeds.ground) include.push({ model: Ground, attributes: [] });
+  if (includeNeeds.tournament)
+    include.push({ model: Tournament, attributes: [] });
+  if (includeNeeds.group)
+    include.push({ model: TournamentGroup, attributes: [] });
+  if (includeNeeds.tour) include.push({ model: Tour, attributes: [] });
+  return include;
 }
 
 /**
@@ -175,7 +342,7 @@ export async function listNextDays({
     distinct: true,
   };
 
-  const ands = buildCalendarAndFilters({
+  const { ands } = buildCalendarAndFilters({
     q,
     homeClubs,
     awayClubs,
@@ -220,50 +387,8 @@ export async function listNextDays({
   }
 
   const nowMskTs = (utcToMoscow(new Date()) || new Date()).getTime();
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-  const matches = rowsRaw.map((m) => {
-    const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
-    const agreementsAllowed = !isAgreementsBlockedBySchedule(m);
-    const effectiveFlags = agreementsAllowed
-      ? flags
-      : { accepted: false, pending: false };
-    const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
-    const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
-    const isSchedulable =
-      statusAlias !== 'CANCELLED' &&
-      statusAlias !== 'FINISHED' &&
-      statusAlias !== 'LIVE';
-    const isUrgent =
-      agreementsAllowed &&
-      !effectiveFlags.accepted &&
-      isSchedulable &&
-      mskKickoff.getTime() >= nowMskTs &&
-      mskKickoff.getTime() - nowMskTs < sevenDaysMs;
-    return {
-      id: m.id,
-      date: m.date_start,
-      stadium: m.Ground?.name || null,
-      team1: m.HomeTeam?.name || null,
-      team2: m.AwayTeam?.name || null,
-      home_club: m.HomeTeam?.Club?.name || null,
-      away_club: m.AwayTeam?.Club?.name || null,
-      tournament: m.Tournament?.name || null,
-      group: m.TournamentGroup?.name || null,
-      tour: m.Tour?.name || null,
-      scheduled_date: m.scheduled_date || null,
-      score_team1: m.score_team1 ?? null,
-      score_team2: m.score_team2 ?? null,
-      technical_winner: m.technical_winner || null,
-      status: m.GameStatus
-        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
-        : null,
-      agreement_accepted: !!effectiveFlags.accepted,
-      agreement_pending: !!effectiveFlags.pending && !effectiveFlags.accepted,
-      urgent_unagreed: isUrgent,
-      agreements_allowed: agreementsAllowed,
-    };
-  });
+  const matches = mapCalendarMatches(rowsRaw, flagsByMatch, nowMskTs);
+  const day_tabs = buildDayTabs(matches);
 
   return {
     matches,
@@ -271,6 +396,8 @@ export async function listNextDays({
       start: startUtc.toISOString(),
       end_exclusive: endUtcExclusive.toISOString(),
     },
+    day_tabs,
+    meta: getCalendarMeta('forward'),
   };
 }
 
@@ -325,33 +452,7 @@ export async function listNextGameDays({
     },
   };
 
-  const lightFindOptions = {
-    attributes: ['id', 'date_start'],
-    where,
-    include: [
-      {
-        model: Team,
-        as: 'HomeTeam',
-        attributes: [],
-        include: [{ model: Club, attributes: [] }],
-      },
-      {
-        model: Team,
-        as: 'AwayTeam',
-        attributes: [],
-        include: [{ model: Club, attributes: [] }],
-      },
-      { model: Ground, attributes: [] },
-      { model: Tournament, attributes: [] },
-      { model: TournamentGroup, attributes: [] },
-      { model: Tour, attributes: [] },
-    ],
-    order: [['date_start', 'ASC']],
-    distinct: true,
-    subQuery: false,
-  };
-
-  const ands = buildCalendarAndFilters({
+  const { ands, includeNeeds } = buildCalendarAndFilters({
     q,
     homeClubs,
     awayClubs,
@@ -364,6 +465,15 @@ export async function listNextGameDays({
     groupName,
     stadium,
   });
+
+  const lightFindOptions = {
+    attributes: ['id', 'date_start'],
+    where,
+    include: buildLightCalendarInclude(includeNeeds),
+    order: [['date_start', 'ASC']],
+    distinct: true,
+    subQuery: false,
+  };
   if (ands.length) lightFindOptions.where[Op.and] = ands;
 
   const rowsLight = await Match.findAll(lightFindOptions);
@@ -484,49 +594,8 @@ export async function listNextGameDays({
   }
 
   const nowMskTs = (utcToMoscow(new Date()) || new Date()).getTime();
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-  const matches = selected.map((m) => {
-    const flags = flagsByMatch.get(m.id) || { accepted: false, pending: false };
-    const agreementsAllowed = !isAgreementsBlockedBySchedule(m);
-    const effectiveFlags = agreementsAllowed
-      ? flags
-      : { accepted: false, pending: false };
-    const mskKickoff = utcToMoscow(m.date_start) || new Date(m.date_start);
-    const statusAlias = (m.GameStatus?.alias || '').toUpperCase();
-    const isSchedulable =
-      statusAlias !== 'CANCELLED' &&
-      statusAlias !== 'FINISHED' &&
-      statusAlias !== 'LIVE';
-    const isUrgent =
-      agreementsAllowed &&
-      !effectiveFlags.accepted &&
-      isSchedulable &&
-      mskKickoff.getTime() >= nowMskTs &&
-      mskKickoff.getTime() - nowMskTs < sevenDaysMs;
-    return {
-      id: m.id,
-      date: m.date_start,
-      stadium: m.Ground?.name || null,
-      team1: m.HomeTeam?.name || null,
-      team2: m.AwayTeam?.name || null,
-      home_club: m.HomeTeam?.Club?.name || null,
-      away_club: m.AwayTeam?.Club?.name || null,
-      tournament: m.Tournament?.name || null,
-      group: m.TournamentGroup?.name || null,
-      tour: m.Tour?.name || null,
-      score_team1: m.score_team1 ?? null,
-      score_team2: m.score_team2 ?? null,
-      technical_winner: m.technical_winner || null,
-      status: m.GameStatus
-        ? { name: m.GameStatus.name, alias: m.GameStatus.alias }
-        : null,
-      agreement_accepted: !!effectiveFlags.accepted,
-      agreement_pending: !!effectiveFlags.pending && !effectiveFlags.accepted,
-      urgent_unagreed: isUrgent,
-      agreements_allowed: agreementsAllowed,
-    };
-  });
+  const matches = mapCalendarMatches(selected, flagsByMatch, nowMskTs);
+  const day_tabs = buildDayTabs(matches);
 
   return {
     matches,
@@ -537,6 +606,8 @@ export async function listNextGameDays({
       ).toISOString(),
     },
     game_days: keys.map((k) => new Date(k).toISOString()),
+    day_tabs,
+    meta: getCalendarMeta(normalizedDirection),
   };
 }
 

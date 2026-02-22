@@ -3,6 +3,23 @@ import documentService from '../services/documentService.js';
 import map from '../mappers/tournamentMapper.js';
 import { sendError } from '../utils/api.js';
 
+function parseBooleanFlag(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+    return false;
+  }
+  return defaultValue;
+}
+
 export default {
   async listRoleGroups(_req, res) {
     try {
@@ -78,7 +95,8 @@ export default {
         req.user.id,
         {
           roleGroupId: req.body.role_group_id || null,
-          clearPublished: Boolean(req.body.clear_published),
+          clearPublished: parseBooleanFlag(req.body.clear_published, false),
+          expectedDraftVersion: req.body.expected_draft_version || null,
         }
       );
       return res.json(data);
@@ -91,7 +109,10 @@ export default {
     try {
       const data = await refereeAssignmentService.publishMatchReferees(
         req.params.id,
-        req.user.id
+        req.user.id,
+        {
+          allowIncomplete: parseBooleanFlag(req.body?.allow_incomplete, false),
+        }
       );
       const response = Array.isArray(data) ? { assignments: data } : data;
       return res.json(response);
@@ -110,7 +131,10 @@ export default {
       const data = await refereeAssignmentService.publishAssignmentsForDate(
         req.body?.date,
         req.user.id,
-        { roleGroupIds: groupIds }
+        {
+          roleGroupIds: groupIds,
+          allowIncomplete: parseBooleanFlag(req.body?.allow_incomplete, true),
+        }
       );
       return res.json(data);
     } catch (err) {
