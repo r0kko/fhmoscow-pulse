@@ -1821,7 +1821,9 @@ async function getTournamentPaymentsDashboard({
       .filter(Boolean)
   );
   const coverageGroundIds = new Set(
-    coverageMatches.map((match) => String(match.ground_id || '')).filter(Boolean)
+    coverageMatches
+      .map((match) => String(match.ground_id || ''))
+      .filter(Boolean)
   );
   const coverageGroups = groups.filter((group) =>
     coverageGroupIds.has(String(group.id))

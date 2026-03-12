@@ -25,6 +25,7 @@ import {
   accrualListRules,
   accrualIdRules,
 } from '../validators/refereeAccountingValidators.js';
+import { uuidParam } from '../validators/paramsValidators.js';
 
 const router = express.Router();
 
@@ -128,6 +129,7 @@ router.get(
   '/:tournamentId/referee-payments/dashboard',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
   paymentsDashboardRules,
   validate,
   accountingController.getTournamentPaymentsDashboard
@@ -136,6 +138,7 @@ router.get(
   '/:tournamentId/referee-tariffs',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
   tariffListRules,
   validate,
   accountingController.listTournamentTariffs
@@ -144,6 +147,7 @@ router.post(
   '/:tournamentId/referee-tariffs',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
   tariffCreateRules,
   validate,
   accountingController.createTournamentTariff
@@ -152,6 +156,8 @@ router.patch(
   '/:tournamentId/referee-tariffs/:id',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
   tariffUpdateRules,
   validate,
   accountingController.updateTournamentTariff
@@ -160,24 +166,34 @@ router.post(
   '/:tournamentId/referee-tariffs/:id/file',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
   accountingController.fileTournamentTariff
 );
 router.post(
   '/:tournamentId/referee-tariffs/:id/retire',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
   accountingController.retireTournamentTariff
 );
 router.post(
   '/:tournamentId/referee-tariffs/:id/activate',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
   accountingController.activateTournamentTariff
 );
 router.post(
   '/:tournamentId/referee-accruals/generate',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
   accrualGenerateRules,
   validate,
   accountingController.generateTournamentAccruals
@@ -186,6 +202,7 @@ router.get(
   '/:tournamentId/referee-accruals',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
   accrualListRules,
   validate,
   accountingController.listTournamentAccruals
@@ -194,6 +211,7 @@ router.get(
   '/:tournamentId/referee-accruals/:id',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
   accrualIdRules,
   validate,
   accountingController.getTournamentAccrualDocument

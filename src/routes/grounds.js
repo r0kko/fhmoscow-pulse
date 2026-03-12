@@ -22,6 +22,7 @@ import {
   travelRateUpdateRules,
 } from '../validators/refereeAccountingValidators.js';
 import validate from '../middlewares/validate.js';
+import { uuidParam } from '../validators/paramsValidators.js';
 
 const router = express.Router();
 
@@ -48,6 +49,7 @@ router.get(
   '/:id/referee-travel-rates',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('id'),
   travelRateListRules,
   validate,
   accountingController.listGroundTravelRates
@@ -56,6 +58,7 @@ router.post(
   '/:id/referee-travel-rates',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('id'),
   travelRateCreateRules,
   validate,
   accountingController.createGroundTravelRate
@@ -64,6 +67,8 @@ router.patch(
   '/:id/referee-travel-rates/:rateId',
   auth,
   authorize('ADMINISTRATOR'),
+  ...uuidParam('id'),
+  ...uuidParam('rateId'),
   travelRateUpdateRules,
   validate,
   accountingController.updateGroundTravelRate

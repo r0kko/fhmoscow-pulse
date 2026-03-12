@@ -1,6 +1,9 @@
 <script setup lang="ts">
-// @ts-nocheck
+import { computed } from 'vue';
+
 import BaseTile from '../BaseTile.vue';
+import { auth } from '../../auth';
+import { ADMINISTRATOR_ROLES, hasRole } from '../../utils/roles';
 
 const props = defineProps<{
   activeMode: 'structure' | 'schedule' | 'settings' | 'payments';
@@ -34,6 +37,13 @@ const tiles = [
   },
 ] as const;
 
+const visibleTiles = computed(() =>
+  tiles.filter((tile) => {
+    if (tile.key !== 'payments') return true;
+    return hasRole(auth.roles, ADMINISTRATOR_ROLES);
+  })
+);
+
 function tileTo(mode: string) {
   return `/admin/tournaments/${props.tournamentId}/${mode}`;
 }
@@ -41,7 +51,11 @@ function tileTo(mode: string) {
 
 <template>
   <div class="row g-2 mb-3">
-    <div v-for="tile in tiles" :key="tile.key" class="col-12 col-md-6 col-xl-4">
+    <div
+      v-for="tile in visibleTiles"
+      :key="tile.key"
+      class="col-12 col-md-6 col-xl-4"
+    >
       <BaseTile
         :to="tileTo(tile.key)"
         :aria-label="`Открыть раздел ${tile.title}`"

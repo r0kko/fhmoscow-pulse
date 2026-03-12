@@ -159,7 +159,7 @@ router.get(
 router.post(
   '/referee-accruals/run',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMINISTRATOR'),
   async (_req, res) => {
     try {
       const mod = await import('../jobs/refereeAccrualGenerationCron.js');

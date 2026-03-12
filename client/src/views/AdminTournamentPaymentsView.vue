@@ -1296,7 +1296,7 @@ onMounted(async () => {
       <TabSelector
         :model-value="mainTab"
         :tabs="topTabs"
-        aria-label="Сценарии оплаты судей"
+        :aria-label="'Сценарии оплаты судей'"
         @update:model-value="(value) => (mainTab = String(value) as MainTabKey)"
       />
 
@@ -1384,7 +1384,7 @@ onMounted(async () => {
         <TabSelector
           :model-value="setupTab"
           :tabs="setupTabs"
-          aria-label="Разделы настройки оплаты"
+          :aria-label="'Разделы настройки оплаты'"
           @update:model-value="
             (value) => (setupTab = String(value) as SetupTabKey)
           "
