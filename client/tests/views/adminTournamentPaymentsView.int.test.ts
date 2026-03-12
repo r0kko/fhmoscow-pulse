@@ -7,14 +7,16 @@ import {
 } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { apiFetch } from '@/api';
+import { apiFetch, apiFetchBlob } from '@/api';
 import AdminTournamentPaymentsView from '@/views/AdminTournamentPaymentsView.vue';
 
 vi.mock('@/api', () => ({
   apiFetch: vi.fn(),
+  apiFetchBlob: vi.fn(),
 }));
 
 const apiFetchMock = vi.mocked(apiFetch);
+const apiFetchBlobMock = vi.mocked(apiFetchBlob);
 
 const dashboardResponse = {
   summary: {
@@ -192,6 +194,59 @@ const accrualDetailResponse = {
   ],
 };
 
+const registryResponse = {
+  rows: [
+    {
+      referee_id: 'u1',
+      last_name: 'Иванов',
+      first_name: 'Иван',
+      patronymic: 'Иванович',
+      inn: '123456789012',
+      phone: '79991112233',
+      bank_account_number: '40817810099910004312',
+      bic: '044525225',
+      correspondent_account: '30101810400000000225',
+      total_amount_rub: '3250.00',
+      taxation_type_alias: 'NPD',
+      taxation_type: 'Плательщик налога на профессиональный доход',
+      missing_fields: [],
+    },
+    {
+      referee_id: 'u2',
+      last_name: 'Петров',
+      first_name: 'Пётр',
+      patronymic: 'Сергеевич',
+      inn: null,
+      phone: '79992223344',
+      bank_account_number: null,
+      bic: null,
+      correspondent_account: null,
+      total_amount_rub: '1800.00',
+      taxation_type_alias: 'PERSON',
+      taxation_type: 'Физическое лицо',
+      missing_fields: ['inn', 'bank_account_number', 'bic'],
+    },
+  ],
+  total: 2,
+  page: 1,
+  limit: 20,
+  summary: {
+    referees_total: 2,
+    ready_total: 1,
+    incomplete_total: 1,
+    total_amount_rub: '5050.00',
+  },
+  filter_options: {
+    taxation_types: [
+      {
+        alias: 'NPD',
+        name: 'Плательщик налога на профессиональный доход',
+      },
+      { alias: 'PERSON', name: 'Физическое лицо' },
+    ],
+  },
+};
+
 function buildMutationTariff(body: Record<string, unknown>) {
   return {
     tariff_rule: {
@@ -217,6 +272,7 @@ function buildMutationTariff(body: Record<string, unknown>) {
 describe('AdminTournamentPaymentsView', () => {
   beforeEach(() => {
     apiFetchMock.mockReset();
+    apiFetchBlobMock.mockReset();
   });
 
   it('supports tariff editing, coverage-date refresh, travel coverage switching and generation hints', async () => {
@@ -338,6 +394,10 @@ describe('AdminTournamentPaymentsView', () => {
           return accrualDetailResponse;
         }
 
+        if (url.pathname === '/tournaments/tour-1/referee-payment-registry') {
+          return registryResponse;
+        }
+
         if (
           url.pathname === '/tournaments/tour-1/referee-accruals/generate' &&
           method === 'POST'
@@ -363,6 +423,7 @@ describe('AdminTournamentPaymentsView', () => {
         return {};
       }
     );
+    apiFetchBlobMock.mockResolvedValue(new Blob(['xlsx']));
 
     render(AdminTournamentPaymentsView, {
       props: { tournamentId: 'tour-1' },
@@ -487,5 +548,20 @@ describe('AdminTournamentPaymentsView', () => {
     expect(
       await screen.findByText('Проблемы покрытия проезда')
     ).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Реестры' }));
+
+    expect(await screen.findByText('Реестр оплат судей')).toBeInTheDocument();
+    expect(await screen.findByText('Иванов')).toBeInTheDocument();
+    expect(screen.getByText(/5\s?050,00/)).toBeInTheDocument();
+    expect(screen.getAllByText('Пропуски').length).toBeGreaterThan(0);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'XLSX' }));
+
+    await waitFor(() => {
+      expect(apiFetchBlobMock).toHaveBeenCalledWith(
+        '/tournaments/tour-1/referee-payment-registry/export.xlsx?'
+      );
+    });
   });
 });

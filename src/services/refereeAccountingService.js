@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+import ExcelJS from 'exceljs';
 import { Op, QueryTypes } from 'sequelize';
 
 import sequelize from '../config/database.js';
@@ -38,6 +39,15 @@ const TARIFF_TRAVEL_MODE = 'ARENA_FIXED';
 const MATCH_REFEREE_ELIGIBLE_ALIASES = ['PUBLISHED', 'CONFIRMED'];
 const MAX_ACCRUAL_NUMBER_ATTEMPTS = 5;
 const DEFAULT_ACCRUAL_LOOKBACK_DAYS = 30;
+const TAXATION_TYPE_ALIAS_RE = /^[A-Z_][A-Z0-9_]{1,31}$/;
+const PAYMENT_REGISTRY_MISSING_FIELD_CODES = [
+  'inn',
+  'phone',
+  'bank_account_number',
+  'bic',
+  'correspondent_account',
+  'taxation_type',
+];
 
 function readConfiguredLookbackDays() {
   const raw = Number.parseInt(
@@ -62,6 +72,15 @@ function normalizeFareCode(value) {
     throw new ServiceError('invalid_fare_code', 400);
   }
   return code;
+}
+
+function normalizeTaxationTypeAlias(value) {
+  if (value == null || value === '') return null;
+  const alias = normalizeString(value).toUpperCase();
+  if (!TAXATION_TYPE_ALIAS_RE.test(alias)) {
+    throw new ServiceError('invalid_taxation_type_alias', 400);
+  }
+  return alias;
 }
 
 function normalizeDateOnly(value, code = 'invalid_date') {
@@ -163,6 +182,26 @@ function parsePagination(pageRaw, limitRaw, defaultLimit = 50, maxLimit = 500) {
   );
   const offset = (page - 1) * limit;
   return { page, limit, offset };
+}
+
+function buildPaymentRegistryMissingFields(row = {}) {
+  return PAYMENT_REGISTRY_MISSING_FIELD_CODES.filter((field) => {
+    const value = row[field];
+    return value == null || normalizeString(value) === '';
+  });
+}
+
+function buildPaymentRegistryFilename(tournamentName, exportDate = null) {
+  const safeTournament = normalizeString(tournamentName)
+    .toLowerCase()
+    .replace(/[^a-zа-я0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+  const datePart =
+    normalizeOptionalDateOnly(exportDate || moscowTodayDateKey(), 'invalid_date') ||
+    new Date().toISOString().slice(0, 10);
+  const tournamentPart = safeTournament || 'tournament';
+  return `payment-registry-${tournamentPart}-${datePart}.xlsx`;
 }
 
 function moscowDateKey(date) {
@@ -2946,6 +2985,270 @@ async function exportRefereeAccrualsCsv(filters = {}) {
   };
 }
 
+async function fetchTournamentPaymentRegistryRows({
+  tournamentId,
+  dateFrom = null,
+  dateTo = null,
+  taxationTypeAlias = null,
+}) {
+  await ensureTournamentExists(tournamentId);
+
+  const normalizedDateFrom = normalizeOptionalDateOnly(
+    dateFrom,
+    'invalid_date_from'
+  );
+  const normalizedDateTo = normalizeOptionalDateOnly(dateTo, 'invalid_date_to');
+  ensureDateOrder(
+    normalizedDateFrom || '1900-01-01',
+    normalizedDateTo || null,
+    'invalid_date_range'
+  );
+
+  const normalizedTaxationTypeAlias =
+    normalizeTaxationTypeAlias(taxationTypeAlias);
+
+  const taxationTypes = await sequelize.query(
+    `SELECT alias, name
+       FROM taxation_types
+      ORDER BY name ASC`,
+    { type: QueryTypes.SELECT }
+  );
+  const taxationTypeOptions = taxationTypes.map((item) => ({
+    alias: String(item.alias || ''),
+    name: String(item.name || ''),
+  }));
+
+  if (
+    normalizedTaxationTypeAlias &&
+    !taxationTypeOptions.some(
+      (item) => item.alias === normalizedTaxationTypeAlias
+    )
+  ) {
+    throw new ServiceError('invalid_taxation_type_alias', 400);
+  }
+
+  const whereSql = [
+    'd.deleted_at IS NULL',
+    'd.tournament_id = :tournamentId',
+    'status.alias = \'ACCRUED\'',
+  ];
+  const replacements = { tournamentId };
+
+  if (normalizedDateFrom) {
+    whereSql.push('d.match_date_snapshot >= :dateFrom');
+    replacements.dateFrom = normalizedDateFrom;
+  }
+  if (normalizedDateTo) {
+    whereSql.push('d.match_date_snapshot <= :dateTo');
+    replacements.dateTo = normalizedDateTo;
+  }
+  if (normalizedTaxationTypeAlias) {
+    whereSql.push('tax_type.alias = :taxationTypeAlias');
+    replacements.taxationTypeAlias = normalizedTaxationTypeAlias;
+  }
+
+  const rawRows = await sequelize.query(
+    `SELECT
+       d.referee_id,
+       COALESCE(u.last_name, '') AS last_name,
+       COALESCE(u.first_name, '') AS first_name,
+       COALESCE(u.patronymic, '') AS patronymic,
+       inn.number AS inn,
+       u.phone AS phone,
+       bank.number AS bank_account_number,
+       bank.bic AS bic,
+       bank.correspondent_account AS correspondent_account,
+       tax_type.alias AS taxation_type_alias,
+       tax_type.name AS taxation_type,
+       CAST(SUM(CAST(d.total_amount_rub AS numeric(14, 2))) AS numeric(14, 2)) AS total_amount_rub
+     FROM referee_accrual_documents d
+     INNER JOIN referee_accrual_document_statuses status
+       ON status.id = d.document_status_id
+     LEFT JOIN users u
+       ON u.id = d.referee_id
+      AND u.deleted_at IS NULL
+     LEFT JOIN inns inn
+       ON inn.user_id = d.referee_id
+      AND inn.deleted_at IS NULL
+     LEFT JOIN bank_accounts bank
+       ON bank.user_id = d.referee_id
+      AND bank.deleted_at IS NULL
+     LEFT JOIN taxations tax
+       ON tax.user_id = d.referee_id
+      AND tax.deleted_at IS NULL
+     LEFT JOIN taxation_types tax_type
+       ON tax_type.id = tax.taxation_type_id
+    WHERE ${whereSql.join('\n      AND ')}
+    GROUP BY
+      d.referee_id,
+      u.last_name,
+      u.first_name,
+      u.patronymic,
+      inn.number,
+      u.phone,
+      bank.number,
+      bank.bic,
+      bank.correspondent_account,
+      tax_type.alias,
+      tax_type.name
+    ORDER BY
+      COALESCE(u.last_name, '') ASC,
+      COALESCE(u.first_name, '') ASC,
+      COALESCE(u.patronymic, '') ASC`,
+    {
+      replacements,
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  const rows = rawRows.map((row) => {
+    const normalizedRow = {
+      referee_id: row.referee_id,
+      last_name: normalizeString(row.last_name) || null,
+      first_name: normalizeString(row.first_name) || null,
+      patronymic: normalizeString(row.patronymic) || null,
+      inn: normalizeString(row.inn) || null,
+      phone: normalizeString(row.phone) || null,
+      bank_account_number: normalizeString(row.bank_account_number) || null,
+      bic: normalizeString(row.bic) || null,
+      correspondent_account: normalizeString(row.correspondent_account) || null,
+      total_amount_rub: centsToRub(dbRubToCents(row.total_amount_rub || '0')),
+      taxation_type_alias: normalizeString(row.taxation_type_alias) || null,
+      taxation_type: normalizeString(row.taxation_type) || null,
+    };
+    normalizedRow.missing_fields = buildPaymentRegistryMissingFields(
+      normalizedRow
+    );
+    return normalizedRow;
+  });
+
+  return {
+    rows,
+    taxationTypes: taxationTypeOptions,
+  };
+}
+
+async function listTournamentPaymentRegistry({
+  tournamentId,
+  page = 1,
+  limit = 50,
+  dateFrom = null,
+  dateTo = null,
+  taxationTypeAlias = null,
+}) {
+  const {
+    page: normalizedPage,
+    limit: normalizedLimit,
+    offset,
+  } = parsePagination(page, limit, 50, 500);
+  const { rows, taxationTypes } = await fetchTournamentPaymentRegistryRows({
+    tournamentId,
+    dateFrom,
+    dateTo,
+    taxationTypeAlias,
+  });
+
+  const summary = rows.reduce(
+    (acc, row) => {
+      const hasMissingFields = row.missing_fields.length > 0;
+      acc.referees_total += 1;
+      if (hasMissingFields) {
+        acc.incomplete_total += 1;
+      } else {
+        acc.ready_total += 1;
+      }
+      acc.total_amount_cents += dbRubToCents(row.total_amount_rub);
+      return acc;
+    },
+    {
+      referees_total: 0,
+      ready_total: 0,
+      incomplete_total: 0,
+      total_amount_cents: 0,
+    }
+  );
+
+  return {
+    rows: rows.slice(offset, offset + normalizedLimit),
+    total: rows.length,
+    page: normalizedPage,
+    limit: normalizedLimit,
+    summary: {
+      referees_total: summary.referees_total,
+      ready_total: summary.ready_total,
+      incomplete_total: summary.incomplete_total,
+      total_amount_rub: centsToRub(summary.total_amount_cents),
+    },
+    filter_options: {
+      taxation_types: taxationTypes,
+    },
+  };
+}
+
+async function exportTournamentPaymentRegistryXlsx(filters = {}) {
+  const { rows } = await fetchTournamentPaymentRegistryRows(filters);
+  const tournament = await Tournament.findByPk(filters.tournamentId, {
+    attributes: ['id', 'name'],
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Реестр', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  sheet.columns = [
+    { header: 'Фамилия', key: 'last_name', width: 18 },
+    { header: 'Имя', key: 'first_name', width: 18 },
+    { header: 'Отчество', key: 'patronymic', width: 20 },
+    { header: 'ИНН', key: 'inn', width: 16 },
+    { header: 'Телефон', key: 'phone', width: 16 },
+    {
+      header: 'Номер банковского счета',
+      key: 'bank_account_number',
+      width: 24,
+    },
+    { header: 'БИК', key: 'bic', width: 14 },
+    { header: 'Корр. счет', key: 'correspondent_account', width: 24 },
+    { header: 'Сумма', key: 'total_amount_rub', width: 14 },
+    { header: 'Тип налогообложения', key: 'taxation_type', width: 28 },
+  ];
+
+  sheet.getRow(1).font = { bold: true };
+  sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+  sheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: 10 },
+  };
+
+  for (const row of rows) {
+    const added = sheet.addRow({
+      ...row,
+      total_amount_rub: Number(row.total_amount_rub),
+    });
+    added.getCell('total_amount_rub').numFmt = '0.00';
+  }
+
+  const totalAmountCents = rows.reduce(
+    (sum, row) => sum + dbRubToCents(row.total_amount_rub),
+    0
+  );
+  const totalRow = sheet.addRow({
+    last_name: 'Итого',
+    total_amount_rub: Number(centsToRub(totalAmountCents)),
+  });
+  totalRow.font = { bold: true };
+  totalRow.getCell('total_amount_rub').numFmt = '0.00';
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return {
+    buffer: Buffer.from(buffer),
+    filename: buildPaymentRegistryFilename(
+      tournament?.name || filters.tournamentId,
+      moscowTodayDateKey()
+    ),
+  };
+}
+
 async function getAccountingRefData() {
   const refData = await loadRefData();
   const statusTransitions = (refData.statusTransitions || []).map((item) => ({
@@ -3026,5 +3329,7 @@ export default {
   bulkDeleteRefereeAccrualDocuments,
   createRefereeAccrualAdjustment,
   exportRefereeAccrualsCsv,
+  listTournamentPaymentRegistry,
+  exportTournamentPaymentRegistryXlsx,
   getAccountingRefData,
 };

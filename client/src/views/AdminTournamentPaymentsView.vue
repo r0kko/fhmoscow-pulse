@@ -3,10 +3,10 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import TabSelector from '../components/TabSelector.vue';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
-import { apiFetch } from '../api';
+import { apiFetch, apiFetchBlob } from '../api';
 import { useToast } from '../utils/toast';
 
-type MainTabKey = 'setup' | 'accruals';
+type MainTabKey = 'setup' | 'accruals' | 'registry';
 type SetupTabKey = 'tariffs' | 'travel';
 type CoverageState = 'ok' | 'out_of_period' | 'missing';
 
@@ -241,6 +241,45 @@ interface AccrualDetailResponse {
   audit_events?: AuditEvent[];
 }
 
+interface TaxationTypeOption {
+  alias: string;
+  name: string;
+}
+
+interface PaymentRegistrySummary {
+  referees_total: number;
+  ready_total: number;
+  incomplete_total: number;
+  total_amount_rub: string;
+}
+
+interface PaymentRegistryRow {
+  referee_id: string;
+  last_name: string | null;
+  first_name: string | null;
+  patronymic: string | null;
+  inn: string | null;
+  phone: string | null;
+  bank_account_number: string | null;
+  bic: string | null;
+  correspondent_account: string | null;
+  total_amount_rub: string;
+  taxation_type_alias: string | null;
+  taxation_type: string | null;
+  missing_fields: string[];
+}
+
+interface PaymentRegistryResponse {
+  rows?: PaymentRegistryRow[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  summary?: PaymentRegistrySummary;
+  filter_options?: {
+    taxation_types?: TaxationTypeOption[];
+  };
+}
+
 interface TariffEditorForm {
   id: string;
   fare_code: string;
@@ -262,6 +301,7 @@ interface TravelEditorForm {
 
 const props = defineProps<{
   tournamentId: string;
+  tournament?: { name?: string | null } | null;
 }>();
 
 const { showToast } = useToast();
@@ -271,6 +311,7 @@ const setupTab = ref<SetupTabKey>('tariffs');
 const topTabs = [
   { key: 'setup', label: 'Настройка оплаты' },
   { key: 'accruals', label: 'Начисления' },
+  { key: 'registry', label: 'Реестры' },
 ];
 const setupTabs = [
   { key: 'tariffs', label: 'Нормы' },
@@ -375,8 +416,38 @@ const generationForm = reactive({
   from_date: '',
   to_date: '',
 });
+const registryLoading = ref(false);
+const registryError = ref('');
+const registryRows = ref<PaymentRegistryRow[]>([]);
+const registryTotal = ref(0);
+const registryPage = ref(1);
+const registryLimit = ref(20);
+const registryLoaded = ref(false);
+const registryExporting = ref(false);
+const registrySummary = ref<PaymentRegistrySummary>({
+  referees_total: 0,
+  ready_total: 0,
+  incomplete_total: 0,
+  total_amount_rub: '0.00',
+});
+const registryFilterOptions = reactive({
+  taxationTypes: [] as TaxationTypeOption[],
+});
+const registryFilters = reactive({
+  dateFrom: '',
+  dateTo: '',
+  taxationTypeAlias: '',
+});
 
 const today = new Date().toISOString().slice(0, 10);
+const REGISTRY_MISSING_FIELD_LABELS: Record<string, string> = {
+  inn: 'ИНН',
+  phone: 'телефон',
+  bank_account_number: 'номер банковского счета',
+  bic: 'БИК',
+  correspondent_account: 'корр. счет',
+  taxation_type: 'тип налогообложения',
+};
 
 const filteredRoleOptions = computed(() => {
   const allowed = new Set(activeRoleIds.value);
@@ -457,6 +528,10 @@ const tariffTotalPages = computed(() =>
 
 const accrualTotalPages = computed(() =>
   Math.max(1, Math.ceil(Number(accrualTotal.value || 0) / accrualLimit.value))
+);
+
+const registryTotalPages = computed(() =>
+  Math.max(1, Math.ceil(Number(registryTotal.value || 0) / registryLimit.value))
 );
 
 const generationErrorChips = computed(() => {
@@ -553,6 +628,27 @@ function fullName(person: PublicUser | null | undefined): string {
     .filter(Boolean)
     .join(' ')
     .trim();
+}
+
+function registryFullName(row: PaymentRegistryRow | null | undefined): string {
+  return [row?.last_name, row?.first_name, row?.patronymic]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+}
+
+function registryMissingFieldLabels(fields: string[] = []): string[] {
+  return fields.map((field) => REGISTRY_MISSING_FIELD_LABELS[field] || field);
+}
+
+function buildRegistryExportFilename(): string {
+  const source = String(props.tournament?.name || props.tournamentId || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-zа-я0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+  return `payment-registry-${source || 'tournament'}-${today}.xlsx`;
 }
 
 function buildTariffEditorDefaults(
@@ -1032,6 +1128,21 @@ function buildAccrualQuery(): URLSearchParams {
   return params;
 }
 
+function buildRegistryQuery(includePagination = true): URLSearchParams {
+  const params = new URLSearchParams();
+  if (includePagination) {
+    params.set('page', String(registryPage.value));
+    params.set('limit', String(registryLimit.value));
+  }
+  if (registryFilters.dateFrom)
+    params.set('date_from', registryFilters.dateFrom);
+  if (registryFilters.dateTo) params.set('date_to', registryFilters.dateTo);
+  if (registryFilters.taxationTypeAlias) {
+    params.set('taxation_type_alias', registryFilters.taxationTypeAlias);
+  }
+  return params;
+}
+
 async function loadAccruals(): Promise<void> {
   accrualLoading.value = true;
   accrualError.value = '';
@@ -1063,6 +1174,39 @@ async function loadAccruals(): Promise<void> {
     accrualError.value = err?.message || 'Не удалось загрузить начисления';
   } finally {
     accrualLoading.value = false;
+  }
+}
+
+async function loadRegistry(): Promise<void> {
+  registryLoading.value = true;
+  registryError.value = '';
+  try {
+    const response = (await apiFetch(
+      `/tournaments/${props.tournamentId}/referee-payment-registry?${buildRegistryQuery().toString()}`
+    )) as PaymentRegistryResponse;
+    registryRows.value = response.rows || [];
+    registryTotal.value = Number(response.total || 0);
+    registrySummary.value = {
+      referees_total: Number(response.summary?.referees_total || 0),
+      ready_total: Number(response.summary?.ready_total || 0),
+      incomplete_total: Number(response.summary?.incomplete_total || 0),
+      total_amount_rub: String(response.summary?.total_amount_rub || '0.00'),
+    };
+    registryFilterOptions.taxationTypes =
+      response.filter_options?.taxation_types || [];
+    registryLoaded.value = true;
+  } catch (err: any) {
+    registryRows.value = [];
+    registryTotal.value = 0;
+    registrySummary.value = {
+      referees_total: 0,
+      ready_total: 0,
+      incomplete_total: 0,
+      total_amount_rub: '0.00',
+    };
+    registryError.value = err?.message || 'Не удалось загрузить реестр оплат';
+  } finally {
+    registryLoading.value = false;
   }
 }
 
@@ -1107,6 +1251,47 @@ function resetAccrualFilters(): void {
     return;
   }
   void loadAccruals();
+}
+
+function submitRegistryFilters(): void {
+  if (registryPage.value !== 1) {
+    registryPage.value = 1;
+    return;
+  }
+  void loadRegistry();
+}
+
+function resetRegistryFilters(): void {
+  registryFilters.dateFrom = '';
+  registryFilters.dateTo = '';
+  registryFilters.taxationTypeAlias = '';
+  if (registryPage.value !== 1) {
+    registryPage.value = 1;
+    return;
+  }
+  void loadRegistry();
+}
+
+async function exportRegistry(): Promise<void> {
+  registryExporting.value = true;
+  try {
+    const blob = await apiFetchBlob(
+      `/tournaments/${props.tournamentId}/referee-payment-registry/export.xlsx?${buildRegistryQuery(false).toString()}`
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = buildRegistryExportFilename();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('Реестр выгружен');
+  } catch (err: any) {
+    showToast(err?.message || 'Не удалось выгрузить реестр', 'danger');
+  } finally {
+    registryExporting.value = false;
+  }
 }
 
 async function generateAccruals(apply: boolean): Promise<void> {
@@ -1265,6 +1450,17 @@ watch([tariffPage, tariffLimit], () => {
 
 watch([accrualPage, accrualLimit], () => {
   void loadAccruals();
+});
+
+watch([registryPage, registryLimit], () => {
+  if (!registryLoaded.value) return;
+  void loadRegistry();
+});
+
+watch(mainTab, (value) => {
+  if (value === 'registry' && !registryLoaded.value) {
+    void loadRegistry();
+  }
 });
 
 onMounted(async () => {
@@ -2213,7 +2409,7 @@ onMounted(async () => {
         </template>
       </template>
 
-      <template v-else>
+      <template v-else-if="mainTab === 'accruals'">
         <div class="border rounded-3 p-3 sticky-panel">
           <div class="row g-2 align-items-end">
             <div class="col-12 col-lg-3">
@@ -2733,6 +2929,271 @@ onMounted(async () => {
           </div>
         </div>
       </template>
+
+      <template v-else>
+        <form
+          class="border rounded-3 p-3 sticky-panel"
+          @submit.prevent="submitRegistryFilters"
+        >
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-3">
+              <label class="form-label">Дата матча с</label>
+              <input
+                v-model="registryFilters.dateFrom"
+                type="date"
+                class="form-control"
+              />
+            </div>
+            <div class="col-12 col-lg-3">
+              <label class="form-label">Дата матча по</label>
+              <input
+                v-model="registryFilters.dateTo"
+                type="date"
+                class="form-control"
+              />
+            </div>
+            <div class="col-12 col-lg-3">
+              <label class="form-label">Тип занятости</label>
+              <select
+                v-model="registryFilters.taxationTypeAlias"
+                class="form-select"
+              >
+                <option value="">Все</option>
+                <option
+                  v-for="item in registryFilterOptions.taxationTypes"
+                  :key="item.alias"
+                  :value="item.alias"
+                >
+                  {{ item.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-6 col-lg-1">
+              <button type="submit" class="btn btn-brand w-100">Найти</button>
+            </div>
+            <div class="col-6 col-lg-1">
+              <button
+                type="button"
+                class="btn btn-outline-secondary w-100"
+                @click="resetRegistryFilters"
+              >
+                Сбросить
+              </button>
+            </div>
+            <div class="col-12 col-lg-1">
+              <button
+                type="button"
+                class="btn btn-outline-brand w-100"
+                :disabled="registryExporting || registryLoading"
+                @click="exportRegistry"
+              >
+                <span
+                  v-if="registryExporting"
+                  class="spinner-border spinner-border-sm"
+                  aria-hidden="true"
+                ></span>
+                <span v-else>XLSX</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="payment-kpi-card payment-kpi-card--neutral h-100">
+              <span class="small text-uppercase fw-semibold">Судей</span>
+              <span class="d-block payment-kpi-card__value">
+                {{ registrySummary.referees_total || 0 }}
+              </span>
+              <span class="small text-muted">Строк в итоговом реестре</span>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="payment-kpi-card payment-kpi-card--success h-100">
+              <span class="small text-uppercase fw-semibold">Готово</span>
+              <span class="d-block payment-kpi-card__value">
+                {{ registrySummary.ready_total || 0 }}
+              </span>
+              <span class="small text-muted">Полные платежные реквизиты</span>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="payment-kpi-card payment-kpi-card--warning h-100">
+              <span class="small text-uppercase fw-semibold"
+                >Есть пропуски</span
+              >
+              <span class="d-block payment-kpi-card__value">
+                {{ registrySummary.incomplete_total || 0 }}
+              </span>
+              <span class="small text-muted"
+                >Требуется дозаполнение профиля</span
+              >
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="payment-kpi-card payment-kpi-card--neutral h-100">
+              <span class="small text-uppercase fw-semibold">Сумма</span>
+              <span class="d-block payment-kpi-card__value">
+                {{ formatRub(registrySummary.total_amount_rub) }}
+              </span>
+              <span class="small text-muted">К выплате по фильтру</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="border rounded-3 p-3">
+          <div
+            class="d-flex flex-wrap justify-content-between gap-2 align-items-start mb-2"
+          >
+            <div>
+              <div class="fw-semibold">Реестр оплат судей</div>
+              <div class="small text-muted">
+                Одна строка на судью. Сумма агрегируется по начисленным
+                документам турнира.
+              </div>
+            </div>
+            <div class="small text-muted">
+              Проблемные строки остаются в реестре и помечаются отдельно.
+            </div>
+          </div>
+
+          <div v-if="registryError" class="alert alert-danger py-2 mb-2">
+            {{ registryError }}
+          </div>
+          <BrandSpinner v-if="registryLoading" label="Загрузка реестра" />
+
+          <template v-else>
+            <div class="d-none d-lg-block table-responsive desktop-table-wrap">
+              <table class="table table-sm align-middle mb-0 desktop-table">
+                <thead>
+                  <tr>
+                    <th>Фамилия</th>
+                    <th>Имя</th>
+                    <th>Отчество</th>
+                    <th>ИНН</th>
+                    <th>Телефон</th>
+                    <th>Номер банковского счета</th>
+                    <th>БИК</th>
+                    <th>Корр. счет</th>
+                    <th class="text-end">Сумма</th>
+                    <th>Тип налогообложения</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in registryRows" :key="row.referee_id">
+                    <td>{{ row.last_name || '—' }}</td>
+                    <td>{{ row.first_name || '—' }}</td>
+                    <td>{{ row.patronymic || '—' }}</td>
+                    <td>{{ row.inn || '—' }}</td>
+                    <td>{{ row.phone || '—' }}</td>
+                    <td>{{ row.bank_account_number || '—' }}</td>
+                    <td>{{ row.bic || '—' }}</td>
+                    <td>{{ row.correspondent_account || '—' }}</td>
+                    <td class="text-end">
+                      {{ formatRub(row.total_amount_rub) }}
+                    </td>
+                    <td>{{ row.taxation_type || '—' }}</td>
+                    <td>
+                      <span
+                        v-if="row.missing_fields.length"
+                        class="badge text-bg-warning text-dark"
+                        :title="`Пропущены поля: ${registryMissingFieldLabels(row.missing_fields).join(', ')}`"
+                      >
+                        Пропуски
+                      </span>
+                      <span v-else class="badge text-bg-success">Готово</span>
+                    </td>
+                  </tr>
+                  <tr v-if="!registryRows.length">
+                    <td colspan="11" class="text-center text-muted">
+                      Реестр по выбранным фильтрам пуст
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex d-lg-none flex-column gap-2">
+              <article
+                v-for="row in registryRows"
+                :key="row.referee_id"
+                class="border rounded-3 p-3 registry-mobile-card"
+              >
+                <div
+                  class="d-flex justify-content-between gap-2 align-items-start"
+                >
+                  <div>
+                    <div class="fw-semibold">
+                      {{ registryFullName(row) || 'Судья без ФИО' }}
+                    </div>
+                    <div class="small text-muted">
+                      {{ row.taxation_type || 'Тип налогообложения не указан' }}
+                    </div>
+                  </div>
+                  <span
+                    v-if="row.missing_fields.length"
+                    class="badge text-bg-warning text-dark"
+                    :title="`Пропущены поля: ${registryMissingFieldLabels(row.missing_fields).join(', ')}`"
+                  >
+                    Пропуски
+                  </span>
+                  <span v-else class="badge text-bg-success">Готово</span>
+                </div>
+                <div class="row g-2 small mt-2">
+                  <div class="col-6">
+                    <div class="text-muted">ИНН</div>
+                    <div>{{ row.inn || '—' }}</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-muted">Телефон</div>
+                    <div>{{ row.phone || '—' }}</div>
+                  </div>
+                  <div class="col-12">
+                    <div class="text-muted">Счет</div>
+                    <div>{{ row.bank_account_number || '—' }}</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-muted">БИК</div>
+                    <div>{{ row.bic || '—' }}</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-muted">Корр. счет</div>
+                    <div>{{ row.correspondent_account || '—' }}</div>
+                  </div>
+                </div>
+                <div class="registry-mobile-card__sum mt-3">
+                  {{ formatRub(row.total_amount_rub) }} ₽
+                </div>
+                <div
+                  v-if="row.missing_fields.length"
+                  class="small text-warning-emphasis mt-2"
+                >
+                  Пропущены поля:
+                  {{
+                    registryMissingFieldLabels(row.missing_fields).join(', ')
+                  }}
+                </div>
+              </article>
+              <div
+                v-if="!registryRows.length"
+                class="text-center text-muted small py-3"
+              >
+                Реестр по выбранным фильтрам пуст
+              </div>
+            </div>
+
+            <PageNav
+              :page="registryPage"
+              :total-pages="registryTotalPages"
+              :page-size="registryLimit"
+              :sizes="[20, 50, 100]"
+              @update:page="(value) => (registryPage = value)"
+              @update:page-size="(value) => (registryLimit = value)"
+            />
+          </template>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -2856,6 +3317,20 @@ onMounted(async () => {
 
 .tariff-mobile-card {
   background: #fff;
+}
+
+.registry-mobile-card {
+  background: linear-gradient(
+    180deg,
+    rgba(17, 56, 103, 0.04),
+    rgba(255, 255, 255, 0.96)
+  );
+}
+
+.registry-mobile-card__sum {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--brand-color);
 }
 
 .timeline-list {

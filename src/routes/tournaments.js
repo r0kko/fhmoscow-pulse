@@ -24,6 +24,7 @@ import {
   accrualGenerateRules,
   accrualListRules,
   accrualIdRules,
+  paymentRegistryListRules,
 } from '../validators/refereeAccountingValidators.js';
 import { uuidParam } from '../validators/paramsValidators.js';
 
@@ -206,6 +207,24 @@ router.get(
   accrualListRules,
   validate,
   accountingController.listTournamentAccruals
+);
+router.get(
+  '/:tournamentId/referee-payment-registry',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  paymentRegistryListRules,
+  validate,
+  accountingController.listTournamentPaymentRegistry
+);
+router.get(
+  '/:tournamentId/referee-payment-registry/export.xlsx',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  paymentRegistryListRules,
+  validate,
+  accountingController.exportTournamentPaymentRegistryXlsx
 );
 router.get(
   '/:tournamentId/referee-accruals/:id',

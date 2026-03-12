@@ -54,6 +54,7 @@
     "cors": "^2.8.6",
     "debug": "^4.4.3",
     "dotenv": "^17.2.4",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.2",
     "express-session": "^1.19.0",
@@ -99,8 +100,8 @@
     "is-symbol": "file:packages/is-symbol",
     "jest": "^30.3.0",
     "prettier": "^3.8.1",
-    "sequelize-cli": "^6.6.5",
     "semver": "^7.7.4",
+    "sequelize-cli": "^6.6.5",
     "swagger-jsdoc": "^6.2.8"
   }
 }

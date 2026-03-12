@@ -1,5 +1,5 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 
 const transactionMock = jest.fn();
 const queryMock = jest.fn();
@@ -1241,4 +1241,117 @@ test('getTournamentPaymentsDashboard treats retired tariff and travel rates as h
 
   expect(result.tariff_coverage_summary.ok).toBe(1);
   expect(result.travel_coverage_summary.ok).toBe(1);
+});
+
+test('listTournamentPaymentRegistry aggregates accrued rows by referee and computes missing fields', async () => {
+  tournamentFindByPkMock.mockResolvedValue({ id: 'tour-1', name: 'Кубок' });
+  queryMock
+    .mockResolvedValueOnce([
+      {
+        alias: 'NPD',
+        name: 'Плательщик налога на профессиональный доход',
+      },
+      {
+        alias: 'PERSON',
+        name: 'Физическое лицо',
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        referee_id: 'u1',
+        last_name: 'Иванов',
+        first_name: 'Иван',
+        patronymic: 'Иванович',
+        inn: '123456789012',
+        phone: '79991112233',
+        bank_account_number: '40817810099910004312',
+        bic: '044525225',
+        correspondent_account: '30101810400000000225',
+        taxation_type_alias: 'NPD',
+        taxation_type: 'Плательщик налога на профессиональный доход',
+        total_amount_rub: '3250.00',
+      },
+      {
+        referee_id: 'u2',
+        last_name: 'Петров',
+        first_name: 'Пётр',
+        patronymic: 'Сергеевич',
+        inn: null,
+        phone: '79992223344',
+        bank_account_number: null,
+        bic: null,
+        correspondent_account: null,
+        taxation_type_alias: 'PERSON',
+        taxation_type: 'Физическое лицо',
+        total_amount_rub: '1800.00',
+      },
+    ]);
+
+  const result = await service.listTournamentPaymentRegistry({
+    tournamentId: 'tour-1',
+    page: 1,
+    limit: 20,
+    dateFrom: '2026-03-01',
+    dateTo: '2026-03-31',
+    taxationTypeAlias: 'NPD',
+  });
+
+  expect(result.total).toBe(2);
+  expect(result.summary).toEqual({
+    referees_total: 2,
+    ready_total: 1,
+    incomplete_total: 1,
+    total_amount_rub: '5050.00',
+  });
+  expect(result.rows[1].missing_fields).toEqual([
+    'inn',
+    'bank_account_number',
+    'bic',
+    'correspondent_account',
+  ]);
+  expect(result.filter_options.taxation_types).toHaveLength(2);
+  expect(queryMock).toHaveBeenNthCalledWith(
+    2,
+    expect.stringContaining('FROM referee_accrual_documents d'),
+    expect.objectContaining({
+      replacements: expect.objectContaining({
+        tournamentId: 'tour-1',
+        dateFrom: '2026-03-01',
+        dateTo: '2026-03-31',
+        taxationTypeAlias: 'NPD',
+      }),
+      type: QueryTypes.SELECT,
+    })
+  );
+});
+
+test('exportTournamentPaymentRegistryXlsx returns workbook buffer and filename', async () => {
+  tournamentFindByPkMock.mockResolvedValue({ id: 'tour-1', name: 'Кубок Москвы' });
+  queryMock
+    .mockResolvedValueOnce([{ alias: 'PERSON', name: 'Физическое лицо' }])
+    .mockResolvedValueOnce([
+      {
+        referee_id: 'u1',
+        last_name: 'Иванов',
+        first_name: 'Иван',
+        patronymic: 'Иванович',
+        inn: '123456789012',
+        phone: '79991112233',
+        bank_account_number: '40817810099910004312',
+        bic: '044525225',
+        correspondent_account: '30101810400000000225',
+        taxation_type_alias: 'PERSON',
+        taxation_type: 'Физическое лицо',
+        total_amount_rub: '1200.00',
+      },
+    ]);
+
+  const result = await service.exportTournamentPaymentRegistryXlsx({
+    tournamentId: 'tour-1',
+  });
+
+  expect(Buffer.isBuffer(result.buffer)).toBe(true);
+  expect(result.buffer.length).toBeGreaterThan(1000);
+  expect(result.filename).toMatch(/^payment-registry-/);
+  expect(result.filename).toMatch(/\.xlsx$/);
 });

@@ -246,6 +246,18 @@ export const accrualListRules = [
   query('search').optional({ nullable: true }).isString(),
 ];
 
+export const paymentRegistryListRules = [
+  query('page').optional({ nullable: true }).isInt({ min: 1, max: 100000 }),
+  query('limit').optional({ nullable: true }).isInt({ min: 1, max: 1000 }),
+  optionalQueryDateRule('date_from', 'invalid_date_from'),
+  optionalQueryDateRule('date_to', 'invalid_date_to'),
+  query('taxation_type_alias')
+    .optional({ nullable: true })
+    .isString()
+    .matches(aliasRule)
+    .withMessage('invalid_taxation_type_alias'),
+];
+
 export const accrualActionRules = [
   body('action_alias')
     .isString()

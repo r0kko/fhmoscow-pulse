@@ -23,6 +23,22 @@ function csvEscape(value) {
   return text;
 }
 
+function buildAttachmentDisposition(filename) {
+  const raw = String(filename || 'export.bin')
+    .replace(/[\r\n]/g, ' ')
+    .replace(/"/g, '\'');
+  const asciiFallback =
+    raw
+      .replace(/[^\x20-\x7E]+/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'export.bin';
+  const encoded = encodeURIComponent(raw)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, '%2A');
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+}
+
 async function actionAccrual(req, res) {
   try {
     const actionAlias = req.body?.action_alias;
@@ -287,6 +303,54 @@ const controller = {
         page: data.page,
         limit: data.limit,
       });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async listTournamentPaymentRegistry(req, res) {
+    try {
+      const {
+        page = '1',
+        limit = '50',
+        date_from,
+        date_to,
+        taxation_type_alias,
+      } = req.query;
+      const data = await accountingService.listTournamentPaymentRegistry({
+        tournamentId: req.params.tournamentId,
+        page: Number.parseInt(page, 10),
+        limit: Number.parseInt(limit, 10),
+        dateFrom: date_from,
+        dateTo: date_to,
+        taxationTypeAlias: taxation_type_alias,
+      });
+      return res.json(data);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async exportTournamentPaymentRegistryXlsx(req, res) {
+    try {
+      const { date_from, date_to, taxation_type_alias } = req.query;
+      const payload = await accountingService.exportTournamentPaymentRegistryXlsx(
+        {
+          tournamentId: req.params.tournamentId,
+          dateFrom: date_from,
+          dateTo: date_to,
+          taxationTypeAlias: taxation_type_alias,
+        }
+      );
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader(
+        'Content-Disposition',
+        buildAttachmentDisposition(payload.filename)
+      );
+      return res.send(payload.buffer);
     } catch (err) {
       return sendError(res, err);
     }
