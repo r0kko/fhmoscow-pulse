@@ -48,7 +48,7 @@ function makeUsers(count: number) {
       availability: {
         '2030-01-01': {
           status: 'FREE',
-          preset: false,
+          preset: true,
           from_time: null,
           to_time: null,
           partial_mode: null,
@@ -58,11 +58,74 @@ function makeUsers(count: number) {
   });
 }
 
-const allUsers = makeUsers(150);
+const allUsers = [
+  ...makeUsers(148),
+  {
+    id: 'u-petrov',
+    last_name: 'Петров',
+    first_name: 'Иван',
+    patronymic: 'Сергеевич',
+    roles: ['REFEREE'],
+    availability: {
+      '2030-01-01': {
+        status: 'FREE',
+        preset: true,
+        from_time: null,
+        to_time: null,
+        partial_mode: null,
+      },
+    },
+  },
+  {
+    id: 'u-patronymic-only',
+    last_name: 'Иванов',
+    first_name: 'Пётр',
+    patronymic: 'Петрович',
+    roles: ['REFEREE'],
+    availability: {
+      '2030-01-01': {
+        status: 'FREE',
+        preset: true,
+        from_time: null,
+        to_time: null,
+        partial_mode: null,
+      },
+    },
+  },
+];
+
+function normalizeSearchText(value: string) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+}
+
+function tokenizeSurnamePrioritySearch(value: string) {
+  const normalized = normalizeSearchText(value);
+  if (!normalized) return [];
+  return normalized.split(' ').filter(Boolean).slice(0, 3);
+}
+
+function matchesSurnamePrioritySearch(
+  user: { last_name?: string; first_name?: string; patronymic?: string },
+  tokens: string[]
+) {
+  if (!tokens.length) return true;
+  const [lastToken, firstToken, patronymicToken] = tokens;
+  const lastName = normalizeSearchText(user.last_name || '');
+  const firstName = normalizeSearchText(user.first_name || '');
+  const patronymic = normalizeSearchText(user.patronymic || '');
+  if (!lastName.startsWith(lastToken)) return false;
+  if (firstToken && !firstName.startsWith(firstToken)) return false;
+  if (patronymicToken && !patronymic.startsWith(patronymicToken)) return false;
+  return true;
+}
 
 function buildGridResponse(urlString: string) {
   const url = new URL(urlString, 'https://lk.fhmoscow.com');
-  const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+  const search = normalizeSearchText(url.searchParams.get('search') || '');
   const hasPage = url.searchParams.has('page');
   const hasLimit = url.searchParams.has('limit');
   const page = Number(url.searchParams.get('page') || '1');
@@ -77,13 +140,8 @@ function buildGridResponse(urlString: string) {
   }
 
   if (search) {
-    filtered = filtered.filter((u) => {
-      const fullName = [u.last_name, u.first_name, u.patronymic]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return fullName.includes(search);
-    });
+    const tokens = tokenizeSurnamePrioritySearch(search);
+    filtered = filtered.filter((u) => matchesSurnamePrioritySearch(u, tokens));
   }
 
   const usePagination = hasPage || hasLimit;
@@ -148,7 +206,18 @@ describe('AdminRefereeAvailability view', () => {
         };
       }
       if (url.pathname === '/users') {
-        return { users: [] };
+        const search = normalizeSearchText(
+          url.searchParams.get('search') || ''
+        );
+        const users = search
+          ? allUsers.filter((u) =>
+              matchesSurnamePrioritySearch(
+                u,
+                tokenizeSurnamePrioritySearch(search)
+              )
+            )
+          : allUsers;
+        return { users: users.slice(0, 8) };
       }
       return {};
     });
@@ -191,7 +260,9 @@ describe('AdminRefereeAvailability view', () => {
     });
 
     await fireEvent.update(
-      screen.getByRole('searchbox', { name: 'Поиск по ФИО' }),
+      screen.getByRole('searchbox', {
+        name: 'Поиск по фамилии, имени, отчеству',
+      }),
       'Судья003'
     );
 
@@ -208,13 +279,13 @@ describe('AdminRefereeAvailability view', () => {
       .filter((path) => path.includes('/availabilities/admin-grid?'));
     expect(
       gridCalls.some((path) =>
-        path.includes('search=%D0%A1%D1%83%D0%B4%D1%8C%D1%8F003')
+        path.includes('search=%D1%81%D1%83%D0%B4%D1%8C%D1%8F003')
       )
     ).toBe(true);
     expect(
       gridCalls.some(
         (path) =>
-          path.includes('search=%D0%A1%D1%83%D0%B4%D1%8C%D1%8F003') &&
+          path.includes('search=%D1%81%D1%83%D0%B4%D1%8C%D1%8F003') &&
           path.includes('page=1')
       )
     ).toBe(true);
@@ -228,13 +299,13 @@ describe('AdminRefereeAvailability view', () => {
     });
 
     const searchInput = screen.getByRole('searchbox', {
-      name: 'Поиск по ФИО',
+      name: 'Поиск по фамилии, имени, отчеству',
     }) as HTMLInputElement;
     searchInput.focus();
 
     expect(document.activeElement).toBe(searchInput);
 
-    await fireEvent.update(searchInput, 'С');
+    await fireEvent.update(searchInput, 'Су');
 
     await waitFor(() => {
       const gridCalls = apiFetchMock.mock.calls
@@ -309,6 +380,86 @@ describe('AdminRefereeAvailability view', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Роли: Судья в поле')).toBeInTheDocument();
+    });
+  });
+
+  it('uses surname-priority search and excludes patronymic-only matches', async () => {
+    await renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Судья001 Имя1 Отч1')).toBeInTheDocument();
+    });
+
+    await fireEvent.update(
+      screen.getByRole('searchbox', {
+        name: 'Поиск по фамилии, имени, отчеству',
+      }),
+      'Петров'
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Петров Иван Сергеевич')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Иванов Пётр Петрович')).not.toBeInTheDocument();
+  });
+
+  it('reloads full local dataset for status filters without search lock-in', async () => {
+    await renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Судья001 Имя1 Отч1')).toBeInTheDocument();
+    });
+
+    await fireEvent.update(
+      screen.getByRole('searchbox', {
+        name: 'Поиск по фамилии, имени, отчеству',
+      }),
+      'Судья003'
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Судья003 Имя3 Отч3')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: /фильтр/i }));
+    await fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Свободен', hidden: true })
+    );
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Применить', hidden: true })
+    );
+
+    const gridCalls = apiFetchMock.mock.calls
+      .map(([path]) => String(path))
+      .filter((path) => path.includes('/availabilities/admin-grid?'));
+    const statusCall = gridCalls.find(
+      (path) => !path.includes('page=') && !path.includes('limit=')
+    );
+    expect(statusCall).toBeDefined();
+    expect(statusCall).not.toContain('search=');
+
+    await fireEvent.update(
+      screen.getByRole('searchbox', {
+        name: 'Поиск по фамилии, имени, отчеству',
+      }),
+      ''
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Судья001 Имя1 Отч1')).toBeInTheDocument();
+    });
+
+    await fireEvent.update(
+      screen.getByRole('searchbox', {
+        name: 'Поиск по фамилии, имени, отчеству',
+      }),
+      'Несуществующий'
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Ничего не найдено по заданным параметрам.')
+      ).toBeInTheDocument();
     });
   });
 });

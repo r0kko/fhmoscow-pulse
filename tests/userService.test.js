@@ -61,6 +61,12 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 
 const { default: service } = await import('../src/services/userService.js');
 
+function opSymbol(obj, name) {
+  return Object.getOwnPropertySymbols(obj).find((s) =>
+    s.toString().includes(name)
+  );
+}
+
 test('assignRole adds role to user', async () => {
   findByPkMock.mockResolvedValue(user);
   findRoleMock.mockResolvedValue({ id: 1, alias: 'ADMIN' });
@@ -244,6 +250,61 @@ test('listUsers applies NO_ROLE filter with NOT EXISTS', async () => {
   // pagination options include distinct/subQuery for stable results
   expect(args.distinct).toBe(true);
   expect(args.subQuery).toBe(false);
+});
+
+test('listUsers applies default contains search across fio + contacts', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({ search: 'pet' });
+  const args = findAndCountAllMock.mock.calls[0][0];
+  const andSym = opSymbol(args.where, 'and');
+  expect(andSym).toBeDefined();
+  const andArr = args.where[andSym];
+  expect(andArr).toHaveLength(1);
+  const orSym = opSymbol(andArr[0], 'or');
+  expect(orSym).toBeDefined();
+  expect(andArr[0][orSym]).toHaveLength(5);
+});
+
+test('listUsers limits contains search to fio when scope=fio', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({ search: 'pet', search_scope: 'fio' });
+  const args = findAndCountAllMock.mock.calls[0][0];
+  const andSym = opSymbol(args.where, 'and');
+  const andArr = args.where[andSym];
+  const orSym = opSymbol(andArr[0], 'or');
+  expect(andArr[0][orSym]).toHaveLength(3);
+});
+
+test('listUsers supports surname_priority_prefix matching', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({
+    search: 'Петров Ив',
+    search_scope: 'fio',
+    search_mode: 'surname_priority_prefix',
+  });
+  const args = findAndCountAllMock.mock.calls[0][0];
+  const andSym = opSymbol(args.where, 'and');
+  expect(andSym).toBeDefined();
+  const andArr = args.where[andSym];
+  expect(andArr).toHaveLength(2);
+  expect(andArr.every((entry) => entry?.logic)).toBe(true);
+});
+
+test('listUsers normalizes ё->е and escapes wildcard symbols in prefix mode', async () => {
+  findAndCountAllMock.mockResolvedValue({ rows: [], count: 0 });
+  await service.listUsers({
+    search: 'Пётр%_',
+    search_scope: 'fio',
+    search_mode: 'surname_priority_prefix',
+  });
+  const args = findAndCountAllMock.mock.calls[0][0];
+  const andSym = opSymbol(args.where, 'and');
+  const andArr = args.where[andSym];
+  const likeSym = opSymbol(andArr[0].logic, 'like');
+  const likePattern = andArr[0].logic[likeSym];
+  expect(likePattern).toContain('петр');
+  expect(likePattern).toContain('\\%');
+  expect(likePattern).toContain('\\_');
 });
 
 test('getUser throws on missing user', async () => {

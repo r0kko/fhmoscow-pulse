@@ -13,22 +13,36 @@ await (await import('../src/telemetry/tracing.js')).initTracing();
 const http = await import('http');
 const https = await import('https');
 const { default: app } = await import('../app.js');
-const { connectToDatabase, closeDatabase } = await import('../src/config/database.js');
-const { connectLegacyDatabase } = await import('../src/config/legacyDatabase.js');
-const { connectExternalMariaDb, isExternalDbAvailable } = await import('../src/config/externalMariaDb.js');
-const { setupExternalAssociations } = await import('../src/externalModels/index.js');
+const { connectToDatabase, closeDatabase } =
+  await import('../src/config/database.js');
+const { connectLegacyDatabase } =
+  await import('../src/config/legacyDatabase.js');
+const { connectExternalMariaDb, isExternalDbAvailable } =
+  await import('../src/config/externalMariaDb.js');
+const { setupExternalAssociations } =
+  await import('../src/externalModels/index.js');
 const { connectRedis, closeRedis } = await import('../src/config/redis.js');
 const { default: validateEnv } = await import('../src/config/validateEnv.js');
-const { default: startTaxationCron } = await import('../src/jobs/taxationCron.js');
-const { default: startSyncAllCron, runSyncAll } = await import('../src/jobs/syncAllCron.js');
-const { default: startBroadcastLinkSyncCron } = await import('../src/jobs/broadcastLinkSyncCron.js');
-const { default: startGamePenaltySyncCron } = await import('../src/jobs/gamePenaltySyncCron.js');
-const { default: startGameEventDeletionSyncCron } = await import('../src/jobs/gameEventDeletionSyncCron.js');
-const { default: startMatchAgreementReminderCron } = await import('../src/jobs/matchAgreementReminderCron.js');
-const { default: startExternalDbWatchCron } = await import('../src/jobs/externalDbWatchCron.js');
+const { default: startTaxationCron } =
+  await import('../src/jobs/taxationCron.js');
+const { default: startRefereeAccrualGenerationCron } =
+  await import('../src/jobs/refereeAccrualGenerationCron.js');
+const { default: startSyncAllCron, runSyncAll } =
+  await import('../src/jobs/syncAllCron.js');
+const { default: startBroadcastLinkSyncCron } =
+  await import('../src/jobs/broadcastLinkSyncCron.js');
+const { default: startGamePenaltySyncCron } =
+  await import('../src/jobs/gamePenaltySyncCron.js');
+const { default: startGameEventDeletionSyncCron } =
+  await import('../src/jobs/gameEventDeletionSyncCron.js');
+const { default: startMatchAgreementReminderCron } =
+  await import('../src/jobs/matchAgreementReminderCron.js');
+const { default: startExternalDbWatchCron } =
+  await import('../src/jobs/externalDbWatchCron.js');
 const { setReady, setSyncing } = await import('../src/config/readiness.js');
 const { seedJobMetrics } = await import('../src/config/metrics.js');
-const { startEmailWorker, stopEmailWorker } = await import('../src/services/emailService.js');
+const { startEmailWorker, stopEmailWorker } =
+  await import('../src/services/emailService.js');
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -43,11 +57,19 @@ try {
 // Set build info metric once at startup
 (async () => {
   try {
-    const pkg = JSON.parse(await fs.promises.readFile(new URL('../package.json', import.meta.url)));
+    const pkg = JSON.parse(
+      await fs.promises.readFile(new URL('../package.json', import.meta.url))
+    );
     const version = process.env.VERSION || pkg.version || '0.0.0';
-    const commit = process.env.GIT_COMMIT || process.env.SOURCE_COMMIT || 'unknown';
+    const commit =
+      process.env.GIT_COMMIT || process.env.SOURCE_COMMIT || 'unknown';
     const { setBuildInfo } = await import('../src/config/metrics.js');
-    setBuildInfo?.({ service: 'api', version, env: process.env.NODE_ENV || 'development', commit });
+    setBuildInfo?.({
+      service: 'api',
+      version,
+      env: process.env.NODE_ENV || 'development',
+      commit,
+    });
   } catch {}
 })();
 
@@ -103,10 +125,7 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       stopEmailQueue = stopEmailWorker;
     }
   } catch (err) {
-    console.warn(
-      'Email worker failed to start:',
-      err?.message || err
-    );
+    console.warn('Email worker failed to start:', err?.message || err);
   }
   await connectLegacyDatabase(); // continue even if legacy DB is unreachable
   await connectExternalMariaDb(); // optional external MariaDB
@@ -114,6 +133,7 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   // Start server and periodic jobs ASAP; protect jobs with distributed locks
   server.listen(port);
   startTaxationCron();
+  startRefereeAccrualGenerationCron();
   startMatchAgreementReminderCron();
   // Watch for external DB availability transitions and trigger sync immediately
   startExternalDbWatchCron();
@@ -147,6 +167,7 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       'gameEventDeletionSync',
       'matchAgreementReminders',
       'taxation',
+      'refereeAccrualGeneration',
     ]);
   } catch {}
 
@@ -167,8 +188,14 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       attempt += 1;
       try {
         // Attempt reconnect and association prep best-effort; runSyncAll records metrics even if it skips
-        try { await connectExternalMariaDb(); } catch {}
-        if (isExternalDbAvailable()) { try { await setupExternalAssociations(); } catch {} }
+        try {
+          await connectExternalMariaDb();
+        } catch {}
+        if (isExternalDbAvailable()) {
+          try {
+            await setupExternalAssociations();
+          } catch {}
+        }
         setSyncing(true);
         await runSyncAll();
         console.log('Initial sync completed on attempt', attempt);

@@ -25,9 +25,11 @@ interface FiltersSummaryItem {
 const props = defineProps<{
   loading: boolean;
   search: string;
+  resultsAnnounce: string;
   activeFiltersCount: number;
   filtersSummary: FiltersSummaryItem[];
   hasData: boolean;
+  emptyStateMessage: string;
   dates: string[];
   pagedUsers: RefereeAvailabilityUser[];
   page: number;
@@ -83,8 +85,8 @@ function handlePageSizeUpdate(nextPageSize: number) {
             :value="search"
             type="search"
             class="form-control"
-            placeholder="Поиск по ФИО"
-            aria-label="Поиск по ФИО"
+            placeholder="Поиск по фамилии, имени, отчеству"
+            aria-label="Поиск по фамилии, имени, отчеству"
             aria-describedby="search-addon"
             @input="handleSearchInput"
           />
@@ -141,7 +143,10 @@ function handlePageSizeUpdate(nextPageSize: number) {
           {{ item.text }}
         </span>
       </div>
-      <div v-if="!hasData" class="text-muted">Нет данных для отображения.</div>
+      <div class="visually-hidden" aria-live="polite">
+        {{ resultsAnnounce }}
+      </div>
+      <div v-if="!hasData" class="text-muted">{{ emptyStateMessage }}</div>
 
       <div v-else class="table-responsive">
         <table

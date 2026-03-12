@@ -216,6 +216,46 @@ export const ERROR_MESSAGES = {
   reset_cooldown:
     'Временная блокировка после неверных попыток. Повторите позже.',
   competition_type_not_found: 'Тип соревнований не найден',
+  accrual_document_not_found: 'Начисление не найдено',
+  accrual_adjustment_forbidden_status:
+    'Корректировку можно создавать только для начисленного исходного документа',
+  accrual_document_void: 'Аннулированное начисление недоступно',
+  accrual_delete_forbidden_status:
+    'Удаление возможно только для начислений в статусах «Черновик» и «Начислено»',
+  accrual_delete_has_adjustments:
+    'Нельзя удалить документ, если по нему уже созданы корректировки',
+  accrual_number_conflict_retry:
+    'Не удалось сформировать уникальный номер начисления. Повторите попытку.',
+  accrual_legacy_action_deprecated:
+    'Операция недоступна: используйте новый workflow начислений',
+  action_comment_required: 'Для этого действия требуется комментарий',
+  bulk_ids_required: 'Выберите хотя бы одно начисление',
+  empty_adjustment: 'Укажите сумму хотя бы в одном компоненте корректировки',
+  invalid_accrual_action: 'Некорректное действие для начисления',
+  invalid_accrual_source: 'Некорректный источник начисления',
+  invalid_accrual_status: 'Некорректный статус начисления',
+  invalid_accrual_transition:
+    'Переход статуса недоступен для текущего начисления',
+  invalid_base_amount: 'Некорректная сумма базы',
+  invalid_fare_code: 'Некорректный тарифный код',
+  invalid_meal_amount: 'Некорректная сумма питания',
+  invalid_tariff_action: 'Некорректное действие с тарифом',
+  invalid_tariff_status: 'Некорректный статус тарифа',
+  invalid_travel_amount: 'Некорректная сумма проезда',
+  invalid_travel_rate_status: 'Некорректный статус ставки проезда',
+  maker_checker_violation:
+    'Документ не может быть начислен тем же пользователем, который его создал',
+  reason_code_required: 'Укажите код причины',
+  tariff_rule_not_found: 'Тариф не найден',
+  tariff_statuses_not_configured:
+    'Справочник статусов тарифов не настроен. Обратитесь к администратору.',
+  tariff_validity_overlap:
+    'Период тарифа пересекается с существующей активной нормой',
+  travel_rate_not_found: 'Ставка проезда не найдена',
+  travel_rate_statuses_not_configured:
+    'Справочник статусов ставок проезда не настроен. Обратитесь к администратору.',
+  travel_rate_validity_overlap:
+    'Период ставки проезда пересекается с существующей активной ставкой',
   invalid_match_format: 'Некорректный формат проведения',
   invalid_referee_payment_type: 'Некорректный способ расчетов с судьями',
   tournament_is_imported:

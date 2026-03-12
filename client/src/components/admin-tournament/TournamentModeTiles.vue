@@ -3,7 +3,7 @@
 import BaseTile from '../BaseTile.vue';
 
 const props = defineProps<{
-  activeMode: 'structure' | 'schedule' | 'settings';
+  activeMode: 'structure' | 'schedule' | 'settings' | 'payments';
   tournamentId: string;
 }>();
 
@@ -25,6 +25,12 @@ const tiles = [
     title: 'Настройки',
     subtitle: 'Параметры турнира и судейства',
     icon: 'bi-sliders2',
+  },
+  {
+    key: 'payments',
+    title: 'Оплата судей',
+    subtitle: 'Нормы оплаты и начисления',
+    icon: 'bi-cash-stack',
   },
 ] as const;
 

@@ -108,6 +108,8 @@ describe('userAdminController extra flows', () => {
       order: 'asc',
       status: '',
       role: '',
+      search_scope: 'all',
+      search_mode: 'contains_any',
     });
     expect(res.json).toHaveBeenCalledWith({
       users: [{ id: 'u1' }],
@@ -129,6 +131,26 @@ describe('userAdminController extra flows', () => {
       total: 0,
       meta: { total: 0, page: 1, pages: 1, limit: 100 },
     });
+  });
+
+  test('list normalizes custom search options', async () => {
+    listUsersMock.mockResolvedValue({ rows: [], count: 0 });
+    const req = {
+      query: {
+        search: 'Петров',
+        search_scope: 'FIO',
+        search_mode: 'SURNAME_PRIORITY_PREFIX',
+      },
+    };
+    const res = mockRes();
+    await controller.list(req, res);
+    expect(listUsersMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: 'Петров',
+        search_scope: 'fio',
+        search_mode: 'surname_priority_prefix',
+      })
+    );
   });
 
   test('create returns sent delivery when email was delivered', async () => {

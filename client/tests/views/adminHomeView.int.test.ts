@@ -63,6 +63,12 @@ describe('Admin Home view', () => {
       })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole('heading', { level: 2, name: 'Бухгалтерия' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Начисления' })
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('link', { name: 'Фото игроков' })
     ).toBeInTheDocument();
   });
@@ -99,6 +105,9 @@ describe('Admin Home view', () => {
         level: 2,
         name: 'Управление спортивной частью',
       })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('heading', { level: 2, name: 'Бухгалтерия' })
     ).toBeNull();
   });
 });

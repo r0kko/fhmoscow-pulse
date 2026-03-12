@@ -33,6 +33,8 @@ import AdminTournamentLayout from './views/AdminTournamentLayout.vue';
 import AdminTournamentStructureView from './views/AdminTournamentStructureView.vue';
 import AdminTournamentScheduleView from './views/AdminTournamentScheduleView.vue';
 import AdminTournamentSettingsView from './views/AdminTournamentSettingsView.vue';
+import AdminTournamentPaymentsView from './views/AdminTournamentPaymentsView.vue';
+import AdminAccountingView from './views/AdminAccountingView.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import SchoolPastMatches from './views/SchoolPastMatches.vue';
 import SchoolMatchAgreements from './views/SchoolMatchAgreements.vue';
@@ -276,6 +278,16 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Синхронизация' },
   },
   {
+    path: '/admin/accounting',
+    component: AdminAccountingView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      requiresAdministrator: true,
+      title: 'Бухгалтерия',
+    },
+  },
+  {
     path: '/admin/player-photo-requests',
     component: AdminPlayerPhotoRequests,
     meta: {
@@ -474,6 +486,12 @@ const routes: RouteRecordRaw[] = [
         name: 'adminTournamentSettings',
         component: AdminTournamentSettingsView,
         meta: { title: 'Турнир: настройки' },
+      },
+      {
+        path: 'payments',
+        name: 'adminTournamentPayments',
+        component: AdminTournamentPaymentsView,
+        meta: { title: 'Турнир: оплата судей', requiresAdministrator: true },
       },
     ],
   },

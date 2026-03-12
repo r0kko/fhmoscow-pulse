@@ -23,12 +23,19 @@ const groundOptions = ref<Array<{ id: string; name: string }>>([]);
 
 const tournamentId = computed(() => String(route.params.tournamentId || ''));
 
-const activeMode = computed<'structure' | 'schedule' | 'settings'>(() => {
-  const name = String(route.name || '');
-  if (name === 'adminTournamentSchedule') return 'schedule';
-  if (name === 'adminTournamentSettings') return 'settings';
-  return 'structure';
-});
+const activeMode = computed<'structure' | 'schedule' | 'settings' | 'payments'>(
+  () => {
+    const name = String(route.name || '');
+    if (name === 'adminTournamentSchedule') return 'schedule';
+    if (name === 'adminTournamentSettings') return 'settings';
+    if (name === 'adminTournamentPayments') return 'payments';
+    return 'structure';
+  }
+);
+
+const layoutContainerClass = computed(() =>
+  activeMode.value === 'payments' ? 'container-fluid px-2 px-xl-3' : 'container'
+);
 
 const breadcrumbs = computed(() => [
   { label: 'Администрирование', to: '/admin' },
@@ -104,7 +111,7 @@ watch(
 
 <template>
   <div class="py-4 admin-tournament-layout">
-    <div class="container">
+    <div :class="layoutContainerClass">
       <Breadcrumbs class="mb-2" :items="breadcrumbs" />
 
       <div v-if="error" class="alert alert-danger">{{ error }}</div>

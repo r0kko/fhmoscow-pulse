@@ -19,6 +19,10 @@ const search = ref('');
 const page = ref(1);
 const pageSize = ref(25);
 const serverMeta = ref({ total: 0, page: 1, pages: 1, limit: 25 });
+const SEARCH_MAX_LEN = 80;
+const SERVER_SEARCH_MIN_LEN = 2;
+const SEARCH_SCOPE = 'fio';
+const SEARCH_MODE = 'surname_priority_prefix';
 
 const roleOptions = [
   { value: 'REFEREE', label: 'Судья в поле' },
@@ -67,6 +71,36 @@ function longDateLabel(dateStr) {
 
 function nameOf(u) {
   return [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(' ');
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+}
+
+function normalizeSearchInput(value) {
+  return String(value || '').slice(0, SEARCH_MAX_LEN);
+}
+
+function tokenizeSurnamePrioritySearch(value) {
+  const normalized = normalizeSearchText(value);
+  if (!normalized) return [];
+  return normalized.split(' ').filter(Boolean).slice(0, 3);
+}
+
+function matchesSurnamePrioritySearch(user, tokens) {
+  if (!tokens.length) return true;
+  const [lastToken, firstToken, patronymicToken] = tokens;
+  const lastName = normalizeSearchText(user?.last_name || '');
+  const firstName = normalizeSearchText(user?.first_name || '');
+  const patronymic = normalizeSearchText(user?.patronymic || '');
+  if (!lastName.startsWith(lastToken)) return false;
+  if (firstToken && !firstName.startsWith(firstToken)) return false;
+  if (patronymicToken && !patronymic.startsWith(patronymicToken)) return false;
+  return true;
 }
 
 function initialLetter(value) {
@@ -254,6 +288,10 @@ const {
 
 const usingServerPagination = computed(() => !statusFilterActive.value);
 const isInitialLoading = computed(() => loading.value && !hasLoadedOnce.value);
+const normalizedSearch = computed(() => normalizeSearchText(search.value));
+const searchTokens = computed(() =>
+  tokenizeSurnamePrioritySearch(search.value)
+);
 
 function matchesAdvanced(u) {
   if (!statusFilterActive.value) return true;
@@ -316,14 +354,17 @@ function matchesAdvanced(u) {
 }
 
 const filteredUsers = computed(() => {
-  const term = search.value.trim().toLowerCase();
-  const roleSet = selectedRoles.value;
   let list = users.value;
-  if (roleSet.size < roleOptions.length) {
-    list = list.filter((u) => u.roles?.some((r) => roleSet.has(r)));
-  }
-  if (term) {
-    list = list.filter((u) => nameOf(u).toLowerCase().includes(term));
+  if (!usingServerPagination.value) {
+    const roleSet = selectedRoles.value;
+    if (roleSet.size < roleOptions.length) {
+      list = list.filter((u) => u.roles?.some((r) => roleSet.has(r)));
+    }
+    if (searchTokens.value.length) {
+      list = list.filter((u) =>
+        matchesSurnamePrioritySearch(u, searchTokens.value)
+      );
+    }
   }
   return list.filter((u) => matchesAdvanced(u));
 });
@@ -343,7 +384,21 @@ const pagedUsers = computed(() => {
   return filteredUsers.value.slice(start, start + pageSize.value);
 });
 
-const hasData = computed(() => users.value.length > 0);
+const hasData = computed(() => pagedUsers.value.length > 0);
+const emptyStateMessage = computed(() => {
+  if (!users.value.length) return 'Нет данных для отображения.';
+  if (normalizedSearch.value || activeFiltersCount.value) {
+    return 'Ничего не найдено по заданным параметрам.';
+  }
+  return 'Нет данных для отображения.';
+});
+const resultsAnnounce = computed(() => {
+  if (!normalizedSearch.value) return '';
+  const total = usingServerPagination.value
+    ? Number(serverMeta.value.total || users.value.length || 0)
+    : filteredUsers.value.length;
+  return `Найдено судей: ${total}`;
+});
 
 async function load() {
   const requestId = ++gridLoadRequestId;
@@ -369,10 +424,9 @@ async function load() {
       selectedDateList.forEach((d) => params.append('date', d));
     }
 
-    const term = search.value.trim();
-    if (term) params.append('search', term);
-
     if (usingServerPagination.value) {
+      const term = normalizedSearch.value;
+      if (term.length >= SERVER_SEARCH_MIN_LEN) params.append('search', term);
       params.append('page', String(page.value));
       params.append('limit', String(pageSize.value));
     }
@@ -545,6 +599,8 @@ async function fetchRefereeCandidates(term) {
       status: 'ACTIVE',
       sort: 'last_name',
       order: 'asc',
+      search_scope: SEARCH_SCOPE,
+      search_mode: SEARCH_MODE,
     });
     roleOptions.forEach((r) => params.append('role', r.value));
     if (term) params.append('search', term);
@@ -830,6 +886,10 @@ watch(search, () => {
   }, 250);
 });
 
+function handleGridSearchUpdate(value) {
+  search.value = normalizeSearchInput(value);
+}
+
 watch(pageSize, () => {
   if (!usingServerPagination.value) return;
   if (page.value !== 1) {
@@ -898,9 +958,11 @@ onBeforeUnmount(() => {
         v-else
         :loading="loading"
         :search="search"
+        :results-announce="resultsAnnounce"
         :active-filters-count="activeFiltersCount"
         :filters-summary="filtersSummary"
         :has-data="hasData"
+        :empty-state-message="emptyStateMessage"
         :dates="dates"
         :paged-users="pagedUsers"
         :page="page"
@@ -913,7 +975,7 @@ onBeforeUnmount(() => {
         :status-icon="statusIcon"
         :status-title="statusTitle"
         :partial-label="partialLabel"
-        @update:search="search = $event"
+        @update:search="handleGridSearchUpdate"
         @open-filters="openFiltersModal"
         @open-editor="openEditorModal()"
         @edit-user="openEditorModal($event)"

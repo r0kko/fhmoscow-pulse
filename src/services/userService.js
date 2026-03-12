@@ -1,4 +1,4 @@
-import { Op, literal } from 'sequelize';
+import { Op, col, fn, literal, where as whereFn } from 'sequelize';
 
 import {
   Role,
@@ -18,9 +18,102 @@ const MIN_BIRTH_DATE = new Date('1945-01-01');
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 100;
 const DEFAULT_LIST_ALL_BATCH_LIMIT = MAX_LIST_LIMIT;
+const DEFAULT_SEARCH_SCOPE = 'all';
+const DEFAULT_SEARCH_MODE = 'contains_any';
+const SEARCH_SCOPE_FIO = 'fio';
+const SEARCH_MODE_SURNAME_PRIORITY_PREFIX = 'surname_priority_prefix';
 
 function normalizeText(value) {
   return String(value || '').trim();
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+}
+
+function escapeLikeTerm(term = '') {
+  return term.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+function normalizeSearchScope(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  return normalized === SEARCH_SCOPE_FIO
+    ? SEARCH_SCOPE_FIO
+    : DEFAULT_SEARCH_SCOPE;
+}
+
+function normalizeSearchMode(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  return normalized === SEARCH_MODE_SURNAME_PRIORITY_PREFIX
+    ? SEARCH_MODE_SURNAME_PRIORITY_PREFIX
+    : DEFAULT_SEARCH_MODE;
+}
+
+function buildNormalizedLikeCondition(field, term, { prefix = false } = {}) {
+  const escapedTerm = escapeLikeTerm(term);
+  const pattern = prefix ? `${escapedTerm}%` : `%${escapedTerm}%`;
+  return whereFn(fn('replace', fn('lower', col(field)), 'ё', 'е'), {
+    [Op.like]: pattern,
+  });
+}
+
+function buildContainsAnySearchCondition(term, scope = DEFAULT_SEARCH_SCOPE) {
+  const conditions = [
+    buildNormalizedLikeCondition('last_name', term),
+    buildNormalizedLikeCondition('first_name', term),
+    buildNormalizedLikeCondition('patronymic', term),
+  ];
+  if (scope !== SEARCH_SCOPE_FIO) {
+    conditions.push(buildNormalizedLikeCondition('phone', term));
+    conditions.push(buildNormalizedLikeCondition('email', term));
+  }
+  return [{ [Op.or]: conditions }];
+}
+
+function buildSurnamePriorityPrefixConditions(term) {
+  const tokens = term.split(' ').filter(Boolean).slice(0, 3);
+  if (!tokens.length) return [];
+  const [lastNameToken, firstNameToken, patronymicToken] = tokens;
+  const conditions = [
+    buildNormalizedLikeCondition('last_name', lastNameToken, { prefix: true }),
+  ];
+  if (firstNameToken) {
+    conditions.push(
+      buildNormalizedLikeCondition('first_name', firstNameToken, {
+        prefix: true,
+      })
+    );
+  }
+  if (patronymicToken) {
+    conditions.push(
+      buildNormalizedLikeCondition('patronymic', patronymicToken, {
+        prefix: true,
+      })
+    );
+  }
+  return conditions;
+}
+
+function buildUserSearchConditions(
+  rawSearch = '',
+  { search_scope: rawScope, search_mode: rawMode } = {}
+) {
+  const search = normalizeSearchText(rawSearch);
+  if (!search) return [];
+  const scope = normalizeSearchScope(rawScope);
+  const mode = normalizeSearchMode(rawMode);
+  if (mode === SEARCH_MODE_SURNAME_PRIORITY_PREFIX) {
+    return buildSurnamePriorityPrefixConditions(search);
+  }
+  return buildContainsAnySearchCondition(search, scope);
 }
 
 function normalizeEmail(value) {
@@ -162,15 +255,9 @@ async function listUsers(options = {}) {
   const sortOrder = options.order === 'desc' ? 'DESC' : 'ASC';
 
   const where = {};
-  if (options.search) {
-    const term = `%${options.search}%`;
-    where[Op.or] = [
-      { last_name: { [Op.iLike]: term } },
-      { first_name: { [Op.iLike]: term } },
-      { patronymic: { [Op.iLike]: term } },
-      { phone: { [Op.iLike]: term } },
-      { email: { [Op.iLike]: term } },
-    ];
+  const searchConditions = buildUserSearchConditions(options.search, options);
+  if (searchConditions.length) {
+    where[Op.and] = searchConditions;
   }
   const include = [];
   if (

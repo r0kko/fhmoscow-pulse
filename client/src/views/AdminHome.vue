@@ -44,6 +44,14 @@ const sportsSections = [
   },
 ];
 
+const accountingSections = [
+  {
+    title: 'Начисления',
+    icon: 'bi-receipt-cutoff',
+    to: '/admin/accounting',
+  },
+];
+
 const professionalLeagueSections = [
   {
     title: 'Назначение судей',
@@ -219,6 +227,24 @@ const systemSections = computed(() => {
           <div v-edge-fade class="scroll-container">
             <MenuTile
               v-for="item in systemSections"
+              :key="item.to"
+              :to="item.to"
+              :title="item.title"
+              :icon="item.icon"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div v-if="isSuperAdmin" class="card section-card mb-2 menu-section">
+        <div class="card-body">
+          <h2 class="card-title h5 mb-3">
+            <i class="bi bi-calculator text-brand me-2" aria-hidden="true"></i>
+            Бухгалтерия
+          </h2>
+          <div v-edge-fade class="scroll-container">
+            <MenuTile
+              v-for="item in accountingSections"
               :key="item.to"
               :to="item.to"
               :title="item.title"

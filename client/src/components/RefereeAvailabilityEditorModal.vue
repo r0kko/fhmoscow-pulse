@@ -105,7 +105,7 @@ function editorRangeEndLabel() {
                     :value="editorUserQuery"
                     type="search"
                     class="form-control"
-                    placeholder="Фамилия, email или телефон"
+                    placeholder="Фамилия, имя или отчество"
                     autocomplete="off"
                     @input="onEditorUserInput"
                   />
@@ -139,8 +139,8 @@ function editorRangeEndLabel() {
                   </button>
                 </div>
                 <p class="small text-muted mb-0 mt-2">
-                  Доступны только активные судьи с правом входа в раздел «Моя
-                  занятость».
+                  Поиск выполняется только по ФИО. Доступны только активные
+                  судьи с правом входа в раздел «Моя занятость».
                 </p>
                 <div
                   v-if="editorSelectedUser"

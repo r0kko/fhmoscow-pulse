@@ -128,6 +128,53 @@ router.post('/taxation/run', auth, authorize('ADMIN'), async (req, res) => {
   }
 });
 
+router.get(
+  '/referee-accruals/status',
+  auth,
+  authorize('ADMIN'),
+  async (_req, res) => {
+    try {
+      const stats = await getJobStats(['refereeAccrualGeneration']);
+      const states = await getSyncStates(['refereeAccrualGeneration']);
+      let running = false;
+      try {
+        const mod = await import('../jobs/refereeAccrualGenerationCron.js');
+        running = mod.isRefereeAccrualGenerationRunning?.() || false;
+      } catch {
+        /* empty */
+      }
+      return res.json({
+        jobs: stats,
+        states,
+        running: { refereeAccrualGeneration: running },
+      });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ error: 'metrics_error', detail: err?.message });
+    }
+  }
+);
+
+router.post(
+  '/referee-accruals/run',
+  auth,
+  authorize('ADMIN'),
+  async (_req, res) => {
+    try {
+      const mod = await import('../jobs/refereeAccrualGenerationCron.js');
+      const already = mod.isRefereeAccrualGenerationRunning?.() || false;
+      mod.runRefereeAccrualGeneration?.().catch(() => {});
+      return res.status(202).json({ queued: true, already_running: already });
+    } catch (err) {
+      return res.status(500).json({
+        error: 'referee_accrual_trigger_failed',
+        detail: err?.message,
+      });
+    }
+  }
+);
+
 // Manual: reconcile penalties for a custom rolling window (admin backfill)
 router.post(
   '/penalties/sync-window',
@@ -197,6 +244,7 @@ router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
     'broadcastLinkSync',
     'gamePenaltySync',
     'gameEventDeletionSync',
+    'refereeAccrualGeneration',
   ]);
   if (!allowed.has(job)) return res.status(400).json({ error: 'invalid_job' });
   try {
@@ -213,6 +261,14 @@ router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
       try {
         const mod = await import('../jobs/taxationCron.js');
         mod.resetTaxationState?.();
+      } catch {
+        /* empty */
+      }
+    }
+    if (job === 'refereeAccrualGeneration') {
+      try {
+        const mod = await import('../jobs/refereeAccrualGenerationCron.js');
+        mod.resetRefereeAccrualGenerationState?.();
       } catch {
         /* empty */
       }
@@ -245,6 +301,15 @@ router.post('/jobs/restart', auth, authorize('ADMIN'), async (req, res) => {
       try {
         const mod = await import('../jobs/taxationCron.js');
         mod.restartTaxationCron?.();
+        return res.json({ ok: true, job });
+      } catch {
+        /* empty */
+      }
+    }
+    if (job === 'refereeAccrualGeneration') {
+      try {
+        const mod = await import('../jobs/refereeAccrualGenerationCron.js');
+        mod.restartRefereeAccrualGenerationCron?.();
         return res.json({ ok: true, job });
       } catch {
         /* empty */

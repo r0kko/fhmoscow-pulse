@@ -108,6 +108,8 @@ test('adminGrid returns filtered dates and the full calendar metadata', async ()
     expect.objectContaining({
       role: ['REFEREE'],
       status: 'ACTIVE',
+      search_scope: 'fio',
+      search_mode: 'surname_priority_prefix',
       sort: 'last_name',
       order: 'asc',
     })
@@ -242,7 +244,9 @@ test('adminGrid supports server pagination and forwards search query', async () 
     expect.objectContaining({
       role: ['REFEREE', 'BRIGADE_REFEREE'],
       status: 'ACTIVE',
-      search: 'Пет',
+      search: 'пет',
+      search_scope: 'fio',
+      search_mode: 'surname_priority_prefix',
       page: 2,
       limit: 50,
       sort: 'last_name',
@@ -257,6 +261,48 @@ test('adminGrid supports server pagination and forwards search query', async () 
     pages: 3,
     limit: 50,
   });
+});
+
+test('adminGrid skips short search in server pagination mode', async () => {
+  jest.useFakeTimers().setSystemTime(new Date('2024-04-01T00:00:00Z'));
+
+  listUsersMock.mockResolvedValue({
+    rows: [{ id: 'u-page-1', roles: ['REFEREE'] }],
+    count: 1,
+  });
+  toPublicArrayMock.mockReturnValue([
+    {
+      id: 'u-page-1',
+      last_name: 'Судья',
+      first_name: 'Пётр',
+      patronymic: 'Сергеевич',
+      roles: ['REFEREE'],
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([]);
+
+  const controller = (await import(controllerPath)).default;
+  const jsonMock = jest.fn();
+
+  await controller.adminGrid(
+    {
+      query: {
+        role: ['REFEREE'],
+        page: '1',
+        limit: '25',
+        search: 'П',
+      },
+    },
+    { json: jsonMock }
+  );
+
+  expect(listUsersMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      search: '',
+      search_scope: 'fio',
+      search_mode: 'surname_priority_prefix',
+    })
+  );
 });
 
 test('adminGrid returns more than 100 users when full mode is used', async () => {

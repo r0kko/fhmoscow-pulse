@@ -110,6 +110,19 @@ import MatchReferee from './matchReferee.js';
 import MatchRefereeStatus from './matchRefereeStatus.js';
 import MatchRefereeDraftClear from './matchRefereeDraftClear.js';
 import MatchRefereeNotification from './matchRefereeNotification.js';
+import RefereeTariffStatus from './refereeTariffStatus.js';
+import GroundTravelRateStatus from './groundTravelRateStatus.js';
+import RefereeAccrualDocumentStatus from './refereeAccrualDocumentStatus.js';
+import RefereeAccrualSource from './refereeAccrualSource.js';
+import RefereeAccrualPostingType from './refereeAccrualPostingType.js';
+import RefereeAccrualComponent from './refereeAccrualComponent.js';
+import RefereeAccountingAction from './refereeAccountingAction.js';
+import RefereeAccrualStatusTransition from './refereeAccrualStatusTransition.js';
+import RefereeTariffRule from './refereeTariffRule.js';
+import GroundRefereeTravelRate from './groundRefereeTravelRate.js';
+import RefereeAccrualDocument from './refereeAccrualDocument.js';
+import RefereeAccrualPosting from './refereeAccrualPosting.js';
+import AccountingAuditEvent from './accountingAuditEvent.js';
 import GameEventType from './gameEventType.js';
 import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
@@ -492,6 +505,143 @@ MatchRefereeDraftClear.belongsTo(RefereeRoleGroup, {
   foreignKey: 'referee_role_group_id',
 });
 
+/* referee accounting */
+Tournament.hasMany(RefereeTariffRule, { foreignKey: 'tournament_id' });
+RefereeTariffRule.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+TournamentGroup.hasMany(RefereeTariffRule, { foreignKey: 'stage_group_id' });
+RefereeTariffRule.belongsTo(TournamentGroup, { foreignKey: 'stage_group_id' });
+RefereeRole.hasMany(RefereeTariffRule, { foreignKey: 'referee_role_id' });
+RefereeTariffRule.belongsTo(RefereeRole, { foreignKey: 'referee_role_id' });
+RefereeTariffStatus.hasMany(RefereeTariffRule, {
+  foreignKey: 'tariff_status_id',
+});
+RefereeTariffRule.belongsTo(RefereeTariffStatus, {
+  foreignKey: 'tariff_status_id',
+  as: 'TariffStatus',
+});
+
+Ground.hasMany(GroundRefereeTravelRate, { foreignKey: 'ground_id' });
+GroundRefereeTravelRate.belongsTo(Ground, { foreignKey: 'ground_id' });
+GroundTravelRateStatus.hasMany(GroundRefereeTravelRate, {
+  foreignKey: 'travel_rate_status_id',
+});
+GroundRefereeTravelRate.belongsTo(GroundTravelRateStatus, {
+  foreignKey: 'travel_rate_status_id',
+  as: 'TravelRateStatus',
+});
+
+Tournament.hasMany(RefereeAccrualDocument, { foreignKey: 'tournament_id' });
+RefereeAccrualDocument.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+Match.hasMany(RefereeAccrualDocument, { foreignKey: 'match_id' });
+RefereeAccrualDocument.belongsTo(Match, { foreignKey: 'match_id' });
+MatchReferee.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'match_referee_id',
+});
+RefereeAccrualDocument.belongsTo(MatchReferee, {
+  foreignKey: 'match_referee_id',
+});
+User.hasMany(RefereeAccrualDocument, { foreignKey: 'referee_id' });
+RefereeAccrualDocument.belongsTo(User, {
+  foreignKey: 'referee_id',
+  as: 'Referee',
+});
+RefereeRole.hasMany(RefereeAccrualDocument, { foreignKey: 'referee_role_id' });
+RefereeAccrualDocument.belongsTo(RefereeRole, {
+  foreignKey: 'referee_role_id',
+});
+TournamentGroup.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'stage_group_id',
+});
+RefereeAccrualDocument.belongsTo(TournamentGroup, {
+  foreignKey: 'stage_group_id',
+});
+Ground.hasMany(RefereeAccrualDocument, { foreignKey: 'ground_id' });
+RefereeAccrualDocument.belongsTo(Ground, { foreignKey: 'ground_id' });
+RefereeTariffRule.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'tariff_rule_id',
+});
+RefereeAccrualDocument.belongsTo(RefereeTariffRule, {
+  foreignKey: 'tariff_rule_id',
+});
+GroundRefereeTravelRate.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'travel_rate_id',
+});
+RefereeAccrualDocument.belongsTo(GroundRefereeTravelRate, {
+  foreignKey: 'travel_rate_id',
+});
+RefereeAccrualDocumentStatus.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'document_status_id',
+});
+RefereeAccrualDocument.belongsTo(RefereeAccrualDocumentStatus, {
+  foreignKey: 'document_status_id',
+  as: 'DocumentStatus',
+});
+RefereeAccrualSource.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'source_id',
+});
+RefereeAccrualDocument.belongsTo(RefereeAccrualSource, {
+  foreignKey: 'source_id',
+  as: 'Source',
+});
+RefereeAccrualDocument.hasMany(RefereeAccrualDocument, {
+  foreignKey: 'original_document_id',
+  as: 'Adjustments',
+});
+RefereeAccrualDocument.belongsTo(RefereeAccrualDocument, {
+  foreignKey: 'original_document_id',
+  as: 'OriginalDocument',
+});
+
+RefereeAccrualDocument.hasMany(RefereeAccrualPosting, {
+  foreignKey: 'document_id',
+  as: 'Postings',
+});
+RefereeAccrualPosting.belongsTo(RefereeAccrualDocument, {
+  foreignKey: 'document_id',
+  as: 'Document',
+});
+RefereeAccrualPostingType.hasMany(RefereeAccrualPosting, {
+  foreignKey: 'posting_type_id',
+});
+RefereeAccrualPosting.belongsTo(RefereeAccrualPostingType, {
+  foreignKey: 'posting_type_id',
+  as: 'PostingType',
+});
+RefereeAccrualComponent.hasMany(RefereeAccrualPosting, {
+  foreignKey: 'component_id',
+});
+RefereeAccrualPosting.belongsTo(RefereeAccrualComponent, {
+  foreignKey: 'component_id',
+  as: 'Component',
+});
+
+RefereeAccrualDocumentStatus.hasMany(RefereeAccrualStatusTransition, {
+  foreignKey: 'from_status_id',
+  as: 'FromTransitions',
+});
+RefereeAccrualStatusTransition.belongsTo(RefereeAccrualDocumentStatus, {
+  foreignKey: 'from_status_id',
+  as: 'FromStatus',
+});
+RefereeAccrualDocumentStatus.hasMany(RefereeAccrualStatusTransition, {
+  foreignKey: 'to_status_id',
+  as: 'ToTransitions',
+});
+RefereeAccrualStatusTransition.belongsTo(RefereeAccrualDocumentStatus, {
+  foreignKey: 'to_status_id',
+  as: 'ToStatus',
+});
+RefereeAccountingAction.hasMany(RefereeAccrualStatusTransition, {
+  foreignKey: 'action_id',
+});
+RefereeAccrualStatusTransition.belongsTo(RefereeAccountingAction, {
+  foreignKey: 'action_id',
+  as: 'Action',
+});
+
+User.hasMany(AccountingAuditEvent, { foreignKey: 'actor_id' });
+AccountingAuditEvent.belongsTo(User, { foreignKey: 'actor_id', as: 'Actor' });
+
 /* match agreements */
 Match.hasMany(MatchAgreement, { foreignKey: 'match_id' });
 MatchAgreement.belongsTo(Match, { foreignKey: 'match_id' });
@@ -802,6 +952,19 @@ export {
   MatchRefereeStatus,
   MatchRefereeDraftClear,
   MatchRefereeNotification,
+  RefereeTariffStatus,
+  GroundTravelRateStatus,
+  RefereeAccrualDocumentStatus,
+  RefereeAccrualSource,
+  RefereeAccrualPostingType,
+  RefereeAccrualComponent,
+  RefereeAccountingAction,
+  RefereeAccrualStatusTransition,
+  RefereeTariffRule,
+  GroundRefereeTravelRate,
+  RefereeAccrualDocument,
+  RefereeAccrualPosting,
+  AccountingAuditEvent,
   GamePenalty,
   GameEventType,
   PenaltyMinutes,

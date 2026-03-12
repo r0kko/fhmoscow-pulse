@@ -12,6 +12,8 @@ import { sendError } from '../utils/api.js';
 
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 100;
+const DEFAULT_SEARCH_SCOPE = 'all';
+const DEFAULT_SEARCH_MODE = 'contains_any';
 
 export default {
   async list(req, res) {
@@ -23,9 +25,13 @@ export default {
       order = 'asc',
       status = '',
       role = '',
+      search_scope = DEFAULT_SEARCH_SCOPE,
+      search_mode = DEFAULT_SEARCH_MODE,
     } = req.query;
     const normalizedPage = normalizePage(page);
     const normalizedLimit = normalizeLimit(limit);
+    const normalizedSearchScope = normalizeSearchScope(search_scope);
+    const normalizedSearchMode = normalizeSearchMode(search_mode);
     const { rows, count } = await userService.listUsers({
       search,
       page: normalizedPage,
@@ -34,6 +40,8 @@ export default {
       order,
       status,
       role,
+      search_scope: normalizedSearchScope,
+      search_mode: normalizedSearchMode,
     });
     return res.json({
       users: userMapper.toPublicArray(rows),
@@ -280,6 +288,22 @@ function normalizeLimit(value) {
   const parsed = Number.parseInt(String(value || ''), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_LIST_LIMIT;
   return Math.min(parsed, MAX_LIST_LIMIT);
+}
+
+function normalizeSearchScope(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  return normalized === 'fio' ? 'fio' : DEFAULT_SEARCH_SCOPE;
+}
+
+function normalizeSearchMode(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  return normalized === 'surname_priority_prefix'
+    ? 'surname_priority_prefix'
+    : DEFAULT_SEARCH_MODE;
 }
 
 async function sendActivationEmailSafe(

@@ -10,6 +10,11 @@ import { hasRefereeRole } from '../utils/roles.js';
 import { utcToMoscow } from '../utils/time.js';
 import logger from '../../logger.js';
 
+const GRID_SEARCH_SCOPE = 'fio';
+const GRID_SEARCH_MODE = 'surname_priority_prefix';
+const GRID_SEARCH_MAX_LEN = 80;
+const GRID_SERVER_SEARCH_MIN_LEN = 2;
+
 function formatDate(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -25,6 +30,15 @@ function parsePositiveInt(value, fallback = null) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return parsed;
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .slice(0, GRID_SEARCH_MAX_LEN);
 }
 
 function isAllDigits(text) {
@@ -194,11 +208,19 @@ export default {
         ? [rolesParam]
         : ['REFEREE', 'BRIGADE_REFEREE'];
     const status = req.query.status || 'ACTIVE';
-    const search =
-      typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const search = normalizeSearchText(
+      typeof req.query.search === 'string' ? req.query.search : ''
+    );
     const queryPage = parsePositiveInt(req.query.page);
     const queryLimit = parsePositiveInt(req.query.limit);
     const hasServerPagination = queryPage !== null || queryLimit !== null;
+    const effectiveSearch =
+      hasServerPagination && search.length < GRID_SERVER_SEARCH_MIN_LEN
+        ? ''
+        : search;
+    const effectiveSearchTokensCount = effectiveSearch
+      ? effectiveSearch.split(' ').filter(Boolean).length
+      : 0;
     const page = queryPage || 1;
     const limit = queryLimit || 20;
     const effectiveLimit = Math.min(limit, 100);
@@ -225,7 +247,9 @@ export default {
       ? await userService.listUsers({
           role: roles,
           status,
-          search,
+          search: effectiveSearch,
+          search_scope: GRID_SEARCH_SCOPE,
+          search_mode: GRID_SEARCH_MODE,
           limit,
           page,
           sort: 'last_name',
@@ -234,7 +258,9 @@ export default {
       : await userService.listUsersAll({
           role: roles,
           status,
-          search,
+          search: effectiveSearch,
+          search_scope: GRID_SEARCH_SCOPE,
+          search_mode: GRID_SEARCH_MODE,
           sort: 'last_name',
           order: 'asc',
         });
@@ -318,6 +344,11 @@ export default {
       server_pagination: hasServerPagination,
       users_returned: items.length,
       expected_count: usersTotal,
+      search_mode: GRID_SEARCH_MODE,
+      search_scope: GRID_SEARCH_SCOPE,
+      search_length: effectiveSearch.length,
+      search_tokens_count: effectiveSearchTokensCount,
+      result_count: usersTotal,
       page: hasServerPagination ? page : 1,
       limit: hasServerPagination ? effectiveLimit : items.length,
       dates_count: effectiveDates.length,
