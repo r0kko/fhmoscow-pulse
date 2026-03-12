@@ -321,6 +321,12 @@ function moscowTodayKey() {
   return moscowDateKey(new Date());
 }
 
+function isPastMoscowDateKey(dateKey) {
+  const normalized = normalizeDateKey(dateKey);
+  const todayKey = moscowTodayKey();
+  return Boolean(todayKey) && normalized < todayKey;
+}
+
 function moscowTimeSeconds(date) {
   const msk = utcToMoscow(date);
   if (!msk) return null;
@@ -1125,6 +1131,7 @@ export async function listRefereesByDate({
   competitionAlias = '',
   onlyLeaguesAccess = false,
   requirePresetForDate = false,
+  ignoreAvailabilityForDate = false,
   roleGroupId = null,
   search = '',
   limit = 200,
@@ -1294,8 +1301,9 @@ export async function listRefereesByDate({
   });
 
   const skipAvailabilityFilter =
-    isLeadershipRoleGroupRequested &&
-    isProfessionalCompetitionAlias(competitionAlias);
+    ignoreAvailabilityForDate ||
+    (isLeadershipRoleGroupRequested &&
+      isProfessionalCompetitionAlias(competitionAlias));
   const strictDateKey = requirePresetForDate
     ? normalizeDateKey(filters.fromDate)
     : null;
@@ -2093,8 +2101,10 @@ export async function updateMatchReferees(
     throw new ServiceError('invalid_date', 400);
   }
   const endSeconds = startSeconds + durationMinutes * 60;
+  const skipAvailabilityChecks =
+    applyProLeadershipRules || isPastMoscowDateKey(mskDate);
 
-  if (newUserIds.length && !applyProLeadershipRules) {
+  if (newUserIds.length && !skipAvailabilityChecks) {
     const availabilityRecords = await listAvailabilities(
       newUserIds,
       mskDate,
@@ -2658,6 +2668,9 @@ export async function publishAssignmentsForDate(
   const statusInfo = await resolveAssignmentStatuses();
   const bounds = moscowDayBounds(normalized);
   if (!bounds) throw new ServiceError('invalid_date', 400);
+  const isPastDatePublication = isPastMoscowDateKey(normalized);
+  const autoConfirmPastDate =
+    isPastDatePublication && Boolean(statusInfo.confirmed);
 
   const matches = await Match.findAll({
     where: {
@@ -2785,13 +2798,14 @@ export async function publishAssignmentsForDate(
     statusInfo.published.id,
     statusInfo.confirmed?.id,
   ].filter(Boolean);
-  const beforeDetails = matchIds.length
-    ? await fetchAssignmentNotificationDetails({
-        matchIds,
-        roleGroupIds: uniqueGroupIds,
-        statusIds: assignedStatusIds,
-      })
-    : [];
+  const beforeDetails =
+    !isPastDatePublication && matchIds.length
+      ? await fetchAssignmentNotificationDetails({
+          matchIds,
+          roleGroupIds: uniqueGroupIds,
+          statusIds: assignedStatusIds,
+        })
+      : [];
 
   const assignments =
     matchIds.length && allRoleIds.length
@@ -2988,6 +3002,7 @@ export async function publishAssignmentsForDate(
           const removeDraftClauses = [];
           const promoteToPublishedClauses = [];
           const promoteToConfirmedClauses = [];
+          const confirmPublishedClauses = [];
 
           const rolesToClear = roleIdsForMatch.filter(
             (roleId) => !draftRoles.has(roleId)
@@ -3033,6 +3048,14 @@ export async function publishAssignmentsForDate(
                 user_id: { [Op.in]: usersToKeep },
                 status_id: statusInfo.draft.id,
               });
+              if (autoConfirmPastDate) {
+                confirmPublishedClauses.push({
+                  match_id: matchId,
+                  referee_role_id: roleId,
+                  user_id: { [Op.in]: usersToKeep },
+                  status_id: statusInfo.published.id,
+                });
+              }
             }
 
             if (usersToAdd.length) {
@@ -3044,7 +3067,7 @@ export async function publishAssignmentsForDate(
                 user_id: { [Op.in]: usersToAdd },
                 status_id: statusInfo.draft.id,
               };
-              if (autoConfirmLeadership) {
+              if (autoConfirmLeadership || autoConfirmPastDate) {
                 promoteToConfirmedClauses.push(promotionClause);
               } else {
                 promoteToPublishedClauses.push(promotionClause);
@@ -3091,6 +3114,19 @@ export async function publishAssignmentsForDate(
               },
               {
                 where: { [Op.or]: promoteToConfirmedClauses },
+                transaction: tx,
+              }
+            );
+          }
+
+          if (confirmPublishedClauses.length) {
+            await MatchReferee.update(
+              {
+                status_id: statusInfo.confirmed.id,
+                updated_by: actorId,
+              },
+              {
+                where: { [Op.or]: confirmPublishedClauses },
                 transaction: tx,
               }
             );
@@ -3148,81 +3184,86 @@ export async function publishAssignmentsForDate(
     skipped_no_email: 0,
     skipped_duplicate: 0,
   };
-  try {
-    const afterDetails = matchIds.length
-      ? await fetchAssignmentNotificationDetails({
-          matchIds,
-          roleGroupIds: uniqueGroupIds,
-          statusIds: assignedStatusIds,
-        })
-      : [];
-    const filterNotifications = (rows = []) =>
-      rows.filter((row) => {
-        const rowMatchId = row.match_id || row.Match?.id;
-        if (!rowMatchId || !proMatchIds.has(rowMatchId)) return true;
-        return !isLeadershipRoleGroupName(
-          row.RefereeRole?.RefereeRoleGroup?.name
-        );
-      });
-    const beforeForNotifications = filterNotifications(beforeDetails);
-    const afterForNotifications = filterNotifications(afterDetails);
-
-    const affectedUserIds = collectChangedUserIds(
-      beforeForNotifications,
-      afterForNotifications
-    );
-    if (affectedUserIds.size && statusInfo.confirmed && matchIds.length) {
-      const rowsToRepublish = await MatchReferee.findAll({
-        where: {
-          match_id: { [Op.in]: matchIds },
-          user_id: { [Op.in]: Array.from(affectedUserIds.values()) },
-          status_id: statusInfo.confirmed.id,
-        },
-        attributes: ['id', 'match_id'],
-        include: [
-          {
-            model: RefereeRole,
-            attributes: ['id', 'referee_role_group_id'],
-            required: false,
-          },
-        ],
-      });
-      const republishIds = rowsToRepublish
-        .filter((row) => {
-          const groupId = row.RefereeRole?.referee_role_group_id || null;
-          return !(
-            groupId &&
-            leadershipGroupIds.has(groupId) &&
-            proMatchIds.has(row.match_id)
+  if (!isPastDatePublication) {
+    try {
+      const afterDetails = matchIds.length
+        ? await fetchAssignmentNotificationDetails({
+            matchIds,
+            roleGroupIds: uniqueGroupIds,
+            statusIds: assignedStatusIds,
+          })
+        : [];
+      const filterNotifications = (rows = []) =>
+        rows.filter((row) => {
+          const rowMatchId = row.match_id || row.Match?.id;
+          if (!rowMatchId || !proMatchIds.has(rowMatchId)) return true;
+          return !isLeadershipRoleGroupName(
+            row.RefereeRole?.RefereeRoleGroup?.name
           );
-        })
-        .map((row) => row.id)
-        .filter(Boolean);
-      if (republishIds.length) {
-        await MatchReferee.update(
-          {
-            status_id: statusInfo.published.id,
-            updated_by: actorId,
+        });
+      const beforeForNotifications = filterNotifications(beforeDetails);
+      const afterForNotifications = filterNotifications(afterDetails);
+
+      const affectedUserIds = collectChangedUserIds(
+        beforeForNotifications,
+        afterForNotifications
+      );
+      if (affectedUserIds.size && statusInfo.confirmed && matchIds.length) {
+        const rowsToRepublish = await MatchReferee.findAll({
+          where: {
+            match_id: { [Op.in]: matchIds },
+            user_id: { [Op.in]: Array.from(affectedUserIds.values()) },
+            status_id: statusInfo.confirmed.id,
           },
-          {
-            where: {
-              id: { [Op.in]: republishIds },
+          attributes: ['id', 'match_id'],
+          include: [
+            {
+              model: RefereeRole,
+              attributes: ['id', 'referee_role_group_id'],
+              required: false,
             },
-          }
-        );
+          ],
+        });
+        const republishIds = rowsToRepublish
+          .filter((row) => {
+            const groupId = row.RefereeRole?.referee_role_group_id || null;
+            return !(
+              groupId &&
+              leadershipGroupIds.has(groupId) &&
+              proMatchIds.has(row.match_id)
+            );
+          })
+          .map((row) => row.id)
+          .filter(Boolean);
+        if (republishIds.length) {
+          await MatchReferee.update(
+            {
+              status_id: statusInfo.published.id,
+              updated_by: actorId,
+            },
+            {
+              where: {
+                id: { [Op.in]: republishIds },
+              },
+            }
+          );
+        }
       }
+      notificationStats = await notifyRefereeAssignmentChanges({
+        before: beforeForNotifications,
+        after: afterForNotifications,
+        actorId,
+      });
+    } catch (err) {
+      logger.error('Referee assignment notifications failed', {
+        error: err?.message || String(err),
+        date: normalized,
+      });
+      notificationStats = {
+        ...notificationStats,
+        error: 'notification_failed',
+      };
     }
-    notificationStats = await notifyRefereeAssignmentChanges({
-      before: beforeForNotifications,
-      after: afterForNotifications,
-      actorId,
-    });
-  } catch (err) {
-    logger.error('Referee assignment notifications failed', {
-      error: err?.message || String(err),
-      date: normalized,
-    });
-    notificationStats = { ...notificationStats, error: 'notification_failed' };
   }
   return {
     date: normalized,

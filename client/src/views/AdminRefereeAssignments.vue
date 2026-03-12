@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { apiFetch } from '../api';
 
+const MSK_OFFSET_MS = 3 * 60 * 60 * 1000;
 const roleGroups = ref([]);
 const matches = ref([]);
 const referees = ref([]);
@@ -25,7 +26,9 @@ const publishSuccess = ref('');
 const showPublishConfirm = ref(false);
 const saveRevisionByKey = ref({});
 const draftVersionByMatchGroup = ref({});
+const currentMoscowDay = ref(moscowTodayKey());
 const saveDebounceTimers = new Map();
+let moscowDayRefreshTimer = null;
 let matchesLoadSeq = 0;
 let refereesLoadSeq = 0;
 
@@ -39,8 +42,30 @@ const canAssignGroup = computed(() => selectedGroups.value.length > 0);
 const selectedGroupIds = computed(
   () => new Set(selectedGroups.value.filter(Boolean))
 );
+const isPastSelectedDate = computed(() => {
+  const selected = String(selectedDate.value || '').trim();
+  return Boolean(selected) && selected < currentMoscowDay.value;
+});
 const selectedRoleGroups = computed(() =>
   roleGroups.value.filter((g) => selectedGroupIds.value.has(g.id))
+);
+const refereesPanelTitle = computed(() =>
+  isPastSelectedDate.value ? 'Судьи' : 'Доступные судьи'
+);
+const refereesPanelHint = computed(() =>
+  isPastSelectedDate.value
+    ? 'Для прошедших дат занятость не ограничивает назначение.'
+    : 'Показаны судьи с отмеченной доступностью на выбранную дату.'
+);
+const refereesLoadingText = computed(() =>
+  isPastSelectedDate.value
+    ? 'Обновляем список судей...'
+    : 'Обновляем доступность...'
+);
+const refereesEmptyText = computed(() =>
+  isPastSelectedDate.value
+    ? 'Нет судей для выбранной даты.'
+    : 'Нет свободных судей на выбранную дату.'
 );
 
 const roleGroupByRoleId = computed(() => {
@@ -183,15 +208,22 @@ const lastFirstCounts = computed(() => {
 const availableReferees = computed(() => {
   const countsMap = assignmentCountsByReferee.value;
   const roleAliases = allowedRefereeRoles.value;
+  const ignoreAvailability = isPastSelectedDate.value;
   return referees.value
     .filter((ref) => {
+      if (!ignoreAvailability) {
+        const availability = resolveRefereeAvailabilityForDate(
+          ref,
+          selectedDate.value
+        );
+        const status = availability?.status;
+        if (!availability?.preset) return false;
+        if (status !== 'FREE' && status !== 'PARTIAL') return false;
+      }
       const availability = resolveRefereeAvailabilityForDate(
         ref,
         selectedDate.value
       );
-      const status = availability?.status;
-      if (!availability?.preset) return false;
-      if (status !== 'FREE' && status !== 'PARTIAL') return false;
       if (!roleAliases.size) return true;
       const refRoles = new Set(ref.roles || []);
       return Array.from(roleAliases).some((alias) => refRoles.has(alias));
@@ -261,6 +293,65 @@ function resolveRefereeAvailabilityForDate(
     if (byDate && byDate[normalizedDate]) return byDate[normalizedDate];
   }
   return referee?.availability || null;
+}
+
+function moscowTodayKey() {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Moscow',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(new Date());
+    const byType = Object.fromEntries(
+      parts.map((part) => [part.type, part.value])
+    );
+    if (byType.year && byType.month && byType.day) {
+      return `${byType.year}-${byType.month}-${byType.day}`;
+    }
+  } catch (_) {
+    // fall through to local date fallback
+  }
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function msUntilNextMoscowMidnight() {
+  const now = new Date();
+  const moscowNow = new Date(now.getTime() + MSK_OFFSET_MS);
+  const nextMidnightUtcMs =
+    Date.UTC(
+      moscowNow.getUTCFullYear(),
+      moscowNow.getUTCMonth(),
+      moscowNow.getUTCDate() + 1,
+      0,
+      0,
+      5,
+      0
+    ) - MSK_OFFSET_MS;
+  return Math.max(1000, nextMidnightUtcMs - now.getTime());
+}
+
+function refreshCurrentMoscowDay() {
+  currentMoscowDay.value = moscowTodayKey();
+}
+
+function scheduleMoscowDayRefresh() {
+  if (typeof window === 'undefined') return;
+  if (moscowDayRefreshTimer) {
+    window.clearTimeout(moscowDayRefreshTimer);
+  }
+  moscowDayRefreshTimer = window.setTimeout(() => {
+    refreshCurrentMoscowDay();
+    scheduleMoscowDayRefresh();
+  }, msUntilNextMoscowMidnight());
+}
+
+function shouldIgnoreAvailabilityForDate(dateKey = selectedDate.value) {
+  const normalized = String(dateKey || '').trim();
+  return Boolean(normalized) && normalized < currentMoscowDay.value;
 }
 
 function refereeDisplayName(referee) {
@@ -447,9 +538,7 @@ function resetMatchFlags(match) {
 }
 
 function todayKey() {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+  return moscowTodayKey();
 }
 
 function loadStoredDate() {
@@ -786,6 +875,9 @@ function hasConflict(userId, matchId, startSeconds, endSeconds) {
 function isRefereeAvailable(referee, match) {
   if (!referee) return false;
   if (!match || match.schedule_missing || match.duration_missing) return false;
+  if (shouldIgnoreAvailabilityForDate(match?.msk_date || selectedDate.value)) {
+    return true;
+  }
   const availability = resolveRefereeAvailabilityForDate(
     referee,
     selectedDate.value
@@ -1254,8 +1346,12 @@ async function loadReferees() {
     const params = new URLSearchParams({
       date: selectedDate.value,
       limit: '0',
-      require_preset_for_date: '1',
     });
+    if (isPastSelectedDate.value) {
+      params.set('ignore_availability_for_date', '1');
+    } else {
+      params.set('require_preset_for_date', '1');
+    }
     const data = await apiFetch(`/referee-assignments/referees?${params}`);
     if (requestSeq !== refereesLoadSeq) return;
     referees.value = data.referees || [];
@@ -1283,6 +1379,11 @@ watch(selectedDate, () => {
   publishSuccess.value = '';
 });
 
+watch(currentMoscowDay, (next, prev) => {
+  if (!next || next === prev) return;
+  loadReferees();
+});
+
 watch(
   selectedGroups,
   () => {
@@ -1308,6 +1409,8 @@ watch(
 );
 
 onMounted(() => {
+  refreshCurrentMoscowDay();
+  scheduleMoscowDayRefresh();
   loadGroups();
   loadCompetitionTypes();
   loadMatches();
@@ -1317,6 +1420,10 @@ onMounted(() => {
 onUnmounted(() => {
   saveDebounceTimers.forEach((timer) => clearTimeout(timer));
   saveDebounceTimers.clear();
+  if (typeof window !== 'undefined' && moscowDayRefreshTimer) {
+    window.clearTimeout(moscowDayRefreshTimer);
+    moscowDayRefreshTimer = null;
+  }
 });
 </script>
 
@@ -1683,22 +1790,22 @@ onUnmounted(() => {
         <div class="card section-card tile fade-in shadow-sm referee-panel">
           <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <h2 class="h6 mb-0">Доступные судьи</h2>
+              <h2 class="h6 mb-0">{{ refereesPanelTitle }}</h2>
               <span class="badge bg-light text-dark">
                 {{ availableReferees.length }}
               </span>
             </div>
             <div class="text-muted small mb-2">
-              Показаны судьи с отмеченной доступностью на выбранную дату.
+              {{ refereesPanelHint }}
             </div>
             <div v-if="loadingReferees" class="text-muted small">
-              Обновляем доступность...
+              {{ refereesLoadingText }}
             </div>
             <div v-else-if="refereesLoadError" class="text-danger small">
               {{ refereesLoadError }}
             </div>
             <div v-else-if="!availableReferees.length" class="text-muted small">
-              Нет свободных судей на выбранную дату.
+              {{ refereesEmptyText }}
             </div>
             <ul v-else class="list-unstyled referee-list">
               <li

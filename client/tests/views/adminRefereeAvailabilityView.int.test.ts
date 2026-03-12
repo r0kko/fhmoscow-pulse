@@ -113,7 +113,7 @@ function matchesSurnamePrioritySearch(
   tokens: string[]
 ) {
   if (!tokens.length) return true;
-  const [lastToken, firstToken, patronymicToken] = tokens;
+  const [lastToken = '', firstToken, patronymicToken] = tokens;
   const lastName = normalizeSearchText(user.last_name || '');
   const firstName = normalizeSearchText(user.first_name || '');
   const patronymic = normalizeSearchText(user.patronymic || '');

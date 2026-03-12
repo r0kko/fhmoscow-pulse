@@ -209,6 +209,126 @@ describe('AdminRefereeAssignments view', () => {
     ).toBe(true);
   });
 
+  it('shows all referees for past dates and skips strict availability flag', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2030-01-02T12:00:00+03:00'));
+    const date = '2030-01-01';
+    window.localStorage.setItem('adminRefereeAssignmentsDate', date);
+
+    apiFetchMock.mockImplementation(async (path: string) => {
+      const url = new URL(path, 'https://lk.fhmoscow.com');
+      if (url.pathname === '/referee-assignments/role-groups') {
+        return { groups: roleGroups };
+      }
+      if (url.pathname === '/tournaments/settings-options') {
+        return { competition_types: [] };
+      }
+      if (url.pathname === '/referee-assignments/matches') {
+        return { matches: [makeMatch(date)] };
+      }
+      if (url.pathname === '/referee-assignments/referees') {
+        return {
+          referees: [
+            makeReferee({
+              id: 'u1',
+              lastName: 'Иванов',
+              firstName: 'Иван',
+              patronymic: 'Иванович',
+              date,
+              availabilityOnDate: { status: 'BUSY', preset: true },
+            }),
+            makeReferee({
+              id: 'u2',
+              lastName: 'Петров',
+              firstName: 'Пётр',
+              patronymic: 'Петрович',
+              date,
+              availabilityOnDate: { status: 'FREE', preset: false },
+            }),
+          ],
+        };
+      }
+      return {};
+    });
+
+    const { container } = await renderView();
+
+    await waitFor(() => {
+      const panelText =
+        container.querySelector('.referee-panel')?.textContent || '';
+      expect(panelText).toContain('Иванов');
+      expect(panelText).toContain('Петров');
+    });
+
+    const select = container.querySelector(
+      '.referee-select'
+    ) as HTMLSelectElement;
+    expect(select).not.toBeNull();
+    const options = Array.from(select.querySelectorAll('option')).map((opt) =>
+      (opt.textContent || '').trim()
+    );
+    expect(options).toContain('Иванов Иван');
+    expect(options).toContain('Петров Пётр');
+
+    const refereeCalls = apiFetchMock.mock.calls
+      .map(([path]) => String(path))
+      .filter((path) => path.includes('/referee-assignments/referees?'));
+    expect(refereeCalls.length).toBeGreaterThan(0);
+    expect(
+      refereeCalls.some((path) => path.includes('require_preset_for_date=1'))
+    ).toBe(false);
+    expect(
+      refereeCalls.some((path) =>
+        path.includes('ignore_availability_for_date=1')
+      )
+    ).toBe(true);
+  });
+
+  it('refreshes past-date mode after Moscow midnight without page reload', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2030-01-01T23:59:50+03:00'));
+    const date = '2030-01-01';
+    window.localStorage.setItem('adminRefereeAssignmentsDate', date);
+
+    apiFetchMock.mockImplementation(async (path: string) => {
+      const url = new URL(path, 'https://lk.fhmoscow.com');
+      if (url.pathname === '/referee-assignments/role-groups') {
+        return { groups: roleGroups };
+      }
+      if (url.pathname === '/tournaments/settings-options') {
+        return { competition_types: [] };
+      }
+      if (url.pathname === '/referee-assignments/matches') {
+        return { matches: [makeMatch(date)] };
+      }
+      if (url.pathname === '/referee-assignments/referees') {
+        return { referees: [] };
+      }
+      return {};
+    });
+
+    await renderView();
+
+    await waitFor(() => {
+      expect(
+        apiFetchMock.mock.calls.some(([path]) =>
+          String(path).includes('require_preset_for_date=1')
+        )
+      ).toBe(true);
+    });
+
+    vi.setSystemTime(new Date('2030-01-02T00:00:10+03:00'));
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    await waitFor(() => {
+      expect(
+        apiFetchMock.mock.calls.some(([path]) =>
+          String(path).includes('ignore_availability_for_date=1')
+        )
+      ).toBe(true);
+    });
+  });
+
   it('formats referee names by uniqueness rules in assignment cells', async () => {
     const date = '2030-01-01';
     window.localStorage.setItem('adminRefereeAssignmentsDate', date);

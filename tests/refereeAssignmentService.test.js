@@ -482,6 +482,50 @@ test('listRefereesByDate default mode keeps backward-compatible availability beh
   expect(result.referees.map((item) => item.id)).toEqual(['u1', 'u2']);
 });
 
+test('listRefereesByDate can ignore availability filter for selected date', async () => {
+  userFindAllMock.mockResolvedValue([
+    {
+      id: 'u1',
+      last_name: 'Иванов',
+      first_name: 'Иван',
+      patronymic: 'Иванович',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+    {
+      id: 'u2',
+      last_name: 'Петров',
+      first_name: 'Пётр',
+      patronymic: 'Петрович',
+      Roles: [{ alias: 'REFEREE' }],
+      UserStatus: { alias: 'ACTIVE' },
+    },
+  ]);
+  listForUsersMock.mockResolvedValue([
+    {
+      user_id: 'u1',
+      date: TEST_DATE,
+      AvailabilityType: { alias: 'BUSY' },
+      from_time: null,
+      to_time: null,
+    },
+  ]);
+
+  const result = await service.listRefereesByDate({
+    date: TEST_DATE,
+    ignoreAvailabilityForDate: true,
+  });
+
+  expect(result.referees).toHaveLength(2);
+  expect(result.referees.map((item) => item.id)).toEqual(['u1', 'u2']);
+  expect(result.referees[0].availability_by_date?.[TEST_DATE]).toEqual(
+    expect.objectContaining({
+      status: 'BUSY',
+      preset: true,
+    })
+  );
+});
+
 test('updateMatchReferees saves draft assignments', async () => {
   matchFindByPkMock.mockResolvedValue(
     makeMatch({ match_duration_minutes: 60 })
@@ -613,6 +657,55 @@ test('updateMatchReferees rejects unavailable referees', async () => {
       { roleGroupId: 'rg1' }
     )
   ).rejects.toMatchObject({ code: 'referee_unavailable' });
+});
+
+test('updateMatchReferees allows unavailable referees for past matches', async () => {
+  jest
+    .useFakeTimers()
+    .setSystemTime(new Date(`${TEST_DATE_NEXT}T09:00:00+03:00`));
+  try {
+    matchFindByPkMock.mockResolvedValue(makeMatch());
+    tournamentGroupRefereeFindAllMock.mockResolvedValue([
+      { tournament_group_id: 'tg1', referee_role_id: 'r1', count: 1 },
+    ]);
+    userFindAllMock.mockResolvedValue([
+      {
+        id: 'u1',
+        Roles: [{ alias: 'REFEREE' }],
+        UserStatus: { alias: 'ACTIVE' },
+      },
+    ]);
+    listForUsersMock.mockResolvedValue([
+      { user_id: 'u1', AvailabilityType: { alias: 'BUSY' } },
+    ]);
+    matchRefereeFindAllMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeAssignment('DRAFT')]);
+    matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+    const result = await service.updateMatchReferees(
+      'm1',
+      [{ role_id: 'r1', user_id: 'u1' }],
+      'admin',
+      { roleGroupId: 'rg1' }
+    );
+
+    expect(listForUsersMock).not.toHaveBeenCalled();
+    expect(matchRefereeBulkCreateMock).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          match_id: 'm1',
+          referee_role_id: 'r1',
+          user_id: 'u1',
+          status_id: draftStatus.id,
+        }),
+      ],
+      expect.objectContaining({ transaction: expect.any(Object) })
+    );
+    expect(result.assignments[0].status).toBe('DRAFT');
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('updateMatchReferees skips availability checks for pro leadership assignments', async () => {
@@ -1371,6 +1464,123 @@ test('publishAssignmentsForDate clears omitted role while publishing another rol
       cancelled: expect.any(Number),
     })
   );
+});
+
+test('publishAssignmentsForDate auto-confirms past-date changes without notifications', async () => {
+  jest
+    .useFakeTimers()
+    .setSystemTime(new Date(`${TEST_DATE_NEXT}T09:00:00+03:00`));
+  try {
+    matchFindAllMock.mockResolvedValue([makeMatch()]);
+    const group = makeRoleGroup({ id: 'rg1', name: 'Судьи в поле' });
+    const role = makeRole(group, { id: 'r1', name: 'Главный судья' });
+    tournamentGroupRefereeFindAllMock.mockResolvedValue([
+      {
+        tournament_group_id: 'tg1',
+        referee_role_id: role.id,
+        count: 1,
+        RefereeRole: role,
+      },
+    ]);
+    matchRefereeFindAllMock.mockResolvedValue([
+      {
+        match_id: 'm1',
+        referee_role_id: role.id,
+        user_id: 'u1',
+        status_id: publishedStatus.id,
+      },
+      {
+        match_id: 'm1',
+        referee_role_id: role.id,
+        user_id: 'u1',
+        status_id: draftStatus.id,
+      },
+    ]);
+    matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+    const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+      roleGroupIds: ['rg1'],
+    });
+
+    const confirmPublishedCall = matchRefereeUpdateMock.mock.calls.find(
+      ([payload, options]) =>
+        payload?.status_id === confirmedStatus.id &&
+        options?.where?.[Op.or]?.some(
+          (clause) =>
+            clause.match_id === 'm1' &&
+            clause.referee_role_id === role.id &&
+            clause.status_id === publishedStatus.id
+        )
+    );
+    expect(confirmPublishedCall).toBeDefined();
+    expect(result.published_matches).toEqual(['m1']);
+    expect(result.notifications).toEqual({
+      recipients: 0,
+      queued: 0,
+      failed: 0,
+      published: 0,
+      cancelled: 0,
+      skipped_no_email: 0,
+      skipped_duplicate: 0,
+    });
+    expect(matchRefereeNotificationBulkCreateMock).not.toHaveBeenCalled();
+    expect(matchRefereeNotificationUpdateMock).not.toHaveBeenCalled();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('publishAssignmentsForDate keeps past-date publication working without confirmed status', async () => {
+  jest
+    .useFakeTimers()
+    .setSystemTime(new Date(`${TEST_DATE_NEXT}T09:00:00+03:00`));
+  try {
+    matchRefereeStatusFindAllMock.mockResolvedValue([
+      draftStatus,
+      publishedStatus,
+    ]);
+    matchFindAllMock.mockResolvedValue([makeMatch()]);
+    const group = makeRoleGroup({ id: 'rg1', name: 'Судьи в поле' });
+    const role = makeRole(group, { id: 'r1', name: 'Главный судья' });
+    tournamentGroupRefereeFindAllMock.mockResolvedValue([
+      {
+        tournament_group_id: 'tg1',
+        referee_role_id: role.id,
+        count: 1,
+        RefereeRole: role,
+      },
+    ]);
+    matchRefereeFindAllMock.mockResolvedValue([
+      {
+        match_id: 'm1',
+        referee_role_id: role.id,
+        user_id: 'u1',
+        status_id: draftStatus.id,
+      },
+    ]);
+    matchRefereeDraftClearFindAllMock.mockResolvedValue([]);
+
+    const result = await service.publishAssignmentsForDate(TEST_DATE, 'admin', {
+      roleGroupIds: ['rg1'],
+    });
+
+    const publishUpdateCall = matchRefereeUpdateMock.mock.calls.find(
+      ([payload]) => payload?.status_id === publishedStatus.id
+    );
+    expect(publishUpdateCall).toBeDefined();
+    expect(result.published_matches).toEqual(['m1']);
+    expect(result.notifications).toEqual({
+      recipients: 0,
+      queued: 0,
+      failed: 0,
+      published: 0,
+      cancelled: 0,
+      skipped_no_email: 0,
+      skipped_duplicate: 0,
+    });
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('listAssignmentsForUser returns published assignments grouped by match', async () => {

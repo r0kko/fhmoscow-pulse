@@ -1489,15 +1489,6 @@ async function retireRefereeTariffRule(tournamentId, tariffId, actorId = null) {
   return runTariffAction(tournamentId, tariffId, 'RETIRE', actorId);
 }
 
-async function deleteRefereeTariffRule(tournamentId, tariffId, actorId = null) {
-  return updateRefereeTariffRule(
-    tournamentId,
-    tariffId,
-    { status: 'RETIRED' },
-    actorId
-  );
-}
-
 async function listGroundTravelRates({
   groundId,
   page = 1,
@@ -1740,15 +1731,6 @@ async function updateGroundTravelRate(
   });
 
   return reloaded;
-}
-
-async function deleteGroundTravelRate(groundId, rateId, actorId = null) {
-  return updateGroundTravelRate(
-    groundId,
-    rateId,
-    { status: 'RETIRED' },
-    actorId
-  );
 }
 
 async function getTournamentPaymentsDashboard({

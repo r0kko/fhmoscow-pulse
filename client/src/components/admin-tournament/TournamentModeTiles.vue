@@ -58,7 +58,7 @@ function tileTo(mode: string) {
     >
       <BaseTile
         :to="tileTo(tile.key)"
-        :aria-label="`Открыть раздел ${tile.title}`"
+        v-bind="{ ariaLabel: `Открыть раздел ${tile.title}` }"
         :extra-class="[
           'h-100 mode-tile',
           props.activeMode === tile.key ? 'mode-tile--active' : '',

@@ -64,11 +64,15 @@ export default {
         competition_alias,
         only_leagues_access,
         require_preset_for_date,
+        ignore_availability_for_date,
       } = req.query;
       const onlyLeaguesAccess =
         only_leagues_access === '1' || only_leagues_access === 'true';
       const requirePresetForDate =
         require_preset_for_date === '1' || require_preset_for_date === 'true';
+      const ignoreAvailabilityForDate =
+        ignore_availability_for_date === '1' ||
+        ignore_availability_for_date === 'true';
       const data = await refereeAssignmentService.listRefereesByDate({
         dateKey: date,
         from,
@@ -78,6 +82,7 @@ export default {
         competitionAlias: competition_alias || '',
         onlyLeaguesAccess,
         requirePresetForDate,
+        ignoreAvailabilityForDate,
         search: search || '',
         limit,
       });

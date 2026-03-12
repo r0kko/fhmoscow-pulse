@@ -41,6 +41,10 @@ export const refereeAssignmentsListRefereesRules = [
     .optional({ nullable: true })
     .isIn(['0', '1', 'true', 'false'])
     .withMessage('invalid_require_preset_for_date'),
+  query('ignore_availability_for_date')
+    .optional({ nullable: true })
+    .isIn(['0', '1', 'true', 'false'])
+    .withMessage('invalid_ignore_availability_for_date'),
   query('only_leagues_access')
     .optional({ nullable: true })
     .isIn(['0', '1', 'true', 'false'])

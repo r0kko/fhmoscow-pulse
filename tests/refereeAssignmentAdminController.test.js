@@ -98,6 +98,7 @@ test('listReferees passes filters', async () => {
     competitionAlias: 'PRO',
     onlyLeaguesAccess: true,
     requirePresetForDate: false,
+    ignoreAvailabilityForDate: false,
     search: 'Иванов',
     limit: undefined,
   });
@@ -125,6 +126,35 @@ test('listReferees passes strict availability flag', async () => {
     competitionAlias: '',
     onlyLeaguesAccess: false,
     requirePresetForDate: true,
+    ignoreAvailabilityForDate: false,
+    search: '',
+    limit: undefined,
+  });
+  expect(res.json).toHaveBeenCalledWith({ referees: [] });
+});
+
+test('listReferees passes ignore availability flag', async () => {
+  listRefereesMock.mockResolvedValue({ referees: [] });
+  const res = mockRes();
+  await controller.listReferees(
+    {
+      query: {
+        date: '2024-02-10',
+        ignore_availability_for_date: '1',
+      },
+    },
+    res
+  );
+  expect(listRefereesMock).toHaveBeenCalledWith({
+    dateKey: '2024-02-10',
+    from: undefined,
+    to: undefined,
+    roleGroupId: null,
+    roleAlias: undefined,
+    competitionAlias: '',
+    onlyLeaguesAccess: false,
+    requirePresetForDate: false,
+    ignoreAvailabilityForDate: true,
     search: '',
     limit: undefined,
   });
