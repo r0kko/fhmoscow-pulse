@@ -20,6 +20,7 @@ const {
   cleanPassport,
   findBankByBic,
   findOrganizationByInn,
+  findOrganizationsByInn,
 } = await import('../src/services/dadataService.js');
 
 test('suggestFio returns array from API', async () => {
@@ -110,6 +111,24 @@ test('findOrganizationByInn returns first suggestion', async () => {
     })
   );
   expect(res).toEqual({ value: 'org' });
+});
+
+test('findOrganizationsByInn returns all suggestions', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        suggestions: [{ value: 'org-1' }, { value: 'org-2' }],
+      }),
+  });
+  const res = await findOrganizationsByInn('7707083893');
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/findById/party'),
+    expect.objectContaining({
+      body: JSON.stringify({ query: '7707083893', type: 'LEGAL' }),
+    })
+  );
+  expect(res).toEqual([{ value: 'org-1' }, { value: 'org-2' }]);
 });
 
 test('returns null when token missing', async () => {

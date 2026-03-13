@@ -17,6 +17,7 @@ import PageNav from '../components/PageNav.vue';
 import DocumentSignModal from '../components/DocumentSignModal.vue';
 import { useToast } from '../utils/toast';
 import { loadPageSize, savePageSize } from '../utils/pageSize';
+import { documentStatusBadgeClass } from '../utils/documentStatus';
 import BaseTile from '../components/BaseTile.vue';
 import { auth } from '../auth';
 import { hasRole, REFEREE_ROLES } from '../utils/roles';
@@ -223,18 +224,6 @@ function cardInteractionBindings(doc) {
     },
   };
 }
-
-const statusBadge = computed(() => (alias) => {
-  switch (alias) {
-    case 'SIGNED':
-      return 'bg-success-subtle text-success border';
-    case 'AWAITING_SIGNATURE':
-      return 'bg-warning-subtle text-warning border';
-    case 'CREATED':
-    default:
-      return 'bg-secondary-subtle text-secondary border';
-  }
-});
 
 const signing = ref('');
 const signModal = ref(null);
@@ -609,7 +598,9 @@ watch(filteredDocuments, () => {
                                 <span
                                   v-if="d.status?.alias"
                                   class="badge"
-                                  :class="statusBadge(d.status.alias)"
+                                  :class="
+                                    documentStatusBadgeClass(d.status.alias)
+                                  "
                                 >
                                   {{ d.status?.name }}
                                 </span>
@@ -684,7 +675,9 @@ watch(filteredDocuments, () => {
                                 <span
                                   v-if="d.status?.alias"
                                   class="badge"
-                                  :class="statusBadge(d.status.alias)"
+                                  :class="
+                                    documentStatusBadgeClass(d.status.alias)
+                                  "
                                 >
                                   {{ d.status?.name }}
                                 </span>

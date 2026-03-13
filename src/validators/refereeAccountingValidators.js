@@ -270,12 +270,48 @@ export const accrualActionRules = [
 ];
 
 export const accrualBulkActionRules = [
+  body('selection_mode')
+    .optional({ nullable: true })
+    .isIn(['explicit', 'filtered'])
+    .withMessage('invalid_accrual_selection_mode'),
   body('action_alias')
     .isString()
     .matches(aliasRule)
     .withMessage('invalid_accrual_action'),
-  body('ids').isArray({ min: 1 }).withMessage('bulk_ids_required'),
-  body('ids.*').isUUID().withMessage('bulk_ids_invalid'),
+  body('ids').optional({ nullable: true }).isArray({ min: 1 }).withMessage('bulk_ids_required'),
+  body('ids.*').optional({ nullable: true }).isUUID().withMessage('bulk_ids_invalid'),
+  body('filters').optional({ nullable: true }).isObject(),
+  body('filters.tournament_id').optional({ nullable: true }).isUUID(),
+  body('filters.status')
+    .optional({ nullable: true })
+    .isString()
+    .matches(aliasRule)
+    .withMessage('invalid_accrual_status'),
+  body('filters.source')
+    .optional({ nullable: true })
+    .isString()
+    .matches(aliasRule)
+    .withMessage('invalid_accrual_source'),
+  body('filters.number').optional({ nullable: true }).isString(),
+  body('filters.fare_code')
+    .optional({ nullable: true })
+    .isString()
+    .matches(fareCodeRule)
+    .withMessage('invalid_fare_code'),
+  body('filters.referee_role_id').optional({ nullable: true }).isUUID(),
+  body('filters.stage_group_id').optional({ nullable: true }).isUUID(),
+  body('filters.ground_id').optional({ nullable: true }).isUUID(),
+  optionalDateRule('filters.date_from', 'invalid_date_from'),
+  optionalDateRule('filters.date_to', 'invalid_date_to'),
+  optionalRubAmountBodyRule('filters.amount_from', 'invalid_amount_from'),
+  optionalRubAmountBodyRule('filters.amount_to', 'invalid_amount_to'),
+  body('filters.search').optional({ nullable: true }).isString(),
+  body().custom((payload) => {
+    const mode = String(payload?.selection_mode || 'explicit').toLowerCase();
+    if (mode === 'filtered') return true;
+    if (Array.isArray(payload?.ids) && payload.ids.length) return true;
+    throw new Error('bulk_ids_required');
+  }),
   body('comment')
     .optional({ nullable: true })
     .isString()
@@ -310,8 +346,44 @@ export const accrualDeleteRules = [
 ];
 
 export const accrualBulkDeleteRules = [
-  body('ids').isArray({ min: 1 }).withMessage('bulk_ids_required'),
-  body('ids.*').isUUID().withMessage('bulk_ids_invalid'),
+  body('selection_mode')
+    .optional({ nullable: true })
+    .isIn(['explicit', 'filtered'])
+    .withMessage('invalid_accrual_selection_mode'),
+  body('ids').optional({ nullable: true }).isArray({ min: 1 }).withMessage('bulk_ids_required'),
+  body('ids.*').optional({ nullable: true }).isUUID().withMessage('bulk_ids_invalid'),
+  body('filters').optional({ nullable: true }).isObject(),
+  body('filters.tournament_id').optional({ nullable: true }).isUUID(),
+  body('filters.status')
+    .optional({ nullable: true })
+    .isString()
+    .matches(aliasRule)
+    .withMessage('invalid_accrual_status'),
+  body('filters.source')
+    .optional({ nullable: true })
+    .isString()
+    .matches(aliasRule)
+    .withMessage('invalid_accrual_source'),
+  body('filters.number').optional({ nullable: true }).isString(),
+  body('filters.fare_code')
+    .optional({ nullable: true })
+    .isString()
+    .matches(fareCodeRule)
+    .withMessage('invalid_fare_code'),
+  body('filters.referee_role_id').optional({ nullable: true }).isUUID(),
+  body('filters.stage_group_id').optional({ nullable: true }).isUUID(),
+  body('filters.ground_id').optional({ nullable: true }).isUUID(),
+  optionalDateRule('filters.date_from', 'invalid_date_from'),
+  optionalDateRule('filters.date_to', 'invalid_date_to'),
+  optionalRubAmountBodyRule('filters.amount_from', 'invalid_amount_from'),
+  optionalRubAmountBodyRule('filters.amount_to', 'invalid_amount_to'),
+  body('filters.search').optional({ nullable: true }).isString(),
+  body().custom((payload) => {
+    const mode = String(payload?.selection_mode || 'explicit').toLowerCase();
+    if (mode === 'filtered') return true;
+    if (Array.isArray(payload?.ids) && payload.ids.length) return true;
+    throw new Error('bulk_ids_required');
+  }),
   body('reason_code')
     .isString()
     .trim()

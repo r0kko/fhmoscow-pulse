@@ -163,6 +163,7 @@ beforeEach(() => {
     }),
   ]);
   refereeAccrualStatusTransitionFindAllMock.mockResolvedValue([]);
+  refereeAccrualDocumentFindAllMock.mockResolvedValue([]);
 
   queryMock.mockResolvedValue([{ last_seq: 1 }]);
   refereeAccrualDocumentCountMock.mockResolvedValue(0);
@@ -664,6 +665,77 @@ test('listRefereeAccrualDocuments extends search to original number and related 
         },
       },
     ])
+  );
+});
+
+test('applyRefereeAccrualActionBulk resolves filtered selection before processing', async () => {
+  refereeAccrualDocumentFindAndCountAllMock.mockResolvedValue({
+    rows: [{ id: 'doc-1' }],
+    count: 1,
+  });
+  refereeAccrualDocumentFindAllMock.mockResolvedValue([{ id: 'doc-1', total_amount_rub: '1200.00' }]);
+  refereeAccrualStatusTransitionFindOneMock.mockResolvedValue({
+    to_status_id: 'ds-accrued',
+  });
+
+  const lockedDoc = {
+    id: 'doc-1',
+    document_status_id: 'ds-draft',
+    created_by: 'maker-1',
+    get: jest.fn(() => ({
+      id: 'doc-1',
+      document_status_id: 'ds-draft',
+    })),
+    update: jest.fn(),
+  };
+  const loadedDoc = {
+    id: 'doc-1',
+    DocumentStatus: { alias: 'ACCRUED' },
+    get: jest.fn(() => ({
+      id: 'doc-1',
+      document_status_id: 'ds-accrued',
+    })),
+  };
+
+  refereeAccrualDocumentFindByPkMock
+    .mockResolvedValueOnce(lockedDoc)
+    .mockResolvedValueOnce(loadedDoc);
+  accountingAuditEventFindAllMock.mockResolvedValue([]);
+
+  const result = await service.applyRefereeAccrualActionBulk({
+    selectionMode: 'filtered',
+    filters: {
+      tournament_id: 'tour-1',
+      status: 'DRAFT',
+      search: 'Иванов',
+    },
+    actionAlias: 'APPROVE',
+    actorId: 'admin-1',
+  });
+
+  expect(refereeAccrualDocumentFindAndCountAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        tournament_id: 'tour-1',
+      }),
+    })
+  );
+  const listArgs = refereeAccrualDocumentFindAndCountAllMock.mock.calls[0][0];
+  expect(listArgs.where[Op.or]).toEqual(
+    expect.arrayContaining([
+      {
+        '$Referee.last_name$': {
+          [Op.iLike]: '%Иванов%',
+        },
+      },
+    ])
+  );
+  expect(result).toEqual(
+    expect.objectContaining({
+      total: 1,
+      success: 1,
+      failed: 0,
+    })
   );
 });
 
@@ -1311,8 +1383,19 @@ test('listTournamentPaymentRegistry aggregates accrued rows by referee and compu
   ]);
   expect(result.filter_options.taxation_types).toHaveLength(2);
   expect(queryMock).toHaveBeenNthCalledWith(
+    1,
+    expect.stringContaining(
+      'FROM taxation_types\n      WHERE deleted_at IS NULL'
+    ),
+    expect.objectContaining({
+      type: QueryTypes.SELECT,
+    })
+  );
+  expect(queryMock).toHaveBeenNthCalledWith(
     2,
-    expect.stringContaining('FROM referee_accrual_documents d'),
+    expect.stringContaining(
+      'LEFT JOIN taxation_types tax_type\n       ON tax_type.id = tax.taxation_type_id\n      AND tax_type.deleted_at IS NULL'
+    ),
     expect.objectContaining({
       replacements: expect.objectContaining({
         tournamentId: 'tour-1',
@@ -1326,7 +1409,10 @@ test('listTournamentPaymentRegistry aggregates accrued rows by referee and compu
 });
 
 test('exportTournamentPaymentRegistryXlsx returns workbook buffer and filename', async () => {
-  tournamentFindByPkMock.mockResolvedValue({ id: 'tour-1', name: 'Кубок Москвы' });
+  tournamentFindByPkMock.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
   queryMock
     .mockResolvedValueOnce([{ alias: 'PERSON', name: 'Физическое лицо' }])
     .mockResolvedValueOnce([

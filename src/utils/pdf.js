@@ -227,23 +227,44 @@ export async function applyESignStamp(doc, info) {
   // Draw a compact signature stamp anchored to the right, above the footer band
   const BRAND_BLUE = '#113867';
   const margin = 30;
-  const bandHeight = 44; // must match footer band
+  const bandHeight = Math.max(0, Number(info?.footerBandHeight ?? 44)); // must match footer band
+  const customMaxWidth = Number(info?.maxWidth || 0);
+  const rawStampWidthMax = Math.max(
+    220,
+    Number(info?.stampWidth || PDF_META?.stampWidth || 270)
+  );
+  const rawStampWidthMin = Math.max(
+    160,
+    Number(info?.stampWidthMin || PDF_META?.stampWidthMin || 220)
+  );
   // Stamp sizing (configurable)
-  const stampHeightBase = Math.max(56, PDF_META?.stampHeight || 66);
-  const stampWidthMax = Math.max(220, PDF_META?.stampWidth || 270);
-  const stampWidthMin = Math.max(160, PDF_META?.stampWidthMin || 220);
+  const stampHeightBase = Math.max(
+    56,
+    Number(info?.stampHeight || PDF_META?.stampHeight || 66)
+  );
+  const stampWidthMax = customMaxWidth
+    ? Math.max(140, Math.min(rawStampWidthMax, customMaxWidth))
+    : rawStampWidthMax;
+  const stampWidthMin = customMaxWidth
+    ? Math.max(120, Math.min(rawStampWidthMin, customMaxWidth))
+    : rawStampWidthMin;
   const padX = Math.max(6, PDF_META?.stampPadX || 10);
   const padY = Math.max(4, PDF_META?.stampPadY || 8);
   const qrGap = Math.max(6, PDF_META?.stampGap || 10);
+  const showSignedAt = info?.showSignedAt !== false;
+  const showPageInfo = info?.showPageInfo !== false;
+  const title = String(info?.title || 'ДОКУМЕНТ ПОДПИСАН ЭП');
   // Inner content box initial (excludes outer padding). Width may shrink.
   let stampWidth = stampWidthMax;
   let innerWidth = stampWidth - 2 * padX;
   // Prepare texts to measure available width for QR
-  const title = 'ДОКУМЕНТ ПОДПИСАН ЭП';
   const fio = String(info.fio || '');
   const signerPosition = String(info.signerPosition || '').trim();
   const signerDepartment = String(info.signerDepartment || '').trim();
   const signerOrganization = String(info.signerOrganization || '').trim();
+  const showSignerPosition = info?.showSignerPosition !== false;
+  const showSignerDepartment = info?.showSignerDepartment !== false;
+  const showSignerOrganization = info?.showSignerOrganization !== false;
   let dtText = '';
   try {
     const d = new Date(info.signedAt || Date.now());
@@ -286,13 +307,13 @@ export async function applyESignStamp(doc, info) {
   const textLines = [
     title,
     fio,
-    signerPosition || null,
-    signerDepartment || null,
-    signerOrganization || null,
-    dtLine,
-    pageInfo,
+    showSignerPosition ? signerPosition || null : null,
+    showSignerDepartment ? signerDepartment || null : null,
+    showSignerOrganization ? signerOrganization || null : null,
+    showSignedAt ? dtLine : null,
+    showPageInfo ? pageInfo : null,
   ].filter(Boolean);
-  const hasOrgDivider = Boolean(signerOrganization);
+  const hasOrgDivider = Boolean(showSignerOrganization && signerOrganization);
   const qrMin = Math.max(28, PDF_META?.qrMinSize || 40);
   // Measure max text width at 8pt, bold for title
   const prevFont = doc._font?.name || null;
@@ -301,7 +322,10 @@ export async function applyESignStamp(doc, info) {
   let textH = 9;
   let stampHeight = stampHeightBase;
   let innerHeight = stampHeight - 2 * padY;
-  let y = doc.page.height - margin - bandHeight - stampHeight - 6;
+  let y =
+    Number.isFinite(Number(info?.y)) && info?.y !== null
+      ? Number(info.y)
+      : doc.page.height - margin - bandHeight - stampHeight - 6;
   let qrSize = qrMin;
   let qrX = 0;
   let qrY = y + padY;
@@ -346,7 +370,10 @@ export async function applyESignStamp(doc, info) {
       dividerHeight;
     stampHeight = Math.max(stampHeightBase, 2 * padY + estimatedTextHeight);
     innerHeight = stampHeight - 2 * padY;
-    y = doc.page.height - margin - bandHeight - stampHeight - 6;
+    y =
+      Number.isFinite(Number(info?.y)) && info?.y !== null
+        ? Number(info.y)
+        : doc.page.height - margin - bandHeight - stampHeight - 6;
     qrY = y + padY;
     // Compute QR size bounds by height and remaining width in the inner box
     const qrMaxByHeight = Math.max(24, innerHeight);
@@ -430,7 +457,10 @@ export async function applyESignStamp(doc, info) {
       }
   }
   // Final positions after width adjustment
-  const x = doc.page.width - margin - stampWidth;
+  const x =
+    Number.isFinite(Number(info?.x)) && info?.x !== null
+      ? Number(info.x)
+      : doc.page.width - margin - stampWidth;
   qrX = Math.round(x + padX);
   qrY = Math.round(y + padY);
   textX = qrX + qrSize + qrGap;
@@ -682,4 +712,10 @@ export async function applyESignStamp(doc, info) {
     /* noop */
   }
   doc.fillColor('black');
+  return {
+    x,
+    y,
+    width: stampWidth,
+    height: stampHeight,
+  };
 }

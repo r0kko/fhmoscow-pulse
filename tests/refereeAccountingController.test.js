@@ -1,6 +1,8 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const applyRefereeAccrualActionMock = jest.fn();
+const applyRefereeAccrualActionBulkMock = jest.fn();
+const bulkDeleteRefereeAccrualDocumentsMock = jest.fn();
 const listTournamentPaymentRegistryMock = jest.fn();
 const exportTournamentPaymentRegistryXlsxMock = jest.fn();
 const toPublicAccrualDocumentMock = jest.fn();
@@ -9,6 +11,8 @@ const sendErrorMock = jest.fn();
 
 beforeEach(() => {
   applyRefereeAccrualActionMock.mockReset();
+  applyRefereeAccrualActionBulkMock.mockReset();
+  bulkDeleteRefereeAccrualDocumentsMock.mockReset();
   listTournamentPaymentRegistryMock.mockReset();
   exportTournamentPaymentRegistryXlsxMock.mockReset();
   toPublicAccrualDocumentMock.mockReset();
@@ -20,8 +24,11 @@ jest.unstable_mockModule('../src/services/refereeAccountingService.js', () => ({
   __esModule: true,
   default: {
     applyRefereeAccrualAction: applyRefereeAccrualActionMock,
+    applyRefereeAccrualActionBulk: applyRefereeAccrualActionBulkMock,
+    bulkDeleteRefereeAccrualDocuments: bulkDeleteRefereeAccrualDocumentsMock,
     listTournamentPaymentRegistry: listTournamentPaymentRegistryMock,
-    exportTournamentPaymentRegistryXlsx: exportTournamentPaymentRegistryXlsxMock,
+    exportTournamentPaymentRegistryXlsx:
+      exportTournamentPaymentRegistryXlsxMock,
   },
 }));
 
@@ -166,4 +173,78 @@ test('exportTournamentPaymentRegistryXlsx sanitizes non-ascii filename for heade
   expect(contentDispositionCall?.[1]).toContain("filename*=UTF-8''");
   expect(contentDispositionCall?.[1]).not.toContain('кубок');
   expect(send).toHaveBeenCalledWith(Buffer.from('xlsx'));
+});
+
+test('bulkAccrualAction forwards filtered selection payload', async () => {
+  const json = jest.fn();
+  const res = { json };
+  applyRefereeAccrualActionBulkMock.mockResolvedValue({ success: 2, failed: 0 });
+
+  await controller.bulkAccrualAction(
+    {
+      body: {
+        selection_mode: 'filtered',
+        filters: {
+          tournament_id: 'tour-1',
+          status: 'DRAFT',
+          search: 'Иванов',
+        },
+        action_alias: 'APPROVE',
+      },
+      user: { id: 'admin-1' },
+    },
+    res
+  );
+
+  expect(applyRefereeAccrualActionBulkMock).toHaveBeenCalledWith({
+    ids: undefined,
+    selectionMode: 'filtered',
+    filters: {
+      tournament_id: 'tour-1',
+      status: 'DRAFT',
+      search: 'Иванов',
+    },
+    actionAlias: 'APPROVE',
+    actorId: 'admin-1',
+    comment: undefined,
+  });
+  expect(json).toHaveBeenCalledWith({ success: 2, failed: 0 });
+});
+
+test('bulkDeleteAccruals forwards filtered selection payload', async () => {
+  const json = jest.fn();
+  const res = { json };
+  bulkDeleteRefereeAccrualDocumentsMock.mockResolvedValue({
+    success: 3,
+    failed: 1,
+  });
+
+  await controller.bulkDeleteAccruals(
+    {
+      body: {
+        selection_mode: 'filtered',
+        filters: {
+          tournament_id: 'tour-1',
+          status: 'ACCRUED',
+        },
+        reason_code: 'DEL_DRAFT',
+        comment: 'cleanup',
+      },
+      user: { id: 'admin-1' },
+    },
+    res
+  );
+
+  expect(bulkDeleteRefereeAccrualDocumentsMock).toHaveBeenCalledWith({
+    ids: undefined,
+    selectionMode: 'filtered',
+    filters: {
+      tournament_id: 'tour-1',
+      status: 'ACCRUED',
+    },
+    reasonCode: 'DEL_DRAFT',
+    comment: 'cleanup',
+    actorId: 'admin-1',
+  });
+  expect(json).toHaveBeenCalledWith({ success: 3, failed: 1 });
 });

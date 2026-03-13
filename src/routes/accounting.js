@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import validate from '../middlewares/validate.js';
 import controller from '../controllers/refereeAccountingController.js';
+import closingController from '../controllers/refereeClosingDocumentController.js';
 import {
   accrualListRules,
   accrualIdRules,
@@ -13,8 +14,18 @@ import {
   accrualDeleteRules,
   accrualBulkDeleteRules,
 } from '../validators/refereeAccountingValidators.js';
+import { closingTournamentListRules } from '../validators/refereeClosingDocumentValidators.js';
 
 const router = express.Router();
+
+router.get(
+  '/closing-documents/tournaments',
+  auth,
+  authorize('ADMINISTRATOR'),
+  closingTournamentListRules,
+  validate,
+  closingController.listClosingTournaments
+);
 
 router.get(
   '/ref-data',

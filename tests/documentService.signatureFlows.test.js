@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 
 const docFindByPk = jest.fn();
 const docStatusFindOne = jest.fn();
+const docTypeFindByPk = jest.fn();
 const userFindByPk = jest.fn();
 const fileUpload = jest.fn();
 const fileRemove = jest.fn();
@@ -22,7 +23,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   SignType: { findByPk: jest.fn(), findOne: signTypeFindOne },
   User: { findByPk: userFindByPk },
   File: {},
-  DocumentType: { findByPk: jest.fn() },
+  DocumentType: { findByPk: docTypeFindByPk },
   DocumentUserSign: {
     findOne: docUserSignFindOne,
     create: docUserSignCreate,
@@ -65,6 +66,7 @@ const { default: documentService } =
 beforeEach(() => {
   docFindByPk.mockReset();
   docStatusFindOne.mockReset();
+  docTypeFindByPk.mockReset();
   userFindByPk.mockReset();
   fileUpload.mockReset();
   fileRemove.mockReset();
@@ -74,6 +76,10 @@ beforeEach(() => {
   sendSignedMock.mockReset();
   docUserSignCount.mockReset();
   docUserSignCount.mockResolvedValue(0);
+  docUserSignFindOne.mockReset();
+  docUserSignCreate.mockReset();
+  signTypeFindOne.mockReset();
+  userSignFindOne.mockReset();
 });
 
 afterEach(() => {
@@ -224,4 +230,94 @@ test('signWithCode applies auto bank update and tolerates failures', async () =>
   );
   expect(docUserSignCreate).toHaveBeenCalled();
   expect(docUpdateMock).toHaveBeenCalled();
+});
+
+test('sign keeps closing act awaiting after FHMO signature', async () => {
+  const updateMock = jest.fn().mockResolvedValue({});
+  const doc = {
+    id: 'doc-closing-1',
+    recipient_id: 'ref-1',
+    sign_type_id: 'sign-1',
+    document_type_id: 'type-1',
+    SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+    DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
+    DocumentStatus: { alias: 'CREATED' },
+    get: jest.fn().mockReturnValue({ id: 'doc-closing-1' }),
+    update: updateMock,
+  };
+
+  docFindByPk.mockResolvedValue(doc);
+  docUserSignCount.mockResolvedValue(0);
+  docUserSignFindOne.mockResolvedValue(null);
+  userSignFindOne.mockResolvedValue({ sign_type_id: 'sign-1' });
+  docStatusFindOne.mockImplementation(({ where }) => {
+    if (where.alias === 'SIGNED') return Promise.resolve({ id: 10 });
+    if (where.alias === 'AWAITING_SIGNATURE')
+      return Promise.resolve({ id: 20 });
+    return Promise.resolve(null);
+  });
+  userFindByPk.mockResolvedValue({
+    id: 'ref-1',
+    email: 'ref@example.com',
+    last_name: 'Рефери',
+    first_name: 'Иван',
+    patronymic: 'Иванович',
+  });
+  docTypeFindByPk.mockResolvedValue({ alias: 'REFEREE_CLOSING_ACT' });
+
+  await documentService.sign({ id: 'fhmo-1' }, 'doc-closing-1');
+
+  expect(docUserSignCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      document_id: 'doc-closing-1',
+      user_id: 'fhmo-1',
+    })
+  );
+  expect(updateMock).toHaveBeenCalledWith({
+    status_id: 20,
+    updated_by: 'fhmo-1',
+  });
+  expect(sendAwaitingMock).toHaveBeenCalledTimes(1);
+  expect(sendSignedMock).not.toHaveBeenCalled();
+});
+
+test('sign completes closing act after referee signature', async () => {
+  const updateMock = jest.fn().mockResolvedValue({});
+  docFindByPk.mockResolvedValue({
+    id: 'doc-closing-2',
+    recipient_id: 'ref-2',
+    sign_type_id: 'sign-1',
+    document_type_id: 'type-1',
+    SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+    DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
+    DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
+    get: jest.fn().mockReturnValue({ id: 'doc-closing-2' }),
+    update: updateMock,
+  });
+  docUserSignCount.mockResolvedValue(1);
+  docUserSignFindOne.mockResolvedValue(null);
+  userSignFindOne.mockResolvedValue({ sign_type_id: 'sign-1' });
+  docStatusFindOne.mockImplementation(({ where }) => {
+    if (where.alias === 'SIGNED') return Promise.resolve({ id: 10 });
+    if (where.alias === 'AWAITING_SIGNATURE')
+      return Promise.resolve({ id: 20 });
+    return Promise.resolve(null);
+  });
+  userFindByPk.mockResolvedValue({
+    id: 'ref-2',
+    email: 'ref2@example.com',
+    last_name: 'Судья',
+    first_name: 'Петр',
+    patronymic: 'Петрович',
+  });
+  docTypeFindByPk.mockResolvedValue({ alias: 'REFEREE_CLOSING_ACT' });
+
+  await documentService.sign({ id: 'ref-2' }, 'doc-closing-2');
+
+  expect(updateMock).toHaveBeenCalledWith({
+    status_id: 10,
+    updated_by: 'ref-2',
+  });
+  expect(sendSignedMock).toHaveBeenCalledTimes(1);
+  expect(sendAwaitingMock).not.toHaveBeenCalled();
 });

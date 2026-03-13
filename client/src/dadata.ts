@@ -165,6 +165,7 @@ export async function cleanPassport(
 }
 
 export interface AddressData {
+  unrestricted_value?: string | null;
   postal_code?: string | null;
   country?: string | null;
   region?: string | null;
@@ -251,15 +252,45 @@ export interface OrganizationData {
 
 export type OrganizationSuggestion = DadataSuggestion<OrganizationData>;
 
+interface FindOrganizationResponse {
+  organization?: OrganizationSuggestion | null;
+  organizations?: OrganizationSuggestion[];
+}
+
+export async function findOrganizationsByInn(
+  inn: Nullable<string>,
+  options: DadataRequestOptions = {}
+): Promise<OrganizationSuggestion[]> {
+  if (!hasQuery(inn)) return [];
+  try {
+    const { organizations = [], organization = null } =
+      await postJson<FindOrganizationResponse>(
+        '/dadata/find-organization',
+        { inn: inn.trim() },
+        options
+      );
+    if (organizations.length) return organizations;
+    return organization ? [organization] : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function findOrganizationByInn(
   inn: Nullable<string>,
   options: DadataRequestOptions = {}
 ): Promise<OrganizationSuggestion | null> {
   if (!hasQuery(inn)) return null;
   try {
-    const { organization } = await postJson<{
-      organization: OrganizationSuggestion | null;
-    }>('/dadata/find-organization', { inn: inn.trim() }, options);
+    const { organization, organizations = [] } =
+      await postJson<FindOrganizationResponse>(
+        '/dadata/find-organization',
+        { inn: inn.trim() },
+        options
+      );
+    if (!organization && organizations.length) {
+      return organizations[0] ?? null;
+    }
     return organization ?? null;
   } catch {
     return null;

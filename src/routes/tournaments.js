@@ -4,6 +4,7 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/tournamentAdminController.js';
 import accountingController from '../controllers/refereeAccountingController.js';
+import closingController from '../controllers/refereeClosingDocumentController.js';
 import validate from '../middlewares/validate.js';
 import {
   tournamentCreateRules,
@@ -26,6 +27,12 @@ import {
   accrualIdRules,
   paymentRegistryListRules,
 } from '../validators/refereeAccountingValidators.js';
+import {
+  closingProfileUpdateRules,
+  closingPreviewRules,
+  closingListRules,
+  closingBulkSendRules,
+} from '../validators/refereeClosingDocumentValidators.js';
 import { uuidParam } from '../validators/paramsValidators.js';
 
 const router = express.Router();
@@ -225,6 +232,95 @@ router.get(
   paymentRegistryListRules,
   validate,
   accountingController.exportTournamentPaymentRegistryXlsx
+);
+router.get(
+  '/:tournamentId/referee-closing-profile',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  validate,
+  closingController.getTournamentClosingProfile
+);
+router.put(
+  '/:tournamentId/referee-closing-profile',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  closingProfileUpdateRules,
+  validate,
+  closingController.updateTournamentClosingProfile
+);
+router.get(
+  '/:tournamentId/referee-closing-documents',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  closingListRules,
+  validate,
+  closingController.listClosingDocuments
+);
+router.get(
+  '/:tournamentId/referee-closing-documents/:id',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
+  closingController.getClosingDocument
+);
+router.post(
+  '/:tournamentId/referee-closing-documents/preview',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  closingPreviewRules,
+  validate,
+  closingController.previewClosingDocuments
+);
+router.post(
+  '/:tournamentId/referee-closing-documents',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  closingPreviewRules,
+  validate,
+  closingController.createClosingDocuments
+);
+router.post(
+  '/:tournamentId/referee-closing-documents/:id/send',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
+  closingController.sendClosingDocument
+);
+router.post(
+  '/:tournamentId/referee-closing-documents/send-batch',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  closingBulkSendRules,
+  validate,
+  closingController.sendClosingDocumentsBatch
+);
+router.post(
+  '/:tournamentId/referee-closing-documents/:id/cancel',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
+  closingController.cancelClosingDocument
+);
+router.delete(
+  '/:tournamentId/referee-closing-documents/:id',
+  auth,
+  authorize('ADMINISTRATOR'),
+  ...uuidParam('tournamentId'),
+  ...uuidParam('id'),
+  validate,
+  closingController.deleteClosingDocument
 );
 router.get(
   '/:tournamentId/referee-accruals/:id',

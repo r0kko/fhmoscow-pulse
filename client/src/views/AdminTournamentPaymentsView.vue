@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import TabSelector from '../components/TabSelector.vue';
 import PageNav from '../components/PageNav.vue';
 import BrandSpinner from '../components/BrandSpinner.vue';
-import { apiFetch, apiFetchBlob } from '../api';
+import { apiFetch, apiFetchBlobResponse } from '../api';
 import { useToast } from '../utils/toast';
+import RefereeClosingDocumentsManager from '../components/admin-tournament/RefereeClosingDocumentsManager.vue';
 
-type MainTabKey = 'setup' | 'accruals' | 'registry';
+type MainTabKey = 'setup' | 'accruals' | 'registry' | 'closing';
 type SetupTabKey = 'tariffs' | 'travel';
 type CoverageState = 'ok' | 'out_of_period' | 'missing';
 
@@ -304,6 +306,8 @@ const props = defineProps<{
   tournament?: { name?: string | null } | null;
 }>();
 
+const route = useRoute();
+const router = useRouter();
 const { showToast } = useToast();
 
 const mainTab = ref<MainTabKey>('setup');
@@ -312,6 +316,7 @@ const topTabs = [
   { key: 'setup', label: 'Настройка оплаты' },
   { key: 'accruals', label: 'Начисления' },
   { key: 'registry', label: 'Реестры' },
+  { key: 'closing', label: 'Закрывающие документы' },
 ];
 const setupTabs = [
   { key: 'tariffs', label: 'Нормы' },
@@ -641,6 +646,13 @@ function registryMissingFieldLabels(fields: string[] = []): string[] {
   return fields.map((field) => REGISTRY_MISSING_FIELD_LABELS[field] || field);
 }
 
+function buildLocalDateOnly(date: Date = new Date()): string {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function buildRegistryExportFilename(): string {
   const source = String(props.tournament?.name || props.tournamentId || '')
     .trim()
@@ -648,7 +660,34 @@ function buildRegistryExportFilename(): string {
     .replace(/[^a-zа-я0-9]+/gi, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
-  return `payment-registry-${source || 'tournament'}-${today}.xlsx`;
+  return `payment-registry-${source || 'tournament'}-${buildLocalDateOnly()}.xlsx`;
+}
+
+function getDispositionFilename(
+  contentDisposition?: string | null
+): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const utf8Match = contentDisposition.match(
+    /filename\*\s*=\s*UTF-8''([^;]+)/i
+  );
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim());
+    } catch {
+      return utf8Match[1].trim();
+    }
+  }
+
+  const filenameMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i);
+  if (filenameMatch?.[1]) {
+    return filenameMatch[1].trim();
+  }
+
+  const plainMatch = contentDisposition.match(/filename\s*=\s*([^;]+)/i);
+  return plainMatch?.[1]?.trim() || null;
 }
 
 function buildTariffEditorDefaults(
@@ -1275,13 +1314,15 @@ function resetRegistryFilters(): void {
 async function exportRegistry(): Promise<void> {
   registryExporting.value = true;
   try {
-    const blob = await apiFetchBlob(
+    const { blob, headers } = await apiFetchBlobResponse(
       `/tournaments/${props.tournamentId}/referee-payment-registry/export.xlsx?${buildRegistryQuery(false).toString()}`
     );
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = buildRegistryExportFilename();
+    link.download =
+      getDispositionFilename(headers.get('Content-Disposition')) ||
+      buildRegistryExportFilename();
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1457,13 +1498,39 @@ watch([registryPage, registryLimit], () => {
   void loadRegistry();
 });
 
+watch(
+  () => route.query['tab'],
+  (value) => {
+    const nextTab = String(value || '');
+    if (nextTab === 'closing') {
+      if (mainTab.value !== 'closing') {
+        mainTab.value = 'closing';
+      }
+      return;
+    }
+    if (mainTab.value === 'closing') {
+      mainTab.value = 'setup';
+    }
+  }
+);
+
 watch(mainTab, (value) => {
   if (value === 'registry' && !registryLoaded.value) {
     void loadRegistry();
   }
+  const currentTab = String(route.query['tab'] || '');
+  const nextTab = value === 'closing' ? 'closing' : '';
+  if (currentTab === nextTab) return;
+  const nextQuery = { ...route.query };
+  if (nextTab) nextQuery['tab'] = nextTab;
+  else delete nextQuery['tab'];
+  void router.replace({ query: nextQuery });
 });
 
 onMounted(async () => {
+  if (String(route.query['tab'] || '') === 'closing') {
+    mainTab.value = 'closing';
+  }
   await Promise.all([loadRefData(), loadReferences(), loadDashboard()]);
   startCreateTariff();
   startCreateTravelRate();
@@ -2407,6 +2474,13 @@ onMounted(async () => {
             </div>
           </div>
         </template>
+      </template>
+
+      <template v-else-if="mainTab === 'closing'">
+        <RefereeClosingDocumentsManager
+          :tournament-id="props.tournamentId"
+          :tournament="props.tournament ?? null"
+        />
       </template>
 
       <template v-else-if="mainTab === 'accruals'">

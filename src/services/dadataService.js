@@ -112,10 +112,14 @@ export async function findPartyByInn(inn) {
 }
 
 export async function findOrganizationByInn(inn) {
-  if (!inn) return null;
+  const suggestions = await findOrganizationsByInn(inn);
+  return suggestions[0] || null;
+}
+
+export async function findOrganizationsByInn(inn) {
+  if (!inn) return [];
   const data = await request('/findById/party', { query: inn, type: 'LEGAL' });
-  if (!data?.suggestions?.length) return null;
-  return data.suggestions[0];
+  return data?.suggestions || [];
 }
 
 export async function cleanVehicle(vehicle) {
@@ -145,5 +149,6 @@ export default {
   findPartyByInn,
   findPartyByInnWithStatus,
   findOrganizationByInn,
+  findOrganizationsByInn,
   cleanVehicle,
 };

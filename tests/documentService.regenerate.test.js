@@ -2,16 +2,21 @@ import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 
 const docFindByPk = jest.fn();
 const docUserSignFindOne = jest.fn();
+const docUserSignFindAll = jest.fn();
 const saveGeneratedPdf = jest.fn();
 const removeFile = jest.fn();
 const getDownloadUrl = jest.fn();
 const bankPdfBuilder = jest.fn();
 const equipmentPdfBuilder = jest.fn();
+const closingPdfBuilder = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
   Document: { findByPk: docFindByPk },
-  DocumentUserSign: { findOne: docUserSignFindOne },
+  DocumentUserSign: {
+    findOne: docUserSignFindOne,
+    findAll: docUserSignFindAll,
+  },
   DocumentType: { findByPk: jest.fn() },
   DocumentStatus: { findOne: jest.fn() },
   File: {},
@@ -130,17 +135,27 @@ jest.unstable_mockModule(
   })
 );
 
+jest.unstable_mockModule(
+  '../src/services/docBuilders/refereeClosingAct.js',
+  () => ({
+    __esModule: true,
+    default: closingPdfBuilder,
+  })
+);
+
 const documentModule = await import('../src/services/documentService.js');
 const { default: documentService } = documentModule;
 
 beforeEach(() => {
   docFindByPk.mockReset();
   docUserSignFindOne.mockReset();
+  docUserSignFindAll.mockReset();
   saveGeneratedPdf.mockReset();
   removeFile.mockReset();
   getDownloadUrl.mockReset();
   bankPdfBuilder.mockReset();
   equipmentPdfBuilder.mockReset();
+  closingPdfBuilder.mockReset();
 });
 
 afterEach(() => {
@@ -240,4 +255,78 @@ test('regenerate attaches download URL and cleans old file', async () => {
   expect(result.file).toEqual({ id: 99, url: 'https://signed' });
   expect(removeFile).toHaveBeenCalledWith(5);
   expect(updateMock).toHaveBeenCalledWith({ file_id: 99, updated_by: 'actor' });
+});
+
+test('regenerate uses closing act builder with signature timeline', async () => {
+  docFindByPk.mockResolvedValueOnce({
+    id: 'doc-closing',
+    name: 'Closing act',
+    number: 'CA-1',
+    document_date: new Date('2026-03-12T00:00:00Z'),
+    file_id: 14,
+    recipient_id: 'ref-1',
+    description: JSON.stringify({
+      payload: {
+        customer: { name: 'Организатор' },
+        performer: { full_name: 'Судья', address: 'Москва' },
+        contract: { number: '26.03/1024', document_date: '2026-03-12' },
+        fhmo_signer: { full_name: 'Специалист ФХМ' },
+        totals: { total_amount_rub: '1500.00', total_amount_words: 'Одна тысяча пятьсот рублей 00 копеек' },
+        items: [{ service_name: 'Матч 1', total_amount_rub: '1500.00' }],
+      },
+    }),
+    DocumentType: {
+      alias: 'REFEREE_CLOSING_ACT',
+      generated: true,
+      name: 'Закрывающий акт',
+    },
+    DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
+    recipient: { id: 'ref-1', last_name: 'Судья', first_name: 'Иван' },
+    update: jest.fn().mockResolvedValue({}),
+  });
+  docUserSignFindAll.mockResolvedValueOnce([
+    {
+      id: 'sig-1',
+      user_id: 'fhmo-1',
+      created_at: new Date('2026-03-12T09:00:00Z'),
+      User: {
+        id: 'fhmo-1',
+        last_name: 'ФХМ',
+        first_name: 'Специалист',
+        patronymic: '',
+        Roles: [
+          {
+            alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+            name: 'Ведущий специалист',
+          },
+        ],
+      },
+      SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+    },
+  ]);
+  closingPdfBuilder.mockResolvedValue(Buffer.from('pdf-closing'));
+  saveGeneratedPdf.mockResolvedValue({ id: 101 });
+  getDownloadUrl.mockResolvedValue('https://url/closing');
+
+  const result = await documentService.regenerate('doc-closing', 'actor-1');
+
+  expect(closingPdfBuilder).toHaveBeenCalledWith(
+    expect.objectContaining({
+      customer: { name: 'Организатор' },
+      contract: { number: '26.03/1024', document_date: '2026-03-12' },
+      items: [{ service_name: 'Матч 1', total_amount_rub: '1500.00' }],
+    }),
+    expect.objectContaining({
+      docId: 'doc-closing',
+      number: 'CA-1',
+      signatures: [
+        expect.objectContaining({
+          sign_id: 'sig-1',
+          party: 'FHMO',
+        }),
+      ],
+    })
+  );
+  expect(result.file).toEqual({ id: 101, url: 'https://url/closing' });
+  expect(removeFile).toHaveBeenCalledWith(14);
 });

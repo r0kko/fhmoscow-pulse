@@ -42,10 +42,20 @@ const showAdvancedFilters = ref(false);
 
 const actionLoading = ref('');
 const selectedIds = ref<string[]>([]);
+const selectionMode = ref<'explicit' | 'filtered'>('explicit');
+const filteredSelection = ref<{
+  count: number;
+  filters: Record<string, string>;
+} | null>(null);
 const deleteLoading = ref(false);
 const deleteError = ref('');
 const deleteModalOpen = ref(false);
 const deleteModalIds = ref<string[]>([]);
+const deleteModalSelection = ref<{
+  count: number;
+  selectionMode: 'explicit' | 'filtered';
+  filters?: Record<string, string>;
+} | null>(null);
 const deleteModalForm = reactive({
   reason_code: '',
   comment: '',
@@ -74,7 +84,11 @@ const totalPages = computed(() =>
 const selectedAllOnPage = computed(
   () =>
     rows.value.length > 0 &&
-    rows.value.every((row) => selectedIds.value.includes(String(row.id)))
+    rows.value.every((row) =>
+      selectionMode.value === 'filtered'
+        ? true
+        : selectedIds.value.includes(String(row.id))
+    )
 );
 
 const approveBulkAction = computed(() =>
@@ -97,9 +111,32 @@ const actionAliasesByStatus = computed(() => {
 
 const dataSummary = computed(() => ({
   rows: rows.value.length,
-  selected: selectedIds.value.length,
+  selected:
+    selectionMode.value === 'filtered' && filteredSelection.value
+      ? filteredSelection.value.count
+      : selectedIds.value.length,
   total: total.value,
 }));
+
+const canSelectAllFiltered = computed(
+  () => selectionMode.value === 'explicit' && total.value > 0
+);
+
+const canBulkApproveSelection = computed(() =>
+  selectionMode.value === 'filtered'
+    ? dataSummary.value.selected > 0
+    : selectedApprovableIds.value.length > 0
+);
+
+const canBulkDeleteSelection = computed(() =>
+  selectionMode.value === 'filtered'
+    ? dataSummary.value.selected > 0
+    : selectedDeletableIds.value.length > 0
+);
+
+const deleteModalCount = computed(
+  () => deleteModalSelection.value?.count || deleteModalIds.value.length
+);
 
 const selectedRowMap = computed(
   () => new Map((rows.value || []).map((row) => [String(row.id), row]))
@@ -274,6 +311,28 @@ function buildQueryParams(): URLSearchParams {
   return params;
 }
 
+function buildFilterSnapshot(): Record<string, string> {
+  const snapshot: Record<string, string> = {};
+  for (const [key, value] of Object.entries(filters)) {
+    const normalized = resolveFilterValue(key, value);
+    if (normalized) snapshot[key] = normalized;
+  }
+  return snapshot;
+}
+
+function buildBulkSelectionPayload(ids = selectedIds.value) {
+  if (selectionMode.value === 'filtered' && filteredSelection.value) {
+    return {
+      selection_mode: 'filtered',
+      filters: filteredSelection.value.filters,
+    };
+  }
+  return {
+    selection_mode: 'explicit',
+    ids: [...new Set((ids || []).map((id) => String(id)).filter(Boolean))],
+  };
+}
+
 async function loadRefData(): Promise<void> {
   refDataLoading.value = true;
   refDataError.value = '';
@@ -294,6 +353,13 @@ async function loadAccruals(): Promise<void> {
   loading.value = true;
   error.value = '';
   try {
+    if (
+      selectionMode.value === 'filtered' &&
+      JSON.stringify(filteredSelection.value?.filters || {}) !==
+        JSON.stringify(buildFilterSnapshot())
+    ) {
+      clearSelection();
+    }
     const response = await apiFetch(
       `/admin/accounting/referee-accruals?${buildQueryParams().toString()}`
     );
@@ -334,6 +400,7 @@ function removeFilter(key: string): void {
 }
 
 function toggleSelectAllOnPage(): void {
+  if (selectionMode.value === 'filtered') return;
   if (selectedAllOnPage.value) {
     const idsOnPage = new Set(rows.value.map((row) => String(row.id)));
     selectedIds.value = selectedIds.value.filter((id) => !idsOnPage.has(id));
@@ -345,6 +412,7 @@ function toggleSelectAllOnPage(): void {
 }
 
 function toggleRow(rowId: string): void {
+  if (selectionMode.value === 'filtered') return;
   const id = String(rowId);
   const set = new Set(selectedIds.value);
   if (set.has(id)) set.delete(id);
@@ -353,7 +421,17 @@ function toggleRow(rowId: string): void {
 }
 
 function clearSelection(): void {
+  selectionMode.value = 'explicit';
+  filteredSelection.value = null;
   selectedIds.value = [];
+}
+
+function selectAllFiltered(): void {
+  selectionMode.value = 'filtered';
+  filteredSelection.value = {
+    count: total.value,
+    filters: buildFilterSnapshot(),
+  };
 }
 
 async function openDocument(id: string): Promise<void> {
@@ -397,10 +475,11 @@ async function runAction(id: string, actionAlias: string) {
 }
 
 async function runBulkAction(actionAlias: string, ids = selectedIds.value) {
-  const uniqueIds = [
-    ...new Set((ids || []).map((id) => String(id)).filter(Boolean)),
-  ];
-  if (!uniqueIds.length) return;
+  const selectionPayload = buildBulkSelectionPayload(ids);
+  const uniqueIds = selectionPayload.ids || [];
+  if (selectionPayload.selection_mode !== 'filtered' && !uniqueIds.length) {
+    return;
+  }
   actionLoading.value = `bulk:${actionAlias}`;
   try {
     const response = await apiFetch(
@@ -409,8 +488,8 @@ async function runBulkAction(actionAlias: string, ids = selectedIds.value) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...selectionPayload,
           action_alias: actionAlias,
-          ids: uniqueIds,
         }),
       }
     );
@@ -434,12 +513,15 @@ async function runBulkAction(actionAlias: string, ids = selectedIds.value) {
 }
 
 function runBulkApproveSelection(): void {
-  if (!selectedApprovableIds.value.length) {
+  if (!canBulkApproveSelection.value) {
     error.value =
       'Для начисления выберите хотя бы один документ в статусе «Черновик»';
     return;
   }
-  void runBulkAction('APPROVE', selectedApprovableIds.value);
+  void runBulkAction(
+    'APPROVE',
+    selectionMode.value === 'filtered' ? [] : selectedApprovableIds.value
+  );
 }
 
 function openDeleteModal(ids: string[]): void {
@@ -447,6 +529,7 @@ function openDeleteModal(ids: string[]): void {
   deleteModalIds.value = [
     ...new Set(ids.map((id) => String(id)).filter(Boolean)),
   ];
+  deleteModalSelection.value = null;
   deleteModalForm.reason_code = '';
   deleteModalForm.comment = '';
   deleteError.value = '';
@@ -454,6 +537,19 @@ function openDeleteModal(ids: string[]): void {
 }
 
 function openDeleteForSelection(): void {
+  if (selectionMode.value === 'filtered' && filteredSelection.value) {
+    deleteModalIds.value = [];
+    deleteModalSelection.value = {
+      count: filteredSelection.value.count,
+      selectionMode: 'filtered',
+      filters: filteredSelection.value.filters,
+    };
+    deleteModalForm.reason_code = '';
+    deleteModalForm.comment = '';
+    deleteError.value = '';
+    deleteModalOpen.value = true;
+    return;
+  }
   const deletableIds = deletableIdsFromCurrentRows(selectedIds.value);
   if (!deletableIds.length) {
     error.value =
@@ -466,18 +562,19 @@ function openDeleteForSelection(): void {
 function closeDeleteModal(): void {
   deleteModalOpen.value = false;
   deleteModalIds.value = [];
+  deleteModalSelection.value = null;
   deleteModalForm.reason_code = '';
   deleteModalForm.comment = '';
   deleteError.value = '';
 }
 
 async function submitDeleteModal(): Promise<void> {
-  if (!deleteModalIds.value.length) return;
+  if (!deleteModalIds.value.length && !deleteModalSelection.value) return;
   deleteLoading.value = true;
   deleteError.value = '';
   try {
     const ids = [...deleteModalIds.value];
-    if (ids.length === 1) {
+    if (!deleteModalSelection.value && ids.length === 1) {
       await apiFetch(`/admin/accounting/referee-accruals/${ids[0]}/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -488,13 +585,23 @@ async function submitDeleteModal(): Promise<void> {
       });
       showToast('Начисление удалено');
     } else {
+      const selectionPayload =
+        deleteModalSelection.value?.selectionMode === 'filtered'
+          ? {
+              selection_mode: 'filtered',
+              filters: deleteModalSelection.value.filters,
+            }
+          : {
+              selection_mode: 'explicit',
+              ids,
+            };
       const response = await apiFetch(
         '/admin/accounting/referee-accruals/bulk-delete',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ids,
+            ...selectionPayload,
             reason_code: deleteModalForm.reason_code,
             comment: deleteModalForm.comment || null,
           }),
@@ -820,12 +927,20 @@ onMounted(async () => {
 
           <div class="d-flex flex-wrap gap-2 align-items-center">
             <button
+              v-if="canSelectAllFiltered"
+              type="button"
+              class="btn btn-outline-brand btn-sm"
+              @click="selectAllFiltered"
+            >
+              Выбрать все ({{ total }})
+            </button>
+            <button
               v-if="approveBulkAction"
               type="button"
               class="btn btn-outline-success btn-sm action-icon-btn"
               :disabled="
                 refDataLoading ||
-                !selectedApprovableIds.length ||
+                !canBulkApproveSelection ||
                 actionLoading.startsWith('bulk:')
               "
               :title="approveBulkAction.name_ru"
@@ -834,30 +949,55 @@ onMounted(async () => {
             >
               <i class="bi bi-check2-circle" aria-hidden="true"></i>
               <span
-                v-if="selectedApprovableIds.length"
+                v-if="
+                  selectionMode === 'filtered'
+                    ? dataSummary.selected
+                    : selectedApprovableIds.length
+                "
                 class="badge text-bg-light border ms-1"
               >
-                {{ selectedApprovableIds.length }}
+                {{
+                  selectionMode === 'filtered'
+                    ? dataSummary.selected
+                    : selectedApprovableIds.length
+                }}
               </span>
             </button>
             <button
               type="button"
               class="btn btn-outline-danger btn-sm action-icon-btn"
-              :disabled="!selectedDeletableIds.length || deleteLoading"
+              :disabled="!canBulkDeleteSelection || deleteLoading"
               title="Удалить выбранные начисления"
               aria-label="Удалить выбранные начисления"
               @click="openDeleteForSelection"
             >
               <i class="bi bi-trash3" aria-hidden="true"></i>
               <span
-                v-if="selectedDeletableIds.length"
+                v-if="
+                  selectionMode === 'filtered'
+                    ? dataSummary.selected
+                    : selectedDeletableIds.length
+                "
                 class="badge text-bg-light border ms-1"
               >
-                {{ selectedDeletableIds.length }}
+                {{
+                  selectionMode === 'filtered'
+                    ? dataSummary.selected
+                    : selectedDeletableIds.length
+                }}
               </span>
             </button>
-            <span v-if="selectedIds.length" class="badge text-bg-light border">
-              Выбрано: {{ selectedIds.length }}
+            <span
+              v-if="dataSummary.selected"
+              class="badge text-bg-light border"
+            >
+              Выбрано: {{ dataSummary.selected }}
+            </span>
+            <span
+              v-if="selectionMode === 'filtered' && filteredSelection"
+              class="badge bg-primary-subtle text-primary border"
+            >
+              Выбраны все начисления в текущем наборе
             </span>
             <button
               type="button"
@@ -882,6 +1022,7 @@ onMounted(async () => {
                           class="form-check-input"
                           type="checkbox"
                           :checked="selectedAllOnPage"
+                          :disabled="selectionMode === 'filtered'"
                           aria-label="Выделить все документы на странице"
                           @change="toggleSelectAllOnPage"
                         />
@@ -914,7 +1055,11 @@ onMounted(async () => {
                         <input
                           class="form-check-input"
                           type="checkbox"
-                          :checked="selectedIds.includes(String(row.id))"
+                          :checked="
+                            selectionMode === 'filtered' ||
+                            selectedIds.includes(String(row.id))
+                          "
+                          :disabled="selectionMode === 'filtered'"
                           :aria-label="`Выделить начисление ${row.accrual_number}`"
                           @click.stop
                           @change="toggleRow(row.id)"
@@ -1224,7 +1369,7 @@ onMounted(async () => {
             корректировками удаление недоступно.
           </p>
           <p class="small mb-3">
-            Количество документов: <strong>{{ deleteModalIds.length }}</strong>
+            Количество документов: <strong>{{ deleteModalCount }}</strong>
           </p>
           <div class="mb-2">
             <label class="form-label">Код причины</label>

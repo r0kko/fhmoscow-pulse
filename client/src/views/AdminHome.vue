@@ -50,6 +50,11 @@ const accountingSections = [
     icon: 'bi-receipt-cutoff',
     to: '/admin/accounting',
   },
+  {
+    title: 'Закрывающие документы',
+    icon: 'bi-file-earmark-text',
+    to: '/admin/accounting/closing-documents',
+  },
 ];
 
 const professionalLeagueSections = [

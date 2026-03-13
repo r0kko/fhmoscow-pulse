@@ -123,6 +123,9 @@ import GroundRefereeTravelRate from './groundRefereeTravelRate.js';
 import RefereeAccrualDocument from './refereeAccrualDocument.js';
 import RefereeAccrualPosting from './refereeAccrualPosting.js';
 import AccountingAuditEvent from './accountingAuditEvent.js';
+import RefereeClosingDocumentProfile from './refereeClosingDocumentProfile.js';
+import RefereeClosingDocument from './refereeClosingDocument.js';
+import RefereeClosingDocumentItem from './refereeClosingDocumentItem.js';
 import GameEventType from './gameEventType.js';
 import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
@@ -615,6 +618,48 @@ RefereeAccrualPosting.belongsTo(RefereeAccrualComponent, {
   as: 'Component',
 });
 
+Tournament.hasOne(RefereeClosingDocumentProfile, {
+  foreignKey: 'tournament_id',
+  as: 'ClosingProfile',
+});
+RefereeClosingDocumentProfile.belongsTo(Tournament, {
+  foreignKey: 'tournament_id',
+  as: 'Tournament',
+});
+
+Tournament.hasMany(RefereeClosingDocument, { foreignKey: 'tournament_id' });
+RefereeClosingDocument.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+User.hasMany(RefereeClosingDocument, { foreignKey: 'referee_id' });
+RefereeClosingDocument.belongsTo(User, {
+  foreignKey: 'referee_id',
+  as: 'Referee',
+});
+Document.hasOne(RefereeClosingDocument, {
+  foreignKey: 'document_id',
+  as: 'ClosingDocument',
+});
+RefereeClosingDocument.belongsTo(Document, {
+  foreignKey: 'document_id',
+  as: 'Document',
+});
+
+RefereeClosingDocument.hasMany(RefereeClosingDocumentItem, {
+  foreignKey: 'closing_document_id',
+  as: 'Items',
+});
+RefereeClosingDocumentItem.belongsTo(RefereeClosingDocument, {
+  foreignKey: 'closing_document_id',
+  as: 'ClosingDocument',
+});
+RefereeAccrualDocument.hasOne(RefereeClosingDocumentItem, {
+  foreignKey: 'accrual_document_id',
+  as: 'ClosingItem',
+});
+RefereeClosingDocumentItem.belongsTo(RefereeAccrualDocument, {
+  foreignKey: 'accrual_document_id',
+  as: 'AccrualDocument',
+});
+
 RefereeAccrualDocumentStatus.hasMany(RefereeAccrualStatusTransition, {
   foreignKey: 'from_status_id',
   as: 'FromTransitions',
@@ -965,6 +1010,9 @@ export {
   RefereeAccrualDocument,
   RefereeAccrualPosting,
   AccountingAuditEvent,
+  RefereeClosingDocumentProfile,
+  RefereeClosingDocument,
+  RefereeClosingDocumentItem,
   GamePenalty,
   GameEventType,
   PenaltyMinutes,

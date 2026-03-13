@@ -48,6 +48,7 @@ const PAYMENT_REGISTRY_MISSING_FIELD_CODES = [
   'correspondent_account',
   'taxation_type',
 ];
+const FILTERED_ACCRUAL_SELECTION_PAGE_LIMIT = 1000;
 
 function readConfiguredLookbackDays() {
   const raw = Number.parseInt(
@@ -198,8 +199,10 @@ function buildPaymentRegistryFilename(tournamentName, exportDate = null) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
   const datePart =
-    normalizeOptionalDateOnly(exportDate || moscowTodayDateKey(), 'invalid_date') ||
-    new Date().toISOString().slice(0, 10);
+    normalizeOptionalDateOnly(
+      exportDate || moscowTodayDateKey(),
+      'invalid_date'
+    ) || new Date().toISOString().slice(0, 10);
   const tournamentPart = safeTournament || 'tournament';
   return `payment-registry-${tournamentPart}-${datePart}.xlsx`;
 }
@@ -2450,12 +2453,138 @@ async function listRefereeAccrualDocuments({
     distinct: true,
   });
 
+  const summaryRows = await RefereeAccrualDocument.findAll({
+    where,
+    include: buildAccrualInclude({ withOriginal: true }),
+    attributes: ['id', 'total_amount_rub'],
+    order: [],
+  });
+
   return {
     rows: data.rows,
     count: data.count,
     page: normalizedPage,
     limit: normalizedLimit,
+    summary: {
+      total_amount_rub: summaryRows
+        .reduce((acc, row) => {
+          const value = Number(String(row?.total_amount_rub ?? 0));
+          return Number.isFinite(value) ? acc + value : acc;
+        }, 0)
+        .toFixed(2),
+    },
   };
+}
+
+function normalizeBulkSelectionPayload(payload = {}) {
+  const selectionMode = normalizeString(payload.selectionMode || payload.selection_mode || 'explicit')
+    .toLowerCase();
+  if (!['explicit', 'filtered'].includes(selectionMode)) {
+    throw new ServiceError('invalid_accrual_selection_mode', 400);
+  }
+
+  const filters =
+    payload?.filters && typeof payload.filters === 'object'
+      ? {
+          tournamentId:
+            normalizeString(
+              payload.filters.tournament_id || payload.filters.tournamentId || ''
+            ) || null,
+          status: normalizeString(payload.filters.status || '') || null,
+          source: normalizeString(payload.filters.source || '') || null,
+          number: normalizeString(payload.filters.number || '') || null,
+          fareCode:
+            normalizeString(
+              payload.filters.fare_code || payload.filters.fareCode || ''
+            ) || null,
+          refereeRoleId:
+            normalizeString(
+              payload.filters.referee_role_id ||
+                payload.filters.refereeRoleId ||
+                ''
+            ) || null,
+          stageGroupId:
+            normalizeString(
+              payload.filters.stage_group_id ||
+                payload.filters.stageGroupId ||
+                ''
+            ) || null,
+          groundId:
+            normalizeString(
+              payload.filters.ground_id || payload.filters.groundId || ''
+            ) || null,
+          dateFrom:
+            normalizeString(
+              payload.filters.date_from || payload.filters.dateFrom || ''
+            ) || null,
+          dateTo:
+            normalizeString(
+              payload.filters.date_to || payload.filters.dateTo || ''
+            ) || null,
+          amountFrom:
+            normalizeString(
+              payload.filters.amount_from || payload.filters.amountFrom || ''
+            ) || null,
+          amountTo:
+            normalizeString(
+              payload.filters.amount_to || payload.filters.amountTo || ''
+            ) || null,
+          search: normalizeString(payload.filters.search || '') || null,
+        }
+      : {};
+
+  const ids = Array.isArray(payload?.ids)
+    ? [...new Set(payload.ids.map((id) => normalizeString(id)).filter(Boolean))]
+    : [];
+
+  return {
+    selectionMode,
+    ids,
+    filters,
+  };
+}
+
+async function loadFilteredAccrualIds(filters = {}) {
+  const ids = [];
+  let page = 1;
+  let total = 0;
+
+  do {
+    const response = await listRefereeAccrualDocuments({
+      tournamentId: filters.tournamentId || null,
+      page,
+      limit: FILTERED_ACCRUAL_SELECTION_PAGE_LIMIT,
+      status: filters.status,
+      source: filters.source,
+      number: filters.number,
+      fareCode: filters.fareCode,
+      refereeRoleId: filters.refereeRoleId,
+      stageGroupId: filters.stageGroupId,
+      groundId: filters.groundId,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      amountFrom: filters.amountFrom,
+      amountTo: filters.amountTo,
+      search: filters.search,
+    });
+    total = Number(response.count || 0);
+    ids.push(...(response.rows || []).map((row) => normalizeString(row?.id)));
+    if (!(response.rows || []).length) break;
+    page += 1;
+  } while (ids.length < total);
+
+  return [...new Set(ids.filter(Boolean))];
+}
+
+async function resolveBulkAccrualIds(payload = {}) {
+  const selection = normalizeBulkSelectionPayload(payload);
+  if (selection.selectionMode === 'filtered') {
+    return loadFilteredAccrualIds(selection.filters);
+  }
+  if (!selection.ids.length) {
+    throw new ServiceError('bulk_ids_required', 400);
+  }
+  return selection.ids;
 }
 
 async function getRefereeAccrualDocument(documentId) {
@@ -2607,16 +2736,17 @@ async function applyRefereeAccrualAction(
 
 async function applyRefereeAccrualActionBulk({
   ids = [],
+  selectionMode = 'explicit',
+  filters = null,
   actionAlias,
   actorId = null,
   comment = null,
 }) {
-  const uniqueIds = [
-    ...new Set((ids || []).map((id) => normalizeString(id)).filter(Boolean)),
-  ];
-  if (!uniqueIds.length) {
-    throw new ServiceError('bulk_ids_required', 400);
-  }
+  const uniqueIds = await resolveBulkAccrualIds({
+    ids,
+    selectionMode,
+    filters,
+  });
 
   const results = [];
   for (const id of uniqueIds) {
@@ -2771,16 +2901,17 @@ async function deleteRefereeAccrualDocument(
 
 async function bulkDeleteRefereeAccrualDocuments({
   ids = [],
+  selectionMode = 'explicit',
+  filters = null,
   reasonCode,
   comment = null,
   actorId = null,
 }) {
-  const uniqueIds = [
-    ...new Set((ids || []).map((id) => normalizeString(id)).filter(Boolean)),
-  ];
-  if (!uniqueIds.length) {
-    throw new ServiceError('bulk_ids_required', 400);
-  }
+  const uniqueIds = await resolveBulkAccrualIds({
+    ids,
+    selectionMode,
+    filters,
+  });
 
   const results = [];
   for (const id of uniqueIds) {
@@ -3010,6 +3141,7 @@ async function fetchTournamentPaymentRegistryRows({
   const taxationTypes = await sequelize.query(
     `SELECT alias, name
        FROM taxation_types
+      WHERE deleted_at IS NULL
       ORDER BY name ASC`,
     { type: QueryTypes.SELECT }
   );
@@ -3078,6 +3210,7 @@ async function fetchTournamentPaymentRegistryRows({
       AND tax.deleted_at IS NULL
      LEFT JOIN taxation_types tax_type
        ON tax_type.id = tax.taxation_type_id
+      AND tax_type.deleted_at IS NULL
     WHERE ${whereSql.join('\n      AND ')}
     GROUP BY
       d.referee_id,
@@ -3116,9 +3249,8 @@ async function fetchTournamentPaymentRegistryRows({
       taxation_type_alias: normalizeString(row.taxation_type_alias) || null,
       taxation_type: normalizeString(row.taxation_type) || null,
     };
-    normalizedRow.missing_fields = buildPaymentRegistryMissingFields(
-      normalizedRow
-    );
+    normalizedRow.missing_fields =
+      buildPaymentRegistryMissingFields(normalizedRow);
     return normalizedRow;
   });
 

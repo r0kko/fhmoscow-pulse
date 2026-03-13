@@ -40,8 +40,8 @@ export default {
   },
 
   async findOrganization(req, res) {
-    const organization = await dadata.findOrganizationByInn(req.body.inn);
-    return res.json({ organization });
+    const organizations = await dadata.findOrganizationsByInn(req.body.inn);
+    return res.json({ organization: organizations[0] || null, organizations });
   },
 
   async cleanVehicle(req, res) {

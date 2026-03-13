@@ -35,6 +35,7 @@ import AdminTournamentScheduleView from './views/AdminTournamentScheduleView.vue
 import AdminTournamentSettingsView from './views/AdminTournamentSettingsView.vue';
 import AdminTournamentPaymentsView from './views/AdminTournamentPaymentsView.vue';
 import AdminAccountingView from './views/AdminAccountingView.vue';
+import AdminAccountingClosingDocumentsView from './views/AdminAccountingClosingDocumentsView.vue';
 import SchoolMatches from './views/SchoolMatches.vue';
 import SchoolPastMatches from './views/SchoolPastMatches.vue';
 import SchoolMatchAgreements from './views/SchoolMatchAgreements.vue';
@@ -285,6 +286,16 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       requiresAdministrator: true,
       title: 'Бухгалтерия',
+    },
+  },
+  {
+    path: '/admin/accounting/closing-documents',
+    component: AdminAccountingClosingDocumentsView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      requiresAdministrator: true,
+      title: 'Закрывающие документы',
     },
   },
   {

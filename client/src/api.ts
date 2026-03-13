@@ -853,10 +853,15 @@ export async function apiFetchForm<T = unknown>(
   return rawData as T;
 }
 
-export async function apiFetchBlob(
+export interface ApiBlobResponse {
+  blob: Blob;
+  headers: Headers;
+}
+
+export async function apiFetchBlobResponse(
   path: string,
   options: ApiFetchOptions = {}
-): Promise<Blob> {
+): Promise<ApiBlobResponse> {
   const {
     redirectOn401 = true,
     retryOn401 = true,
@@ -923,7 +928,7 @@ export async function apiFetchBlob(
           ? Math.min(5, Math.ceil(retryAfter))
           : 2;
       await new Promise((r) => setTimeout(r, secs * 1000));
-      return apiFetchBlob(path, { ...options, _429Retried: true });
+      return apiFetchBlobResponse(path, { ...options, _429Retried: true });
     }
     let message = translateError(data?.error) || 'Слишком много запросов';
     if (!Number.isNaN(retryAfter) && retryAfter > 0) {
@@ -944,13 +949,16 @@ export async function apiFetchBlob(
           try {
             await initCsrf();
           } catch {}
-          return apiFetchBlob(path, { ...options, _csrfRetried: true });
+          return apiFetchBlobResponse(path, {
+            ...options,
+            _csrfRetried: true,
+          });
         }
         try {
           clearXsrfCookies();
           await initCsrf();
         } catch {}
-        return apiFetchBlob(path, { ...options, _csrfRetried: true });
+        return apiFetchBlobResponse(path, { ...options, _csrfRetried: true });
       }
     } catch {
       // ignore
@@ -965,7 +973,7 @@ export async function apiFetchBlob(
       /text\/html|text\/plain/i.test(contentType)
     ) {
       await new Promise((r) => setTimeout(r, 2000));
-      return apiFetchBlob(path, { ...options, _ddosRetried: true });
+      return apiFetchBlobResponse(path, { ...options, _ddosRetried: true });
     }
   }
 
@@ -973,7 +981,7 @@ export async function apiFetchBlob(
     if (retryOn401 && path !== '/auth/refresh' && !refreshFailed) {
       const refreshed = await refreshToken();
       if (refreshed) {
-        return apiFetchBlob(path, options);
+        return apiFetchBlobResponse(path, options);
       }
     }
     clearAuth();
@@ -1000,7 +1008,18 @@ export async function apiFetchBlob(
     throw buildApiError(message, data?.error || null, reqId);
   }
 
-  return res.blob();
+  return {
+    blob: await res.blob(),
+    headers: res.headers,
+  };
+}
+
+export async function apiFetchBlob(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<Blob> {
+  const response = await apiFetchBlobResponse(path, options);
+  return response.blob;
 }
 
 interface UploadOptions {

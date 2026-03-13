@@ -7,16 +7,39 @@ import {
 } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { apiFetch, apiFetchBlob } from '@/api';
+import { apiFetch, apiFetchBlobResponse } from '@/api';
 import AdminTournamentPaymentsView from '@/views/AdminTournamentPaymentsView.vue';
+
+vi.mock(
+  '@/components/admin-tournament/RefereeClosingDocumentsManager.vue',
+  () => ({
+    default: {
+      props: ['tournamentId'],
+      template:
+        '<div data-testid="closing-manager">closing-documents {{ tournamentId }}</div>',
+    },
+  })
+);
+
+const routeMock: { query: Record<string, string> } = {
+  query: {},
+};
+const routerReplaceMock = vi.fn();
 
 vi.mock('@/api', () => ({
   apiFetch: vi.fn(),
-  apiFetchBlob: vi.fn(),
+  apiFetchBlobResponse: vi.fn(),
+}));
+
+vi.mock('vue-router', () => ({
+  useRoute: () => routeMock,
+  useRouter: () => ({
+    replace: routerReplaceMock,
+  }),
 }));
 
 const apiFetchMock = vi.mocked(apiFetch);
-const apiFetchBlobMock = vi.mocked(apiFetchBlob);
+const apiFetchBlobResponseMock = vi.mocked(apiFetchBlobResponse);
 
 const dashboardResponse = {
   summary: {
@@ -272,7 +295,9 @@ function buildMutationTariff(body: Record<string, unknown>) {
 describe('AdminTournamentPaymentsView', () => {
   beforeEach(() => {
     apiFetchMock.mockReset();
-    apiFetchBlobMock.mockReset();
+    apiFetchBlobResponseMock.mockReset();
+    routerReplaceMock.mockReset();
+    routeMock.query = {};
   });
 
   it('supports tariff editing, coverage-date refresh, travel coverage switching and generation hints', async () => {
@@ -423,7 +448,21 @@ describe('AdminTournamentPaymentsView', () => {
         return {};
       }
     );
-    apiFetchBlobMock.mockResolvedValue(new Blob(['xlsx']));
+    apiFetchBlobResponseMock.mockResolvedValue({
+      blob: new Blob(['xlsx']),
+      headers: new Headers({
+        'Content-Disposition':
+          "attachment; filename*=UTF-8''payment-registry-server-2026-03-12.xlsx",
+      }),
+    });
+    const clickedDownloads: string[] = [];
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:registry-export');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
+      function click(this: HTMLAnchorElement) {
+        clickedDownloads.push(this.download);
+      }
+    );
 
     render(AdminTournamentPaymentsView, {
       props: { tournamentId: 'tour-1' },
@@ -559,9 +598,81 @@ describe('AdminTournamentPaymentsView', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'XLSX' }));
 
     await waitFor(() => {
-      expect(apiFetchBlobMock).toHaveBeenCalledWith(
+      expect(apiFetchBlobResponseMock).toHaveBeenCalledWith(
         '/tournaments/tour-1/referee-payment-registry/export.xlsx?'
       );
     });
+    expect(clickedDownloads).toEqual([
+      'payment-registry-server-2026-03-12.xlsx',
+    ]);
+  });
+
+  it('opens closing documents tab from route query', async () => {
+    routeMock.query = { tab: 'closing' };
+    apiFetchMock.mockImplementation(async (path: string): Promise<unknown> => {
+      const url = new URL(path, 'https://lk.fhmoscow.com');
+      if (url.pathname === '/admin/accounting/ref-data') {
+        return {
+          tariff_statuses: [],
+          travel_rate_statuses: [],
+          document_statuses: [],
+          accrual_sources: [],
+          generation_error_codes: [],
+        };
+      }
+      if (url.pathname === '/tournaments/groups') return { groups: [] };
+      if (url.pathname === '/tournaments/referee-roles') return { groups: [] };
+      if (url.pathname === '/tournaments/groups/referees') {
+        return { assignments: [] };
+      }
+      if (url.pathname === '/tournaments/tour-1/referee-payments/dashboard') {
+        return dashboardResponse;
+      }
+      if (url.pathname === '/tournaments/tour-1/referee-tariffs') {
+        return { tariff_rules: [], total: 0 };
+      }
+      if (url.pathname === '/tournaments/tour-1/referee-accruals') {
+        return { accruals: [], total: 0 };
+      }
+      return {};
+    });
+
+    render(AdminTournamentPaymentsView, {
+      props: { tournamentId: 'tour-1' },
+      global: {
+        stubs: {
+          TabSelector: {
+            props: ['modelValue', 'tabs', 'ariaLabel'],
+            emits: ['update:modelValue'],
+            template: `
+              <div :aria-label="ariaLabel">
+                <button
+                  v-for="tab in tabs"
+                  :key="tab.key"
+                  type="button"
+                  @click="$emit('update:modelValue', tab.key)"
+                >
+                  {{ tab.label }}
+                </button>
+              </div>
+            `,
+          },
+          PageNav: {
+            template: '<div data-testid="page-nav" />',
+          },
+          BrandSpinner: {
+            props: ['label'],
+            template: '<div>{{ label }}</div>',
+          },
+        },
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('closing-manager')).toHaveTextContent(
+        'closing-documents tour-1'
+      );
+    });
+    expect(routerReplaceMock).not.toHaveBeenCalledWith({ query: {} });
   });
 });

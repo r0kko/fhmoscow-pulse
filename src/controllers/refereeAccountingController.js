@@ -302,6 +302,7 @@ const controller = {
         total: data.count,
         page: data.page,
         limit: data.limit,
+        summary: data.summary,
       });
     } catch (err) {
       return sendError(res, err);
@@ -334,14 +335,13 @@ const controller = {
   async exportTournamentPaymentRegistryXlsx(req, res) {
     try {
       const { date_from, date_to, taxation_type_alias } = req.query;
-      const payload = await accountingService.exportTournamentPaymentRegistryXlsx(
-        {
+      const payload =
+        await accountingService.exportTournamentPaymentRegistryXlsx({
           tournamentId: req.params.tournamentId,
           dateFrom: date_from,
           dateTo: date_to,
           taxationTypeAlias: taxation_type_alias,
-        }
-      );
+        });
       res.setHeader(
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -445,6 +445,8 @@ const controller = {
     try {
       const data = await accountingService.applyRefereeAccrualActionBulk({
         ids: req.body?.ids,
+        selectionMode: req.body?.selection_mode,
+        filters: req.body?.filters,
         actionAlias: req.body?.action_alias,
         actorId: req.user?.id,
         comment: req.body?.comment,
@@ -475,6 +477,8 @@ const controller = {
     try {
       const data = await accountingService.bulkDeleteRefereeAccrualDocuments({
         ids: req.body?.ids,
+        selectionMode: req.body?.selection_mode,
+        filters: req.body?.filters,
         reasonCode: req.body?.reason_code,
         comment: req.body?.comment,
         actorId: req.user?.id,
