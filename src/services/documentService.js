@@ -2363,7 +2363,7 @@ async function listAll() {
   );
 }
 
-async function sign(user, documentId) {
+async function sign(user, documentId, options = {}) {
   const doc = await Document.findByPk(documentId, {
     include: [
       { model: DocumentStatus, attributes: ['alias'] },
@@ -2433,28 +2433,32 @@ async function sign(user, documentId) {
   if (nextCount >= requiredSignatures) {
     if (signedStatus) {
       await doc.update({ status_id: signedStatus.id, updated_by: user.id });
-      const recipient = await User.findByPk(doc.recipient_id, {
-        attributes: ['email', 'last_name', 'first_name', 'patronymic'],
-      });
-      if (recipient?.email) {
-        await emailService.sendDocumentSignedEmail(recipient, doc);
+      if (options?.notify !== false) {
+        const recipient = await User.findByPk(doc.recipient_id, {
+          attributes: ['email', 'last_name', 'first_name', 'patronymic'],
+        });
+        if (recipient?.email) {
+          await emailService.sendDocumentSignedEmail(recipient, doc);
+        }
       }
     }
   } else if (awaitingStatus) {
     await doc.update({ status_id: awaitingStatus.id, updated_by: user.id });
-    const recipient = await User.findByPk(doc.recipient_id, {
-      attributes: ['email', 'last_name', 'first_name', 'patronymic'],
-    });
-    if (
-      recipient?.email &&
-      (!isClosingAct || String(user.id) !== String(doc.recipient_id))
-    ) {
-      await emailService.sendDocumentAwaitingSignatureEmail(recipient, {
-        ...doc.get({ plain: true }),
-        SignType: doc.SignType
-          ? { alias: doc.SignType.alias, name: doc.SignType.name }
-          : null,
+    if (options?.notify !== false) {
+      const recipient = await User.findByPk(doc.recipient_id, {
+        attributes: ['email', 'last_name', 'first_name', 'patronymic'],
       });
+      if (
+        recipient?.email &&
+        (!isClosingAct || String(user.id) !== String(doc.recipient_id))
+      ) {
+        await emailService.sendDocumentAwaitingSignatureEmail(recipient, {
+          ...doc.get({ plain: true }),
+          SignType: doc.SignType
+            ? { alias: doc.SignType.alias, name: doc.SignType.name }
+            : null,
+        });
+      }
     }
   }
 
@@ -2509,6 +2513,58 @@ async function sendSignCode(user, documentId) {
   });
 }
 
+async function sendAwaitingSignatureNotification(documentId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentStatus, attributes: ['alias'] },
+      { model: SignType, attributes: ['alias', 'name'] },
+      {
+        model: User,
+        as: 'recipient',
+        attributes: ['id', 'email', 'last_name', 'first_name', 'patronymic'],
+      },
+    ],
+  });
+  if (!doc?.recipient?.email) return;
+  await emailService.sendDocumentAwaitingSignatureEmail(doc.recipient, {
+    ...doc.get({ plain: true }),
+    SignType: doc.SignType
+      ? { alias: doc.SignType.alias, name: doc.SignType.name }
+      : null,
+  });
+}
+
+async function sendSignedNotification(documentId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      {
+        model: User,
+        as: 'recipient',
+        attributes: ['id', 'email', 'last_name', 'first_name', 'patronymic'],
+      },
+    ],
+  });
+  if (!doc?.recipient?.email) return;
+  await emailService.sendDocumentSignedEmail(doc.recipient, doc);
+}
+
+async function rollbackClosingActRecipientSignature(documentId, userId) {
+  const awaitingStatus = await DocumentStatus.findOne({
+    where: { alias: 'AWAITING_SIGNATURE' },
+    attributes: ['id'],
+  });
+  if (!awaitingStatus?.id) return;
+  await DocumentUserSign.destroy({
+    where: { document_id: documentId, user_id: userId },
+  });
+  const doc = await Document.findByPk(documentId);
+  if (!doc) return;
+  await doc.update({
+    status_id: awaitingStatus.id,
+    updated_by: userId,
+  });
+}
+
 async function signWithCode(user, documentId, code) {
   const doc = await Document.findByPk(documentId, {
     include: [
@@ -2543,12 +2599,18 @@ async function signWithCode(user, documentId, code) {
     throw new ServiceError('document_status_invalid', 400);
   const { verifyCodeOnly } = await import('./emailVerificationService.js');
   await verifyCodeOnly(user, code, 'doc-sign');
+  const isClosingAct =
+    doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS;
   // proceed with signing and stamping
-  await sign(user, documentId);
+  await sign(user, documentId, { notify: !isClosingAct });
   // After status update and sign record creation, regenerate current file version
   try {
     await regenerate(documentId, user.id);
   } catch (err) {
+    if (isClosingAct) {
+      await rollbackClosingActRecipientSignature(documentId, user.id);
+      throw err;
+    }
     if (err?.code === 's3_upload_failed') {
       console.error('Signed document regeneration failed', {
         documentId,
@@ -2560,10 +2622,11 @@ async function signWithCode(user, documentId, code) {
     }
   }
 
-  if (doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS) {
+  if (isClosingAct) {
     const { default: closingService } =
       await import('./refereeClosingDocumentService.js');
     await closingService.handleRecipientSigned(documentId, user.id);
+    await sendSignedNotification(documentId);
   }
 
   // Post-sign automation for specific document types
@@ -3580,6 +3643,7 @@ export default {
   uploadSignedFile,
   regenerate,
   sendSignCode,
+  sendAwaitingSignatureNotification,
   signWithCode,
   generateInitial,
   update,

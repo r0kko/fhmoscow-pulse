@@ -33,6 +33,7 @@ const sequelizeTransaction = jest.fn();
 const listRefereeAccrualDocuments = jest.fn();
 const documentServiceRegenerate = jest.fn();
 const documentServiceSign = jest.fn();
+const documentServiceSendAwaitingNotification = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -112,6 +113,7 @@ jest.unstable_mockModule('../src/services/documentService.js', () => ({
   default: {
     regenerate: documentServiceRegenerate,
     sign: documentServiceSign,
+    sendAwaitingSignatureNotification: documentServiceSendAwaitingNotification,
   },
 }));
 
@@ -152,6 +154,7 @@ beforeEach(() => {
   listRefereeAccrualDocuments.mockReset();
   documentServiceRegenerate.mockReset();
   documentServiceSign.mockReset();
+  documentServiceSendAwaitingNotification.mockReset();
   sequelizeTransaction.mockImplementation(async (callback) => callback({}));
   closingDocumentFindAndCountAll.mockResolvedValue({ rows: [], count: 0 });
   closingDocumentCount.mockResolvedValue(0);
@@ -973,8 +976,10 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
 
   expect(documentServiceSign).toHaveBeenCalledWith(
     { id: 'fhmo-1', token_version: 1 },
-    'doc-1'
+    'doc-1',
+    { notify: false }
   );
+  expect(documentServiceSendAwaitingNotification).not.toHaveBeenCalled();
   expect(documentUserSignDestroy).toHaveBeenCalledWith(
     expect.objectContaining({
       where: {
@@ -1195,6 +1200,7 @@ test('batch send supports explicit selection of draft acts', async () => {
 
   expect(documentServiceSign).toHaveBeenCalledTimes(2);
   expect(documentServiceRegenerate).toHaveBeenCalledTimes(2);
+  expect(documentServiceSendAwaitingNotification).toHaveBeenCalledTimes(2);
   expect(result.summary).toEqual(
     expect.objectContaining({
       selected_total: 2,

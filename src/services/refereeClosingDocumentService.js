@@ -1940,12 +1940,14 @@ async function sendClosingDocumentWithSigner(
     const { default: documentService } = await import('./documentService.js');
     await documentService.sign(
       { id: signerCandidate.signer.id, token_version: 1 },
-      act.document_id
+      act.document_id,
+      { notify: false }
     );
     await documentService.regenerate(
       act.document_id,
       signerCandidate.signer.id
     );
+    await documentService.sendAwaitingSignatureNotification(act.document_id);
   } catch (error) {
     await rollbackClosingDocumentSend({
       actId: act.id,
