@@ -25,6 +25,7 @@ const taxationFindAll = jest.fn();
 const userAddressFindAll = jest.fn();
 const refereeAccrualUpdate = jest.fn();
 const closingItemDestroy = jest.fn();
+const closingItemUpdate = jest.fn();
 const closingItemCreate = jest.fn();
 const saveGeneratedPdf = jest.fn();
 const getDownloadUrl = jest.fn();
@@ -76,6 +77,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   },
   RefereeClosingDocumentItem: {
     destroy: closingItemDestroy,
+    update: closingItemUpdate,
     create: closingItemCreate,
   },
   Address: {},
@@ -146,6 +148,7 @@ beforeEach(() => {
   closingDocumentCount.mockReset();
   refereeAccrualUpdate.mockReset();
   closingItemDestroy.mockReset();
+  closingItemUpdate.mockReset();
   closingItemCreate.mockReset();
   saveGeneratedPdf.mockReset();
   getDownloadUrl.mockReset();
@@ -155,7 +158,9 @@ beforeEach(() => {
   documentServiceRegenerate.mockReset();
   documentServiceSign.mockReset();
   documentServiceSendAwaitingNotification.mockReset();
-  sequelizeTransaction.mockImplementation(async (callback) => callback({}));
+  sequelizeTransaction.mockImplementation(async (callback) =>
+    callback({ LOCK: { UPDATE: 'UPDATE' } })
+  );
   closingDocumentFindAndCountAll.mockResolvedValue({ rows: [], count: 0 });
   closingDocumentCount.mockResolvedValue(0);
 });
@@ -510,6 +515,101 @@ test('delete returns success even if file cleanup fails after commit', async () 
   expect(actDestroy).toHaveBeenCalled();
   expect(removeFile).toHaveBeenCalledWith('file-1');
   consoleErrorSpy.mockRestore();
+});
+
+test('cancel keeps item snapshots readable while freeing accruals', async () => {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-canceled' });
+  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
+  const documentUpdate = jest.fn().mockResolvedValue({});
+  const actUpdate = jest.fn().mockResolvedValue({});
+  closingDocumentFindOne.mockResolvedValueOnce({
+    id: 'closing-1',
+    tournament_id: 'tour-1',
+    status: 'AWAITING_SIGNATURE',
+    get: jest.fn().mockReturnValue({
+      id: 'closing-1',
+      status: 'AWAITING_SIGNATURE',
+    }),
+    update: actUpdate,
+    Document: {
+      id: 'doc-1',
+      update: documentUpdate,
+    },
+    Items: [{ id: 'item-1', accrual_document_id: 'acc-1' }],
+  });
+  closingDocumentFindAndCountAll.mockResolvedValue({
+    rows: [
+      {
+        id: 'closing-1',
+        status: 'CANCELED',
+        canceled_at: new Date('2026-03-13T12:00:00Z'),
+        posted_at: null,
+        sent_at: null,
+        document_id: 'doc-1',
+        referee_id: 'ref-1',
+        totals_json: { total_amount_rub: '1500.00' },
+        customer_snapshot_json: null,
+        performer_snapshot_json: null,
+        contract_snapshot_json: null,
+        fhmo_signer_snapshot_json: null,
+        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        Document: {
+          id: 'doc-1',
+          number: '26.03/1111',
+          name: 'Акт',
+          document_date: '2026-03-13',
+          DocumentStatus: { alias: 'CANCELED', name: 'Отменен' },
+          File: null,
+          DocumentUserSigns: [],
+        },
+        Items: [
+          {
+            snapshot_json: {
+              accrual_id: 'acc-1',
+              service_name: 'Матч 1',
+              total_amount_rub: '1500.00',
+            },
+          },
+        ],
+      },
+    ],
+    count: 1,
+  });
+
+  const result = await closingService.cancelClosingDocument(
+    'tour-1',
+    'closing-1',
+    'actor-1'
+  );
+
+  expect(closingItemUpdate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      accrual_document_id: null,
+      updated_by: 'actor-1',
+    }),
+    expect.objectContaining({
+      where: { closing_document_id: 'closing-1' },
+      paranoid: false,
+    })
+  );
+  expect(closingItemDestroy).not.toHaveBeenCalled();
+  expect(result.document.items).toEqual([
+    expect.objectContaining({
+      accrual_id: 'acc-1',
+      service_name: 'Матч 1',
+    }),
+  ]);
 });
 
 test('create rolls back draft artifacts when regenerate fails after commit', async () => {
@@ -974,6 +1074,12 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
     closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
   ).rejects.toThrow('smtp-or-s3 failure');
 
+  expect(closingDocumentFindOne.mock.calls[0]?.[0]).toEqual(
+    expect.objectContaining({
+      transaction: expect.any(Object),
+      lock: 'UPDATE',
+    })
+  );
   expect(documentServiceSign).toHaveBeenCalledWith(
     { id: 'fhmo-1', token_version: 1 },
     'doc-1',

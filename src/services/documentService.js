@@ -2548,7 +2548,23 @@ async function sendSignedNotification(documentId) {
   await emailService.sendDocumentSignedEmail(doc.recipient, doc);
 }
 
-async function rollbackClosingActRecipientSignature(documentId, userId) {
+async function safeRemoveDocumentFile(fileId, context = 'document rollback') {
+  if (!fileId) return;
+  try {
+    await fileService.removeFile(fileId);
+  } catch (error) {
+    console.error(`Failed to remove file during ${context}`, {
+      fileId,
+      code: error?.code || null,
+    });
+  }
+}
+
+async function rollbackClosingActRecipientSignature(
+  documentId,
+  userId,
+  previousFileId = null
+) {
   const awaitingStatus = await DocumentStatus.findOne({
     where: { alias: 'AWAITING_SIGNATURE' },
     attributes: ['id'],
@@ -2557,12 +2573,22 @@ async function rollbackClosingActRecipientSignature(documentId, userId) {
   await DocumentUserSign.destroy({
     where: { document_id: documentId, user_id: userId },
   });
-  const doc = await Document.findByPk(documentId);
+  const doc = await Document.findByPk(documentId, {
+    attributes: ['id', 'file_id'],
+  });
   if (!doc) return;
-  await doc.update({
+  const currentFileId = doc.file_id || null;
+  const updates = {
     status_id: awaitingStatus.id,
     updated_by: userId,
-  });
+  };
+  if (String(currentFileId || '') !== String(previousFileId || '')) {
+    updates.file_id = previousFileId || null;
+  }
+  await doc.update(updates);
+  if (currentFileId && String(currentFileId) !== String(previousFileId || '')) {
+    await safeRemoveDocumentFile(currentFileId, 'closing act sign rollback');
+  }
 }
 
 async function signWithCode(user, documentId, code) {
@@ -2601,6 +2627,7 @@ async function signWithCode(user, documentId, code) {
   await verifyCodeOnly(user, code, 'doc-sign');
   const isClosingAct =
     doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS;
+  const previousFileId = doc.file_id || null;
   // proceed with signing and stamping
   await sign(user, documentId, { notify: !isClosingAct });
   // After status update and sign record creation, regenerate current file version
@@ -2608,7 +2635,11 @@ async function signWithCode(user, documentId, code) {
     await regenerate(documentId, user.id);
   } catch (err) {
     if (isClosingAct) {
-      await rollbackClosingActRecipientSignature(documentId, user.id);
+      await rollbackClosingActRecipientSignature(
+        documentId,
+        user.id,
+        previousFileId
+      );
       throw err;
     }
     if (err?.code === 's3_upload_failed') {

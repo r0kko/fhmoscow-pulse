@@ -533,3 +533,147 @@ test('signWithCode rolls closing act signature back when regenerate fails', asyn
   expect(handleRecipientSignedMock).not.toHaveBeenCalled();
   expect(sendSignedMock).not.toHaveBeenCalled();
 });
+
+test('signWithCode restores previous file when regenerate fails after swapping PDF', async () => {
+  const emailVerify = { verifyCodeOnly: jest.fn().mockResolvedValue({}) };
+  jest.unstable_mockModule(
+    '../src/services/emailVerificationService.js',
+    () => ({
+      __esModule: true,
+      verifyCodeOnly: emailVerify.verifyCodeOnly,
+      default: emailVerify,
+    })
+  );
+  const signDocUpdate = jest.fn().mockResolvedValue({});
+  const regenerateDocUpdate = jest.fn().mockResolvedValue({});
+  const rollbackDocUpdate = jest.fn().mockResolvedValue({});
+  docFindByPk
+    .mockResolvedValueOnce({
+      id: 'doc-closing-code-2',
+      recipient_id: 'ref-3',
+      sign_type_id: 'sign-1',
+      document_type_id: 'type-1',
+      file_id: 14,
+      SignType: { alias: 'SIMPLE_ELECTRONIC', id: 'sign-1' },
+      DocumentStatus: {
+        alias: 'AWAITING_SIGNATURE',
+        name: 'Ожидает подписи',
+        id: 20,
+      },
+      DocumentType: {
+        alias: 'REFEREE_CLOSING_ACT',
+        generated: true,
+        name: 'Акт',
+      },
+      recipient: { id: 'ref-3', email: 'ref3@example.com' },
+      update: signDocUpdate,
+    })
+    .mockResolvedValueOnce({
+      id: 'doc-closing-code-2',
+      recipient_id: 'ref-3',
+      sign_type_id: 'sign-1',
+      document_type_id: 'type-1',
+      SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+      DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
+      DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
+      get: jest.fn().mockReturnValue({ id: 'doc-closing-code-2' }),
+      update: signDocUpdate,
+    })
+    .mockResolvedValueOnce({
+      id: 'doc-closing-code-2',
+      name: 'Акт',
+      number: '26.03/1002',
+      document_date: new Date('2026-03-13T00:00:00Z'),
+      file_id: 14,
+      recipient_id: 'ref-3',
+      description: JSON.stringify({
+        kind: 'REFEREE_CLOSING_ACT',
+        payload: {
+          customer: { name: 'ФХМ' },
+          performer: { full_name: 'Судья', address: 'Москва' },
+          contract: { number: '26.03/1002', document_date: '2026-03-12' },
+          fhmo_signer: { full_name: 'Специалист ФХМ' },
+          totals: { total_amount_rub: '1500.00' },
+          items: [{ service_name: 'Матч', total_amount_rub: '1500.00' }],
+        },
+      }),
+      DocumentType: {
+        alias: 'REFEREE_CLOSING_ACT',
+        generated: true,
+        name: 'Акт',
+      },
+      DocumentStatus: { alias: 'SIGNED' },
+      recipient: { id: 'ref-3', last_name: 'Судья', first_name: 'Илья' },
+      update: regenerateDocUpdate,
+    })
+    .mockResolvedValueOnce({
+      id: 'doc-closing-code-2',
+      file_id: 101,
+      update: rollbackDocUpdate,
+    });
+  docUserSignCount.mockResolvedValue(1);
+  docUserSignFindOne.mockResolvedValue(null);
+  docUserSignFindAll.mockResolvedValue([
+    {
+      id: 'sig-fhmo',
+      user_id: 'fhmo-1',
+      created_at: new Date('2026-03-12T12:00:00.000Z'),
+      User: {
+        id: 'fhmo-1',
+        last_name: 'Дробот',
+        first_name: 'Алексей',
+        patronymic: 'Андреевич',
+        Roles: [
+          { alias: 'FHMO_JUDGING_LEAD_SPECIALIST', name: 'Ведущий специалист' },
+        ],
+      },
+      SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+    },
+    {
+      id: 'sig-ref',
+      user_id: 'ref-3',
+      created_at: new Date('2026-03-13T10:00:00.000Z'),
+      User: {
+        id: 'ref-3',
+        last_name: 'Судья',
+        first_name: 'Илья',
+        patronymic: 'Ильич',
+        Roles: [],
+      },
+      SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+    },
+  ]);
+  userSignFindOne.mockResolvedValue({ sign_type_id: 'sign-1' });
+  docStatusFindOne.mockImplementation(({ where }) => {
+    if (where.alias === 'SIGNED') return Promise.resolve({ id: 10 });
+    if (where.alias === 'AWAITING_SIGNATURE')
+      return Promise.resolve({ id: 20 });
+    return Promise.resolve(null);
+  });
+  docTypeFindByPk.mockResolvedValue({ alias: 'REFEREE_CLOSING_ACT' });
+  saveGeneratedPdf.mockResolvedValueOnce({ id: 101 });
+  fileRemove
+    .mockRejectedValueOnce(new Error('old-file-remove-failed'))
+    .mockResolvedValueOnce();
+
+  await expect(
+    documentService.signWithCode(
+      { id: 'ref-3', token_version: 1 },
+      'doc-closing-code-2',
+      '123456'
+    )
+  ).rejects.toThrow('old-file-remove-failed');
+
+  expect(regenerateDocUpdate).toHaveBeenCalledWith({
+    file_id: 101,
+    updated_by: 'ref-3',
+  });
+  expect(rollbackDocUpdate).toHaveBeenCalledWith({
+    status_id: 20,
+    updated_by: 'ref-3',
+    file_id: 14,
+  });
+  expect(fileRemove).toHaveBeenNthCalledWith(1, 14);
+  expect(fileRemove).toHaveBeenNthCalledWith(2, 101);
+  expect(handleRecipientSignedMock).not.toHaveBeenCalled();
+});

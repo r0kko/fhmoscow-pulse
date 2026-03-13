@@ -1861,10 +1861,13 @@ async function sendClosingDocumentWithSigner(
   actorId,
   signerCandidate
 ) {
-  const [awaitingDocStatus, awaitingAccrualStatus, act] = await Promise.all([
+  const [awaitingDocStatus, awaitingAccrualStatus] = await Promise.all([
     ensureDocumentStatus('AWAITING_SIGNATURE'),
     ensureAccrualStatus('AWAITING_SIGNATURE'),
-    RefereeClosingDocument.findOne({
+  ]);
+
+  const transition = await sequelize.transaction(async (tx) => {
+    const act = await RefereeClosingDocument.findOne({
       where: {
         id: closingDocumentId,
         tournament_id: tournamentId,
@@ -1883,19 +1886,18 @@ async function sendClosingDocumentWithSigner(
           attributes: ['id', 'accrual_document_id', 'snapshot_json'],
         },
       ],
-    }),
-  ]);
-  if (!act) throw new ServiceError('closing_document_not_found', 404);
-  if (act.status !== 'DRAFT') {
-    throw new ServiceError('closing_document_send_invalid_status', 409);
-  }
-  const previousActStatus = act.status;
-  const previousSentAt = act.sent_at || null;
-  const previousSignerSnapshot = act.fhmo_signer_snapshot_json || null;
-  const previousDocumentStatusId = act.Document?.status_id || null;
-  const accrualIds = act.Items.map((item) => item.accrual_document_id);
-
-  await sequelize.transaction(async (tx) => {
+      transaction: tx,
+      lock: tx.LOCK.UPDATE,
+    });
+    if (!act) throw new ServiceError('closing_document_not_found', 404);
+    if (act.status !== 'DRAFT') {
+      throw new ServiceError('closing_document_send_invalid_status', 409);
+    }
+    const previousActStatus = act.status;
+    const previousSentAt = act.sent_at || null;
+    const previousSignerSnapshot = act.fhmo_signer_snapshot_json || null;
+    const previousDocumentStatusId = act.Document?.status_id || null;
+    const accrualIds = act.Items.map((item) => item.accrual_document_id);
     const before = act.get({ plain: true });
     await act.update(
       {
@@ -1934,35 +1936,46 @@ async function sendClosingDocumentWithSigner(
       actorId,
       transaction: tx,
     });
+    return {
+      actId: act.id,
+      documentId: act.document_id,
+      previousDocumentStatusId,
+      previousActStatus,
+      previousSentAt,
+      previousSignerSnapshot,
+      accrualIds,
+    };
   });
 
   try {
     const { default: documentService } = await import('./documentService.js');
     await documentService.sign(
       { id: signerCandidate.signer.id, token_version: 1 },
-      act.document_id,
+      transition.documentId,
       { notify: false }
     );
     await documentService.regenerate(
-      act.document_id,
+      transition.documentId,
       signerCandidate.signer.id
     );
-    await documentService.sendAwaitingSignatureNotification(act.document_id);
+    await documentService.sendAwaitingSignatureNotification(
+      transition.documentId
+    );
   } catch (error) {
     await rollbackClosingDocumentSend({
-      actId: act.id,
+      actId: transition.actId,
       actorId,
       signerId: signerCandidate.signer.id,
-      previousDocumentStatusId,
-      previousActStatus,
-      previousSentAt,
-      previousSignerSnapshot,
-      accrualIds,
+      previousDocumentStatusId: transition.previousDocumentStatusId,
+      previousActStatus: transition.previousActStatus,
+      previousSentAt: transition.previousSentAt,
+      previousSignerSnapshot: transition.previousSignerSnapshot,
+      accrualIds: transition.accrualIds,
     });
     throw error;
   }
 
-  return getClosingDocument(tournamentId, closingDocumentId);
+  return getClosingDocument(tournamentId, transition.actId);
 }
 
 async function sendClosingDocument(tournamentId, closingDocumentId, actorId) {
@@ -2082,10 +2095,17 @@ async function cancelClosingDocument(tournamentId, closingDocumentId, actorId) {
         transaction: tx,
       }
     );
-    await RefereeClosingDocumentItem.destroy({
-      where: { closing_document_id: act.id },
-      transaction: tx,
-    });
+    await RefereeClosingDocumentItem.update(
+      {
+        accrual_document_id: null,
+        updated_by: actorId,
+      },
+      {
+        where: { closing_document_id: act.id },
+        transaction: tx,
+        paranoid: false,
+      }
+    );
     await writeAuditEvent({
       entityType: 'REFEREE_CLOSING_DOCUMENT',
       entityId: act.id,

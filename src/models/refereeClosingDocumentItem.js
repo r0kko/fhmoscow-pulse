@@ -12,7 +12,7 @@ RefereeClosingDocumentItem.init(
       primaryKey: true,
     },
     closing_document_id: { type: DataTypes.UUID, allowNull: false },
-    accrual_document_id: { type: DataTypes.UUID, allowNull: false },
+    accrual_document_id: { type: DataTypes.UUID, allowNull: true },
     line_no: { type: DataTypes.INTEGER, allowNull: false },
     snapshot_json: { type: DataTypes.JSONB, allowNull: false },
   },

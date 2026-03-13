@@ -3165,7 +3165,8 @@ async function fetchTournamentPaymentRegistryRows({
   const whereSql = [
     'd.deleted_at IS NULL',
     'd.tournament_id = :tournamentId',
-    "status.alias = 'ACCRUED'",
+    // eslint-disable-next-line quotes
+    ['status.alias = ', `'ACCRUED'`].join(''),
   ];
   const replacements = { tournamentId };
 

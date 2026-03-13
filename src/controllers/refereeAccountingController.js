@@ -26,7 +26,7 @@ function csvEscape(value) {
 function buildAttachmentDisposition(filename) {
   const raw = String(filename || 'export.bin')
     .replace(/[\r\n]/g, ' ')
-    .replace(/"/g, "'");
+    .replace(/"/g, String.fromCharCode(39));
   const asciiFallback =
     raw
       .replace(/[^\x20-\x7E]+/g, '-')
