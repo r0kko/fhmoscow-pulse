@@ -2477,8 +2477,9 @@ async function listRefereeAccrualDocuments({
 }
 
 function normalizeBulkSelectionPayload(payload = {}) {
-  const selectionMode = normalizeString(payload.selectionMode || payload.selection_mode || 'explicit')
-    .toLowerCase();
+  const selectionMode = normalizeString(
+    payload.selectionMode || payload.selection_mode || 'explicit'
+  ).toLowerCase();
   if (!['explicit', 'filtered'].includes(selectionMode)) {
     throw new ServiceError('invalid_accrual_selection_mode', 400);
   }
@@ -2488,7 +2489,9 @@ function normalizeBulkSelectionPayload(payload = {}) {
       ? {
           tournamentId:
             normalizeString(
-              payload.filters.tournament_id || payload.filters.tournamentId || ''
+              payload.filters.tournament_id ||
+                payload.filters.tournamentId ||
+                ''
             ) || null,
           status: normalizeString(payload.filters.status || '') || null,
           source: normalizeString(payload.filters.source || '') || null,
@@ -3162,7 +3165,7 @@ async function fetchTournamentPaymentRegistryRows({
   const whereSql = [
     'd.deleted_at IS NULL',
     'd.tournament_id = :tournamentId',
-    'status.alias = \'ACCRUED\'',
+    "status.alias = 'ACCRUED'",
   ];
   const replacements = { tournamentId };
 

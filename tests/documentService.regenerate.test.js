@@ -271,7 +271,10 @@ test('regenerate uses closing act builder with signature timeline', async () => 
         performer: { full_name: 'Судья', address: 'Москва' },
         contract: { number: '26.03/1024', document_date: '2026-03-12' },
         fhmo_signer: { full_name: 'Специалист ФХМ' },
-        totals: { total_amount_rub: '1500.00', total_amount_words: 'Одна тысяча пятьсот рублей 00 копеек' },
+        totals: {
+          total_amount_rub: '1500.00',
+          total_amount_words: 'Одна тысяча пятьсот рублей 00 копеек',
+        },
         items: [{ service_name: 'Матч 1', total_amount_rub: '1500.00' }],
       },
     }),

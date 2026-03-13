@@ -16,7 +16,9 @@ const TEXT_PRIMARY = '#111827';
 const TABLE_BOTTOM_GAP = 88;
 
 function normalizeText(value, fallback = '—') {
-  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  const text = String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return text || fallback;
 }
 
@@ -61,7 +63,11 @@ function formatRub(value) {
 }
 
 function signerLabel(signature, fallback = '—') {
-  const fio = [signature?.last_name, signature?.first_name, signature?.patronymic]
+  const fio = [
+    signature?.last_name,
+    signature?.first_name,
+    signature?.patronymic,
+  ]
     .filter(Boolean)
     .join(' ')
     .trim();
@@ -135,11 +141,12 @@ function wrapCellText(doc, value, width, fallback = '—') {
     .join('\n');
 }
 
-function fitRoleCellText(doc, value, width, {
-  baseFontSize = 9,
-  minFontSize = 7.6,
-  step = 0.2,
-} = {}) {
+function fitRoleCellText(
+  doc,
+  value,
+  width,
+  { baseFontSize = 9, minFontSize = 7.6, step = 0.2 } = {}
+) {
   const text = normalizeText(value, '—');
   if (text === '—') {
     return {
@@ -220,9 +227,13 @@ function sectionDivider(doc, y) {
 function drawPageHeading(doc, fonts, meta) {
   applyFirstPageHeader(doc);
   doc.y = 74;
-  doc.font(fonts.bold).fontSize(18.5).fillColor(TEXT_PRIMARY).text(formatTitle(meta), {
-    align: 'center',
-  });
+  doc
+    .font(fonts.bold)
+    .fontSize(18.5)
+    .fillColor(TEXT_PRIMARY)
+    .text(formatTitle(meta), {
+      align: 'center',
+    });
   doc.moveDown(0.1);
   doc.font(fonts.regular).fontSize(10.5).fillColor(TEXT_MUTED).text(SUBTITLE, {
     align: 'center',
@@ -239,26 +250,33 @@ function drawPartySection(doc, fonts, label, party) {
   const valueLeft = left + labelWidth + 18;
   const details = wrapCellText(doc, formatPartyDetails(party), valueWidth, '');
 
-  doc.font(fonts.bold).fontSize(10).fillColor(TEXT_PRIMARY).text(label, left, top, {
-    width: labelWidth,
-  });
+  doc
+    .font(fonts.bold)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(label, left, top, {
+      width: labelWidth,
+    });
   const name = wrapCellText(doc, formatPartyName(party), valueWidth);
-  doc.font(fonts.bold).fontSize(10).fillColor(TEXT_PRIMARY).text(name, valueLeft, top, {
-    width: valueWidth,
-  });
+  doc
+    .font(fonts.bold)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(name, valueLeft, top, {
+      width: valueWidth,
+    });
   let nextY = Math.max(
     doc.y,
     top + doc.heightOfString(name, { width: valueWidth })
   );
   if (details) {
-    doc.font(fonts.regular).fontSize(10).fillColor(TEXT_PRIMARY).text(
-      details,
-      valueLeft,
-      nextY + 2,
-      {
+    doc
+      .font(fonts.regular)
+      .fontSize(10)
+      .fillColor(TEXT_PRIMARY)
+      .text(details, valueLeft, nextY + 2, {
         width: valueWidth,
-      }
-    );
+      });
     nextY = Math.max(
       doc.y,
       nextY + 2 + doc.heightOfString(details, { width: valueWidth })
@@ -292,12 +310,16 @@ function drawTableHeader(doc, fonts, columns, y) {
       .font(fonts.bold)
       .fontSize(9)
       .heightOfString(column.label, textOptions);
-    doc.font(fonts.bold).fontSize(9).fillColor(TEXT_PRIMARY).text(
-      column.label,
-      x + 6,
-      y + Math.max(8, (headerHeight - textHeight) / 2),
-      textOptions
-    );
+    doc
+      .font(fonts.bold)
+      .fontSize(9)
+      .fillColor(TEXT_PRIMARY)
+      .text(
+        column.label,
+        x + 6,
+        y + Math.max(8, (headerHeight - textHeight) / 2),
+        textOptions
+      );
     x += column.width;
   }
   return y + headerHeight;
@@ -319,8 +341,16 @@ function calcRowHeight(doc, item, columns) {
     item.service_datetime,
     columns[1].width - 12
   );
-  const roleLayout = fitRoleCellText(doc, item.role_name, columns[3].width - 12);
-  const tariffLabel = wrapCellText(doc, item.tariff_label, columns[4].width - 12);
+  const roleLayout = fitRoleCellText(
+    doc,
+    item.role_name,
+    columns[3].width - 12
+  );
+  const tariffLabel = wrapCellText(
+    doc,
+    item.tariff_label,
+    columns[4].width - 12
+  );
   const matchHeight =
     doc.heightOfString(matchLabel, {
       width: columns[2].width - 12,
@@ -393,63 +423,70 @@ function drawTableRow(doc, fonts, item, columns, y) {
       width: columns[0].width - 12,
       align: 'center',
     });
-  doc.font(fonts.regular).fontSize(9.2).fillColor(TEXT_PRIMARY).text(
-    String(item.line_no || ''),
-    x + 6,
-    y + Math.max(8, (rowHeight - numberHeight) / 2),
-    {
-      width: columns[0].width - 12,
-      align: 'center',
-    }
-  );
+  doc
+    .font(fonts.regular)
+    .fontSize(9.2)
+    .fillColor(TEXT_PRIMARY)
+    .text(
+      String(item.line_no || ''),
+      x + 6,
+      y + Math.max(8, (rowHeight - numberHeight) / 2),
+      {
+        width: columns[0].width - 12,
+        align: 'center',
+      }
+    );
   x += columns[0].width;
 
-  const serviceDateHeight = doc.font(fonts.regular).fontSize(9).heightOfString(
-    serviceDateTime,
-    {
+  const serviceDateHeight = doc
+    .font(fonts.regular)
+    .fontSize(9)
+    .heightOfString(serviceDateTime, {
       width: columns[1].width - 12,
-    }
-  );
-  doc.font(fonts.regular).fontSize(9).fillColor(TEXT_PRIMARY).text(
-    serviceDateTime,
-    x + 6,
-    y + Math.max(8, (rowHeight - serviceDateHeight) / 2),
-    {
-      width: columns[1].width - 12,
-    }
-  );
+    });
+  doc
+    .font(fonts.regular)
+    .fontSize(9)
+    .fillColor(TEXT_PRIMARY)
+    .text(
+      serviceDateTime,
+      x + 6,
+      y + Math.max(8, (rowHeight - serviceDateHeight) / 2),
+      {
+        width: columns[1].width - 12,
+      }
+    );
   x += columns[1].width;
 
-  const matchHeight = doc.font(fonts.regular).fontSize(9.2).heightOfString(
-    matchLabel,
-    {
+  const matchHeight = doc
+    .font(fonts.regular)
+    .fontSize(9.2)
+    .heightOfString(matchLabel, {
       width: columns[2].width - 12,
-    }
-  );
-  const competitionHeight = doc.font(fonts.regular).fontSize(8.2).heightOfString(
-    competitionName,
-    {
+    });
+  const competitionHeight = doc
+    .font(fonts.regular)
+    .fontSize(8.2)
+    .heightOfString(competitionName, {
       width: columns[2].width - 12,
-    }
-  );
-  const matchBlockY = y + Math.max(8, (rowHeight - (matchHeight + competitionHeight + 2)) / 2);
-  doc.font(fonts.regular).fontSize(9.2).fillColor(TEXT_PRIMARY).text(
-    matchLabel,
-    x + 6,
-    matchBlockY,
-    {
+    });
+  const matchBlockY =
+    y + Math.max(8, (rowHeight - (matchHeight + competitionHeight + 2)) / 2);
+  doc
+    .font(fonts.regular)
+    .fontSize(9.2)
+    .fillColor(TEXT_PRIMARY)
+    .text(matchLabel, x + 6, matchBlockY, {
       width: columns[2].width - 12,
-    }
-  );
+    });
   const competitionY = matchBlockY + matchHeight;
-  doc.font(fonts.regular).fontSize(8.2).fillColor(TEXT_MUTED).text(
-    competitionName,
-    x + 6,
-    competitionY + 2,
-    {
+  doc
+    .font(fonts.regular)
+    .fontSize(8.2)
+    .fillColor(TEXT_MUTED)
+    .text(competitionName, x + 6, competitionY + 2, {
       width: columns[2].width - 12,
-    }
-  );
+    });
   x += columns[2].width;
 
   const roleHeight = doc
@@ -458,55 +495,59 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .heightOfString(roleLayout.text, {
       width: columns[3].width - 12,
     });
-  doc.font(fonts.regular).fontSize(roleLayout.fontSize).fillColor(TEXT_PRIMARY).text(
-    roleLayout.text,
-    x + 6,
-    y + Math.max(8, (rowHeight - roleHeight) / 2),
-    {
-      width: columns[3].width - 12,
-    }
-  );
+  doc
+    .font(fonts.regular)
+    .fontSize(roleLayout.fontSize)
+    .fillColor(TEXT_PRIMARY)
+    .text(
+      roleLayout.text,
+      x + 6,
+      y + Math.max(8, (rowHeight - roleHeight) / 2),
+      {
+        width: columns[3].width - 12,
+      }
+    );
   x += columns[3].width;
 
-  const tariffHeight = doc.font(fonts.regular).fontSize(9).heightOfString(
-    tariffLabel,
-    {
+  const tariffHeight = doc
+    .font(fonts.regular)
+    .fontSize(9)
+    .heightOfString(tariffLabel, {
       width: columns[4].width - 12,
       align: 'center',
-    }
-  );
-  doc.font(fonts.regular).fontSize(9).fillColor(TEXT_PRIMARY).text(
-    tariffLabel,
-    x + 6,
-    y + Math.max(8, (rowHeight - tariffHeight) / 2),
-    {
+    });
+  doc
+    .font(fonts.regular)
+    .fontSize(9)
+    .fillColor(TEXT_PRIMARY)
+    .text(tariffLabel, x + 6, y + Math.max(8, (rowHeight - tariffHeight) / 2), {
       width: columns[4].width - 12,
       align: 'center',
-    }
-  );
+    });
   x += columns[4].width;
 
   const amountText = formatRub(item.amount_rub || item.total_amount_rub);
-  const amountHeight = doc.font(fonts.bold).fontSize(9.2).heightOfString(amountText, {
-    width: columns[5].width - 12,
-    align: 'right',
-  });
-  doc.font(fonts.bold).fontSize(9.2).fillColor(TEXT_PRIMARY).text(
-    amountText,
-    x + 6,
-    y + Math.max(8, (rowHeight - amountHeight) / 2),
-    {
+  const amountHeight = doc
+    .font(fonts.bold)
+    .fontSize(9.2)
+    .heightOfString(amountText, {
       width: columns[5].width - 12,
       align: 'right',
-    }
-  );
+    });
+  doc
+    .font(fonts.bold)
+    .fontSize(9.2)
+    .fillColor(TEXT_PRIMARY)
+    .text(amountText, x + 6, y + Math.max(8, (rowHeight - amountHeight) / 2), {
+      width: columns[5].width - 12,
+      align: 'right',
+    });
 
   return y + rowHeight;
 }
 
 function ensureTablePage(doc, fonts, columns, y, nextRowHeight) {
-  const limit =
-    doc.page.height - doc.page.margins.bottom - TABLE_BOTTOM_GAP;
+  const limit = doc.page.height - doc.page.margins.bottom - TABLE_BOTTOM_GAP;
   if (y + nextRowHeight <= limit) return y;
   doc.addPage();
   drawPageHeading(doc, fonts, {});
@@ -528,15 +569,14 @@ function drawSummary(doc, fonts, totals = {}) {
   let y = doc.y;
 
   for (const row of rows) {
-    doc.font(fonts.bold).fontSize(9.3).fillColor(TEXT_PRIMARY).text(
-      row.label,
-      boxLeft,
-      y + 7,
-      {
+    doc
+      .font(fonts.bold)
+      .fontSize(9.3)
+      .fillColor(TEXT_PRIMARY)
+      .text(row.label, boxLeft, y + 7, {
         width: boxWidth - valueWidth - 8,
         align: 'right',
-      }
-    );
+      });
     doc
       .save()
       .lineWidth(0.8)
@@ -544,47 +584,48 @@ function drawSummary(doc, fonts, totals = {}) {
       .rect(boxLeft + boxWidth - valueWidth, y, valueWidth, 28)
       .stroke()
       .restore();
-    doc.font(fonts.bold).fontSize(9.3).fillColor(TEXT_PRIMARY).text(
-      row.value,
-      boxLeft + boxWidth - valueWidth + 6,
-      y + 7,
-      {
+    doc
+      .font(fonts.bold)
+      .fontSize(9.3)
+      .fillColor(TEXT_PRIMARY)
+      .text(row.value, boxLeft + boxWidth - valueWidth + 6, y + 7, {
         width: valueWidth - 12,
         align: 'right',
-      }
-    );
+      });
     y += 28;
   }
 
   doc.y = y + 16;
-  doc.font(fonts.regular).fontSize(10).fillColor(TEXT_PRIMARY).text(
-    `Всего наименований ${Number(totals.items_count || 0)}, на сумму ${formatRub(
-      totals.total_amount_rub
-    )} рублей`,
-    contentLeft,
-    doc.y,
-    {
-      width: contentWidth,
-    }
-  );
+  doc
+    .font(fonts.regular)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(
+      `Всего наименований ${Number(totals.items_count || 0)}, на сумму ${formatRub(
+        totals.total_amount_rub
+      )} рублей`,
+      contentLeft,
+      doc.y,
+      {
+        width: contentWidth,
+      }
+    );
   doc.moveDown(0.15);
-  doc.font(fonts.bold).fontSize(10).fillColor(TEXT_PRIMARY).text(
-    normalizeText(totals.total_amount_words),
-    contentLeft,
-    doc.y,
-    {
+  doc
+    .font(fonts.bold)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(normalizeText(totals.total_amount_words), contentLeft, doc.y, {
       width: contentWidth,
-    }
-  );
+    });
   doc.moveDown(0.08);
-  doc.font(fonts.bold).fontSize(10).fillColor(TEXT_PRIMARY).text(
-    totals.vat_label || 'Без налога (НДС)',
-    contentLeft,
-    doc.y,
-    {
+  doc
+    .font(fonts.bold)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(totals.vat_label || 'Без налога (НДС)', contentLeft, doc.y, {
       width: contentWidth,
-    }
-  );
+    });
 }
 
 async function drawSignatureLane(
@@ -608,18 +649,16 @@ async function drawSignatureLane(
     signatures.find((item) => item.party === 'REFEREE') || null;
 
   const drawLaneMeta = (x, title, person) => {
-    doc.font(fonts.bold).fontSize(9.6).fillColor(TEXT_PRIMARY).text(
-      title,
-      x,
-      laneTop,
-      { width: laneWidth }
-    );
-    doc.font(fonts.regular).fontSize(8.6).fillColor(TEXT_MUTED).text(
-      person,
-      x,
-      laneTop + 14,
-      { width: laneWidth }
-    );
+    doc
+      .font(fonts.bold)
+      .fontSize(9.6)
+      .fillColor(TEXT_PRIMARY)
+      .text(title, x, laneTop, { width: laneWidth });
+    doc
+      .font(fonts.regular)
+      .fontSize(8.6)
+      .fillColor(TEXT_MUTED)
+      .text(person, x, laneTop + 14, { width: laneWidth });
   };
 
   drawLaneMeta(left, 'Заказчик', formatPartyName(customer));
@@ -648,7 +687,8 @@ async function drawSignatureLane(
         'Уполномоченный представитель ФХМ',
       signedAt: fhmoSignature.created_at,
       userId: fhmoSignature.user_id,
-      signerPosition: fhmoSignature.position || signerSnapshot?.position || null,
+      signerPosition:
+        fhmoSignature.position || signerSnapshot?.position || null,
       signerDepartment:
         fhmoSignature.department || signerSnapshot?.department || null,
       signerOrganization:
@@ -671,9 +711,7 @@ async function drawSignatureLane(
       showSignerDepartment: false,
       showSignerOrganization: false,
       fio:
-        signerLabel(refereeSignature) ||
-        performer?.full_name ||
-        'Исполнитель',
+        signerLabel(refereeSignature) || performer?.full_name || 'Исполнитель',
       signedAt: refereeSignature.created_at,
       userId: refereeSignature.user_id,
       signerPosition: 'Спортивный судья',
@@ -722,24 +760,18 @@ export default async function buildRefereeClosingActPdf(
     doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
   drawPageHeading(doc, fonts, meta);
-  drawPartySection(
-    doc,
-    fonts,
-    'Исполнитель',
-    performer
-  );
+  drawPartySection(doc, fonts, 'Исполнитель', performer);
   drawPartySection(doc, fonts, 'Заказчик', customer);
   sectionDivider(doc, doc.y - 2);
   doc.moveDown(0.35);
-  doc.font(fonts.regular).fontSize(10).fillColor(TEXT_PRIMARY).text(
-    buildIntroText(contract),
-    contentLeft,
-    doc.y,
-    {
+  doc
+    .font(fonts.regular)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(buildIntroText(contract), contentLeft, doc.y, {
       width: contentWidth,
       align: 'justify',
-    }
-  );
+    });
   doc.moveDown(0.45);
 
   const columns = [
@@ -785,15 +817,19 @@ export default async function buildRefereeClosingActPdf(
   doc.moveDown(0.4);
   sectionDivider(doc, doc.y);
   doc.moveDown(0.65);
-  doc.font(fonts.regular).fontSize(10).fillColor(TEXT_PRIMARY).text(
-    'Вышеперечисленные услуги оказаны полностью и в срок. Заказчик претензий по объему, качеству и срокам оказания услуг не имеет.',
-    contentLeft,
-    doc.y,
-    {
-      width: contentWidth,
-      align: 'justify',
-    }
-  );
+  doc
+    .font(fonts.regular)
+    .fontSize(10)
+    .fillColor(TEXT_PRIMARY)
+    .text(
+      'Вышеперечисленные услуги оказаны полностью и в срок. Заказчик претензий по объему, качеству и срокам оказания услуг не имеет.',
+      contentLeft,
+      doc.y,
+      {
+        width: contentWidth,
+        align: 'justify',
+      }
+    );
   doc.moveDown(0.7);
 
   const rangeBefore = doc.bufferedPageRange();

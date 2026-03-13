@@ -673,7 +673,9 @@ test('applyRefereeAccrualActionBulk resolves filtered selection before processin
     rows: [{ id: 'doc-1' }],
     count: 1,
   });
-  refereeAccrualDocumentFindAllMock.mockResolvedValue([{ id: 'doc-1', total_amount_rub: '1200.00' }]);
+  refereeAccrualDocumentFindAllMock.mockResolvedValue([
+    { id: 'doc-1', total_amount_rub: '1200.00' },
+  ]);
   refereeAccrualStatusTransitionFindOneMock.mockResolvedValue({
     to_status_id: 'ds-accrued',
   });

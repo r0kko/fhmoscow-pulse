@@ -23,7 +23,10 @@ export const closingPreviewRules = [
     .optional({ nullable: true })
     .isArray({ min: 1 })
     .withMessage('closing_document_ids_required'),
-  body('accrual_ids.*').optional({ nullable: true }).isUUID().withMessage('invalid_uuid'),
+  body('accrual_ids.*')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('invalid_uuid'),
   body('filters').optional({ nullable: true }).isObject(),
   body('filters.search').optional({ nullable: true }).isString(),
   body('filters.status').optional({ nullable: true }).isString(),

@@ -178,7 +178,10 @@ test('exportTournamentPaymentRegistryXlsx sanitizes non-ascii filename for heade
 test('bulkAccrualAction forwards filtered selection payload', async () => {
   const json = jest.fn();
   const res = { json };
-  applyRefereeAccrualActionBulkMock.mockResolvedValue({ success: 2, failed: 0 });
+  applyRefereeAccrualActionBulkMock.mockResolvedValue({
+    success: 2,
+    failed: 0,
+  });
 
   await controller.bulkAccrualAction(
     {

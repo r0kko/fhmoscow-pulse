@@ -60,7 +60,10 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Ground: {},
   RefereeRole: {},
   TournamentGroup: {},
-  RefereeAccrualDocument: { findAll: accrualFindAll, update: refereeAccrualUpdate },
+  RefereeAccrualDocument: {
+    findAll: accrualFindAll,
+    update: refereeAccrualUpdate,
+  },
   RefereeAccrualDocumentStatus: { findOne: accrualStatusFindOne },
   RefereeClosingDocumentProfile: { findOne: closingProfileFindOne },
   RefereeClosingDocument: {
@@ -112,9 +115,8 @@ jest.unstable_mockModule('../src/services/documentService.js', () => ({
   },
 }));
 
-const { default: closingService } = await import(
-  '../src/services/refereeClosingDocumentService.js'
-);
+const { default: closingService } =
+  await import('../src/services/refereeClosingDocumentService.js');
 
 beforeEach(() => {
   tournamentFindByPk.mockReset();
@@ -345,20 +347,25 @@ test('preview supports filtered selection mode', async () => {
         SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
       },
     ]);
-  documentFindAll.mockResolvedValueOnce([{ recipient_id: 'ref-1' }]).mockResolvedValueOnce([
-    {
-      id: 'contract-1',
-      recipient_id: 'ref-1',
-      number: '26.03/1024',
-      document_date: '2026-03-12',
-      name: 'Заявление о присоединении',
-      DocumentType: { name: 'Заявление о присоединении' },
-    },
-  ]);
+  documentFindAll
+    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
+    .mockResolvedValueOnce([
+      {
+        id: 'contract-1',
+        recipient_id: 'ref-1',
+        number: '26.03/1024',
+        document_date: '2026-03-12',
+        name: 'Заявление о присоединении',
+        DocumentType: { name: 'Заявление о присоединении' },
+      },
+    ]);
   userAddressFindAll.mockResolvedValue([
     {
       user_id: 'ref-1',
-      Address: { result: 'г. Москва, ул. Тестовая, д. 1', postal_code: '109000' },
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
       AddressType: { alias: 'REGISTRATION' },
     },
   ]);
@@ -458,7 +465,9 @@ test('delete removes draft closing act and returns accruals to accrued status', 
 });
 
 test('delete returns success even if file cleanup fails after commit', async () => {
-  const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const consoleErrorSpy = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
   accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
   documentUserSignFindOne.mockResolvedValue(null);
   const documentDestroy = jest.fn().mockResolvedValue({});
@@ -584,7 +593,10 @@ test('create rolls back draft artifacts when regenerate fails after commit', asy
   userAddressFindAll.mockResolvedValue([
     {
       user_id: 'ref-1',
-      Address: { result: 'г. Москва, ул. Тестовая, д. 1', postal_code: '109000' },
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
       AddressType: { alias: 'REGISTRATION' },
     },
   ]);
@@ -757,7 +769,10 @@ test('create rolls back earlier draft acts when a later group fails', async () =
       },
     ]);
   documentFindAll
-    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }, { recipient_id: 'ref-2' }])
+    .mockResolvedValueOnce([
+      { recipient_id: 'ref-1' },
+      { recipient_id: 'ref-2' },
+    ])
     .mockResolvedValueOnce([
       {
         id: 'contract-1',
@@ -779,12 +794,18 @@ test('create rolls back earlier draft acts when a later group fails', async () =
   userAddressFindAll.mockResolvedValue([
     {
       user_id: 'ref-1',
-      Address: { result: 'г. Москва, ул. Тестовая, д. 1', postal_code: '109000' },
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
       AddressType: { alias: 'REGISTRATION' },
     },
     {
       user_id: 'ref-2',
-      Address: { result: 'г. Москва, ул. Тестовая, д. 2', postal_code: '109001' },
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 2',
+        postal_code: '109001',
+      },
       AddressType: { alias: 'REGISTRATION' },
     },
   ]);
@@ -933,16 +954,14 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
     },
     Items: [{ accrual_document_id: 'acc-1' }],
   };
-  closingDocumentFindOne
-    .mockResolvedValueOnce(act)
-    .mockResolvedValueOnce({
-      ...act,
-      Document: {
-        id: 'doc-1',
-        status_id: 'doc-status-awaiting_signature',
-        update: documentUpdate,
-      },
-    });
+  closingDocumentFindOne.mockResolvedValueOnce(act).mockResolvedValueOnce({
+    ...act,
+    Document: {
+      id: 'doc-1',
+      status_id: 'doc-status-awaiting_signature',
+      update: documentUpdate,
+    },
+  });
   documentServiceSign.mockResolvedValue(undefined);
   documentServiceRegenerate
     .mockRejectedValueOnce(new Error('smtp-or-s3 failure'))
@@ -1022,8 +1041,16 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
       },
     })
   );
-  expect(documentServiceRegenerate).toHaveBeenNthCalledWith(1, 'doc-1', 'fhmo-1');
-  expect(documentServiceRegenerate).toHaveBeenNthCalledWith(2, 'doc-1', 'actor-1');
+  expect(documentServiceRegenerate).toHaveBeenNthCalledWith(
+    1,
+    'doc-1',
+    'fhmo-1'
+  );
+  expect(documentServiceRegenerate).toHaveBeenNthCalledWith(
+    2,
+    'doc-1',
+    'actor-1'
+  );
 });
 
 test('batch send supports explicit selection of draft acts', async () => {
@@ -1110,7 +1137,10 @@ test('batch send supports explicit selection of draft acts', async () => {
           number: '26.03/2001',
           name: 'Акт об оказании услуг',
           document_date: '2026-03-13',
-          DocumentStatus: { alias: 'AWAITING_SIGNATURE', name: 'Ожидает подписания' },
+          DocumentStatus: {
+            alias: 'AWAITING_SIGNATURE',
+            name: 'Ожидает подписания',
+          },
           File: null,
           DocumentUserSigns: [],
         },
@@ -1141,7 +1171,10 @@ test('batch send supports explicit selection of draft acts', async () => {
           number: '26.03/2002',
           name: 'Акт об оказании услуг',
           document_date: '2026-03-13',
-          DocumentStatus: { alias: 'AWAITING_SIGNATURE', name: 'Ожидает подписания' },
+          DocumentStatus: {
+            alias: 'AWAITING_SIGNATURE',
+            name: 'Ожидает подписания',
+          },
           File: null,
           DocumentUserSigns: [],
         },

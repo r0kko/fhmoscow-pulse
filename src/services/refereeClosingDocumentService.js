@@ -419,12 +419,15 @@ async function rollbackClosingDocumentSend({
     const { default: documentService } = await import('./documentService.js');
     await documentService.regenerate(act.document_id, actorId);
   } catch (error) {
-    console.error('Failed to regenerate draft closing document after rollback', {
-      actId,
-      documentId: act.document_id,
-      actorId,
-      code: error?.code || null,
-    });
+    console.error(
+      'Failed to regenerate draft closing document after rollback',
+      {
+        actId,
+        documentId: act.document_id,
+        actorId,
+        code: error?.code || null,
+      }
+    );
   }
 }
 
@@ -631,48 +634,53 @@ function normalizeSelectionPayload(payload = {}) {
     throw new ServiceError('invalid_closing_selection_mode', 400);
   }
 
-  const filters = payload?.filters && typeof payload.filters === 'object'
-    ? {
-        status: normalizeString(payload.filters.status || 'ACCRUED') || 'ACCRUED',
-        search: normalizeString(payload.filters.search || '') || undefined,
-        number: normalizeString(payload.filters.number || '') || undefined,
-        fareCode:
-          normalizeString(
-            payload.filters.fare_code || payload.filters.fareCode || ''
-          ) || undefined,
-        refereeRoleId:
-          normalizeString(
-            payload.filters.referee_role_id ||
-              payload.filters.refereeRoleId ||
-              ''
-          ) || undefined,
-        stageGroupId:
-          normalizeString(
-            payload.filters.stage_group_id ||
-              payload.filters.stageGroupId ||
-              ''
-          ) || undefined,
-        groundId:
-          normalizeString(payload.filters.ground_id || payload.filters.groundId || '') ||
-          undefined,
-        dateFrom:
-          normalizeString(payload.filters.date_from || payload.filters.dateFrom || '') ||
-          undefined,
-        dateTo:
-          normalizeString(payload.filters.date_to || payload.filters.dateTo || '') ||
-          undefined,
-        amountFrom:
-          normalizeString(
-            payload.filters.amount_from || payload.filters.amountFrom || ''
-          ) || undefined,
-        amountTo:
-          normalizeString(
-            payload.filters.amount_to || payload.filters.amountTo || ''
-          ) || undefined,
-      }
-    : {
-        status: 'ACCRUED',
-      };
+  const filters =
+    payload?.filters && typeof payload.filters === 'object'
+      ? {
+          status:
+            normalizeString(payload.filters.status || 'ACCRUED') || 'ACCRUED',
+          search: normalizeString(payload.filters.search || '') || undefined,
+          number: normalizeString(payload.filters.number || '') || undefined,
+          fareCode:
+            normalizeString(
+              payload.filters.fare_code || payload.filters.fareCode || ''
+            ) || undefined,
+          refereeRoleId:
+            normalizeString(
+              payload.filters.referee_role_id ||
+                payload.filters.refereeRoleId ||
+                ''
+            ) || undefined,
+          stageGroupId:
+            normalizeString(
+              payload.filters.stage_group_id ||
+                payload.filters.stageGroupId ||
+                ''
+            ) || undefined,
+          groundId:
+            normalizeString(
+              payload.filters.ground_id || payload.filters.groundId || ''
+            ) || undefined,
+          dateFrom:
+            normalizeString(
+              payload.filters.date_from || payload.filters.dateFrom || ''
+            ) || undefined,
+          dateTo:
+            normalizeString(
+              payload.filters.date_to || payload.filters.dateTo || ''
+            ) || undefined,
+          amountFrom:
+            normalizeString(
+              payload.filters.amount_from || payload.filters.amountFrom || ''
+            ) || undefined,
+          amountTo:
+            normalizeString(
+              payload.filters.amount_to || payload.filters.amountTo || ''
+            ) || undefined,
+        }
+      : {
+          status: 'ACCRUED',
+        };
 
   const accrualIds = [
     ...new Set(
@@ -808,9 +816,7 @@ function buildClosingDocumentWhere(tournamentId, filters = {}, extra = {}) {
     where.id = { [Op.in]: extra.ids };
   }
 
-  const status = normalizeString(
-    extra.statusOverride ?? filters.status ?? ''
-  );
+  const status = normalizeString(extra.statusOverride ?? filters.status ?? '');
   if (status) {
     where.status = status;
   }
@@ -952,7 +958,10 @@ function buildServiceDescription(accrual) {
 
 function buildAccrualItemSnapshot(accrual, lineNo) {
   const competitionName = accrual.Tournament?.name || null;
-  const matchLabel = [accrual.Match?.HomeTeam?.name, accrual.Match?.AwayTeam?.name]
+  const matchLabel = [
+    accrual.Match?.HomeTeam?.name,
+    accrual.Match?.AwayTeam?.name,
+  ]
     .filter(Boolean)
     .join(' - ');
   return {
@@ -1014,77 +1023,77 @@ async function getRefereeSupportData(userIds = [], transaction = null) {
 
   const [signs, agreements, contracts, addresses, inns, taxations] =
     await Promise.all([
-    UserSignType.findAll({
-      where: { user_id: { [Op.in]: ids } },
-      include: [
-        {
-          model: SignType,
-          attributes: ['id', 'alias', 'name'],
-          where: { alias: SIMPLE_SIGN_ALIAS },
-          required: true,
-        },
-      ],
-      order: [['sign_created_date', 'DESC']],
-      transaction,
-    }),
-    Document.findAll({
-      where: { recipient_id: { [Op.in]: ids } },
-      include: [
-        {
-          model: DocumentType,
-          attributes: ['alias'],
-          where: { alias: 'ELECTRONIC_INTERACTION_AGREEMENT' },
-          required: true,
-        },
-        {
-          model: DocumentStatus,
-          attributes: ['alias'],
-          where: { alias: 'SIGNED' },
-          required: true,
-        },
-      ],
-      order: [['created_at', 'DESC']],
-      transaction,
-    }),
-    Document.findAll({
-      where: { recipient_id: { [Op.in]: ids } },
-      include: [
-        {
-          model: DocumentType,
-          attributes: ['alias', 'name'],
-          where: { alias: REFEREE_CONTRACT_ALIAS },
-          required: true,
-        },
-      ],
-      order: [['created_at', 'DESC']],
-      transaction,
-    }),
-    UserAddress.findAll({
-      where: { user_id: { [Op.in]: ids } },
-      include: [
-        {
-          model: Address,
-          attributes: ['result', 'postal_code'],
-          required: true,
-        },
-        {
-          model: AddressType,
-          attributes: ['alias', 'name'],
-          required: true,
-        },
-      ],
-      transaction,
-    }),
-    Inn.findAll({
-      where: { user_id: { [Op.in]: ids } },
-      transaction,
-    }),
-    Taxation.findAll({
-      where: { user_id: { [Op.in]: ids } },
-      include: [{ model: TaxationType, attributes: ['alias', 'name'] }],
-      transaction,
-    }),
-  ]);
+      UserSignType.findAll({
+        where: { user_id: { [Op.in]: ids } },
+        include: [
+          {
+            model: SignType,
+            attributes: ['id', 'alias', 'name'],
+            where: { alias: SIMPLE_SIGN_ALIAS },
+            required: true,
+          },
+        ],
+        order: [['sign_created_date', 'DESC']],
+        transaction,
+      }),
+      Document.findAll({
+        where: { recipient_id: { [Op.in]: ids } },
+        include: [
+          {
+            model: DocumentType,
+            attributes: ['alias'],
+            where: { alias: 'ELECTRONIC_INTERACTION_AGREEMENT' },
+            required: true,
+          },
+          {
+            model: DocumentStatus,
+            attributes: ['alias'],
+            where: { alias: 'SIGNED' },
+            required: true,
+          },
+        ],
+        order: [['created_at', 'DESC']],
+        transaction,
+      }),
+      Document.findAll({
+        where: { recipient_id: { [Op.in]: ids } },
+        include: [
+          {
+            model: DocumentType,
+            attributes: ['alias', 'name'],
+            where: { alias: REFEREE_CONTRACT_ALIAS },
+            required: true,
+          },
+        ],
+        order: [['created_at', 'DESC']],
+        transaction,
+      }),
+      UserAddress.findAll({
+        where: { user_id: { [Op.in]: ids } },
+        include: [
+          {
+            model: Address,
+            attributes: ['result', 'postal_code'],
+            required: true,
+          },
+          {
+            model: AddressType,
+            attributes: ['alias', 'name'],
+            required: true,
+          },
+        ],
+        transaction,
+      }),
+      Inn.findAll({
+        where: { user_id: { [Op.in]: ids } },
+        transaction,
+      }),
+      Taxation.findAll({
+        where: { user_id: { [Op.in]: ids } },
+        include: [{ model: TaxationType, attributes: ['alias', 'name'] }],
+        transaction,
+      }),
+    ]);
 
   const signByUserId = new Map();
   for (const sign of signs) {
@@ -1594,11 +1603,7 @@ async function updateTournamentClosingProfile(tournamentId, payload, actorId) {
 
 async function previewClosingDocuments(tournamentId, payload) {
   const selection = await resolveSelectionAccrualIds(tournamentId, payload);
-  return buildPreviewResult(
-    tournamentId,
-    selection.accrualIds,
-    selection
-  );
+  return buildPreviewResult(tournamentId, selection.accrualIds, selection);
 }
 
 async function createClosingDocuments(tournamentId, payload, actorId) {
@@ -1937,7 +1942,10 @@ async function sendClosingDocumentWithSigner(
       { id: signerCandidate.signer.id, token_version: 1 },
       act.document_id
     );
-    await documentService.regenerate(act.document_id, signerCandidate.signer.id);
+    await documentService.regenerate(
+      act.document_id,
+      signerCandidate.signer.id
+    );
   } catch (error) {
     await rollbackClosingDocumentSend({
       actId: act.id,

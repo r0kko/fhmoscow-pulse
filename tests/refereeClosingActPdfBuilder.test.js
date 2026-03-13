@@ -187,9 +187,8 @@ test('closing act builder renders accounting layout and keeps short act on one p
     applyESignStamp: async () => {},
   }));
 
-  const { default: buildRefereeClosingActPdf } = await import(
-    '../src/services/docBuilders/refereeClosingAct.js'
-  );
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
 
   const payload = {
     customer: {
@@ -282,7 +281,9 @@ test('closing act builder renders accounting layout and keeps short act on one p
     })
   );
   const closingRecord = textRecords.find((entry) =>
-    entry.text.startsWith('Вышеперечисленные услуги оказаны полностью и в срок.')
+    entry.text.startsWith(
+      'Вышеперечисленные услуги оказаны полностью и в срок.'
+    )
   );
   expect(closingRecord?.options).toEqual(
     expect.objectContaining({
@@ -306,9 +307,8 @@ test('closing act builder supports long multi-page registries', async () => {
     applyESignStamp: async () => {},
   }));
 
-  const { default: buildRefereeClosingActPdf } = await import(
-    '../src/services/docBuilders/refereeClosingAct.js'
-  );
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
 
   const items = Array.from({ length: 32 }, (_, index) => ({
     line_no: index + 1,
@@ -363,9 +363,8 @@ test('closing act builder keeps signature lane stable after FHMO signing', async
     applyESignStamp,
   }));
 
-  const { default: buildRefereeClosingActPdf } = await import(
-    '../src/services/docBuilders/refereeClosingAct.js'
-  );
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
 
   const buffer = await buildRefereeClosingActPdf(
     {
@@ -459,9 +458,8 @@ test('closing act builder renders referee signature in compact lane without extr
     applyESignStamp,
   }));
 
-  const { default: buildRefereeClosingActPdf } = await import(
-    '../src/services/docBuilders/refereeClosingAct.js'
-  );
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
 
   await buildRefereeClosingActPdf(
     {
@@ -532,9 +530,8 @@ test('closing act builder shrinks ampula font before splitting long role words',
     applyESignStamp: async () => {},
   }));
 
-  const { default: buildRefereeClosingActPdf } = await import(
-    '../src/services/docBuilders/refereeClosingAct.js'
-  );
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
 
   await buildRefereeClosingActPdf(
     {

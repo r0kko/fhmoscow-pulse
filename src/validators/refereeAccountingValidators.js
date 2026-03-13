@@ -278,8 +278,14 @@ export const accrualBulkActionRules = [
     .isString()
     .matches(aliasRule)
     .withMessage('invalid_accrual_action'),
-  body('ids').optional({ nullable: true }).isArray({ min: 1 }).withMessage('bulk_ids_required'),
-  body('ids.*').optional({ nullable: true }).isUUID().withMessage('bulk_ids_invalid'),
+  body('ids')
+    .optional({ nullable: true })
+    .isArray({ min: 1 })
+    .withMessage('bulk_ids_required'),
+  body('ids.*')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('bulk_ids_invalid'),
   body('filters').optional({ nullable: true }).isObject(),
   body('filters.tournament_id').optional({ nullable: true }).isUUID(),
   body('filters.status')
@@ -350,8 +356,14 @@ export const accrualBulkDeleteRules = [
     .optional({ nullable: true })
     .isIn(['explicit', 'filtered'])
     .withMessage('invalid_accrual_selection_mode'),
-  body('ids').optional({ nullable: true }).isArray({ min: 1 }).withMessage('bulk_ids_required'),
-  body('ids.*').optional({ nullable: true }).isUUID().withMessage('bulk_ids_invalid'),
+  body('ids')
+    .optional({ nullable: true })
+    .isArray({ min: 1 })
+    .withMessage('bulk_ids_required'),
+  body('ids.*')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('bulk_ids_invalid'),
   body('filters').optional({ nullable: true }).isObject(),
   body('filters.tournament_id').optional({ nullable: true }).isUUID(),
   body('filters.status')
