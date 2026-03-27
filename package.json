@@ -93,7 +93,7 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.23.2",
     "eslint-plugin-prettier": "^2.7.0",
-    "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-security": "^4.0.0",
     "globals": "^17.3.0",
     "is-callable": "file:packages/is-callable",
     "is-date-object": "file:packages/is-date-object",
