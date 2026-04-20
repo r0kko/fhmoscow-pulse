@@ -33,7 +33,7 @@ function resolveSealPath() {
   return DEFAULT_SEAL_PATH;
 }
 
-export const MATCH_PROTOCOL_RENDER_VERSION = 19;
+export const MATCH_PROTOCOL_RENDER_VERSION = 20;
 
 export const MATCH_PROTOCOL_CONFIG = {
   apiBase: normalizeBaseUrl(process.env.MATCH_PROTOCOL_API_BASE),
@@ -82,6 +82,8 @@ export const MATCH_PROTOCOL_CONFIG = {
       normalizeFloat(process.env.MATCH_PROTOCOL_SEAL_CENTER_Y_RATIO, 0.17)
     )
   ),
+  sealOffsetXPx: normalizeInt(process.env.MATCH_PROTOCOL_SEAL_OFFSET_X_PX, 15),
+  sealOffsetYPx: normalizeInt(process.env.MATCH_PROTOCOL_SEAL_OFFSET_Y_PX, -15),
   signatureBottomOffset: Math.max(
     8,
     normalizeInt(process.env.MATCH_PROTOCOL_SIGNATURE_BOTTOM_OFFSET, 18)

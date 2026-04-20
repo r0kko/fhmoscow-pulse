@@ -36,8 +36,10 @@ function computeSealPlacement(pageWidth, pageHeight, imageWidth, imageHeight) {
   );
   const centerX = Math.round(pageWidth * MATCH_PROTOCOL_CONFIG.sealCenterXRatio);
   const centerY = Math.round(pageHeight * MATCH_PROTOCOL_CONFIG.sealCenterYRatio);
-  const x = Math.round(centerX - targetWidth / 2);
-  const y = Math.round(centerY - targetHeight / 2);
+  const x =
+    Math.round(centerX - targetWidth / 2) + 15;
+  const y =
+    Math.round(centerY - targetHeight / 2) - 30;
   return {
     x: Math.max(0, Math.min(pageWidth - targetWidth, x)),
     y: Math.max(0, Math.min(pageHeight - targetHeight, y)),
