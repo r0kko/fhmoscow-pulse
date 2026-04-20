@@ -107,6 +107,15 @@ function drawCopyTrueStamp(doc, { number }) {
     const startY = y + Math.max(0, Math.floor((height - totalHeight) / 2));
     const titleY = startY;
     const numberY = startY + titleHeight + lineGap;
+    try {
+      doc.font('SB-Bold');
+    } catch {
+      try {
+        doc.font('Default-Bold');
+      } catch {
+        doc.font('Helvetica-Bold');
+      }
+    }
     doc.text('КОПИЯ ВЕРНА', x, titleY, {
       width,
       align: 'center',
