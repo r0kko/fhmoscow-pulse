@@ -24,6 +24,7 @@ import broadcastController from '../controllers/broadcastController.js';
 import penaltyController, {
   listPenalties,
 } from '../controllers/matchPenaltyController.js';
+import matchProtocolController from '../controllers/matchProtocolController.js';
 
 const router = express.Router();
 
@@ -73,6 +74,12 @@ router.get(
 );
 
 router.get('/:id', auth, authorize('ADMIN', 'SPORT_SCHOOL_STAFF'), getMatch);
+router.get(
+  '/:id/protocol/download.pdf',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  matchProtocolController.download
+);
 
 // Agreements
 router.get(

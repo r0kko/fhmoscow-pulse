@@ -88,6 +88,24 @@ export const ERROR_MESSAGES = {
   agreement_already_signed: 'Протокол уже подписан',
   agreement_signature_missing: 'Необходимо подписать документ',
   match_not_found: 'Матч не найден',
+  match_protocol_not_available:
+    'Протокол пока недоступен для скачивания. Проверьте статус матча позже.',
+  match_protocol_requires_finished:
+    'Скачать протокол можно только после завершения матча.',
+  match_protocol_external_id_missing:
+    'Для этого матча отсутствует внешний идентификатор протокола.',
+  match_protocol_not_configured:
+    'Интеграция протоколов временно недоступна. Попробуйте позже.',
+  match_protocol_upstream_access_denied:
+    'Внешняя система протоколов временно недоступна. Попробуйте позже.',
+  match_protocol_upstream_unavailable:
+    'Не удалось получить протокол из внешней системы. Повторите попытку позже.',
+  match_protocol_signer_not_found:
+    'Не найден настроенный подписант ФХМ для формирования протокола.',
+  match_protocol_render_dependencies_missing:
+    'Сервис формирования протоколов временно недоступен. Попробуйте позже.',
+  match_protocol_rate_limited:
+    'Сервис протоколов временно ограничил число запросов. Повторите попытку позже.',
   match_locked: 'Матч закрыт для изменений',
   match_lineup_locked: 'Заявка на матч заблокирована',
   match_lineup_not_found: 'Заявка не найдена',

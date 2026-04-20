@@ -7,34 +7,41 @@ interface MenuTileProps {
   title: string;
   icon?: string;
   to?: RouteLocationRaw | null;
+  button?: boolean;
   replace?: boolean;
   placeholder?: boolean;
   note?: string;
   imageSrc?: string;
   imageAlt?: string;
   locked?: boolean;
+  busy?: boolean;
 }
 
 const props = withDefaults(defineProps<MenuTileProps>(), {
   icon: '',
   to: null,
+  button: false,
   replace: false,
   placeholder: false,
   note: '',
   imageSrc: '',
   imageAlt: '',
   locked: false,
+  busy: false,
 });
 
 const extraClasses = computed(() => [
   'menu-card',
   'fade-in',
-  { 'placeholder-card': props.placeholder || !props.to },
+  { 'placeholder-card': props.placeholder || (!props.to && !props.button) },
 ]);
 
-const accessibleLabel = computed(() => (props.to ? props.title : null));
+const accessibleLabel = computed(() =>
+  props.to || props.button ? props.title : null
+);
 const tileBindings = computed(() => ({
   ariaLabel: accessibleLabel.value ?? null,
+  role: props.button ? 'button' : 'group',
 }));
 </script>
 
@@ -42,7 +49,7 @@ const tileBindings = computed(() => ({
   <BaseTile
     :to="props.to || null"
     :replace="props.replace"
-    :disabled="props.placeholder || !props.to"
+    :disabled="props.placeholder || props.busy || (!props.to && !props.button)"
     v-bind="tileBindings"
     :section="false"
     :extra-class="extraClasses"
@@ -56,6 +63,12 @@ const tileBindings = computed(() => ({
           class="image-icon"
           height="24"
         />
+      </template>
+      <template v-else-if="props.busy">
+        <span
+          class="spinner-border spinner-border-sm icon"
+          aria-hidden="true"
+        ></span>
       </template>
       <template v-else>
         <i :class="props.icon + ' icon fs-3'" aria-hidden="true"></i>

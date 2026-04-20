@@ -257,6 +257,77 @@ test('regenerate attaches download URL and cleans old file', async () => {
   expect(updateMock).toHaveBeenCalledWith({ file_id: 99, updated_by: 'actor' });
 });
 
+test('regenerate still succeeds when old file cleanup fails after update', async () => {
+  const consoleErrorSpy = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+  const updateMock = jest.fn().mockResolvedValue({});
+  docFindByPk.mockResolvedValueOnce({
+    id: 'doc-11',
+    name: 'EIA',
+    number: '56',
+    document_date: new Date('2023-02-01'),
+    file_id: 6,
+    description: JSON.stringify({ equipment: { id: 'eq' } }),
+    DocumentType: {
+      generated: true,
+      alias: 'ELECTRONIC_INTERACTION_AGREEMENT',
+      name: 'Transfer',
+    },
+    DocumentStatus: { alias: 'CREATED' },
+    recipient: { last_name: 'Ivanov', first_name: 'Ivan', patronymic: 'I.' },
+    update: updateMock,
+  });
+  saveGeneratedPdf.mockResolvedValue({ id: 100 });
+  removeFile.mockRejectedValueOnce(new Error('s3 cleanup failed'));
+  getDownloadUrl.mockResolvedValue('https://signed/ok');
+
+  const result = await documentService.regenerate('doc-11', 'actor');
+
+  expect(result.file).toEqual({ id: 100, url: 'https://signed/ok' });
+  expect(removeFile).toHaveBeenCalledWith(6);
+  expect(updateMock).toHaveBeenCalledWith({
+    file_id: 100,
+    updated_by: 'actor',
+  });
+  consoleErrorSpy.mockRestore();
+});
+
+test('regenerate still succeeds when download URL cannot be generated', async () => {
+  const consoleErrorSpy = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+  const updateMock = jest.fn().mockResolvedValue({});
+  docFindByPk.mockResolvedValueOnce({
+    id: 'doc-12',
+    name: 'EIA',
+    number: '57',
+    document_date: new Date('2023-02-01'),
+    file_id: 7,
+    description: JSON.stringify({ equipment: { id: 'eq' } }),
+    DocumentType: {
+      generated: true,
+      alias: 'ELECTRONIC_INTERACTION_AGREEMENT',
+      name: 'Transfer',
+    },
+    DocumentStatus: { alias: 'CREATED' },
+    recipient: { last_name: 'Ivanov', first_name: 'Ivan', patronymic: 'I.' },
+    update: updateMock,
+  });
+  saveGeneratedPdf.mockResolvedValue({ id: 101 });
+  getDownloadUrl.mockRejectedValueOnce(new Error('presign failed'));
+
+  const result = await documentService.regenerate('doc-12', 'actor');
+
+  expect(result.file).toEqual({ id: 101, url: null });
+  expect(removeFile).toHaveBeenCalledWith(7);
+  expect(updateMock).toHaveBeenCalledWith({
+    file_id: 101,
+    updated_by: 'actor',
+  });
+  consoleErrorSpy.mockRestore();
+});
+
 test('regenerate uses closing act builder with signature timeline', async () => {
   docFindByPk.mockResolvedValueOnce({
     id: 'doc-closing',

@@ -7,6 +7,7 @@ import {
   mergeMatchRestrictions,
   buildPermissionPayload,
 } from '../utils/matchAccess.js';
+import { isMatchProtocolConfigured } from '../config/matchProtocol.js';
 
 async function listUpcoming(req, res, next) {
   try {
@@ -128,6 +129,7 @@ export async function get(req, res, next) {
     const m = await Match.findByPk(req.params.id, {
       attributes: [
         'id',
+        'external_id',
         'date_start',
         'ground_id',
         'team1_id',
@@ -213,9 +215,17 @@ export async function get(req, res, next) {
     const isHome = context?.isHome || false;
     const isAway = context?.isAway || false;
     const permissions = buildPermissionPayload(restrictions || {}, context);
+    const protocolDownload = {
+      configured: isMatchProtocolConfigured(),
+      available:
+        isMatchProtocolConfigured() &&
+        Boolean(m.external_id) &&
+        String(m.GameStatus?.alias || '').toUpperCase() === 'FINISHED',
+    };
     return res.json({
       match: {
         id: m.id,
+        external_id: m.external_id ?? null,
         date_start: m.date_start,
         scheduled_date: m.scheduled_date || null,
         team1_id: m.team1_id,
@@ -278,6 +288,7 @@ export async function get(req, res, next) {
           .sort((a, b) => (a.position || 0) - (b.position || 0))
           .map((x) => x.url)
           .filter(Boolean),
+        protocol_download: protocolDownload,
         permissions,
       },
     });

@@ -117,6 +117,8 @@ interface PreviewGroup {
   items?: ClosingItemSnapshot[];
   issues?: string[];
   accrual_ids?: string[];
+  draft_document_id?: string | null;
+  will_update_draft?: boolean;
 }
 
 interface PreviewResponse {
@@ -389,6 +391,7 @@ function formatDateTime(value: string | null | undefined) {
   return date.toLocaleString('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
   });
 }
 
@@ -411,6 +414,7 @@ function issueLabel(issue: string) {
     missing_simple_esign: 'У судьи не подключена ПЭП',
     missing_interaction_agreement: 'Нет подписанного соглашения о ПЭП',
     accrual_already_linked: 'Начисление уже включено в активный акт',
+    multiple_draft_documents: 'Начисления уже разнесены по разным черновикам',
     invalid_accrual_status: 'Выбраны начисления не в статусе "Начислено"',
   };
   return labels[issue] || issue;
@@ -744,7 +748,7 @@ async function createDocuments() {
         body: JSON.stringify(buildSelectionPayload()),
       }
     );
-    showToast('Черновики актов созданы');
+    showToast('Черновики актов подготовлены');
     clearSelection();
     preview.value = null;
     activeTab.value = 'documents';
@@ -1236,7 +1240,8 @@ onMounted(async () => {
                 <div class="fw-semibold">Предпросмотр пакета актов</div>
                 <div class="small text-muted">
                   Система соберет будущие акты по правилу: 1 судья = 1 акт и
-                  сразу покажет, какие группы готовы к отправке.
+                  сразу покажет, какие группы готовы к отправке. Если по судье
+                  уже есть черновик, он будет пересобран и обновлен.
                 </div>
               </div>
               <button
@@ -1316,9 +1321,23 @@ onMounted(async () => {
                           {{ formatContract(group.contract_snapshot) }}
                         </div>
                       </div>
-                      <span class="badge bg-success-subtle text-success border">
-                        Готов к созданию
-                      </span>
+                      <div class="d-flex flex-wrap gap-1 justify-content-end">
+                        <span
+                          v-if="group.will_update_draft"
+                          class="badge bg-info-subtle text-info-emphasis border"
+                        >
+                          Обновит черновик
+                        </span>
+                        <span
+                          class="badge bg-success-subtle text-success border"
+                        >
+                          {{
+                            group.will_update_draft
+                              ? 'Готов к обновлению'
+                              : 'Готов к созданию'
+                          }}
+                        </span>
+                      </div>
                     </div>
                     <div class="small text-muted mt-2">
                       {{
@@ -1396,7 +1415,7 @@ onMounted(async () => {
                   "
                   @click="createDocuments"
                 >
-                  Создать черновики актов
+                  Создать или обновить черновики
                 </button>
                 <button
                   type="button"
@@ -1410,7 +1429,8 @@ onMounted(async () => {
             </template>
 
             <div v-else class="small text-muted mt-3">
-              Выберите начисления и выполните предпросмотр.
+              Выберите начисления и выполните предпросмотр. Если по выбранным
+              судьям уже есть черновики, система пересоберет их и обновит.
             </div>
           </div>
         </div>

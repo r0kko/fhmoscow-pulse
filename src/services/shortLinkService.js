@@ -152,8 +152,11 @@ export async function resolveCode(code) {
   }
 }
 
-export async function buildShortVerifyUrl({ d, s, u, signedAt }) {
-  const token = buildVerifyToken({ d, s, u, signedAt }, { issuedAt: signedAt });
+export async function buildShortVerifyUrl({ d, s, u, k, signedAt }) {
+  const token = buildVerifyToken(
+    { d, s, u, k, signedAt },
+    { issuedAt: signedAt }
+  );
   const enabled =
     String(process.env.SHORTLINK_ENABLED || 'false').toLowerCase() === 'true';
   if (!enabled) throw new Error('shortlink_disabled');

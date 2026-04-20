@@ -27,6 +27,8 @@ const refereeAccrualUpdate = jest.fn();
 const closingItemDestroy = jest.fn();
 const closingItemUpdate = jest.fn();
 const closingItemCreate = jest.fn();
+const closingItemFindAll = jest.fn();
+const accountingAuditCreate = jest.fn();
 const saveGeneratedPdf = jest.fn();
 const getDownloadUrl = jest.fn();
 const removeFile = jest.fn();
@@ -76,6 +78,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: closingDocumentCreate,
   },
   RefereeClosingDocumentItem: {
+    findAll: closingItemFindAll,
     destroy: closingItemDestroy,
     update: closingItemUpdate,
     create: closingItemCreate,
@@ -86,7 +89,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Taxation: { findAll: taxationFindAll },
   TaxationType: {},
   UserAddress: { findAll: userAddressFindAll },
-  AccountingAuditEvent: { create: jest.fn() },
+  AccountingAuditEvent: { create: accountingAuditCreate },
 }));
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
@@ -150,6 +153,8 @@ beforeEach(() => {
   closingItemDestroy.mockReset();
   closingItemUpdate.mockReset();
   closingItemCreate.mockReset();
+  closingItemFindAll.mockReset();
+  accountingAuditCreate.mockReset();
   saveGeneratedPdf.mockReset();
   getDownloadUrl.mockReset();
   removeFile.mockReset();
@@ -161,8 +166,10 @@ beforeEach(() => {
   sequelizeTransaction.mockImplementation(async (callback) =>
     callback({ LOCK: { UPDATE: 'UPDATE' } })
   );
+  closingDocumentFindAll.mockResolvedValue([]);
   closingDocumentFindAndCountAll.mockResolvedValue({ rows: [], count: 0 });
   closingDocumentCount.mockResolvedValue(0);
+  closingItemFindAll.mockResolvedValue([]);
 });
 
 test('preview blocks act creation when referee address is missing', async () => {
@@ -408,6 +415,189 @@ test('preview supports filtered selection mode', async () => {
       selection_mode: 'filtered',
       selected_total: 1,
       selected_amount_rub: '1500.00',
+    })
+  );
+});
+
+test('preview reuses referee draft and preserves existing items while formatting time in MSK', async () => {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  closingProfileFindOne.mockResolvedValue({
+    id: 'profile-1',
+    organizer_inn: '7708046206',
+    organizer_name: 'Федерация хоккея Москвы',
+    organizer_address: 'Москва',
+  });
+  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
+  accrualFindAll
+    .mockResolvedValueOnce([
+      {
+        id: 'acc-1',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-001',
+        match_date_snapshot: '2026-03-01',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '1500.00',
+        base_amount_rub: '1500.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Главный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-03-01T12:00:00.000Z',
+          HomeTeam: { name: 'Команда А' },
+          AwayTeam: { name: 'Команда Б' },
+        },
+        ClosingItem: null,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        id: 'acc-old',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-000',
+        match_date_snapshot: '2026-02-28',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '1100.00',
+        base_amount_rub: '1100.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Главный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-02-28T15:00:00.000Z',
+          HomeTeam: { name: 'Команда С' },
+          AwayTeam: { name: 'Команда D' },
+        },
+        ClosingItem: null,
+      },
+    ]);
+  closingDocumentFindAll.mockResolvedValue([
+    {
+      id: 'closing-1',
+      referee_id: 'ref-1',
+      status: 'DRAFT',
+      Items: [
+        {
+          line_no: 1,
+          accrual_document_id: 'acc-old',
+          snapshot_json: {
+            accrual_id: 'acc-old',
+            service_datetime: '28.02.2026, 18:00',
+            total_amount_rub: '900.00',
+            base_amount_rub: '900.00',
+            meal_amount_rub: '0.00',
+            travel_amount_rub: '0.00',
+          },
+        },
+      ],
+    },
+  ]);
+  userSignTypeFindAll
+    .mockResolvedValueOnce([
+      {
+        User: {
+          id: 'fhmo-1',
+          email: 'fhmo@example.com',
+          last_name: 'Дробот',
+          first_name: 'Алексей',
+          patronymic: 'Андреевич',
+          Roles: [
+            {
+              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+              name: 'Ведущий специалист по судейству',
+              departmentName: 'Судейский департамент',
+              displayOrder: 1,
+            },
+          ],
+        },
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        user_id: 'ref-1',
+        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+      },
+    ]);
+  documentFindAll
+    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
+    .mockResolvedValueOnce([
+      {
+        id: 'contract-1',
+        recipient_id: 'ref-1',
+        number: '26.03/1024',
+        document_date: '2026-03-12',
+        name: 'Заявление о присоединении',
+        DocumentType: { name: 'Заявление о присоединении' },
+      },
+    ]);
+  userAddressFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
+      AddressType: { alias: 'REGISTRATION' },
+    },
+  ]);
+  innFindAll.mockResolvedValue([{ user_id: 'ref-1', number: '132612908997' }]);
+  taxationFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
+    },
+  ]);
+
+  const result = await closingService.previewClosingDocuments('tour-1', {
+    accrual_ids: ['acc-1'],
+  });
+
+  expect(result.blocked_groups).toHaveLength(0);
+  expect(result.ready_groups).toHaveLength(1);
+  expect(result.ready_groups[0]).toEqual(
+    expect.objectContaining({
+      draft_document_id: 'closing-1',
+      will_update_draft: true,
+    })
+  );
+  expect(result.ready_groups[0].items).toEqual([
+    expect.objectContaining({
+      accrual_id: 'acc-old',
+      service_datetime: '28.02.2026, 18:00',
+      total_amount_rub: '1100.00',
+    }),
+    expect.objectContaining({
+      accrual_id: 'acc-1',
+      service_datetime: expect.stringContaining('15:00'),
+    }),
+  ]);
+  expect(result.ready_groups[0].totals).toEqual(
+    expect.objectContaining({
+      items_count: 2,
+      total_amount_rub: '2600.00',
     })
   );
 });
@@ -767,6 +957,455 @@ test('create rolls back draft artifacts when regenerate fails after commit', asy
   );
   expect(actDestroy).toHaveBeenCalled();
   expect(removeFile).toHaveBeenCalledWith('placeholder-file-1');
+  expect(removeFile).toHaveBeenCalledTimes(1);
+});
+
+test('create updates an existing draft act instead of creating a new one', async () => {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  closingProfileFindOne.mockResolvedValue({
+    id: 'profile-1',
+    organizer_inn: '7708046206',
+    organizer_name: 'Федерация хоккея Москвы',
+    organizer_address: 'Москва',
+  });
+  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
+  accrualFindAll
+    .mockResolvedValueOnce([
+      {
+        id: 'acc-1',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-001',
+        match_date_snapshot: '2026-03-01',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '1500.00',
+        base_amount_rub: '1500.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Главный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-03-01T12:00:00.000Z',
+          HomeTeam: { name: 'Команда А' },
+          AwayTeam: { name: 'Команда Б' },
+        },
+        ClosingItem: null,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        id: 'acc-old',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-000',
+        match_date_snapshot: '2026-02-28',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '1100.00',
+        base_amount_rub: '1100.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Главный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-02-28T15:00:00.000Z',
+          HomeTeam: { name: 'Команда С' },
+          AwayTeam: { name: 'Команда D' },
+        },
+        ClosingItem: null,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        id: 'acc-old',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-000',
+        match_date_snapshot: '2026-02-28',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '1100.00',
+        base_amount_rub: '1100.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Главный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-02-28T15:00:00.000Z',
+          HomeTeam: { name: 'Команда С' },
+          AwayTeam: { name: 'Команда D' },
+        },
+        ClosingItem: null,
+      },
+      {
+        id: 'acc-extra',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-050',
+        match_date_snapshot: '2026-02-27',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '700.00',
+        base_amount_rub: '700.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Линейный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-02-27T16:00:00.000Z',
+          HomeTeam: { name: 'Команда E' },
+          AwayTeam: { name: 'Команда F' },
+        },
+        ClosingItem: null,
+      },
+      {
+        id: 'acc-1',
+        referee_id: 'ref-1',
+        document_status_id: 'status-accrued',
+        accrual_number: 'A-001',
+        match_date_snapshot: '2026-03-01',
+        fare_code_snapshot: 'RPOT',
+        total_amount_rub: '1500.00',
+        base_amount_rub: '1500.00',
+        meal_amount_rub: '0.00',
+        travel_amount_rub: '0.00',
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        RefereeRole: { name: 'Главный судья' },
+        Tournament: { name: 'Кубок Москвы' },
+        TournamentGroup: null,
+        Ground: null,
+        Match: {
+          date_start: '2026-03-01T12:00:00.000Z',
+          HomeTeam: { name: 'Команда А' },
+          AwayTeam: { name: 'Команда Б' },
+        },
+        ClosingItem: null,
+      },
+    ]);
+  closingDocumentFindAll.mockResolvedValue([
+    {
+      id: 'closing-1',
+      referee_id: 'ref-1',
+      status: 'DRAFT',
+      Items: [
+        {
+          id: 'item-legacy',
+          accrual_document_id: 'acc-old',
+          line_no: 1,
+          snapshot_json: {
+            accrual_id: 'acc-old',
+            service_datetime: '28.02.2026, 18:00',
+            total_amount_rub: '900.00',
+            base_amount_rub: '900.00',
+            meal_amount_rub: '0.00',
+            travel_amount_rub: '0.00',
+          },
+        },
+      ],
+    },
+  ]);
+  userSignTypeFindAll
+    .mockResolvedValueOnce([
+      {
+        User: {
+          id: 'fhmo-1',
+          email: 'fhmo@example.com',
+          last_name: 'Дробот',
+          first_name: 'Алексей',
+          patronymic: 'Андреевич',
+          Roles: [
+            {
+              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+              name: 'Ведущий специалист по судейству',
+              departmentName: 'Судейский департамент',
+              displayOrder: 1,
+            },
+          ],
+        },
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        user_id: 'ref-1',
+        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+      },
+    ]);
+  documentFindAll
+    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
+    .mockResolvedValueOnce([
+      {
+        id: 'contract-1',
+        recipient_id: 'ref-1',
+        number: '26.03/1024',
+        document_date: '2026-03-12',
+        name: 'Заявление о присоединении',
+        DocumentType: { name: 'Заявление о присоединении' },
+      },
+    ]);
+  userAddressFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
+      AddressType: { alias: 'REGISTRATION' },
+    },
+  ]);
+  innFindAll.mockResolvedValue([{ user_id: 'ref-1', number: '132612908997' }]);
+  taxationFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
+    },
+  ]);
+  documentTypeFindOne.mockResolvedValue({ id: 'doc-type-1' });
+  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-created' });
+  signTypeFindOne.mockResolvedValue({ id: 'sign-type-1' });
+
+  const documentUpdate = jest.fn().mockResolvedValue({});
+  const actUpdate = jest.fn().mockResolvedValue({});
+  const existingDraftItems = [
+    {
+      id: 'item-legacy',
+      accrual_document_id: 'acc-old',
+      line_no: 1,
+      snapshot_json: { accrual_id: 'acc-old' },
+    },
+    {
+      id: 'item-extra',
+      accrual_document_id: 'acc-extra',
+      line_no: 2,
+      snapshot_json: { accrual_id: 'acc-extra' },
+    },
+  ];
+  closingItemFindAll.mockResolvedValueOnce(existingDraftItems);
+  closingDocumentFindOne
+    .mockResolvedValueOnce({
+      id: 'closing-1',
+      tournament_id: 'tour-1',
+      document_id: 'doc-1',
+      status: 'DRAFT',
+      customer_snapshot_json: { name: 'Старый заказчик' },
+      performer_snapshot_json: { full_name: 'Старый судья' },
+      contract_snapshot_json: { number: '26.03/0001' },
+      fhmo_signer_snapshot_json: { full_name: 'Старый подписант' },
+      totals_json: { total_amount_rub: '1200.00', items_count: 1 },
+      sent_at: null,
+      posted_at: null,
+      canceled_at: null,
+      get: jest.fn().mockReturnValue({
+        id: 'closing-1',
+        status: 'DRAFT',
+      }),
+      update: actUpdate,
+      Document: {
+        id: 'doc-1',
+        description: '{"kind":"REFEREE_CLOSING_ACT"}',
+        update: documentUpdate,
+      },
+    })
+    .mockResolvedValueOnce({
+      id: 'closing-1',
+      status: 'DRAFT',
+      get: jest.fn().mockReturnValue({
+        id: 'closing-1',
+        status: 'DRAFT',
+        Items: [
+          {
+            accrual_document_id: 'acc-old',
+            line_no: 1,
+            snapshot_json: { accrual_id: 'acc-old' },
+          },
+          {
+            accrual_document_id: 'acc-extra',
+            line_no: 2,
+            snapshot_json: { accrual_id: 'acc-extra' },
+          },
+          {
+            accrual_document_id: 'acc-1',
+            line_no: 3,
+            snapshot_json: { accrual_id: 'acc-1' },
+          },
+        ],
+      }),
+    });
+  closingDocumentFindAndCountAll.mockResolvedValue({
+    rows: [
+      {
+        id: 'closing-1',
+        status: 'DRAFT',
+        sent_at: null,
+        posted_at: null,
+        canceled_at: null,
+        referee_id: 'ref-1',
+        totals_json: { total_amount_rub: '3300.00', items_count: 3 },
+        customer_snapshot_json: { name: 'Федерация хоккея Москвы' },
+        performer_snapshot_json: { full_name: 'Судья Иван Иванович' },
+        contract_snapshot_json: { number: '26.03/1024' },
+        fhmo_signer_snapshot_json: { full_name: 'Дробот Алексей Андреевич' },
+        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        Document: {
+          id: 'doc-1',
+          number: '26.03/1501',
+          name: 'Акт об оказании услуг',
+          document_date: '2026-03-13',
+          DocumentStatus: { alias: 'CREATED', name: 'Создан' },
+          File: null,
+          DocumentUserSigns: [],
+        },
+        Items: [
+          {
+            line_no: 1,
+            snapshot_json: {
+              accrual_id: 'acc-old',
+              service_datetime: '28.02.2026, 18:00',
+            },
+          },
+          {
+            line_no: 2,
+            snapshot_json: {
+              accrual_id: 'acc-extra',
+              service_datetime: '27.02.2026, 19:00',
+            },
+          },
+          {
+            line_no: 3,
+            snapshot_json: {
+              accrual_id: 'acc-1',
+              service_datetime: '01.03.2026, 15:00',
+            },
+          },
+        ],
+      },
+    ],
+    count: 1,
+  });
+  closingDocumentCount.mockResolvedValue(1);
+  documentServiceRegenerate.mockResolvedValue({});
+
+  const result = await closingService.createClosingDocuments(
+    'tour-1',
+    { accrual_ids: ['acc-1'] },
+    'actor-1'
+  );
+
+  expect(documentCreate).not.toHaveBeenCalled();
+  expect(saveGeneratedPdf).not.toHaveBeenCalled();
+  expect(closingItemDestroy).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { closing_document_id: 'closing-1' },
+    })
+  );
+  expect(closingItemCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      closing_document_id: 'closing-1',
+      accrual_document_id: 'acc-old',
+    }),
+    expect.any(Object)
+  );
+  expect(closingItemCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      closing_document_id: 'closing-1',
+      accrual_document_id: 'acc-extra',
+    }),
+    expect.any(Object)
+  );
+  expect(closingItemCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      closing_document_id: 'closing-1',
+      accrual_document_id: 'acc-1',
+    }),
+    expect.any(Object)
+  );
+  expect(documentUpdate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      description: expect.stringContaining('"closing_document_id":"closing-1"'),
+      updated_by: 'actor-1',
+    }),
+    expect.objectContaining({ returning: false })
+  );
+  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'actor-1');
+  expect(result.rows).toHaveLength(1);
+  expect(result.rows[0].items).toEqual([
+    expect.objectContaining({
+      accrual_id: 'acc-old',
+    }),
+    expect.objectContaining({
+      accrual_id: 'acc-extra',
+    }),
+    expect.objectContaining({
+      accrual_id: 'acc-1',
+    }),
+  ]);
+  expect(accountingAuditCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      action: 'UPDATE',
+      after_json: expect.objectContaining({
+        Items: [
+          expect.objectContaining({
+            accrual_document_id: 'acc-old',
+          }),
+          expect.objectContaining({
+            accrual_document_id: 'acc-extra',
+          }),
+          expect.objectContaining({
+            accrual_document_id: 'acc-1',
+          }),
+        ],
+      }),
+    }),
+    expect.any(Object)
+  );
 });
 
 test('create rolls back earlier draft acts when a later group fails', async () => {
@@ -1055,8 +1694,10 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
       update: documentUpdate,
       DocumentStatus: { alias: 'CREATED', name: 'Создан' },
     },
-    Items: [{ accrual_document_id: 'acc-1' }],
   };
+  closingItemFindAll.mockResolvedValueOnce([
+    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
+  ]);
   closingDocumentFindOne.mockResolvedValueOnce(act).mockResolvedValueOnce({
     ...act,
     Document: {
@@ -1195,7 +1836,7 @@ test('batch send supports explicit selection of draft acts', async () => {
     id: `accrual-status-${String(alias).toLowerCase()}`,
   }));
   const documentUpdate = jest.fn().mockResolvedValue({});
-  const buildAct = (id, documentId, accrualId) => ({
+  const buildAct = (id, documentId) => ({
     id,
     document_id: documentId,
     status: 'DRAFT',
@@ -1213,12 +1854,18 @@ test('batch send supports explicit selection of draft acts', async () => {
       update: documentUpdate,
       DocumentStatus: { alias: 'CREATED', name: 'Создан' },
     },
-    Items: [{ accrual_document_id: accrualId }],
   });
 
+  closingItemFindAll
+    .mockResolvedValueOnce([
+      { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
+    ])
+    .mockResolvedValueOnce([
+      { id: 'item-2', accrual_document_id: 'acc-2', snapshot_json: {} },
+    ]);
   closingDocumentFindOne
-    .mockResolvedValueOnce(buildAct('closing-1', 'doc-1', 'acc-1'))
-    .mockResolvedValueOnce(buildAct('closing-2', 'doc-2', 'acc-2'));
+    .mockResolvedValueOnce(buildAct('closing-1', 'doc-1'))
+    .mockResolvedValueOnce(buildAct('closing-2', 'doc-2'));
   documentServiceSign.mockResolvedValue(undefined);
   documentServiceRegenerate.mockResolvedValue(undefined);
   closingDocumentFindAndCountAll.mockResolvedValue({

@@ -19,6 +19,7 @@ test('builds and verifies token for given ids', async () => {
     d: 'doc-1',
     s: 'sign-1',
     u: 'user-1',
+    k: 'document',
     v: 2,
     iat: expect.any(Number),
     exp: expect.any(Number),
@@ -68,5 +69,24 @@ test('builds public verify URL', async () => {
   const t = decodeURIComponent(url.split('#t=')[1] || '');
   const { ok, payload } = verifyToken(t);
   expect(ok).toBe(true);
-  expect(payload).toMatchObject({ d: 'D', s: 'S', u: 'U' });
+  expect(payload).toMatchObject({ d: 'D', s: 'S', u: 'U', k: 'document' });
+});
+
+test('preserves custom verification kind', async () => {
+  const { buildVerifyToken, verifyToken } =
+    await import('../src/utils/verifyDocHmac.js');
+  const token = buildVerifyToken({
+    d: 'match-1',
+    s: 'snapshot-1',
+    u: 'user-1',
+    k: 'match_protocol',
+  });
+  const { ok, payload } = verifyToken(token);
+  expect(ok).toBe(true);
+  expect(payload).toMatchObject({
+    d: 'match-1',
+    s: 'snapshot-1',
+    u: 'user-1',
+    k: 'match_protocol',
+  });
 });

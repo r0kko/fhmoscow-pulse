@@ -97,6 +97,7 @@ function formatDateTimeLabel(value) {
   return date.toLocaleString('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
   });
 }
 
@@ -342,6 +343,135 @@ async function rollbackCreatedClosingDocumentsBatch(actIds, actorId) {
       message: rollbackError.reason?.message || null,
     });
   }
+}
+
+async function rollbackUpdatedClosingDocument(previousState, actorId) {
+  if (!previousState?.actId) return;
+  const act = await RefereeClosingDocument.findOne({
+    where: {
+      id: previousState.actId,
+      deleted_at: null,
+    },
+    include: [
+      {
+        model: Document,
+        as: 'Document',
+        attributes: ['id', 'description'],
+        required: false,
+      },
+    ],
+  });
+  if (!act?.Document) return;
+
+  await sequelize.transaction(async (tx) => {
+    await RefereeClosingDocumentItem.destroy({
+      where: { closing_document_id: act.id },
+      transaction: tx,
+    });
+    await act.Document.update(
+      {
+        description: previousState.documentDescription,
+        updated_by: actorId,
+      },
+      { transaction: tx, returning: false }
+    );
+    await act.update(
+      {
+        customer_snapshot_json: previousState.actFields.customer_snapshot_json,
+        performer_snapshot_json:
+          previousState.actFields.performer_snapshot_json,
+        contract_snapshot_json: previousState.actFields.contract_snapshot_json,
+        fhmo_signer_snapshot_json:
+          previousState.actFields.fhmo_signer_snapshot_json,
+        totals_json: previousState.actFields.totals_json,
+        status: previousState.actFields.status,
+        sent_at: previousState.actFields.sent_at,
+        posted_at: previousState.actFields.posted_at,
+        canceled_at: previousState.actFields.canceled_at,
+        updated_by: actorId,
+      },
+      { transaction: tx, returning: false }
+    );
+    for (const item of previousState.items || []) {
+      await RefereeClosingDocumentItem.create(
+        {
+          closing_document_id: act.id,
+          accrual_document_id: item.accrual_document_id,
+          line_no: item.line_no,
+          snapshot_json: item.snapshot_json,
+          created_by: actorId,
+          updated_by: actorId,
+        },
+        { transaction: tx }
+      );
+    }
+  });
+
+  try {
+    const { default: documentService } = await import('./documentService.js');
+    await documentService.regenerate(act.document_id, actorId);
+  } catch (error) {
+    console.error('Failed to regenerate restored closing document draft', {
+      actId: previousState.actId,
+      code: error?.code || null,
+      message: error?.message || null,
+    });
+  }
+}
+
+async function rollbackUpdatedClosingDocumentsBatch(previousStates, actorId) {
+  const items = [...(previousStates || [])].reverse();
+  const results = await Promise.allSettled(
+    items.map((previousState) =>
+      rollbackUpdatedClosingDocument(previousState, actorId)
+    )
+  );
+  const rollbackError = results.find((item) => item.status === 'rejected');
+  if (rollbackError?.status === 'rejected') {
+    console.error('Failed to rollback updated closing document batch', {
+      code: rollbackError.reason?.code || null,
+      message: rollbackError.reason?.message || null,
+    });
+  }
+}
+
+function buildClosingDocumentDescriptionPayload(group, actId = null) {
+  return JSON.stringify({
+    kind: CLOSING_DOC_ALIAS,
+    ...(actId ? { closing_document_id: actId } : {}),
+    payload: {
+      customer: group.customer_snapshot,
+      performer: group.performer_snapshot,
+      contract: group.contract_snapshot,
+      fhmo_signer: group.fhmo_signer_snapshot,
+      totals: group.totals,
+      items: group.items,
+    },
+  });
+}
+
+function buildClosingDocumentPreviousState(act) {
+  return {
+    actId: act.id,
+    documentId: act.document_id,
+    documentDescription: act.Document?.description || null,
+    actFields: {
+      customer_snapshot_json: act.customer_snapshot_json,
+      performer_snapshot_json: act.performer_snapshot_json,
+      contract_snapshot_json: act.contract_snapshot_json,
+      fhmo_signer_snapshot_json: act.fhmo_signer_snapshot_json,
+      totals_json: act.totals_json,
+      status: act.status,
+      sent_at: act.sent_at,
+      posted_at: act.posted_at,
+      canceled_at: act.canceled_at,
+    },
+    items: (act.Items || []).map((item) => ({
+      accrual_document_id: item.accrual_document_id,
+      line_no: item.line_no,
+      snapshot_json: item.snapshot_json,
+    })),
+  };
 }
 
 async function rollbackClosingDocumentSend({
@@ -993,17 +1123,138 @@ function buildAccrualItemSnapshot(accrual, lineNo) {
   };
 }
 
-function buildTotalsFromAccruals(accruals = []) {
-  const totalAmountRub = sumRubAmounts(accruals, 'total_amount_rub');
+function resolveItemAccrualId(item) {
+  return normalizeString(item?.accrual_id || item?.accrual_document_id || '');
+}
+
+function normalizeDraftItemSnapshot(item, snapshotByAccrualId = new Map()) {
+  const snapshot = item?.snapshot_json || item;
+  const accrualId =
+    resolveItemAccrualId(snapshot) || resolveItemAccrualId(item) || null;
+  if (!accrualId) return null;
+  const freshSnapshot = snapshotByAccrualId.get(accrualId);
+  if (freshSnapshot) return freshSnapshot;
   return {
-    items_count: accruals.length,
-    base_amount_rub: sumRubAmounts(accruals, 'base_amount_rub'),
-    meal_amount_rub: sumRubAmounts(accruals, 'meal_amount_rub'),
-    travel_amount_rub: sumRubAmounts(accruals, 'travel_amount_rub'),
+    ...snapshot,
+    accrual_id: snapshot?.accrual_id || item?.accrual_document_id || null,
+  };
+}
+
+function mergeDraftItems(
+  existingItems = [],
+  selectedAccrualIds = [],
+  snapshotByAccrualId = new Map()
+) {
+  const selectedIds = selectedAccrualIds
+    .map((id) => normalizeString(id))
+    .filter(Boolean);
+  const selectedByAccrualId = new Map();
+  for (const accrualId of selectedIds) {
+    const snapshot = snapshotByAccrualId.get(accrualId);
+    if (!snapshot) continue;
+    selectedByAccrualId.set(accrualId, snapshot);
+  }
+  const merged = [];
+  const usedAccrualIds = new Set();
+  const existingSnapshots = [...existingItems].sort(
+    (left, right) => Number(left?.line_no || 0) - Number(right?.line_no || 0)
+  );
+
+  for (const item of existingSnapshots) {
+    const snapshot = normalizeDraftItemSnapshot(item, snapshotByAccrualId);
+    const accrualId = resolveItemAccrualId(snapshot);
+    if (!accrualId) continue;
+    if (selectedByAccrualId.has(accrualId)) {
+      merged.push(selectedByAccrualId.get(accrualId));
+      usedAccrualIds.add(accrualId);
+      continue;
+    }
+    merged.push(snapshot);
+    usedAccrualIds.add(accrualId);
+  }
+
+  for (const accrualId of selectedIds) {
+    if (!accrualId || usedAccrualIds.has(accrualId)) continue;
+    const snapshot = snapshotByAccrualId.get(accrualId);
+    if (!snapshot) continue;
+    merged.push(snapshot);
+    usedAccrualIds.add(accrualId);
+  }
+
+  return merged.map((item, index) => ({
+    ...item,
+    line_no: index + 1,
+  }));
+}
+
+function buildTotalsFromItems(items = []) {
+  const totalAmountRub = sumRubAmounts(items, 'total_amount_rub');
+  return {
+    items_count: items.length,
+    base_amount_rub: sumRubAmounts(items, 'base_amount_rub'),
+    meal_amount_rub: sumRubAmounts(items, 'meal_amount_rub'),
+    travel_amount_rub: sumRubAmounts(items, 'travel_amount_rub'),
     total_amount_rub: totalAmountRub,
     vat_label: VAT_LABEL,
     total_amount_words: formatRubWords(totalAmountRub),
   };
+}
+
+function buildAccrualSnapshotMap(rows = []) {
+  const map = new Map();
+  for (const row of rows) {
+    const accrualId = normalizeString(row?.id);
+    if (!accrualId) continue;
+    map.set(accrualId, buildAccrualItemSnapshot(row, 0));
+  }
+  return map;
+}
+
+async function loadDraftClosingDocumentsByReferee(
+  tournamentId,
+  refereeIds = [],
+  transaction = null
+) {
+  const ids = [
+    ...new Set(refereeIds.map((id) => normalizeString(id)).filter(Boolean)),
+  ];
+  if (!ids.length) return [];
+
+  return RefereeClosingDocument.findAll({
+    where: {
+      tournament_id: tournamentId,
+      referee_id: { [Op.in]: ids },
+      status: 'DRAFT',
+      deleted_at: null,
+    },
+    include: [
+      {
+        model: RefereeClosingDocumentItem,
+        as: 'Items',
+        attributes: ['id', 'accrual_document_id', 'line_no', 'snapshot_json'],
+        required: false,
+      },
+    ],
+    order: [
+      ['created_at', 'DESC'],
+      [{ model: RefereeClosingDocumentItem, as: 'Items' }, 'line_no', 'ASC'],
+    ],
+    transaction,
+  });
+}
+
+async function loadClosingDocumentItems(closingDocumentId, transaction = null) {
+  if (!normalizeString(closingDocumentId)) return [];
+
+  return RefereeClosingDocumentItem.findAll({
+    where: {
+      closing_document_id: closingDocumentId,
+      deleted_at: null,
+    },
+    attributes: ['id', 'accrual_document_id', 'line_no', 'snapshot_json'],
+    order: [['line_no', 'ASC']],
+    transaction,
+  });
 }
 
 async function getRefereeSupportData(userIds = [], transaction = null) {
@@ -1134,10 +1385,11 @@ async function getRefereeSupportData(userIds = [], transaction = null) {
   };
 }
 
-async function loadAccrualsForSelection(
+async function loadAccrualRows(
   tournamentId,
   accrualIds,
-  transaction = null
+  transaction = null,
+  { strict = true } = {}
 ) {
   const ids = [
     ...new Set(
@@ -1225,11 +1477,57 @@ async function loadAccrualsForSelection(
     transaction,
   });
 
-  if (rows.length !== ids.length) {
+  if (strict && rows.length !== ids.length) {
     throw new ServiceError('closing_document_accrual_not_found', 404);
   }
 
   return rows;
+}
+
+async function loadAccrualsForSelection(
+  tournamentId,
+  accrualIds,
+  transaction = null
+) {
+  return loadAccrualRows(tournamentId, accrualIds, transaction, {
+    strict: true,
+  });
+}
+
+async function loadAccrualSnapshotMap(
+  tournamentId,
+  accrualIds,
+  transaction = null,
+  seedRows = []
+) {
+  const ids = [
+    ...new Set(
+      (accrualIds || []).map((id) => normalizeString(id)).filter(Boolean)
+    ),
+  ];
+  if (!ids.length) return new Map();
+
+  const seedMap = new Map(
+    seedRows
+      .filter((row) => normalizeString(row?.id))
+      .map((row) => [normalizeString(row.id), row])
+  );
+  const missingIds = ids.filter((id) => !seedMap.has(id));
+  if (missingIds.length) {
+    const missingRows = await loadAccrualRows(
+      tournamentId,
+      missingIds,
+      transaction,
+      {
+        strict: false,
+      }
+    );
+    for (const row of missingRows) {
+      seedMap.set(normalizeString(row.id), row);
+    }
+  }
+
+  return buildAccrualSnapshotMap([...seedMap.values()]);
 }
 
 async function buildPreviewResult(
@@ -1253,6 +1551,26 @@ async function buildPreviewResult(
     rows.map((item) => item.referee_id),
     transaction
   );
+  const draftActs = await loadDraftClosingDocumentsByReferee(
+    tournamentId,
+    rows.map((item) => item.referee_id),
+    transaction
+  );
+  const draftActsByReferee = new Map();
+  for (const act of draftActs) {
+    const key = normalizeString(act.referee_id);
+    if (!draftActsByReferee.has(key)) draftActsByReferee.set(key, []);
+    draftActsByReferee.get(key).push(act);
+  }
+  const draftAccrualIds = draftActs.flatMap((act) =>
+    (act.Items || []).map((item) => resolveItemAccrualId(item)).filter(Boolean)
+  );
+  const accrualSnapshotById = await loadAccrualSnapshotMap(
+    tournamentId,
+    [...rows.map((item) => item.id), ...draftAccrualIds],
+    transaction,
+    rows
+  );
 
   const grouped = new Map();
   for (const accrual of rows) {
@@ -1275,7 +1593,9 @@ async function buildPreviewResult(
     const addressRecord = support.addressByUserId.get(refereeId) || null;
     const innRecord = support.innByUserId.get(refereeId) || null;
     const taxation = support.taxationByUserId.get(refereeId) || null;
+    const refereeDraftActs = draftActsByReferee.get(refereeId) || [];
     const issues = [];
+    const linkedDraftIds = new Set();
 
     if (!profile) issues.push('missing_customer_profile');
     if (!signer) issues.push('missing_fhmo_signer');
@@ -1290,20 +1610,41 @@ async function buildPreviewResult(
         issues.push('invalid_accrual_status');
         break;
       }
-      if (
-        accrual.ClosingItem?.ClosingDocument &&
-        ACTIVE_ACT_STATUSES.includes(
-          String(accrual.ClosingItem.ClosingDocument.status || '')
-        )
-      ) {
+      const linkedClosingDocument =
+        accrual.ClosingItem?.ClosingDocument || null;
+      const linkedStatus = String(linkedClosingDocument?.status || '');
+      if (linkedStatus === 'DRAFT' && linkedClosingDocument?.id) {
+        linkedDraftIds.add(String(linkedClosingDocument.id));
+        continue;
+      }
+      if (linkedClosingDocument && ACTIVE_ACT_STATUSES.includes(linkedStatus)) {
         issues.push('accrual_already_linked');
         break;
       }
     }
+    for (const draftAct of refereeDraftActs) {
+      linkedDraftIds.add(String(draftAct.id));
+    }
+    if (linkedDraftIds.size > 1) issues.push('multiple_draft_documents');
 
-    const items = accruals.map((accrual, index) =>
-      buildAccrualItemSnapshot(accrual, index + 1)
-    );
+    const selectedAccrualIds = accruals.map((item) => item.id);
+    const draftDocumentId =
+      linkedDraftIds.size === 1 ? [...linkedDraftIds][0] : null;
+    const draftAct =
+      draftDocumentId &&
+      refereeDraftActs.find(
+        (item) => String(item.id) === String(draftDocumentId)
+      );
+    const items = draftAct
+      ? mergeDraftItems(
+          draftAct.Items || [],
+          selectedAccrualIds,
+          accrualSnapshotById
+        )
+      : selectedAccrualIds
+          .map((id) => accrualSnapshotById.get(String(id)))
+          .filter(Boolean)
+          .map((item, index) => ({ ...item, line_no: index + 1 }));
     const groupPayload = {
       referee: {
         id: referee?.id || null,
@@ -1319,10 +1660,13 @@ async function buildPreviewResult(
       customer_snapshot: buildProfileSnapshot(profile),
       contract_snapshot: buildContractSnapshot(contract),
       fhmo_signer_snapshot: buildSignerSnapshot(signer),
-      totals: buildTotalsFromAccruals(accruals),
+      totals: buildTotalsFromItems(items),
       items,
       issues: [...new Set(issues)],
-      accrual_ids: accruals.map((item) => item.id),
+      accrual_ids: items.map((item) => item.accrual_id).filter(Boolean),
+      selected_accrual_ids: selectedAccrualIds,
+      draft_document_id: draftDocumentId,
+      will_update_draft: Boolean(draftDocumentId),
     };
 
     if (groupPayload.issues.length) blocked_groups.push(groupPayload);
@@ -1624,15 +1968,155 @@ async function createClosingDocuments(tournamentId, payload, actorId) {
   ]);
 
   const createdActs = [];
+  const updatedDraftStates = [];
+  const preparedActIds = [];
   for (const group of preview.ready_groups) {
-    const placeholderFile = await fileService.saveGeneratedPdf(
-      Buffer.from('closing-act-draft'),
-      'referee-closing-act.pdf',
-      actorId
-    );
-
     let created = null;
+    let previousDraftState = null;
+    let placeholderFile = null;
     try {
+      if (group.draft_document_id) {
+        previousDraftState = await sequelize.transaction(async (tx) => {
+          const act = await RefereeClosingDocument.findOne({
+            where: {
+              id: group.draft_document_id,
+              tournament_id: tournamentId,
+              deleted_at: null,
+            },
+            include: [
+              {
+                model: Document,
+                as: 'Document',
+                attributes: ['id', 'description'],
+                required: true,
+              },
+            ],
+            transaction: tx,
+            lock: tx.LOCK.UPDATE,
+          });
+          if (!act) throw new ServiceError('closing_document_not_found', 404);
+          if (act.status !== 'DRAFT') {
+            throw new ServiceError(
+              'closing_document_create_invalid_status',
+              409
+            );
+          }
+
+          act.Items = await loadClosingDocumentItems(act.id, tx);
+
+          const previousState = buildClosingDocumentPreviousState(act);
+          const before = act.get({ plain: true });
+          const selectedAccrualIds = (group.selected_accrual_ids || [])
+            .map((id) => normalizeString(id))
+            .filter(Boolean);
+          const currentDraftAccrualIds = (act.Items || [])
+            .map((item) => resolveItemAccrualId(item))
+            .filter(Boolean);
+          const currentAccrualSnapshotById = await loadAccrualSnapshotMap(
+            tournamentId,
+            [...currentDraftAccrualIds, ...selectedAccrualIds],
+            tx
+          );
+          const mergedItems = mergeDraftItems(
+            act.Items || [],
+            selectedAccrualIds,
+            currentAccrualSnapshotById
+          );
+
+          await RefereeClosingDocumentItem.destroy({
+            where: { closing_document_id: act.id },
+            transaction: tx,
+          });
+          await act.update(
+            {
+              customer_snapshot_json: group.customer_snapshot,
+              performer_snapshot_json: group.performer_snapshot,
+              contract_snapshot_json: group.contract_snapshot,
+              fhmo_signer_snapshot_json: group.fhmo_signer_snapshot,
+              totals_json: buildTotalsFromItems(mergedItems),
+              updated_by: actorId,
+            },
+            { transaction: tx, returning: false }
+          );
+          for (const item of mergedItems) {
+            await RefereeClosingDocumentItem.create(
+              {
+                closing_document_id: act.id,
+                accrual_document_id: item.accrual_id,
+                line_no: item.line_no,
+                snapshot_json: item,
+                created_by: actorId,
+                updated_by: actorId,
+              },
+              { transaction: tx }
+            );
+          }
+
+          await act.Document.update(
+            {
+              description: buildClosingDocumentDescriptionPayload(
+                {
+                  ...group,
+                  items: mergedItems,
+                  totals: buildTotalsFromItems(mergedItems),
+                  accrual_ids: mergedItems
+                    .map((item) => item.accrual_id)
+                    .filter(Boolean),
+                },
+                act.id
+              ),
+              updated_by: actorId,
+            },
+            { transaction: tx, returning: false }
+          );
+          const updatedAct = await RefereeClosingDocument.findOne({
+            where: { id: act.id },
+            include: [
+              {
+                model: RefereeClosingDocumentItem,
+                as: 'Items',
+                attributes: [
+                  'id',
+                  'accrual_document_id',
+                  'line_no',
+                  'snapshot_json',
+                ],
+                required: false,
+              },
+            ],
+            transaction: tx,
+          });
+
+          await writeAuditEvent({
+            entityType: 'REFEREE_CLOSING_DOCUMENT',
+            entityId: act.id,
+            action: 'UPDATE',
+            before,
+            after: updatedAct?.get({ plain: true }) || act.get({ plain: true }),
+            actorId,
+            transaction: tx,
+          });
+
+          return previousState;
+        });
+
+        const { default: documentService } =
+          await import('./documentService.js');
+        await documentService.regenerate(
+          previousDraftState.documentId,
+          actorId
+        );
+        updatedDraftStates.push(previousDraftState);
+        preparedActIds.push(previousDraftState.actId);
+        continue;
+      }
+
+      placeholderFile = await fileService.saveGeneratedPdf(
+        Buffer.from('closing-act-draft'),
+        'referee-closing-act.pdf',
+        actorId
+      );
+
       created = await sequelize.transaction(async (tx) => {
         const document = await Document.create(
           {
@@ -1642,17 +2126,7 @@ async function createClosingDocuments(tournamentId, payload, actorId) {
             file_id: placeholderFile.id,
             sign_type_id: simpleSignType.id,
             name: 'Акт об оказании услуг',
-            description: JSON.stringify({
-              kind: CLOSING_DOC_ALIAS,
-              payload: {
-                customer: group.customer_snapshot,
-                performer: group.performer_snapshot,
-                contract: group.contract_snapshot,
-                fhmo_signer: group.fhmo_signer_snapshot,
-                totals: group.totals,
-                items: group.items,
-              },
-            }),
+            description: buildClosingDocumentDescriptionPayload(group),
             document_date: new Date(),
             created_by: actorId,
             updated_by: actorId,
@@ -1691,20 +2165,11 @@ async function createClosingDocuments(tournamentId, payload, actorId) {
           );
         }
 
-        const nextDescription = JSON.stringify({
-          kind: CLOSING_DOC_ALIAS,
-          closing_document_id: act.id,
-          payload: {
-            customer: group.customer_snapshot,
-            performer: group.performer_snapshot,
-            contract: group.contract_snapshot,
-            fhmo_signer: group.fhmo_signer_snapshot,
-            totals: group.totals,
-            items: group.items,
-          },
-        });
         await document.update(
-          { description: nextDescription, updated_by: actorId },
+          {
+            description: buildClosingDocumentDescriptionPayload(group, act.id),
+            updated_by: actorId,
+          },
           { transaction: tx, returning: false }
         );
 
@@ -1721,30 +2186,42 @@ async function createClosingDocuments(tournamentId, payload, actorId) {
         return {
           actId: act.id,
           documentId: document.id,
+          placeholderFileId: placeholderFile.id,
         };
       });
 
       const { default: documentService } = await import('./documentService.js');
       await documentService.regenerate(created.documentId, actorId);
       createdActs.push(created.actId);
+      preparedActIds.push(created.actId);
     } catch (error) {
       const rollbackIds = [...createdActs];
+      const rollbackUpdatedStates = [...updatedDraftStates];
       if (created?.actId) {
         rollbackIds.push(created.actId);
-      } else {
+      } else if (placeholderFile?.id) {
         await safeRemoveGeneratedFile(placeholderFile.id);
+      }
+      if (previousDraftState?.actId) {
+        rollbackUpdatedStates.push(previousDraftState);
       }
       if (rollbackIds.length) {
         await rollbackCreatedClosingDocumentsBatch(rollbackIds, actorId);
+      }
+      if (rollbackUpdatedStates.length) {
+        await rollbackUpdatedClosingDocumentsBatch(
+          rollbackUpdatedStates,
+          actorId
+        );
       }
       throw error;
     }
   }
 
   return listClosingDocuments(tournamentId, {
-    ids: createdActs,
+    ids: preparedActIds,
     page: 1,
-    limit: createdActs.length,
+    limit: preparedActIds.length,
   });
 }
 
@@ -1880,11 +2357,6 @@ async function sendClosingDocumentWithSigner(
           attributes: ['id', 'status_id'],
           include: [{ model: DocumentStatus, attributes: ['alias', 'name'] }],
         },
-        {
-          model: RefereeClosingDocumentItem,
-          as: 'Items',
-          attributes: ['id', 'accrual_document_id', 'snapshot_json'],
-        },
       ],
       transaction: tx,
       lock: tx.LOCK.UPDATE,
@@ -1893,6 +2365,7 @@ async function sendClosingDocumentWithSigner(
     if (act.status !== 'DRAFT') {
       throw new ServiceError('closing_document_send_invalid_status', 409);
     }
+    act.Items = await loadClosingDocumentItems(act.id, tx);
     const previousActStatus = act.status;
     const previousSentAt = act.sent_at || null;
     const previousSignerSnapshot = act.fhmo_signer_snapshot_json || null;

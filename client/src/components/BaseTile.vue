@@ -83,6 +83,7 @@ const tileRole = computed<string | null>(() => {
     :tabindex="componentTag === 'button' || isLink ? null : 0"
     :role="tileRole"
     :type="componentTag === 'button' ? 'button' : null"
+    :disabled="componentTag === 'button' ? props.disabled : null"
   >
     <slot />
   </component>
@@ -91,6 +92,10 @@ const tileRole = computed<string | null>(() => {
 <style scoped>
 .card.tile {
   text-decoration: none;
+}
+.card.tile[type='button'] {
+  text-align: left;
+  font: inherit;
 }
 .card.tile[aria-disabled='true'] {
   cursor: default;

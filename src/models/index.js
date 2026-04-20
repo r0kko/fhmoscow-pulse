@@ -14,6 +14,7 @@ import Document from './document.js';
 import DocumentUserSign from './documentUserSign.js';
 import DocumentStatus from './documentStatus.js';
 import DocumentType from './documentType.js';
+import NumberCounter from './numberCounter.js';
 import Country from './country.js';
 import Passport from './passport.js';
 import Inn from './inn.js';
@@ -80,6 +81,7 @@ import TournamentGroupReferee from './tournamentGroupReferee.js';
 import Tour from './tour.js';
 import Match from './match.js';
 import MatchBroadcastLink from './matchBroadcastLink.js';
+import MatchProtocolSnapshot from './matchProtocolSnapshot.js';
 import GameStatus from './gameStatus.js';
 import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
@@ -791,6 +793,32 @@ DocumentUserSign.belongsTo(User, { foreignKey: 'user_id' });
 SignType.hasMany(DocumentUserSign, { foreignKey: 'sign_type_id' });
 DocumentUserSign.belongsTo(SignType, { foreignKey: 'sign_type_id' });
 
+/* match protocol snapshots */
+Match.hasMany(MatchProtocolSnapshot, {
+  foreignKey: 'match_id',
+  as: 'ProtocolSnapshots',
+});
+MatchProtocolSnapshot.belongsTo(Match, {
+  foreignKey: 'match_id',
+  as: 'Match',
+});
+File.hasMany(MatchProtocolSnapshot, {
+  foreignKey: 'signed_file_id',
+  as: 'SignedMatchProtocolSnapshots',
+});
+MatchProtocolSnapshot.belongsTo(File, {
+  foreignKey: 'signed_file_id',
+  as: 'SignedFile',
+});
+User.hasMany(MatchProtocolSnapshot, {
+  foreignKey: 'signed_by_user_id',
+  as: 'MatchProtocolSignedSnapshots',
+});
+MatchProtocolSnapshot.belongsTo(User, {
+  foreignKey: 'signed_by_user_id',
+  as: 'SignedBy',
+});
+
 /* equipment */
 EquipmentType.hasMany(Equipment, { foreignKey: 'type_id' });
 Equipment.belongsTo(EquipmentType, { foreignKey: 'type_id' });
@@ -921,6 +949,7 @@ export {
   DocumentUserSign,
   DocumentStatus,
   DocumentType,
+  NumberCounter,
   Country,
   Passport,
   Inn,
@@ -964,6 +993,7 @@ export {
   Tour,
   Match,
   MatchBroadcastLink,
+  MatchProtocolSnapshot,
   GameStatus,
   MatchAgreement,
   JobLog,

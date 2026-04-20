@@ -4,6 +4,8 @@ const DOC_ID = 'bf3b5181-395c-439f-91d6-1df3f231c9ff';
 const SIGN_ID = '431f6ac6-876c-4967-a066-2d1ec0436ac5';
 const USER_ID = '9321ab79-5c0f-4817-9992-4b42ce5c8404';
 const OTHER_USER_ID = '4d86be59-9a49-4ce8-b9dc-d208b2e0f355';
+const MATCH_ID = '123e4567-e89b-12d3-a456-426614174000';
+const SNAPSHOT_ID = '123e4567-e89b-12d3-a456-426614174001';
 
 function createReq({ token = '', query = {} } = {}) {
   return {
@@ -39,6 +41,7 @@ async function loadVerifyHandler({
   verifyTokenResult,
   doc,
   sign,
+  matchProtocolSnapshot,
   now = Date.now(),
 }) {
   jest.resetModules();
@@ -47,6 +50,7 @@ async function loadVerifyHandler({
   const verifyTokenMock = jest.fn(() => verifyTokenResult);
   const findDocMock = jest.fn(async () => doc);
   const findSignMock = jest.fn(async () => sign);
+  const findSnapshotMock = jest.fn(async () => matchProtocolSnapshot);
 
   jest.unstable_mockModule('../src/middlewares/verifyRateLimiter.js', () => ({
     __esModule: true,
@@ -66,7 +70,10 @@ async function loadVerifyHandler({
     Document: { findByPk: findDocMock },
     DocumentStatus: {},
     DocumentUserSign: { findByPk: findSignMock },
+    Match: {},
+    MatchProtocolSnapshot: { findByPk: findSnapshotMock },
     SignType: {},
+    Team: {},
     User: {},
   }));
 
@@ -77,7 +84,13 @@ async function loadVerifyHandler({
   if (typeof handler !== 'function') {
     throw new Error('verify handler not found');
   }
-  return { handler, verifyTokenMock, findDocMock, findSignMock };
+  return {
+    handler,
+    verifyTokenMock,
+    findDocMock,
+    findSignMock,
+    findSnapshotMock,
+  };
 }
 
 describe('/verify route', () => {
@@ -353,5 +366,64 @@ describe('/verify route', () => {
     });
     expect(findDocMock).not.toHaveBeenCalled();
     expect(findSignMock).not.toHaveBeenCalled();
+  });
+
+  test('verifies match protocol snapshot tokens', async () => {
+    const { handler, findSnapshotMock, findDocMock, findSignMock } =
+      await loadVerifyHandler({
+        verifyTokenResult: {
+          ok: true,
+          version: 2,
+          payload: {
+            d: MATCH_ID,
+            s: SNAPSHOT_ID,
+            u: USER_ID,
+            k: 'match_protocol',
+          },
+        },
+        doc: null,
+        sign: null,
+        matchProtocolSnapshot: {
+          id: SNAPSHOT_ID,
+          match_id: MATCH_ID,
+          signed_by_user_id: USER_ID,
+          number: '26.04/1',
+          document_date: '2026-04-20T00:00:00.000Z',
+          signed_at: '2026-04-20T10:00:00.000Z',
+          status: 'ACTIVE',
+          Match: {
+            HomeTeam: { name: 'Синие' },
+            AwayTeam: { name: 'Белые' },
+          },
+          SignedBy: {
+            last_name: 'Петров',
+            first_name: 'Пётр',
+            patronymic: 'Петрович',
+          },
+        },
+      });
+
+    const req = createReq({ token: 'signed-token' });
+    const res = createRes();
+
+    await handler(req, res);
+
+    expect(findSnapshotMock).toHaveBeenCalledWith(
+      SNAPSHOT_ID,
+      expect.anything()
+    );
+    expect(findDocMock).not.toHaveBeenCalled();
+    expect(findSignMock).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toMatchObject({
+      ok: true,
+      result: 'valid',
+      document: {
+        number: '26.04/1',
+        name: 'Протокол матча Синие — Белые',
+      },
+      signer: { fio: 'Петров Пётр Петрович' },
+      signature: { typeAlias: 'SIMPLE_ELECTRONIC' },
+    });
   });
 });

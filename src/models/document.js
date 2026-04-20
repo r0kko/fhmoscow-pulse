@@ -1,6 +1,7 @@
-import { DataTypes, Model, QueryTypes } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
 import sequelize from '../config/database.js';
+import { nextDocumentNumber } from '../services/numberingService.js';
 
 class Document extends Model {}
 
@@ -32,15 +33,8 @@ Document.init(
 
 Document.addHook('beforeValidate', async (doc) => {
   if (doc.number) return;
-  const [{ nextval }] = await sequelize.query(
-    // eslint-disable-next-line quotes
-    "SELECT nextval('documents_number_seq') AS nextval",
-    { type: QueryTypes.SELECT }
-  );
   const date = doc.document_date || new Date();
-  const yy = String(date.getFullYear()).slice(-2);
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  doc.number = `${yy}.${mm}/${nextval}`;
+  doc.number = await nextDocumentNumber(date);
 });
 
 // Keep user signature type in sync when agreement gets signed

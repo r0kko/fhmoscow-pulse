@@ -2560,6 +2560,24 @@ async function safeRemoveDocumentFile(fileId, context = 'document rollback') {
   }
 }
 
+async function safeGetDocumentDownloadUrl(
+  file,
+  options = {},
+  context = 'document'
+) {
+  if (!file) return null;
+  try {
+    return await fileService.getDownloadUrl(file, options);
+  } catch (error) {
+    console.error(`Failed to get download URL during ${context}`, {
+      fileId: file?.id || null,
+      code: error?.code || null,
+      message: error?.message || null,
+    });
+    return null;
+  }
+}
+
 async function rollbackClosingActRecipientSignature(
   documentId,
   userId,
@@ -3091,7 +3109,7 @@ async function regenerate(documentId, actorId) {
   const oldFileId = doc.file_id;
   await doc.update({ file_id: newFile.id, updated_by: actorId });
   if (oldFileId) {
-    await fileService.removeFile(oldFileId);
+    await safeRemoveDocumentFile(oldFileId, 'document regenerate cleanup');
   }
   const fio = `${doc.recipient.last_name} ${doc.recipient.first_name}${
     doc.recipient.patronymic ? ` ${doc.recipient.patronymic}` : ''
@@ -3099,9 +3117,13 @@ async function regenerate(documentId, actorId) {
   let baseName =
     `${doc.DocumentType ? doc.DocumentType.name : 'Документ'} · ${fio}`.trim();
   baseName = baseName.replace(/[\\/:*?"<>|]/g, ' ');
-  const url = await fileService.getDownloadUrl(newFile, {
-    filename: `${baseName}.pdf`,
-  });
+  const url = await safeGetDocumentDownloadUrl(
+    newFile,
+    {
+      filename: `${baseName}.pdf`,
+    },
+    'document regenerate response'
+  );
   return { file: { id: newFile.id, url } };
 }
 

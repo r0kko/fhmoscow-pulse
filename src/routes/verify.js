@@ -9,7 +9,10 @@ import {
   Document,
   DocumentStatus,
   DocumentUserSign,
+  Match,
+  MatchProtocolSnapshot,
   SignType,
+  Team,
   User,
 } from '../models/index.js';
 import { verifyToken } from '../utils/verifyDocHmac.js';
@@ -211,12 +214,8 @@ router.get('/', verifyRateLimiter, async (req, res) => {
   }
 
   const payload = tokenCheck.payload;
-  if (
-    !payload ||
-    !isUuidLike(payload.d) ||
-    !isUuidLike(payload.s) ||
-    !isUuidLike(payload.u)
-  ) {
+  const verifyKind = String(payload?.k || 'document').toLowerCase();
+  if (!payload || !isUuidLike(payload.d) || !isUuidLike(payload.s) || !isUuidLike(payload.u)) {
     return sendFailure({
       res,
       status: 400,
@@ -228,95 +227,178 @@ router.get('/', verifyRateLimiter, async (req, res) => {
     });
   }
 
-  const doc = await Document.findByPk(payload.d, {
-    include: [{ model: DocumentStatus, attributes: ['alias', 'name'] }],
-    attributes: ['id', 'number', 'name', 'document_date'],
-  });
-  if (!doc) {
-    return sendFailure({
-      res,
-      status: 404,
-      result: 'not_found',
-      error: 'not_found',
-      tokenVersion,
-      source,
-      startedAt,
+  let response = null;
+  if (verifyKind === 'match_protocol') {
+    const snapshot = await MatchProtocolSnapshot.findByPk(payload.s, {
+      include: [
+        {
+          model: Match,
+          as: 'Match',
+          attributes: ['id'],
+          include: [
+            { model: Team, as: 'HomeTeam', attributes: ['name'] },
+            { model: Team, as: 'AwayTeam', attributes: ['name'] },
+          ],
+        },
+        {
+          model: User,
+          as: 'SignedBy',
+          attributes: ['last_name', 'first_name', 'patronymic'],
+        },
+      ],
+      attributes: ['id', 'match_id', 'signed_by_user_id', 'number', 'document_date', 'signed_at', 'status'],
     });
-  }
-
-  const sign = await DocumentUserSign.findByPk(payload.s, {
-    include: [
-      {
-        model: User,
-        attributes: ['last_name', 'first_name', 'patronymic'],
+    if (!snapshot) {
+      return sendFailure({
+        res,
+        status: 404,
+        result: 'not_found',
+        error: 'not_found',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
+    if (
+      String(snapshot.match_id) !== String(payload.d) ||
+      String(snapshot.signed_by_user_id) !== String(payload.u)
+    ) {
+      return sendFailure({
+        res,
+        status: 400,
+        result: 'mismatch',
+        error: 'mismatch',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
+    if (snapshot.status !== 'ACTIVE') {
+      return sendFailure({
+        res,
+        status: 409,
+        result: 'revoked',
+        error: 'status_invalid',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
+    const signedAt = resolvePublicSignedAt(snapshot.signed_at, payload);
+    const home = snapshot.Match?.HomeTeam?.name || 'Команда 1';
+    const away = snapshot.Match?.AwayTeam?.name || 'Команда 2';
+    response = {
+      ok: true,
+      result: 'valid',
+      message: publicMessage('valid'),
+      verifiedAt: new Date().toISOString(),
+      document: {
+        number: snapshot.number || null,
+        name: `Протокол матча ${home} — ${away}`,
+        documentDate: snapshot.document_date || null,
+        status: snapshot.status || null,
       },
-      { model: SignType, attributes: ['alias', 'name'] },
-    ],
-  });
-  if (
-    !sign ||
-    String(sign.document_id) !== String(doc.id) ||
-    String(sign.user_id) !== String(payload.u)
-  ) {
-    return sendFailure({
-      res,
-      status: 400,
-      result: 'mismatch',
-      error: 'mismatch',
-      tokenVersion,
-      source,
-      startedAt,
+      signer: {
+        fio: signerFio(snapshot.SignedBy) || null,
+      },
+      signature: {
+        type: 'Простая электронная подпись',
+        typeAlias: 'SIMPLE_ELECTRONIC',
+        signedAt: signedAt?.toISOString?.() || null,
+        signedAtMsk: mskDate(signedAt),
+      },
+    };
+  } else {
+    const doc = await Document.findByPk(payload.d, {
+      include: [{ model: DocumentStatus, attributes: ['alias', 'name'] }],
+      attributes: ['id', 'number', 'name', 'document_date'],
     });
-  }
+    if (!doc) {
+      return sendFailure({
+        res,
+        status: 404,
+        result: 'not_found',
+        error: 'not_found',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
 
-  if (doc.DocumentStatus?.alias !== 'SIGNED') {
-    return sendFailure({
-      res,
-      status: 409,
-      result: 'revoked',
-      error: 'status_invalid',
-      tokenVersion,
-      source,
-      startedAt,
+    const sign = await DocumentUserSign.findByPk(payload.s, {
+      include: [
+        {
+          model: User,
+          attributes: ['last_name', 'first_name', 'patronymic'],
+        },
+        { model: SignType, attributes: ['alias', 'name'] },
+      ],
     });
-  }
+    if (
+      !sign ||
+      String(sign.document_id) !== String(doc.id) ||
+      String(sign.user_id) !== String(payload.u)
+    ) {
+      return sendFailure({
+        res,
+        status: 400,
+        result: 'mismatch',
+        error: 'mismatch',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
 
-  const requireLegacySignTtlCheck =
-    Number.isFinite(tokenVersionNumber) && tokenVersionNumber < 2;
-  if (requireLegacySignTtlCheck && isExpiredBySignedAt(sign.created_at)) {
-    return sendFailure({
-      res,
-      status: 410,
-      result: 'expired',
-      error: 'token_expired',
-      tokenVersion,
-      source,
-      startedAt,
-    });
-  }
+    if (doc.DocumentStatus?.alias !== 'SIGNED') {
+      return sendFailure({
+        res,
+        status: 409,
+        result: 'revoked',
+        error: 'status_invalid',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
 
-  const signedAt = resolvePublicSignedAt(sign.created_at, payload);
-  const response = {
-    ok: true,
-    result: 'valid',
-    message: publicMessage('valid'),
-    verifiedAt: new Date().toISOString(),
-    document: {
-      number: doc.number || null,
-      name: doc.name || null,
-      documentDate: doc.document_date || null,
-      status: doc.DocumentStatus?.alias || null,
-    },
-    signer: {
-      fio: signerFio(sign.User) || null,
-    },
-    signature: {
-      type: sign.SignType?.name || null,
-      typeAlias: sign.SignType?.alias || null,
-      signedAt: signedAt?.toISOString?.() || null,
-      signedAtMsk: mskDate(signedAt),
-    },
-  };
+    const requireLegacySignTtlCheck =
+      Number.isFinite(tokenVersionNumber) && tokenVersionNumber < 2;
+    if (requireLegacySignTtlCheck && isExpiredBySignedAt(sign.created_at)) {
+      return sendFailure({
+        res,
+        status: 410,
+        result: 'expired',
+        error: 'token_expired',
+        tokenVersion,
+        source,
+        startedAt,
+      });
+    }
+
+    const signedAt = resolvePublicSignedAt(sign.created_at, payload);
+    response = {
+      ok: true,
+      result: 'valid',
+      message: publicMessage('valid'),
+      verifiedAt: new Date().toISOString(),
+      document: {
+        number: doc.number || null,
+        name: doc.name || null,
+        documentDate: doc.document_date || null,
+        status: doc.DocumentStatus?.alias || null,
+      },
+      signer: {
+        fio: signerFio(sign.User) || null,
+      },
+      signature: {
+        type: sign.SignType?.name || null,
+        typeAlias: sign.SignType?.alias || null,
+        signedAt: signedAt?.toISOString?.() || null,
+        signedAtMsk: mskDate(signedAt),
+      },
+    };
+  }
 
   incVerifyRequest('valid', tokenVersion, source);
   observeVerifyRequestDuration('valid', (Date.now() - startedAt) / 1000);

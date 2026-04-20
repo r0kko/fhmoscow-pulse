@@ -8,7 +8,7 @@ const sequelize = new Sequelize('postgres://user:pass@localhost:5432/db', {
 });
 
 // Mock query before importing model to avoid real DB calls
-sequelize.query = jest.fn().mockResolvedValue([{ nextval: 7 }]);
+sequelize.query = jest.fn().mockResolvedValue([{ last_seq: 7 }]);
 
 jest.unstable_mockModule('../src/config/database.js', () => ({
   __esModule: true,

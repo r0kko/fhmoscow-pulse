@@ -71,6 +71,7 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.2",
     "on-finished": "^2.4.1",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "pdfkit-table": "^0.1.99",
     "pg": "^8.20.0",
@@ -80,6 +81,7 @@
     "redis": "^5.11.0",
     "safe-regex": "^2.1.1",
     "sequelize": "^6.37.8",
+    "sharp": "^0.34.5",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",
     "winston": "^3.19.0"

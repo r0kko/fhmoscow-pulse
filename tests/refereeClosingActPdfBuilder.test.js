@@ -345,6 +345,11 @@ test('closing act builder supports long multi-page registries', async () => {
   const renderedText = textCalls.join('\n');
   expect(lastDoc?.pages).toBeGreaterThan(1);
   expect(renderedText.match(/Дата и время/g)?.length || 0).toBeGreaterThan(1);
+  expect(renderedText.match(/Акт об оказании услуг/g)?.length || 0).toBe(1);
+  expect(
+    renderedText.match(/Спортивного судьи Федерации хоккея Москвы/g)?.length ||
+      0
+  ).toBe(1);
 });
 
 test('closing act builder keeps signature lane stable after FHMO signing', async () => {

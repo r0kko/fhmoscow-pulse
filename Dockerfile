@@ -8,6 +8,7 @@ COPY package*.json ./
 COPY packages ./packages
 
 RUN npm ci
+RUN npm ls sharp pdf-lib --depth=0
 
 COPY . .
 

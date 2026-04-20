@@ -61,7 +61,7 @@ function hmac(payload) {
 }
 
 // Build a compact verification token from identifiers.
-// payload: { d: docId, s: signId, u: userId, v?: number }
+// payload: { d: docIdOrMatchId, s: signIdOrSnapshotId, u: userId, k?: string, v?: number }
 export function buildVerifyToken(payload, options = {}) {
   if (!payload?.d || !payload?.s || !payload?.u) {
     throw new Error('verify_token_payload_invalid');
@@ -76,6 +76,7 @@ export function buildVerifyToken(payload, options = {}) {
       d: payload.d,
       s: payload.s,
       u: payload.u,
+      k: payload.k || 'document',
       iat,
       exp,
       v: VERIFY_TOKEN_VERSION,
@@ -127,12 +128,15 @@ export function verifyToken(token, options = {}) {
   }
 }
 
-export function buildVerifyUrl({ d, s, u, signedAt }) {
+export function buildVerifyUrl({ d, s, u, k, signedAt }) {
   const base = (process.env.BASE_URL || 'https://lk.fhmoscow.com').replace(
     /\/+$/,
     ''
   );
-  const t = buildVerifyToken({ d, s, u, signedAt }, { issuedAt: signedAt });
+  const t = buildVerifyToken(
+    { d, s, u, k, signedAt },
+    { issuedAt: signedAt }
+  );
   const preferHash =
     String(process.env.VERIFY_HASH_URL_ENABLED || 'true').toLowerCase() !==
     'false';

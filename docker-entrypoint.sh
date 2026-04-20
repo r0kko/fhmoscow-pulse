@@ -1,6 +1,14 @@
 #!/usr/bin/env sh
 set -e
 
+if [ "${NODE_ENV:-development}" != "production" ]; then
+  echo "🔎 Checking runtime dependencies..."
+  if ! npm ls sharp pdf-lib --depth=0 > /dev/null 2>&1; then
+    echo "📦 Installing missing dependencies in dev container..."
+    npm ci
+  fi
+fi
+
 echo "⏳ Waiting for database $DB_HOST:$DB_PORT..."
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" > /dev/null 2>&1; do
   sleep 2

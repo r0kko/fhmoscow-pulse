@@ -50,6 +50,7 @@ function formatDateTime(value) {
   return date.toLocaleString('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
   });
 }
 
@@ -224,9 +225,13 @@ function sectionDivider(doc, y) {
     .restore();
 }
 
-function drawPageHeading(doc, fonts, meta) {
+function drawPageHeading(doc, fonts, meta, { showDocumentTitle = true } = {}) {
   applyFirstPageHeader(doc);
   doc.y = 74;
+  if (!showDocumentTitle) {
+    doc.moveDown(0.15);
+    return;
+  }
   doc
     .font(fonts.bold)
     .fontSize(18.5)
@@ -550,7 +555,7 @@ function ensureTablePage(doc, fonts, columns, y, nextRowHeight) {
   const limit = doc.page.height - doc.page.margins.bottom - TABLE_BOTTOM_GAP;
   if (y + nextRowHeight <= limit) return y;
   doc.addPage();
-  drawPageHeading(doc, fonts, {});
+  drawPageHeading(doc, fonts, {}, { showDocumentTitle: false });
   return drawTableHeader(doc, fonts, columns, doc.y + 2);
 }
 
@@ -810,7 +815,7 @@ export default async function buildRefereeClosingActPdf(
   const finalSectionHeight = 250;
   if (doc.y + finalSectionHeight > doc.page.height - doc.page.margins.bottom) {
     doc.addPage();
-    drawPageHeading(doc, fonts, meta);
+    drawPageHeading(doc, fonts, meta, { showDocumentTitle: false });
   }
 
   drawSummary(doc, fonts, totals);

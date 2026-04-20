@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api';
+import { apiFetch, apiFetchBlobResponse } from '../api';
 import { formatKickoff, isMskMidnight } from '../utils/time';
 import InfoItem from '../components/InfoItem.vue';
 import yandexLogo from '../assets/yandex-maps.svg';
@@ -18,6 +18,8 @@ const penaltiesLoading = ref(true);
 const penaltiesError = ref('');
 const loading = ref(true);
 const error = ref('');
+const protocolDownloading = ref(false);
+const protocolNoteOverride = ref('');
 const hasPenalties = computed(
   () => Array.isArray(penalties.value) && penalties.value.length > 0
 );
@@ -97,6 +99,7 @@ async function loadMatchPage() {
   loading.value = true;
   penaltiesLoading.value = true;
   error.value = '';
+  protocolNoteOverride.value = '';
   try {
     const mres = await apiFetch(`/matches/${route.params.id}`);
     match.value = mres.match || null;
@@ -180,6 +183,23 @@ const agreementsRestricted = computed(
 const lineupsRestricted = computed(
   () => isParticipant.value && !lineupsAllowed.value
 );
+const protocolDownloadAvailable = computed(
+  () => match.value?.protocol_download?.configured !== false
+);
+const protocolTileDisabled = computed(
+  () =>
+    protocolDownloading.value ||
+    !protocolDownloadAvailable.value ||
+    !Boolean(match.value?.external_id) ||
+    statusAlias.value !== 'FINISHED'
+);
+const protocolTileNote = computed(() => {
+  if (protocolNoteOverride.value) return protocolNoteOverride.value;
+  if (statusAlias.value !== 'FINISHED') return 'После завершения матча';
+  if (!match.value?.external_id) return 'Нет внешнего ID';
+  if (!protocolDownloadAvailable.value) return 'Интеграция не настроена';
+  return '';
+});
 
 // No filters/tabs — timeline displays both teams side-by-side
 
@@ -210,6 +230,74 @@ function normalizeUrl(u) {
   const s = (u || '').toString().trim();
   if (!s) return '';
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
+}
+
+function buildLocalDateOnly(date = new Date()) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDispositionFilename(contentDisposition) {
+  if (!contentDisposition) {
+    return null;
+  }
+  const utf8Match = contentDisposition.match(
+    /filename\*\s*=\s*UTF-8''([^;]+)/i
+  );
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim());
+    } catch {
+      return utf8Match[1].trim();
+    }
+  }
+  const filenameMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i);
+  if (filenameMatch?.[1]) {
+    return filenameMatch[1].trim();
+  }
+  const plainMatch = contentDisposition.match(/filename\s*=\s*([^;]+)/i);
+  return plainMatch?.[1]?.trim() || null;
+}
+
+async function downloadProtocol() {
+  if (protocolTileDisabled.value) return;
+  protocolDownloading.value = true;
+  protocolNoteOverride.value = '';
+  try {
+    const { blob, headers } = await apiFetchBlobResponse(
+      `/matches/${route.params.id}/protocol/download.pdf`
+    );
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download =
+      getDispositionFilename(headers.get('Content-Disposition')) ||
+      `match-protocol-${match.value?.external_id || route.params.id}-${buildLocalDateOnly()}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    if (e?.code === 'match_protocol_not_configured') {
+      protocolNoteOverride.value = 'Интеграция не настроена';
+    } else if (
+      e?.code === 'match_protocol_upstream_unavailable' ||
+      e?.code === 'match_protocol_upstream_access_denied'
+    ) {
+      protocolNoteOverride.value = 'Нет связи с внешней системой';
+    } else if (e?.code === 'match_protocol_render_dependencies_missing') {
+      protocolNoteOverride.value = 'Сервис протоколов недоступен';
+    } else if (e?.code === 'match_protocol_rate_limited') {
+      protocolNoteOverride.value = 'Повторите позже';
+    } else if (e?.code === 'match_protocol_not_available') {
+      protocolNoteOverride.value = 'Недоступно';
+    }
+    error.value = e?.message || 'Не удалось скачать протокол';
+  } finally {
+    protocolDownloading.value = false;
+  }
 }
 
 const streamLinks = computed(() => {
@@ -509,6 +597,15 @@ const statusChip = computed(() => {
               :placeholder="lineupsTileDisabled"
               :note="lineupsTileNote"
               :locked="lineupsTileLocked"
+            />
+            <MenuTile
+              title="Скачать протокол"
+              icon="bi-file-earmark-pdf"
+              :button="true"
+              :busy="protocolDownloading"
+              :placeholder="protocolTileDisabled"
+              :note="protocolTileNote"
+              @click="downloadProtocol"
             />
             <MenuTile
               title="Судьи матча"

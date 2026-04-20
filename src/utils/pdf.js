@@ -248,8 +248,18 @@ export async function applyESignStamp(doc, info) {
   const stampWidthMin = customMaxWidth
     ? Math.max(120, Math.min(rawStampWidthMin, customMaxWidth))
     : rawStampWidthMin;
-  const padX = Math.max(6, PDF_META?.stampPadX || 10);
-  const padY = Math.max(4, PDF_META?.stampPadY || 8);
+  const padX = Math.max(
+    4,
+    Number.isFinite(Number(info?.padX))
+      ? Number(info.padX)
+      : PDF_META?.stampPadX || 10
+  );
+  const padY = Math.max(
+    3,
+    Number.isFinite(Number(info?.padY))
+      ? Number(info.padY)
+      : PDF_META?.stampPadY || 8
+  );
   const qrGap = Math.max(6, PDF_META?.stampGap || 10);
   const showSignedAt = info?.showSignedAt !== false;
   const showPageInfo = info?.showPageInfo !== false;
@@ -322,14 +332,25 @@ export async function applyESignStamp(doc, info) {
   let textH = 9;
   let stampHeight = stampHeightBase;
   let innerHeight = stampHeight - 2 * padY;
+  const resolveAnchoredY = (currentHeight) => {
+    if (Number.isFinite(Number(info?.y)) && info?.y !== null) {
+      return Number(info.y);
+    }
+    if (Number.isFinite(Number(info?.bottomOffset))) {
+      return doc.page.height - Number(info.bottomOffset) - currentHeight;
+    }
+    return doc.page.height - margin - bandHeight - currentHeight - 6;
+  };
   let y =
-    Number.isFinite(Number(info?.y)) && info?.y !== null
-      ? Number(info.y)
-      : doc.page.height - margin - bandHeight - stampHeight - 6;
+    resolveAnchoredY(stampHeight);
   let qrSize = qrMin;
   let qrX = 0;
   let qrY = y + padY;
   let textX = 0;
+  let preparedLines = textLines.map((line, index) => ({
+    text: line,
+    font: index === 0 ? 'bold' : 'regular',
+  }));
   try {
     doc.fontSize(8);
     try {
@@ -341,7 +362,59 @@ export async function applyESignStamp(doc, info) {
         doc.font('Helvetica-Bold');
       }
     }
-    const w1 = doc.widthOfString(textLines[0] || '');
+    const wrapTextToWidth = (text, width) => {
+      const value = String(text || '').trim();
+      if (!value) return [];
+      const words = value.split(/\s+/).filter(Boolean);
+      if (!words.length) return [];
+      const lines = [];
+      let current = words[0];
+      for (let i = 1; i < words.length; i += 1) {
+        const candidate = `${current} ${words[i]}`;
+        if (doc.widthOfString(candidate) <= width) {
+          current = candidate;
+        } else {
+          lines.push(current);
+          current = words[i];
+        }
+      }
+      lines.push(current);
+      return lines.slice(0, 2);
+    };
+
+    const lineKinds = [
+      { text: title, font: 'bold', wrap: false },
+      { text: fio, font: 'regular', wrap: true },
+      {
+        text: showSignerPosition ? signerPosition || null : null,
+        font: 'regular',
+        wrap: true,
+      },
+      {
+        text: showSignerDepartment ? signerDepartment || null : null,
+        font: 'regular',
+        wrap: true,
+      },
+      {
+        text: showSignerOrganization ? signerOrganization || null : null,
+        font: 'regular',
+        wrap: true,
+      },
+      { text: showSignedAt ? dtLine : null, font: 'regular', wrap: false },
+      { text: showPageInfo ? pageInfo : null, font: 'regular', wrap: false },
+    ].filter((item) => item.text);
+
+    const provisionalTextWidth = Math.max(
+      24,
+      Math.floor(stampWidth - 2 * padX - qrMin - qrGap)
+    );
+    preparedLines = lineKinds.flatMap((item) => {
+      if (!item.wrap) return [{ text: item.text, font: item.font }];
+      const wrapped = wrapTextToWidth(item.text, provisionalTextWidth);
+      return wrapped.map((line) => ({ text: line, font: item.font }));
+    });
+
+    const w1 = doc.widthOfString(preparedLines[0]?.text || '');
     try {
       doc.font('SB-Regular');
     } catch {
@@ -353,27 +426,24 @@ export async function applyESignStamp(doc, info) {
     }
     textH = Math.ceil(doc.currentLineHeight(true)) || 9;
     let maxTextWidth = w1;
-    for (let lineIndex = 1; lineIndex < textLines.length; lineIndex += 1) {
+    for (let lineIndex = 1; lineIndex < preparedLines.length; lineIndex += 1) {
       maxTextWidth = Math.max(
         maxTextWidth,
-        doc.widthOfString(textLines[lineIndex])
+        doc.widthOfString(preparedLines[lineIndex].text)
       );
     }
     const dividerGapTop = hasOrgDivider ? 2 : 0;
     const dividerGapBottom = hasOrgDivider ? 2 : 0;
     const dividerHeight = hasOrgDivider ? 1 : 0;
     const estimatedTextHeight =
-      textH * textLines.length +
-      Math.max(0, textLines.length - 1) +
+      textH * preparedLines.length +
+      Math.max(0, preparedLines.length - 1) +
       dividerGapTop +
       dividerGapBottom +
       dividerHeight;
     stampHeight = Math.max(stampHeightBase, 2 * padY + estimatedTextHeight);
     innerHeight = stampHeight - 2 * padY;
-    y =
-      Number.isFinite(Number(info?.y)) && info?.y !== null
-        ? Number(info.y)
-        : doc.page.height - margin - bandHeight - stampHeight - 6;
+    y = resolveAnchoredY(stampHeight);
     qrY = y + padY;
     // Compute QR size bounds by height and remaining width in the inner box
     const qrMaxByHeight = Math.max(24, innerHeight);
@@ -397,8 +467,8 @@ export async function applyESignStamp(doc, info) {
       } catch {
         /* ignore font sizing */
       }
-      const maxS = textLines.reduce(
-        (acc, line) => Math.max(acc, doc.widthOfString(line)),
+      const maxS = preparedLines.reduce(
+        (acc, line) => Math.max(acc, doc.widthOfString(line.text)),
         0
       );
       const widthBudget2 = Math.max(16, innerWidth - qrGap - maxS);
@@ -460,11 +530,31 @@ export async function applyESignStamp(doc, info) {
   const x =
     Number.isFinite(Number(info?.x)) && info?.x !== null
       ? Number(info.x)
-      : doc.page.width - margin - stampWidth;
+      : Number.isFinite(Number(info?.rightOffset))
+        ? doc.page.width - Number(info.rightOffset) - stampWidth
+      : Number.isFinite(Number(info?.leftOffset))
+        ? Number(info.leftOffset)
+        : doc.page.width - margin - stampWidth;
   qrX = Math.round(x + padX);
   qrY = Math.round(y + padY);
   textX = qrX + qrSize + qrGap;
   // Draw border with the final width
+  try {
+    doc
+      .save()
+      .fillColor(String(info?.backgroundColor || '#ffffff'))
+      .opacity(
+        Math.min(
+          1,
+          Math.max(0, Number.isFinite(Number(info?.backgroundOpacity)) ? Number(info.backgroundOpacity) : 0)
+        )
+      )
+      .roundedRect(x, y, stampWidth, stampHeight, 4)
+      .fill()
+      .restore();
+  } catch {
+    /* noop */
+  }
   try {
     doc
       .save()
@@ -480,18 +570,25 @@ export async function applyESignStamp(doc, info) {
     const d = info.docId || '';
     const s = info.signId || '';
     const u = info.userId || '';
+    const k = info.verifyKind || 'document';
     try {
       const { buildShortVerifyUrl } =
         await import('../services/shortLinkService.js');
       try {
-        return await buildShortVerifyUrl({ d, s, u, signedAt: info.signedAt });
+        return await buildShortVerifyUrl({
+          d,
+          s,
+          u,
+          k,
+          signedAt: info.signedAt,
+        });
       } catch {
         // If short links disabled/unavailable, fallback to long verify URL
-        return buildVerifyUrl({ d, s, u, signedAt: info.signedAt });
+        return buildVerifyUrl({ d, s, u, k, signedAt: info.signedAt });
       }
     } catch {
       try {
-        return buildVerifyUrl({ d, s, u, signedAt: info.signedAt });
+        return buildVerifyUrl({ d, s, u, k, signedAt: info.signedAt });
       } catch {
         return `DOC:${String(d)};SIGN:${String(s)};USER:${String(u)}`;
       }
@@ -659,16 +756,16 @@ export async function applyESignStamp(doc, info) {
     const dividerGapBottom = hasOrgDivider ? 2 : 0;
     const dividerHeight = hasOrgDivider ? 1 : 0;
     let blockHeight =
-      lineHeight * textLines.length +
-      lineGap * (textLines.length - 1) +
+      lineHeight * preparedLines.length +
+      lineGap * (preparedLines.length - 1) +
       dividerGapTop +
       dividerGapBottom +
       dividerHeight;
     if (blockHeight > qrSize && lineGap > 0) {
       lineGap = 0;
       blockHeight =
-        lineHeight * textLines.length +
-        lineGap * (textLines.length - 1) +
+        lineHeight * preparedLines.length +
+        lineGap * (preparedLines.length - 1) +
         dividerGapTop +
         dividerGapBottom +
         dividerHeight;
@@ -680,12 +777,12 @@ export async function applyESignStamp(doc, info) {
     );
     let lineY = qrY + offsetY;
     const orgLineIndex = signerOrganization
-      ? textLines.findIndex((line) => line === signerOrganization)
+      ? preparedLines.findIndex((line) => line.text === signerOrganization)
       : -1;
-    textLines.forEach((line, index) => {
-      if (index === 0) boldFont();
+    preparedLines.forEach((line, index) => {
+      if (line.font === 'bold') boldFont();
       else regularFont();
-      doc.text(line, textX, lineY, {
+      doc.text(line.text, textX, lineY, {
         width: maxTextWidth,
         lineBreak: false,
         ellipsis: true,

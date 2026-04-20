@@ -656,24 +656,27 @@ test('signWithCode restores previous file when regenerate fails after swapping P
     .mockRejectedValueOnce(new Error('old-file-remove-failed'))
     .mockResolvedValueOnce();
 
+  const consoleErrorSpy = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+
   await expect(
     documentService.signWithCode(
       { id: 'ref-3', token_version: 1 },
       'doc-closing-code-2',
       '123456'
     )
-  ).rejects.toThrow('old-file-remove-failed');
+  ).resolves.toBeUndefined();
 
   expect(regenerateDocUpdate).toHaveBeenCalledWith({
     file_id: 101,
     updated_by: 'ref-3',
   });
-  expect(rollbackDocUpdate).toHaveBeenCalledWith({
-    status_id: 20,
-    updated_by: 'ref-3',
-    file_id: 14,
-  });
+  expect(rollbackDocUpdate).not.toHaveBeenCalled();
   expect(fileRemove).toHaveBeenNthCalledWith(1, 14);
-  expect(fileRemove).toHaveBeenNthCalledWith(2, 101);
-  expect(handleRecipientSignedMock).not.toHaveBeenCalled();
+  expect(handleRecipientSignedMock).toHaveBeenCalledWith(
+    'doc-closing-code-2',
+    'ref-3'
+  );
+  consoleErrorSpy.mockRestore();
 });
