@@ -132,7 +132,9 @@ describe('SchoolMatch protocol tile', () => {
     );
     expect(createObjectUrl).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:match-protocol');
+    await waitFor(() =>
+      expect(revokeObjectUrl).toHaveBeenCalledWith('blob:match-protocol')
+    );
   });
 
   it('keeps the tile disabled for unfinished matches', async () => {

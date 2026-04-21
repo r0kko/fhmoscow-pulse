@@ -122,7 +122,7 @@ test('returns cached snapshot when it is still fresh', async () => {
 
   expect(fetchMatchProtocolPdfMock).not.toHaveBeenCalled();
   expect(result.buffer.toString()).toBe('%PDF-cached');
-  expect(result.filename).toBe('protocol-26.04/1.pdf');
+  expect(result.filename).toBe('protocol-26.04-1.pdf');
 });
 
 test('creates a new snapshot when upstream returns a newer PDF', async () => {
@@ -179,7 +179,7 @@ test('creates a new snapshot when upstream returns a newer PDF', async () => {
     }),
     expect.anything()
   );
-  expect(result.filename).toBe('protocol-26.04/1.pdf');
+  expect(result.filename).toBe('protocol-26.04-1.pdf');
 });
 
 test('fails when match is not finished', async () => {
@@ -195,4 +195,28 @@ test('fails when match is not finished', async () => {
     code: 'match_protocol_requires_finished',
     status: 409,
   });
+});
+
+test('waits for ready snapshot when download lock is busy', async () => {
+  jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+    fn();
+    return 0;
+  });
+  withRedisLockMock.mockImplementationOnce(
+    async (_key, _ttl, _fn, { onBusy }) => onBusy()
+  );
+  snapshotFindOneMock
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce({
+      id: 'snapshot-1',
+      number: '26.04/1',
+      external_match_id: 77,
+      SignedFile: { id: 'file-1', key: 'documents/file-1.pdf' },
+    });
+  getFileBufferMock.mockResolvedValueOnce(Buffer.from('%PDF-after-wait'));
+
+  const result = await downloadMatchProtocol('match-1', 'admin-1', 'req-4');
+
+  expect(result.buffer.toString()).toBe('%PDF-after-wait');
+  expect(result.filename).toBe('protocol-26.04-1.pdf');
 });

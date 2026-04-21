@@ -278,7 +278,9 @@ async function downloadProtocol() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    window.URL.revokeObjectURL(url);
+    window.setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 0);
   } catch (e) {
     if (e?.code === 'match_protocol_not_configured') {
       protocolNoteOverride.value = 'Интеграция не настроена';

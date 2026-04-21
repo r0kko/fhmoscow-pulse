@@ -155,9 +155,16 @@ function isFreshSnapshot(snapshot) {
   return ts + MATCH_PROTOCOL_CONFIG.cacheTtlSeconds * 1000 > Date.now();
 }
 
+function sanitizeFilenameSegment(value) {
+  return String(value || '')
+    .replace(/[\\/]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function buildFilename(match, snapshot) {
   const base = snapshot?.number
-    ? `protocol-${snapshot.number}`
+    ? `protocol-${sanitizeFilenameSegment(snapshot.number)}`
     : `match-protocol-${match?.external_id || match?.id || 'unknown'}`;
   return `${base}.pdf`;
 }
@@ -169,6 +176,36 @@ async function readSnapshotFile(snapshot) {
   } catch {
     return null;
   }
+}
+
+async function waitForSnapshotResult(matchId, requestId = null) {
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const snapshot = await loadActiveSnapshot(matchId);
+    if (snapshot) {
+      const buffer = await readSnapshotFile(snapshot);
+      if (buffer) {
+        logger.info('Match protocol served after lock wait', {
+          request_id: requestId || null,
+          match_id: matchId,
+          cache: 'busy-wait-hit',
+        });
+        return {
+          buffer,
+          filename: buildFilename(
+            {
+              id: matchId,
+              external_id: snapshot.external_match_id || null,
+            },
+            snapshot
+          ),
+          snapshot,
+        };
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new ServiceError('match_protocol_busy', 409);
 }
 
 async function storeNewSnapshot({
@@ -363,6 +400,9 @@ export async function downloadMatchProtocol(matchId, actorId, requestId = null) 
         filename: buildFilename(match, persisted),
         snapshot: persisted,
       };
+    },
+    {
+      onBusy: () => waitForSnapshotResult(matchId, requestId),
     }
   );
 }
