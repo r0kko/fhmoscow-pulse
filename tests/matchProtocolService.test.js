@@ -77,9 +77,8 @@ jest.unstable_mockModule('../src/config/matchProtocol.js', () => ({
   isMatchProtocolConfigured: () => true,
 }));
 
-const { downloadMatchProtocol } = await import(
-  '../src/services/matchProtocolService.js'
-);
+const { downloadMatchProtocol } =
+  await import('../src/services/matchProtocolService.js');
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -205,14 +204,12 @@ test('waits for ready snapshot when download lock is busy', async () => {
   withRedisLockMock.mockImplementationOnce(
     async (_key, _ttl, _fn, { onBusy }) => onBusy()
   );
-  snapshotFindOneMock
-    .mockResolvedValueOnce(null)
-    .mockResolvedValueOnce({
-      id: 'snapshot-1',
-      number: '26.04/1',
-      external_match_id: 77,
-      SignedFile: { id: 'file-1', key: 'documents/file-1.pdf' },
-    });
+  snapshotFindOneMock.mockResolvedValueOnce(null).mockResolvedValueOnce({
+    id: 'snapshot-1',
+    number: '26.04/1',
+    external_match_id: 77,
+    SignedFile: { id: 'file-1', key: 'documents/file-1.pdf' },
+  });
   getFileBufferMock.mockResolvedValueOnce(Buffer.from('%PDF-after-wait'));
 
   const result = await downloadMatchProtocol('match-1', 'admin-1', 'req-4');

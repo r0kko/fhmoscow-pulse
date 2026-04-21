@@ -133,10 +133,7 @@ export function buildVerifyUrl({ d, s, u, k, signedAt }) {
     /\/+$/,
     ''
   );
-  const t = buildVerifyToken(
-    { d, s, u, k, signedAt },
-    { issuedAt: signedAt }
-  );
+  const t = buildVerifyToken({ d, s, u, k, signedAt }, { issuedAt: signedAt });
   const preferHash =
     String(process.env.VERIFY_HASH_URL_ENABLED || 'true').toLowerCase() !==
     'false';

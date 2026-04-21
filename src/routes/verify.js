@@ -215,7 +215,12 @@ router.get('/', verifyRateLimiter, async (req, res) => {
 
   const payload = tokenCheck.payload;
   const verifyKind = String(payload?.k || 'document').toLowerCase();
-  if (!payload || !isUuidLike(payload.d) || !isUuidLike(payload.s) || !isUuidLike(payload.u)) {
+  if (
+    !payload ||
+    !isUuidLike(payload.d) ||
+    !isUuidLike(payload.s) ||
+    !isUuidLike(payload.u)
+  ) {
     return sendFailure({
       res,
       status: 400,
@@ -246,7 +251,15 @@ router.get('/', verifyRateLimiter, async (req, res) => {
           attributes: ['last_name', 'first_name', 'patronymic'],
         },
       ],
-      attributes: ['id', 'match_id', 'signed_by_user_id', 'number', 'document_date', 'signed_at', 'status'],
+      attributes: [
+        'id',
+        'match_id',
+        'signed_by_user_id',
+        'number',
+        'document_date',
+        'signed_at',
+        'status',
+      ],
     });
     if (!snapshot) {
       return sendFailure({

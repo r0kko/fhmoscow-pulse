@@ -132,7 +132,8 @@ export async function fetchMatchProtocolPdf(
       10
     );
     const err = new ServiceError('match_protocol_rate_limited', 429);
-    if (Number.isFinite(retryAfter) && retryAfter > 0) err.retryAfter = retryAfter;
+    if (Number.isFinite(retryAfter) && retryAfter > 0)
+      err.retryAfter = retryAfter;
     throw err;
   }
   if (response.status === 401 || response.status === 403) {

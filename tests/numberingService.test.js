@@ -12,10 +12,8 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
   default: sequelize,
 }));
 
-const {
-  nextDocumentNumber,
-  nextMatchProtocolNumber,
-} = await import('../src/services/numberingService.js');
+const { nextDocumentNumber, nextMatchProtocolNumber } =
+  await import('../src/services/numberingService.js');
 
 beforeEach(() => {
   sequelize.query.mockClear();

@@ -341,8 +341,7 @@ export async function applyESignStamp(doc, info) {
     }
     return doc.page.height - margin - bandHeight - currentHeight - 6;
   };
-  let y =
-    resolveAnchoredY(stampHeight);
+  let y = resolveAnchoredY(stampHeight);
   let qrSize = qrMin;
   let qrX = 0;
   let qrY = y + padY;
@@ -532,9 +531,9 @@ export async function applyESignStamp(doc, info) {
       ? Number(info.x)
       : Number.isFinite(Number(info?.rightOffset))
         ? doc.page.width - Number(info.rightOffset) - stampWidth
-      : Number.isFinite(Number(info?.leftOffset))
-        ? Number(info.leftOffset)
-        : doc.page.width - margin - stampWidth;
+        : Number.isFinite(Number(info?.leftOffset))
+          ? Number(info.leftOffset)
+          : doc.page.width - margin - stampWidth;
   qrX = Math.round(x + padX);
   qrY = Math.round(y + padY);
   textX = qrX + qrSize + qrGap;
@@ -546,7 +545,12 @@ export async function applyESignStamp(doc, info) {
       .opacity(
         Math.min(
           1,
-          Math.max(0, Number.isFinite(Number(info?.backgroundOpacity)) ? Number(info.backgroundOpacity) : 0)
+          Math.max(
+            0,
+            Number.isFinite(Number(info?.backgroundOpacity))
+              ? Number(info.backgroundOpacity)
+              : 0
+          )
         )
       )
       .roundedRect(x, y, stampWidth, stampHeight, 4)

@@ -90,7 +90,8 @@ async function findActiveSigner() {
         .sort((left, right) => {
           const leftPriority = SIGNER_ROLE_ALIASES.indexOf(left.alias);
           const rightPriority = SIGNER_ROLE_ALIASES.indexOf(right.alias);
-          if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+          if (leftPriority !== rightPriority)
+            return leftPriority - rightPriority;
           return (left.displayOrder || 999999) - (right.displayOrder || 999999);
         })[0];
       if (!signer?.id || !role) return null;
@@ -269,7 +270,11 @@ export function getMatchProtocolAvailability(match) {
   };
 }
 
-export async function downloadMatchProtocol(matchId, actorId, requestId = null) {
+export async function downloadMatchProtocol(
+  matchId,
+  actorId,
+  requestId = null
+) {
   return withRedisLock(
     buildJobLockKey(`matchProtocol:${matchId}`),
     60_000,
@@ -336,9 +341,12 @@ export async function downloadMatchProtocol(matchId, actorId, requestId = null) 
             snapshot,
           };
         }
-        const refreshedUpstream = await fetchMatchProtocolPdf(match.external_id, {
-          requestId,
-        });
+        const refreshedUpstream = await fetchMatchProtocolPdf(
+          match.external_id,
+          {
+            requestId,
+          }
+        );
         if (refreshedUpstream.status !== 'ok') {
           throw new ServiceError('match_protocol_cached_file_missing', 502);
         }

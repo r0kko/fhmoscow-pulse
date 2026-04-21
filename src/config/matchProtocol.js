@@ -106,8 +106,8 @@ export function hasMatchProtocolSeal() {
 export function isMatchProtocolConfigured() {
   return Boolean(
     MATCH_PROTOCOL_CONFIG.apiBase &&
-      MATCH_PROTOCOL_CONFIG.apiKey &&
-      hasMatchProtocolSeal()
+    MATCH_PROTOCOL_CONFIG.apiKey &&
+    hasMatchProtocolSeal()
   );
 }
 
