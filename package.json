@@ -72,7 +72,7 @@
     "nodemailer": "^8.0.5",
     "on-finished": "^2.4.1",
     "pdf-lib": "^1.17.1",
-    "pdfkit": "^0.17.2",
+    "pdfkit": "^0.18.0",
     "pdfkit-table": "^0.1.99",
     "pg": "^8.20.0",
     "pg-hstore": "^2.3.4",
