@@ -12,6 +12,10 @@ GamePlayer.init(
     position_id: { type: DataTypes.INTEGER },
     role_id: { type: DataTypes.INTEGER },
     team_id: { type: DataTypes.INTEGER },
+    number: { type: DataTypes.INTEGER },
+    lineup_number: { type: DataTypes.INTEGER },
+    played: { type: DataTypes.BOOLEAN },
+    played_in_lineup: { type: DataTypes.INTEGER },
   },
   {
     sequelize,

@@ -1,11 +1,17 @@
 import teamService from '../services/teamService.js';
 import clubService from '../services/clubService.js';
+import teamParticipationSummaryService from '../services/teamParticipationSummaryService.js';
+import matchProtocolBatchExportService from '../services/matchProtocolBatchExportService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import teamMapper from '../mappers/teamMapper.js';
 import { sendError } from '../utils/api.js';
 import { withRedisLock, buildJobLockKey } from '../utils/redisLock.js';
 import { withJobMetrics } from '../config/metrics.js';
 import { runWithSyncState } from '../services/syncStateService.js';
+
+function buildAttachmentDisposition(filename) {
+  return `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
 
 export default {
   async create(req, res) {
@@ -43,6 +49,91 @@ export default {
         includeGrounds,
       });
       return res.json({ teams: rows.map(teamMapper.toPublic), total: count });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async participationSummary(req, res) {
+    try {
+      const data =
+        await teamParticipationSummaryService.getParticipationSummary({
+          teamId: req.params.id,
+          seasonId: req.query.season_id,
+          access: req.access,
+        });
+      return res.json(data);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async exportParticipationSummary(req, res) {
+    try {
+      const payload =
+        await teamParticipationSummaryService.exportParticipationSummaryXlsx({
+          teamId: req.params.id,
+          seasonId: req.body?.season_id || req.query.season_id,
+          playerIds: req.body?.player_ids || req.query.player_ids,
+          access: req.access,
+        });
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader(
+        'Content-Disposition',
+        buildAttachmentDisposition(payload.filename)
+      );
+      return res.send(payload.buffer);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async createProtocolExportJob(req, res) {
+    try {
+      const payload = await matchProtocolBatchExportService.createExportJob({
+        teamId: req.params.id,
+        seasonId: req.body?.season_id || req.query.season_id,
+        playerIds: req.body?.player_ids || req.query.player_ids,
+        access: req.access,
+        actorId: req.user?.id || null,
+        requestId: req.id || null,
+      });
+      return res.status(202).json(payload);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async protocolExportJob(req, res) {
+    try {
+      const payload = await matchProtocolBatchExportService.getExportJob({
+        teamId: req.params.id,
+        jobId: req.params.jobId,
+        access: req.access,
+      });
+      return res.json(payload);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async downloadProtocolExport(req, res) {
+    try {
+      const payload =
+        await matchProtocolBatchExportService.downloadExportArchive({
+          teamId: req.params.id,
+          jobId: req.params.jobId,
+          access: req.access,
+        });
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader(
+        'Content-Disposition',
+        buildAttachmentDisposition(payload.filename)
+      );
+      return res.end(payload.buffer);
     } catch (err) {
       return sendError(res, err);
     }

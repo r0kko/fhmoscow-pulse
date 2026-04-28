@@ -333,7 +333,7 @@ test('createUser passes data to model', async () => {
     birth_date: '2000-01-01',
     phone: '123',
     email: 'test@example.com',
-    password: 'Passw0rd',
+    password: 'Passw0rd1234',
     sex_id: 's1',
   };
   sexFindMock.mockResolvedValueOnce({ id: 's1' });
@@ -363,7 +363,7 @@ test('createUser normalizes phone/email and trims names', async () => {
     birth_date: ' 2001-02-03 ',
     phone: '8 (999) 111-22-33',
     email: ' TEST@EXAMPLE.COM ',
-    password: 'Passw0rd',
+    password: 'Passw0rd1234',
     sex_id: 's1',
   });
 
@@ -399,7 +399,7 @@ test('createUser throws if phone exists', async () => {
       first_name: 'F',
       patronymic: 'P',
       birth_date: '2000-01-01',
-      password: 'Passw0rd',
+      password: 'Passw0rd1234',
       sex_id: 's1',
     })
   ).rejects.toThrow('phone_exists');
@@ -419,7 +419,7 @@ test('createUser throws if email exists', async () => {
       first_name: 'F',
       patronymic: 'P',
       birth_date: '2000-01-01',
-      password: 'Passw0rd',
+      password: 'Passw0rd1234',
       sex_id: 's1',
     })
   ).rejects.toThrow('email_exists');
@@ -439,7 +439,7 @@ test('createUser throws if user exists by name', async () => {
       first_name: 'F',
       patronymic: 'P',
       birth_date: '2000-01-01',
-      password: 'Passw0rd',
+      password: 'Passw0rd1234',
       sex_id: 's1',
     })
   ).rejects.toThrow('user_exists');
@@ -491,7 +491,7 @@ test('createUser rejects future birth date', async () => {
       first_name: 'F',
       patronymic: 'P',
       birth_date: `${nextYear}-01-01`,
-      password: 'Passw0rd',
+      password: 'Passw0rd1234',
       sex_id: 's1',
     })
   ).rejects.toThrow('invalid_birth_date');
@@ -508,7 +508,7 @@ test('createUser throws status_not_found when ACTIVE status is missing', async (
       first_name: 'F',
       patronymic: 'P',
       birth_date: '2000-01-01',
-      password: 'Passw0rd',
+      password: 'Passw0rd1234',
       sex_id: 's1',
     })
   ).rejects.toThrow('status_not_found');
@@ -534,7 +534,7 @@ test('createUser maps unique DB errors to domain codes', async () => {
       first_name: 'F',
       patronymic: 'P',
       birth_date: '2000-01-01',
-      password: 'Passw0rd',
+      password: 'Passw0rd1234',
       sex_id: 's1',
     })
   ).rejects.toThrow('phone_exists');
@@ -565,11 +565,15 @@ test('setTemporaryPassword updates password and change-required flag', async () 
   };
   scopedFindByPkMock.mockResolvedValue(scopedUser);
 
-  const result = await service.setTemporaryPassword('u1', 'Passw0rd', 'admin');
+  const result = await service.setTemporaryPassword(
+    'u1',
+    'Passw0rd1234',
+    'admin'
+  );
 
   expect(userScopeMock).toHaveBeenCalledWith('withPassword');
   expect(scopedFindByPkMock).toHaveBeenCalledWith('u1');
-  expect(scopedUser.password).toBe('Passw0rd');
+  expect(scopedUser.password).toBe('Passw0rd1234');
   expect(scopedUser.password_change_required).toBe(true);
   expect(scopedUser.updated_by).toBe('admin');
   expect(saveMock).toHaveBeenCalled();

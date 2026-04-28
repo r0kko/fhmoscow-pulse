@@ -44,7 +44,12 @@ function ensureConfigured() {
 
 export async function fetchMatchProtocolPdf(
   externalMatchId,
-  { etag = null, lastModified = null, requestId = null } = {}
+  {
+    etag = null,
+    lastModified = null,
+    requestId = null,
+    highlightPlayerIds = [],
+  } = {}
 ) {
   ensureConfigured();
   const controller = new AbortController();
@@ -52,9 +57,16 @@ export async function fetchMatchProtocolPdf(
     () => controller.abort(),
     MATCH_PROTOCOL_CONFIG.timeoutMs
   );
-  const url =
+  const url = new URL(
     `${MATCH_PROTOCOL_CONFIG.apiBase}` +
-    `/api/integrations/v1/matches/${encodeURIComponent(externalMatchId)}/protocol.pdf`;
+      `/api/integrations/v1/matches/${encodeURIComponent(externalMatchId)}/protocol.pdf`
+  );
+  const highlightIds = [...new Set(highlightPlayerIds)]
+    .map((id) => Number.parseInt(String(id), 10))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  if (highlightIds.length) {
+    url.searchParams.set('highlightPlayerIds', highlightIds.join(','));
+  }
   const headers = {
     'X-API-Key': MATCH_PROTOCOL_CONFIG.apiKey,
   };
@@ -69,7 +81,7 @@ export async function fetchMatchProtocolPdf(
 
   let response;
   try {
-    response = await fetch(url, {
+    response = await fetch(url.toString(), {
       method: 'GET',
       headers,
       signal: controller.signal,
@@ -90,6 +102,7 @@ export async function fetchMatchProtocolPdf(
     request_id: requestId || null,
     external_match_id: externalMatchId,
     upstream_status: response.status,
+    highlighted: highlightIds.length > 0 ? 'true' : 'false',
     api_key_prefix: maskApiKeyPrefix(MATCH_PROTOCOL_CONFIG.apiKey),
   };
 
@@ -121,10 +134,14 @@ export async function fetchMatchProtocolPdf(
   logger.warn('Match protocol upstream returned error', baseMeta);
 
   if (response.status === 409) {
-    throw new ServiceError('match_protocol_requires_finished', 409);
+    const err = new ServiceError('match_protocol_requires_finished', 409);
+    err.upstreamStatus = response.status;
+    throw err;
   }
   if (response.status === 422 || response.status === 404) {
-    throw new ServiceError('match_protocol_not_available', 422);
+    const err = new ServiceError('match_protocol_not_available', 422);
+    err.upstreamStatus = response.status;
+    throw err;
   }
   if (response.status === 429) {
     const retryAfter = Number.parseInt(
@@ -134,12 +151,17 @@ export async function fetchMatchProtocolPdf(
     const err = new ServiceError('match_protocol_rate_limited', 429);
     if (Number.isFinite(retryAfter) && retryAfter > 0)
       err.retryAfter = retryAfter;
+    err.upstreamStatus = response.status;
     throw err;
   }
   if (response.status === 401 || response.status === 403) {
-    throw new ServiceError('match_protocol_upstream_access_denied', 502);
+    const err = new ServiceError('match_protocol_upstream_access_denied', 502);
+    err.upstreamStatus = response.status;
+    throw err;
   }
-  throw new ServiceError('match_protocol_upstream_unavailable', 502);
+  const err = new ServiceError('match_protocol_upstream_unavailable', 502);
+  err.upstreamStatus = response.status;
+  throw err;
 }
 
 export default { fetchMatchProtocolPdf };

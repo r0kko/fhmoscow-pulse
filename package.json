@@ -47,6 +47,7 @@
     "@opentelemetry/resources": "^2.7.0",
     "@opentelemetry/sdk-node": "^0.215.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
+    "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "bwip-js": "^4.9.2",
     "connect-redis": "^9.0.0",

@@ -1,4 +1,6 @@
 import path from 'path';
+import { createReadStream } from 'fs';
+import { stat } from 'fs/promises';
 
 import {
   DeleteObjectCommand,
@@ -497,6 +499,43 @@ async function saveGeneratedPdf(buffer, name, actorId) {
   });
 }
 
+async function saveGeneratedArchiveFromPath(filePath, name, actorId) {
+  if (isTestEnvWithoutS3() || !getS3Bucket()) {
+    throw new ServiceError('s3_not_configured', 500);
+  }
+  const info = await stat(filePath);
+  const key = `documents/${uuidv4()}.zip`;
+  try {
+    await putObjectWithRetry(
+      {
+        Bucket: getS3Bucket(),
+        Key: key,
+        Body: createReadStream(filePath),
+        ContentType: 'application/zip',
+        ContentLength: info.size,
+      },
+      { attempts: 5, retryAll: true }
+    );
+  } catch (err) {
+    console.error('S3 upload failed', {
+      bucket: getS3Bucket(),
+      key,
+      name: err?.name || null,
+      message: err?.message || null,
+      status: err?.$metadata?.httpStatusCode || null,
+    });
+    throw new ServiceError('s3_upload_failed');
+  }
+  return await File.create({
+    key,
+    original_name: name,
+    mime_type: 'application/zip',
+    size: info.size,
+    created_by: actorId,
+    updated_by: actorId,
+  });
+}
+
 async function getFileBuffer(file) {
   if (!file?.key) {
     throw new ServiceError('file_not_found', 404);
@@ -538,5 +577,6 @@ export default {
   uploadPlayerPhoto,
   removeFile,
   saveGeneratedPdf,
+  saveGeneratedArchiveFromPath,
   getFileBuffer,
 };

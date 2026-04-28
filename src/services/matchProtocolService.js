@@ -38,6 +38,11 @@ function fullName(user) {
     .join(' ');
 }
 
+function toPlain(value) {
+  if (!value) return value;
+  return typeof value.get === 'function' ? value.get({ plain: true }) : value;
+}
+
 function isFinishedStatus(statusAlias) {
   return String(statusAlias || '').toUpperCase() === 'FINISHED';
 }
@@ -125,7 +130,15 @@ async function loadMatch(matchId) {
 async function loadActiveSnapshot(matchId) {
   return MatchProtocolSnapshot.findOne({
     where: { match_id: matchId, status: 'ACTIVE' },
-    include: [{ model: File, as: 'SignedFile', attributes: ['id', 'key'] }],
+    include: [
+      { model: File, as: 'SignedFile', attributes: ['id', 'key'] },
+      {
+        model: User,
+        as: 'SignedBy',
+        attributes: ['id', 'email', 'last_name', 'first_name', 'patronymic'],
+        required: false,
+      },
+    ],
     order: [['signed_at', 'DESC']],
   });
 }
@@ -168,6 +181,25 @@ function buildFilename(match, snapshot) {
     ? `protocol-${sanitizeFilenameSegment(snapshot.number)}`
     : `match-protocol-${match?.external_id || match?.id || 'unknown'}`;
   return `${base}.pdf`;
+}
+
+async function snapshotSignerPayload(snapshot) {
+  const signer = toPlain(snapshot?.SignedBy);
+  if (!signer?.id) {
+    throw new ServiceError('match_protocol_signer_not_found', 503);
+  }
+  const role = snapshot.signed_role_alias
+    ? await Role.findOne({
+        where: { alias: snapshot.signed_role_alias },
+        attributes: ['alias', 'name', 'departmentName'],
+      })
+    : null;
+  return {
+    ...signer,
+    position: role?.name || null,
+    department: role?.departmentName || null,
+    organization: 'РОО "Федерация хоккея Москвы"',
+  };
 }
 
 async function readSnapshotFile(snapshot) {
@@ -360,10 +392,7 @@ export async function downloadMatchProtocol(
       const snapshotId = randomUUID();
       const signedAt = new Date();
       const number = await nextMatchProtocolNumber(signedAt);
-      const signerData =
-        typeof signer.signer?.get === 'function'
-          ? signer.signer.get({ plain: true })
-          : signer.signer;
+      const signerData = toPlain(signer.signer);
       const rendered = await renderProtocolPdf({
         sourceBuffer: upstream.buffer,
         matchId: match.id,
@@ -415,7 +444,52 @@ export async function downloadMatchProtocol(
   );
 }
 
+export async function renderHighlightedMatchProtocol(
+  matchId,
+  { actorId = null, requestId = null, highlightPlayerIds = [] } = {}
+) {
+  const ids = [...new Set(highlightPlayerIds)]
+    .map((id) => Number.parseInt(String(id), 10))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  if (!ids.length) throw new ServiceError('highlight_players_required', 400);
+
+  await downloadMatchProtocol(matchId, actorId, requestId);
+
+  const [match, snapshot] = await Promise.all([
+    loadMatch(matchId),
+    loadActiveSnapshot(matchId),
+  ]);
+  if (!match) throw new ServiceError('match_not_found', 404);
+  if (!snapshot) throw new ServiceError('match_protocol_snapshot_missing', 502);
+
+  const upstream = await fetchMatchProtocolPdf(match.external_id, {
+    requestId,
+    highlightPlayerIds: ids,
+  });
+  if (upstream.status !== 'ok') {
+    throw new ServiceError('match_protocol_not_available', 422);
+  }
+
+  const rendered = await renderProtocolPdf({
+    sourceBuffer: upstream.buffer,
+    matchId: match.id,
+    snapshotId: snapshot.id,
+    documentNumber: snapshot.number,
+    signer: await snapshotSignerPayload(snapshot),
+    signedAt: snapshot.signed_at,
+    signedByUserId: snapshot.signed_by_user_id,
+  });
+
+  return {
+    buffer: rendered.buffer,
+    filename: upstream.filename || buildFilename(match, snapshot),
+    snapshot,
+    match,
+  };
+}
+
 export default {
   downloadMatchProtocol,
+  renderHighlightedMatchProtocol,
   getMatchProtocolAvailability,
 };

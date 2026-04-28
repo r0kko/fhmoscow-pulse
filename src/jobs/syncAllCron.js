@@ -20,6 +20,7 @@ import { runGameSituationSync } from './gameSituationSyncCron.js';
 import { runGameViolationSync } from './gameViolationSyncCron.js';
 import { runBroadcastLinkSync } from './broadcastLinkSyncCron.js';
 import { runGamePenaltySync } from './gamePenaltySyncCron.js';
+import { runMatchParticipantSync } from './matchParticipantSyncCron.js';
 
 let running = false;
 let scheduled = false;
@@ -52,6 +53,7 @@ export async function runSyncAll() {
           await runStaffSync();
           await runPlayerSync();
           await runTournamentSync();
+          await runMatchParticipantSync();
           await runGameEventTypeSync();
           await runPenaltyMinutesSync();
           await runGameSituationSync();

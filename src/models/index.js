@@ -82,6 +82,8 @@ import Tour from './tour.js';
 import Match from './match.js';
 import MatchBroadcastLink from './matchBroadcastLink.js';
 import MatchProtocolSnapshot from './matchProtocolSnapshot.js';
+import MatchProtocolExportJob from './matchProtocolExportJob.js';
+import MatchProtocolExportItem from './matchProtocolExportItem.js';
 import GameStatus from './gameStatus.js';
 import UserTeam from './userTeam.js';
 import UserClub from './userClub.js';
@@ -108,6 +110,8 @@ import JobLog from './jobLog.js';
 import SyncState from './syncState.js';
 import MatchPlayer from './matchPlayer.js';
 import MatchStaff from './matchStaff.js';
+import MatchParticipantPlayer from './matchParticipantPlayer.js';
+import MatchParticipantStaff from './matchParticipantStaff.js';
 import MatchReferee from './matchReferee.js';
 import MatchRefereeStatus from './matchRefereeStatus.js';
 import MatchRefereeDraftClear from './matchRefereeDraftClear.js';
@@ -485,6 +489,23 @@ MatchStaff.belongsTo(Team, { foreignKey: 'team_id' });
 TeamStaff.hasMany(MatchStaff, { foreignKey: 'team_staff_id' });
 MatchStaff.belongsTo(TeamStaff, { foreignKey: 'team_staff_id' });
 
+/* imported external match participant snapshots */
+Match.hasMany(MatchParticipantPlayer, { foreignKey: 'match_id' });
+MatchParticipantPlayer.belongsTo(Match, { foreignKey: 'match_id' });
+Team.hasMany(MatchParticipantPlayer, { foreignKey: 'team_id' });
+MatchParticipantPlayer.belongsTo(Team, { foreignKey: 'team_id' });
+Player.hasMany(MatchParticipantPlayer, { foreignKey: 'player_id' });
+MatchParticipantPlayer.belongsTo(Player, { foreignKey: 'player_id' });
+PlayerRole.hasMany(MatchParticipantPlayer, { foreignKey: 'role_id' });
+MatchParticipantPlayer.belongsTo(PlayerRole, { foreignKey: 'role_id' });
+
+Match.hasMany(MatchParticipantStaff, { foreignKey: 'match_id' });
+MatchParticipantStaff.belongsTo(Match, { foreignKey: 'match_id' });
+Team.hasMany(MatchParticipantStaff, { foreignKey: 'team_id' });
+MatchParticipantStaff.belongsTo(Team, { foreignKey: 'team_id' });
+Staff.hasMany(MatchParticipantStaff, { foreignKey: 'staff_id' });
+MatchParticipantStaff.belongsTo(Staff, { foreignKey: 'staff_id' });
+
 Match.hasMany(MatchReferee, { foreignKey: 'match_id' });
 MatchReferee.belongsTo(Match, { foreignKey: 'match_id' });
 User.hasMany(MatchReferee, { foreignKey: 'user_id' });
@@ -819,6 +840,43 @@ MatchProtocolSnapshot.belongsTo(User, {
   as: 'SignedBy',
 });
 
+/* match protocol batch export jobs */
+Team.hasMany(MatchProtocolExportJob, { foreignKey: 'team_id' });
+MatchProtocolExportJob.belongsTo(Team, { foreignKey: 'team_id' });
+Season.hasMany(MatchProtocolExportJob, { foreignKey: 'season_id' });
+MatchProtocolExportJob.belongsTo(Season, { foreignKey: 'season_id' });
+User.hasMany(MatchProtocolExportJob, {
+  foreignKey: 'requested_by_user_id',
+  as: 'RequestedMatchProtocolExportJobs',
+});
+MatchProtocolExportJob.belongsTo(User, {
+  foreignKey: 'requested_by_user_id',
+  as: 'RequestedBy',
+});
+File.hasMany(MatchProtocolExportJob, {
+  foreignKey: 'archive_file_id',
+  as: 'MatchProtocolExportArchives',
+});
+MatchProtocolExportJob.belongsTo(File, {
+  foreignKey: 'archive_file_id',
+  as: 'ArchiveFile',
+});
+MatchProtocolExportJob.hasMany(MatchProtocolExportItem, {
+  foreignKey: 'job_id',
+  as: 'Items',
+});
+MatchProtocolExportItem.belongsTo(MatchProtocolExportJob, {
+  foreignKey: 'job_id',
+});
+Match.hasMany(MatchProtocolExportItem, {
+  foreignKey: 'match_id',
+  as: 'ProtocolExportItems',
+});
+MatchProtocolExportItem.belongsTo(Match, {
+  foreignKey: 'match_id',
+  as: 'Match',
+});
+
 /* equipment */
 EquipmentType.hasMany(Equipment, { foreignKey: 'type_id' });
 Equipment.belongsTo(EquipmentType, { foreignKey: 'type_id' });
@@ -994,6 +1052,8 @@ export {
   Match,
   MatchBroadcastLink,
   MatchProtocolSnapshot,
+  MatchProtocolExportJob,
+  MatchProtocolExportItem,
   GameStatus,
   MatchAgreement,
   JobLog,
@@ -1023,6 +1083,8 @@ export {
   TeamPlayer,
   MatchPlayer,
   MatchStaff,
+  MatchParticipantPlayer,
+  MatchParticipantStaff,
   MatchReferee,
   MatchRefereeStatus,
   MatchRefereeDraftClear,

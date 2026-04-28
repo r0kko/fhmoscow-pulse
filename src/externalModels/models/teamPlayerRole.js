@@ -8,6 +8,7 @@ TeamPlayerRole.init(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true },
     name: { type: DataTypes.STRING(255) },
+    abbreviation: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

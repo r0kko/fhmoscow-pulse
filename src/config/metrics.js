@@ -61,6 +61,10 @@ let verifyRequestDuration = null;
 let shortLinkResolveTotal = null;
 let adminCalendarRequestDuration = null;
 let adminCalendarEmptyTotal = null;
+let matchProtocolExportJobsTotal = null;
+let matchProtocolExportDuration = null;
+let matchProtocolUpstreamRequestsTotal = null;
+let matchProtocolExportRetriesTotal = null;
 
 let businessCollectorTimer = null;
 let businessCollectorStarted = false;
@@ -352,6 +356,31 @@ async function ensureInit() {
         'has_search',
         'has_structural_filters',
       ],
+      registers: [register],
+    });
+    matchProtocolExportJobsTotal = new client.Counter({
+      name: 'match_protocol_export_jobs_total',
+      help: 'Batch match protocol export jobs grouped by status',
+      labelNames: ['status'],
+      registers: [register],
+    });
+    matchProtocolExportDuration = new client.Histogram({
+      name: 'match_protocol_export_duration_seconds',
+      help: 'Batch match protocol export duration',
+      labelNames: ['status'],
+      buckets: [1, 2, 5, 10, 30, 60, 120, 300, 600, 1200, 1800],
+      registers: [register],
+    });
+    matchProtocolUpstreamRequestsTotal = new client.Counter({
+      name: 'match_protocol_upstream_requests_total',
+      help: 'Protocol upstream requests triggered by batch exports',
+      labelNames: ['result'],
+      registers: [register],
+    });
+    matchProtocolExportRetriesTotal = new client.Counter({
+      name: 'match_protocol_export_retries_total',
+      help: 'Protocol batch export retries grouped by reason',
+      labelNames: ['reason'],
       registers: [register],
     });
     httpErrorCodeTotal = new client.Counter({
@@ -1027,6 +1056,48 @@ export function incAdminCalendarEmpty({
       has_search: hasSearch ? 'true' : 'false',
       has_structural_filters: hasStructuralFilters ? 'true' : 'false',
     });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incMatchProtocolExportJob(status = 'unknown') {
+  if (!metricsAvailable) return;
+  try {
+    matchProtocolExportJobsTotal.inc({ status: safeMetricLabel(status) });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function observeMatchProtocolExportDuration(
+  status = 'unknown',
+  seconds = 0
+) {
+  if (!metricsAvailable) return;
+  try {
+    matchProtocolExportDuration.observe(
+      { status: safeMetricLabel(status) },
+      Number(seconds) || 0
+    );
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incMatchProtocolUpstreamRequest(result = 'unknown') {
+  if (!metricsAvailable) return;
+  try {
+    matchProtocolUpstreamRequestsTotal.inc({ result: safeMetricLabel(result) });
+  } catch (_e) {
+    /* noop */
+  }
+}
+
+export function incMatchProtocolExportRetry(reason = 'unknown') {
+  if (!metricsAvailable) return;
+  try {
+    matchProtocolExportRetriesTotal.inc({ reason: safeMetricLabel(reason) });
   } catch (_e) {
     /* noop */
   }

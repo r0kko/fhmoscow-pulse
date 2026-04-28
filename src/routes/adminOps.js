@@ -23,6 +23,7 @@ router.get('/sync/status', auth, authorize('ADMIN'), async (_req, res) => {
       'staffSync',
       'playerSync',
       'tournamentSync',
+      'matchParticipantSync',
       'gameEventTypeSync',
       'penaltyMinutesSync',
       'gameSituationSync',
@@ -237,6 +238,7 @@ router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
     'staffSync',
     'playerSync',
     'tournamentSync',
+    'matchParticipantSync',
     'gameEventTypeSync',
     'penaltyMinutesSync',
     'gameSituationSync',
@@ -269,6 +271,14 @@ router.post('/jobs/reset', auth, authorize('ADMIN'), async (req, res) => {
       try {
         const mod = await import('../jobs/refereeAccrualGenerationCron.js');
         mod.resetRefereeAccrualGenerationState?.();
+      } catch {
+        /* empty */
+      }
+    }
+    if (job === 'matchParticipantSync') {
+      try {
+        const mod = await import('../jobs/matchParticipantSyncCron.js');
+        mod.resetMatchParticipantSyncState?.();
       } catch {
         /* empty */
       }

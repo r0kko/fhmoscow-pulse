@@ -25,6 +25,7 @@ import penaltyController, {
   listPenalties,
 } from '../controllers/matchPenaltyController.js';
 import matchProtocolController from '../controllers/matchProtocolController.js';
+import matchParticipantController from '../controllers/matchParticipantController.js';
 
 const router = express.Router();
 
@@ -140,6 +141,14 @@ router.post(
   setMatchStaffRules,
   validate,
   matchStaffController.set
+);
+
+// Imported external protocol participants snapshot
+router.get(
+  '/:id/participants',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  matchParticipantController.list
 );
 
 router.post(

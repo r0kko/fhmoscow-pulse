@@ -6,6 +6,7 @@ import accessScope from '../middlewares/accessScope.js';
 import controller from '../controllers/teamController.js';
 import teamStaffController from '../controllers/teamStaffController.js';
 import requireSportSchoolManager from '../middlewares/requireSportSchoolManager.js';
+import matchProtocolExportRateLimiter from '../middlewares/matchProtocolExportRateLimiter.js';
 import { addTeamStaffRules } from '../validators/teamStaffValidators.js';
 import validate from '../middlewares/validate.js';
 import { teamCreateRules } from '../validators/teamValidators.js';
@@ -35,6 +36,47 @@ router.post(
   controller.create
 );
 router.post('/sync', auth, authorize('ADMIN'), controller.sync);
+
+router.post(
+  '/:id/participation-summary/export.xlsx',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.exportParticipationSummary
+);
+
+router.post(
+  '/:id/participation-summary/protocols/export-jobs',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  matchProtocolExportRateLimiter,
+  controller.createProtocolExportJob
+);
+
+router.get(
+  '/:id/participation-summary/protocols/export-jobs/:jobId/download.zip',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.downloadProtocolExport
+);
+
+router.get(
+  '/:id/participation-summary/protocols/export-jobs/:jobId',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.protocolExportJob
+);
+
+router.get(
+  '/:id/participation-summary',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.participationSummary
+);
 
 /**
  * @swagger

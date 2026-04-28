@@ -55,6 +55,20 @@ test('POST /admin-ops/jobs/reset clears lock for syncAll', async () => {
   expect(res.json).toHaveBeenCalled();
 });
 
+test('POST /admin-ops/jobs/reset accepts matchParticipantSync', async () => {
+  const handler = findRoute('/jobs/reset', 'post');
+  const req = { body: { job: 'matchParticipantSync' } };
+  const res = { json: jest.fn() };
+  await handler(req, res);
+  expect(forceDeleteLockMock).toHaveBeenCalledWith(
+    'lock:job:matchParticipantSync'
+  );
+  expect(res.json).toHaveBeenCalledWith({
+    ok: true,
+    job: 'matchParticipantSync',
+  });
+});
+
 test('POST /admin-ops/jobs/restart rejects non-restartable job', async () => {
   const handler = findRoute('/jobs/restart', 'post');
   let captured;

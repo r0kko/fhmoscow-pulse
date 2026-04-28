@@ -10,6 +10,7 @@ GameStaff.init(
     game_id: { type: DataTypes.INTEGER },
     staff_id: { type: DataTypes.INTEGER },
     team_id: { type: DataTypes.INTEGER },
+    position: { type: DataTypes.STRING(255) },
   },
   {
     sequelize,

@@ -13,6 +13,7 @@ const getFileBufferMock = jest.fn();
 const fetchMatchProtocolPdfMock = jest.fn();
 const renderMatchProtocolPdfMock = jest.fn();
 const nextMatchProtocolNumberMock = jest.fn();
+const roleFindOneMock = jest.fn();
 const withRedisLockMock = jest.fn(async (_key, _ttl, fn) => fn());
 const transactionMock = jest.fn(async (fn) => fn());
 
@@ -27,7 +28,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     create: snapshotCreateMock,
     sequelize: { transaction: transactionMock },
   },
-  Role: {},
+  Role: { findOne: roleFindOneMock },
   SignType: {},
   Team: {},
   User: {},
@@ -77,13 +78,18 @@ jest.unstable_mockModule('../src/config/matchProtocol.js', () => ({
   isMatchProtocolConfigured: () => true,
 }));
 
-const { downloadMatchProtocol } =
+const { downloadMatchProtocol, renderHighlightedMatchProtocol } =
   await import('../src/services/matchProtocolService.js');
 
 beforeEach(() => {
   jest.clearAllMocks();
   snapshotUpdateMock.mockResolvedValue([1]);
   nextMatchProtocolNumberMock.mockResolvedValue('26.04/1');
+  roleFindOneMock.mockResolvedValue({
+    alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+    name: 'Ведущий специалист по судейству',
+    departmentName: 'Отдел организации судейства',
+  });
   saveGeneratedPdfMock.mockResolvedValue({
     id: 'file-1',
     key: 'documents/file-1.pdf',
@@ -216,4 +222,67 @@ test('waits for ready snapshot when download lock is busy', async () => {
 
   expect(result.buffer.toString()).toBe('%PDF-after-wait');
   expect(result.filename).toBe('protocol-26.04-1.pdf');
+});
+
+test('renders highlighted protocol without replacing official snapshot', async () => {
+  matchFindByPkMock.mockResolvedValue({
+    id: MATCH_ID,
+    external_id: 88,
+    GameStatus: { alias: 'FINISHED' },
+  });
+  snapshotFindOneMock
+    .mockResolvedValueOnce({
+      id: 'snapshot-1',
+      number: '26.04/1',
+      signed_at: new Date('2026-04-20T10:00:00.000Z'),
+      signed_by_user_id: USER_ID,
+      signed_role_alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+      last_checked_at: new Date(Date.now() - 60_000).toISOString(),
+      SignedFile: { id: 'file-1', key: 'documents/file-1.pdf' },
+    })
+    .mockResolvedValueOnce({
+      id: 'snapshot-1',
+      number: '26.04/1',
+      signed_at: new Date('2026-04-20T10:00:00.000Z'),
+      signed_by_user_id: USER_ID,
+      signed_role_alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+      SignedFile: { id: 'file-1', key: 'documents/file-1.pdf' },
+      SignedBy: {
+        id: USER_ID,
+        last_name: 'Иванов',
+        first_name: 'Иван',
+        patronymic: 'Иванович',
+      },
+    });
+  getFileBufferMock.mockResolvedValue(Buffer.from('%PDF-official'));
+  fetchMatchProtocolPdfMock.mockResolvedValue({
+    status: 'ok',
+    buffer: Buffer.from('%PDF-highlighted'),
+    filename: 'highlighted.pdf',
+  });
+
+  const result = await renderHighlightedMatchProtocol(MATCH_ID, {
+    actorId: 'admin-1',
+    requestId: 'req-highlight',
+    highlightPlayerIds: [101, 102],
+  });
+
+  expect(fetchMatchProtocolPdfMock).toHaveBeenCalledTimes(1);
+  expect(fetchMatchProtocolPdfMock).toHaveBeenCalledWith(88, {
+    requestId: 'req-highlight',
+    highlightPlayerIds: [101, 102],
+  });
+  expect(renderMatchProtocolPdfMock).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      sourceBuffer: Buffer.from('%PDF-highlighted'),
+      matchId: MATCH_ID,
+      snapshotId: 'snapshot-1',
+      documentNumber: '26.04/1',
+      signedByUserId: USER_ID,
+    })
+  );
+  expect(saveGeneratedPdfMock).not.toHaveBeenCalled();
+  expect(snapshotUpdateMock).not.toHaveBeenCalled();
+  expect(snapshotCreateMock).not.toHaveBeenCalled();
+  expect(result.filename).toBe('highlighted.pdf');
 });

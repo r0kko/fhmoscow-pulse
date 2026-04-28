@@ -79,7 +79,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:latest
+    image: redis:8.2.1
     container_name: redis
     networks:
       - backend

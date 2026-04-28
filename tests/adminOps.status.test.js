@@ -64,7 +64,12 @@ test('GET /admin-ops/sync/status returns stats and running flag', async () => {
     status: () => ({ json: (p) => (captured = p) }),
   };
   await handler({}, res);
-  expect(getJobStatsMock).toHaveBeenCalled();
+  expect(getJobStatsMock).toHaveBeenCalledWith(
+    expect.arrayContaining(['matchParticipantSync'])
+  );
+  expect(getSyncStatesMock).toHaveBeenCalledWith(
+    expect.arrayContaining(['matchParticipantSync'])
+  );
   expect(captured.jobs).toBeDefined();
   expect(captured.states).toBeDefined();
   expect(captured.running.syncAll).toBe(true);
