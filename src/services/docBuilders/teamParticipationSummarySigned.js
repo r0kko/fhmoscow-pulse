@@ -19,7 +19,7 @@ const SIGNATURE_IMAGE_PATH = path.resolve(
 );
 
 const PAGE_MARGIN = 34;
-const TABLE_HEADER_HEIGHT = 132;
+const TABLE_HEADER_HEIGHT = 154;
 const ROW_HEIGHT = 14;
 const SIGNATURE_RESERVED_HEIGHT = 86;
 const NUMBER_WIDTH = 20;
@@ -31,7 +31,9 @@ const LOGO_TOP = 18;
 const FEDERATION_LOGO_HEIGHT = 30;
 const SYSTEM_LOGO_WIDTH = 76;
 const TITLE_TOP = 58;
-const ROTATED_HEADER_PADDING = 3;
+const ROTATED_HEADER_PADDING = 1.2;
+const ROTATED_HEADER_LINE_GAP = 0.7;
+const MIN_ROTATED_TEXT_SCALE = 0.56;
 const SIGNATURE_GAP = 28;
 const SIGNATURE_BLOCK_HEIGHT = 74;
 
@@ -75,11 +77,14 @@ function truncateText(value, maxLength) {
   return `${text.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
-function matchHeaderText(match) {
+function matchHeaderParts(match) {
   const date = formatDate(match.date_start);
   const home = normalizeText(match.home_team_name || 'Команда А');
   const away = normalizeText(match.away_team_name || 'Команда Б');
-  return [date, `${home} - ${away}`].filter(Boolean).join('; ');
+  return {
+    date,
+    pair: `${home} - ${away}`,
+  };
 }
 
 function splitIntoChunks(items, size) {
@@ -115,38 +120,67 @@ function tableLayout(doc, matches) {
   };
 }
 
-function preferredMatchHeaderFontSize(matchWidth, matchCount) {
-  if (matchCount >= 34 || matchWidth < 15) return 3.55;
-  if (matchCount >= 28 || matchWidth < 18) return 3.9;
-  if (matchCount >= 22 || matchWidth < 22) return 4.4;
-  return 5.2;
+function lineHeight(doc, font, size) {
+  doc.font(font).fontSize(size);
+  return doc.heightOfString('00.00.0000', {
+    width: 200,
+    lineBreak: false,
+  });
 }
 
-function fittedMatchHeaderFontSize(
-  doc,
-  text,
-  font,
-  lineWidth,
-  maxBlockHeight,
-  matchWidth,
-  matchCount
-) {
-  const minSize = 2;
-  let size = preferredMatchHeaderFontSize(matchWidth, matchCount);
-  while (size > minSize) {
-    doc.font(font).fontSize(size);
-    const textWidth = doc.widthOfString(text);
-    const blockHeight = doc.heightOfString(text, {
-      width: lineWidth,
-      align: 'center',
-      lineGap: 0,
-    });
-    if (textWidth <= lineWidth && blockHeight <= maxBlockHeight) {
-      return size;
+function rotatedHeaderLayout(doc, parts, font, lineWidth, maxBlockHeight) {
+  let dateSize = 4.6;
+  let pairSize = 4.15;
+  let gap = ROTATED_HEADER_LINE_GAP;
+
+  while (pairSize > 2.8) {
+    const dateHeight = lineHeight(doc, font, dateSize);
+    const pairHeight = lineHeight(doc, font, pairSize);
+    const blockHeight = dateHeight + gap + pairHeight;
+    doc.font(font).fontSize(pairSize);
+    const pairTextWidth = Math.max(0.01, doc.widthOfString(parts.pair));
+    const pairScale = Math.min(1, lineWidth / pairTextWidth);
+    if (blockHeight <= maxBlockHeight && pairScale >= MIN_ROTATED_TEXT_SCALE) {
+      return {
+        dateSize,
+        pairSize,
+        dateHeight,
+        pairHeight,
+        gap,
+        blockHeight,
+      };
     }
-    size -= 0.1;
+    dateSize = Math.max(3.4, dateSize - 0.08);
+    pairSize -= 0.08;
+    gap = Math.max(0.35, gap - 0.02);
   }
-  return minSize;
+
+  const dateHeight = lineHeight(doc, font, dateSize);
+  const pairHeight = lineHeight(doc, font, pairSize);
+  return {
+    dateSize,
+    pairSize,
+    dateHeight,
+    pairHeight,
+    gap,
+    blockHeight: dateHeight + gap + pairHeight,
+  };
+}
+
+function drawScaledLine(doc, text, x, y, lineWidth, font, size) {
+  doc.font(font).fontSize(size).fillColor('black');
+  const textWidth = Math.max(0.01, doc.widthOfString(text));
+  const scale = Math.min(1, lineWidth / textWidth);
+  const scaledLineWidth = lineWidth / scale;
+  const centeredX = Math.max(0, (scaledLineWidth - textWidth) / 2);
+  doc.save();
+  doc.translate(x, y);
+  doc.scale(scale, 1);
+  doc.text(text, centeredX, 0, {
+    width: textWidth,
+    lineBreak: false,
+  });
+  doc.restore();
 }
 
 function matchCellFontSize(matchWidth) {
@@ -385,33 +419,45 @@ function drawCell(doc, x, y, width, height, text, options = {}) {
     });
 }
 
-function drawRotatedHeader(doc, x, y, width, height, text, font, size) {
+function drawRotatedHeader(doc, x, y, width, height, parts, font) {
   const textWidth = height - ROTATED_HEADER_PADDING * 2;
-  const textHeightValue = doc.font(font).fontSize(size).heightOfString(text, {
-    width: textWidth,
-    align: 'center',
-    lineGap: 0,
-  });
+  const availableBlockHeight = width - ROTATED_HEADER_PADDING * 2;
+  const layout = rotatedHeaderLayout(
+    doc,
+    parts,
+    font,
+    textWidth,
+    availableBlockHeight
+  );
   doc.rect(x, y, width, height).strokeColor('black').lineWidth(0.5).stroke();
+
   doc.save();
-  doc
-    .font(font)
-    .fontSize(size)
-    .fillColor('black')
-    .rotate(-90, {
-      origin: [x + width / 2, y + height - ROTATED_HEADER_PADDING],
-    })
-    .text(
-      text,
-      x + (width - textHeightValue) / 2,
-      y + height - ROTATED_HEADER_PADDING,
-      {
-        width: textWidth,
-        align: 'center',
-        lineBreak: false,
-        lineGap: 0,
-      }
-    );
+  doc.translate(x, y + height);
+  doc.rotate(-90);
+  doc.rect(0, 0, height, width).clip();
+
+  const textX = ROTATED_HEADER_PADDING;
+  const textY =
+    ROTATED_HEADER_PADDING +
+    Math.max(0, (availableBlockHeight - layout.blockHeight) / 2);
+  drawScaledLine(
+    doc,
+    parts.date,
+    textX,
+    textY,
+    textWidth,
+    font,
+    layout.dateSize
+  );
+  drawScaledLine(
+    doc,
+    parts.pair,
+    textX,
+    textY + layout.dateHeight + layout.gap,
+    textWidth,
+    font,
+    layout.pairSize
+  );
   doc.restore();
 }
 
@@ -449,25 +495,15 @@ function drawTableHeader(doc, fonts, y, matches, layout) {
     );
   }
   for (const match of matches) {
-    const headerText = matchHeaderText(match);
-    const rotatedFontSize = fittedMatchHeaderFontSize(
-      doc,
-      headerText,
-      fonts.regular,
-      verticalHeaderHeight - ROTATED_HEADER_PADDING * 2,
-      layout.matchWidth - ROTATED_HEADER_PADDING * 2,
-      layout.matchWidth,
-      matches.length
-    );
+    const headerParts = matchHeaderParts(match);
     drawRotatedHeader(
       doc,
       x,
       y + topGroupHeight,
       layout.matchWidth,
       verticalHeaderHeight,
-      headerText,
-      fonts.regular,
-      rotatedFontSize
+      headerParts,
+      fonts.regular
     );
     x += layout.matchWidth;
   }
