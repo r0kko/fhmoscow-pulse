@@ -653,7 +653,7 @@ function drawSignature(doc, fonts, sealImage, signatureImage, tableBottom) {
     .fontSize(8.8)
     .fillColor('black')
     .text(
-      'Ведущего специалиста по проведению соревнований\nРОО «Федерация хоккея Москвы»',
+      'Ведущий специалист по проведению соревнований\nРОО «Федерация хоккея Москвы»',
       PAGE_MARGIN + 35,
       top,
       {
