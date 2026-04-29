@@ -68,6 +68,22 @@ export default {
     }
   },
 
+  async participationSummaryIasEvents(req, res) {
+    try {
+      const data =
+        await teamParticipationSummaryService.listParticipationSummaryIasEvents(
+          {
+            teamId: req.params.id,
+            seasonId: req.query.season_id,
+            access: req.access,
+          }
+        );
+      return res.json(data);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
   async exportParticipationSummary(req, res) {
     try {
       const payload =
@@ -115,6 +131,25 @@ export default {
         buildAttachmentDisposition(payload.filename)
       );
       return res.end(payload.buffer);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async createParticipationSummarySignedDocument(req, res) {
+    try {
+      const payload =
+        await teamParticipationSummaryService.createParticipationSummarySignedDocument(
+          {
+            teamId: req.params.id,
+            seasonId: req.body?.season_id || req.query.season_id,
+            playerIds: req.body?.player_ids || req.query.player_ids,
+            iasEventId: req.body?.ias_event_id || req.query.ias_event_id,
+            access: req.access,
+            actorId: req.user?.id || null,
+          }
+        );
+      return res.status(201).json(payload);
     } catch (err) {
       return sendError(res, err);
     }

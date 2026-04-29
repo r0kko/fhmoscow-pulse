@@ -258,13 +258,25 @@ function truncateToHeight(doc, text, width, font, size, maxHeight) {
   return best || truncateText(normalized, 24);
 }
 
-function documentHeaderLayout(doc, fonts, summary, meta) {
+function headerMeta(meta = {}, event = null, documentNumber = null) {
+  return {
+    title: documentNumber
+      ? `Выписка из протокола №${documentNumber}`
+      : 'Выписка из протокола',
+    registry_number: event?.registry_number || meta.registry_number || '',
+    event_name: event?.name || meta.event_name || '',
+    event_date_start: event?.date_start || meta.event_date_start || '',
+    event_date_end: event?.date_end || meta.event_date_end || '',
+  };
+}
+
+function documentHeaderLayout(doc, fonts, summary, header) {
   const width = doc.page.width - PAGE_MARGIN * 2;
-  const eventDates = `${formatDate(meta.event_date_start)} - ${formatDate(
-    meta.event_date_end
+  const eventDates = `${formatDate(header.event_date_start)} - ${formatDate(
+    header.event_date_end
   )}`;
-  const registryLine = `Реестровый номер мероприятия ${meta.registry_number}   Сроки проведения ${eventDates}`;
-  const eventLine = `Наименование мероприятия ${meta.event_name}`;
+  const registryLine = `Реестровый номер мероприятия ${header.registry_number}   Сроки проведения ${eventDates}`;
+  const eventLine = `Наименование мероприятия ${header.event_name}`;
   const titleSize = 11.2;
   const metaSize = 8.6;
   const teamSize = 9.8;
@@ -279,7 +291,7 @@ function documentHeaderLayout(doc, fonts, summary, meta) {
   );
   const titleHeight = textHeight(
     doc,
-    'Выписка из протокола',
+    header.title,
     width,
     fonts.bold,
     titleSize
@@ -319,6 +331,7 @@ function documentHeaderLayout(doc, fonts, summary, meta) {
     teamSize,
     registryLine,
     eventLine: safeEventLine,
+    title: header.title,
     titleHeight,
     registryHeight,
     eventHeight,
@@ -343,7 +356,7 @@ function drawDocumentHeader(doc, fonts, summary, meta, layout) {
   let y = y0;
   drawCentered(
     doc,
-    'Выписка из протокола',
+    layout.title,
     y,
     layout.width,
     fonts.bold,
@@ -640,7 +653,7 @@ function drawSignature(doc, fonts, sealImage, signatureImage, tableBottom) {
     .fontSize(8.8)
     .fillColor('black')
     .text(
-      'Ведущий специалист по проведению соревнований\nРОО «Федерация хоккея Москвы»',
+      'Ведущего специалиста по проведению соревнований\nРОО «Федерация хоккея Москвы»',
       PAGE_MARGIN + 35,
       top,
       {
@@ -679,6 +692,8 @@ export default async function buildTeamParticipationSummarySignedPdf({
   summary,
   players,
   meta,
+  event,
+  documentNumber,
 }) {
   try {
     fs.accessSync(SEAL_PATH, fs.constants.R_OK);
@@ -703,7 +718,8 @@ export default async function buildTeamParticipationSummarySignedPdf({
   });
   const fonts = applyFonts(doc);
 
-  const headerLayout = documentHeaderLayout(doc, fonts, summary, meta);
+  const header = headerMeta(meta, event, documentNumber);
+  const headerLayout = documentHeaderLayout(doc, fonts, summary, header);
   const layout = tableLayout(doc, summary.matches);
   const rowChunks = splitIntoChunks(
     players,
@@ -718,7 +734,7 @@ export default async function buildTeamParticipationSummarySignedPdf({
 
   pages.forEach((page, pageIndex) => {
     if (pageIndex > 0) doc.addPage();
-    drawDocumentHeader(doc, fonts, summary, meta, headerLayout);
+    drawDocumentHeader(doc, fonts, summary, header, headerLayout);
     const tableY = PAGE_MARGIN + headerLayout.height;
     drawTableHeader(doc, fonts, tableY, summary.matches, layout);
     page.rowChunk.forEach((player, rowIndex) => {

@@ -15,6 +15,7 @@ import DocumentUserSign from './documentUserSign.js';
 import DocumentStatus from './documentStatus.js';
 import DocumentType from './documentType.js';
 import NumberCounter from './numberCounter.js';
+import IasEvent from './iasEvent.js';
 import Country from './country.js';
 import Passport from './passport.js';
 import Inn from './inn.js';
@@ -1008,6 +1009,7 @@ export {
   DocumentStatus,
   DocumentType,
   NumberCounter,
+  IasEvent,
   Country,
   Passport,
   Inn,

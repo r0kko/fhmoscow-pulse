@@ -53,6 +53,22 @@ router.post(
   controller.exportParticipationSummarySignedPdf
 );
 
+router.get(
+  '/:id/participation-summary/ias-events',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.participationSummaryIasEvents
+);
+
+router.post(
+  '/:id/participation-summary/signed-documents',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.createParticipationSummarySignedDocument
+);
+
 router.post(
   '/:id/participation-summary/protocols/export-jobs',
   auth,

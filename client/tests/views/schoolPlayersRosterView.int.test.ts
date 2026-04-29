@@ -132,6 +132,33 @@ function mockApi(summary = defaultSummary()) {
     if (path.startsWith('/teams/team-1/participation-summary?')) {
       return summary;
     }
+    if (path.startsWith('/teams/team-1/participation-summary/ias-events?')) {
+      return {
+        events: [
+          {
+            id: 'event-1',
+            registry_number: '102493',
+            name: 'Кубок Федерации хоккея г. Москвы, 1-й этап',
+            date_start: '2026-01-06',
+            date_end: '2026-01-13',
+            label:
+              '№ 102493 · 06.01.2026 - 13.01.2026 · Кубок Федерации хоккея г. Москвы, 1-й этап',
+          },
+        ],
+      };
+    }
+    if (path === '/teams/team-1/participation-summary/signed-documents') {
+      return {
+        document: {
+          id: 'document-1',
+          number: '26.04/1',
+          name: 'Выписка из протокола',
+          status: { alias: 'SIGNED', name: 'Подписан' },
+          signType: { alias: 'HANDWRITTEN', name: 'Собственноручная' },
+        },
+        file: { id: 'file-1', url: 'https://s3.test/extract.pdf' },
+      };
+    }
     if (path === '/teams/team-1/participation-summary/protocols/export-jobs') {
       return {
         job_id: 'job-1',
@@ -287,21 +314,7 @@ describe('SchoolPlayersRoster view', () => {
     );
   });
 
-  it('exports signed pdf from modal with event fields', async () => {
-    const createObjectUrlMock = vi
-      .spyOn(URL, 'createObjectURL')
-      .mockReturnValue('blob:signed-summary');
-    const revokeObjectUrlMock = vi
-      .spyOn(URL, 'revokeObjectURL')
-      .mockImplementation(() => undefined);
-    apiFetchBlobResponseMock.mockResolvedValue({
-      blob: new Blob(['pdf']),
-      headers: new Headers({
-        'Content-Disposition':
-          "attachment; filename*=UTF-8''signed-summary.pdf",
-      }),
-    });
-
+  it('creates signed document from modal with IAS event', async () => {
     const { container } = await renderView();
 
     await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
@@ -316,40 +329,33 @@ describe('SchoolPlayersRoster view', () => {
       summary.getByRole('button', { name: /Подписанный документ/i })
     );
 
-    await fireEvent.update(
-      screen.getByLabelText(/Реестровый номер мероприятия/i),
-      '98239'
-    );
-    await fireEvent.update(
-      screen.getByLabelText(/Наименование мероприятия/i),
-      'XIII зимняя Спартакиада'
-    );
-    await fireEvent.update(screen.getByLabelText(/Дата начала/i), '2026-02-18');
-    await fireEvent.update(
-      screen.getByLabelText(/Дата окончания/i),
-      '2026-02-27'
-    );
-    await fireEvent.click(screen.getByRole('button', { name: /Скачать PDF/i }));
+    const eventSelect = await screen.findByLabelText(/Мероприятие ИАС/i);
+    expect(eventSelect).toHaveValue('event-1');
 
-    expect(apiFetchBlobResponseMock).toHaveBeenCalledWith(
-      '/teams/team-1/participation-summary/export-signed.pdf',
+    await fireEvent.click(
+      screen.getByRole('button', { name: /Создать документ/i })
+    );
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/teams/team-1/participation-summary/signed-documents',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
           season_id: 'season-1',
           player_ids: ['player-1'],
-          registry_number: '98239',
-          event_name: 'XIII зимняя Спартакиада',
-          event_date_start: '2026-02-18',
-          event_date_end: '2026-02-27',
+          ias_event_id: 'event-1',
         }),
       })
     );
-    expect(createObjectUrlMock).toHaveBeenCalled();
-    expect(revokeObjectUrlMock).toHaveBeenCalledWith('blob:signed-summary');
+    expect(
+      screen.getByText(/Документ создан: № 26\.04\/1/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Перейти в документы/i })
+    ).toHaveAttribute('href', '/documents');
   });
 
-  it('blocks signed pdf export when end date is before start date', async () => {
+  it('uses IAS event selector instead of manual signed document fields', async () => {
     const { container } = await renderView();
 
     await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
@@ -364,25 +370,14 @@ describe('SchoolPlayersRoster view', () => {
       summary.getByRole('button', { name: /Подписанный документ/i })
     );
 
-    await fireEvent.update(
-      screen.getByLabelText(/Реестровый номер мероприятия/i),
-      '98239'
-    );
-    await fireEvent.update(
-      screen.getByLabelText(/Наименование мероприятия/i),
-      'XIII зимняя Спартакиада'
-    );
-    await fireEvent.update(screen.getByLabelText(/Дата начала/i), '2026-02-27');
-    await fireEvent.update(
-      screen.getByLabelText(/Дата окончания/i),
-      '2026-02-18'
-    );
-    await fireEvent.click(screen.getByRole('button', { name: /Скачать PDF/i }));
-
     expect(
-      screen.getByText('Дата окончания не может быть раньше даты начала')
+      await screen.findByLabelText(/Мероприятие ИАС/i)
     ).toBeInTheDocument();
-    expect(apiFetchBlobResponseMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByLabelText(/Реестровый номер мероприятия/i)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Дата начала/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Дата окончания/i)).not.toBeInTheDocument();
   });
 
   it('starts protocol zip export for selected players with participation', async () => {

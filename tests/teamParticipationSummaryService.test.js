@@ -6,6 +6,18 @@ const teamFindByPkMock = jest.fn();
 const seasonFindByPkMock = jest.fn();
 const matchFindAllMock = jest.fn();
 const participantFindAllMock = jest.fn();
+const iasEventFindAllMock = jest.fn();
+const iasEventFindOneMock = jest.fn();
+const documentTypeFindOneMock = jest.fn();
+const documentStatusFindOneMock = jest.fn();
+const signTypeFindOneMock = jest.fn();
+const documentCreateMock = jest.fn();
+const documentFindByPkMock = jest.fn();
+const saveGeneratedPdfMock = jest.fn();
+const removeFileMock = jest.fn();
+const getDownloadUrlMock = jest.fn();
+const nextDocumentNumberMock = jest.fn();
+const transactionMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -13,7 +25,29 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Season: { findByPk: seasonFindByPkMock },
   Match: { findAll: matchFindAllMock },
   MatchParticipantPlayer: { findAll: participantFindAllMock },
+  IasEvent: { findAll: iasEventFindAllMock, findOne: iasEventFindOneMock },
+  DocumentType: { findOne: documentTypeFindOneMock },
+  DocumentStatus: { findOne: documentStatusFindOneMock },
+  SignType: { findOne: signTypeFindOneMock },
+  Document: { create: documentCreateMock, findByPk: documentFindByPkMock },
+  File: {},
   Player: {},
+}));
+
+jest.unstable_mockModule('../src/config/database.js', () => ({
+  default: { transaction: transactionMock },
+}));
+
+jest.unstable_mockModule('../src/services/fileService.js', () => ({
+  default: {
+    saveGeneratedPdf: saveGeneratedPdfMock,
+    removeFile: removeFileMock,
+    getDownloadUrl: getDownloadUrlMock,
+  },
+}));
+
+jest.unstable_mockModule('../src/services/numberingService.js', () => ({
+  nextDocumentNumber: nextDocumentNumberMock,
 }));
 
 const service = (
@@ -71,6 +105,20 @@ beforeEach(() => {
     .mockResolvedValue({ id: 'season-1', name: '2025/26' });
   matchFindAllMock.mockReset();
   participantFindAllMock.mockReset();
+  iasEventFindAllMock.mockReset();
+  iasEventFindOneMock.mockReset();
+  documentTypeFindOneMock.mockReset();
+  documentStatusFindOneMock.mockReset();
+  signTypeFindOneMock.mockReset();
+  documentCreateMock.mockReset();
+  documentFindByPkMock.mockReset();
+  saveGeneratedPdfMock.mockReset();
+  removeFileMock.mockReset().mockResolvedValue(undefined);
+  getDownloadUrlMock.mockReset().mockResolvedValue('https://s3.test/doc.pdf');
+  nextDocumentNumberMock.mockReset().mockResolvedValue('26.04/1');
+  transactionMock
+    .mockReset()
+    .mockImplementation(async (callback) => callback({ id: 'tx' }));
 });
 
 test('denies sport school staff access to a team outside allowedTeamIds', async () => {
@@ -329,6 +377,143 @@ test('exports signed pdf only for selected players without persistence', async (
   );
   expect(payload.buffer.subarray(0, 4).toString()).toBe('%PDF');
   expect(payload.buffer.length).toBeGreaterThan(1000);
+});
+
+test('lists active IAS events with access checks', async () => {
+  iasEventFindAllMock.mockResolvedValue([
+    {
+      id: 'event-1',
+      registry_number: '102493',
+      name: 'Кубок Федерации хоккея г. Москвы, 1-й этап',
+      date_start: '2026-01-06',
+      date_end: '2026-01-13',
+    },
+  ]);
+
+  const payload = await service.listParticipationSummaryIasEvents({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+  });
+
+  expect(payload.events).toEqual([
+    expect.objectContaining({
+      id: 'event-1',
+      registry_number: '102493',
+      label: expect.stringContaining('№ 102493'),
+    }),
+  ]);
+  expect(iasEventFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({ where: { is_active: true } })
+  );
+});
+
+test('creates signed participation summary document in documents without e-sign', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z'),
+    matchRow('match-2', '2026-01-17T10:00:00.000Z'),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+      surname: 'Иванов',
+      name: 'Иван',
+    }),
+    participantRow({
+      id: 'row-2',
+      matchId: 'match-2',
+      playerId: 'player-2',
+      externalPlayerId: 102,
+      played: true,
+      surname: 'Петров',
+      name: 'Петр',
+    }),
+  ]);
+  iasEventFindOneMock.mockResolvedValue({
+    id: 'event-1',
+    registry_number: '102493',
+    name: 'Кубок Федерации хоккея г. Москвы, 1-й этап',
+    date_start: '2026-01-06',
+    date_end: '2026-01-13',
+  });
+  documentTypeFindOneMock.mockResolvedValue({
+    id: 'doctype-1',
+    name: 'Выписка из протокола',
+    alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT',
+    generated: false,
+  });
+  documentStatusFindOneMock.mockResolvedValue({
+    id: 'status-signed',
+    name: 'Подписан',
+    alias: 'SIGNED',
+  });
+  signTypeFindOneMock.mockResolvedValue({
+    id: 'sign-handwritten',
+    name: 'Собственноручная',
+    alias: 'HANDWRITTEN',
+  });
+  saveGeneratedPdfMock.mockResolvedValue({ id: 'file-1' });
+  documentCreateMock.mockResolvedValue({ id: 'document-1' });
+  documentFindByPkMock.mockResolvedValue({
+    id: 'document-1',
+    number: '26.04/1',
+    name: 'Выписка из протокола',
+    document_date: new Date('2026-04-29T10:00:00.000Z'),
+    DocumentType: {
+      name: 'Выписка из протокола',
+      alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT',
+      generated: false,
+    },
+    SignType: { name: 'Собственноручная', alias: 'HANDWRITTEN' },
+    DocumentStatus: { name: 'Подписан', alias: 'SIGNED' },
+    File: { id: 'file-1', key: 'documents/file.pdf' },
+  });
+
+  const payload = await service.createParticipationSummarySignedDocument({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+    playerIds: ['player-2'],
+    iasEventId: 'event-1',
+    actorId: 'user-1',
+  });
+
+  expect(nextDocumentNumberMock).toHaveBeenCalledWith(
+    expect.any(Date),
+    expect.objectContaining({ id: 'tx' })
+  );
+  expect(saveGeneratedPdfMock).toHaveBeenCalledWith(
+    expect.any(Buffer),
+    expect.stringContaining('Выписка из протокола №26.04 1'),
+    'user-1'
+  );
+  expect(documentCreateMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      recipient_id: 'user-1',
+      document_type_id: 'doctype-1',
+      status_id: 'status-signed',
+      file_id: 'file-1',
+      sign_type_id: 'sign-handwritten',
+      number: '26.04/1',
+      name: 'Выписка из протокола',
+    }),
+    expect.objectContaining({
+      transaction: expect.objectContaining({ id: 'tx' }),
+    })
+  );
+  expect(payload).toMatchObject({
+    document: {
+      id: 'document-1',
+      number: '26.04/1',
+      status: { alias: 'SIGNED' },
+      signType: { alias: 'HANDWRITTEN' },
+    },
+    file: { id: 'file-1', url: 'https://s3.test/doc.pdf' },
+  });
 });
 
 test('fits 34 signed pdf match columns on one landscape page by width', async () => {

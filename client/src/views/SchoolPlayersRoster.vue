@@ -36,12 +36,10 @@ const currentPlayer = ref(null);
 const signedPdfModalRef = ref(null);
 const summaryExportMenuRef = ref(null);
 const signedPdfError = ref('');
-const signedPdfForm = ref({
-  registry_number: '',
-  event_name: '',
-  event_date_start: '',
-  event_date_end: '',
-});
+const iasEventsLoading = ref(false);
+const iasEvents = ref([]);
+const selectedIasEventId = ref('');
+const createdSignedDocument = ref(null);
 const summaryExportMenuOpen = ref(false);
 let protocolExportCancelled = false;
 let signedPdfModal = null;
@@ -469,21 +467,6 @@ function buildSummaryExportFilename() {
     .concat('.xlsx');
 }
 
-function buildSignedPdfFallbackFilename() {
-  const club = String(clubName.value || 'команда')
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, ' ')
-    .replace(/\s+/g, ' ');
-  const seasonName = String(season.value.name || season.value.id || '')
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, ' ')
-    .replace(/\s+/g, ' ');
-  return ['Выписка из протокола', club, seasonName, buildLocalDateOnly()]
-    .filter(Boolean)
-    .join(' - ')
-    .concat('.pdf');
-}
-
 function buildProtocolArchiveFallbackFilename() {
   const club = String(clubName.value || 'команда')
     .trim()
@@ -554,6 +537,10 @@ async function openSignedPdfModal() {
   if (!selectedSummaryCount.value) return;
   summaryExportMenuOpen.value = false;
   signedPdfError.value = '';
+  createdSignedDocument.value = null;
+  if (!iasEvents.value.length) {
+    await loadIasEvents();
+  }
   await nextTick();
   if (!signedPdfModal && signedPdfModalRef.value) {
     signedPdfModal = new Modal(signedPdfModalRef.value, {
@@ -562,6 +549,29 @@ async function openSignedPdfModal() {
     });
   }
   signedPdfModal?.show();
+}
+
+async function loadIasEvents() {
+  if (!teamId.value || iasEventsLoading.value) return;
+  iasEventsLoading.value = true;
+  signedPdfError.value = '';
+  try {
+    const params = new URLSearchParams();
+    params.set('season_id', season.value.id);
+    const res = await apiFetch(
+      `/teams/${encodeURIComponent(teamId.value)}/participation-summary/ias-events?${params.toString()}`
+    );
+    iasEvents.value = Array.isArray(res.events) ? res.events : [];
+    if (!selectedIasEventId.value && iasEvents.value.length) {
+      selectedIasEventId.value = String(iasEvents.value[0].id);
+    }
+  } catch (e) {
+    signedPdfError.value =
+      e?.message || 'Не удалось загрузить справочник мероприятий ИАС';
+    iasEvents.value = [];
+  } finally {
+    iasEventsLoading.value = false;
+  }
 }
 
 function toggleSummaryExportMenu() {
@@ -580,64 +590,41 @@ async function exportSelectedSummaryFromMenu() {
   await exportSelectedSummary();
 }
 
-function validateSignedPdfForm() {
-  const form = signedPdfForm.value;
-  if (!String(form.registry_number || '').trim()) {
-    return 'Укажите реестровый номер мероприятия';
-  }
-  if (!String(form.event_name || '').trim()) {
-    return 'Укажите наименование мероприятия';
-  }
-  if (!form.event_date_start) return 'Укажите дату начала мероприятия';
-  if (!form.event_date_end) return 'Укажите дату окончания мероприятия';
-  if (form.event_date_end < form.event_date_start) {
-    return 'Дата окончания не может быть раньше даты начала';
-  }
-  return '';
-}
-
 async function exportSignedPdf() {
   if (!selectedSummaryCount.value || signedPdfExporting.value) return;
-  const validationError = validateSignedPdfForm();
-  if (validationError) {
-    signedPdfError.value = validationError;
+  if (!selectedIasEventId.value) {
+    signedPdfError.value = 'Выберите мероприятие ИАС';
     return;
   }
   signedPdfExporting.value = true;
   signedPdfError.value = '';
+  createdSignedDocument.value = null;
   try {
-    const { blob, headers } = await apiFetchBlobResponse(
-      `/teams/${encodeURIComponent(teamId.value)}/participation-summary/export-signed.pdf`,
+    const payload = await apiFetch(
+      `/teams/${encodeURIComponent(teamId.value)}/participation-summary/signed-documents`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
-          registry_number: signedPdfForm.value.registry_number,
-          event_name: signedPdfForm.value.event_name,
-          event_date_start: signedPdfForm.value.event_date_start,
-          event_date_end: signedPdfForm.value.event_date_end,
+          ias_event_id: selectedIasEventId.value,
         }),
       }
     );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download =
-      getDispositionFilename(headers.get('Content-Disposition')) ||
-      buildSignedPdfFallbackFilename();
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    signedPdfModal?.hide();
+    createdSignedDocument.value = payload;
   } catch (e) {
     signedPdfError.value =
-      e?.message || 'Не удалось сформировать подписанный документ';
+      e?.message || 'Не удалось создать подписанный документ';
   } finally {
     signedPdfExporting.value = false;
   }
+}
+
+function openCreatedSignedDocument() {
+  const url = createdSignedDocument.value?.file?.url;
+  if (!url) return;
+  window.open(url, '_blank', 'noopener');
 }
 
 function wait(ms) {
@@ -1081,7 +1068,7 @@ async function exportSelectedProtocols() {
                     <button
                       type="button"
                       class="dropdown-item"
-                      :disabled="signedPdfExporting"
+                      :disabled="signedPdfExporting || iasEventsLoading"
                       @click="openSignedPdfModal"
                     >
                       <i class="bi bi-file-earmark-pdf me-2"></i>
@@ -1271,58 +1258,42 @@ async function exportSelectedProtocols() {
           <div v-if="signedPdfError" class="alert alert-danger">
             {{ signedPdfError }}
           </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="signedPdfRegistry" class="form-label">
-                Реестровый номер мероприятия
-              </label>
-              <input
-                id="signedPdfRegistry"
-                v-model.trim="signedPdfForm.registry_number"
-                type="text"
-                class="form-control"
-                maxlength="64"
-                required
-                autocomplete="off"
-              />
+          <div v-if="createdSignedDocument" class="alert alert-success">
+            <div class="fw-semibold mb-1">
+              Документ создан: № {{ createdSignedDocument.document?.number }}
             </div>
-            <div class="col-md-3">
-              <label for="signedPdfDateStart" class="form-label">
-                Дата начала
-              </label>
-              <input
-                id="signedPdfDateStart"
-                v-model="signedPdfForm.event_date_start"
-                type="date"
-                class="form-control"
-                required
-              />
+            <div class="small">
+              Выписка сохранена в разделе «Документы» и доступна для скачивания.
             </div>
-            <div class="col-md-3">
-              <label for="signedPdfDateEnd" class="form-label">
-                Дата окончания
-              </label>
-              <input
-                id="signedPdfDateEnd"
-                v-model="signedPdfForm.event_date_end"
-                type="date"
-                class="form-control"
-                :min="signedPdfForm.event_date_start || undefined"
-                required
-              />
-            </div>
+          </div>
+          <div v-if="iasEventsLoading" class="text-center py-3">
+            <div class="spinner-border spinner-brand" role="status"></div>
+          </div>
+          <div v-else class="row g-3">
             <div class="col-12">
-              <label for="signedPdfEventName" class="form-label">
-                Наименование мероприятия
+              <label for="signedPdfIasEvent" class="form-label">
+                Мероприятие ИАС
               </label>
-              <textarea
-                id="signedPdfEventName"
-                v-model.trim="signedPdfForm.event_name"
-                class="form-control"
-                rows="3"
-                maxlength="500"
+              <select
+                id="signedPdfIasEvent"
+                v-model="selectedIasEventId"
+                class="form-select"
                 required
-              ></textarea>
+                :disabled="signedPdfExporting || Boolean(createdSignedDocument)"
+              >
+                <option value="" disabled>Выберите мероприятие</option>
+                <option
+                  v-for="event in iasEvents"
+                  :key="event.id"
+                  :value="event.id"
+                >
+                  {{ event.label }}
+                </option>
+              </select>
+              <div class="form-text">
+                В документ будут автоматически подставлены реестровый номер,
+                название и сроки выбранного мероприятия.
+              </div>
             </div>
           </div>
         </div>
@@ -1335,17 +1306,35 @@ async function exportSelectedProtocols() {
           >
             Отмена
           </button>
+          <RouterLink
+            v-if="createdSignedDocument"
+            to="/documents"
+            class="btn btn-outline-secondary"
+          >
+            Перейти в документы
+          </RouterLink>
           <button
+            v-if="createdSignedDocument?.file?.url"
+            type="button"
+            class="btn btn-outline-primary"
+            @click="openCreatedSignedDocument"
+          >
+            Открыть PDF
+          </button>
+          <button
+            v-if="!createdSignedDocument"
             type="submit"
             class="btn btn-brand"
-            :disabled="signedPdfExporting"
+            :disabled="
+              signedPdfExporting || iasEventsLoading || !selectedIasEventId
+            "
           >
             <span
               v-if="signedPdfExporting"
               class="spinner-border spinner-border-sm me-2"
               aria-hidden="true"
             ></span>
-            Скачать PDF
+            Создать документ
           </button>
         </div>
       </form>

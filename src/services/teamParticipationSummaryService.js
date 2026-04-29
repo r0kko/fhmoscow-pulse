@@ -1,13 +1,23 @@
 import { Op } from 'sequelize';
 import ExcelJS from 'exceljs';
 
+import sequelize from '../config/database.js';
 import {
+  Document,
+  DocumentStatus,
+  DocumentType,
+  File,
+  IasEvent,
   Match,
   MatchParticipantPlayer,
   Player,
   Season,
+  SignType,
   Team,
 } from '../models/index.js';
+
+import fileService from './fileService.js';
+import { nextDocumentNumber } from './numberingService.js';
 
 function serviceError(code, status = 400, details) {
   const err = new Error(code);
@@ -46,6 +56,16 @@ function formatDateLabel(value) {
     year: 'numeric',
     timeZone: 'Europe/Moscow',
   }).format(date);
+}
+
+function formatEventLabel(event) {
+  return [
+    `№ ${event.registry_number}`,
+    `${formatDateLabel(event.date_start)} - ${formatDateLabel(event.date_end)}`,
+    event.name,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function playerKey(row) {
@@ -128,6 +148,17 @@ function validateSignedPdfMeta(meta = {}) {
     event_name: eventName,
     event_date_start: eventDateStart,
     event_date_end: eventDateEnd,
+  };
+}
+
+function iasEventToPublic(event) {
+  return {
+    id: event.id,
+    registry_number: event.registry_number,
+    name: event.name,
+    date_start: event.date_start,
+    date_end: event.date_end,
+    label: formatEventLabel(event),
   };
 }
 
@@ -270,6 +301,37 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
     matches: matchPayload,
     players,
   };
+}
+
+export async function listParticipationSummaryIasEvents({
+  teamId,
+  seasonId,
+  access,
+}) {
+  if (!teamId) throw serviceError('team_required', 400);
+  if (!seasonId) throw serviceError('season_required', 400);
+  assertTeamAccess(teamId, access);
+
+  const [team, season] = await Promise.all([
+    Team.findByPk(teamId, { attributes: ['id'] }),
+    Season.findByPk(seasonId, {
+      attributes: ['id'],
+      paranoid: false,
+    }),
+  ]);
+  if (!team) throw serviceError('team_not_found', 404);
+  if (!season) throw serviceError('season_not_found', 404);
+
+  const events = await IasEvent.findAll({
+    where: { is_active: true },
+    order: [
+      ['date_start', 'DESC'],
+      ['registry_number', 'ASC'],
+      ['name', 'ASC'],
+    ],
+  });
+
+  return { events: events.map(iasEventToPublic) };
 }
 
 export async function exportParticipationSummaryXlsx({
@@ -429,8 +491,177 @@ export async function exportParticipationSummarySignedPdf({
   };
 }
 
+export async function createParticipationSummarySignedDocument({
+  teamId,
+  seasonId,
+  access,
+  playerIds,
+  iasEventId,
+  actorId,
+}) {
+  if (!actorId) throw serviceError('user_required', 401);
+  const selectedIds = normalizePlayerIds(playerIds);
+  if (!selectedIds.length) throw serviceError('players_required', 400);
+  if (!iasEventId) throw serviceError('ias_event_required', 400);
+
+  const summary = await getParticipationSummary({ teamId, seasonId, access });
+  const selectedIdSet = new Set(selectedIds);
+  const players = summary.players.filter((player) =>
+    selectedIdSet.has(String(player.id))
+  );
+  if (!players.length) throw serviceError('players_not_found', 404);
+
+  const [event, docType, signedStatus, handwrittenSignType] = await Promise.all(
+    [
+      IasEvent.findOne({
+        where: { id: iasEventId, is_active: true },
+      }),
+      DocumentType.findOne({
+        where: { alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT' },
+        attributes: ['id', 'name', 'alias', 'generated'],
+      }),
+      DocumentStatus.findOne({
+        where: { alias: 'SIGNED' },
+        attributes: ['id', 'name', 'alias'],
+      }),
+      SignType.findOne({
+        where: { alias: 'HANDWRITTEN' },
+        attributes: ['id', 'name', 'alias'],
+      }),
+    ]
+  );
+  if (!event) throw serviceError('ias_event_not_found', 404);
+  if (!docType) throw serviceError('document_type_not_found', 500);
+  if (!signedStatus) throw serviceError('document_status_not_found', 500);
+  if (!handwrittenSignType) throw serviceError('sign_type_not_found', 500);
+
+  const { default: buildSignedPdf } =
+    await import('./docBuilders/teamParticipationSummarySigned.js');
+
+  let uploadedFile = null;
+  let result;
+  try {
+    result = await sequelize.transaction(async (transaction) => {
+      const documentDate = new Date();
+      const documentNumber = await nextDocumentNumber(
+        documentDate,
+        transaction
+      );
+      const buffer = await buildSignedPdf({
+        summary,
+        players,
+        event,
+        documentNumber,
+      });
+      const filenameParts = [
+        `Выписка из протокола №${sanitizeFilenameText(documentNumber)}`,
+        sanitizeFilenameText(summary.team_name) ||
+          safeFilenamePart(teamId) ||
+          'команда',
+        sanitizeFilenameText(summary.season_name),
+      ].filter(Boolean);
+      const filename = `${filenameParts.join(' - ')}.pdf`;
+
+      uploadedFile = await fileService.saveGeneratedPdf(
+        buffer,
+        filename,
+        actorId
+      );
+
+      try {
+        const document = await Document.create(
+          {
+            recipient_id: actorId,
+            document_type_id: docType.id,
+            status_id: signedStatus.id,
+            file_id: uploadedFile.id,
+            sign_type_id: handwrittenSignType.id,
+            name: docType.name,
+            description: JSON.stringify({
+              kind: 'team_participation_summary_extract',
+              team_id: teamId,
+              team_name: summary.team_name || null,
+              season_id: seasonId,
+              season_name: summary.season_name || null,
+              ias_event_id: event.id,
+              ias_registry_number: event.registry_number,
+              selected_player_ids: selectedIds,
+              player_count: players.length,
+              match_count: summary.matches.length,
+            }),
+            document_date: documentDate,
+            number: documentNumber,
+            created_by: actorId,
+            updated_by: actorId,
+          },
+          { transaction }
+        );
+        return { document, filename };
+      } catch (err) {
+        if (uploadedFile?.id) {
+          await fileService.removeFile(uploadedFile.id).catch(() => {});
+          uploadedFile = null;
+        }
+        throw err;
+      }
+    });
+  } catch (err) {
+    if (uploadedFile?.id) {
+      await fileService.removeFile(uploadedFile.id).catch(() => {});
+    }
+    throw err;
+  }
+
+  const document = await Document.findByPk(result.document.id, {
+    include: [
+      { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
+      { model: SignType, attributes: ['name', 'alias'] },
+      { model: DocumentStatus, attributes: ['name', 'alias'] },
+      { model: File, attributes: ['id', 'key'] },
+    ],
+  });
+  if (!document) throw serviceError('document_not_found', 500);
+
+  const file = document.File
+    ? {
+        id: document.File.id,
+        url: await fileService.getDownloadUrl(document.File, {
+          filename: result.filename,
+        }),
+      }
+    : null;
+
+  return {
+    document: {
+      id: document.id,
+      number: document.number,
+      name: document.name,
+      documentDate: document.document_date,
+      documentType: document.DocumentType
+        ? {
+            name: document.DocumentType.name,
+            alias: document.DocumentType.alias,
+            generated: document.DocumentType.generated,
+          }
+        : null,
+      signType: document.SignType
+        ? { name: document.SignType.name, alias: document.SignType.alias }
+        : null,
+      status: document.DocumentStatus
+        ? {
+            name: document.DocumentStatus.name,
+            alias: document.DocumentStatus.alias,
+          }
+        : null,
+    },
+    file,
+  };
+}
+
 export default {
   getParticipationSummary,
+  listParticipationSummaryIasEvents,
   exportParticipationSummaryXlsx,
   exportParticipationSummarySignedPdf,
+  createParticipationSummarySignedDocument,
 };
