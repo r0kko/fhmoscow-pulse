@@ -51,6 +51,26 @@ test('nextDocumentNumber scopes sequence by month', async () => {
   );
 });
 
+test('nextDocumentNumber accounts for existing protocol snapshot numbers', async () => {
+  sequelize.query.mockResolvedValue([{ last_seq: 6 }]);
+  const value = await nextDocumentNumber(new Date('2026-04-29T10:00:00.000Z'));
+  expect(value).toBe('26.04/6');
+  expect(sequelize.query).toHaveBeenCalledWith(
+    expect.stringContaining('FROM match_protocol_snapshots'),
+    expect.objectContaining({
+      replacements: expect.objectContaining({
+        scope: 'DOCUMENT',
+        year: 2026,
+        month: 4,
+      }),
+    })
+  );
+  const sql = sequelize.query.mock.calls[0][0];
+  expect(sql).toContain('FROM documents');
+  expect(sql).toContain('FROM match_protocol_snapshots');
+  expect(sql).toContain('EXTRACT(MONTH FROM signed_at) = :month');
+});
+
 test('nextMatchProtocolNumber delegates to common document numbering', async () => {
   sequelize.query.mockResolvedValue([{ last_seq: 2 }]);
   const value = await nextMatchProtocolNumber(
@@ -58,7 +78,7 @@ test('nextMatchProtocolNumber delegates to common document numbering', async () 
   );
   expect(value).toBe('27.12/2');
   expect(sequelize.query).toHaveBeenCalledWith(
-    expect.stringContaining('FROM documents'),
+    expect.stringContaining('FROM match_protocol_snapshots'),
     expect.objectContaining({
       replacements: expect.objectContaining({
         scope: 'DOCUMENT',

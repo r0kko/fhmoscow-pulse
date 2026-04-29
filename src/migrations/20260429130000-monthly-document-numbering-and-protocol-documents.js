@@ -26,17 +26,31 @@ module.exports = {
        )
        SELECT
          'DOCUMENT' AS scope,
-         EXTRACT(YEAR FROM document_date)::INTEGER AS year,
-         EXTRACT(MONTH FROM document_date)::INTEGER AS month,
-         MAX(CAST(split_part(number, '/', 2) AS INTEGER)) AS last_seq,
+         year,
+         month,
+         MAX(seq) AS last_seq,
          NOW(),
          NOW()
-       FROM documents
-       WHERE document_date IS NOT NULL
-         AND number ~ '^[0-9]{2}\\.[0-9]{2}/[0-9]+$'
-       GROUP BY
-         EXTRACT(YEAR FROM document_date)::INTEGER,
-         EXTRACT(MONTH FROM document_date)::INTEGER`
+       FROM (
+         SELECT
+           EXTRACT(YEAR FROM document_date)::INTEGER AS year,
+           EXTRACT(MONTH FROM document_date)::INTEGER AS month,
+           CAST(split_part(number, '/', 2) AS INTEGER) AS seq
+         FROM documents
+         WHERE document_date IS NOT NULL
+           AND number ~ '^[0-9]{2}\\.[0-9]{2}/[0-9]+$'
+
+         UNION ALL
+
+         SELECT
+           EXTRACT(YEAR FROM signed_at)::INTEGER AS year,
+           EXTRACT(MONTH FROM signed_at)::INTEGER AS month,
+           CAST(split_part(number, '/', 2) AS INTEGER) AS seq
+         FROM match_protocol_snapshots
+         WHERE signed_at IS NOT NULL
+           AND number ~ '^[0-9]{2}\\.[0-9]{2}/[0-9]+$'
+       ) numbered_sources
+       GROUP BY year, month`
     );
 
     await queryInterface.addColumn('match_protocol_snapshots', 'document_id', {

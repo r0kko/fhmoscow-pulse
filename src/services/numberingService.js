@@ -6,9 +6,18 @@ const NUMBER_SCOPE_DOCUMENT = 'DOCUMENT';
 
 const SCOPE_TABLE_CONFIG = {
   [NUMBER_SCOPE_DOCUMENT]: {
-    tableName: 'documents',
-    numberColumn: 'number',
-    dateColumn: 'document_date',
+    sources: [
+      {
+        tableName: 'documents',
+        numberColumn: 'number',
+        dateColumn: 'document_date',
+      },
+      {
+        tableName: 'match_protocol_snapshots',
+        numberColumn: 'number',
+        dateColumn: 'signed_at',
+      },
+    ],
   },
 };
 
@@ -34,21 +43,27 @@ async function nextScopedSequence(scope, date, transaction = null) {
   const value = normalizeDate(date);
   const year = value.getFullYear();
   const month = value.getMonth() + 1;
+  const sourceSql = config.sources
+    .map(
+      (source) => `
+       SELECT
+         CASE
+           WHEN ${source.numberColumn} ~ :pattern
+             THEN CAST(split_part(${source.numberColumn}, '/', 2) AS INTEGER)
+           ELSE 0
+         END AS seq
+       FROM ${source.tableName}
+       WHERE ${source.dateColumn} IS NOT NULL
+         AND EXTRACT(YEAR FROM ${source.dateColumn}) = :year
+         AND EXTRACT(MONTH FROM ${source.dateColumn}) = :month`
+    )
+    .join('\n       UNION ALL\n');
   const rows = await sequelize.query(
     `WITH current_max AS (
-       SELECT COALESCE(
-         MAX(
-           CASE
-             WHEN ${config.numberColumn} ~ :pattern
-               THEN CAST(split_part(${config.numberColumn}, '/', 2) AS INTEGER)
-             ELSE 0
-           END
-         ),
-         0
-       ) AS max_seq
-       FROM ${config.tableName}
-       WHERE EXTRACT(YEAR FROM ${config.dateColumn}) = :year
-         AND EXTRACT(MONTH FROM ${config.dateColumn}) = :month
+       SELECT COALESCE(MAX(seq), 0) AS max_seq
+       FROM (
+         ${sourceSql}
+       ) numbered_sources
      )
      INSERT INTO number_counters (
        scope,
