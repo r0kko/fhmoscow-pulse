@@ -64,6 +64,14 @@ function createRouterInstance(): Router {
   });
 }
 
+function signedPdfModalElement(): HTMLElement {
+  const modal = document
+    .getElementById('signedPdfModalTitle')
+    ?.closest('.modal');
+  expect(modal).not.toBeNull();
+  return modal as HTMLElement;
+}
+
 type SummaryMatch = {
   id: string;
   date_start: string;
@@ -459,6 +467,9 @@ describe('SchoolPlayersRoster view', () => {
     expect(
       screen.queryByLabelText(/Реестровый номер мероприятия/i)
     ).not.toBeInTheDocument();
+    expect(
+      within(signedPdfModalElement()).queryByLabelText(/Московские команды/i)
+    ).not.toBeInTheDocument();
   });
 
   it('filters IAS events by number and name in signed document modal', async () => {
@@ -502,7 +513,7 @@ describe('SchoolPlayersRoster view', () => {
     ).toBeInTheDocument();
   });
 
-  it('sends editable event dates and moscow-only flag for moscow team', async () => {
+  it('uses page moscow-only filter for signed document export', async () => {
     const { container } = await renderView();
 
     await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
@@ -512,6 +523,7 @@ describe('SchoolPlayersRoster view', () => {
     const summary = within(summarySection);
 
     await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByLabelText(/Московские команды/i));
     await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
     await fireEvent.click(
       summary.getByRole('button', { name: /Подписанный документ/i })
@@ -523,10 +535,9 @@ describe('SchoolPlayersRoster view', () => {
       screen.getByLabelText(/Дата окончания/i),
       '2026-02-10'
     );
-    const moscowOnlyControls = screen.getAllByLabelText(/Московские команды/i);
-    const modalMoscowOnly = moscowOnlyControls.at(-1);
-    expect(modalMoscowOnly).toBeDefined();
-    await fireEvent.click(modalMoscowOnly as HTMLElement);
+    expect(
+      within(signedPdfModalElement()).queryByLabelText(/Московские команды/i)
+    ).not.toBeInTheDocument();
     await fireEvent.click(
       screen.getByRole('button', { name: /Создать документ/i })
     );
@@ -547,7 +558,7 @@ describe('SchoolPlayersRoster view', () => {
     );
   });
 
-  it('hides moscow-only flag for non-moscow team and sends false', async () => {
+  it('hides page moscow-only flag for non-moscow team and signed document sends false', async () => {
     const nonMoscowSummary = {
       ...defaultSummary(),
       team_club_is_moscow: false,

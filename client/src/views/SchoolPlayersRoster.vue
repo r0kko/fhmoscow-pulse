@@ -50,7 +50,6 @@ const selectedIasEventId = ref('');
 const signedPdfEventName = ref('');
 const signedPdfDateStart = ref('');
 const signedPdfDateEnd = ref('');
-const signedPdfMoscowOnly = ref(false);
 const summaryMoscowOnly = ref(false);
 const createdSignedDocument = ref(null);
 const summaryExportMenuOpen = ref(false);
@@ -532,7 +531,6 @@ watch(selectedIasEventId, () => {
 
 watch(teamClubIsMoscow, (isMoscow) => {
   if (!isMoscow) {
-    signedPdfMoscowOnly.value = false;
     summaryMoscowOnly.value = false;
   }
 });
@@ -631,7 +629,6 @@ async function openSignedPdfModal() {
   summaryExportMenuOpen.value = false;
   signedPdfError.value = '';
   iasEventSearch.value = '';
-  signedPdfMoscowOnly.value = false;
   createdSignedDocument.value = null;
   if (!iasEvents.value.length) {
     await loadIasEvents();
@@ -716,9 +713,7 @@ async function exportSignedPdf() {
           ias_event_id: selectedIasEventId.value,
           event_date_start: signedPdfDateStart.value,
           event_date_end: signedPdfDateEnd.value,
-          moscow_only: teamClubIsMoscow.value
-            ? signedPdfMoscowOnly.value
-            : false,
+          moscow_only: summaryMoscowOnlyActive.value,
         }),
       }
     );
@@ -1507,22 +1502,6 @@ async function exportSelectedProtocols() {
                 :min="signedPdfDateStart || undefined"
                 :disabled="signedPdfExporting || Boolean(createdSignedDocument)"
               />
-            </div>
-            <div v-if="teamClubIsMoscow" class="col-12">
-              <div class="form-check">
-                <input
-                  id="signedPdfMoscowOnly"
-                  v-model="signedPdfMoscowOnly"
-                  class="form-check-input"
-                  type="checkbox"
-                  :disabled="
-                    signedPdfExporting || Boolean(createdSignedDocument)
-                  "
-                />
-                <label class="form-check-label" for="signedPdfMoscowOnly">
-                  Московские команды
-                </label>
-              </div>
             </div>
           </div>
         </div>
