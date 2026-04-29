@@ -64,7 +64,31 @@ function createRouterInstance(): Router {
   });
 }
 
-function defaultSummary() {
+type SummaryMatch = {
+  id: string;
+  date_start: string;
+  home_team_name: string;
+  away_team_name: string;
+  label: string;
+  has_snapshot: boolean;
+  home_club_is_moscow: boolean;
+  away_club_is_moscow: boolean;
+};
+
+type SummaryPlayer = {
+  id: string;
+  full_name: string;
+  date_of_birth: string;
+  cells: Record<string, number>;
+};
+
+type ParticipationSummaryFixture = {
+  team_club_is_moscow: boolean;
+  matches: SummaryMatch[];
+  players: SummaryPlayer[];
+};
+
+function defaultSummary(): ParticipationSummaryFixture {
   return {
     team_club_is_moscow: true,
     matches: [
@@ -96,7 +120,7 @@ function defaultSummary() {
   };
 }
 
-function mixedMoscowSummary() {
+function mixedMoscowSummary(): ParticipationSummaryFixture {
   return {
     team_club_is_moscow: true,
     matches: [
@@ -500,7 +524,9 @@ describe('SchoolPlayersRoster view', () => {
       '2026-02-10'
     );
     const moscowOnlyControls = screen.getAllByLabelText(/Московские команды/i);
-    await fireEvent.click(moscowOnlyControls[moscowOnlyControls.length - 1]);
+    const modalMoscowOnly = moscowOnlyControls.at(-1);
+    expect(modalMoscowOnly).toBeDefined();
+    await fireEvent.click(modalMoscowOnly as HTMLElement);
     await fireEvent.click(
       screen.getByRole('button', { name: /Создать документ/i })
     );
@@ -729,14 +755,19 @@ describe('SchoolPlayersRoster view', () => {
   });
 
   it('shows empty state when moscow-only filter has no matches', async () => {
+    const nonMoscowMatch: SummaryMatch = {
+      id: 'match-2',
+      date_start: '2026-02-08T10:00:00.000Z',
+      home_team_name: 'Синие',
+      away_team_name: 'Регион',
+      label: '08.02.2026; Синие — Регион',
+      has_snapshot: true,
+      home_club_is_moscow: true,
+      away_club_is_moscow: false,
+    };
     const { container } = await renderView({
       ...mixedMoscowSummary(),
-      matches: [
-        {
-          ...mixedMoscowSummary().matches[1],
-          id: 'match-2',
-        },
-      ],
+      matches: [nonMoscowMatch],
     });
 
     await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
@@ -755,7 +786,11 @@ describe('SchoolPlayersRoster view', () => {
   });
 
   it('shows empty state when team has no season matches', async () => {
-    await renderView({ matches: [], players: [] });
+    await renderView({
+      team_club_is_moscow: false,
+      matches: [],
+      players: [],
+    });
 
     await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
 
