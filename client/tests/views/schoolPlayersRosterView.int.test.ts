@@ -24,6 +24,28 @@ vi.mock('@/api', async () => {
   };
 });
 
+vi.mock('bootstrap/js/dist/modal', () => ({
+  default: class ModalMock {
+    private element: Element | null;
+
+    constructor(element: Element | null) {
+      this.element = element;
+    }
+
+    show(): void {
+      this.element?.removeAttribute('aria-hidden');
+      this.element?.classList.add('show');
+    }
+
+    hide(): void {
+      this.element?.setAttribute('aria-hidden', 'true');
+      this.element?.classList.remove('show');
+    }
+
+    dispose(): void {}
+  },
+}));
+
 const apiFetchMock = vi.mocked(apiFetch);
 const apiFetchBlobResponseMock = vi.mocked(apiFetchBlobResponse);
 
@@ -244,8 +266,9 @@ describe('SchoolPlayersRoster view', () => {
     const summary = within(summarySection);
 
     await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
     await fireEvent.click(
-      summary.getByRole('button', { name: /Выгрузить XLSX/i })
+      summary.getByRole('button', { name: /Скачать XLSX/i })
     );
 
     expect(apiFetchBlobResponseMock).toHaveBeenCalledWith(
@@ -262,6 +285,104 @@ describe('SchoolPlayersRoster view', () => {
     expect(revokeObjectUrlMock).toHaveBeenCalledWith(
       'blob:participation-summary'
     );
+  });
+
+  it('exports signed pdf from modal with event fields', async () => {
+    const createObjectUrlMock = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:signed-summary');
+    const revokeObjectUrlMock = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => undefined);
+    apiFetchBlobResponseMock.mockResolvedValue({
+      blob: new Blob(['pdf']),
+      headers: new Headers({
+        'Content-Disposition':
+          "attachment; filename*=UTF-8''signed-summary.pdf",
+      }),
+    });
+
+    const { container } = await renderView();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Подписанный документ/i })
+    );
+
+    await fireEvent.update(
+      screen.getByLabelText(/Реестровый номер мероприятия/i),
+      '98239'
+    );
+    await fireEvent.update(
+      screen.getByLabelText(/Наименование мероприятия/i),
+      'XIII зимняя Спартакиада'
+    );
+    await fireEvent.update(screen.getByLabelText(/Дата начала/i), '2026-02-18');
+    await fireEvent.update(
+      screen.getByLabelText(/Дата окончания/i),
+      '2026-02-27'
+    );
+    await fireEvent.click(screen.getByRole('button', { name: /Скачать PDF/i }));
+
+    expect(apiFetchBlobResponseMock).toHaveBeenCalledWith(
+      '/teams/team-1/participation-summary/export-signed.pdf',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          season_id: 'season-1',
+          player_ids: ['player-1'],
+          registry_number: '98239',
+          event_name: 'XIII зимняя Спартакиада',
+          event_date_start: '2026-02-18',
+          event_date_end: '2026-02-27',
+        }),
+      })
+    );
+    expect(createObjectUrlMock).toHaveBeenCalled();
+    expect(revokeObjectUrlMock).toHaveBeenCalledWith('blob:signed-summary');
+  });
+
+  it('blocks signed pdf export when end date is before start date', async () => {
+    const { container } = await renderView();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Подписанный документ/i })
+    );
+
+    await fireEvent.update(
+      screen.getByLabelText(/Реестровый номер мероприятия/i),
+      '98239'
+    );
+    await fireEvent.update(
+      screen.getByLabelText(/Наименование мероприятия/i),
+      'XIII зимняя Спартакиада'
+    );
+    await fireEvent.update(screen.getByLabelText(/Дата начала/i), '2026-02-27');
+    await fireEvent.update(
+      screen.getByLabelText(/Дата окончания/i),
+      '2026-02-18'
+    );
+    await fireEvent.click(screen.getByRole('button', { name: /Скачать PDF/i }));
+
+    expect(
+      screen.getByText('Дата окончания не может быть раньше даты начала')
+    ).toBeInTheDocument();
+    expect(apiFetchBlobResponseMock).not.toHaveBeenCalled();
   });
 
   it('starts protocol zip export for selected players with participation', async () => {

@@ -1,5 +1,6 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import ExcelJS from 'exceljs';
+import { PDFDocument as PdfLibDocument } from 'pdf-lib';
 
 const teamFindByPkMock = jest.fn();
 const seasonFindByPkMock = jest.fn();
@@ -282,4 +283,194 @@ test('exports xlsx only for selected players', async () => {
   expect(sheet.getCell('C2').value).toBe(0);
   expect(sheet.getCell('D2').value).toBe(0);
   expect(sheet.getCell('A3').value).toBeNull();
+});
+
+test('exports signed pdf only for selected players without persistence', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z'),
+    matchRow('match-2', '2026-01-17T10:00:00.000Z'),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+      surname: 'Иванов',
+      name: 'Иван',
+    }),
+    participantRow({
+      id: 'row-2',
+      matchId: 'match-2',
+      playerId: 'player-2',
+      externalPlayerId: 102,
+      played: null,
+      surname: 'Петров',
+      name: 'Петр',
+    }),
+  ]);
+
+  const payload = await service.exportParticipationSummarySignedPdf({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+    playerIds: ['player-2'],
+    meta: {
+      registry_number: '98239',
+      event_name: 'Тестовое мероприятие',
+      event_date_start: '2026-02-18',
+      event_date_end: '2026-02-27',
+    },
+  });
+
+  expect(payload.filename).toMatch(
+    /^Выписка из протокола - Динамо 2014 - 2025 26 - \d{4}-\d{2}-\d{2}\.pdf$/
+  );
+  expect(payload.buffer.subarray(0, 4).toString()).toBe('%PDF');
+  expect(payload.buffer.length).toBeGreaterThan(1000);
+});
+
+test('fits 34 signed pdf match columns on one landscape page by width', async () => {
+  const matches = Array.from({ length: 34 }, (_, index) =>
+    matchRow(
+      `match-${index + 1}`,
+      `2026-02-${String((index % 28) + 1).padStart(2, '0')}T10:00:00.000Z`,
+      index % 2 ? 'team-1' : 'team-3',
+      index % 2 ? 'team-3' : 'team-1'
+    )
+  );
+  matchFindAllMock.mockResolvedValue(
+    matches.map((match, index) => ({
+      ...match,
+      HomeTeam: {
+        id: match.team1_id,
+        name:
+          index % 2
+            ? 'Академия Атлант 2013'
+            : 'Московская Академия Созвездие 2013',
+      },
+      AwayTeam: {
+        id: match.team2_id,
+        name: index % 2 ? 'Метеор Северная Звезда' : 'Академия Атлант 2013',
+      },
+    }))
+  );
+  participantFindAllMock.mockResolvedValue(
+    matches.flatMap((match, matchIndex) => [
+      participantRow({
+        id: `row-a-${matchIndex}`,
+        matchId: match.id,
+        playerId: 'player-1',
+        externalPlayerId: 101,
+        played: matchIndex % 3 !== 0,
+        surname: 'Александров',
+        name: 'Платон',
+      }),
+      participantRow({
+        id: `row-b-${matchIndex}`,
+        matchId: match.id,
+        playerId: 'player-2',
+        externalPlayerId: 102,
+        played: true,
+        surname: 'Басс',
+        name: 'Платон',
+      }),
+    ])
+  );
+
+  const payload = await service.exportParticipationSummarySignedPdf({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+    playerIds: ['player-1', 'player-2'],
+    meta: {
+      registry_number: '232123',
+      event_name: 'ТЫЦ ТЫЦ',
+      event_date_start: '2026-04-21',
+      event_date_end: '2026-04-24',
+    },
+  });
+  const pdf = await PdfLibDocument.load(payload.buffer);
+
+  expect(pdf.getPageCount()).toBe(1);
+  expect(pdf.getPage(0).getSize()).toMatchObject({
+    width: expect.any(Number),
+    height: expect.any(Number),
+  });
+  expect(pdf.getPage(0).getWidth()).toBeGreaterThan(pdf.getPage(0).getHeight());
+});
+
+test('splits signed pdf only by player rows when many players are selected', async () => {
+  const matches = Array.from({ length: 34 }, (_, index) =>
+    matchRow(
+      `match-${index + 1}`,
+      `2026-02-${String((index % 28) + 1).padStart(2, '0')}T10:00:00.000Z`
+    )
+  );
+  const players = Array.from({ length: 25 }, (_, index) => ({
+    id: `player-${index + 1}`,
+    externalPlayerId: 1000 + index,
+    surname: 'Тестов',
+    name: `Игрок${index + 1}`,
+  }));
+  matchFindAllMock.mockResolvedValue(matches);
+  participantFindAllMock.mockResolvedValue(
+    players.flatMap((player, playerIndex) =>
+      matches.map((match, matchIndex) =>
+        participantRow({
+          id: `row-${playerIndex}-${matchIndex}`,
+          matchId: match.id,
+          playerId: player.id,
+          externalPlayerId: player.externalPlayerId,
+          played: (playerIndex + matchIndex) % 4 !== 0,
+          surname: player.surname,
+          name: player.name,
+        })
+      )
+    )
+  );
+
+  const payload = await service.exportParticipationSummarySignedPdf({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+    playerIds: players.map((player) => player.id),
+    meta: {
+      registry_number: '232123',
+      event_name:
+        'XIII зимняя Спартакиада учащихся по хоккею среди юношей 2013 года рождения',
+      event_date_start: '2026-04-21',
+      event_date_end: '2026-04-24',
+    },
+  });
+  const pdf = await PdfLibDocument.load(payload.buffer);
+
+  expect(pdf.getPageCount()).toBeGreaterThan(1);
+  expect(pdf.getPageCount()).toBeLessThanOrEqual(3);
+  for (const page of pdf.getPages()) {
+    expect(page.getWidth()).toBeGreaterThan(page.getHeight());
+  }
+});
+
+test('validates signed pdf event date range before building document', async () => {
+  await expect(
+    service.exportParticipationSummarySignedPdf({
+      teamId: 'team-1',
+      seasonId: 'season-1',
+      access: { isAdmin: true },
+      playerIds: ['player-1'],
+      meta: {
+        registry_number: '98239',
+        event_name: 'Тестовое мероприятие',
+        event_date_start: '2026-02-27',
+        event_date_end: '2026-02-18',
+      },
+    })
+  ).rejects.toMatchObject({
+    code: 'event_date_range_invalid',
+    status: 422,
+  });
+
+  expect(matchFindAllMock).not.toHaveBeenCalled();
 });

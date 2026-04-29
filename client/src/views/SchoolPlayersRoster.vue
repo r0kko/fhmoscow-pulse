@@ -1,6 +1,7 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, computed } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
+import Modal from 'bootstrap/js/dist/modal';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch, apiFetchBlobResponse } from '../api';
 import EditPlayerRosterModal from '../components/EditPlayerRosterModal.vue';
@@ -11,6 +12,7 @@ const rosterLoading = ref(false);
 const staffLoading = ref(false);
 const summaryLoading = ref(false);
 const summaryExporting = ref(false);
+const signedPdfExporting = ref(false);
 const protocolExporting = ref(false);
 const protocolExportJob = ref(null);
 const protocolExportNotice = ref('');
@@ -31,9 +33,21 @@ const clubId = computed(() => route.query.club_id || '');
 const roles = ref([]);
 const showEdit = ref(false);
 const currentPlayer = ref(null);
+const signedPdfModalRef = ref(null);
+const summaryExportMenuRef = ref(null);
+const signedPdfError = ref('');
+const signedPdfForm = ref({
+  registry_number: '',
+  event_name: '',
+  event_date_start: '',
+  event_date_end: '',
+});
+const summaryExportMenuOpen = ref(false);
 let protocolExportCancelled = false;
+let signedPdfModal = null;
 
 onMounted(async () => {
+  document.addEventListener('click', handleSummaryExportOutsideClick);
   // Always resolve labels; only fetch roster/staff when a specific team is provided
   await Promise.all([loadSeasonName(), loadClubName()]);
   await loadRoles();
@@ -42,7 +56,17 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   protocolExportCancelled = true;
+  document.removeEventListener('click', handleSummaryExportOutsideClick);
+  signedPdfModal?.dispose();
+  signedPdfModal = null;
 });
+
+function handleSummaryExportOutsideClick(event) {
+  if (!summaryExportMenuOpen.value) return;
+  const target = event.target;
+  if (summaryExportMenuRef.value?.contains?.(target)) return;
+  summaryExportMenuOpen.value = false;
+}
 
 async function loadSeasonName() {
   try {
@@ -445,6 +469,21 @@ function buildSummaryExportFilename() {
     .concat('.xlsx');
 }
 
+function buildSignedPdfFallbackFilename() {
+  const club = String(clubName.value || 'команда')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ');
+  const seasonName = String(season.value.name || season.value.id || '')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ');
+  return ['Выписка из протокола', club, seasonName, buildLocalDateOnly()]
+    .filter(Boolean)
+    .join(' - ')
+    .concat('.pdf');
+}
+
 function buildProtocolArchiveFallbackFilename() {
   const club = String(clubName.value || 'команда')
     .trim()
@@ -508,6 +547,96 @@ async function exportSelectedSummary() {
     summaryError.value = e?.message || 'Не удалось выгрузить отчет';
   } finally {
     summaryExporting.value = false;
+  }
+}
+
+async function openSignedPdfModal() {
+  if (!selectedSummaryCount.value) return;
+  summaryExportMenuOpen.value = false;
+  signedPdfError.value = '';
+  await nextTick();
+  if (!signedPdfModal && signedPdfModalRef.value) {
+    signedPdfModal = new Modal(signedPdfModalRef.value, {
+      backdrop: 'static',
+      keyboard: false,
+    });
+  }
+  signedPdfModal?.show();
+}
+
+function toggleSummaryExportMenu() {
+  if (
+    !selectedSummaryCount.value ||
+    summaryExporting.value ||
+    signedPdfExporting.value
+  ) {
+    return;
+  }
+  summaryExportMenuOpen.value = !summaryExportMenuOpen.value;
+}
+
+async function exportSelectedSummaryFromMenu() {
+  summaryExportMenuOpen.value = false;
+  await exportSelectedSummary();
+}
+
+function validateSignedPdfForm() {
+  const form = signedPdfForm.value;
+  if (!String(form.registry_number || '').trim()) {
+    return 'Укажите реестровый номер мероприятия';
+  }
+  if (!String(form.event_name || '').trim()) {
+    return 'Укажите наименование мероприятия';
+  }
+  if (!form.event_date_start) return 'Укажите дату начала мероприятия';
+  if (!form.event_date_end) return 'Укажите дату окончания мероприятия';
+  if (form.event_date_end < form.event_date_start) {
+    return 'Дата окончания не может быть раньше даты начала';
+  }
+  return '';
+}
+
+async function exportSignedPdf() {
+  if (!selectedSummaryCount.value || signedPdfExporting.value) return;
+  const validationError = validateSignedPdfForm();
+  if (validationError) {
+    signedPdfError.value = validationError;
+    return;
+  }
+  signedPdfExporting.value = true;
+  signedPdfError.value = '';
+  try {
+    const { blob, headers } = await apiFetchBlobResponse(
+      `/teams/${encodeURIComponent(teamId.value)}/participation-summary/export-signed.pdf`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season_id: season.value.id,
+          player_ids: Array.from(selectedSummaryPlayerIds.value),
+          registry_number: signedPdfForm.value.registry_number,
+          event_name: signedPdfForm.value.event_name,
+          event_date_start: signedPdfForm.value.event_date_start,
+          event_date_end: signedPdfForm.value.event_date_end,
+        }),
+      }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download =
+      getDispositionFilename(headers.get('Content-Disposition')) ||
+      buildSignedPdfFallbackFilename();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    signedPdfModal?.hide();
+  } catch (e) {
+    signedPdfError.value =
+      e?.message || 'Не удалось сформировать подписанный документ';
+  } finally {
+    signedPdfExporting.value = false;
   }
 }
 
@@ -906,29 +1035,61 @@ async function exportSelectedProtocols() {
                   </span>
                 </span>
               </button>
-              <button
-                type="button"
-                class="btn btn-brand btn-sm summary-export-button"
-                :disabled="!selectedSummaryCount || summaryExporting"
-                @click="exportSelectedSummary"
-              >
-                <span
-                  v-if="summaryExporting"
-                  class="spinner-border spinner-border-sm"
-                  aria-hidden="true"
-                ></span>
-                <i
-                  v-else
-                  class="bi bi-file-earmark-excel"
-                  aria-hidden="true"
-                ></i>
-                <span>
-                  Выгрузить XLSX
-                  <span v-if="selectedSummaryCount">
-                    ({{ selectedSummaryCount }})
+              <div ref="summaryExportMenuRef" class="btn-group">
+                <button
+                  type="button"
+                  class="btn btn-brand btn-sm summary-export-button dropdown-toggle"
+                  :disabled="
+                    !selectedSummaryCount ||
+                    summaryExporting ||
+                    signedPdfExporting
+                  "
+                  :aria-expanded="summaryExportMenuOpen ? 'true' : 'false'"
+                  aria-haspopup="true"
+                  @click="toggleSummaryExportMenu"
+                  @keydown.escape="summaryExportMenuOpen = false"
+                >
+                  <span
+                    v-if="summaryExporting || signedPdfExporting"
+                    class="spinner-border spinner-border-sm"
+                    aria-hidden="true"
+                  ></span>
+                  <i v-else class="bi bi-download" aria-hidden="true"></i>
+                  <span>
+                    Выгрузить
+                    <span v-if="selectedSummaryCount">
+                      ({{ selectedSummaryCount }})
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+                <ul
+                  class="dropdown-menu dropdown-menu-end"
+                  :class="{ show: summaryExportMenuOpen }"
+                >
+                  <li>
+                    <button
+                      type="button"
+                      class="dropdown-item"
+                      :disabled="summaryExporting"
+                      @click="exportSelectedSummaryFromMenu"
+                    >
+                      <i class="bi bi-file-earmark-excel me-2"></i>
+                      Скачать XLSX
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      class="dropdown-item"
+                      :disabled="signedPdfExporting"
+                      @click="openSignedPdfModal"
+                    >
+                      <i class="bi bi-file-earmark-pdf me-2"></i>
+                      Подписанный документ
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
@@ -1085,6 +1246,111 @@ async function exportSelectedProtocols() {
     :roles="roles"
     @saved="onSaved"
   />
+  <div
+    ref="signedPdfModalRef"
+    class="modal fade"
+    tabindex="-1"
+    aria-labelledby="signedPdfModalTitle"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <form class="modal-content" @submit.prevent="exportSignedPdf">
+        <div class="modal-header">
+          <h2 id="signedPdfModalTitle" class="modal-title h5">
+            Подписанный документ
+          </h2>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Закрыть"
+            :disabled="signedPdfExporting"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="signedPdfError" class="alert alert-danger">
+            {{ signedPdfError }}
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="signedPdfRegistry" class="form-label">
+                Реестровый номер мероприятия
+              </label>
+              <input
+                id="signedPdfRegistry"
+                v-model.trim="signedPdfForm.registry_number"
+                type="text"
+                class="form-control"
+                maxlength="64"
+                required
+                autocomplete="off"
+              />
+            </div>
+            <div class="col-md-3">
+              <label for="signedPdfDateStart" class="form-label">
+                Дата начала
+              </label>
+              <input
+                id="signedPdfDateStart"
+                v-model="signedPdfForm.event_date_start"
+                type="date"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="col-md-3">
+              <label for="signedPdfDateEnd" class="form-label">
+                Дата окончания
+              </label>
+              <input
+                id="signedPdfDateEnd"
+                v-model="signedPdfForm.event_date_end"
+                type="date"
+                class="form-control"
+                :min="signedPdfForm.event_date_start || undefined"
+                required
+              />
+            </div>
+            <div class="col-12">
+              <label for="signedPdfEventName" class="form-label">
+                Наименование мероприятия
+              </label>
+              <textarea
+                id="signedPdfEventName"
+                v-model.trim="signedPdfForm.event_name"
+                class="form-control"
+                rows="3"
+                maxlength="500"
+                required
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            data-bs-dismiss="modal"
+            :disabled="signedPdfExporting"
+          >
+            Отмена
+          </button>
+          <button
+            type="submit"
+            class="btn btn-brand"
+            :disabled="signedPdfExporting"
+          >
+            <span
+              v-if="signedPdfExporting"
+              class="spinner-border spinner-border-sm me-2"
+              aria-hidden="true"
+            ></span>
+            Скачать PDF
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </template>
 
 <script>

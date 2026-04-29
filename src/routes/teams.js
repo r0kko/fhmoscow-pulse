@@ -46,6 +46,14 @@ router.post(
 );
 
 router.post(
+  '/:id/participation-summary/export-signed.pdf',
+  auth,
+  authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),
+  accessScope,
+  controller.exportParticipationSummarySignedPdf
+);
+
+router.post(
   '/:id/participation-summary/protocols/export-jobs',
   auth,
   authorize('ADMIN', 'SPORT_SCHOOL_STAFF'),

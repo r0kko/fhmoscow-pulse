@@ -91,6 +91,35 @@ export default {
     }
   },
 
+  async exportParticipationSummarySignedPdf(req, res) {
+    try {
+      const payload =
+        await teamParticipationSummaryService.exportParticipationSummarySignedPdf(
+          {
+            teamId: req.params.id,
+            seasonId: req.body?.season_id || req.query.season_id,
+            playerIds: req.body?.player_ids || req.query.player_ids,
+            access: req.access,
+            meta: {
+              registry_number: req.body?.registry_number,
+              event_name: req.body?.event_name,
+              event_date_start: req.body?.event_date_start,
+              event_date_end: req.body?.event_date_end,
+            },
+          }
+        );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader(
+        'Content-Disposition',
+        buildAttachmentDisposition(payload.filename)
+      );
+      return res.end(payload.buffer);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
   async createProtocolExportJob(req, res) {
     try {
       const payload = await matchProtocolBatchExportService.createExportJob({

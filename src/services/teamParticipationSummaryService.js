@@ -96,6 +96,41 @@ function sanitizeFilenameText(value) {
     .slice(0, 90);
 }
 
+function validateSignedPdfMeta(meta = {}) {
+  const registryNumber = String(meta.registry_number || '').trim();
+  const eventName = String(meta.event_name || '').trim();
+  const eventDateStart = String(meta.event_date_start || '').trim();
+  const eventDateEnd = String(meta.event_date_end || '').trim();
+
+  if (!registryNumber) throw serviceError('registry_number_required', 400);
+  if (registryNumber.length > 64) {
+    throw serviceError('registry_number_too_long', 422);
+  }
+  if (!eventName) throw serviceError('event_name_required', 400);
+  if (eventName.length > 500) throw serviceError('event_name_too_long', 422);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDateStart)) {
+    throw serviceError('event_date_start_invalid', 422);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDateEnd)) {
+    throw serviceError('event_date_end_invalid', 422);
+  }
+  const startTime = new Date(`${eventDateStart}T00:00:00.000Z`).getTime();
+  const endTime = new Date(`${eventDateEnd}T00:00:00.000Z`).getTime();
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
+    throw serviceError('event_dates_invalid', 422);
+  }
+  if (endTime < startTime) {
+    throw serviceError('event_date_range_invalid', 422);
+  }
+
+  return {
+    registry_number: registryNumber,
+    event_name: eventName,
+    event_date_start: eventDateStart,
+    event_date_end: eventDateEnd,
+  };
+}
+
 function participationPercent(player, matches) {
   if (!matches.length) return 0;
   const playedCount = matches.reduce(
@@ -358,4 +393,44 @@ export async function exportParticipationSummaryXlsx({
   };
 }
 
-export default { getParticipationSummary, exportParticipationSummaryXlsx };
+export async function exportParticipationSummarySignedPdf({
+  teamId,
+  seasonId,
+  access,
+  playerIds,
+  meta,
+}) {
+  const selectedIds = normalizePlayerIds(playerIds);
+  if (!selectedIds.length) throw serviceError('players_required', 400);
+  const signedMeta = validateSignedPdfMeta(meta);
+
+  const summary = await getParticipationSummary({ teamId, seasonId, access });
+  const selectedIdSet = new Set(selectedIds);
+  const players = summary.players.filter((player) =>
+    selectedIdSet.has(String(player.id))
+  );
+  if (!players.length) throw serviceError('players_not_found', 404);
+
+  const { default: buildSignedPdf } =
+    await import('./docBuilders/teamParticipationSummarySigned.js');
+  const buffer = await buildSignedPdf({ summary, players, meta: signedMeta });
+  const filenameParts = [
+    'Выписка из протокола',
+    sanitizeFilenameText(summary.team_name) ||
+      safeFilenamePart(teamId) ||
+      'команда',
+    sanitizeFilenameText(summary.season_name),
+    moscowDateKey(),
+  ].filter(Boolean);
+
+  return {
+    buffer,
+    filename: `${filenameParts.join(' - ')}.pdf`,
+  };
+}
+
+export default {
+  getParticipationSummary,
+  exportParticipationSummaryXlsx,
+  exportParticipationSummarySignedPdf,
+};
