@@ -144,6 +144,14 @@ function mockApi(summary = defaultSummary()) {
             label:
               '№ 102493 · 06.01.2026 - 13.01.2026 · Кубок Федерации хоккея г. Москвы, 1-й этап',
           },
+          {
+            id: 'event-2',
+            registry_number: '2',
+            name: 'Первенство Москвы',
+            date_start: '2026-01-04',
+            date_end: '2026-05-31',
+            label: '№ 2 · 04.01.2026 - 31.05.2026 · Первенство Москвы',
+          },
         ],
       };
     }
@@ -378,6 +386,40 @@ describe('SchoolPlayersRoster view', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Дата начала/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Дата окончания/i)).not.toBeInTheDocument();
+  });
+
+  it('filters IAS events by number and name in signed document modal', async () => {
+    const { container } = await renderView();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Подписанный документ/i })
+    );
+
+    const search = await screen.findByLabelText(/Поиск мероприятия ИАС/i);
+    const select = screen.getByLabelText(/Мероприятие ИАС/i);
+
+    await fireEvent.update(search, 'Первенство');
+    expect(select).toHaveValue('event-2');
+    expect(
+      within(select).getByRole('option', { name: /Первенство Москвы/i })
+    ).toBeInTheDocument();
+    expect(
+      within(select).queryByRole('option', { name: /102493/i })
+    ).not.toBeInTheDocument();
+
+    await fireEvent.update(search, '102493');
+    expect(select).toHaveValue('event-1');
+    expect(
+      within(select).getByRole('option', { name: /102493/i })
+    ).toBeInTheDocument();
   });
 
   it('starts protocol zip export for selected players with participation', async () => {

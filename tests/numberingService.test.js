@@ -29,23 +29,41 @@ test('nextDocumentNumber formats yearly document number', async () => {
       replacements: expect.objectContaining({
         scope: 'DOCUMENT',
         year: 2026,
+        month: 1,
       }),
     })
   );
 });
 
-test('nextMatchProtocolNumber uses dedicated scope and same format', async () => {
+test('nextDocumentNumber scopes sequence by month', async () => {
   sequelize.query.mockResolvedValue([{ last_seq: 1 }]);
+  const value = await nextDocumentNumber(new Date('2026-05-01T10:00:00.000Z'));
+  expect(value).toBe('26.05/1');
+  expect(sequelize.query).toHaveBeenCalledWith(
+    expect.stringContaining('AND EXTRACT(MONTH FROM document_date) = :month'),
+    expect.objectContaining({
+      replacements: expect.objectContaining({
+        scope: 'DOCUMENT',
+        year: 2026,
+        month: 5,
+      }),
+    })
+  );
+});
+
+test('nextMatchProtocolNumber delegates to common document numbering', async () => {
+  sequelize.query.mockResolvedValue([{ last_seq: 2 }]);
   const value = await nextMatchProtocolNumber(
     new Date('2027-12-30T10:00:00.000Z')
   );
-  expect(value).toBe('27.12/1');
+  expect(value).toBe('27.12/2');
   expect(sequelize.query).toHaveBeenCalledWith(
-    expect.stringContaining('match_protocol_snapshots'),
+    expect.stringContaining('FROM documents'),
     expect.objectContaining({
       replacements: expect.objectContaining({
-        scope: 'MATCH_PROTOCOL',
+        scope: 'DOCUMENT',
         year: 2027,
+        month: 12,
       }),
     })
   );

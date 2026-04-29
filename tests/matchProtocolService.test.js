@@ -7,18 +7,26 @@ const matchFindByPkMock = jest.fn();
 const snapshotFindOneMock = jest.fn();
 const snapshotUpdateMock = jest.fn();
 const snapshotCreateMock = jest.fn();
+const documentCreateMock = jest.fn();
+const documentTypeFindOneMock = jest.fn();
+const documentStatusFindOneMock = jest.fn();
+const signTypeFindOneMock = jest.fn();
 const userSignTypeFindAllMock = jest.fn();
 const saveGeneratedPdfMock = jest.fn();
+const removeFileMock = jest.fn();
 const getFileBufferMock = jest.fn();
 const fetchMatchProtocolPdfMock = jest.fn();
 const renderMatchProtocolPdfMock = jest.fn();
-const nextMatchProtocolNumberMock = jest.fn();
+const nextDocumentNumberMock = jest.fn();
 const roleFindOneMock = jest.fn();
 const withRedisLockMock = jest.fn(async (_key, _ttl, fn) => fn());
-const transactionMock = jest.fn(async (fn) => fn());
+const transactionMock = jest.fn(async (fn) => fn({ id: 'tx-1' }));
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
+  Document: { create: documentCreateMock },
+  DocumentStatus: { findOne: documentStatusFindOneMock },
+  DocumentType: { findOne: documentTypeFindOneMock },
   File: {},
   GameStatus: {},
   Match: { findByPk: matchFindByPkMock },
@@ -29,7 +37,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     sequelize: { transaction: transactionMock },
   },
   Role: { findOne: roleFindOneMock },
-  SignType: {},
+  SignType: { findOne: signTypeFindOneMock },
   Team: {},
   User: {},
   UserSignType: { findAll: userSignTypeFindAllMock },
@@ -40,13 +48,14 @@ jest.unstable_mockModule('../src/services/fileService.js', () => ({
   __esModule: true,
   default: {
     saveGeneratedPdf: saveGeneratedPdfMock,
+    removeFile: removeFileMock,
     getFileBuffer: getFileBufferMock,
   },
 }));
 
 jest.unstable_mockModule('../src/services/numberingService.js', () => ({
   __esModule: true,
-  nextMatchProtocolNumber: nextMatchProtocolNumberMock,
+  nextDocumentNumber: nextDocumentNumberMock,
 }));
 
 jest.unstable_mockModule('../src/services/matchProtocolClient.js', () => ({
@@ -84,7 +93,22 @@ const { downloadMatchProtocol, renderHighlightedMatchProtocol } =
 beforeEach(() => {
   jest.clearAllMocks();
   snapshotUpdateMock.mockResolvedValue([1]);
-  nextMatchProtocolNumberMock.mockResolvedValue('26.04/1');
+  nextDocumentNumberMock.mockResolvedValue('26.04/1');
+  documentTypeFindOneMock.mockResolvedValue({
+    id: 'doc-type-protocol',
+    name: 'Копия протокола матча',
+    alias: 'MATCH_PROTOCOL_COPY',
+  });
+  documentStatusFindOneMock.mockResolvedValue({
+    id: 'status-signed',
+    alias: 'SIGNED',
+  });
+  signTypeFindOneMock.mockResolvedValue({
+    id: 'sign-simple',
+    alias: 'SIMPLE_ELECTRONIC',
+  });
+  documentCreateMock.mockResolvedValue({ id: 'document-1' });
+  removeFileMock.mockResolvedValue(undefined);
   roleFindOneMock.mockResolvedValue({
     alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
     name: 'Ведущий специалист по судейству',
@@ -126,6 +150,8 @@ test('returns cached snapshot when it is still fresh', async () => {
   const result = await downloadMatchProtocol('match-1', 'admin-1', 'req-1');
 
   expect(fetchMatchProtocolPdfMock).not.toHaveBeenCalled();
+  expect(documentCreateMock).not.toHaveBeenCalled();
+  expect(snapshotCreateMock).not.toHaveBeenCalled();
   expect(result.buffer.toString()).toBe('%PDF-cached');
   expect(result.filename).toBe('protocol-26.04-1.pdf');
 });
@@ -173,11 +199,30 @@ test('creates a new snapshot when upstream returns a newer PDF', async () => {
     })
   );
   expect(saveGeneratedPdfMock).toHaveBeenCalled();
+  expect(nextDocumentNumberMock).toHaveBeenCalledWith(
+    expect.any(Date),
+    expect.objectContaining({ id: 'tx-1' })
+  );
+  expect(documentCreateMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      recipient_id: USER_ID,
+      document_type_id: 'doc-type-protocol',
+      status_id: 'status-signed',
+      file_id: 'file-1',
+      sign_type_id: 'sign-simple',
+      number: '26.04/1',
+      name: 'Копия протокола матча',
+    }),
+    expect.objectContaining({
+      transaction: expect.objectContaining({ id: 'tx-1' }),
+    })
+  );
   expect(snapshotCreateMock).toHaveBeenCalledWith(
     expect.objectContaining({
       match_id: MATCH_ID,
       external_match_id: 88,
       number: '26.04/1',
+      document_id: 'document-1',
       signed_by_user_id: USER_ID,
       signed_role_alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
       status: 'ACTIVE',

@@ -19,6 +19,7 @@ MatchProtocolSnapshot.init(
     upstream_last_modified: { type: DataTypes.DATE },
     upstream_filename: { type: DataTypes.STRING(255) },
     signed_file_id: { type: DataTypes.UUID, allowNull: false },
+    document_id: { type: DataTypes.UUID },
     signed_by_user_id: { type: DataTypes.UUID, allowNull: false },
     signed_role_alias: { type: DataTypes.STRING(64), allowNull: false },
     signed_at: { type: DataTypes.DATE, allowNull: false },
@@ -49,6 +50,10 @@ MatchProtocolSnapshot.init(
       {
         fields: ['external_match_id', 'status'],
         name: 'idx_match_protocol_snapshots_external_match_status',
+      },
+      {
+        fields: ['document_id'],
+        name: 'idx_match_protocol_snapshots_document_id',
       },
       {
         unique: true,

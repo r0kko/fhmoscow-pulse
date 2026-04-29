@@ -832,6 +832,14 @@ MatchProtocolSnapshot.belongsTo(File, {
   foreignKey: 'signed_file_id',
   as: 'SignedFile',
 });
+Document.hasMany(MatchProtocolSnapshot, {
+  foreignKey: 'document_id',
+  as: 'MatchProtocolSnapshots',
+});
+MatchProtocolSnapshot.belongsTo(Document, {
+  foreignKey: 'document_id',
+  as: 'Document',
+});
 User.hasMany(MatchProtocolSnapshot, {
   foreignKey: 'signed_by_user_id',
   as: 'MatchProtocolSignedSnapshots',

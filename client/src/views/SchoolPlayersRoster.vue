@@ -1,5 +1,12 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, computed } from 'vue';
+import {
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  computed,
+  watch,
+} from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
@@ -38,6 +45,7 @@ const summaryExportMenuRef = ref(null);
 const signedPdfError = ref('');
 const iasEventsLoading = ref(false);
 const iasEvents = ref([]);
+const iasEventSearch = ref('');
 const selectedIasEventId = ref('');
 const createdSignedDocument = ref(null);
 const summaryExportMenuOpen = ref(false);
@@ -445,6 +453,36 @@ const protocolExportDisabled = computed(
     selectedProtocolMatchCount.value === 0
 );
 
+const filteredIasEvents = computed(() => {
+  const term = iasEventSearch.value.toString().trim().toLowerCase();
+  if (!term) return iasEvents.value;
+  return iasEvents.value.filter((event) => {
+    const haystack = [
+      event.registry_number,
+      event.name,
+      event.date_start,
+      event.date_end,
+      event.label,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(term);
+  });
+});
+
+const selectedIasEventIsVisible = computed(() =>
+  filteredIasEvents.value.some(
+    (event) => String(event.id) === String(selectedIasEventId.value)
+  )
+);
+
+watch(filteredIasEvents, (events) => {
+  if (createdSignedDocument.value) return;
+  if (selectedIasEventIsVisible.value) return;
+  selectedIasEventId.value = events.length ? String(events[0].id) : '';
+});
+
 function buildLocalDateOnly(date = new Date()) {
   const year = String(date.getFullYear());
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -537,6 +575,7 @@ async function openSignedPdfModal() {
   if (!selectedSummaryCount.value) return;
   summaryExportMenuOpen.value = false;
   signedPdfError.value = '';
+  iasEventSearch.value = '';
   createdSignedDocument.value = null;
   if (!iasEvents.value.length) {
     await loadIasEvents();
@@ -592,7 +631,7 @@ async function exportSelectedSummaryFromMenu() {
 
 async function exportSignedPdf() {
   if (!selectedSummaryCount.value || signedPdfExporting.value) return;
-  if (!selectedIasEventId.value) {
+  if (!selectedIasEventId.value || !selectedIasEventIsVisible.value) {
     signedPdfError.value = 'Выберите мероприятие ИАС';
     return;
   }
@@ -1271,6 +1310,39 @@ async function exportSelectedProtocols() {
           </div>
           <div v-else class="row g-3">
             <div class="col-12">
+              <label for="signedPdfIasEventSearch" class="form-label">
+                Поиск мероприятия ИАС
+              </label>
+              <div class="input-group">
+                <span class="input-group-text" aria-hidden="true">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  id="signedPdfIasEventSearch"
+                  v-model="iasEventSearch"
+                  type="search"
+                  class="form-control"
+                  placeholder="Номер или название мероприятия"
+                  autocomplete="off"
+                  :disabled="
+                    signedPdfExporting || Boolean(createdSignedDocument)
+                  "
+                />
+                <button
+                  v-if="iasEventSearch"
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  aria-label="Очистить поиск мероприятия"
+                  :disabled="
+                    signedPdfExporting || Boolean(createdSignedDocument)
+                  "
+                  @click="iasEventSearch = ''"
+                >
+                  Очистить
+                </button>
+              </div>
+            </div>
+            <div class="col-12">
               <label for="signedPdfIasEvent" class="form-label">
                 Мероприятие ИАС
               </label>
@@ -1283,16 +1355,22 @@ async function exportSelectedProtocols() {
               >
                 <option value="" disabled>Выберите мероприятие</option>
                 <option
-                  v-for="event in iasEvents"
+                  v-for="event in filteredIasEvents"
                   :key="event.id"
                   :value="event.id"
                 >
                   {{ event.label }}
                 </option>
               </select>
+              <div
+                v-if="!filteredIasEvents.length"
+                class="form-text text-danger"
+              >
+                По этому запросу мероприятия не найдены.
+              </div>
               <div class="form-text">
-                В документ будут автоматически подставлены реестровый номер,
-                название и сроки выбранного мероприятия.
+                Поиск работает по номеру, названию и срокам. В документ будут
+                автоматически подставлены данные выбранного мероприятия.
               </div>
             </div>
           </div>
@@ -1326,7 +1404,10 @@ async function exportSelectedProtocols() {
             type="submit"
             class="btn btn-brand"
             :disabled="
-              signedPdfExporting || iasEventsLoading || !selectedIasEventId
+              signedPdfExporting ||
+              iasEventsLoading ||
+              !selectedIasEventId ||
+              !selectedIasEventIsVisible
             "
           >
             <span

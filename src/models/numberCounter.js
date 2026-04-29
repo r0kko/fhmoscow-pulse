@@ -16,6 +16,11 @@ NumberCounter.init(
       allowNull: false,
       primaryKey: true,
     },
+    month: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true,
+    },
     last_seq: {
       type: DataTypes.INTEGER,
       allowNull: false,

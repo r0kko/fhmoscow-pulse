@@ -3,16 +3,10 @@ import { QueryTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const NUMBER_SCOPE_DOCUMENT = 'DOCUMENT';
-const NUMBER_SCOPE_MATCH_PROTOCOL = 'MATCH_PROTOCOL';
 
 const SCOPE_TABLE_CONFIG = {
   [NUMBER_SCOPE_DOCUMENT]: {
     tableName: 'documents',
-    numberColumn: 'number',
-    dateColumn: 'document_date',
-  },
-  [NUMBER_SCOPE_MATCH_PROTOCOL]: {
-    tableName: 'match_protocol_snapshots',
     numberColumn: 'number',
     dateColumn: 'document_date',
   },
@@ -39,6 +33,7 @@ async function nextScopedSequence(scope, date, transaction = null) {
 
   const value = normalizeDate(date);
   const year = value.getFullYear();
+  const month = value.getMonth() + 1;
   const rows = await sequelize.query(
     `WITH current_max AS (
        SELECT COALESCE(
@@ -53,17 +48,19 @@ async function nextScopedSequence(scope, date, transaction = null) {
        ) AS max_seq
        FROM ${config.tableName}
        WHERE EXTRACT(YEAR FROM ${config.dateColumn}) = :year
+         AND EXTRACT(MONTH FROM ${config.dateColumn}) = :month
      )
      INSERT INTO number_counters (
        scope,
        year,
+       month,
        last_seq,
        created_at,
        updated_at
      )
-     SELECT :scope, :year, current_max.max_seq + 1, NOW(), NOW()
+     SELECT :scope, :year, :month, current_max.max_seq + 1, NOW(), NOW()
      FROM current_max
-     ON CONFLICT (scope, year) DO UPDATE
+     ON CONFLICT (scope, year, month) DO UPDATE
      SET last_seq = GREATEST(
            number_counters.last_seq + 1,
            (SELECT max_seq + 1 FROM current_max)
@@ -74,6 +71,7 @@ async function nextScopedSequence(scope, date, transaction = null) {
       replacements: {
         scope,
         year,
+        month,
         pattern: '^[0-9]{2}\\.[0-9]{2}/[0-9]+$',
       },
       type: QueryTypes.SELECT,
@@ -95,18 +93,11 @@ export async function nextDocumentNumber(date, transaction = null) {
 }
 
 export async function nextMatchProtocolNumber(date, transaction = null) {
-  const value = normalizeDate(date);
-  const next = await nextScopedSequence(
-    NUMBER_SCOPE_MATCH_PROTOCOL,
-    value,
-    transaction
-  );
-  return formatNumber(value, next);
+  return nextDocumentNumber(date, transaction);
 }
 
 export default {
   NUMBER_SCOPE_DOCUMENT,
-  NUMBER_SCOPE_MATCH_PROTOCOL,
   nextDocumentNumber,
   nextMatchProtocolNumber,
 };
