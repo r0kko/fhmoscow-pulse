@@ -66,6 +66,7 @@ function createRouterInstance(): Router {
 
 function defaultSummary() {
   return {
+    team_club_is_moscow: true,
     matches: [
       {
         id: 'match-1',
@@ -74,6 +75,8 @@ function defaultSummary() {
         away_team_name: 'Белые',
         label: '01.02.2026; Синие — Белые',
         has_snapshot: true,
+        home_club_is_moscow: true,
+        away_club_is_moscow: true,
       },
     ],
     players: [
@@ -88,6 +91,42 @@ function defaultSummary() {
         full_name: 'Петров Петр',
         date_of_birth: '2009-03-05',
         cells: { 'match-1': 0 },
+      },
+    ],
+  };
+}
+
+function mixedMoscowSummary() {
+  return {
+    team_club_is_moscow: true,
+    matches: [
+      {
+        id: 'match-1',
+        date_start: '2026-02-01T10:00:00.000Z',
+        home_team_name: 'Синие',
+        away_team_name: 'Белые',
+        label: '01.02.2026; Синие — Белые',
+        has_snapshot: true,
+        home_club_is_moscow: true,
+        away_club_is_moscow: true,
+      },
+      {
+        id: 'match-2',
+        date_start: '2026-02-08T10:00:00.000Z',
+        home_team_name: 'Синие',
+        away_team_name: 'Регион',
+        label: '08.02.2026; Синие — Регион',
+        has_snapshot: true,
+        home_club_is_moscow: true,
+        away_club_is_moscow: false,
+      },
+    ],
+    players: [
+      {
+        id: 'player-1',
+        full_name: 'Иванов Иван',
+        date_of_birth: '2009-01-10',
+        cells: { 'match-1': 0, 'match-2': 1 },
       },
     ],
   };
@@ -313,6 +352,7 @@ describe('SchoolPlayersRoster view', () => {
         body: JSON.stringify({
           season_id: 'season-1',
           player_ids: ['player-1'],
+          moscow_only: false,
         }),
       })
     );
@@ -352,6 +392,9 @@ describe('SchoolPlayersRoster view', () => {
           season_id: 'season-1',
           player_ids: ['player-1'],
           ias_event_id: 'event-1',
+          event_date_start: '2026-01-06',
+          event_date_end: '2026-01-13',
+          moscow_only: false,
         }),
       })
     );
@@ -381,11 +424,17 @@ describe('SchoolPlayersRoster view', () => {
     expect(
       await screen.findByLabelText(/Мероприятие ИАС/i)
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Наименование мероприятия/i)).toHaveValue(
+      'Кубок Федерации хоккея г. Москвы, 1-й этап'
+    );
+    expect(screen.getByLabelText(/Наименование мероприятия/i)).toHaveAttribute(
+      'readonly'
+    );
+    expect(screen.getByLabelText(/Дата начала/i)).toHaveValue('2026-01-06');
+    expect(screen.getByLabelText(/Дата окончания/i)).toHaveValue('2026-01-13');
     expect(
       screen.queryByLabelText(/Реестровый номер мероприятия/i)
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Дата начала/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Дата окончания/i)).not.toBeInTheDocument();
   });
 
   it('filters IAS events by number and name in signed document modal', async () => {
@@ -407,7 +456,13 @@ describe('SchoolPlayersRoster view', () => {
     const select = screen.getByLabelText(/Мероприятие ИАС/i);
 
     await fireEvent.update(search, 'Первенство');
+    await waitFor(() => expect(select).toHaveValue('event-2'));
     expect(select).toHaveValue('event-2');
+    expect(screen.getByLabelText(/Наименование мероприятия/i)).toHaveValue(
+      'Первенство Москвы'
+    );
+    expect(screen.getByLabelText(/Дата начала/i)).toHaveValue('2026-01-04');
+    expect(screen.getByLabelText(/Дата окончания/i)).toHaveValue('2026-05-31');
     expect(
       within(select).getByRole('option', { name: /Первенство Москвы/i })
     ).toBeInTheDocument();
@@ -416,10 +471,98 @@ describe('SchoolPlayersRoster view', () => {
     ).not.toBeInTheDocument();
 
     await fireEvent.update(search, '102493');
+    await waitFor(() => expect(select).toHaveValue('event-1'));
     expect(select).toHaveValue('event-1');
     expect(
       within(select).getByRole('option', { name: /102493/i })
     ).toBeInTheDocument();
+  });
+
+  it('sends editable event dates and moscow-only flag for moscow team', async () => {
+    const { container } = await renderView();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Подписанный документ/i })
+    );
+
+    await screen.findByLabelText(/Мероприятие ИАС/i);
+    await fireEvent.update(screen.getByLabelText(/Дата начала/i), '2026-02-01');
+    await fireEvent.update(
+      screen.getByLabelText(/Дата окончания/i),
+      '2026-02-10'
+    );
+    const moscowOnlyControls = screen.getAllByLabelText(/Московские команды/i);
+    await fireEvent.click(moscowOnlyControls[moscowOnlyControls.length - 1]);
+    await fireEvent.click(
+      screen.getByRole('button', { name: /Создать документ/i })
+    );
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/teams/team-1/participation-summary/signed-documents',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          season_id: 'season-1',
+          player_ids: ['player-1'],
+          ias_event_id: 'event-1',
+          event_date_start: '2026-02-01',
+          event_date_end: '2026-02-10',
+          moscow_only: true,
+        }),
+      })
+    );
+  });
+
+  it('hides moscow-only flag for non-moscow team and sends false', async () => {
+    const nonMoscowSummary = {
+      ...defaultSummary(),
+      team_club_is_moscow: false,
+    };
+    const { container } = await renderView(nonMoscowSummary);
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Подписанный документ/i })
+    );
+
+    await screen.findByLabelText(/Мероприятие ИАС/i);
+    expect(
+      screen.queryByLabelText(/Московские команды/i)
+    ).not.toBeInTheDocument();
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: /Создать документ/i })
+    );
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/teams/team-1/participation-summary/signed-documents',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          season_id: 'season-1',
+          player_ids: ['player-1'],
+          ias_event_id: 'event-1',
+          event_date_start: '2026-01-06',
+          event_date_end: '2026-01-13',
+          moscow_only: false,
+        }),
+      })
+    );
   });
 
   it('starts protocol zip export for selected players with participation', async () => {
@@ -456,6 +599,7 @@ describe('SchoolPlayersRoster view', () => {
         body: JSON.stringify({
           season_id: 'season-1',
           player_ids: ['player-1'],
+          moscow_only: false,
         }),
       })
     );
@@ -464,6 +608,150 @@ describe('SchoolPlayersRoster view', () => {
     );
     expect(createObjectUrlMock).toHaveBeenCalled();
     expect(revokeObjectUrlMock).toHaveBeenCalledWith('blob:protocols');
+  });
+
+  it('filters summary table to moscow-only matches and sends flag to exports', async () => {
+    const createObjectUrlMock = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:participation-summary');
+    const revokeObjectUrlMock = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => undefined);
+    apiFetchBlobResponseMock.mockResolvedValue({
+      blob: new Blob(['xlsx']),
+      headers: new Headers({
+        'Content-Disposition':
+          "attachment; filename*=UTF-8''participation-summary.xlsx",
+      }),
+    });
+
+    const { container } = await renderView(mixedMoscowSummary());
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    expect(summary.getByText(/08\.02\.2026/)).toBeInTheDocument();
+    expect(summary.getByLabelText(/Иванов Иван: 50% матчей/)).toHaveTextContent(
+      '50%'
+    );
+
+    await fireEvent.click(summary.getByLabelText(/Московские команды/i));
+
+    expect(summary.queryByText(/08\.02\.2026/)).not.toBeInTheDocument();
+    expect(summary.getByLabelText(/Иванов Иван: 0% матчей/)).toHaveTextContent(
+      '0%'
+    );
+
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(summary.getByRole('button', { name: /Выгрузить/i }));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Скачать XLSX/i })
+    );
+
+    expect(apiFetchBlobResponseMock).toHaveBeenCalledWith(
+      '/teams/team-1/participation-summary/export.xlsx',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          season_id: 'season-1',
+          player_ids: ['player-1'],
+          moscow_only: true,
+        }),
+      })
+    );
+
+    expect(createObjectUrlMock).toHaveBeenCalled();
+    expect(revokeObjectUrlMock).toHaveBeenCalledWith(
+      'blob:participation-summary'
+    );
+  });
+
+  it('sends moscow-only flag to protocol zip export from page filter', async () => {
+    const createObjectUrlMock = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:protocols');
+    const revokeObjectUrlMock = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => undefined);
+    apiFetchBlobResponseMock.mockResolvedValue({
+      blob: new Blob(['zip']),
+      headers: new Headers({
+        'Content-Disposition': "attachment; filename*=UTF-8''protocols.zip",
+      }),
+    });
+    const { container } = await renderView(defaultSummary());
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText(/Московские команды/i));
+    await fireEvent.click(summary.getByLabelText('Выбрать игрока Иванов Иван'));
+    await fireEvent.click(
+      summary.getByRole('button', { name: /Протоколы ZIP/i })
+    );
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/teams/team-1/participation-summary/protocols/export-jobs',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          season_id: 'season-1',
+          player_ids: ['player-1'],
+          moscow_only: true,
+        }),
+      })
+    );
+    expect(createObjectUrlMock).toHaveBeenCalled();
+    expect(revokeObjectUrlMock).toHaveBeenCalledWith('blob:protocols');
+  });
+
+  it('hides page moscow-only checkbox for non-moscow team', async () => {
+    const { container } = await renderView({
+      ...defaultSummary(),
+      team_club_is_moscow: false,
+    });
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    expect(
+      summary.queryByLabelText(/Московские команды/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows empty state when moscow-only filter has no matches', async () => {
+    const { container } = await renderView({
+      ...mixedMoscowSummary(),
+      matches: [
+        {
+          ...mixedMoscowSummary().matches[1],
+          id: 'match-2',
+        },
+      ],
+    });
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Сводка участия/i }));
+    const summarySection = container.querySelector(
+      '#summary-section'
+    ) as HTMLElement;
+    const summary = within(summarySection);
+
+    await fireEvent.click(summary.getByLabelText(/Московские команды/i));
+
+    expect(
+      summary.getByText(
+        'В выбранном сезоне нет матчей между московскими командами.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows empty state when team has no season matches', async () => {

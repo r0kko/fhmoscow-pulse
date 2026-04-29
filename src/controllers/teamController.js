@@ -92,6 +92,10 @@ export default {
           seasonId: req.body?.season_id || req.query.season_id,
           playerIds: req.body?.player_ids || req.query.player_ids,
           access: req.access,
+          moscowOnly:
+            req.body?.moscow_only === true ||
+            req.body?.moscow_only === 'true' ||
+            req.query?.moscow_only === 'true',
         });
       res.setHeader(
         'Content-Type',
@@ -145,6 +149,13 @@ export default {
             seasonId: req.body?.season_id || req.query.season_id,
             playerIds: req.body?.player_ids || req.query.player_ids,
             iasEventId: req.body?.ias_event_id || req.query.ias_event_id,
+            eventDateStart:
+              req.body?.event_date_start || req.query.event_date_start,
+            eventDateEnd: req.body?.event_date_end || req.query.event_date_end,
+            moscowOnly:
+              req.body?.moscow_only === true ||
+              req.body?.moscow_only === 'true' ||
+              req.query?.moscow_only === 'true',
             access: req.access,
             actorId: req.user?.id || null,
           }
@@ -161,6 +172,10 @@ export default {
         teamId: req.params.id,
         seasonId: req.body?.season_id || req.query.season_id,
         playerIds: req.body?.player_ids || req.query.player_ids,
+        moscowOnly:
+          req.body?.moscow_only === true ||
+          req.body?.moscow_only === 'true' ||
+          req.query?.moscow_only === 'true',
         access: req.access,
         actorId: req.user?.id || null,
         requestId: req.id || null,

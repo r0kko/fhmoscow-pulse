@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 
 import sequelize from '../config/database.js';
 import {
+  Club,
   Document,
   DocumentStatus,
   DocumentType,
@@ -151,6 +152,31 @@ function validateSignedPdfMeta(meta = {}) {
   };
 }
 
+function validateSignedDocumentDates(
+  { eventDateStart, eventDateEnd } = {},
+  event
+) {
+  const start = String(eventDateStart || event?.date_start || '').trim();
+  const end = String(eventDateEnd || event?.date_end || '').trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+    throw serviceError('event_date_start_invalid', 422);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    throw serviceError('event_date_end_invalid', 422);
+  }
+  const startTime = new Date(`${start}T00:00:00.000Z`).getTime();
+  const endTime = new Date(`${end}T00:00:00.000Z`).getTime();
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
+    throw serviceError('event_dates_invalid', 422);
+  }
+  if (endTime < startTime) {
+    throw serviceError('event_date_range_invalid', 422);
+  }
+
+  return { event_date_start: start, event_date_end: end };
+}
+
 function iasEventToPublic(event) {
   return {
     id: event.id,
@@ -186,7 +212,29 @@ function mapMatch(match, snapshotMatchIds) {
     away_team_name: awayTeamName,
     label: [dateLabel, teamsLabel].filter(Boolean).join('; '),
     has_snapshot: snapshotMatchIds.has(String(match.id)),
+    home_club_is_moscow: Boolean(match.HomeTeam?.Club?.is_moscow),
+    away_club_is_moscow: Boolean(match.AwayTeam?.Club?.is_moscow),
   };
+}
+
+function filterSummaryForMoscowOnly(summary) {
+  if (!summary.team_club_is_moscow) {
+    throw serviceError('participation_summary_team_not_moscow', 422);
+  }
+  const matches = summary.matches.filter(
+    (match) => match.home_club_is_moscow && match.away_club_is_moscow
+  );
+  if (!matches.length) {
+    throw serviceError('participation_summary_moscow_matches_not_found', 422);
+  }
+  return {
+    ...summary,
+    matches,
+  };
+}
+
+export function applyMoscowOnlyFilter(summary) {
+  return filterSummaryForMoscowOnly(summary);
 }
 
 export async function getParticipationSummary({ teamId, seasonId, access }) {
@@ -195,7 +243,10 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
   assertTeamAccess(teamId, access);
 
   const [team, season] = await Promise.all([
-    Team.findByPk(teamId, { attributes: ['id', 'name'] }),
+    Team.findByPk(teamId, {
+      attributes: ['id', 'name'],
+      include: [{ model: Club, attributes: ['is_moscow'], required: false }],
+    }),
     Season.findByPk(seasonId, {
       attributes: ['id', 'name'],
       paranoid: false,
@@ -215,12 +266,14 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
         as: 'HomeTeam',
         attributes: ['id', 'name'],
         required: false,
+        include: [{ model: Club, attributes: ['is_moscow'], required: false }],
       },
       {
         model: Team,
         as: 'AwayTeam',
         attributes: ['id', 'name'],
         required: false,
+        include: [{ model: Club, attributes: ['is_moscow'], required: false }],
       },
     ],
     order: [
@@ -234,6 +287,7 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
     return {
       team_id: teamId,
       team_name: team.name || null,
+      team_club_is_moscow: Boolean(team.Club?.is_moscow),
       season_id: seasonId,
       season_name: season?.name || null,
       matches: [],
@@ -296,6 +350,7 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
   return {
     team_id: teamId,
     team_name: team.name || null,
+    team_club_is_moscow: Boolean(team.Club?.is_moscow),
     season_id: seasonId,
     season_name: season?.name || null,
     matches: matchPayload,
@@ -339,11 +394,19 @@ export async function exportParticipationSummaryXlsx({
   seasonId,
   access,
   playerIds,
+  moscowOnly = false,
 }) {
   const selectedIds = normalizePlayerIds(playerIds);
   if (!selectedIds.length) throw serviceError('players_required', 400);
 
-  const summary = await getParticipationSummary({ teamId, seasonId, access });
+  const baseSummary = await getParticipationSummary({
+    teamId,
+    seasonId,
+    access,
+  });
+  const summary = moscowOnly
+    ? filterSummaryForMoscowOnly(baseSummary)
+    : baseSummary;
   const selectedIdSet = new Set(selectedIds);
   const players = summary.players.filter((player) =>
     selectedIdSet.has(String(player.id))
@@ -497,6 +560,9 @@ export async function createParticipationSummarySignedDocument({
   access,
   playerIds,
   iasEventId,
+  eventDateStart,
+  eventDateEnd,
+  moscowOnly = false,
   actorId,
 }) {
   if (!actorId) throw serviceError('user_required', 401);
@@ -504,7 +570,14 @@ export async function createParticipationSummarySignedDocument({
   if (!selectedIds.length) throw serviceError('players_required', 400);
   if (!iasEventId) throw serviceError('ias_event_required', 400);
 
-  const summary = await getParticipationSummary({ teamId, seasonId, access });
+  const baseSummary = await getParticipationSummary({
+    teamId,
+    seasonId,
+    access,
+  });
+  const summary = moscowOnly
+    ? filterSummaryForMoscowOnly(baseSummary)
+    : baseSummary;
   const selectedIdSet = new Set(selectedIds);
   const players = summary.players.filter((player) =>
     selectedIdSet.has(String(player.id))
@@ -534,6 +607,17 @@ export async function createParticipationSummarySignedDocument({
   if (!docType) throw serviceError('document_type_not_found', 500);
   if (!signedStatus) throw serviceError('document_status_not_found', 500);
   if (!handwrittenSignType) throw serviceError('sign_type_not_found', 500);
+  const eventDates = validateSignedDocumentDates(
+    { eventDateStart, eventDateEnd },
+    event
+  );
+  const documentEvent = {
+    id: event.id,
+    registry_number: event.registry_number,
+    name: event.name,
+    date_start: eventDates.event_date_start,
+    date_end: eventDates.event_date_end,
+  };
 
   const { default: buildSignedPdf } =
     await import('./docBuilders/teamParticipationSummarySigned.js');
@@ -550,7 +634,7 @@ export async function createParticipationSummarySignedDocument({
       const buffer = await buildSignedPdf({
         summary,
         players,
-        event,
+        event: documentEvent,
         documentNumber,
       });
       const filenameParts = [
@@ -585,6 +669,9 @@ export async function createParticipationSummarySignedDocument({
               season_name: summary.season_name || null,
               ias_event_id: event.id,
               ias_registry_number: event.registry_number,
+              event_date_start: eventDates.event_date_start,
+              event_date_end: eventDates.event_date_end,
+              moscow_only: Boolean(moscowOnly),
               selected_player_ids: selectedIds,
               player_count: players.length,
               match_count: summary.matches.length,
@@ -660,6 +747,7 @@ export async function createParticipationSummarySignedDocument({
 
 export default {
   getParticipationSummary,
+  applyMoscowOnlyFilter,
   listParticipationSummaryIasEvents,
   exportParticipationSummaryXlsx,
   exportParticipationSummarySignedPdf,

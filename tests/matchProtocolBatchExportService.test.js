@@ -1,10 +1,12 @@
 import { afterAll, beforeEach, expect, jest, test } from '@jest/globals';
+import { Op } from 'sequelize';
 
 const participantFindAllMock = jest.fn();
 const jobFindOneMock = jest.fn();
 const jobCreateMock = jest.fn();
 const itemBulkCreateMock = jest.fn();
 const getParticipationSummaryMock = jest.fn();
+const applyMoscowOnlyFilterMock = jest.fn();
 const setImmediateMock = jest.spyOn(global, 'setImmediate');
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -34,6 +36,7 @@ jest.unstable_mockModule(
     __esModule: true,
     default: {
       getParticipationSummary: getParticipationSummaryMock,
+      applyMoscowOnlyFilter: applyMoscowOnlyFilterMock,
     },
   })
 );
@@ -113,11 +116,13 @@ beforeEach(() => {
   }));
   itemBulkCreateMock.mockResolvedValue([]);
   getParticipationSummaryMock.mockResolvedValue({
+    matches: [],
     players: [
       { id: 'player-1', external_player_id: 101, full_name: 'Первый' },
       { id: 'player-2', external_player_id: 102, full_name: 'Второй' },
     ],
   });
+  applyMoscowOnlyFilterMock.mockImplementation((summary) => summary);
 });
 
 afterAll(() => {
@@ -206,4 +211,99 @@ test('reuses existing running job by fingerprint', async () => {
   });
   expect(participantFindAllMock).not.toHaveBeenCalled();
   expect(itemBulkCreateMock).not.toHaveBeenCalled();
+});
+
+test('creates moscow-only export job only for allowed summary matches', async () => {
+  getParticipationSummaryMock.mockResolvedValue({
+    matches: [
+      { id: 'match-1', home_club_is_moscow: true, away_club_is_moscow: true },
+      { id: 'match-2', home_club_is_moscow: true, away_club_is_moscow: false },
+    ],
+    players: [{ id: 'player-1', external_player_id: 101, full_name: 'Первый' }],
+  });
+  applyMoscowOnlyFilterMock.mockImplementation((summary) => ({
+    ...summary,
+    matches: [summary.matches[0]],
+  }));
+  const match1 = matchRow('match-1', 501);
+  participantFindAllMock.mockResolvedValue([
+    participantRow(match1, 101, 'Первый'),
+  ]);
+
+  await service.createExportJob({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    playerIds: ['player-1'],
+    moscowOnly: true,
+    access: { isAdmin: true },
+    actorId: 'user-1',
+  });
+
+  expect(applyMoscowOnlyFilterMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      matches: expect.arrayContaining([
+        expect.objectContaining({ id: 'match-1' }),
+      ]),
+    })
+  );
+  const findCall = participantFindAllMock.mock.calls[0][0];
+  expect(findCall.include[0].where.id).toEqual({ [Op.in]: ['match-1'] });
+  expect(itemBulkCreateMock).toHaveBeenCalledWith([
+    expect.objectContaining({
+      match_id: 'match-1',
+      highlighted_external_player_ids: [101],
+    }),
+  ]);
+});
+
+test('uses different fingerprints for regular and moscow-only protocol exports', async () => {
+  const match1 = matchRow('match-1', 501);
+  participantFindAllMock.mockResolvedValue([
+    participantRow(match1, 101, 'Первый'),
+  ]);
+  await service.createExportJob({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    playerIds: ['player-1'],
+    access: { isAdmin: true },
+    actorId: 'user-1',
+  });
+  const regularFingerprint = jobFindOneMock.mock.calls[0][0].where.fingerprint;
+
+  jest.clearAllMocks();
+  setImmediateMock.mockImplementation(() => null);
+  jobFindOneMock.mockResolvedValue(null);
+  jobCreateMock.mockImplementation(async (payload) => ({
+    id: 'job-2',
+    status: 'QUEUED',
+    processed_matches: 0,
+    success_count: 0,
+    skipped_count: 0,
+    failure_count: 0,
+    archive_file_id: null,
+    started_at: null,
+    finished_at: null,
+    error_code: null,
+    ...payload,
+  }));
+  getParticipationSummaryMock.mockResolvedValue({
+    matches: [{ id: 'match-1' }],
+    players: [{ id: 'player-1', external_player_id: 101, full_name: 'Первый' }],
+  });
+  applyMoscowOnlyFilterMock.mockImplementation((summary) => summary);
+  participantFindAllMock.mockResolvedValue([
+    participantRow(match1, 101, 'Первый'),
+  ]);
+
+  await service.createExportJob({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    playerIds: ['player-1'],
+    moscowOnly: true,
+    access: { isAdmin: true },
+    actorId: 'user-1',
+  });
+  const moscowFingerprint = jobFindOneMock.mock.calls[0][0].where.fingerprint;
+
+  expect(moscowFingerprint).not.toBe(regularFingerprint);
 });

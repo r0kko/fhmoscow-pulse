@@ -124,13 +124,14 @@ function csvLine(values) {
   return values.map(csvEscape).join(';');
 }
 
-function fingerprint({ teamId, seasonId, playerIds }) {
+function fingerprint({ teamId, seasonId, playerIds, moscowOnly = false }) {
   return createHash('sha256')
     .update(
       JSON.stringify({
         teamId: String(teamId),
         seasonId: String(seasonId),
         playerIds: [...playerIds].sort(),
+        moscowOnly: Boolean(moscowOnly),
       })
     )
     .digest('hex');
@@ -189,7 +190,20 @@ function playerLabel(row) {
   return fullName || `Игрок ${row.external_player_id}`;
 }
 
-async function selectJobMatches({ teamId, seasonId, selectedExternalIds }) {
+async function selectJobMatches({
+  teamId,
+  seasonId,
+  selectedExternalIds,
+  allowedMatchIds = null,
+}) {
+  const matchWhere = {
+    season_id: seasonId,
+    [Op.or]: [{ team1_id: teamId }, { team2_id: teamId }],
+  };
+  if (Array.isArray(allowedMatchIds)) {
+    matchWhere.id = { [Op.in]: allowedMatchIds };
+  }
+
   const participantRows = await MatchParticipantPlayer.findAll({
     where: {
       team_id: teamId,
@@ -208,10 +222,7 @@ async function selectJobMatches({ teamId, seasonId, selectedExternalIds }) {
           'team2_id',
           'game_status_id',
         ],
-        where: {
-          season_id: seasonId,
-          [Op.or]: [{ team1_id: teamId }, { team2_id: teamId }],
-        },
+        where: matchWhere,
         required: true,
         include: [
           { model: GameStatus, attributes: ['alias', 'name'], required: false },
@@ -564,6 +575,7 @@ export async function createExportJob({
   teamId,
   seasonId,
   playerIds,
+  moscowOnly = false,
   access,
   actorId = null,
   requestId = null,
@@ -580,13 +592,15 @@ export async function createExportJob({
     });
   }
 
-  const summary = await teamParticipationSummaryService.getParticipationSummary(
-    {
+  const baseSummary =
+    await teamParticipationSummaryService.getParticipationSummary({
       teamId,
       seasonId,
       access,
-    }
-  );
+    });
+  const summary = moscowOnly
+    ? teamParticipationSummaryService.applyMoscowOnlyFilter(baseSummary)
+    : baseSummary;
   const selectedSet = new Set(selectedPlayerIds);
   const selectedPlayers = summary.players.filter((player) =>
     selectedSet.has(String(player.id))
@@ -604,6 +618,7 @@ export async function createExportJob({
     teamId,
     seasonId,
     playerIds: selectedPlayerIds,
+    moscowOnly,
   });
   const existing = await MatchProtocolExportJob.findOne({
     where: {
@@ -628,6 +643,9 @@ export async function createExportJob({
     teamId,
     seasonId,
     selectedExternalIds: externalIds,
+    allowedMatchIds: moscowOnly
+      ? summary.matches.map((match) => match.id)
+      : null,
   });
   if (!matchBuckets.length) {
     throw serviceError('participating_matches_not_found', 404);

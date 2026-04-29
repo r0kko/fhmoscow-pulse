@@ -21,6 +21,7 @@ const transactionMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
+  Club: {},
   Team: { findByPk: teamFindByPkMock },
   Season: { findByPk: seasonFindByPkMock },
   Match: { findAll: matchFindAllMock },
@@ -54,14 +55,28 @@ const service = (
   await import('../src/services/teamParticipationSummaryService.js')
 ).default;
 
-function matchRow(id, date, home = 'team-1', away = 'team-2') {
+function matchRow(
+  id,
+  date,
+  home = 'team-1',
+  away = 'team-2',
+  { homeMoscow = true, awayMoscow = true } = {}
+) {
   return {
     id,
     date_start: date,
     team1_id: home,
     team2_id: away,
-    HomeTeam: { id: home, name: home === 'team-1' ? 'Команда А' : 'Команда Б' },
-    AwayTeam: { id: away, name: away === 'team-2' ? 'Команда Б' : 'Команда А' },
+    HomeTeam: {
+      id: home,
+      name: home === 'team-1' ? 'Команда А' : 'Команда Б',
+      Club: { is_moscow: homeMoscow },
+    },
+    AwayTeam: {
+      id: away,
+      name: away === 'team-2' ? 'Команда Б' : 'Команда А',
+      Club: { is_moscow: awayMoscow },
+    },
   };
 }
 
@@ -97,9 +112,11 @@ function participantRow({
 }
 
 beforeEach(() => {
-  teamFindByPkMock
-    .mockReset()
-    .mockResolvedValue({ id: 'team-1', name: 'Динамо 2014' });
+  teamFindByPkMock.mockReset().mockResolvedValue({
+    id: 'team-1',
+    name: 'Динамо 2014',
+    Club: { is_moscow: true },
+  });
   seasonFindByPkMock
     .mockReset()
     .mockResolvedValue({ id: 'season-1', name: '2025/26' });
@@ -156,6 +173,7 @@ test('returns all season matches for the team and only protocol participant play
 
   expect(result).toMatchObject({
     team_name: 'Динамо 2014',
+    team_club_is_moscow: true,
     season_name: '2025/26',
   });
   expect(result.matches).toHaveLength(2);
@@ -166,6 +184,8 @@ test('returns all season matches for the team and only protocol participant play
   expect(result.matches[0]).toMatchObject({
     home_team_name: 'Команда А',
     away_team_name: 'Команда Б',
+    home_club_is_moscow: true,
+    away_club_is_moscow: true,
     has_snapshot: true,
   });
   expect(result.matches[1].has_snapshot).toBe(false);
@@ -331,6 +351,89 @@ test('exports xlsx only for selected players', async () => {
   expect(sheet.getCell('C2').value).toBe(0);
   expect(sheet.getCell('D2').value).toBe(0);
   expect(sheet.getCell('A3').value).toBeNull();
+});
+
+test('exports xlsx with moscow-only match columns and percentages', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z', 'team-1', 'team-2', {
+      homeMoscow: true,
+      awayMoscow: true,
+    }),
+    matchRow('match-2', '2026-01-17T10:00:00.000Z', 'team-1', 'team-3', {
+      homeMoscow: true,
+      awayMoscow: false,
+    }),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: false,
+      surname: 'Иванов',
+      name: 'Иван',
+    }),
+    participantRow({
+      id: 'row-2',
+      matchId: 'match-2',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+      surname: 'Иванов',
+      name: 'Иван',
+    }),
+  ]);
+
+  const payload = await service.exportParticipationSummaryXlsx({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+    playerIds: ['player-1'],
+    moscowOnly: true,
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(payload.buffer);
+  const sheet = workbook.getWorksheet('Участие');
+
+  expect(sheet.getCell('C1').value).toContain('Команда А');
+  expect(sheet.getCell('D1').value).toBe('% участия');
+  expect(sheet.getCell('C2').value).toBe(0);
+  expect(sheet.getCell('D2').value).toBe(0);
+});
+
+test('rejects moscow-only xlsx for non-moscow team', async () => {
+  teamFindByPkMock.mockResolvedValueOnce({
+    id: 'team-1',
+    name: 'Динамо 2014',
+    Club: { is_moscow: false },
+  });
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z'),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+    }),
+  ]);
+
+  await expect(
+    service.exportParticipationSummaryXlsx({
+      teamId: 'team-1',
+      seasonId: 'season-1',
+      access: { isAdmin: true },
+      playerIds: ['player-1'],
+      moscowOnly: true,
+    })
+  ).rejects.toMatchObject({
+    code: 'participation_summary_team_not_moscow',
+    status: 422,
+  });
 });
 
 test('exports signed pdf only for selected players without persistence', async () => {
@@ -505,6 +608,14 @@ test('creates signed participation summary document in documents without e-sign'
       transaction: expect.objectContaining({ id: 'tx' }),
     })
   );
+  const createdDocument = documentCreateMock.mock.calls[0][0];
+  expect(JSON.parse(createdDocument.description)).toMatchObject({
+    ias_event_id: 'event-1',
+    event_date_start: '2026-01-06',
+    event_date_end: '2026-01-13',
+    moscow_only: false,
+    match_count: 2,
+  });
   expect(payload).toMatchObject({
     document: {
       id: 'document-1',
@@ -514,6 +625,224 @@ test('creates signed participation summary document in documents without e-sign'
     },
     file: { id: 'file-1', url: 'https://s3.test/doc.pdf' },
   });
+});
+
+test('creates signed document with overridden event dates and moscow-only matches', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z', 'team-1', 'team-2', {
+      homeMoscow: true,
+      awayMoscow: true,
+    }),
+    matchRow('match-2', '2026-01-17T10:00:00.000Z', 'team-1', 'team-3', {
+      homeMoscow: true,
+      awayMoscow: false,
+    }),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+      surname: 'Иванов',
+      name: 'Иван',
+    }),
+    participantRow({
+      id: 'row-2',
+      matchId: 'match-2',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+      surname: 'Иванов',
+      name: 'Иван',
+    }),
+  ]);
+  iasEventFindOneMock.mockResolvedValue({
+    id: 'event-1',
+    registry_number: '102493',
+    name: 'Кубок Федерации хоккея г. Москвы, 1-й этап',
+    date_start: '2026-01-06',
+    date_end: '2026-01-13',
+  });
+  documentTypeFindOneMock.mockResolvedValue({
+    id: 'doctype-1',
+    name: 'Выписка из протокола',
+    alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT',
+    generated: false,
+  });
+  documentStatusFindOneMock.mockResolvedValue({
+    id: 'status-signed',
+    name: 'Подписан',
+    alias: 'SIGNED',
+  });
+  signTypeFindOneMock.mockResolvedValue({
+    id: 'sign-handwritten',
+    name: 'Собственноручная',
+    alias: 'HANDWRITTEN',
+  });
+  saveGeneratedPdfMock.mockResolvedValue({ id: 'file-1' });
+  documentCreateMock.mockResolvedValue({ id: 'document-1' });
+  documentFindByPkMock.mockResolvedValue({
+    id: 'document-1',
+    number: '26.04/1',
+    name: 'Выписка из протокола',
+    document_date: new Date('2026-04-29T10:00:00.000Z'),
+    DocumentType: {
+      name: 'Выписка из протокола',
+      alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT',
+      generated: false,
+    },
+    SignType: { name: 'Собственноручная', alias: 'HANDWRITTEN' },
+    DocumentStatus: { name: 'Подписан', alias: 'SIGNED' },
+    File: { id: 'file-1', key: 'documents/file.pdf' },
+  });
+
+  await service.createParticipationSummarySignedDocument({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    access: { isAdmin: true },
+    playerIds: ['player-1'],
+    iasEventId: 'event-1',
+    eventDateStart: '2026-02-01',
+    eventDateEnd: '2026-02-10',
+    moscowOnly: true,
+    actorId: 'user-1',
+  });
+
+  const createdDocument = documentCreateMock.mock.calls[0][0];
+  expect(JSON.parse(createdDocument.description)).toMatchObject({
+    event_date_start: '2026-02-01',
+    event_date_end: '2026-02-10',
+    moscow_only: true,
+    match_count: 1,
+  });
+});
+
+test('rejects moscow-only signed document for non-moscow team', async () => {
+  teamFindByPkMock.mockResolvedValueOnce({
+    id: 'team-1',
+    name: 'Динамо 2014',
+    Club: { is_moscow: false },
+  });
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z'),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+    }),
+  ]);
+
+  await expect(
+    service.createParticipationSummarySignedDocument({
+      teamId: 'team-1',
+      seasonId: 'season-1',
+      access: { isAdmin: true },
+      playerIds: ['player-1'],
+      iasEventId: 'event-1',
+      moscowOnly: true,
+      actorId: 'user-1',
+    })
+  ).rejects.toMatchObject({
+    code: 'participation_summary_team_not_moscow',
+    status: 422,
+  });
+  expect(iasEventFindOneMock).not.toHaveBeenCalled();
+});
+
+test('rejects moscow-only signed document when no matches between moscow clubs remain', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z', 'team-1', 'team-2', {
+      homeMoscow: true,
+      awayMoscow: false,
+    }),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+    }),
+  ]);
+
+  await expect(
+    service.createParticipationSummarySignedDocument({
+      teamId: 'team-1',
+      seasonId: 'season-1',
+      access: { isAdmin: true },
+      playerIds: ['player-1'],
+      iasEventId: 'event-1',
+      moscowOnly: true,
+      actorId: 'user-1',
+    })
+  ).rejects.toMatchObject({
+    code: 'participation_summary_moscow_matches_not_found',
+    status: 422,
+  });
+  expect(iasEventFindOneMock).not.toHaveBeenCalled();
+});
+
+test('validates signed document override date range', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z'),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+    }),
+  ]);
+  iasEventFindOneMock.mockResolvedValue({
+    id: 'event-1',
+    registry_number: '102493',
+    name: 'Кубок Федерации хоккея г. Москвы, 1-й этап',
+    date_start: '2026-01-06',
+    date_end: '2026-01-13',
+  });
+  documentTypeFindOneMock.mockResolvedValue({
+    id: 'doctype-1',
+    name: 'Выписка из протокола',
+    alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT',
+    generated: false,
+  });
+  documentStatusFindOneMock.mockResolvedValue({
+    id: 'status-signed',
+    name: 'Подписан',
+    alias: 'SIGNED',
+  });
+  signTypeFindOneMock.mockResolvedValue({
+    id: 'sign-handwritten',
+    name: 'Собственноручная',
+    alias: 'HANDWRITTEN',
+  });
+
+  await expect(
+    service.createParticipationSummarySignedDocument({
+      teamId: 'team-1',
+      seasonId: 'season-1',
+      access: { isAdmin: true },
+      playerIds: ['player-1'],
+      iasEventId: 'event-1',
+      eventDateStart: '2026-02-10',
+      eventDateEnd: '2026-02-01',
+      actorId: 'user-1',
+    })
+  ).rejects.toMatchObject({
+    code: 'event_date_range_invalid',
+    status: 422,
+  });
+  expect(saveGeneratedPdfMock).not.toHaveBeenCalled();
+  expect(documentCreateMock).not.toHaveBeenCalled();
 });
 
 test('fits 34 signed pdf match columns on one landscape page by width', async () => {

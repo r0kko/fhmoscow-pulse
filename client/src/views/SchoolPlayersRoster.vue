@@ -47,6 +47,11 @@ const iasEventsLoading = ref(false);
 const iasEvents = ref([]);
 const iasEventSearch = ref('');
 const selectedIasEventId = ref('');
+const signedPdfEventName = ref('');
+const signedPdfDateStart = ref('');
+const signedPdfDateEnd = ref('');
+const signedPdfMoscowOnly = ref(false);
+const summaryMoscowOnly = ref(false);
 const createdSignedDocument = ref(null);
 const summaryExportMenuOpen = ref(false);
 let protocolExportCancelled = false;
@@ -167,7 +172,11 @@ async function loadParticipationSummary() {
   summaryError.value = '';
   try {
     if (!teamId.value) {
-      participationSummary.value = { matches: [], players: [] };
+      participationSummary.value = {
+        team_club_is_moscow: false,
+        matches: [],
+        players: [],
+      };
       return;
     }
     const params = new URLSearchParams();
@@ -176,6 +185,7 @@ async function loadParticipationSummary() {
       `/teams/${encodeURIComponent(teamId.value)}/participation-summary?${params.toString()}`
     );
     participationSummary.value = {
+      team_club_is_moscow: res.team_club_is_moscow === true,
       matches: Array.isArray(res.matches) ? res.matches : [],
       players: Array.isArray(res.players) ? res.players : [],
     };
@@ -187,7 +197,11 @@ async function loadParticipationSummary() {
       return;
     }
     summaryError.value = msg || 'Не удалось загрузить сводку участия';
-    participationSummary.value = { matches: [], players: [] };
+    participationSummary.value = {
+      team_club_is_moscow: false,
+      matches: [],
+      players: [],
+    };
   } finally {
     summaryLoading.value = false;
   }
@@ -287,7 +301,22 @@ const filteredStaff = computed(() => {
   );
 });
 
-const summaryMatches = computed(() => participationSummary.value.matches || []);
+const allSummaryMatches = computed(
+  () => participationSummary.value.matches || []
+);
+const teamClubIsMoscow = computed(
+  () => participationSummary.value?.team_club_is_moscow === true
+);
+const summaryMoscowOnlyActive = computed(
+  () => teamClubIsMoscow.value && summaryMoscowOnly.value
+);
+const summaryMatches = computed(() => {
+  const matches = allSummaryMatches.value;
+  if (!summaryMoscowOnlyActive.value) return matches;
+  return matches.filter(
+    (match) => match.home_club_is_moscow && match.away_club_is_moscow
+  );
+});
 const summaryPlayers = computed(() => participationSummary.value.players || []);
 
 const filteredSummaryPlayers = computed(() => {
@@ -477,10 +506,35 @@ const selectedIasEventIsVisible = computed(() =>
   )
 );
 
+const selectedIasEvent = computed(
+  () =>
+    iasEvents.value.find(
+      (event) => String(event.id) === String(selectedIasEventId.value)
+    ) || null
+);
+
+function syncSignedPdfEventFields(event) {
+  signedPdfEventName.value = event?.name || '';
+  signedPdfDateStart.value = event?.date_start || '';
+  signedPdfDateEnd.value = event?.date_end || '';
+}
+
 watch(filteredIasEvents, (events) => {
   if (createdSignedDocument.value) return;
   if (selectedIasEventIsVisible.value) return;
   selectedIasEventId.value = events.length ? String(events[0].id) : '';
+});
+
+watch(selectedIasEventId, () => {
+  if (createdSignedDocument.value) return;
+  syncSignedPdfEventFields(selectedIasEvent.value);
+});
+
+watch(teamClubIsMoscow, (isMoscow) => {
+  if (!isMoscow) {
+    signedPdfMoscowOnly.value = false;
+    summaryMoscowOnly.value = false;
+  }
 });
 
 function buildLocalDateOnly(date = new Date()) {
@@ -551,6 +605,7 @@ async function exportSelectedSummary() {
         body: JSON.stringify({
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
+          moscow_only: summaryMoscowOnlyActive.value,
         }),
       }
     );
@@ -576,10 +631,12 @@ async function openSignedPdfModal() {
   summaryExportMenuOpen.value = false;
   signedPdfError.value = '';
   iasEventSearch.value = '';
+  signedPdfMoscowOnly.value = false;
   createdSignedDocument.value = null;
   if (!iasEvents.value.length) {
     await loadIasEvents();
   }
+  syncSignedPdfEventFields(selectedIasEvent.value);
   await nextTick();
   if (!signedPdfModal && signedPdfModalRef.value) {
     signedPdfModal = new Modal(signedPdfModalRef.value, {
@@ -604,6 +661,7 @@ async function loadIasEvents() {
     if (!selectedIasEventId.value && iasEvents.value.length) {
       selectedIasEventId.value = String(iasEvents.value[0].id);
     }
+    syncSignedPdfEventFields(selectedIasEvent.value);
   } catch (e) {
     signedPdfError.value =
       e?.message || 'Не удалось загрузить справочник мероприятий ИАС';
@@ -635,6 +693,14 @@ async function exportSignedPdf() {
     signedPdfError.value = 'Выберите мероприятие ИАС';
     return;
   }
+  if (!signedPdfDateStart.value || !signedPdfDateEnd.value) {
+    signedPdfError.value = 'Укажите сроки проведения мероприятия';
+    return;
+  }
+  if (signedPdfDateEnd.value < signedPdfDateStart.value) {
+    signedPdfError.value = 'Дата окончания не может быть раньше даты начала';
+    return;
+  }
   signedPdfExporting.value = true;
   signedPdfError.value = '';
   createdSignedDocument.value = null;
@@ -648,6 +714,11 @@ async function exportSignedPdf() {
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
           ias_event_id: selectedIasEventId.value,
+          event_date_start: signedPdfDateStart.value,
+          event_date_end: signedPdfDateEnd.value,
+          moscow_only: teamClubIsMoscow.value
+            ? signedPdfMoscowOnly.value
+            : false,
         }),
       }
     );
@@ -729,6 +800,7 @@ async function exportSelectedProtocols() {
         body: JSON.stringify({
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
+          moscow_only: summaryMoscowOnlyActive.value,
         }),
       }
     );
@@ -991,7 +1063,7 @@ async function exportSelectedProtocols() {
       <section
         v-show="activeSection === 'summary'"
         id="summary-section"
-        class="card section-card tile fade-in shadow-sm mb-3"
+        class="card section-card tile fade-in shadow-sm mb-3 summary-section-card"
         role="tabpanel"
       >
         <div class="card-body">
@@ -1037,84 +1109,104 @@ async function exportSelectedProtocols() {
                   </button>
                 </div>
               </form>
-              <button
-                type="button"
-                class="btn btn-outline-primary btn-sm summary-export-button"
-                :disabled="protocolExportDisabled"
-                :title="
-                  selectedSummaryCount && !selectedProtocolMatchCount
-                    ? 'У выбранных игроков нет матчей с участием'
-                    : 'Выгрузить PDF-протоколы выбранных игроков'
-                "
-                @click="exportSelectedProtocols"
+              <div
+                v-if="teamClubIsMoscow"
+                class="summary-moscow-filter form-check"
               >
-                <span
-                  v-if="protocolExporting"
-                  class="spinner-border spinner-border-sm"
-                  aria-hidden="true"
-                ></span>
-                <i v-else class="bi bi-file-earmark-zip" aria-hidden="true"></i>
-                <span>
-                  Протоколы ZIP
-                  <span v-if="selectedProtocolMatchCount">
-                    ({{ selectedProtocolMatchCount }})
-                  </span>
-                </span>
-              </button>
-              <div ref="summaryExportMenuRef" class="btn-group">
+                <input
+                  id="summaryMoscowOnly"
+                  v-model="summaryMoscowOnly"
+                  class="form-check-input"
+                  type="checkbox"
+                />
+                <label class="form-check-label" for="summaryMoscowOnly">
+                  Московские команды
+                </label>
+              </div>
+              <div class="summary-export-actions">
                 <button
                   type="button"
-                  class="btn btn-brand btn-sm summary-export-button dropdown-toggle"
-                  :disabled="
-                    !selectedSummaryCount ||
-                    summaryExporting ||
-                    signedPdfExporting
+                  class="btn btn-outline-primary btn-sm summary-export-button"
+                  :disabled="protocolExportDisabled"
+                  :title="
+                    selectedSummaryCount && !selectedProtocolMatchCount
+                      ? 'У выбранных игроков нет матчей с участием'
+                      : 'Выгрузить PDF-протоколы выбранных игроков'
                   "
-                  :aria-expanded="summaryExportMenuOpen ? 'true' : 'false'"
-                  aria-haspopup="true"
-                  @click="toggleSummaryExportMenu"
-                  @keydown.escape="summaryExportMenuOpen = false"
+                  @click="exportSelectedProtocols"
                 >
                   <span
-                    v-if="summaryExporting || signedPdfExporting"
+                    v-if="protocolExporting"
                     class="spinner-border spinner-border-sm"
                     aria-hidden="true"
                   ></span>
-                  <i v-else class="bi bi-download" aria-hidden="true"></i>
+                  <i
+                    v-else
+                    class="bi bi-file-earmark-zip"
+                    aria-hidden="true"
+                  ></i>
                   <span>
-                    Выгрузить
-                    <span v-if="selectedSummaryCount">
-                      ({{ selectedSummaryCount }})
+                    Протоколы ZIP
+                    <span v-if="selectedProtocolMatchCount">
+                      ({{ selectedProtocolMatchCount }})
                     </span>
                   </span>
                 </button>
-                <ul
-                  class="dropdown-menu dropdown-menu-end"
-                  :class="{ show: summaryExportMenuOpen }"
-                >
-                  <li>
-                    <button
-                      type="button"
-                      class="dropdown-item"
-                      :disabled="summaryExporting"
-                      @click="exportSelectedSummaryFromMenu"
-                    >
-                      <i class="bi bi-file-earmark-excel me-2"></i>
-                      Скачать XLSX
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      class="dropdown-item"
-                      :disabled="signedPdfExporting || iasEventsLoading"
-                      @click="openSignedPdfModal"
-                    >
-                      <i class="bi bi-file-earmark-pdf me-2"></i>
-                      Подписанный документ
-                    </button>
-                  </li>
-                </ul>
+                <div ref="summaryExportMenuRef" class="btn-group">
+                  <button
+                    type="button"
+                    class="btn btn-brand btn-sm summary-export-button dropdown-toggle"
+                    :disabled="
+                      !selectedSummaryCount ||
+                      summaryExporting ||
+                      signedPdfExporting
+                    "
+                    :aria-expanded="summaryExportMenuOpen ? 'true' : 'false'"
+                    aria-haspopup="true"
+                    @click="toggleSummaryExportMenu"
+                    @keydown.escape="summaryExportMenuOpen = false"
+                  >
+                    <span
+                      v-if="summaryExporting || signedPdfExporting"
+                      class="spinner-border spinner-border-sm"
+                      aria-hidden="true"
+                    ></span>
+                    <i v-else class="bi bi-download" aria-hidden="true"></i>
+                    <span>
+                      Выгрузить
+                      <span v-if="selectedSummaryCount">
+                        ({{ selectedSummaryCount }})
+                      </span>
+                    </span>
+                  </button>
+                  <ul
+                    class="dropdown-menu dropdown-menu-end summary-export-menu"
+                    :class="{ show: summaryExportMenuOpen }"
+                  >
+                    <li>
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        :disabled="summaryExporting"
+                        @click="exportSelectedSummaryFromMenu"
+                      >
+                        <i class="bi bi-file-earmark-excel me-2"></i>
+                        Скачать XLSX
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        :disabled="signedPdfExporting || iasEventsLoading"
+                        @click="openSignedPdfModal"
+                      >
+                        <i class="bi bi-file-earmark-pdf me-2"></i>
+                        Подписанный документ
+                      </button>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -1138,7 +1230,11 @@ async function exportSelectedProtocols() {
             v-else-if="!summaryError && !summaryMatches.length"
             class="empty-state"
           >
-            В выбранном сезоне нет матчей этой команды.
+            {{
+              summaryMoscowOnlyActive
+                ? 'В выбранном сезоне нет матчей между московскими командами.'
+                : 'В выбранном сезоне нет матчей этой команды.'
+            }}
           </div>
           <div
             v-else-if="!summaryError && !summaryPlayers.length"
@@ -1373,6 +1469,61 @@ async function exportSelectedProtocols() {
                 автоматически подставлены данные выбранного мероприятия.
               </div>
             </div>
+            <div class="col-12">
+              <label for="signedPdfEventName" class="form-label">
+                Наименование мероприятия
+              </label>
+              <textarea
+                id="signedPdfEventName"
+                v-model="signedPdfEventName"
+                class="form-control"
+                rows="3"
+                readonly
+              ></textarea>
+            </div>
+            <div class="col-md-6">
+              <label for="signedPdfDateStart" class="form-label">
+                Дата начала
+              </label>
+              <input
+                id="signedPdfDateStart"
+                v-model="signedPdfDateStart"
+                type="date"
+                class="form-control"
+                required
+                :disabled="signedPdfExporting || Boolean(createdSignedDocument)"
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="signedPdfDateEnd" class="form-label">
+                Дата окончания
+              </label>
+              <input
+                id="signedPdfDateEnd"
+                v-model="signedPdfDateEnd"
+                type="date"
+                class="form-control"
+                required
+                :min="signedPdfDateStart || undefined"
+                :disabled="signedPdfExporting || Boolean(createdSignedDocument)"
+              />
+            </div>
+            <div v-if="teamClubIsMoscow" class="col-12">
+              <div class="form-check">
+                <input
+                  id="signedPdfMoscowOnly"
+                  v-model="signedPdfMoscowOnly"
+                  class="form-check-input"
+                  type="checkbox"
+                  :disabled="
+                    signedPdfExporting || Boolean(createdSignedDocument)
+                  "
+                />
+                <label class="form-check-label" for="signedPdfMoscowOnly">
+                  Московские команды
+                </label>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -1556,25 +1707,73 @@ export default { name: 'SchoolPlayersRosterView' };
   font-size: 0.875rem;
 }
 
+.summary-section-card,
+.summary-section-card > .card-body {
+  overflow: visible;
+}
+
 .summary-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) auto auto;
   align-items: end;
   justify-content: flex-end;
-  flex: 1 1 28rem;
+  flex: 1 1 40rem;
   gap: 0.75rem;
-  min-width: 0;
+  min-width: min(100%, 40rem);
 }
 
 .summary-search {
-  flex: 1 1 18rem;
-  max-width: 24rem;
+  min-width: 0;
+}
+
+.summary-moscow-filter {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(1.5em + 0.5rem + 2px);
+  margin: 0;
+  padding-left: 1.75rem;
+  white-space: nowrap;
+}
+
+.summary-export-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: max-content;
 }
 
 .summary-export-button {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+  min-height: calc(1.5em + 0.5rem + 2px);
   white-space: nowrap;
+}
+
+.summary-export-menu {
+  right: 0;
+  left: auto;
+  min-width: 18rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.375rem;
+  z-index: 1080;
+}
+
+.summary-export-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.5rem;
+  border-radius: 0.375rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.summary-export-menu .dropdown-item i {
+  flex: 0 0 1.25rem;
+  margin-right: 0 !important;
+  text-align: center;
 }
 
 .empty-state {
@@ -1735,9 +1934,26 @@ export default { name: 'SchoolPlayersRosterView' };
   }
 
   .summary-actions {
-    align-items: stretch;
-    flex-basis: 100%;
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .summary-moscow-filter {
+    justify-self: start;
+  }
+
+  .summary-export-actions {
+    justify-content: stretch;
+  }
+
+  .summary-export-actions > .btn,
+  .summary-export-actions > .btn-group {
+    flex: 1 1 0;
+  }
+
+  .summary-export-actions .summary-export-button {
+    justify-content: center;
+    width: 100%;
   }
 
   .sticky-name {
