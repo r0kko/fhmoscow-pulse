@@ -7,13 +7,15 @@ import {
   computed,
   watch,
 } from 'vue';
-import { useRoute, RouterLink } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import Modal from 'bootstrap/js/dist/modal';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
 import { apiFetch, apiFetchBlobResponse } from '../api';
 import EditPlayerRosterModal from '../components/EditPlayerRosterModal.vue';
+import { pluralize } from '../utils/plural';
 
 const route = useRoute();
+const router = useRouter();
 const isAdminView = computed(() => (route.path || '').startsWith('/admin'));
 const rosterLoading = ref(false);
 const staffLoading = ref(false);
@@ -30,6 +32,12 @@ const year = computed(() => Number(route.params.year));
 const players = ref([]);
 const staff = ref([]);
 const participationSummary = ref({ matches: [], players: [] });
+const selectedSummaryTournamentIds = ref(
+  normalizeQueryList(route.query.summary_tournament_ids)
+);
+const selectedSummaryStageIds = ref(
+  normalizeQueryList(route.query.summary_stage_ids)
+);
 const clubName = ref('');
 const q = ref('');
 const summarySearch = ref('');
@@ -42,9 +50,12 @@ const showEdit = ref(false);
 const currentPlayer = ref(null);
 const signedPdfModalRef = ref(null);
 const summaryExportMenuRef = ref(null);
+const summaryTournamentFilterRef = ref(null);
+const summaryStageFilterRef = ref(null);
 const signedPdfError = ref('');
 const iasEventsLoading = ref(false);
 const iasEvents = ref([]);
+const iasEventsTournamentId = ref('');
 const iasEventSearch = ref('');
 const selectedIasEventId = ref('');
 const signedPdfEventName = ref('');
@@ -53,8 +64,11 @@ const signedPdfDateEnd = ref('');
 const summaryMoscowOnly = ref(false);
 const createdSignedDocument = ref(null);
 const summaryExportMenuOpen = ref(false);
+const summaryTournamentFilterOpen = ref(false);
+const summaryStageFilterOpen = ref(false);
 let protocolExportCancelled = false;
 let signedPdfModal = null;
+let summaryFilterReloadTimer = null;
 
 onMounted(async () => {
   document.addEventListener('click', handleSummaryExportOutsideClick);
@@ -69,13 +83,35 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleSummaryExportOutsideClick);
   signedPdfModal?.dispose();
   signedPdfModal = null;
+  if (summaryFilterReloadTimer) window.clearTimeout(summaryFilterReloadTimer);
 });
 
+function normalizeQueryList(value) {
+  if (!value) return [];
+  const raw = Array.isArray(value) ? value : String(value).split(',');
+  return [...new Set(raw.map((item) => String(item).trim()).filter(Boolean))];
+}
+
 function handleSummaryExportOutsideClick(event) {
-  if (!summaryExportMenuOpen.value) return;
   const target = event.target;
-  if (summaryExportMenuRef.value?.contains?.(target)) return;
-  summaryExportMenuOpen.value = false;
+  if (
+    summaryExportMenuOpen.value &&
+    !summaryExportMenuRef.value?.contains?.(target)
+  ) {
+    summaryExportMenuOpen.value = false;
+  }
+  if (
+    summaryTournamentFilterOpen.value &&
+    !summaryTournamentFilterRef.value?.contains?.(target)
+  ) {
+    summaryTournamentFilterOpen.value = false;
+  }
+  if (
+    summaryStageFilterOpen.value &&
+    !summaryStageFilterRef.value?.contains?.(target)
+  ) {
+    summaryStageFilterOpen.value = false;
+  }
 }
 
 async function loadSeasonName() {
@@ -173,6 +209,7 @@ async function loadParticipationSummary() {
     if (!teamId.value) {
       participationSummary.value = {
         team_club_is_moscow: false,
+        filters: { available_tournaments: [], available_stages: [] },
         matches: [],
         players: [],
       };
@@ -180,11 +217,21 @@ async function loadParticipationSummary() {
     }
     const params = new URLSearchParams();
     params.set('season_id', season.value.id);
+    for (const id of selectedSummaryTournamentIds.value) {
+      params.append('tournament_ids', id);
+    }
+    for (const id of selectedSummaryStageIds.value) {
+      params.append('stage_ids', id);
+    }
     const res = await apiFetch(
       `/teams/${encodeURIComponent(teamId.value)}/participation-summary?${params.toString()}`
     );
     participationSummary.value = {
       team_club_is_moscow: res.team_club_is_moscow === true,
+      filters: res.filters || {
+        available_tournaments: [],
+        available_stages: [],
+      },
       matches: Array.isArray(res.matches) ? res.matches : [],
       players: Array.isArray(res.players) ? res.players : [],
     };
@@ -198,6 +245,7 @@ async function loadParticipationSummary() {
     summaryError.value = msg || 'Не удалось загрузить сводку участия';
     participationSummary.value = {
       team_club_is_moscow: false,
+      filters: { available_tournaments: [], available_stages: [] },
       matches: [],
       players: [],
     };
@@ -302,6 +350,50 @@ const filteredStaff = computed(() => {
 
 const allSummaryMatches = computed(
   () => participationSummary.value.matches || []
+);
+const availableSummaryTournaments = computed(
+  () => participationSummary.value.filters?.available_tournaments || []
+);
+const availableSummaryStages = computed(() => {
+  const stages = participationSummary.value.filters?.available_stages || [];
+  if (!selectedSummaryTournamentIds.value.length) return stages;
+  const tournamentSet = new Set(selectedSummaryTournamentIds.value.map(String));
+  return stages.filter((stage) =>
+    tournamentSet.has(String(stage.tournament_id || ''))
+  );
+});
+const summaryTournamentFilterLabel = computed(() => {
+  const count = selectedSummaryTournamentIds.value.length;
+  if (!count) return 'Все турниры';
+  if (count === 1) {
+    const selected = availableSummaryTournaments.value.find(
+      (tournament) =>
+        String(tournament.id) === String(selectedSummaryTournamentIds.value[0])
+    );
+    return selected?.name || '1 турнир';
+  }
+  return `${count} ${pluralize(count, ['турнир', 'турнира', 'турниров'])}`;
+});
+const summaryStageFilterLabel = computed(() => {
+  const count = selectedSummaryStageIds.value.length;
+  if (!count) return 'Все этапы';
+  if (count === 1) {
+    const selected = availableSummaryStages.value.find(
+      (stage) => String(stage.id) === String(selectedSummaryStageIds.value[0])
+    );
+    return selected?.name || '1 этап';
+  }
+  return `${count} ${pluralize(count, ['этап', 'этапа', 'этапов'])}`;
+});
+const signedPdfTournamentId = computed(() =>
+  selectedSummaryTournamentIds.value.length === 1
+    ? selectedSummaryTournamentIds.value[0]
+    : availableSummaryTournaments.value.length === 1
+      ? availableSummaryTournaments.value[0].id
+      : ''
+);
+const signedPdfTournamentReady = computed(() =>
+  Boolean(signedPdfTournamentId.value)
 );
 const teamClubIsMoscow = computed(
   () => participationSummary.value?.team_club_is_moscow === true
@@ -474,6 +566,79 @@ const selectedProtocolMatchCount = computed(
     ).length
 );
 
+function selectedSummaryFilterPayload() {
+  const payload = {};
+  if (selectedSummaryTournamentIds.value.length) {
+    payload.tournament_ids = [...selectedSummaryTournamentIds.value];
+  }
+  if (selectedSummaryStageIds.value.length) {
+    payload.stage_ids = [...selectedSummaryStageIds.value];
+  }
+  return payload;
+}
+
+function signedSummaryFilterPayload() {
+  return {
+    ...selectedSummaryFilterPayload(),
+    tournament_ids: [signedPdfTournamentId.value],
+  };
+}
+
+function isSummaryTournamentSelected(id) {
+  return selectedSummaryTournamentIds.value.includes(String(id));
+}
+
+function isSummaryStageSelected(id) {
+  return selectedSummaryStageIds.value.includes(String(id));
+}
+
+function setSummaryTournamentSelected(id, checked) {
+  const key = String(id);
+  const next = new Set(selectedSummaryTournamentIds.value);
+  if (checked) next.add(key);
+  else next.delete(key);
+  selectedSummaryTournamentIds.value = [...next];
+}
+
+function setSummaryStageSelected(id, checked) {
+  const key = String(id);
+  const next = new Set(selectedSummaryStageIds.value);
+  if (checked) next.add(key);
+  else next.delete(key);
+  selectedSummaryStageIds.value = [...next];
+}
+
+function closeSummaryFilters() {
+  summaryTournamentFilterOpen.value = false;
+  summaryStageFilterOpen.value = false;
+}
+
+function toggleSummaryTournamentFilter() {
+  summaryTournamentFilterOpen.value = !summaryTournamentFilterOpen.value;
+  if (summaryTournamentFilterOpen.value) summaryStageFilterOpen.value = false;
+}
+
+function toggleSummaryStageFilter() {
+  summaryStageFilterOpen.value = !summaryStageFilterOpen.value;
+  if (summaryStageFilterOpen.value) summaryTournamentFilterOpen.value = false;
+}
+
+async function applySummaryFilterQuery() {
+  const nextQuery = { ...route.query };
+  if (selectedSummaryTournamentIds.value.length) {
+    nextQuery.summary_tournament_ids =
+      selectedSummaryTournamentIds.value.join(',');
+  } else {
+    delete nextQuery.summary_tournament_ids;
+  }
+  if (selectedSummaryStageIds.value.length) {
+    nextQuery.summary_stage_ids = selectedSummaryStageIds.value.join(',');
+  } else {
+    delete nextQuery.summary_stage_ids;
+  }
+  await router.replace({ query: nextQuery });
+}
+
 const protocolExportDisabled = computed(
   () =>
     protocolExporting.value ||
@@ -534,6 +699,31 @@ watch(teamClubIsMoscow, (isMoscow) => {
     summaryMoscowOnly.value = false;
   }
 });
+
+watch(
+  selectedSummaryTournamentIds,
+  () => {
+    const allowedStageIds = new Set(
+      availableSummaryStages.value.map((stage) => String(stage.id))
+    );
+    selectedSummaryStageIds.value = selectedSummaryStageIds.value.filter((id) =>
+      allowedStageIds.has(String(id))
+    );
+  },
+  { deep: true }
+);
+
+watch(
+  [selectedSummaryTournamentIds, selectedSummaryStageIds],
+  () => {
+    if (summaryFilterReloadTimer) window.clearTimeout(summaryFilterReloadTimer);
+    summaryFilterReloadTimer = window.setTimeout(async () => {
+      await applySummaryFilterQuery();
+      await loadParticipationSummary();
+    }, 200);
+  },
+  { deep: true }
+);
 
 function buildLocalDateOnly(date = new Date()) {
   const year = String(date.getFullYear());
@@ -603,6 +793,7 @@ async function exportSelectedSummary() {
         body: JSON.stringify({
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
+          ...selectedSummaryFilterPayload(),
           moscow_only: summaryMoscowOnlyActive.value,
         }),
       }
@@ -626,11 +817,20 @@ async function exportSelectedSummary() {
 
 async function openSignedPdfModal() {
   if (!selectedSummaryCount.value) return;
+  if (!signedPdfTournamentReady.value) {
+    summaryError.value =
+      'Для подписанного документа выберите ровно один турнир';
+    summaryExportMenuOpen.value = false;
+    return;
+  }
   summaryExportMenuOpen.value = false;
   signedPdfError.value = '';
   iasEventSearch.value = '';
   createdSignedDocument.value = null;
-  if (!iasEvents.value.length) {
+  if (
+    !iasEvents.value.length ||
+    iasEventsTournamentId.value !== signedPdfTournamentId.value
+  ) {
     await loadIasEvents();
   }
   syncSignedPdfEventFields(selectedIasEvent.value);
@@ -651,10 +851,12 @@ async function loadIasEvents() {
   try {
     const params = new URLSearchParams();
     params.set('season_id', season.value.id);
+    params.set('tournament_id', signedPdfTournamentId.value);
     const res = await apiFetch(
       `/teams/${encodeURIComponent(teamId.value)}/participation-summary/ias-events?${params.toString()}`
     );
     iasEvents.value = Array.isArray(res.events) ? res.events : [];
+    iasEventsTournamentId.value = signedPdfTournamentId.value;
     if (!selectedIasEventId.value && iasEvents.value.length) {
       selectedIasEventId.value = String(iasEvents.value[0].id);
     }
@@ -676,6 +878,7 @@ function toggleSummaryExportMenu() {
   ) {
     return;
   }
+  closeSummaryFilters();
   summaryExportMenuOpen.value = !summaryExportMenuOpen.value;
 }
 
@@ -686,6 +889,10 @@ async function exportSelectedSummaryFromMenu() {
 
 async function exportSignedPdf() {
   if (!selectedSummaryCount.value || signedPdfExporting.value) return;
+  if (!signedPdfTournamentReady.value) {
+    signedPdfError.value = 'Выберите ровно один турнир в фильтрах сводки';
+    return;
+  }
   if (!selectedIasEventId.value || !selectedIasEventIsVisible.value) {
     signedPdfError.value = 'Выберите мероприятие ИАС';
     return;
@@ -710,6 +917,7 @@ async function exportSignedPdf() {
         body: JSON.stringify({
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
+          ...signedSummaryFilterPayload(),
           ias_event_id: selectedIasEventId.value,
           event_date_start: signedPdfDateStart.value,
           event_date_end: signedPdfDateEnd.value,
@@ -795,6 +1003,7 @@ async function exportSelectedProtocols() {
         body: JSON.stringify({
           season_id: season.value.id,
           player_ids: Array.from(selectedSummaryPlayerIds.value),
+          ...selectedSummaryFilterPayload(),
           moscow_only: summaryMoscowOnlyActive.value,
         }),
       }
@@ -1062,10 +1271,8 @@ async function exportSelectedProtocols() {
         role="tabpanel"
       >
         <div class="card-body">
-          <div
-            class="summary-header d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3"
-          >
-            <div>
+          <div class="summary-header">
+            <div class="summary-title-block">
               <h3 class="h5 mb-1">Сводка участия</h3>
               <div class="text-muted small">
                 {{ summaryMatches.length }} матчей, {{ summaryPlayers.length }}
@@ -1074,7 +1281,7 @@ async function exportSelectedProtocols() {
               </div>
             </div>
             <div class="summary-actions">
-              <form class="summary-search" @submit.prevent>
+              <form class="summary-search summary-toolbar-item" @submit.prevent>
                 <label
                   for="summarySearch"
                   class="form-label small text-muted mb-1"
@@ -1105,8 +1312,130 @@ async function exportSelectedProtocols() {
                 </div>
               </form>
               <div
+                ref="summaryTournamentFilterRef"
+                class="summary-filter dropdown-like"
+              >
+                <label class="form-label small text-muted mb-1">
+                  Турниры
+                </label>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm summary-filter-button"
+                  :class="{ active: selectedSummaryTournamentIds.length }"
+                  :aria-expanded="
+                    summaryTournamentFilterOpen ? 'true' : 'false'
+                  "
+                  aria-controls="summaryTournamentFilterPanel"
+                  @click="toggleSummaryTournamentFilter"
+                  @keydown.escape="summaryTournamentFilterOpen = false"
+                >
+                  <i class="bi bi-trophy" aria-hidden="true"></i>
+                  <span>{{ summaryTournamentFilterLabel }}</span>
+                  <i class="bi bi-chevron-down ms-auto" aria-hidden="true"></i>
+                </button>
+                <div
+                  v-show="summaryTournamentFilterOpen"
+                  id="summaryTournamentFilterPanel"
+                  class="summary-filter-menu"
+                >
+                  <label class="summary-filter-option summary-filter-all">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      :checked="selectedSummaryTournamentIds.length === 0"
+                      @change="selectedSummaryTournamentIds = []"
+                    />
+                    <span>Все турниры</span>
+                  </label>
+                  <div class="summary-filter-divider"></div>
+                  <label
+                    v-for="tournament in availableSummaryTournaments"
+                    :key="tournament.id"
+                    class="summary-filter-option"
+                  >
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      :checked="isSummaryTournamentSelected(tournament.id)"
+                      @change="
+                        setSummaryTournamentSelected(
+                          tournament.id,
+                          checkedFromEvent($event)
+                        )
+                      "
+                    />
+                    <span>{{ tournament.name }}</span>
+                  </label>
+                  <div
+                    v-if="!availableSummaryTournaments.length"
+                    class="summary-filter-empty"
+                  >
+                    Турниры не найдены.
+                  </div>
+                </div>
+              </div>
+              <div
+                ref="summaryStageFilterRef"
+                class="summary-filter dropdown-like"
+              >
+                <label class="form-label small text-muted mb-1">Этапы</label>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm summary-filter-button"
+                  :class="{ active: selectedSummaryStageIds.length }"
+                  :aria-expanded="summaryStageFilterOpen ? 'true' : 'false'"
+                  aria-controls="summaryStageFilterPanel"
+                  @click="toggleSummaryStageFilter"
+                  @keydown.escape="summaryStageFilterOpen = false"
+                >
+                  <i class="bi bi-diagram-3" aria-hidden="true"></i>
+                  <span>{{ summaryStageFilterLabel }}</span>
+                  <i class="bi bi-chevron-down ms-auto" aria-hidden="true"></i>
+                </button>
+                <div
+                  v-show="summaryStageFilterOpen"
+                  id="summaryStageFilterPanel"
+                  class="summary-filter-menu"
+                >
+                  <label class="summary-filter-option summary-filter-all">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      :checked="selectedSummaryStageIds.length === 0"
+                      @change="selectedSummaryStageIds = []"
+                    />
+                    <span>Все этапы</span>
+                  </label>
+                  <div class="summary-filter-divider"></div>
+                  <label
+                    v-for="stage in availableSummaryStages"
+                    :key="stage.id"
+                    class="summary-filter-option"
+                  >
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      :checked="isSummaryStageSelected(stage.id)"
+                      @change="
+                        setSummaryStageSelected(
+                          stage.id,
+                          checkedFromEvent($event)
+                        )
+                      "
+                    />
+                    <span>{{ stage.name }}</span>
+                  </label>
+                  <div
+                    v-if="!availableSummaryStages.length"
+                    class="summary-filter-empty"
+                  >
+                    Этапы не найдены.
+                  </div>
+                </div>
+              </div>
+              <div
                 v-if="teamClubIsMoscow"
-                class="summary-moscow-filter form-check"
+                class="summary-moscow-filter form-check summary-toolbar-item"
               >
                 <input
                   id="summaryMoscowOnly"
@@ -1118,7 +1447,7 @@ async function exportSelectedProtocols() {
                   Московские команды
                 </label>
               </div>
-              <div class="summary-export-actions">
+              <div class="summary-export-actions summary-toolbar-item">
                 <button
                   type="button"
                   class="btn btn-outline-primary btn-sm summary-export-button"
@@ -1193,7 +1522,16 @@ async function exportSelectedProtocols() {
                       <button
                         type="button"
                         class="dropdown-item"
-                        :disabled="signedPdfExporting || iasEventsLoading"
+                        :disabled="
+                          signedPdfExporting ||
+                          iasEventsLoading ||
+                          !signedPdfTournamentReady
+                        "
+                        :title="
+                          signedPdfTournamentReady
+                            ? 'Создать подписанный документ'
+                            : 'Выберите ровно один турнир'
+                        "
                         @click="openSignedPdfModal"
                       >
                         <i class="bi bi-file-earmark-pdf me-2"></i>
@@ -1691,22 +2029,118 @@ export default { name: 'SchoolPlayersRosterView' };
   overflow: visible;
 }
 
+.summary-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.summary-title-block {
+  min-width: 0;
+}
+
 .summary-actions {
-  display: grid;
-  grid-template-columns: minmax(18rem, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem 0.75rem;
   align-items: end;
-  justify-content: flex-end;
-  flex: 1 1 40rem;
-  gap: 0.75rem;
-  min-width: min(100%, 40rem);
+  min-width: 0;
+}
+
+.summary-search,
+.summary-toolbar-item {
+  min-width: 0;
 }
 
 .summary-search {
+  flex: 1 1 18rem;
+  max-width: 28rem;
+}
+
+.summary-filter {
+  flex: 1 1 11rem;
+  position: relative;
   min-width: 0;
+  max-width: 18rem;
+}
+
+.summary-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: calc(1.5em + 0.5rem + 2px);
+  color: var(--bs-body-color);
+  text-align: left;
+}
+
+.summary-filter-button.active {
+  color: var(--brand-color);
+  background: rgba(17, 56, 103, 0.06);
+  border-color: rgba(17, 56, 103, 0.35);
+}
+
+.summary-filter-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-filter-menu {
+  position: absolute;
+  right: 0;
+  z-index: 1085;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: min(22rem, 60vh);
+  padding: 0.5rem;
+  margin-top: 0.375rem;
+  overflow: auto;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-tile-hover);
+}
+
+.summary-filter-option {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.5rem;
+  line-height: 1.25;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.summary-filter-option:hover {
+  background: var(--bs-tertiary-bg, #f8f9fa);
+}
+
+.summary-filter-option .form-check-input {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+
+.summary-filter-all {
+  font-weight: 700;
+}
+
+.summary-filter-divider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background: var(--border-subtle);
+}
+
+.summary-filter-empty {
+  padding: 0.75rem 0.5rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
 }
 
 .summary-moscow-filter {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   min-height: calc(1.5em + 0.5rem + 2px);
   margin: 0;
@@ -1716,10 +2150,13 @@ export default { name: 'SchoolPlayersRosterView' };
 
 .summary-export-actions {
   display: inline-flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
-  min-width: max-content;
+  margin-left: auto;
+  min-width: min(100%, 18rem);
 }
 
 .summary-export-button {
@@ -1912,17 +2349,28 @@ export default { name: 'SchoolPlayersRosterView' };
     max-width: none;
   }
 
-  .summary-actions {
-    grid-template-columns: 1fr;
-    min-width: 0;
+  .summary-search,
+  .summary-filter,
+  .summary-moscow-filter,
+  .summary-export-actions {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .summary-filter-menu {
+    right: auto;
+    left: 0;
+    width: min(100%, calc(100vw - 2rem));
   }
 
   .summary-moscow-filter {
     justify-self: start;
+    min-height: 2rem;
   }
 
   .summary-export-actions {
     justify-content: stretch;
+    margin-left: 0;
   }
 
   .summary-export-actions > .btn,

@@ -27,6 +27,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Match: { findAll: matchFindAllMock },
   MatchParticipantPlayer: { findAll: participantFindAllMock },
   IasEvent: { findAll: iasEventFindAllMock, findOne: iasEventFindOneMock },
+  Stage: {},
+  Tournament: {},
   DocumentType: { findOne: documentTypeFindOneMock },
   DocumentStatus: { findOne: documentStatusFindOneMock },
   SignType: { findOne: signTypeFindOneMock },
@@ -60,11 +62,24 @@ function matchRow(
   date,
   home = 'team-1',
   away = 'team-2',
-  { homeMoscow = true, awayMoscow = true } = {}
+  {
+    homeMoscow = true,
+    awayMoscow = true,
+    tournamentId = 'tournament-1',
+    tournamentName = 'Первенство Москвы',
+    stageId = 'stage-1',
+    stageName = '1 этап',
+  } = {}
 ) {
   return {
     id,
     date_start: date,
+    tournament_id: tournamentId,
+    stage_id: stageId,
+    Tournament: tournamentId
+      ? { id: tournamentId, name: tournamentName }
+      : null,
+    Stage: stageId ? { id: stageId, name: stageName } : null,
     team1_id: home,
     team2_id: away,
     HomeTeam: {
@@ -197,6 +212,51 @@ test('returns all season matches for the team and only protocol participant play
       cells: { 'match-1': 1, 'match-2': 0 },
     }),
   ]);
+});
+
+test('filters participation summary by tournaments and stages', async () => {
+  matchFindAllMock.mockResolvedValue([
+    matchRow('match-1', '2026-01-10T10:00:00.000Z', 'team-1', 'team-2', {
+      tournamentId: 'tournament-1',
+      tournamentName: 'Турнир 1',
+      stageId: 'stage-1',
+      stageName: 'Этап 1',
+    }),
+    matchRow('match-2', '2026-01-17T10:00:00.000Z', 'team-1', 'team-3', {
+      tournamentId: 'tournament-2',
+      tournamentName: 'Турнир 2',
+      stageId: 'stage-2',
+      stageName: 'Этап 2',
+    }),
+  ]);
+  participantFindAllMock.mockResolvedValue([
+    participantRow({
+      id: 'row-1',
+      matchId: 'match-1',
+      playerId: 'player-1',
+      externalPlayerId: 101,
+      played: true,
+    }),
+  ]);
+
+  const result = await service.getParticipationSummary({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    tournamentIds: ['tournament-1'],
+    stageIds: ['stage-1'],
+    access: { isAdmin: true },
+  });
+
+  expect(result.matches.map((match) => match.id)).toEqual(['match-1']);
+  expect(result.filters.available_tournaments).toEqual([
+    { id: 'tournament-1', name: 'Турнир 1' },
+    { id: 'tournament-2', name: 'Турнир 2' },
+  ]);
+  expect(participantFindAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({ match_id: expect.any(Object) }),
+    })
+  );
 });
 
 test('counts played true and null as participation and false as absence', async () => {
@@ -496,6 +556,7 @@ test('lists active IAS events with access checks', async () => {
   const payload = await service.listParticipationSummaryIasEvents({
     teamId: 'team-1',
     seasonId: 'season-1',
+    tournamentIds: ['tournament-1'],
     access: { isAdmin: true },
   });
 
@@ -507,8 +568,31 @@ test('lists active IAS events with access checks', async () => {
     }),
   ]);
   expect(iasEventFindAllMock).toHaveBeenCalledWith(
-    expect.objectContaining({ where: { is_active: true } })
+    expect.objectContaining({
+      where: { is_active: true },
+      include: [
+        expect.objectContaining({
+          as: 'Tournaments',
+          where: { id: 'tournament-1' },
+          required: true,
+        }),
+      ],
+    })
   );
+});
+
+test('requires a single tournament for IAS event selection', async () => {
+  await expect(
+    service.listParticipationSummaryIasEvents({
+      teamId: 'team-1',
+      seasonId: 'season-1',
+      tournamentIds: [],
+      access: { isAdmin: true },
+    })
+  ).rejects.toMatchObject({
+    code: 'participation_summary_single_tournament_required',
+    status: 422,
+  });
 });
 
 test('creates signed participation summary document in documents without e-sign', async () => {
@@ -582,12 +666,25 @@ test('creates signed participation summary document in documents without e-sign'
     access: { isAdmin: true },
     playerIds: ['player-2'],
     iasEventId: 'event-1',
+    tournamentIds: ['tournament-1'],
     actorId: 'user-1',
   });
 
   expect(nextDocumentNumberMock).toHaveBeenCalledWith(
     expect.any(Date),
     expect.objectContaining({ id: 'tx' })
+  );
+  expect(iasEventFindOneMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { id: 'event-1', is_active: true },
+      include: [
+        expect.objectContaining({
+          as: 'Tournaments',
+          where: { id: 'tournament-1' },
+          required: true,
+        }),
+      ],
+    })
   );
   expect(saveGeneratedPdfMock).toHaveBeenCalledWith(
     expect.any(Buffer),
@@ -704,6 +801,7 @@ test('creates signed document with overridden event dates and moscow-only matche
     access: { isAdmin: true },
     playerIds: ['player-1'],
     iasEventId: 'event-1',
+    tournamentIds: ['tournament-1'],
     eventDateStart: '2026-02-01',
     eventDateEnd: '2026-02-10',
     moscowOnly: true,
@@ -745,6 +843,7 @@ test('rejects moscow-only signed document for non-moscow team', async () => {
       access: { isAdmin: true },
       playerIds: ['player-1'],
       iasEventId: 'event-1',
+      tournamentIds: ['tournament-1'],
       moscowOnly: true,
       actorId: 'user-1',
     })
@@ -779,6 +878,7 @@ test('rejects moscow-only signed document when no matches between moscow clubs r
       access: { isAdmin: true },
       playerIds: ['player-1'],
       iasEventId: 'event-1',
+      tournamentIds: ['tournament-1'],
       moscowOnly: true,
       actorId: 'user-1',
     })
@@ -833,6 +933,7 @@ test('validates signed document override date range', async () => {
       access: { isAdmin: true },
       playerIds: ['player-1'],
       iasEventId: 'event-1',
+      tournamentIds: ['tournament-1'],
       eventDateStart: '2026-02-10',
       eventDateEnd: '2026-02-01',
       actorId: 'user-1',

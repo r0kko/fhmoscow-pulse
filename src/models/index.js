@@ -16,6 +16,7 @@ import DocumentStatus from './documentStatus.js';
 import DocumentType from './documentType.js';
 import NumberCounter from './numberCounter.js';
 import IasEvent from './iasEvent.js';
+import TournamentIasEvent from './tournamentIasEvent.js';
 import Country from './country.js';
 import Passport from './passport.js';
 import Inn from './inn.js';
@@ -405,6 +406,23 @@ Tournament.belongsTo(ScheduleManagementType, {
 });
 Season.hasMany(Tournament, { foreignKey: 'season_id' });
 Tournament.belongsTo(Season, { foreignKey: 'season_id' });
+
+Tournament.belongsToMany(IasEvent, {
+  through: TournamentIasEvent,
+  foreignKey: 'tournament_id',
+  otherKey: 'ias_event_id',
+  as: 'IasEvents',
+});
+IasEvent.belongsToMany(Tournament, {
+  through: TournamentIasEvent,
+  foreignKey: 'ias_event_id',
+  otherKey: 'tournament_id',
+  as: 'Tournaments',
+});
+Tournament.hasMany(TournamentIasEvent, { foreignKey: 'tournament_id' });
+TournamentIasEvent.belongsTo(Tournament, { foreignKey: 'tournament_id' });
+IasEvent.hasMany(TournamentIasEvent, { foreignKey: 'ias_event_id' });
+TournamentIasEvent.belongsTo(IasEvent, { foreignKey: 'ias_event_id' });
 
 Tournament.hasMany(Stage, { foreignKey: 'tournament_id' });
 Stage.belongsTo(Tournament, { foreignKey: 'tournament_id' });
@@ -1018,6 +1036,7 @@ export {
   DocumentType,
   NumberCounter,
   IasEvent,
+  TournamentIasEvent,
   Country,
   Passport,
   Inn,

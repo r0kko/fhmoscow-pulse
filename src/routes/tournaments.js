@@ -16,6 +16,7 @@ import {
   tournamentMatchCreateRules,
   tournamentMatchUpdateRules,
   groupRefereesUpdateRules,
+  iasEventReplaceRules,
 } from '../validators/tournamentAdminValidators.js';
 import {
   tariffListRules,
@@ -68,6 +69,31 @@ router.patch(
   tournamentUpdateRules,
   validate,
   controller.updateTournament
+);
+router.get(
+  '/:id/ias-events',
+  auth,
+  authorize('ADMIN'),
+  ...uuidParam('id'),
+  validate,
+  controller.listTournamentIasEvents
+);
+router.get(
+  '/:id/ias-events/available',
+  auth,
+  authorize('ADMIN'),
+  ...uuidParam('id'),
+  validate,
+  controller.listAvailableIasEvents
+);
+router.put(
+  '/:id/ias-events',
+  auth,
+  authorize('ADMIN'),
+  ...uuidParam('id'),
+  iasEventReplaceRules,
+  validate,
+  controller.replaceTournamentIasEvents
 );
 
 /**

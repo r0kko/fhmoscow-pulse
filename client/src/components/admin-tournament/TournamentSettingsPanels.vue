@@ -19,6 +19,13 @@ const props = defineProps<{
   settingsEdits: Record<string, any>;
   refereeRoleGroups: any[];
   refereeEdits: Record<string, any>;
+  iasEvents: any[];
+  iasAvailableEvents: any[];
+  iasSearch: string;
+  iasLoading: boolean;
+  iasSaving: boolean;
+  iasError: string;
+  iasDirty: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -31,7 +38,27 @@ const emit = defineEmits<{
   saveGroupSettings: [any];
   setRefereeCount: [string, string, string];
   saveGroupReferees: [any];
+  searchIasEvents: [string];
+  addIasEvent: [any];
+  removeIasEvent: [string];
+  saveIasEvents: [];
 }>();
+
+function iasEventLabel(event: any): string {
+  return [
+    event.registry_number ? `№ ${event.registry_number}` : null,
+    event.date_start && event.date_end
+      ? `${event.date_start} - ${event.date_end}`
+      : null,
+    event.name || null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function isIasSelected(event: any): boolean {
+  return props.iasEvents.some((item) => String(item.id) === String(event.id));
+}
 </script>
 
 <template>
@@ -75,6 +102,141 @@ const emit = defineEmits<{
 
     <BrandSpinner v-if="props.loading" label="Загрузка настроек" />
     <template v-else>
+      <div v-if="props.section === 'ias'" class="d-flex flex-column gap-3">
+        <div v-if="props.iasError" class="alert alert-danger mb-0">
+          {{ props.iasError }}
+        </div>
+        <BrandSpinner
+          v-if="props.iasLoading"
+          label="Загрузка мероприятий ИАС"
+        />
+        <template v-else>
+          <div class="card section-card tile shadow-sm">
+            <div class="card-body">
+              <div
+                class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3"
+              >
+                <div>
+                  <div class="fw-semibold">Привязанные мероприятия</div>
+                  <div class="text-muted small">
+                    {{ props.iasEvents.length }} мероприятий ИАС
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-brand btn-sm icon-action"
+                  :disabled="props.iasSaving || !props.iasDirty"
+                  title="Сохранить привязки мероприятий ИАС"
+                  aria-label="Сохранить привязки мероприятий ИАС"
+                  @click="emit('saveIasEvents')"
+                >
+                  <span
+                    v-if="props.iasSaving"
+                    class="spinner-border spinner-border-sm"
+                    aria-hidden="true"
+                  ></span>
+                  <i v-else class="bi bi-check2" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <div v-if="props.iasEvents.length" class="list-group">
+                <div
+                  v-for="event in props.iasEvents"
+                  :key="event.id"
+                  class="list-group-item d-flex align-items-start gap-2"
+                >
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ event.name || '—' }}</div>
+                    <div class="small text-muted">
+                      {{ iasEventLabel(event) }}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm icon-action"
+                    :disabled="props.iasSaving"
+                    title="Отвязать мероприятие ИАС"
+                    aria-label="Отвязать мероприятие ИАС"
+                    @click="emit('removeIasEvent', event.id)"
+                  >
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-else class="empty-state">
+                К турниру не привязаны мероприятия ИАС.
+              </div>
+            </div>
+          </div>
+
+          <div class="card section-card tile shadow-sm">
+            <div class="card-body">
+              <label for="iasEventSearch" class="form-label">
+                Поиск мероприятия ИАС
+              </label>
+              <div class="input-group mb-3">
+                <span class="input-group-text" aria-hidden="true">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  id="iasEventSearch"
+                  :value="props.iasSearch"
+                  type="search"
+                  class="form-control"
+                  placeholder="Номер или название"
+                  autocomplete="off"
+                  @input="
+                    emit(
+                      'searchIasEvents',
+                      String(($event.target as HTMLInputElement).value || '')
+                    )
+                  "
+                />
+              </div>
+              <div v-if="props.iasAvailableEvents.length" class="list-group">
+                <div
+                  v-for="event in props.iasAvailableEvents"
+                  :key="event.id"
+                  class="list-group-item d-flex align-items-start gap-2"
+                >
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ event.name || '—' }}</div>
+                    <div class="small text-muted">
+                      {{ iasEventLabel(event) }}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm icon-action"
+                    :disabled="props.iasSaving || isIasSelected(event)"
+                    :title="
+                      isIasSelected(event)
+                        ? 'Мероприятие уже привязано'
+                        : 'Привязать мероприятие ИАС'
+                    "
+                    :aria-label="
+                      isIasSelected(event)
+                        ? 'Мероприятие уже привязано'
+                        : 'Привязать мероприятие ИАС'
+                    "
+                    @click="emit('addIasEvent', event)"
+                  >
+                    <i
+                      class="bi"
+                      :class="isIasSelected(event) ? 'bi-check2' : 'bi-plus-lg'"
+                      aria-hidden="true"
+                    ></i>
+                  </button>
+                </div>
+              </div>
+              <div v-else class="empty-state">
+                Доступные мероприятия ИАС не найдены.
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
       <div
         v-if="props.section === 'main'"
         class="card section-card tile shadow-sm"
@@ -203,7 +365,10 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div v-if="props.section !== 'main'" class="accordion">
+      <div
+        v-if="props.section !== 'main' && props.section !== 'ias'"
+        class="accordion"
+      >
         <div
           v-for="bucket in props.settingsGroupsByStage"
           :key="bucket.stage.id"

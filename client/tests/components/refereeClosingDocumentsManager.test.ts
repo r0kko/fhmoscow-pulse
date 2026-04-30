@@ -10,6 +10,37 @@ vi.mock('@/api', () => ({
 
 const apiFetchMock = vi.mocked(apiFetch);
 
+function renderManager() {
+  return render(RefereeClosingDocumentsManager, {
+    props: { tournamentId: 'tour-1' },
+    global: {
+      stubs: {
+        TabSelector: {
+          props: ['modelValue', 'tabs', 'ariaLabel'],
+          emits: ['update:modelValue'],
+          template: `
+            <div :aria-label="ariaLabel">
+              <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                type="button"
+                @click="$emit('update:modelValue', tab.key)"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+          `,
+        },
+        PageNav: { template: '<div data-testid="page-nav" />' },
+        BrandSpinner: {
+          props: ['label'],
+          template: '<div>{{ label }}</div>',
+        },
+      },
+    },
+  });
+}
+
 describe('RefereeClosingDocumentsManager', () => {
   beforeEach(() => {
     apiFetchMock.mockReset();
@@ -367,6 +398,177 @@ describe('RefereeClosingDocumentsManager', () => {
           }),
         })
       );
+    });
+  });
+
+  it('clears stale send error and blocks duplicate single send clicks', async () => {
+    let sendCalls = 0;
+    let resolveSecondSend: (value: unknown) => void = () => {};
+    const secondSendPromise = new Promise((resolve) => {
+      resolveSecondSend = resolve;
+    });
+    apiFetchMock.mockImplementation(
+      async (path: string, options?: RequestInit) => {
+        if (path === '/tournaments/tour-1/referee-closing-profile') {
+          return { profile: null };
+        }
+        if (path.startsWith('/tournaments/tour-1/referee-accruals?')) {
+          return {
+            accruals: [],
+            total: 0,
+            summary: { total_amount_rub: '0.00' },
+          };
+        }
+        if (
+          path === '/tournaments/tour-1/referee-closing-documents/doc-1/send' &&
+          options?.method === 'POST'
+        ) {
+          sendCalls += 1;
+          if (sendCalls === 1) {
+            const error = new Error(
+              'Не удалось сформировать PDF акта. Обновите журнал и повторите попытку. (id: req-old)'
+            ) as Error & { code?: string; requestId?: string };
+            error.code = 'closing_document_pdf_failed';
+            error.requestId = 'req-old';
+            throw error;
+          }
+          return secondSendPromise;
+        }
+        if (path.startsWith('/tournaments/tour-1/referee-closing-documents?')) {
+          return {
+            documents: [
+              {
+                id: 'doc-1',
+                status: 'DRAFT',
+                number: '26.03/1301',
+                referee: { full_name: 'Судья Первый' },
+                totals: { total_amount_rub: '3100.00' },
+                items: [],
+                signature_timeline: [],
+                can_delete: true,
+              },
+            ],
+            total: 1,
+            summary: {
+              sendable_total: 1,
+            },
+          };
+        }
+        throw new Error(`Unexpected path ${path}`);
+      }
+    );
+
+    renderManager();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Акты' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('26.03/1301')).toBeInTheDocument();
+    });
+
+    const sendButton = screen.getByRole('button', {
+      name: 'Отправить на подпись',
+    });
+    await fireEvent.click(sendButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/req-old/)).toBeInTheDocument();
+    });
+
+    await fireEvent.click(sendButton);
+
+    expect(screen.queryByText(/req-old/)).not.toBeInTheDocument();
+    expect(sendButton).toBeDisabled();
+    await fireEvent.click(sendButton);
+    expect(sendCalls).toBe(2);
+
+    resolveSecondSend({ warnings: ['closing_document_notification_failed'] });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/req-old/)).not.toBeInTheDocument();
+      expect(sendButton).not.toBeDisabled();
+    });
+  });
+
+  it('shows stable reason for partial bulk send failures', async () => {
+    apiFetchMock.mockImplementation(
+      async (path: string, _options?: RequestInit) => {
+        if (path === '/tournaments/tour-1/referee-closing-profile') {
+          return { profile: null };
+        }
+        if (path.startsWith('/tournaments/tour-1/referee-accruals?')) {
+          return {
+            accruals: [],
+            total: 0,
+            summary: { total_amount_rub: '0.00' },
+          };
+        }
+        if (
+          path === '/tournaments/tour-1/referee-closing-documents/send-batch'
+        ) {
+          return {
+            failures: [
+              { id: 'doc-2', code: 'closing_document_storage_failed' },
+            ],
+            summary: {
+              sent_total: 1,
+              failed_total: 1,
+            },
+          };
+        }
+        if (path.startsWith('/tournaments/tour-1/referee-closing-documents?')) {
+          return {
+            documents: [
+              {
+                id: 'doc-1',
+                status: 'DRAFT',
+                number: '26.03/1401',
+                referee: { full_name: 'Судья Первый' },
+                totals: { total_amount_rub: '3100.00' },
+                items: [],
+                signature_timeline: [],
+                can_delete: true,
+              },
+              {
+                id: 'doc-2',
+                status: 'DRAFT',
+                number: '26.03/1402',
+                referee: { full_name: 'Судья Второй' },
+                totals: { total_amount_rub: '4200.00' },
+                items: [],
+                signature_timeline: [],
+                can_delete: true,
+              },
+            ],
+            total: 2,
+            summary: {
+              sendable_total: 2,
+            },
+          };
+        }
+        throw new Error(`Unexpected path ${path}`);
+      }
+    );
+
+    renderManager();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Акты' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('26.03/1401')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Выбрать все черновики (2)' })
+    );
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Подписать и отправить выбранные' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Не удалось сохранить PDF акта в хранилище/)
+      ).toBeInTheDocument();
     });
   });
 });

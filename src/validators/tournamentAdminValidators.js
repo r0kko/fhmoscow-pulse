@@ -121,3 +121,8 @@ export const groupRefereesUpdateRules = [
     return true;
   }),
 ];
+
+export const iasEventReplaceRules = [
+  body('event_ids').optional().isArray(),
+  body('event_ids.*').isUUID(),
+];

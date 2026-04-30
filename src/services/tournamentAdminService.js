@@ -11,6 +11,8 @@ import {
   RefereeRoleGroup,
   RefereeRole,
   TournamentGroupReferee,
+  IasEvent,
+  TournamentIasEvent,
   Season,
   Team,
   Match,
@@ -464,6 +466,90 @@ async function getTournamentById(id) {
   return plain;
 }
 
+function iasEventOrder() {
+  return [
+    ['date_start', 'DESC'],
+    ['registry_number', 'ASC'],
+    ['name', 'ASC'],
+  ];
+}
+
+async function listTournamentIasEvents(tournamentId) {
+  await ensureTournament(tournamentId);
+  return IasEvent.findAll({
+    where: { is_active: true },
+    include: [
+      {
+        model: Tournament,
+        as: 'Tournaments',
+        attributes: [],
+        through: { attributes: [] },
+        where: { id: tournamentId },
+        required: true,
+      },
+    ],
+    order: iasEventOrder(),
+  });
+}
+
+async function listAvailableIasEvents({ tournamentId, search }) {
+  await ensureTournament(tournamentId);
+  const where = { is_active: true };
+  const term = normalizeString(search);
+  if (term) {
+    where[Op.or] = [
+      { registry_number: { [Op.iLike]: `%${term}%` } },
+      { name: { [Op.iLike]: `%${term}%` } },
+    ];
+  }
+  return IasEvent.findAll({
+    where,
+    order: iasEventOrder(),
+    limit: 100,
+  });
+}
+
+function normalizeIdList(value) {
+  const raw = Array.isArray(value) ? value : String(value || '').split(',');
+  return [...new Set(raw.map((item) => String(item).trim()).filter(Boolean))];
+}
+
+async function replaceTournamentIasEvents(tournamentId, eventIds, actorId) {
+  await ensureTournament(tournamentId);
+  const ids = normalizeIdList(eventIds);
+
+  await sequelize.transaction(async (transaction) => {
+    if (ids.length) {
+      const events = await IasEvent.findAll({
+        where: { id: { [Op.in]: ids }, is_active: true },
+        transaction,
+      });
+      if (events.length !== ids.length) {
+        throw new ServiceError('ias_event_not_found', 404);
+      }
+    }
+
+    await TournamentIasEvent.destroy({
+      where: { tournament_id: tournamentId },
+      transaction,
+    });
+
+    if (ids.length) {
+      await TournamentIasEvent.bulkCreate(
+        ids.map((id) => ({
+          tournament_id: tournamentId,
+          ias_event_id: id,
+          created_by: actorId,
+          updated_by: actorId,
+        })),
+        { transaction }
+      );
+    }
+  });
+
+  return listTournamentIasEvents(tournamentId);
+}
+
 export default {
   async listTypes() {
     return TournamentType.findAll({ order: [['name', 'ASC']] });
@@ -479,6 +565,9 @@ export default {
   listGroups,
   listTournamentTeams,
   listTournamentMatches,
+  listTournamentIasEvents,
+  listAvailableIasEvents,
+  replaceTournamentIasEvents,
   getTournamentById,
   async createTournament(data = {}, actorId = null) {
     const name = normalizeString(data.name);

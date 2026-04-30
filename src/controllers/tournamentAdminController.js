@@ -185,6 +185,37 @@ export default {
       return sendError(res, err);
     }
   },
+  async listTournamentIasEvents(req, res) {
+    try {
+      const events = await svc.listTournamentIasEvents(req.params.id);
+      return res.json({ events: events.map(map.toPublicIasEvent) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async listAvailableIasEvents(req, res) {
+    try {
+      const events = await svc.listAvailableIasEvents({
+        tournamentId: req.params.id,
+        search: req.query.search || req.query.q,
+      });
+      return res.json({ events: events.map(map.toPublicIasEvent) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+  async replaceTournamentIasEvents(req, res) {
+    try {
+      const events = await svc.replaceTournamentIasEvents(
+        req.params.id,
+        req.body?.event_ids || [],
+        req.user?.id || null
+      );
+      return res.json({ events: events.map(map.toPublicIasEvent) });
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
   async createTournamentMatch(req, res) {
     try {
       const match = await svc.createMatchSchedule(req.body, req.user?.id);

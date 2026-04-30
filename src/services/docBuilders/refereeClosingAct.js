@@ -103,27 +103,39 @@ function splitLongToken(doc, token, width) {
   return chunks.join('\n');
 }
 
-function wrapWords(doc, text, width) {
+function wrapWordsToLines(doc, text, width, { splitLongTokens = false } = {}) {
   const tokens = String(text || '')
     .split(/\s+/)
     .filter(Boolean);
-  if (!tokens.length) return '—';
+  if (!tokens.length) return ['—'];
 
   const lines = [];
   let currentLine = '';
 
   for (const token of tokens) {
-    const candidate = currentLine ? `${currentLine} ${token}` : token;
-    if (!currentLine || doc.widthOfString(candidate) <= width) {
-      currentLine = candidate;
-      continue;
+    const pieces =
+      splitLongTokens && doc.widthOfString(token) > width
+        ? splitLongToken(doc, token, width).split('\n').filter(Boolean)
+        : [token];
+
+    for (const [pieceIndex, piece] of pieces.entries()) {
+      if (pieceIndex > 0 && currentLine) {
+        lines.push(currentLine);
+        currentLine = '';
+      }
+
+      const candidate = currentLine ? `${currentLine} ${piece}` : piece;
+      if (!currentLine || doc.widthOfString(candidate) <= width) {
+        currentLine = candidate;
+        continue;
+      }
+      lines.push(currentLine);
+      currentLine = piece;
     }
-    lines.push(currentLine);
-    currentLine = token;
   }
 
   if (currentLine) lines.push(currentLine);
-  return lines.join('\n');
+  return lines;
 }
 
 function wrapCellText(doc, value, width, fallback = '—') {
@@ -148,11 +160,14 @@ function fitRoleCellText(
   width,
   { baseFontSize = 9, minFontSize = 7.6, step = 0.2 } = {}
 ) {
+  const lineHeightRatio = 1.12;
   const text = normalizeText(value, '—');
   if (text === '—') {
     return {
       text,
+      lines: [text],
       fontSize: baseFontSize,
+      lineHeight: Math.ceil(baseFontSize * lineHeightRatio),
     };
   }
 
@@ -168,28 +183,36 @@ function fitRoleCellText(
         .every((token) => doc.widthOfString(token) <= width)
     );
     if (longestTokenFits) {
+      const wrappedLines = lines.flatMap((line) =>
+        wrapWordsToLines(doc, line, width)
+      );
       return {
-        text: lines.map((line) => wrapWords(doc, line, width)).join('\n'),
+        text: wrappedLines.join('\n'),
+        lines: wrappedLines,
         fontSize,
+        lineHeight: Math.ceil(fontSize * lineHeightRatio),
       };
     }
     fontSize = Number((fontSize - step).toFixed(2));
   }
 
   doc.fontSize(minFontSize);
+  const wrappedLines = lines.flatMap((line) =>
+    wrapWordsToLines(doc, line, width, { splitLongTokens: true })
+  );
   return {
-    text: lines
-      .map((line) =>
-        line
-          .split(/\s+/)
-          .filter(Boolean)
-          .map((token) => splitLongToken(doc, token, width))
-          .join(' ')
-          .trim()
-      )
-      .join('\n'),
+    text: wrappedLines.join('\n'),
+    lines: wrappedLines,
     fontSize: minFontSize,
+    lineHeight: Math.ceil(minFontSize * lineHeightRatio),
   };
+}
+
+function roleLayoutHeight(roleLayout) {
+  return Math.max(
+    roleLayout.lineHeight,
+    roleLayout.lines.length * roleLayout.lineHeight
+  );
 }
 
 function formatPartyDetails(party) {
@@ -330,57 +353,71 @@ function drawTableHeader(doc, fonts, columns, y) {
   return y + headerHeight;
 }
 
-function calcRowHeight(doc, item, columns) {
-  doc.fontSize(9.2);
+function calcRowHeight(doc, fonts, item, columns) {
+  doc.font(fonts.regular).fontSize(9.2);
   const matchLabel = wrapCellText(doc, item.match_label, columns[2].width - 12);
-  doc.fontSize(8.2);
+  doc.font(fonts.regular).fontSize(8.2);
   const competitionName = wrapCellText(
     doc,
     item.competition_name,
     columns[2].width - 12,
     ''
   );
-  doc.fontSize(9);
+  doc.font(fonts.regular).fontSize(9);
   const serviceDateTime = wrapCellText(
     doc,
     item.service_datetime,
     columns[1].width - 12
   );
   const roleLayout = fitRoleCellText(
-    doc,
+    doc.font(fonts.regular).fontSize(9),
     item.role_name,
     columns[3].width - 12
   );
   const tariffLabel = wrapCellText(
-    doc,
+    doc.font(fonts.regular).fontSize(9),
     item.tariff_label,
     columns[4].width - 12
   );
   const matchHeight =
-    doc.heightOfString(matchLabel, {
-      width: columns[2].width - 12,
-    }) +
-    doc.heightOfString(competitionName, {
-      width: columns[2].width - 12,
-    });
+    doc
+      .font(fonts.regular)
+      .fontSize(9.2)
+      .heightOfString(matchLabel, {
+        width: columns[2].width - 12,
+        lineGap: 0,
+      }) +
+    doc
+      .font(fonts.regular)
+      .fontSize(8.2)
+      .heightOfString(competitionName, {
+        width: columns[2].width - 12,
+        lineGap: 0,
+      });
 
   return Math.max(
     34,
-    doc.heightOfString(serviceDateTime, {
-      width: columns[1].width - 12,
-    }) + 10,
+    doc
+      .font(fonts.regular)
+      .fontSize(9)
+      .heightOfString(serviceDateTime, {
+        width: columns[1].width - 12,
+        lineGap: 0,
+      }) + 10,
     matchHeight + 14,
-    doc.fontSize(roleLayout.fontSize).heightOfString(roleLayout.text, {
-      width: columns[3].width - 12,
-    }) + 10,
-    doc.heightOfString(tariffLabel, {
-      width: columns[4].width - 12,
-    }) + 10
+    roleLayoutHeight(roleLayout) + 10,
+    doc
+      .font(fonts.regular)
+      .fontSize(9)
+      .heightOfString(tariffLabel, {
+        width: columns[4].width - 12,
+        lineGap: 0,
+      }) + 10
   );
 }
 
 function drawTableRow(doc, fonts, item, columns, y) {
-  const rowHeight = calcRowHeight(doc, item, columns);
+  const rowHeight = calcRowHeight(doc, fonts, item, columns);
   let x = doc.page.margins.left;
   const serviceDateTime = wrapCellText(
     doc.font(fonts.regular).fontSize(9),
@@ -427,6 +464,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .heightOfString(String(item.line_no || ''), {
       width: columns[0].width - 12,
       align: 'center',
+      lineGap: 0,
     });
   doc
     .font(fonts.regular)
@@ -439,6 +477,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
       {
         width: columns[0].width - 12,
         align: 'center',
+        lineGap: 0,
       }
     );
   x += columns[0].width;
@@ -448,6 +487,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .fontSize(9)
     .heightOfString(serviceDateTime, {
       width: columns[1].width - 12,
+      lineGap: 0,
     });
   doc
     .font(fonts.regular)
@@ -459,6 +499,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
       y + Math.max(8, (rowHeight - serviceDateHeight) / 2),
       {
         width: columns[1].width - 12,
+        lineGap: 0,
       }
     );
   x += columns[1].width;
@@ -468,12 +509,14 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .fontSize(9.2)
     .heightOfString(matchLabel, {
       width: columns[2].width - 12,
+      lineGap: 0,
     });
   const competitionHeight = doc
     .font(fonts.regular)
     .fontSize(8.2)
     .heightOfString(competitionName, {
       width: columns[2].width - 12,
+      lineGap: 0,
     });
   const matchBlockY =
     y + Math.max(8, (rowHeight - (matchHeight + competitionHeight + 2)) / 2);
@@ -483,6 +526,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .fillColor(TEXT_PRIMARY)
     .text(matchLabel, x + 6, matchBlockY, {
       width: columns[2].width - 12,
+      lineGap: 0,
     });
   const competitionY = matchBlockY + matchHeight;
   doc
@@ -491,27 +535,20 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .fillColor(TEXT_MUTED)
     .text(competitionName, x + 6, competitionY + 2, {
       width: columns[2].width - 12,
+      lineGap: 0,
     });
   x += columns[2].width;
 
-  const roleHeight = doc
-    .font(fonts.regular)
-    .fontSize(roleLayout.fontSize)
-    .heightOfString(roleLayout.text, {
+  const roleHeight = roleLayoutHeight(roleLayout);
+  const roleTop = y + Math.max(8, (rowHeight - roleHeight) / 2);
+  doc.font(fonts.regular).fontSize(roleLayout.fontSize).fillColor(TEXT_PRIMARY);
+  for (const [lineIndex, line] of roleLayout.lines.entries()) {
+    doc.text(line, x + 6, roleTop + lineIndex * roleLayout.lineHeight, {
       width: columns[3].width - 12,
+      lineBreak: false,
+      lineGap: 0,
     });
-  doc
-    .font(fonts.regular)
-    .fontSize(roleLayout.fontSize)
-    .fillColor(TEXT_PRIMARY)
-    .text(
-      roleLayout.text,
-      x + 6,
-      y + Math.max(8, (rowHeight - roleHeight) / 2),
-      {
-        width: columns[3].width - 12,
-      }
-    );
+  }
   x += columns[3].width;
 
   const tariffHeight = doc
@@ -520,6 +557,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .heightOfString(tariffLabel, {
       width: columns[4].width - 12,
       align: 'center',
+      lineGap: 0,
     });
   doc
     .font(fonts.regular)
@@ -528,6 +566,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .text(tariffLabel, x + 6, y + Math.max(8, (rowHeight - tariffHeight) / 2), {
       width: columns[4].width - 12,
       align: 'center',
+      lineGap: 0,
     });
   x += columns[4].width;
 
@@ -538,6 +577,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .heightOfString(amountText, {
       width: columns[5].width - 12,
       align: 'right',
+      lineGap: 0,
     });
   doc
     .font(fonts.bold)
@@ -546,6 +586,7 @@ function drawTableRow(doc, fonts, item, columns, y) {
     .text(amountText, x + 6, y + Math.max(8, (rowHeight - amountHeight) / 2), {
       width: columns[5].width - 12,
       align: 'right',
+      lineGap: 0,
     });
 
   return y + rowHeight;
@@ -782,8 +823,8 @@ export default async function buildRefereeClosingActPdf(
   const columns = [
     { key: 'line_no', label: '№', width: 28, align: 'center' },
     { key: 'service_datetime', label: 'Дата и время', width: 84 },
-    { key: 'match_label', label: 'Матч', width: 208 },
-    { key: 'role_name', label: 'Амплуа', width: 75 },
+    { key: 'match_label', label: 'Матч', width: 187 },
+    { key: 'role_name', label: 'Амплуа', width: 96 },
     { key: 'tariff_label', label: 'Тариф', width: 60, align: 'center' },
     { key: 'amount_rub', label: 'Сумма', width: 80, align: 'right' },
   ];
@@ -806,7 +847,7 @@ export default async function buildRefereeClosingActPdf(
       fonts,
       columns,
       cursorY,
-      calcRowHeight(doc, normalizedItem, columns)
+      calcRowHeight(doc, fonts, normalizedItem, columns)
     );
     cursorY = drawTableRow(doc, fonts, normalizedItem, columns, cursorY);
   }

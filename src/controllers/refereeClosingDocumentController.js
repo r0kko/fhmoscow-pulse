@@ -1,5 +1,23 @@
+import logger from '../../logger.js';
 import closingService from '../services/refereeClosingDocumentService.js';
 import { sendError } from '../utils/api.js';
+
+function logClosingSendError(stage, req, err) {
+  const payload = {
+    stage,
+    requestId: req.id || null,
+    tournamentId: req.params?.tournamentId || null,
+    closingDocumentId: req.params?.id || null,
+    actorId: req.user?.id || null,
+    code: err?.code || err?.message || 'closing_document_send_failed',
+    message: err?.message || '',
+  };
+  const status = Number(err?.status || err?.statusCode || 500);
+  logger[status >= 500 ? 'error' : 'warn'](
+    'Referee closing document send request failed',
+    payload
+  );
+}
 
 const controller = {
   async listClosingTournaments(req, res) {
@@ -114,10 +132,12 @@ const controller = {
       const data = await closingService.sendClosingDocument(
         req.params.tournamentId,
         req.params.id,
-        req.user?.id
+        req.user?.id,
+        { requestId: req.id || null }
       );
       return res.json(data);
     } catch (err) {
+      logClosingSendError('single_send', req, err);
       return sendError(res, err, 409);
     }
   },
@@ -127,10 +147,12 @@ const controller = {
       const data = await closingService.sendClosingDocumentsBatch(
         req.params.tournamentId,
         req.body,
-        req.user?.id
+        req.user?.id,
+        { requestId: req.id || null }
       );
       return res.json(data);
     } catch (err) {
+      logClosingSendError('batch_send', req, err);
       return sendError(res, err, 409);
     }
   },

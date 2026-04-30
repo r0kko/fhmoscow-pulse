@@ -61,6 +61,12 @@ function normalizePlayerIds(playerIds) {
   return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))];
 }
 
+function normalizeFilterIds(value) {
+  if (!value) return [];
+  const raw = Array.isArray(value) ? value : String(value).split(',');
+  return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))];
+}
+
 function isFinishedStatus(statusAlias) {
   return String(statusAlias || '').toUpperCase() === 'FINISHED';
 }
@@ -124,13 +130,22 @@ function csvLine(values) {
   return values.map(csvEscape).join(';');
 }
 
-function fingerprint({ teamId, seasonId, playerIds, moscowOnly = false }) {
+function fingerprint({
+  teamId,
+  seasonId,
+  playerIds,
+  tournamentIds = [],
+  stageIds = [],
+  moscowOnly = false,
+}) {
   return createHash('sha256')
     .update(
       JSON.stringify({
         teamId: String(teamId),
         seasonId: String(seasonId),
         playerIds: [...playerIds].sort(),
+        tournamentIds: [...tournamentIds].sort(),
+        stageIds: [...stageIds].sort(),
         moscowOnly: Boolean(moscowOnly),
       })
     )
@@ -575,6 +590,8 @@ export async function createExportJob({
   teamId,
   seasonId,
   playerIds,
+  tournamentIds,
+  stageIds,
   moscowOnly = false,
   access,
   actorId = null,
@@ -591,11 +608,15 @@ export async function createExportJob({
       max: MAX_SELECTED_PLAYERS,
     });
   }
+  const selectedTournamentIds = normalizeFilterIds(tournamentIds);
+  const selectedStageIds = normalizeFilterIds(stageIds);
 
   const baseSummary =
     await teamParticipationSummaryService.getParticipationSummary({
       teamId,
       seasonId,
+      tournamentIds: selectedTournamentIds,
+      stageIds: selectedStageIds,
       access,
     });
   const summary = moscowOnly
@@ -618,6 +639,8 @@ export async function createExportJob({
     teamId,
     seasonId,
     playerIds: selectedPlayerIds,
+    tournamentIds: selectedTournamentIds,
+    stageIds: selectedStageIds,
     moscowOnly,
   });
   const existing = await MatchProtocolExportJob.findOne({
@@ -643,9 +666,10 @@ export async function createExportJob({
     teamId,
     seasonId,
     selectedExternalIds: externalIds,
-    allowedMatchIds: moscowOnly
-      ? summary.matches.map((match) => match.id)
-      : null,
+    allowedMatchIds:
+      moscowOnly || selectedTournamentIds.length || selectedStageIds.length
+        ? summary.matches.map((match) => match.id)
+        : null,
   });
   if (!matchBuckets.length) {
     throw serviceError('participating_matches_not_found', 404);

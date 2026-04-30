@@ -172,6 +172,112 @@ beforeEach(() => {
   closingItemFindAll.mockResolvedValue([]);
 });
 
+function mockFhmoSigner() {
+  userSignTypeFindAll.mockResolvedValue([
+    {
+      User: {
+        id: 'fhmo-1',
+        email: 'fhmo@example.com',
+        last_name: 'Дробот',
+        first_name: 'Алексей',
+        patronymic: 'Андреевич',
+        Roles: [
+          {
+            alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+            name: 'Ведущий специалист по судейству',
+            departmentName: 'Судейский департамент',
+            displayOrder: 1,
+          },
+        ],
+      },
+      SignType: { alias: 'SIMPLE_ELECTRONIC' },
+    },
+  ]);
+}
+
+function mockClosingSendStatuses() {
+  documentStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
+    id: `doc-status-${String(alias).toLowerCase()}`,
+  }));
+  accrualStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
+    id: `accrual-status-${String(alias).toLowerCase()}`,
+  }));
+}
+
+function buildSendAct(overrides = {}) {
+  const documentUpdate =
+    overrides.documentUpdate || jest.fn().mockResolvedValue({});
+  const actUpdate = overrides.actUpdate || jest.fn().mockResolvedValue({});
+  const status = overrides.status || 'DRAFT';
+  return {
+    id: overrides.id || 'closing-1',
+    document_id: overrides.documentId || 'doc-1',
+    status,
+    sent_at: overrides.sentAt ?? null,
+    fhmo_signer_snapshot_json: overrides.signerSnapshot ?? null,
+    get: jest.fn().mockReturnValue({
+      id: overrides.id || 'closing-1',
+      status,
+    }),
+    update: actUpdate,
+    Document: {
+      id: overrides.documentId || 'doc-1',
+      status_id: overrides.documentStatusId || 'doc-status-created',
+      update: documentUpdate,
+      DocumentStatus: {
+        alias: overrides.documentStatusAlias || 'CREATED',
+        name: 'Создан',
+      },
+    },
+  };
+}
+
+function mockClosingListResult(overrides = {}) {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  closingDocumentFindAndCountAll.mockResolvedValue({
+    rows: [
+      {
+        id: overrides.id || 'closing-1',
+        status: overrides.status || 'AWAITING_SIGNATURE',
+        sent_at: overrides.sentAt || new Date('2026-03-13T12:00:00Z'),
+        posted_at: null,
+        canceled_at: null,
+        referee_id: 'ref-closing-1',
+        totals_json: { total_amount_rub: '3100.00' },
+        customer_snapshot_json: null,
+        performer_snapshot_json: null,
+        contract_snapshot_json: null,
+        fhmo_signer_snapshot_json: null,
+        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
+        Referee: {
+          id: 'ref-closing-1',
+          email: 'judge1@example.com',
+          last_name: 'Судья',
+          first_name: 'Один',
+          patronymic: 'Тестовый',
+        },
+        Document: {
+          id: overrides.documentId || 'doc-1',
+          number: '26.03/2001',
+          name: 'Акт об оказании услуг',
+          document_date: '2026-03-13',
+          DocumentStatus: {
+            alias: overrides.documentStatusAlias || 'AWAITING_SIGNATURE',
+            name: 'Ожидает подписания',
+          },
+          File: null,
+          DocumentUserSigns: [],
+        },
+        Items: [],
+      },
+    ],
+    count: 1,
+  });
+}
+
 test('preview blocks act creation when referee address is missing', async () => {
   tournamentFindByPk.mockResolvedValue({
     id: 'tour-1',
@@ -1713,14 +1819,28 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
 
   await expect(
     closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
-  ).rejects.toThrow('smtp-or-s3 failure');
+  ).rejects.toMatchObject({
+    code: 'closing_document_pdf_failed',
+    status: 500,
+  });
 
   expect(closingDocumentFindOne.mock.calls[0]?.[0]).toEqual(
     expect.objectContaining({
       transaction: expect.any(Object),
-      lock: 'UPDATE',
+      include: expect.arrayContaining([
+        expect.objectContaining({
+          as: 'Document',
+        }),
+      ]),
+      lock: {
+        level: 'UPDATE',
+        of: expect.objectContaining({
+          findOne: closingDocumentFindOne,
+        }),
+      },
     })
   );
+  expect(closingDocumentFindOne.mock.calls[0]?.[0].lock).not.toBe('UPDATE');
   expect(documentServiceSign).toHaveBeenCalledWith(
     { id: 'fhmo-1', token_version: 1 },
     'doc-1',
@@ -1803,6 +1923,175 @@ test('send rolls act back to draft when signer-side regeneration fails', async (
     'doc-1',
     'actor-1'
   );
+});
+
+test('send keeps act awaiting signature when notification queueing fails', async () => {
+  mockFhmoSigner();
+  mockClosingSendStatuses();
+  const act = buildSendAct();
+  closingItemFindAll.mockResolvedValueOnce([
+    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
+  ]);
+  closingDocumentFindOne.mockResolvedValueOnce(act);
+  documentServiceSign.mockResolvedValue(undefined);
+  documentServiceRegenerate.mockResolvedValue(undefined);
+  documentServiceSendAwaitingNotification.mockRejectedValueOnce(
+    new Error('smtp down')
+  );
+  mockClosingListResult();
+
+  const result = await closingService.sendClosingDocument(
+    'tour-1',
+    'closing-1',
+    'actor-1'
+  );
+
+  expect(result.warnings).toEqual(['closing_document_notification_failed']);
+  expect(documentServiceSign).toHaveBeenCalledWith(
+    { id: 'fhmo-1', token_version: 1 },
+    'doc-1',
+    { notify: false }
+  );
+  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'fhmo-1');
+  expect(documentServiceSendAwaitingNotification).toHaveBeenCalledWith('doc-1');
+  expect(documentUserSignDestroy).not.toHaveBeenCalled();
+  expect(act.update).toHaveBeenCalledTimes(1);
+});
+
+test('send is idempotent for already awaiting FHMO-signed act', async () => {
+  mockFhmoSigner();
+  mockClosingSendStatuses();
+  const act = buildSendAct({
+    status: 'AWAITING_SIGNATURE',
+    documentStatusId: 'doc-status-awaiting_signature',
+    documentStatusAlias: 'AWAITING_SIGNATURE',
+  });
+  documentUserSignFindOne.mockResolvedValueOnce({ id: 'sign-fhmo' });
+  closingDocumentFindOne.mockResolvedValueOnce(act);
+  mockClosingListResult();
+
+  const result = await closingService.sendClosingDocument(
+    'tour-1',
+    'closing-1',
+    'actor-1'
+  );
+
+  expect(result.document.id).toBe('closing-1');
+  expect(documentServiceSign).not.toHaveBeenCalled();
+  expect(documentServiceRegenerate).not.toHaveBeenCalled();
+  expect(documentServiceSendAwaitingNotification).not.toHaveBeenCalled();
+  expect(act.update).not.toHaveBeenCalled();
+  expect(refereeAccrualUpdate).not.toHaveBeenCalled();
+});
+
+test('send treats unique signature conflict as idempotent FHMO signature', async () => {
+  mockFhmoSigner();
+  mockClosingSendStatuses();
+  const act = buildSendAct();
+  closingItemFindAll.mockResolvedValueOnce([
+    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
+  ]);
+  closingDocumentFindOne.mockResolvedValueOnce(act);
+  documentUserSignFindOne
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce({ id: 'sign-fhmo' });
+  const uniqueError = Object.assign(new Error('duplicate key value'), {
+    name: 'SequelizeUniqueConstraintError',
+    parent: { code: '23505' },
+  });
+  documentServiceSign.mockRejectedValueOnce(uniqueError);
+  documentServiceRegenerate.mockResolvedValue(undefined);
+  documentServiceSendAwaitingNotification.mockResolvedValue(undefined);
+  mockClosingListResult();
+
+  const result = await closingService.sendClosingDocument(
+    'tour-1',
+    'closing-1',
+    'actor-1'
+  );
+
+  expect(result.document.id).toBe('closing-1');
+  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'fhmo-1');
+  expect(documentServiceSendAwaitingNotification).toHaveBeenCalledWith('doc-1');
+  expect(documentUserSignDestroy).not.toHaveBeenCalled();
+});
+
+test('send preserves original failure when rollback also fails', async () => {
+  mockFhmoSigner();
+  mockClosingSendStatuses();
+  const act = buildSendAct();
+  closingItemFindAll.mockResolvedValueOnce([
+    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
+  ]);
+  closingDocumentFindOne.mockResolvedValueOnce(act).mockResolvedValueOnce({
+    ...act,
+    Document: {
+      ...act.Document,
+      status_id: 'doc-status-awaiting_signature',
+    },
+  });
+  documentUserSignDestroy.mockRejectedValueOnce(new Error('rollback-destroy'));
+  documentServiceSign.mockResolvedValue(undefined);
+  documentServiceRegenerate.mockRejectedValueOnce(
+    new Error('pdf renderer down')
+  );
+
+  await expect(
+    closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
+  ).rejects.toMatchObject({
+    code: 'closing_document_pdf_failed',
+    details: {
+      rollback_failed: true,
+      rollback_code: 'rollback-destroy',
+    },
+  });
+
+  expect(documentUserSignDestroy).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        document_id: 'doc-1',
+        user_id: 'fhmo-1',
+      },
+    })
+  );
+});
+
+test('send maps raw transition database errors to stable code', async () => {
+  mockFhmoSigner();
+  mockClosingSendStatuses();
+  const dbError = Object.assign(
+    new Error(
+      'FOR UPDATE cannot be applied to the nullable side of an outer join'
+    ),
+    { name: 'SequelizeDatabaseError' }
+  );
+  closingDocumentFindOne.mockRejectedValueOnce(dbError);
+
+  await expect(
+    closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
+  ).rejects.toMatchObject({
+    code: 'closing_document_transition_failed',
+    status: 500,
+  });
+
+  expect(closingDocumentFindOne.mock.calls[0]?.[0]).toEqual(
+    expect.objectContaining({
+      include: expect.arrayContaining([
+        expect.objectContaining({
+          as: 'Document',
+        }),
+      ]),
+      lock: {
+        level: 'UPDATE',
+        of: expect.objectContaining({
+          findOne: closingDocumentFindOne,
+        }),
+      },
+    })
+  );
+  expect(documentServiceSign).not.toHaveBeenCalled();
+  expect(documentServiceRegenerate).not.toHaveBeenCalled();
+  expect(documentServiceSendAwaitingNotification).not.toHaveBeenCalled();
 });
 
 test('batch send supports explicit selection of draft acts', async () => {

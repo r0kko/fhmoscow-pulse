@@ -1,6 +1,13 @@
 <script setup lang="ts">
 // @ts-nocheck
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { apiFetch } from '../api';
 import { useToast } from '../utils/toast';
@@ -32,6 +39,14 @@ const settingsEdits = ref<Record<string, any>>({});
 
 const refereeRoleGroups = ref<any[]>([]);
 const refereeEdits = ref<Record<string, any>>({});
+const iasEvents = ref<any[]>([]);
+const iasOriginalIds = ref<string[]>([]);
+const iasAvailableEvents = ref<any[]>([]);
+const iasSearch = ref('');
+const iasLoading = ref(false);
+const iasSaving = ref(false);
+const iasError = ref('');
+let iasSearchTimer: number | null = null;
 
 const mainSettings = ref({
   competition_type_id: '',
@@ -47,6 +62,7 @@ const sectionTabs = [
   { key: 'main', label: 'Основные' },
   { key: 'groups', label: 'Параметры групп' },
   { key: 'referees', label: 'Судейство' },
+  { key: 'ias', label: 'Мероприятия ИАС' },
 ];
 
 const stageOptions = computed(() => [
@@ -86,7 +102,14 @@ const hasUnsavedChanges = computed(() => {
     return true;
   if (Object.values(refereeEdits.value).some((row: any) => row?.dirty))
     return true;
+  if (iasDirty.value) return true;
   return false;
+});
+
+const iasDirty = computed(() => {
+  const current = iasEvents.value.map((event) => String(event.id)).sort();
+  const original = [...iasOriginalIds.value].sort();
+  return current.join('|') !== original.join('|');
 });
 
 function splitDurationMinutes(total: unknown): {
@@ -198,6 +221,85 @@ async function loadSettings(): Promise<void> {
     settingsError.value = error?.message || 'Ошибка загрузки настроек';
   } finally {
     settingsLoading.value = false;
+  }
+}
+
+async function loadIasEvents(): Promise<void> {
+  iasLoading.value = true;
+  iasError.value = '';
+  try {
+    const [linkedRes, availableRes] = await Promise.all([
+      apiFetch(`/tournaments/${props.tournamentId}/ias-events`),
+      apiFetch(`/tournaments/${props.tournamentId}/ias-events/available`),
+    ]);
+    iasEvents.value = linkedRes.events || [];
+    iasOriginalIds.value = iasEvents.value.map((event: any) =>
+      String(event.id)
+    );
+    iasAvailableEvents.value = availableRes.events || [];
+  } catch (error: any) {
+    iasError.value = error?.message || 'Ошибка загрузки мероприятий ИАС';
+  } finally {
+    iasLoading.value = false;
+  }
+}
+
+async function searchIasEvents(value: string): Promise<void> {
+  iasSearch.value = value;
+  if (iasSearchTimer) window.clearTimeout(iasSearchTimer);
+  iasSearchTimer = window.setTimeout(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (iasSearch.value.trim()) params.set('search', iasSearch.value.trim());
+      const res = await apiFetch(
+        `/tournaments/${props.tournamentId}/ias-events/available?${params.toString()}`
+      );
+      iasAvailableEvents.value = res.events || [];
+    } catch (error: any) {
+      iasError.value = error?.message || 'Ошибка поиска мероприятий ИАС';
+    }
+  }, 250);
+}
+
+function addIasEvent(event: any): void {
+  if (!event?.id) return;
+  if (iasEvents.value.some((item) => String(item.id) === String(event.id))) {
+    return;
+  }
+  iasEvents.value = [...iasEvents.value, event];
+}
+
+function removeIasEvent(eventId: string): void {
+  iasEvents.value = iasEvents.value.filter(
+    (event) => String(event.id) !== String(eventId)
+  );
+}
+
+async function saveIasEvents(): Promise<void> {
+  if (iasSaving.value) return;
+  iasSaving.value = true;
+  iasError.value = '';
+  try {
+    const response = await apiFetch(
+      `/tournaments/${props.tournamentId}/ias-events`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_ids: iasEvents.value.map((event) => event.id),
+        }),
+      }
+    );
+    iasEvents.value = response.events || [];
+    iasOriginalIds.value = iasEvents.value.map((event: any) =>
+      String(event.id)
+    );
+    showToast('Привязки мероприятий ИАС сохранены');
+    await searchIasEvents(iasSearch.value);
+  } catch (error: any) {
+    iasError.value = error?.message || 'Ошибка сохранения мероприятий ИАС';
+  } finally {
+    iasSaving.value = false;
   }
 }
 
@@ -326,7 +428,11 @@ watch(
 );
 
 onMounted(async () => {
-  await loadSettings();
+  await Promise.all([loadSettings(), loadIasEvents()]);
+});
+
+onBeforeUnmount(() => {
+  if (iasSearchTimer) window.clearTimeout(iasSearchTimer);
 });
 
 onBeforeRouteLeave((_to, _from, next) => {
@@ -370,6 +476,13 @@ onBeforeRouteLeave((_to, _from, next) => {
         :settings-edits="settingsEdits"
         :referee-role-groups="refereeRoleGroups"
         :referee-edits="refereeEdits"
+        :ias-events="iasEvents"
+        :ias-available-events="iasAvailableEvents"
+        :ias-search="iasSearch"
+        :ias-loading="iasLoading"
+        :ias-saving="iasSaving"
+        :ias-error="iasError"
+        :ias-dirty="iasDirty"
         @update-section="(section) => (routeState.section = section)"
         @update-stage="(stage) => (routeState.stageId = stage)"
         @update-main-field="updateMainField"
@@ -379,6 +492,10 @@ onBeforeRouteLeave((_to, _from, next) => {
         @save-group-settings="saveGroupSettings"
         @set-referee-count="setRefereeCount"
         @save-group-referees="saveGroupReferees"
+        @search-ias-events="searchIasEvents"
+        @add-ias-event="addIasEvent"
+        @remove-ias-event="removeIasEvent"
+        @save-ias-events="saveIasEvents"
       />
     </div>
   </div>

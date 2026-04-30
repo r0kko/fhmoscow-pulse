@@ -256,6 +256,36 @@ test('creates moscow-only export job only for allowed summary matches', async ()
   ]);
 });
 
+test('creates filtered export job only for selected tournament and stage matches', async () => {
+  getParticipationSummaryMock.mockResolvedValue({
+    matches: [{ id: 'match-1' }],
+    players: [{ id: 'player-1', external_player_id: 101, full_name: 'Первый' }],
+  });
+  const match1 = matchRow('match-1', 501);
+  participantFindAllMock.mockResolvedValue([
+    participantRow(match1, 101, 'Первый'),
+  ]);
+
+  await service.createExportJob({
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    playerIds: ['player-1'],
+    tournamentIds: ['tournament-1'],
+    stageIds: ['stage-1'],
+    access: { isAdmin: true },
+    actorId: 'user-1',
+  });
+
+  expect(getParticipationSummaryMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      tournamentIds: ['tournament-1'],
+      stageIds: ['stage-1'],
+    })
+  );
+  const findCall = participantFindAllMock.mock.calls[0][0];
+  expect(findCall.include[0].where.id).toEqual({ [Op.in]: ['match-1'] });
+});
+
 test('uses different fingerprints for regular and moscow-only protocol exports', async () => {
   const match1 = matchRow('match-1', 501);
   participantFindAllMock.mockResolvedValue([

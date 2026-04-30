@@ -197,10 +197,22 @@ export const ERROR_MESSAGES = {
     'Для этого матча лист назначений уже сформирован',
   document_delete_forbidden_signed_simple:
     'Нельзя перегенерировать: предыдущий лист уже подписан простой электронной подписью',
+  document_already_signed: 'Документ уже подписан',
   federation_signer_required:
     'Документ может подписать только сотрудник федерации',
   federation_signer_not_found:
     'Не найден сотрудник федерации с настроенной простой электронной подписью',
+  closing_document_send_failed: 'Не удалось отправить акт на подпись',
+  closing_document_send_invalid_status:
+    'Акт уже вышел из статуса черновика. Обновите журнал актов.',
+  closing_document_transition_failed:
+    'Не удалось перевести акт в ожидание подписи. Обновите журнал и повторите попытку.',
+  closing_document_pdf_failed:
+    'Не удалось сформировать PDF акта. Обновите журнал и повторите попытку.',
+  closing_document_storage_failed:
+    'Не удалось сохранить PDF акта в хранилище. Повторите попытку позже.',
+  closing_document_notification_failed:
+    'Акт подготовлен, но уведомление судье не удалось поставить в очередь.',
   invalid_clear_flag: 'Некорректный параметр отмены назначения',
   invalid_draft_version: 'Данные назначения устарели, обновите страницу',
   invalid_allow_incomplete: 'Некорректный параметр публикации',

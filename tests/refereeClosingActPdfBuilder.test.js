@@ -114,12 +114,16 @@ class FakePdfDocument {
   }
 
   widthOfString(text) {
-    return String(text || '').length * ((this._fontSize || 10) * 0.36);
+    return [...String(text || '')].reduce((sum, char) => {
+      if (/\s/.test(char)) return sum + (this._fontSize || 10) * 0.28;
+      if (/[А-Яа-яЁё]/.test(char)) return sum + (this._fontSize || 10) * 0.58;
+      return sum + (this._fontSize || 10) * 0.36;
+    }, 0);
   }
 
   heightOfString(text, options = {}) {
     const width = Math.max(40, Number(options?.width || 120));
-    const charWidth = Math.max(3, (this._fontSize || 10) * 0.34);
+    const charWidth = Math.max(3, (this._fontSize || 10) * 0.52);
     const charsPerLine = Math.max(1, Math.floor(width / charWidth));
     const lines = String(text || '')
       .split('\n')
@@ -127,14 +131,17 @@ class FakePdfDocument {
         (acc, line) => acc + Math.max(1, Math.ceil(line.length / charsPerLine)),
         0
       );
-    return lines * this.currentLineHeight();
+    const lineGap = Number(options?.lineGap || 0);
+    return lines * this.currentLineHeight() + Math.max(0, lines - 1) * lineGap;
   }
 
   text(value, a, b, c) {
     let text = value;
+    let x = null;
     let y = null;
     let options = {};
     if (typeof a === 'number' && typeof b === 'number') {
+      x = a;
       y = b;
       options = c || {};
     } else if (typeof a === 'object' && a) {
@@ -148,6 +155,7 @@ class FakePdfDocument {
     textCalls.push(String(text || ''));
     textRecords.push({
       text: String(text || ''),
+      x,
       y,
       options,
       fontSize: this._fontSize,
@@ -522,7 +530,7 @@ test('closing act builder renders referee signature in compact lane without extr
   );
 });
 
-test('closing act builder shrinks ampula font before splitting long role words', async () => {
+test('closing act builder wraps ampula without splitting normal role words', async () => {
   jest.unstable_mockModule('pdfkit', () => ({
     __esModule: true,
     default: FakePdfDocument,
@@ -574,10 +582,84 @@ test('closing act builder shrinks ampula font before splitting long role words',
     }
   );
 
-  const roleRecord = textRecords.find(
-    (entry) => entry.text === 'Судья при\nоштрафованных'
+  const firstRoleLine = textRecords.find((entry) => entry.text === 'Судья при');
+  const secondRoleLine = textRecords.find(
+    (entry) => entry.text === 'оштрафованных'
   );
-  expect(roleRecord).toBeDefined();
-  expect(roleRecord?.fontSize).toBeLessThanOrEqual(9);
+  expect(firstRoleLine).toBeDefined();
+  expect(secondRoleLine).toBeDefined();
+  expect(secondRoleLine?.x).toBe(firstRoleLine?.x);
+  expect(
+    Number(secondRoleLine?.y) - Number(firstRoleLine?.y)
+  ).toBeLessThanOrEqual(12);
+  expect(secondRoleLine?.fontSize).toBeLessThanOrEqual(9);
   expect(textCalls.join('\n')).not.toContain('ош\nтрафованн\nых');
+});
+
+test('closing act builder keeps advertising pause coordinator role compact', async () => {
+  jest.unstable_mockModule('pdfkit', () => ({
+    __esModule: true,
+    default: FakePdfDocument,
+  }));
+  jest.unstable_mockModule('../src/utils/pdf.js', () => ({
+    __esModule: true,
+    applyFonts: () => ({ regular: 'regular', bold: 'bold' }),
+    applyFirstPageHeader: () => {},
+    applyFooter: async () => {},
+    applyESignStamp: async () => {},
+  }));
+
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
+
+  await buildRefereeClosingActPdf(
+    {
+      customer: { name: 'ФХМ', inn: '7708046206', address: 'Москва' },
+      performer: {
+        full_name: 'Тестовый Судья',
+        inn: '123456789012',
+        address: 'Москва',
+      },
+      contract: { number: '26.03/1024', document_date: '2026-03-12' },
+      totals: {
+        total_amount_rub: '5800.00',
+        total_amount_words: 'Пять тысяч восемьсот рублей 00 копеек',
+        vat_label: 'Без налога (НДС)',
+        items_count: 1,
+      },
+      items: [
+        {
+          line_no: 1,
+          service_datetime: '01.03.2026, 12:00',
+          match_label: 'ХК Молния - ХК Иремель',
+          competition_name: 'Кубок Москвы',
+          role_name: 'Судья координатор рекламной паузы',
+          tariff_label: 'RPOT',
+          amount_rub: '5800.00',
+          total_amount_rub: '5800.00',
+        },
+      ],
+    },
+    {
+      number: '26.03/3002',
+      documentDate: '2026-03-13',
+      docId: 'doc-role-coordinator',
+      signatures: [],
+    }
+  );
+
+  const roleLines = textRecords.filter((entry) =>
+    ['Судья', 'координатор', 'рекламной паузы'].includes(entry.text)
+  );
+  expect(roleLines.map((entry) => entry.text)).toEqual([
+    'Судья',
+    'координатор',
+    'рекламной паузы',
+  ]);
+  expect(roleLines[2]?.x).toBe(roleLines[1]?.x);
+  expect(Number(roleLines[2]?.y) - Number(roleLines[1]?.y)).toBeLessThanOrEqual(
+    12
+  );
+  expect(roleLines[0]?.fontSize).toBeGreaterThanOrEqual(8.8);
+  expect(textCalls.join('\n')).not.toContain('координатор\n\nрекламной');
 });

@@ -13,6 +13,21 @@ function buildAttachmentDisposition(filename) {
   return `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
+function filterParams(req) {
+  return {
+    tournamentIds:
+      req.body?.tournament_ids ||
+      req.query.tournament_ids ||
+      req.body?.tournament_id ||
+      req.query.tournament_id,
+    stageIds:
+      req.body?.stage_ids ||
+      req.query.stage_ids ||
+      req.body?.stage_id ||
+      req.query.stage_id,
+  };
+}
+
 export default {
   async create(req, res) {
     try {
@@ -60,6 +75,7 @@ export default {
         await teamParticipationSummaryService.getParticipationSummary({
           teamId: req.params.id,
           seasonId: req.query.season_id,
+          ...filterParams(req),
           access: req.access,
         });
       return res.json(data);
@@ -75,6 +91,7 @@ export default {
           {
             teamId: req.params.id,
             seasonId: req.query.season_id,
+            ...filterParams(req),
             access: req.access,
           }
         );
@@ -91,6 +108,7 @@ export default {
           teamId: req.params.id,
           seasonId: req.body?.season_id || req.query.season_id,
           playerIds: req.body?.player_ids || req.query.player_ids,
+          ...filterParams(req),
           access: req.access,
           moscowOnly:
             req.body?.moscow_only === true ||
@@ -119,6 +137,7 @@ export default {
             teamId: req.params.id,
             seasonId: req.body?.season_id || req.query.season_id,
             playerIds: req.body?.player_ids || req.query.player_ids,
+            ...filterParams(req),
             access: req.access,
             meta: {
               registry_number: req.body?.registry_number,
@@ -149,6 +168,7 @@ export default {
             seasonId: req.body?.season_id || req.query.season_id,
             playerIds: req.body?.player_ids || req.query.player_ids,
             iasEventId: req.body?.ias_event_id || req.query.ias_event_id,
+            ...filterParams(req),
             eventDateStart:
               req.body?.event_date_start || req.query.event_date_start,
             eventDateEnd: req.body?.event_date_end || req.query.event_date_end,
@@ -172,6 +192,7 @@ export default {
         teamId: req.params.id,
         seasonId: req.body?.season_id || req.query.season_id,
         playerIds: req.body?.player_ids || req.query.player_ids,
+        ...filterParams(req),
         moscowOnly:
           req.body?.moscow_only === true ||
           req.body?.moscow_only === 'true' ||

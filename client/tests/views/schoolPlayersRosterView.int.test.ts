@@ -92,6 +92,14 @@ type SummaryPlayer = {
 
 type ParticipationSummaryFixture = {
   team_club_is_moscow: boolean;
+  filters?: {
+    available_tournaments: Array<{ id: string; name: string }>;
+    available_stages: Array<{
+      id: string;
+      name: string;
+      tournament_id: string;
+    }>;
+  };
   matches: SummaryMatch[];
   players: SummaryPlayer[];
 };
@@ -99,6 +107,12 @@ type ParticipationSummaryFixture = {
 function defaultSummary(): ParticipationSummaryFixture {
   return {
     team_club_is_moscow: true,
+    filters: {
+      available_tournaments: [{ id: 'tournament-1', name: 'Турнир 1' }],
+      available_stages: [
+        { id: 'stage-1', name: 'Этап 1', tournament_id: 'tournament-1' },
+      ],
+    },
     matches: [
       {
         id: 'match-1',
@@ -131,6 +145,12 @@ function defaultSummary(): ParticipationSummaryFixture {
 function mixedMoscowSummary(): ParticipationSummaryFixture {
   return {
     team_club_is_moscow: true,
+    filters: {
+      available_tournaments: [{ id: 'tournament-1', name: 'Турнир 1' }],
+      available_stages: [
+        { id: 'stage-1', name: 'Этап 1', tournament_id: 'tournament-1' },
+      ],
+    },
     matches: [
       {
         id: 'match-1',
@@ -423,6 +443,7 @@ describe('SchoolPlayersRoster view', () => {
         body: JSON.stringify({
           season_id: 'season-1',
           player_ids: ['player-1'],
+          tournament_ids: ['tournament-1'],
           ias_event_id: 'event-1',
           event_date_start: '2026-01-06',
           event_date_end: '2026-01-13',
@@ -549,6 +570,7 @@ describe('SchoolPlayersRoster view', () => {
         body: JSON.stringify({
           season_id: 'season-1',
           player_ids: ['player-1'],
+          tournament_ids: ['tournament-1'],
           ias_event_id: 'event-1',
           event_date_start: '2026-02-01',
           event_date_end: '2026-02-10',
@@ -593,6 +615,7 @@ describe('SchoolPlayersRoster view', () => {
         body: JSON.stringify({
           season_id: 'season-1',
           player_ids: ['player-1'],
+          tournament_ids: ['tournament-1'],
           ias_event_id: 'event-1',
           event_date_start: '2026-01-06',
           event_date_end: '2026-01-13',

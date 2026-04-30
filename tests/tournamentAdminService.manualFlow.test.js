@@ -14,6 +14,10 @@ const matchFindAndCountAllMock = jest.fn();
 const matchFindAllMock = jest.fn();
 const gameStatusFindOneMock = jest.fn();
 const groundFindByPkMock = jest.fn();
+const iasEventFindAllMock = jest.fn();
+const iasEventUpdateMock = jest.fn();
+const tournamentIasEventDestroyMock = jest.fn();
+const tournamentIasEventBulkCreateMock = jest.fn();
 
 beforeEach(() => {
   tournamentFindByPkMock.mockReset();
@@ -30,6 +34,10 @@ beforeEach(() => {
   matchFindAllMock.mockReset();
   gameStatusFindOneMock.mockReset();
   groundFindByPkMock.mockReset();
+  iasEventFindAllMock.mockReset();
+  iasEventUpdateMock.mockReset();
+  tournamentIasEventDestroyMock.mockReset();
+  tournamentIasEventBulkCreateMock.mockReset();
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -72,6 +80,11 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   },
   GameStatus: {
     findOne: gameStatusFindOneMock,
+  },
+  IasEvent: { findAll: iasEventFindAllMock, update: iasEventUpdateMock },
+  TournamentIasEvent: {
+    destroy: tournamentIasEventDestroyMock,
+    bulkCreate: tournamentIasEventBulkCreateMock,
   },
 }));
 

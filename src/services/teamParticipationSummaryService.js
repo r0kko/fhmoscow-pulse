@@ -14,7 +14,9 @@ import {
   Player,
   Season,
   SignType,
+  Stage,
   Team,
+  Tournament,
 } from '../models/index.js';
 
 import fileService from './fileService.js';
@@ -85,6 +87,20 @@ function normalizePlayerIds(playerIds) {
     ? playerIds
     : String(playerIds).split(',');
   return raw.map((id) => String(id).trim()).filter(Boolean);
+}
+
+function normalizeFilterIds(value) {
+  if (!value) return [];
+  const raw = Array.isArray(value) ? value : String(value).split(',');
+  return [...new Set(raw.map((id) => String(id).trim()).filter(Boolean))];
+}
+
+function requireSingleTournament(tournamentIds) {
+  const ids = normalizeFilterIds(tournamentIds);
+  if (ids.length !== 1) {
+    throw serviceError('participation_summary_single_tournament_required', 422);
+  }
+  return ids[0];
 }
 
 function moscowDateKey(date = new Date()) {
@@ -208,6 +224,10 @@ function mapMatch(match, snapshotMatchIds) {
   return {
     id: match.id,
     date_start: match.date_start,
+    tournament_id: match.tournament_id || null,
+    tournament_name: match.Tournament?.name || null,
+    stage_id: match.stage_id || null,
+    stage_name: match.Stage?.name || null,
     home_team_name: homeTeamName,
     away_team_name: awayTeamName,
     label: [dateLabel, teamsLabel].filter(Boolean).join('; '),
@@ -215,6 +235,51 @@ function mapMatch(match, snapshotMatchIds) {
     home_club_is_moscow: Boolean(match.HomeTeam?.Club?.is_moscow),
     away_club_is_moscow: Boolean(match.AwayTeam?.Club?.is_moscow),
   };
+}
+
+function buildAvailableFilters(matches) {
+  const tournaments = new Map();
+  const stages = new Map();
+  for (const match of matches) {
+    if (match.tournament_id) {
+      tournaments.set(String(match.tournament_id), {
+        id: match.tournament_id,
+        name: match.Tournament?.name || 'Турнир без названия',
+      });
+    }
+    if (match.stage_id) {
+      stages.set(String(match.stage_id), {
+        id: match.stage_id,
+        name: match.Stage?.name || 'Этап без названия',
+        tournament_id: match.tournament_id || null,
+      });
+    }
+  }
+  return {
+    available_tournaments: [...tournaments.values()].sort((a, b) =>
+      String(a.name || '').localeCompare(String(b.name || ''), 'ru')
+    ),
+    available_stages: [...stages.values()].sort((a, b) =>
+      String(a.name || '').localeCompare(String(b.name || ''), 'ru')
+    ),
+  };
+}
+
+function filterMatchesByScope(matches, tournamentIds, stageIds) {
+  const tournamentSet = new Set(normalizeFilterIds(tournamentIds));
+  const stageSet = new Set(normalizeFilterIds(stageIds));
+  return matches.filter((match) => {
+    if (
+      tournamentSet.size &&
+      !tournamentSet.has(String(match.tournament_id || ''))
+    ) {
+      return false;
+    }
+    if (stageSet.size && !stageSet.has(String(match.stage_id || ''))) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function filterSummaryForMoscowOnly(summary) {
@@ -237,7 +302,13 @@ export function applyMoscowOnlyFilter(summary) {
   return filterSummaryForMoscowOnly(summary);
 }
 
-export async function getParticipationSummary({ teamId, seasonId, access }) {
+export async function getParticipationSummary({
+  teamId,
+  seasonId,
+  tournamentIds,
+  stageIds,
+  access,
+}) {
   if (!teamId) throw serviceError('team_required', 400);
   if (!seasonId) throw serviceError('season_required', 400);
   assertTeamAccess(teamId, access);
@@ -254,13 +325,22 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
   ]);
   if (!team) throw serviceError('team_not_found', 404);
 
-  const matches = await Match.findAll({
-    attributes: ['id', 'date_start', 'team1_id', 'team2_id'],
+  const allMatches = await Match.findAll({
+    attributes: [
+      'id',
+      'date_start',
+      'team1_id',
+      'team2_id',
+      'tournament_id',
+      'stage_id',
+    ],
     where: {
       season_id: seasonId,
       [Op.or]: [{ team1_id: teamId }, { team2_id: teamId }],
     },
     include: [
+      { model: Tournament, attributes: ['id', 'name'], required: false },
+      { model: Stage, attributes: ['id', 'name'], required: false },
       {
         model: Team,
         as: 'HomeTeam',
@@ -282,6 +362,8 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
     ],
   });
 
+  const filters = buildAvailableFilters(allMatches);
+  const matches = filterMatchesByScope(allMatches, tournamentIds, stageIds);
   const matchIds = matches.map((match) => match.id);
   if (!matchIds.length) {
     return {
@@ -290,6 +372,7 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
       team_club_is_moscow: Boolean(team.Club?.is_moscow),
       season_id: seasonId,
       season_name: season?.name || null,
+      filters,
       matches: [],
       players: [],
     };
@@ -353,6 +436,7 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
     team_club_is_moscow: Boolean(team.Club?.is_moscow),
     season_id: seasonId,
     season_name: season?.name || null,
+    filters,
     matches: matchPayload,
     players,
   };
@@ -361,6 +445,7 @@ export async function getParticipationSummary({ teamId, seasonId, access }) {
 export async function listParticipationSummaryIasEvents({
   teamId,
   seasonId,
+  tournamentIds,
   access,
 }) {
   if (!teamId) throw serviceError('team_required', 400);
@@ -376,9 +461,20 @@ export async function listParticipationSummaryIasEvents({
   ]);
   if (!team) throw serviceError('team_not_found', 404);
   if (!season) throw serviceError('season_not_found', 404);
+  const tournamentId = requireSingleTournament(tournamentIds);
 
   const events = await IasEvent.findAll({
     where: { is_active: true },
+    include: [
+      {
+        model: Tournament,
+        as: 'Tournaments',
+        attributes: [],
+        through: { attributes: [] },
+        where: { id: tournamentId },
+        required: true,
+      },
+    ],
     order: [
       ['date_start', 'DESC'],
       ['registry_number', 'ASC'],
@@ -394,6 +490,8 @@ export async function exportParticipationSummaryXlsx({
   seasonId,
   access,
   playerIds,
+  tournamentIds,
+  stageIds,
   moscowOnly = false,
 }) {
   const selectedIds = normalizePlayerIds(playerIds);
@@ -402,6 +500,8 @@ export async function exportParticipationSummaryXlsx({
   const baseSummary = await getParticipationSummary({
     teamId,
     seasonId,
+    tournamentIds,
+    stageIds,
     access,
   });
   const summary = moscowOnly
@@ -523,13 +623,21 @@ export async function exportParticipationSummarySignedPdf({
   seasonId,
   access,
   playerIds,
+  tournamentIds,
+  stageIds,
   meta,
 }) {
   const selectedIds = normalizePlayerIds(playerIds);
   if (!selectedIds.length) throw serviceError('players_required', 400);
   const signedMeta = validateSignedPdfMeta(meta);
 
-  const summary = await getParticipationSummary({ teamId, seasonId, access });
+  const summary = await getParticipationSummary({
+    teamId,
+    seasonId,
+    tournamentIds,
+    stageIds,
+    access,
+  });
   const selectedIdSet = new Set(selectedIds);
   const players = summary.players.filter((player) =>
     selectedIdSet.has(String(player.id))
@@ -560,6 +668,8 @@ export async function createParticipationSummarySignedDocument({
   access,
   playerIds,
   iasEventId,
+  tournamentIds,
+  stageIds,
   eventDateStart,
   eventDateEnd,
   moscowOnly = false,
@@ -569,10 +679,13 @@ export async function createParticipationSummarySignedDocument({
   const selectedIds = normalizePlayerIds(playerIds);
   if (!selectedIds.length) throw serviceError('players_required', 400);
   if (!iasEventId) throw serviceError('ias_event_required', 400);
+  const tournamentId = requireSingleTournament(tournamentIds);
 
   const baseSummary = await getParticipationSummary({
     teamId,
     seasonId,
+    tournamentIds,
+    stageIds,
     access,
   });
   const summary = moscowOnly
@@ -588,6 +701,16 @@ export async function createParticipationSummarySignedDocument({
     [
       IasEvent.findOne({
         where: { id: iasEventId, is_active: true },
+        include: [
+          {
+            model: Tournament,
+            as: 'Tournaments',
+            attributes: [],
+            through: { attributes: [] },
+            where: { id: tournamentId },
+            required: true,
+          },
+        ],
       }),
       DocumentType.findOne({
         where: { alias: 'TEAM_PARTICIPATION_SUMMARY_EXTRACT' },
@@ -667,6 +790,8 @@ export async function createParticipationSummarySignedDocument({
               team_name: summary.team_name || null,
               season_id: seasonId,
               season_name: summary.season_name || null,
+              tournament_id: tournamentId,
+              stage_ids: normalizeFilterIds(stageIds),
               ias_event_id: event.id,
               ias_registry_number: event.registry_number,
               event_date_start: eventDates.event_date_start,

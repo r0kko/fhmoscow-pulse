@@ -9,6 +9,7 @@ import {
   findOrganizationsByInn,
   type OrganizationSuggestion,
 } from '../../dadata';
+import { translateError } from '../../errors';
 import { documentStatusBadgeClass } from '../../utils/documentStatus';
 import { useToast } from '../../utils/toast';
 
@@ -180,6 +181,11 @@ interface ClosingListResponse {
   summary?: {
     sendable_total?: number;
   } | null;
+}
+
+interface SendClosingDocumentResponse {
+  document?: ClosingDocumentRow;
+  warnings?: string[];
 }
 
 const props = defineProps<{
@@ -429,6 +435,10 @@ function statusLabel(status: string) {
     SIGNED: 'Подписан',
   };
   return labels[String(status || '')] || status || '—';
+}
+
+function closingSendFailureLabel(code: string | null | undefined) {
+  return translateError(code) || code || 'Неизвестная ошибка';
 }
 
 function snapshotTitle(
@@ -761,15 +771,24 @@ async function createDocuments() {
 }
 
 async function sendDocument(id: string) {
+  if (actionLoading.value || bulkSendLoading.value) return;
   actionLoading.value = `send:${id}`;
+  documentsError.value = '';
   try {
-    await apiFetch(
+    const response = (await apiFetch(
       `/tournaments/${props.tournamentId}/referee-closing-documents/${id}/send`,
       {
         method: 'POST',
       }
-    );
-    showToast('Акт отправлен на подпись');
+    )) as SendClosingDocumentResponse;
+    if (response.warnings?.includes('closing_document_notification_failed')) {
+      showToast(
+        closingSendFailureLabel('closing_document_notification_failed'),
+        'warning'
+      );
+    } else {
+      showToast('Акт отправлен на подпись');
+    }
     selectedSendDocumentIds.value = selectedSendDocumentIds.value.filter(
       (item) => item !== id
     );
@@ -816,6 +835,7 @@ function selectAllSendFiltered() {
 }
 
 async function sendSelectedDocuments() {
+  if (bulkSendLoading.value || actionLoading.value) return;
   if (!selectedSendSummary.value.count) {
     documentsError.value = 'Выберите хотя бы один черновик акта';
     return;
@@ -846,11 +866,25 @@ async function sendSelectedDocuments() {
           : `Отправлено актов: ${sentTotal}`
       );
     }
+    let partialFailureMessage = '';
     if (failedTotal) {
-      documentsError.value = `Не удалось отправить ${failedTotal} ${failedTotal === 1 ? 'акт' : 'акта(ов)'}. Обновите журнал и повторите попытку для оставшихся черновиков.`;
+      const failureLabels = [
+        ...new Set(
+          (response.failures || []).map((item) =>
+            closingSendFailureLabel(item.code)
+          )
+        ),
+      ];
+      const reason = failureLabels.length
+        ? ` Причина: ${failureLabels.join('; ')}.`
+        : '';
+      partialFailureMessage = `Не удалось отправить ${failedTotal} ${failedTotal === 1 ? 'акт' : 'акта(ов)'}.${reason} Обновите журнал и повторите попытку для оставшихся черновиков.`;
     }
     clearSendSelection();
     await Promise.all([loadAccruals(), loadDocuments()]);
+    if (partialFailureMessage) {
+      documentsError.value = partialFailureMessage;
+    }
   } catch (err: any) {
     documentsError.value =
       err?.message || 'Не удалось выполнить массовую отправку актов';
@@ -1525,6 +1559,7 @@ onMounted(async () => {
                 v-if="canSelectAllSendFiltered"
                 type="button"
                 class="btn btn-outline-brand btn-sm"
+                :disabled="bulkSendLoading || actionLoading !== ''"
                 @click="selectAllSendFiltered"
               >
                 Выбрать все черновики ({{ sendableDocumentsTotal }})
@@ -1539,6 +1574,7 @@ onMounted(async () => {
                 v-if="selectedSendSummary.count"
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
+                :disabled="bulkSendLoading || actionLoading !== ''"
                 @click="clearSendSelection"
               >
                 Снять выбор
@@ -1547,7 +1583,7 @@ onMounted(async () => {
                 v-if="selectedSendSummary.count"
                 type="button"
                 class="btn btn-brand btn-sm"
-                :disabled="bulkSendLoading"
+                :disabled="bulkSendLoading || actionLoading !== ''"
                 @click="sendSelectedDocuments"
               >
                 Подписать и отправить выбранные
@@ -1570,7 +1606,9 @@ onMounted(async () => {
                           :checked="allSendableDocumentsSelected"
                           :disabled="
                             sendSelectionMode === 'filtered' ||
-                            !sendableDocumentsOnPage.length
+                            !sendableDocumentsOnPage.length ||
+                            bulkSendLoading ||
+                            actionLoading !== ''
                           "
                           aria-label="Выбрать все черновики актов на странице"
                           @change="toggleSelectAllSendableOnPage"
@@ -1605,7 +1643,9 @@ onMounted(async () => {
                           "
                           :disabled="
                             item.status !== 'DRAFT' ||
-                            sendSelectionMode === 'filtered'
+                            sendSelectionMode === 'filtered' ||
+                            bulkSendLoading ||
+                            actionLoading !== ''
                           "
                           :aria-label="`Выбрать акт ${item.number || item.id}`"
                           @change="toggleSendSelection(item.id)"
@@ -1814,7 +1854,7 @@ onMounted(async () => {
                     v-if="selectedDocument.status === 'DRAFT'"
                     type="button"
                     class="btn btn-brand btn-sm"
-                    :disabled="actionLoading === `send:${selectedDocument.id}`"
+                    :disabled="bulkSendLoading || actionLoading !== ''"
                     @click="sendDocument(selectedDocument.id)"
                   >
                     Отправить на подпись
@@ -1863,6 +1903,7 @@ onMounted(async () => {
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
+            :disabled="bulkSendLoading || actionLoading !== ''"
             @click="clearSendSelection"
           >
             Снять выбор
@@ -1870,7 +1911,7 @@ onMounted(async () => {
           <button
             type="button"
             class="btn btn-brand btn-sm"
-            :disabled="bulkSendLoading"
+            :disabled="bulkSendLoading || actionLoading !== ''"
             @click="sendSelectedDocuments"
           >
             Подписать и отправить

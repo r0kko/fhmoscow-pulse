@@ -43,6 +43,21 @@ export default {
     };
   },
 
+  toPublicIasEvent(event) {
+    if (!event) return null;
+    const plain =
+      typeof event.get === 'function' ? event.get({ plain: true }) : event;
+    return {
+      id: plain.id,
+      registry_number: plain.registry_number,
+      name: plain.name,
+      date_start: plain.date_start,
+      date_end: plain.date_end,
+      source: plain.source || null,
+      is_active: plain.is_active === true,
+    };
+  },
+
   toPublicTournament(t) {
     if (!t) return null;
     const out = {

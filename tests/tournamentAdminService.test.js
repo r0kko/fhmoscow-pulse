@@ -9,6 +9,10 @@ const ttFindAllMock = jest.fn();
 const ttFindAndCountAllMock = jest.fn();
 const competitionFindAllMock = jest.fn();
 const competitionFindByPkMock = jest.fn();
+const iasEventFindAllMock = jest.fn();
+const tournamentIasEventDestroyMock = jest.fn();
+const tournamentIasEventBulkCreateMock = jest.fn();
+const transactionMock = jest.fn();
 
 beforeEach(() => {
   tournamentFindAndCountAllMock.mockReset();
@@ -20,6 +24,12 @@ beforeEach(() => {
   ttFindAndCountAllMock.mockReset();
   competitionFindAllMock.mockReset();
   competitionFindByPkMock.mockReset();
+  iasEventFindAllMock.mockReset();
+  tournamentIasEventDestroyMock.mockReset();
+  tournamentIasEventBulkCreateMock.mockReset();
+  transactionMock
+    .mockReset()
+    .mockImplementation(async (callback) => callback({}));
 });
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
@@ -51,6 +61,15 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Ground: {},
   Match: { findAndCountAll: jest.fn(), create: jest.fn(), findByPk: jest.fn() },
   GameStatus: { findOne: jest.fn() },
+  IasEvent: { findAll: iasEventFindAllMock },
+  TournamentIasEvent: {
+    destroy: tournamentIasEventDestroyMock,
+    bulkCreate: tournamentIasEventBulkCreateMock,
+  },
+}));
+
+jest.unstable_mockModule('../src/config/database.js', () => ({
+  default: { transaction: transactionMock },
 }));
 
 const { default: svc } =
@@ -171,4 +190,73 @@ test('updateTournament applies competition settings', async () => {
     },
     { returning: false }
   );
+});
+
+test('lists tournament IAS events and available active events', async () => {
+  tournamentFindByPkMock.mockResolvedValue({ id: 't1' });
+  iasEventFindAllMock.mockResolvedValue([{ id: 'event-1' }]);
+
+  const linked = await svc.listTournamentIasEvents('t1');
+  expect(linked).toEqual([{ id: 'event-1' }]);
+  expect(iasEventFindAllMock.mock.calls[0][0]).toEqual(
+    expect.objectContaining({
+      where: { is_active: true },
+      include: [
+        expect.objectContaining({
+          as: 'Tournaments',
+          where: { id: 't1' },
+          required: true,
+        }),
+      ],
+    })
+  );
+
+  await svc.listAvailableIasEvents({ tournamentId: 't1', search: '102' });
+  expect(iasEventFindAllMock.mock.calls[1][0].where.is_active).toBe(true);
+  expect(iasEventFindAllMock.mock.calls[1][0].where).not.toHaveProperty(
+    'tournament_id'
+  );
+});
+
+test('replaces tournament IAS event bindings without touching other tournaments', async () => {
+  tournamentFindByPkMock.mockResolvedValue({ id: 't1' });
+  iasEventFindAllMock
+    .mockResolvedValueOnce([{ id: 'event-1' }])
+    .mockResolvedValueOnce([{ id: 'event-1' }]);
+
+  const events = await svc.replaceTournamentIasEvents(
+    't1',
+    ['event-1'],
+    'admin-1'
+  );
+
+  expect(events).toEqual([{ id: 'event-1' }]);
+  expect(tournamentIasEventDestroyMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { tournament_id: 't1' },
+    })
+  );
+  expect(tournamentIasEventBulkCreateMock).toHaveBeenCalledWith(
+    [
+      {
+        tournament_id: 't1',
+        ias_event_id: 'event-1',
+        created_by: 'admin-1',
+        updated_by: 'admin-1',
+      },
+    ],
+    expect.any(Object)
+  );
+});
+
+test('allows IAS event already linked to another tournament', async () => {
+  tournamentFindByPkMock.mockResolvedValue({ id: 't1' });
+  iasEventFindAllMock
+    .mockResolvedValueOnce([{ id: 'event-1', tournament_id: 'another' }])
+    .mockResolvedValueOnce([{ id: 'event-1', tournament_id: 'another' }]);
+
+  await expect(
+    svc.replaceTournamentIasEvents('t1', ['event-1'], 'admin-1')
+  ).resolves.toEqual([{ id: 'event-1', tournament_id: 'another' }]);
+  expect(tournamentIasEventBulkCreateMock).toHaveBeenCalled();
 });
