@@ -2,6 +2,8 @@ import { jest, expect, test, beforeEach } from '@jest/globals';
 
 const createMock = jest.fn();
 const findByPkMock = jest.fn();
+const findAllMock = jest.fn();
+const docCountMock = jest.fn();
 const findOneStatusMock = jest.fn();
 const countMock = jest.fn();
 const findOneSignMock = jest.fn();
@@ -18,7 +20,12 @@ const removeFileMock = jest.fn();
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
-  Document: { create: createMock, findByPk: findByPkMock },
+  Document: {
+    create: createMock,
+    findByPk: findByPkMock,
+    findAll: findAllMock,
+    count: docCountMock,
+  },
   DocumentStatus: { findOne: findOneStatusMock },
   DocumentUserSign: {
     count: countMock,
@@ -52,6 +59,14 @@ jest.unstable_mockModule('../src/services/emailService.js', () => ({
   },
 }));
 
+const sendCodeMock = jest.fn();
+
+jest.unstable_mockModule('../src/services/emailVerificationService.js', () => ({
+  __esModule: true,
+  default: { sendCode: sendCodeMock },
+  sendCode: sendCodeMock,
+}));
+
 jest.unstable_mockModule('../src/services/fileService.js', () => ({
   __esModule: true,
   default: {
@@ -67,6 +82,8 @@ const { default: service } = await import('../src/services/documentService.js');
 beforeEach(() => {
   createMock.mockReset();
   findByPkMock.mockReset();
+  findAllMock.mockReset();
+  docCountMock.mockReset();
   findOneStatusMock.mockReset();
   countMock.mockReset();
   findOneSignMock.mockReset();
@@ -80,6 +97,7 @@ beforeEach(() => {
   sendCreatedEmailMock.mockReset();
   sendSignedEmailMock.mockReset();
   sendAwaitingEmailMock.mockReset();
+  sendCodeMock.mockReset();
   findOneStatusMock.mockImplementation(({ where: { alias } }) =>
     Promise.resolve({ id: alias, name: alias, alias })
   );
@@ -91,6 +109,129 @@ beforeEach(() => {
     patronymic: 'P',
   });
   findDocTypeByPkMock.mockResolvedValue({ alias: 'OTHER' });
+});
+
+test('countPendingSimpleSignatures counts awaiting simple electronic documents', async () => {
+  docCountMock.mockResolvedValueOnce(3);
+  await expect(service.countPendingSimpleSignatures('u1')).resolves.toBe(3);
+  expect(docCountMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { recipient_id: 'u1' },
+      include: expect.arrayContaining([
+        expect.objectContaining({
+          required: true,
+          where: { alias: 'SIMPLE_ELECTRONIC' },
+        }),
+        expect.objectContaining({
+          required: true,
+          where: { alias: 'AWAITING_SIGNATURE' },
+        }),
+      ]),
+    })
+  );
+});
+
+test('listPendingSimpleSignatures returns mapped pending documents', async () => {
+  getDownloadUrlMock.mockResolvedValueOnce('https://cdn/doc.pdf');
+  findAllMock.mockResolvedValueOnce([
+    {
+      id: 'd1',
+      number: '26.04/1',
+      name: 'Документ',
+      description: null,
+      document_date: new Date('2026-04-01T00:00:00Z'),
+      DocumentType: {
+        name: 'Тип',
+        alias: 'TYPE',
+        generated: true,
+      },
+      SignType: { name: 'ПЭП', alias: 'SIMPLE_ELECTRONIC' },
+      DocumentStatus: {
+        name: 'Ожидает подписи',
+        alias: 'AWAITING_SIGNATURE',
+      },
+      File: { id: 'f1', key: 'documents/doc.pdf' },
+    },
+  ]);
+
+  const docs = await service.listPendingSimpleSignatures('u1');
+
+  expect(findAllMock).toHaveBeenCalledWith(
+    expect.objectContaining({ where: { recipient_id: 'u1' } })
+  );
+  expect(docs).toEqual([
+    expect.objectContaining({
+      id: 'd1',
+      file: { id: 'f1', url: 'https://cdn/doc.pdf' },
+      signType: { name: 'ПЭП', alias: 'SIMPLE_ELECTRONIC' },
+      status: { name: 'Ожидает подписи', alias: 'AWAITING_SIGNATURE' },
+    }),
+  ]);
+});
+
+test('sendPendingSimpleSignatureCode rejects when nothing awaits signature', async () => {
+  docCountMock.mockResolvedValueOnce(0);
+  await expect(
+    service.sendPendingSimpleSignatureCode({ id: 'u1' })
+  ).rejects.toMatchObject({
+    code: 'pending_signature_documents_not_found',
+    status: 404,
+  });
+  expect(sendCodeMock).not.toHaveBeenCalled();
+});
+
+test('sendPendingSimpleSignatureCode sends one batch code', async () => {
+  docCountMock.mockResolvedValueOnce(2);
+  await service.sendPendingSimpleSignatureCode({ id: 'u1', email: 'u@mail' });
+  expect(sendCodeMock).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'u1' }),
+    'doc-sign',
+    { document: { name: 'Пакет документов к подписанию (2)' } }
+  );
+});
+
+test('previewPendingSimpleSignature renders awaiting generated simple document', async () => {
+  findByPkMock.mockResolvedValueOnce({
+    id: 'd1',
+    recipient_id: 'u1',
+    number: '26.04/1',
+    name: 'Заявление',
+    description: null,
+    document_date: new Date('2026-04-01T00:00:00Z'),
+    DocumentType: {
+      name: 'Заявление',
+      alias: 'REFEREE_CONTRACT_APPLICATION',
+      generated: true,
+    },
+    DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
+    SignType: { alias: 'SIMPLE_ELECTRONIC' },
+    recipient: {
+      id: 'u1',
+      last_name: 'Иванов',
+      first_name: 'Иван',
+      patronymic: 'Иванович',
+      birth_date: '1990-01-01',
+    },
+  });
+
+  const pdf = await service.previewPendingSimpleSignature('u1', 'd1');
+
+  expect(Buffer.isBuffer(pdf)).toBe(true);
+  expect(pdf.length).toBeGreaterThan(0);
+});
+
+test('previewPendingSimpleSignature rejects wrong recipient', async () => {
+  findByPkMock.mockResolvedValueOnce({
+    id: 'd1',
+    recipient_id: 'u2',
+    DocumentType: { generated: true, alias: 'OTHER' },
+    DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
+    SignType: { alias: 'SIMPLE_ELECTRONIC' },
+  });
+
+  await expect(
+    service.previewPendingSimpleSignature('u1', 'd1')
+  ).rejects.toMatchObject({ code: 'forbidden', status: 403 });
 });
 
 test('create sends document created email to recipient', async () => {

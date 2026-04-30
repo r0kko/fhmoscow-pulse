@@ -198,6 +198,10 @@ export const ERROR_MESSAGES = {
   document_delete_forbidden_signed_simple:
     'Нельзя перегенерировать: предыдущий лист уже подписан простой электронной подписью',
   document_already_signed: 'Документ уже подписан',
+  document_ids_required: 'Выберите документы для подписания',
+  document_sign_failed: 'Не удалось подписать документ',
+  pending_signature_documents_not_found:
+    'Нет документов, ожидающих простой электронной подписи',
   federation_signer_required:
     'Документ может подписать только сотрудник федерации',
   federation_signer_not_found:

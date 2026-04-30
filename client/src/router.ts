@@ -13,6 +13,7 @@ import Home from './views/Home.vue';
 import Profile from './views/Profile.vue';
 import DocumentView from './views/DocumentView.vue';
 import Documents from './views/Documents.vue';
+import PendingSignatures from './views/PendingSignatures.vue';
 import Medical from './views/Medical.vue';
 import Camps from './views/Camps.vue';
 import Tasks from './views/Tasks.vue';
@@ -192,6 +193,15 @@ const routes: RouteRecordRaw[] = [
     path: '/documents',
     component: Documents,
     meta: { requiresAuth: true, title: 'Документы' },
+  },
+  {
+    path: '/documents/pending-signatures',
+    component: PendingSignatures,
+    meta: {
+      requiresAuth: true,
+      allowsPendingSignatures: true,
+      title: 'Подписание документов',
+    },
   },
   {
     path: '/medical',
@@ -789,6 +799,17 @@ export async function navigationGuard(
     to.path !== '/complete-profile'
   ) {
     return next('/complete-profile');
+  }
+
+  if (
+    isAuthenticated &&
+    meta.requiresAuth &&
+    auth.pendingSimpleSignatureCount > 0 &&
+    to.path !== '/change-password' &&
+    to.path !== '/complete-profile' &&
+    !(meta as Record<string, unknown>)['allowsPendingSignatures']
+  ) {
+    return next('/documents/pending-signatures');
   }
 
   return next();

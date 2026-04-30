@@ -14,6 +14,7 @@ export const handlers: HttpHandler[] = [
       user: activeUser,
       roles: [],
       must_change_password: false,
+      pending_simple_signature_count: 0,
     })
   ),
   http.post('/api/auth/refresh', async () =>
@@ -21,10 +22,15 @@ export const handlers: HttpHandler[] = [
       access_token: 'test.token.value',
       user: null,
       roles: [],
+      pending_simple_signature_count: 0,
     })
   ),
   http.get('/api/auth/me', async () =>
-    HttpResponse.json({ user: activeUser, roles: [] })
+    HttpResponse.json({
+      user: activeUser,
+      roles: [],
+      pending_simple_signature_count: 0,
+    })
   ),
   http.get('/api/csrf-token', async () =>
     HttpResponse.json({ csrfHmac: 'dummy.hmac.token' })

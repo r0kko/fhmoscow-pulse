@@ -11,6 +11,10 @@ jest.unstable_mockModule('express-validator', () => ({
 }));
 
 const listByUserMock = jest.fn();
+const listPendingSimpleMock = jest.fn();
+const sendPendingCodeMock = jest.fn();
+const signPendingMock = jest.fn();
+const previewPendingMock = jest.fn();
 const createMock = jest.fn();
 const signMock = jest.fn();
 const sendCodeMock = jest.fn();
@@ -22,6 +26,10 @@ jest.unstable_mockModule('../src/services/documentService.js', () => ({
   __esModule: true,
   default: {
     listByUser: listByUserMock,
+    listPendingSimpleSignatures: listPendingSimpleMock,
+    sendPendingSimpleSignatureCode: sendPendingCodeMock,
+    signPendingSimpleSignatures: signPendingMock,
+    previewPendingSimpleSignature: previewPendingMock,
     create: createMock,
     signWithCode: signMock,
     sendSignCode: sendCodeMock,
@@ -42,6 +50,10 @@ beforeEach(() => {
   validationOk = true;
   validationPayload = [{ msg: 'invalid', path: 'name' }];
   listByUserMock.mockReset();
+  listPendingSimpleMock.mockReset();
+  sendPendingCodeMock.mockReset();
+  signPendingMock.mockReset();
+  previewPendingMock.mockReset();
   createMock.mockReset();
   signMock.mockReset();
   sendCodeMock.mockReset();
@@ -56,6 +68,71 @@ test('list returns user documents', async () => {
   await controller.list({ user: { id: 'u1' } }, res);
   expect(listByUserMock).toHaveBeenCalledWith('u1');
   expect(res.json).toHaveBeenCalledWith({ documents: ['doc'] });
+});
+
+test('listPendingSignatures returns pending simple electronic documents', async () => {
+  listPendingSimpleMock.mockResolvedValue(['doc']);
+  const res = { json: jest.fn() };
+  await controller.listPendingSignatures({ user: { id: 'u1' } }, res);
+  expect(listPendingSimpleMock).toHaveBeenCalledWith('u1');
+  expect(res.json).toHaveBeenCalledWith({ documents: ['doc'] });
+});
+
+test('sendPendingSignatureCode triggers service and handles error', async () => {
+  const req = { user: { id: 'u1' } };
+  const res = { json: jest.fn() };
+  await controller.sendPendingSignatureCode(req, res);
+  expect(sendPendingCodeMock).toHaveBeenCalledWith(req.user);
+  expect(res.json).toHaveBeenCalledWith({ message: 'sent' });
+
+  const err = new Error('fail');
+  sendPendingCodeMock.mockRejectedValueOnce(err);
+  await controller.sendPendingSignatureCode(req, res);
+  expect(sendErrorMock).toHaveBeenCalledWith(res, err);
+});
+
+test('signPendingSignatures forwards ids and code', async () => {
+  signPendingMock.mockResolvedValue({
+    signed_count: 2,
+    failed: [],
+    remaining_count: 0,
+  });
+  const req = {
+    user: { id: 'u1' },
+    body: { code: '123456', documentIds: ['d1', 'd2'] },
+  };
+  const res = { json: jest.fn() };
+  await controller.signPendingSignatures(req, res);
+  expect(signPendingMock).toHaveBeenCalledWith(
+    req.user,
+    ['d1', 'd2'],
+    '123456'
+  );
+  expect(res.json).toHaveBeenCalledWith({
+    signed_count: 2,
+    failed: [],
+    remaining_count: 0,
+  });
+});
+
+test('previewPendingSignature streams inline pdf', async () => {
+  const pdf = Buffer.from('%PDF-1.4');
+  previewPendingMock.mockResolvedValue(pdf);
+  const req = { user: { id: 'u1' }, params: { id: 'doc1' } };
+  const res = {
+    setHeader: jest.fn(),
+    end: jest.fn(),
+  };
+
+  await controller.previewPendingSignature(req, res);
+
+  expect(previewPendingMock).toHaveBeenCalledWith('u1', 'doc1');
+  expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+  expect(res.setHeader).toHaveBeenCalledWith(
+    'Content-Disposition',
+    'inline; filename="document-preview.pdf"'
+  );
+  expect(res.end).toHaveBeenCalledWith(pdf);
 });
 
 test('create returns 400 on validation error', async () => {

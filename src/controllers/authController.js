@@ -7,6 +7,7 @@ import {
   incTokenIssued,
 } from '../config/metrics.js';
 import userService from '../services/userService.js';
+import documentService from '../services/documentService.js';
 import { syncStaffRole } from '../services/sportSchoolRoleService.js';
 import userMapper from '../mappers/userMapper.js';
 import {
@@ -61,6 +62,10 @@ function buildLoginErrorPayload(err) {
   return normalized;
 }
 
+async function pendingSimpleSignatureCount(userId) {
+  return documentService.countPendingSimpleSignatures(userId);
+}
+
 /* ---------- controller ---------------------------------------------------- */
 export default {
   /* POST /auth/login */
@@ -85,6 +90,7 @@ export default {
         (r) => r.alias
       );
       const staffOnly = isStaffOnly(roles);
+      const pendingCount = await pendingSimpleSignatureCount(updated.id);
 
       // Prevent any intermediate cache (CDN/proxy) from caching auth responses
       // and ensure Set-Cookie is honored per request context
@@ -116,6 +122,7 @@ export default {
         capabilities: {
           is_staff_only: staffOnly,
         },
+        pending_simple_signature_count: pendingCount,
         ...extra,
       });
     } catch (err) {
@@ -178,6 +185,7 @@ export default {
       (r) => r.alias
     );
     const staffOnly = isStaffOnly(roles);
+    const pendingCount = await pendingSimpleSignatureCount(user.id);
     const extra = {};
     if (user.password_change_required) {
       extra.must_change_password = true;
@@ -188,6 +196,7 @@ export default {
       capabilities: {
         is_staff_only: staffOnly,
       },
+      pending_simple_signature_count: pendingCount,
       ...extra,
     });
   },
@@ -250,6 +259,7 @@ export default {
         (r) => r.alias
       );
       const staffOnly = isStaffOnly(roles);
+      const pendingCount = await pendingSimpleSignatureCount(user.id);
 
       // Avoid cache and ensure Set-Cookie is not stripped by intermediaries
       if (typeof res?.set === 'function') {
@@ -280,6 +290,7 @@ export default {
         capabilities: {
           is_staff_only: staffOnly,
         },
+        pending_simple_signature_count: pendingCount,
       });
     } catch (err) {
       markInvalid();

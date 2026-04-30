@@ -19,7 +19,7 @@ import { useToast } from '../utils/toast';
 import { loadPageSize, savePageSize } from '../utils/pageSize';
 import { documentStatusBadgeClass } from '../utils/documentStatus';
 import BaseTile from '../components/BaseTile.vue';
-import { auth } from '../auth';
+import { auth, fetchCurrentUser } from '../auth';
 import { hasRole, REFEREE_ROLES } from '../utils/roles';
 
 const loading = ref(true);
@@ -232,6 +232,7 @@ function openSignDialog(doc) {
 }
 function onSigned() {
   reloadDocuments();
+  fetchCurrentUser().catch(() => {});
 }
 
 function maskEmail(email) {

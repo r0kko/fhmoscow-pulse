@@ -9,6 +9,57 @@ export default {
     res.json({ documents });
   },
 
+  async listPendingSignatures(req, res) {
+    try {
+      const documents = await documentService.listPendingSimpleSignatures(
+        req.user.id
+      );
+      res.json({ documents });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+
+  async sendPendingSignatureCode(req, res) {
+    try {
+      await documentService.sendPendingSimpleSignatureCode(req.user);
+      res.json({ message: 'sent' });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+
+  async previewPendingSignature(req, res) {
+    try {
+      const pdf = await documentService.previewPendingSimpleSignature(
+        req.user.id,
+        req.params.id
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        'inline; filename="document-preview.pdf"'
+      );
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end(pdf);
+    } catch (err) {
+      return sendError(res, err);
+    }
+  },
+
+  async signPendingSignatures(req, res) {
+    try {
+      const result = await documentService.signPendingSimpleSignatures(
+        req.user,
+        req.body?.documentIds,
+        req.body?.code || ''
+      );
+      res.json(result);
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+
   async create(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

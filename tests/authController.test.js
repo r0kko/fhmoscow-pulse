@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from '@jest/globals';
+import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 const verifyCredentialsMock = jest.fn();
 const rotateTokensMock = jest.fn();
@@ -7,6 +7,7 @@ const issueTokensMock = jest.fn(() => ({
   refreshToken: 'refresh',
 }));
 const syncStaffRoleMock = jest.fn();
+const pendingSimpleCountMock = jest.fn();
 
 jest.unstable_mockModule('../src/services/authService.js', () => ({
   __esModule: true,
@@ -21,6 +22,11 @@ const bumpTokenVersionMock = jest.fn();
 jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
   default: { bumpTokenVersion: bumpTokenVersionMock },
+}));
+
+jest.unstable_mockModule('../src/services/documentService.js', () => ({
+  __esModule: true,
+  default: { countPendingSimpleSignatures: pendingSimpleCountMock },
 }));
 
 jest.unstable_mockModule('../src/services/sportSchoolRoleService.js', () => ({
@@ -93,6 +99,11 @@ const { default: authController } =
 process.env.JWT_SECRET = 'secret';
 
 describe('authController', () => {
+  beforeEach(() => {
+    pendingSimpleCountMock.mockReset();
+    pendingSimpleCountMock.mockResolvedValue(0);
+  });
+
   test('login does not include sensitive fields in response', async () => {
     const user = {
       id: '1',
@@ -163,6 +174,7 @@ describe('authController', () => {
       user: { id: '1', status: 'REGISTRATION_STEP_3' },
       roles: ['USER'],
       capabilities: { is_staff_only: false },
+      pending_simple_signature_count: 0,
       next_step: 3,
     });
   });
@@ -190,6 +202,7 @@ describe('authController', () => {
       user: { id: '2', status: 'SUSPENDED' },
       roles: ['USER'],
       capabilities: { is_staff_only: false },
+      pending_simple_signature_count: 0,
     });
   });
 
@@ -237,6 +250,7 @@ describe('authController', () => {
       user: { id: '1', status: 'SUSPENDED' },
       roles: ['ADMIN'],
       capabilities: { is_staff_only: false },
+      pending_simple_signature_count: 0,
     });
   });
 
@@ -263,6 +277,7 @@ describe('authController', () => {
       user: { id: '1' },
       roles: ['ADMIN'],
       capabilities: { is_staff_only: false },
+      pending_simple_signature_count: 0,
     });
   });
 

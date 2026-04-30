@@ -11,5 +11,6 @@ declare module 'vue-router' {
     forbidBrigade?: boolean;
     hideLayout?: boolean;
     fluid?: boolean;
+    allowsPendingSignatures?: boolean;
   }
 }

@@ -13,6 +13,7 @@ interface LoginResponse {
   user: AuthUser;
   roles?: string[];
   must_change_password?: boolean;
+  pending_simple_signature_count?: number;
 }
 
 const router = useRouter();
@@ -177,6 +178,9 @@ async function login(): Promise<void> {
     auth.user = data.user;
     auth.roles = data.roles || [];
     auth.mustChangePassword = Boolean(data.must_change_password);
+    auth.pendingSimpleSignatureCount = Number(
+      data.pending_simple_signature_count || 0
+    );
 
     let destination = '/';
     if (auth.mustChangePassword) {

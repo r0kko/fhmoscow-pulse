@@ -23,6 +23,7 @@ const getRefreshTokenCandidates = jest.fn();
 const sendError = jest.fn();
 const isStaffOnly = jest.fn();
 const syncStaffRole = jest.fn();
+const pendingSimpleCount = jest.fn();
 const ORIGINAL_ENV = { ...process.env };
 
 const res = () => {
@@ -51,6 +52,8 @@ beforeEach(() => {
   sendError.mockReset();
   isStaffOnly.mockReset();
   syncStaffRole.mockReset();
+  pendingSimpleCount.mockReset();
+  pendingSimpleCount.mockResolvedValue(0);
 });
 
 afterEach(() => {
@@ -83,6 +86,13 @@ jest.unstable_mockModule('../src/services/userService.js', () => ({
   __esModule: true,
   default: {
     bumpTokenVersion,
+  },
+}));
+
+jest.unstable_mockModule('../src/services/documentService.js', () => ({
+  __esModule: true,
+  default: {
+    countPendingSimpleSignatures: pendingSimpleCount,
   },
 }));
 

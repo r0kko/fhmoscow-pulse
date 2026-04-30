@@ -53,6 +53,28 @@ router.post(
 );
 
 router.get('/', auth, documentController.list);
+router.get(
+  '/pending-signatures',
+  auth,
+  documentController.listPendingSignatures
+);
+router.get(
+  '/pending-signatures/:id/preview',
+  auth,
+  ...uuidParam('id'),
+  validate,
+  documentController.previewPendingSignature
+);
+router.post(
+  '/pending-signatures/send-code',
+  auth,
+  documentController.sendPendingSignatureCode
+);
+router.post(
+  '/pending-signatures/sign-all',
+  auth,
+  documentController.signPendingSignatures
+);
 router.post(
   '/',
   auth,

@@ -2293,6 +2293,111 @@ async function listByUser(userId) {
   );
 }
 
+function pendingSimpleSignatureIncludes() {
+  return [
+    { model: DocumentType, attributes: ['name', 'alias', 'generated'] },
+    {
+      model: SignType,
+      attributes: ['name', 'alias'],
+      required: true,
+      where: { alias: 'SIMPLE_ELECTRONIC' },
+    },
+    { model: File, attributes: ['id', 'key'] },
+    {
+      model: DocumentStatus,
+      attributes: ['name', 'alias'],
+      required: true,
+      where: { alias: 'AWAITING_SIGNATURE' },
+    },
+  ];
+}
+
+function mapDocumentFailure(documentId, code) {
+  return { document_id: documentId, code };
+}
+
+async function mapUserDocument(d) {
+  const typeName = d.DocumentType ? d.DocumentType.name : 'Документ';
+  const baseName = `${typeName} · №${d.number}`.replace(/[\\/:*?"<>|]/g, ' ');
+  /* istanbul ignore next */ const ext = d.File ? path.extname(d.File.key) : '';
+  const downloadName = `${baseName}${ext || ''}`;
+  /* istanbul ignore next */ const filePayload = d.File
+    ? {
+        id: d.File.id,
+        url: await fileService.getDownloadUrl(d.File, {
+          filename: downloadName,
+        }),
+      }
+    : null;
+
+  return {
+    id: d.id,
+    number: d.number,
+    name: d.name,
+    description: d.description,
+    documentDate: d.document_date,
+    documentType: d.DocumentType
+      ? {
+          name: d.DocumentType.name,
+          alias: d.DocumentType.alias,
+          generated: d.DocumentType.generated,
+        }
+      : null,
+    signType: d.SignType
+      ? { name: d.SignType.name, alias: d.SignType.alias }
+      : null,
+    status: d.DocumentStatus
+      ? { name: d.DocumentStatus.name, alias: d.DocumentStatus.alias }
+      : null,
+    file: filePayload,
+  };
+}
+
+async function countPendingSimpleSignatures(userId) {
+  return Document.count({
+    where: { recipient_id: userId },
+    include: [
+      {
+        model: SignType,
+        required: true,
+        where: { alias: 'SIMPLE_ELECTRONIC' },
+      },
+      {
+        model: DocumentStatus,
+        required: true,
+        where: { alias: 'AWAITING_SIGNATURE' },
+      },
+    ],
+  });
+}
+
+async function listPendingSimpleSignatures(userId) {
+  const docs = await Document.findAll({
+    where: { recipient_id: userId },
+    include: pendingSimpleSignatureIncludes(),
+    order: [
+      ['document_date', 'DESC'],
+      ['created_at', 'DESC'],
+    ],
+  });
+  return Promise.all(docs.map(mapUserDocument));
+}
+
+async function sendPendingSimpleSignatureCode(user) {
+  const count = await countPendingSimpleSignatures(user.id);
+  if (count <= 0) {
+    throw new ServiceError('pending_signature_documents_not_found', 404);
+  }
+  const emailVerificationService = (
+    await import('./emailVerificationService.js')
+  ).default;
+  await emailVerificationService.sendCode(user, 'doc-sign', {
+    document: {
+      name: `Пакет документов к подписанию (${count})`,
+    },
+  });
+}
+
 async function listAll() {
   const docs = await Document.findAll({
     include: [
@@ -2643,18 +2748,22 @@ async function signWithCode(user, documentId, code) {
     throw new ServiceError('document_status_invalid', 400);
   const { verifyCodeOnly } = await import('./emailVerificationService.js');
   await verifyCodeOnly(user, code, 'doc-sign');
+  await signVerifiedSimpleElectronicDocument(user, doc);
+}
+
+async function signVerifiedSimpleElectronicDocument(user, doc) {
   const isClosingAct =
     doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS;
   const previousFileId = doc.file_id || null;
   // proceed with signing and stamping
-  await sign(user, documentId, { notify: !isClosingAct });
+  await sign(user, doc.id, { notify: !isClosingAct });
   // After status update and sign record creation, regenerate current file version
   try {
-    await regenerate(documentId, user.id);
+    await regenerate(doc.id, user.id);
   } catch (err) {
     if (isClosingAct) {
       await rollbackClosingActRecipientSignature(
-        documentId,
+        doc.id,
         user.id,
         previousFileId
       );
@@ -2662,7 +2771,7 @@ async function signWithCode(user, documentId, code) {
     }
     if (err?.code === 's3_upload_failed') {
       console.error('Signed document regeneration failed', {
-        documentId,
+        documentId: doc.id,
         userId: user.id,
         code: err.code,
       });
@@ -2674,12 +2783,12 @@ async function signWithCode(user, documentId, code) {
   if (isClosingAct) {
     const { default: closingService } =
       await import('./refereeClosingDocumentService.js');
-    await closingService.handleRecipientSigned(documentId, user.id);
-    await sendSignedNotification(documentId);
+    await closingService.handleRecipientSigned(doc.id, user.id);
+    await sendSignedNotification(doc.id);
   }
 
   // Post-sign automation for specific document types
-  const after = await Document.findByPk(documentId, {
+  const after = await Document.findByPk(doc.id, {
     include: [
       { model: DocumentType, attributes: ['alias'] },
       { model: File, attributes: ['id'] },
@@ -2770,6 +2879,171 @@ async function signWithCode(user, documentId, code) {
       /* non-fatal */
     }
   }
+}
+
+async function signPendingSimpleSignatures(user, documentIds, code) {
+  const ids = Array.from(
+    new Set(
+      (Array.isArray(documentIds) ? documentIds : [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean)
+    )
+  );
+  if (!ids.length) {
+    throw new ServiceError('document_ids_required', 400);
+  }
+  if (!/^[0-9]{6}$/.test(String(code || ''))) {
+    throw new ServiceError('invalid_code', 400);
+  }
+
+  const docs = await Document.findAll({
+    where: {
+      id: { [Op.in]: ids },
+      recipient_id: user.id,
+    },
+    include: [
+      { model: DocumentStatus, attributes: ['alias', 'name', 'id'] },
+      { model: SignType, attributes: ['alias', 'id', 'name'] },
+      { model: DocumentType, attributes: ['alias', 'name', 'generated'] },
+    ],
+  });
+  const byId = new Map(docs.map((doc) => [String(doc.id), doc]));
+  const ready = [];
+  const failed = [];
+
+  for (const id of ids) {
+    const doc = byId.get(id);
+    if (!doc) {
+      failed.push(mapDocumentFailure(id, 'document_not_found'));
+      continue;
+    }
+    if (doc.SignType?.alias !== 'SIMPLE_ELECTRONIC') {
+      failed.push(mapDocumentFailure(id, 'unsupported_sign_type'));
+      continue;
+    }
+    if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE') {
+      failed.push(mapDocumentFailure(id, 'document_status_invalid'));
+      continue;
+    }
+    if (doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS) {
+      const { default: closingService } =
+        await import('./refereeClosingDocumentService.js');
+      if (await closingService.isClosingDocumentCanceled(id)) {
+        failed.push(mapDocumentFailure(id, 'document_status_invalid'));
+        continue;
+      }
+    }
+    ready.push(doc);
+  }
+
+  if (ready.length > 0) {
+    const { verifyCodeOnly } = await import('./emailVerificationService.js');
+    await verifyCodeOnly(user, code, 'doc-sign');
+  }
+
+  let signedCount = 0;
+  for (const doc of ready) {
+    try {
+      await signVerifiedSimpleElectronicDocument(user, doc);
+      signedCount += 1;
+    } catch (err) {
+      failed.push(
+        mapDocumentFailure(doc.id, err?.code || 'document_sign_failed')
+      );
+    }
+  }
+
+  return {
+    signed_count: signedCount,
+    failed,
+    remaining_count: await countPendingSimpleSignatures(user.id),
+  };
+}
+
+async function buildGeneratedDocumentPdf(doc) {
+  const metaCommon = {
+    docId: doc.id,
+    number: doc.number,
+    documentDate: doc.document_date,
+    esign: null,
+  };
+  const alias = doc.DocumentType?.alias;
+  if (alias === 'PERSONAL_DATA_CONSENT') {
+    return buildPersonalDataConsentPdf(doc.recipient, metaCommon);
+  }
+  if (alias === 'ELECTRONIC_INTERACTION_AGREEMENT') {
+    return buildElectronicInteractionAgreementPdf(doc.recipient, metaCommon);
+  }
+  if (alias === 'REFEREE_CONTRACT_APPLICATION') {
+    return buildRefereeContractApplicationPdf(doc.recipient, metaCommon);
+  }
+  if (alias === 'BANK_DETAILS_CHANGE') {
+    return buildBankDetailsChangePdf(
+      doc.recipient,
+      parseJsonSafe(doc.description),
+      metaCommon
+    );
+  }
+  if (alias === 'EQUIPMENT_TRANSFER') {
+    const payload = parseJsonSafe(doc.description);
+    return buildEquipmentTransferPdf(
+      doc.recipient,
+      payload?.equipment || {},
+      metaCommon
+    );
+  }
+  if (alias === PRO_LEAGUE_ASSIGNMENTS_DOC_ALIAS) {
+    const payload = parseJsonSafe(doc.description)?.payload || {};
+    return buildProLeagueRefereeAssignmentsSheetPdf(payload, metaCommon);
+  }
+  if (alias === REFEREE_CLOSING_ACT_DOC_ALIAS) {
+    const payload = parseJsonSafe(doc.description)?.payload || {};
+    const signatures = (await loadDocumentSignatures(doc.id)).map((sign) =>
+      mapDocumentSignatureForRender(sign, doc.recipient_id)
+    );
+    return buildRefereeClosingActPdf(payload, {
+      docId: doc.id,
+      number: doc.number,
+      documentDate: doc.document_date,
+      signatures,
+    });
+  }
+  return createPdfBuffer(doc.name);
+}
+
+async function previewPendingSimpleSignature(userId, documentId) {
+  const doc = await Document.findByPk(documentId, {
+    include: [
+      { model: DocumentType, attributes: ['name', 'generated', 'alias'] },
+      { model: DocumentStatus, attributes: ['alias'] },
+      { model: SignType, attributes: ['alias'] },
+      {
+        model: User,
+        as: 'recipient',
+        attributes: [
+          'id',
+          'last_name',
+          'first_name',
+          'patronymic',
+          'birth_date',
+        ],
+      },
+    ],
+  });
+  if (!doc) throw new ServiceError('document_not_found', 404);
+  if (String(doc.recipient_id) !== String(userId)) {
+    throw new ServiceError('forbidden', 403);
+  }
+  if (doc.SignType?.alias !== 'SIMPLE_ELECTRONIC') {
+    throw new ServiceError('unsupported_sign_type', 400);
+  }
+  if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE') {
+    throw new ServiceError('document_status_invalid', 400);
+  }
+  if (!doc.DocumentType?.generated) {
+    throw new ServiceError('document_type_not_generated', 400);
+  }
+  return buildGeneratedDocumentPdf(doc);
 }
 
 async function regenerateSigned(documentId, actorId) {
@@ -3690,6 +3964,11 @@ async function getProLeagueMatchRefereeAssignmentsSheet(matchId) {
 export default {
   create,
   listByUser,
+  countPendingSimpleSignatures,
+  listPendingSimpleSignatures,
+  sendPendingSimpleSignatureCode,
+  signPendingSimpleSignatures,
+  previewPendingSimpleSignature,
   listAll,
   sign,
   requestSignature,
