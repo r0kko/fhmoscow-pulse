@@ -31,7 +31,7 @@ beforeEach(() => {
   findAllTeamMock.mockReset().mockResolvedValue([]);
 });
 
-test('get sets side flags to false when user not found', async () => {
+test('get denies access when authenticated user cannot be resolved', async () => {
   const req = { params: { id: 'm2' }, user: { id: 'u-missing' } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   const next = jest.fn();
@@ -55,7 +55,6 @@ test('get sets side flags to false when user not found', async () => {
   await getMatch(req, res, next);
 
   expect(next).not.toHaveBeenCalled();
-  const payload = res.json.mock.calls[0][0];
-  expect(payload.match.is_home).toBe(false);
-  expect(payload.match.is_away).toBe(false);
+  expect(res.status).toHaveBeenCalledWith(403);
+  expect(res.json).toHaveBeenCalledWith({ error: 'access_denied' });
 });

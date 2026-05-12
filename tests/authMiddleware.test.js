@@ -13,14 +13,19 @@ jest.unstable_mockModule('../src/models/user.js', () => ({
   default: { findByPk: findByPkMock },
 }));
 
+jest.unstable_mockModule('../src/models/index.js', () => ({
+  __esModule: true,
+  UserStatus: {},
+}));
+
 const { default: auth } = await import('../src/middlewares/auth.js');
 
 test('valid token attaches user to request', async () => {
   const req = { headers: { authorization: 'Bearer t' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
-  const user = { id: '1' };
-  verifyMock.mockReturnValue({ sub: '1' });
+  const user = { id: '1', token_version: 2 };
+  verifyMock.mockReturnValue({ sub: '1', ver: 2 });
   findByPkMock.mockResolvedValue(user);
 
   await auth(req, res, next);
@@ -28,6 +33,38 @@ test('valid token attaches user to request', async () => {
   expect(req.user).toBe(user);
   expect(next).toHaveBeenCalled();
   expect(res.json).not.toHaveBeenCalled();
+});
+
+test('stale access token returns 401', async () => {
+  const req = { headers: { authorization: 'Bearer t' } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  const next = jest.fn();
+  verifyMock.mockReturnValue({ sub: '1', ver: 1 });
+  findByPkMock.mockResolvedValue({ id: '1', token_version: 2 });
+
+  await auth(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({ error: 'invalid_token' });
+  expect(next).not.toHaveBeenCalled();
+});
+
+test('inactive account returns 403', async () => {
+  const req = { headers: { authorization: 'Bearer t' } };
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  const next = jest.fn();
+  verifyMock.mockReturnValue({ sub: '1', ver: 2 });
+  findByPkMock.mockResolvedValue({
+    id: '1',
+    token_version: 2,
+    UserStatus: { alias: 'INACTIVE' },
+  });
+
+  await auth(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(403);
+  expect(res.json).toHaveBeenCalledWith({ error: 'account_inactive' });
+  expect(next).not.toHaveBeenCalled();
 });
 
 test('missing token returns 401', async () => {
@@ -46,7 +83,7 @@ test('user not found returns 401', async () => {
   const req = { headers: { authorization: 'Bearer t' } };
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   const next = jest.fn();
-  verifyMock.mockReturnValue({ sub: '1' });
+  verifyMock.mockReturnValue({ sub: '1', ver: 1 });
   findByPkMock.mockResolvedValue(null);
 
   await auth(req, res, next);

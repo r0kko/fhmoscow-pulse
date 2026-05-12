@@ -7,8 +7,10 @@ jest.unstable_mockModule('../src/config/redis.js', () => ({
     async get(k) {
       return store.has(k) ? store.get(k) : null;
     },
-    async set(k, v) {
+    async set(k, v, options = {}) {
+      if (options?.NX && store.has(k)) return null;
       store.set(k, v);
+      return 'OK';
     },
     async pTTL(k) {
       return store.has(k) ? 60000 : -2; // 60s TTL for test purposes
@@ -138,10 +140,11 @@ test('verifyCredentials resets attempts on success', async () => {
 });
 
 test('issueTokens creates valid JWTs', () => {
-  const tokens = authService.issueTokens({ id: '1' });
+  const tokens = authService.issueTokens({ id: '1', token_version: 3 });
   const p1 = jwt.verify(tokens.accessToken, 'secret');
   const p2 = jwt.verify(tokens.refreshToken, 'secret');
   expect(p1.sub).toBe('1');
+  expect(p1.ver).toBe(3);
   expect(p2.sub).toBe('1');
   expect(p2.type).toBe('refresh');
 });

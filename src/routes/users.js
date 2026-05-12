@@ -239,7 +239,7 @@ router.put(
 router.put(
   '/:id/profile/roles',
   auth,
-  authorize('ADMIN'),
+  authorize('ADMINISTRATOR'),
   profileRolesRules,
   profileWorkspaceAdminController.updateRoles
 );

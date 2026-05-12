@@ -57,7 +57,11 @@ export default {
       if (ticket.user_id !== req.user.id && !admin) {
         return res.status(403).json({ error: 'Доступ запрещён' });
       }
-      await fileService.removeTicketFile(req.params.fileId, req.user.id);
+      await fileService.removeTicketFile(
+        req.params.fileId,
+        req.user.id,
+        ticket.id
+      );
       return res.status(204).send();
     } catch (err) {
       return sendError(res, err, 400);

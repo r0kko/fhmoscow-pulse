@@ -37,6 +37,16 @@ export async function markUsed({ sub, ver, jti, exp }) {
   }
 }
 
+export async function consumeUnused({ sub, ver, jti, exp }) {
+  const ttl = ttlSecondsFromExp(exp);
+  if (ttl <= 0) return false;
+  const result = await redis.set(keyUsed(sub, ver, jti), '1', {
+    EX: ttl,
+    NX: true,
+  });
+  return result === 'OK';
+}
+
 export async function isUsed({ sub, ver, jti }) {
   try {
     const v = await redis.get(keyUsed(sub, ver, jti));
@@ -54,4 +64,4 @@ export async function currentJti({ sub, ver }) {
   }
 }
 
-export default { rememberIssued, markUsed, isUsed, currentJti };
+export default { rememberIssued, markUsed, consumeUnused, isUsed, currentJti };

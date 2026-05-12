@@ -97,3 +97,31 @@ test('get returns extended meta and ground details', async () => {
     })
   );
 });
+
+test('get denies non-admin users outside both match teams', async () => {
+  const req = { params: { id: 'm1' }, user: { id: 'u1' } };
+  const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+  const next = jest.fn();
+
+  findByPkUserMock.mockResolvedValue(makeUser());
+  findAllTeamMock.mockResolvedValue([
+    { id: 'home-id', club_id: 'club1' },
+    { id: 'away-id', club_id: 'club2' },
+  ]);
+  findByPkMatchMock.mockResolvedValue({
+    id: 'm1',
+    team1_id: 'home-id',
+    team2_id: 'away-id',
+    Tournament: null,
+  });
+
+  await getMatch(req, res, next);
+
+  expect(res.json).not.toHaveBeenCalled();
+  expect(next).toHaveBeenCalledWith(
+    expect.objectContaining({
+      code: 'forbidden_not_match_member',
+      status: 403,
+    })
+  );
+});

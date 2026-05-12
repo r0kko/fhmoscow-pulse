@@ -14,6 +14,15 @@ import { assertPassword } from '../utils/passwordPolicy.js';
 import { FHMO_STAFF_ROLES } from '../utils/roles.js';
 
 const FHMO_ROLE_SET = new Set(FHMO_STAFF_ROLES);
+const USER_UPDATE_FIELDS = [
+  'first_name',
+  'last_name',
+  'patronymic',
+  'sex_id',
+  'birth_date',
+  'phone',
+  'email',
+];
 const MIN_BIRTH_DATE = new Date('1945-01-01');
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 100;
@@ -37,6 +46,15 @@ function normalizeSearchText(value) {
 
 function escapeLikeTerm(term = '') {
   return term.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+function pickUserUpdateFields(data = {}) {
+  return USER_UPDATE_FIELDS.reduce((acc, field) => {
+    if (Object.prototype.hasOwnProperty.call(data, field)) {
+      acc[field] = data[field];
+    }
+    return acc;
+  }, {});
 }
 
 function normalizeSearchScope(value) {
@@ -374,25 +392,26 @@ async function getUser(id) {
 async function updateUser(id, data, actorId = null) {
   const user = await User.findByPk(id);
   if (!user) throw new ServiceError('user_not_found', 404);
+  const allowedData = pickUserUpdateFields(data);
   const normalized = {
-    ...data,
-    ...(Object.prototype.hasOwnProperty.call(data, 'first_name')
-      ? { first_name: normalizeText(data.first_name) }
+    ...allowedData,
+    ...(Object.prototype.hasOwnProperty.call(allowedData, 'first_name')
+      ? { first_name: normalizeText(allowedData.first_name) }
       : {}),
-    ...(Object.prototype.hasOwnProperty.call(data, 'last_name')
-      ? { last_name: normalizeText(data.last_name) }
+    ...(Object.prototype.hasOwnProperty.call(allowedData, 'last_name')
+      ? { last_name: normalizeText(allowedData.last_name) }
       : {}),
-    ...(Object.prototype.hasOwnProperty.call(data, 'patronymic')
-      ? { patronymic: normalizeText(data.patronymic) }
+    ...(Object.prototype.hasOwnProperty.call(allowedData, 'patronymic')
+      ? { patronymic: normalizeText(allowedData.patronymic) }
       : {}),
-    ...(Object.prototype.hasOwnProperty.call(data, 'phone')
-      ? { phone: normalizePhone(data.phone) }
+    ...(Object.prototype.hasOwnProperty.call(allowedData, 'phone')
+      ? { phone: normalizePhone(allowedData.phone) }
       : {}),
-    ...(Object.prototype.hasOwnProperty.call(data, 'email')
-      ? { email: normalizeEmail(data.email) }
+    ...(Object.prototype.hasOwnProperty.call(allowedData, 'email')
+      ? { email: normalizeEmail(allowedData.email) }
       : {}),
-    ...(Object.prototype.hasOwnProperty.call(data, 'birth_date')
-      ? { birth_date: normalizeText(data.birth_date) }
+    ...(Object.prototype.hasOwnProperty.call(allowedData, 'birth_date')
+      ? { birth_date: normalizeText(allowedData.birth_date) }
       : {}),
   };
   if (Object.prototype.hasOwnProperty.call(normalized, 'sex_id')) {

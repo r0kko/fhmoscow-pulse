@@ -85,6 +85,7 @@ export async function fetchMatchProtocolPdf(
       method: 'GET',
       headers,
       signal: controller.signal,
+      redirect: 'error',
     });
   } catch (err) {
     clearTimeout(timer);

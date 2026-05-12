@@ -17,8 +17,8 @@ import { incRefreshReuse, incSecurityEvent } from '../config/metrics.js';
 
 import {
   currentJti,
+  consumeUnused,
   isUsed,
-  markUsed,
   rememberIssued,
 } from './refreshStore.js';
 import * as attempts from './loginAttempts.js';
@@ -202,17 +202,29 @@ async function rotateTokens(refreshToken) {
     throw err;
   }
 
-  // Mark provided refresh as used (single-use semantics)
-  try {
-    if (payload?.jti)
-      await markUsed({
-        sub: payload.sub,
-        ver: payload.ver,
-        jti: payload.jti,
-        exp: payload.exp,
-      });
-  } catch (_e) {
-    /* noop */
+  if (!payload?.jti) {
+    throw new ServiceError('invalid_token', 401);
+  }
+
+  const consumed = await consumeUnused({
+    sub: payload.sub,
+    ver: payload.ver,
+    jti: payload.jti,
+    exp: payload.exp,
+  });
+  if (!consumed) {
+    try {
+      await user.increment('token_version');
+    } catch (_e) {
+      /* noop */
+    }
+    try {
+      incRefreshReuse('detected');
+      incSecurityEvent('reuse');
+    } catch (_e) {
+      /* noop */
+    }
+    throw new ServiceError('token_reuse_detected', 401);
   }
 
   // Optional integrity check: ensure provided jti matches remembered current

@@ -5,9 +5,10 @@ import auth from '../middlewares/auth.js';
 import authorize from '../middlewares/authorize.js';
 import controller from '../controllers/playerController.js';
 import accessScope from '../middlewares/accessScope.js';
+import { MAX_PLAYER_PHOTO_FILE_SIZE } from '../config/fileLimits.js';
 
 const router = express.Router();
-const upload = multer();
+const upload = multer({ limits: { fileSize: MAX_PLAYER_PHOTO_FILE_SIZE } });
 
 router.get(
   '/',

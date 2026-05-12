@@ -452,6 +452,8 @@ test('updateUser updates found user', async () => {
     first_name: ' B ',
     phone: '8 (999) 222-33-44',
     email: ' USER@EXAMPLE.COM ',
+    status_id: 'ACTIVE',
+    token_version: 999,
   });
   expect(updateMock).toHaveBeenCalledWith({
     first_name: 'B',

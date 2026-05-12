@@ -1,1 +1,2 @@
 export const MAX_NORMATIVE_FILE_SIZE = 250 * 1024 * 1024;
+export const MAX_PLAYER_PHOTO_FILE_SIZE = 5 * 1024 * 1024;

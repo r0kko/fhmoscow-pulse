@@ -12,7 +12,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import s3 from '../utils/s3Client.js';
 import { getS3Bucket } from '../config/s3.js';
-import { MAX_NORMATIVE_FILE_SIZE } from '../config/fileLimits.js';
+import {
+  MAX_NORMATIVE_FILE_SIZE,
+  MAX_PLAYER_PHOTO_FILE_SIZE,
+} from '../config/fileLimits.js';
 import {
   File,
   MedicalCertificate,
@@ -68,7 +71,6 @@ async function putObjectWithRetry(
 }
 
 const PLAYER_PHOTO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
-const PLAYER_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const PLAYER_PHOTO_MIN_DIMENSION = 800; // px
 const PLAYER_PHOTO_EXTENSION_BY_TYPE = {
   'image/png': '.png',
@@ -208,9 +210,11 @@ async function getDownloadUrl(file, options = {}) {
   return getSignedUrl(s3, new GetObjectCommand(params), { expiresIn: 3600 });
 }
 
-async function remove(id, actorId = null) {
+async function remove(id, actorId = null, certificateId = null) {
+  const where = { file_id: id };
+  if (certificateId) where.medical_certificate_id = certificateId;
   const attachment = await MedicalCertificateFile.findOne({
-    where: { file_id: id },
+    where,
     include: [File],
   });
   if (!attachment) throw new ServiceError('file_not_found', 404);
@@ -335,9 +339,11 @@ async function listForTicket(ticketId) {
   });
 }
 
-async function removeTicketFile(id, actorId = null) {
+async function removeTicketFile(id, actorId = null, ticketId = null) {
+  const where = { file_id: id };
+  if (ticketId) where.ticket_id = ticketId;
   const attachment = await TicketFile.findOne({
-    where: { file_id: id },
+    where,
     include: [File],
   });
   if (!attachment) throw new ServiceError('file_not_found', 404);
@@ -401,7 +407,7 @@ async function uploadPlayerPhoto(playerId, file, actorId) {
   if (!PLAYER_PHOTO_ALLOWED_TYPES.includes(file.mimetype)) {
     throw new ServiceError('invalid_file_type', 400);
   }
-  if (file.size > PLAYER_PHOTO_MAX_SIZE) {
+  if (file.size > MAX_PLAYER_PHOTO_FILE_SIZE) {
     throw new ServiceError('file_too_large', 400);
   }
   const dimensions = getImageDimensions(file.buffer);

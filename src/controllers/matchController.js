@@ -2,6 +2,7 @@ import service, { listUpcomingLocal } from '../services/matchService.js';
 import { isExternalDbAvailable } from '../config/externalMariaDb.js';
 import {
   resolveMatchAccessContext,
+  ensureParticipantOrThrow,
   evaluateStaffMatchRestrictions,
   evaluateScheduleManagementRestrictions,
   mergeMatchRestrictions,
@@ -212,6 +213,8 @@ export async function get(req, res, next) {
         );
       }
     }
+    if (!context) return res.status(403).json({ error: 'access_denied' });
+    if (!context.isAdmin) ensureParticipantOrThrow(context);
     const isHome = context?.isHome || false;
     const isAway = context?.isAway || false;
     const permissions = buildPermissionPayload(restrictions || {}, context);

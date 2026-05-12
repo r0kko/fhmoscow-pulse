@@ -52,7 +52,7 @@ export function signAccessToken(user) {
     audience: JWT_AUD,
   };
   if (s.kid) opts.header = { kid: s.kid };
-  return jwt.sign({ sub: user.id }, s.key, opts);
+  return jwt.sign({ sub: user.id, ver: user.token_version }, s.key, opts);
 }
 
 export function signRefreshTokenWithJti(user, jti) {

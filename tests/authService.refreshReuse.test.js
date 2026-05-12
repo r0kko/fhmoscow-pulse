@@ -20,6 +20,12 @@ jest.unstable_mockModule('../src/services/refreshStore.js', () => ({
   isUsed: async ({ sub, ver, jti }) => {
     return mem.used.has(`${sub}:${ver}:${jti}`);
   },
+  consumeUnused: async ({ sub, ver, jti }) => {
+    const key = `${sub}:${ver}:${jti}`;
+    if (mem.used.has(key)) return false;
+    mem.used.add(key);
+    return true;
+  },
   currentJti: async ({ sub, ver }) => {
     return mem.current.get(`${sub}:${ver}`) || null;
   },
@@ -70,5 +76,27 @@ describe('authService refresh reuse detection', () => {
 
     // Reuse the same token (now stale): should be detected and rejected
     await expect(authService.rotateTokens(token)).rejects.toThrow();
+  });
+
+  test('rejects same-version replay before issuing replacement tokens', async () => {
+    const user = {
+      id: 'u1',
+      token_version: 1,
+      increment: jest.fn().mockImplementation(function () {
+        this.token_version += 1;
+        return Promise.resolve();
+      }),
+      reload: jest.fn().mockResolvedValue({ id: 'u1', token_version: 2 }),
+      getRoles: jest.fn().mockResolvedValue([]),
+    };
+    findByPkMock.mockResolvedValue(user);
+    mem.used.add('u1:1:j1');
+
+    const token = signRefreshTokenWithJti(user, 'j1');
+
+    await expect(authService.rotateTokens(token)).rejects.toThrow(
+      'token_reuse_detected'
+    );
+    expect(user.increment).toHaveBeenCalledWith('token_version');
   });
 });

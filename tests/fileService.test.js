@@ -379,7 +379,11 @@ test('remove deletes certificate file links', async () => {
     destroy: jest.fn(),
   };
   medicalCertificateFileFindOne.mockResolvedValue(attachment);
-  await fileService.remove('file1', 'admin');
+  await fileService.remove('file1', 'admin', 'cert1');
+  expect(medicalCertificateFileFindOne).toHaveBeenCalledWith({
+    where: { file_id: 'file1', medical_certificate_id: 'cert1' },
+    include: [expect.anything()],
+  });
   expect(attachment.update).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(attachment.File.update).toHaveBeenCalledWith({ updated_by: 'admin' });
   expect(attachment.destroy).toHaveBeenCalled();
@@ -482,7 +486,11 @@ test('removeTicketFile removes associated attachment', async () => {
     destroy: jest.fn(),
   };
   ticketFileFindOne.mockResolvedValue(attachment);
-  await fileService.removeTicketFile('f1', 'actor');
+  await fileService.removeTicketFile('f1', 'actor', 'ticket1');
+  expect(ticketFileFindOne).toHaveBeenCalledWith({
+    where: { file_id: 'f1', ticket_id: 'ticket1' },
+    include: [expect.anything()],
+  });
   expect(attachment.update).toHaveBeenCalledWith({ updated_by: 'actor' });
   expect(attachment.destroy).toHaveBeenCalled();
   ticketFileFindOne.mockResolvedValue(null);

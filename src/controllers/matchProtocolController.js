@@ -1,5 +1,9 @@
 import matchProtocolService from '../services/matchProtocolService.js';
 import { sendError } from '../utils/api.js';
+import {
+  ensureParticipantOrThrow,
+  resolveMatchAccessContext,
+} from '../utils/matchAccess.js';
 
 function buildAttachmentDisposition(filename) {
   const raw = String(filename || 'match-protocol.pdf')
@@ -20,6 +24,11 @@ function buildAttachmentDisposition(filename) {
 const controller = {
   async download(req, res) {
     try {
+      const context = await resolveMatchAccessContext({
+        matchOrId: req.params.id,
+        userId: req.user?.id || null,
+      });
+      if (!context.isAdmin) ensureParticipantOrThrow(context);
       const result = await matchProtocolService.downloadMatchProtocol(
         req.params.id,
         req.user?.id || null,
