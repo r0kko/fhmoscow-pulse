@@ -276,6 +276,7 @@ test('sign keeps closing act awaiting after FHMO signature', async () => {
     recipient_id: 'ref-1',
     sign_type_id: 'sign-1',
     document_type_id: 'type-1',
+    file_id: 14,
     SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
     DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
     DocumentStatus: { alias: 'CREATED' },
@@ -325,6 +326,7 @@ test('sign can defer awaiting notification for closing act until PDF regeneratio
     recipient_id: 'ref-1',
     sign_type_id: 'sign-1',
     document_type_id: 'type-1',
+    file_id: 14,
     SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
     DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
     DocumentStatus: { alias: 'CREATED' },
@@ -363,6 +365,7 @@ test('sign completes closing act after referee signature', async () => {
     recipient_id: 'ref-2',
     sign_type_id: 'sign-1',
     document_type_id: 'type-1',
+    file_id: 14,
     SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
     DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
     DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
@@ -415,6 +418,7 @@ test('signWithCode rolls closing act signature back when regenerate fails', asyn
       recipient_id: 'ref-2',
       sign_type_id: 'sign-1',
       document_type_id: 'type-1',
+      file_id: 14,
       SignType: { alias: 'SIMPLE_ELECTRONIC', id: 'sign-1' },
       DocumentStatus: {
         alias: 'AWAITING_SIGNATURE',
@@ -434,6 +438,7 @@ test('signWithCode rolls closing act signature back when regenerate fails', asyn
       recipient_id: 'ref-2',
       sign_type_id: 'sign-1',
       document_type_id: 'type-1',
+      file_id: 14,
       SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
       DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
       DocumentStatus: { alias: 'AWAITING_SIGNATURE' },
@@ -527,6 +532,7 @@ test('signWithCode rolls closing act signature back when regenerate fails', asyn
     where: { document_id: 'doc-closing-code-1', user_id: 'ref-2' },
   });
   expect(rollbackDocUpdate).toHaveBeenCalledWith({
+    file_id: 14,
     status_id: 20,
     updated_by: 'ref-2',
   });
@@ -573,6 +579,7 @@ test('signWithCode restores previous file when regenerate fails after swapping P
       recipient_id: 'ref-3',
       sign_type_id: 'sign-1',
       document_type_id: 'type-1',
+      file_id: 14,
       SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
       DocumentType: { alias: 'REFEREE_CLOSING_ACT' },
       DocumentStatus: { alias: 'AWAITING_SIGNATURE' },

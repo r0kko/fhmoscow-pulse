@@ -34,8 +34,9 @@ import {
   AccountingAuditEvent,
 } from '../models/index.js';
 
+import asyncJobService, { buildAsyncJobDedupeKey } from './asyncJobService.js';
+import { registerAsyncJobHandler } from './asyncJobRegistry.js';
 import fileService from './fileService.js';
-import accountingService from './refereeAccountingService.js';
 
 const CLOSING_DOC_ALIAS = 'REFEREE_CLOSING_ACT';
 const REFEREE_CONTRACT_ALIAS = 'REFEREE_CONTRACT_APPLICATION';
@@ -45,11 +46,20 @@ const FHMO_SIGNER_ROLE_ALIASES = [
   'FHMO_JUDGING_HEAD',
   'FHMO_JUDGING_SPECIALIST',
 ];
-const ACTIVE_ACT_STATUSES = ['DRAFT', 'AWAITING_SIGNATURE', 'POSTED'];
+const ACTIVE_ACT_STATUSES = [
+  'DRAFT',
+  'SENDING',
+  'AWAITING_SIGNATURE',
+  'POSTED',
+];
 const MUTABLE_ACT_STATUSES = ['DRAFT', 'AWAITING_SIGNATURE'];
 const VAT_LABEL = 'Без налога (НДС)';
 const SERVICE_UNIT_LABEL = 'усл.';
 const FILTERED_SELECTION_PAGE_LIMIT = 1000;
+const CLOSING_JOB_TYPE = 'REFEREE_CLOSING_DOCUMENTS';
+const CLOSING_JOB_QUEUE = 'documents';
+const CLOSING_JOB_OPERATION_CREATE = 'CREATE_DRAFTS';
+const CLOSING_JOB_OPERATION_SEND = 'SEND_TO_SIGNATURE';
 
 function normalizeString(value) {
   return String(value ?? '').trim();
@@ -57,6 +67,28 @@ function normalizeString(value) {
 
 function errorCode(error, fallback = 'closing_document_send_failed') {
   return normalizeString(error?.code || error?.message || fallback) || fallback;
+}
+
+function normalizeJobSelectionMode(value, fallback = 'SELECTED') {
+  const normalized = normalizeString(value).toLowerCase();
+  if (normalized === 'filtered') return 'FILTERED';
+  if (normalized === 'all_eligible' || normalized === 'all') {
+    return 'ALL_ELIGIBLE';
+  }
+  if (normalized === 'single') return 'SINGLE';
+  return fallback;
+}
+
+function isRetryableClosingJobError(error) {
+  const code = errorCode(error, 'closing_document_job_failed');
+  return [
+    'closing_document_storage_failed',
+    'closing_document_pdf_failed',
+    'closing_document_transition_failed',
+    'closing_document_send_failed',
+    's3_upload_failed',
+    's3_not_configured',
+  ].includes(code);
 }
 
 function logClosingSend(level, stage, meta = {}, error = null) {
@@ -344,154 +376,6 @@ async function safeRemoveGeneratedFile(fileId) {
   }
 }
 
-async function rollbackCreatedClosingDocument(actId, actorId) {
-  if (!actId) return;
-  const act = await RefereeClosingDocument.findOne({
-    where: {
-      id: actId,
-      deleted_at: null,
-    },
-    include: [
-      {
-        model: Document,
-        as: 'Document',
-        attributes: ['id', 'file_id'],
-        required: false,
-      },
-    ],
-  });
-  if (!act) return;
-
-  const fileId = act.Document?.file_id || null;
-  await sequelize.transaction(async (tx) => {
-    await RefereeClosingDocumentItem.destroy({
-      where: { closing_document_id: act.id },
-      transaction: tx,
-    });
-    if (act.Document) {
-      await act.Document.update(
-        { updated_by: actorId },
-        { transaction: tx, returning: false }
-      );
-      await act.Document.destroy({ transaction: tx });
-    }
-    await act.update(
-      {
-        deleted_by: actorId,
-        updated_by: actorId,
-      },
-      { transaction: tx, returning: false, silent: true }
-    );
-    await act.destroy({ transaction: tx });
-  });
-
-  await safeRemoveGeneratedFile(fileId);
-}
-
-async function rollbackCreatedClosingDocumentsBatch(actIds, actorId) {
-  const uniqueIds = [...new Set((actIds || []).filter(Boolean))].reverse();
-  const results = await Promise.allSettled(
-    uniqueIds.map((actId) => rollbackCreatedClosingDocument(actId, actorId))
-  );
-  const rollbackError = results.find((item) => item.status === 'rejected');
-  if (rollbackError?.status === 'rejected') {
-    console.error('Failed to rollback created closing document batch', {
-      code: rollbackError.reason?.code || null,
-      message: rollbackError.reason?.message || null,
-    });
-  }
-}
-
-async function rollbackUpdatedClosingDocument(previousState, actorId) {
-  if (!previousState?.actId) return;
-  const act = await RefereeClosingDocument.findOne({
-    where: {
-      id: previousState.actId,
-      deleted_at: null,
-    },
-    include: [
-      {
-        model: Document,
-        as: 'Document',
-        attributes: ['id', 'description'],
-        required: false,
-      },
-    ],
-  });
-  if (!act?.Document) return;
-
-  await sequelize.transaction(async (tx) => {
-    await RefereeClosingDocumentItem.destroy({
-      where: { closing_document_id: act.id },
-      transaction: tx,
-    });
-    await act.Document.update(
-      {
-        description: previousState.documentDescription,
-        updated_by: actorId,
-      },
-      { transaction: tx, returning: false }
-    );
-    await act.update(
-      {
-        customer_snapshot_json: previousState.actFields.customer_snapshot_json,
-        performer_snapshot_json:
-          previousState.actFields.performer_snapshot_json,
-        contract_snapshot_json: previousState.actFields.contract_snapshot_json,
-        fhmo_signer_snapshot_json:
-          previousState.actFields.fhmo_signer_snapshot_json,
-        totals_json: previousState.actFields.totals_json,
-        status: previousState.actFields.status,
-        sent_at: previousState.actFields.sent_at,
-        posted_at: previousState.actFields.posted_at,
-        canceled_at: previousState.actFields.canceled_at,
-        updated_by: actorId,
-      },
-      { transaction: tx, returning: false }
-    );
-    for (const item of previousState.items || []) {
-      await RefereeClosingDocumentItem.create(
-        {
-          closing_document_id: act.id,
-          accrual_document_id: item.accrual_document_id,
-          line_no: item.line_no,
-          snapshot_json: item.snapshot_json,
-          created_by: actorId,
-          updated_by: actorId,
-        },
-        { transaction: tx }
-      );
-    }
-  });
-
-  try {
-    const { default: documentService } = await import('./documentService.js');
-    await documentService.regenerate(act.document_id, actorId);
-  } catch (error) {
-    console.error('Failed to regenerate restored closing document draft', {
-      actId: previousState.actId,
-      code: error?.code || null,
-      message: error?.message || null,
-    });
-  }
-}
-
-async function rollbackUpdatedClosingDocumentsBatch(previousStates, actorId) {
-  const items = [...(previousStates || [])].reverse();
-  const results = await Promise.allSettled(
-    items.map((previousState) =>
-      rollbackUpdatedClosingDocument(previousState, actorId)
-    )
-  );
-  const rollbackError = results.find((item) => item.status === 'rejected');
-  if (rollbackError?.status === 'rejected') {
-    console.error('Failed to rollback updated closing document batch', {
-      code: rollbackError.reason?.code || null,
-      message: rollbackError.reason?.message || null,
-    });
-  }
-}
-
 function buildClosingDocumentDescriptionPayload(group, actId = null) {
   return JSON.stringify({
     kind: CLOSING_DOC_ALIAS,
@@ -529,90 +413,6 @@ function buildClosingDocumentPreviousState(act) {
       snapshot_json: item.snapshot_json,
     })),
   };
-}
-
-async function rollbackClosingDocumentSend({
-  actId,
-  actorId,
-  signerId,
-  previousDocumentStatusId,
-  previousActStatus,
-  previousSentAt,
-  previousSignerSnapshot,
-  accrualIds,
-}) {
-  const [accruedStatus, act] = await Promise.all([
-    ensureAccrualStatus('ACCRUED'),
-    RefereeClosingDocument.findOne({
-      where: {
-        id: actId,
-        deleted_at: null,
-      },
-      include: [
-        {
-          model: Document,
-          as: 'Document',
-          attributes: ['id', 'status_id'],
-          required: false,
-        },
-      ],
-    }),
-  ]);
-  if (!act) return;
-
-  await sequelize.transaction(async (tx) => {
-    await DocumentUserSign.destroy({
-      where: {
-        document_id: act.document_id,
-        user_id: signerId,
-      },
-      transaction: tx,
-    });
-    if (act.Document) {
-      await act.Document.update(
-        {
-          status_id: previousDocumentStatusId,
-          updated_by: actorId,
-        },
-        { transaction: tx, returning: false }
-      );
-    }
-    await act.update(
-      {
-        status: previousActStatus,
-        sent_at: previousSentAt,
-        fhmo_signer_snapshot_json: previousSignerSnapshot,
-        updated_by: actorId,
-      },
-      { transaction: tx, returning: false }
-    );
-    if (accrualIds.length) {
-      await RefereeAccrualDocument.update(
-        {
-          document_status_id: accruedStatus.id,
-          updated_by: actorId,
-        },
-        {
-          where: {
-            id: { [Op.in]: accrualIds },
-          },
-          transaction: tx,
-        }
-      );
-    }
-  });
-
-  try {
-    const { default: documentService } = await import('./documentService.js');
-    await documentService.regenerate(act.document_id, actorId);
-  } catch (error) {
-    logger.error('Failed to regenerate draft closing document after rollback', {
-      actId,
-      documentId: act.document_id,
-      actorId,
-      code: error?.code || error?.message || null,
-    });
-  }
 }
 
 async function ensureTournamentExists(tournamentId) {
@@ -814,7 +614,7 @@ function normalizeSelectionPayload(payload = {}) {
   const selectionMode =
     normalizeString(payload.selection_mode || 'explicit').toLowerCase() ||
     'explicit';
-  if (!['explicit', 'filtered'].includes(selectionMode)) {
+  if (!['explicit', 'filtered', 'single'].includes(selectionMode)) {
     throw new ServiceError('invalid_closing_selection_mode', 400);
   }
 
@@ -889,7 +689,7 @@ function normalizeDocumentSelectionPayload(payload = {}) {
   const selectionMode =
     normalizeString(payload.selection_mode || 'explicit').toLowerCase() ||
     'explicit';
-  if (!['explicit', 'filtered'].includes(selectionMode)) {
+  if (!['explicit', 'filtered', 'single'].includes(selectionMode)) {
     throw new ServiceError('invalid_closing_selection_mode', 400);
   }
 
@@ -912,12 +712,12 @@ function normalizeDocumentSelectionPayload(payload = {}) {
     ),
   ];
 
-  if (selectionMode === 'explicit' && !documentIds.length) {
+  if (['explicit', 'single'].includes(selectionMode) && !documentIds.length) {
     throw new ServiceError('closing_document_ids_required', 400);
   }
 
   return {
-    selectionMode,
+    selectionMode: selectionMode === 'single' ? 'single' : selectionMode,
     filters,
     documentIds,
   };
@@ -928,31 +728,131 @@ async function loadFilteredSelectionAccrualIds(tournamentId, filters = {}) {
   let page = 1;
   let total = 0;
   let totalAmountRub = '0.00';
+  const accruedStatus = await ensureAccrualStatus(filters.status || 'ACCRUED');
+  const where = {
+    tournament_id: tournamentId,
+    document_status_id: accruedStatus.id,
+    deleted_at: null,
+  };
+  if (filters.number) {
+    where.accrual_number = {
+      [Op.iLike]: `%${normalizeString(filters.number)}%`,
+    };
+  }
+  if (filters.fareCode) {
+    where.fare_code_snapshot = normalizeString(filters.fareCode).toUpperCase();
+  }
+  if (filters.refereeRoleId) where.referee_role_id = filters.refereeRoleId;
+  if (filters.stageGroupId) where.stage_group_id = filters.stageGroupId;
+  if (filters.groundId) where.ground_id = filters.groundId;
+  if (filters.dateFrom || filters.dateTo) {
+    where.match_date_snapshot = {};
+    if (filters.dateFrom) where.match_date_snapshot[Op.gte] = filters.dateFrom;
+    if (filters.dateTo) where.match_date_snapshot[Op.lte] = filters.dateTo;
+  }
+  if (filters.amountFrom) {
+    where.total_amount_rub = {
+      ...(where.total_amount_rub || {}),
+      [Op.gte]: filters.amountFrom,
+    };
+  }
+  if (filters.amountTo) {
+    where.total_amount_rub = {
+      ...(where.total_amount_rub || {}),
+      [Op.lte]: filters.amountTo,
+    };
+  }
+  const include = [
+    { model: Tournament, attributes: [], required: false },
+    {
+      model: User,
+      as: 'Referee',
+      attributes: [],
+      required: false,
+    },
+    {
+      model: RefereeRole,
+      attributes: [],
+      required: false,
+    },
+    {
+      model: TournamentGroup,
+      attributes: [],
+      required: false,
+    },
+    {
+      model: Ground,
+      attributes: [],
+      required: false,
+    },
+    {
+      model: Match,
+      attributes: [],
+      required: false,
+      include: [
+        { model: Team, as: 'HomeTeam', attributes: [], required: false },
+        { model: Team, as: 'AwayTeam', attributes: [], required: false },
+      ],
+    },
+  ];
+  const term = normalizeString(filters.search || '');
+  if (term) {
+    where[Op.or] = [
+      { accrual_number: { [Op.iLike]: `%${term}%` } },
+      { fare_code_snapshot: { [Op.iLike]: `%${term.toUpperCase()}%` } },
+      { '$Referee.last_name$': { [Op.iLike]: `%${term}%` } },
+      { '$Referee.first_name$': { [Op.iLike]: `%${term}%` } },
+      { '$Referee.patronymic$': { [Op.iLike]: `%${term}%` } },
+      { '$Tournament.name$': { [Op.iLike]: `%${term}%` } },
+      { '$RefereeRole.name$': { [Op.iLike]: `%${term}%` } },
+      { '$TournamentGroup.name$': { [Op.iLike]: `%${term}%` } },
+      { '$Ground.name$': { [Op.iLike]: `%${term}%` } },
+      { '$Match.HomeTeam.name$': { [Op.iLike]: `%${term}%` } },
+      { '$Match.AwayTeam.name$': { [Op.iLike]: `%${term}%` } },
+    ];
+  }
 
   while (true) {
-    const response = await accountingService.listRefereeAccrualDocuments({
-      tournamentId,
-      page,
-      limit: FILTERED_SELECTION_PAGE_LIMIT,
-      status: filters.status || 'ACCRUED',
-      source: filters.source,
-      number: filters.number,
-      fareCode: filters.fareCode,
-      refereeRoleId: filters.refereeRoleId,
-      stageGroupId: filters.stageGroupId,
-      groundId: filters.groundId,
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
-      amountFrom: filters.amountFrom,
-      amountTo: filters.amountTo,
-      search: filters.search,
-    });
+    const offset = (page - 1) * FILTERED_SELECTION_PAGE_LIMIT;
+    const response =
+      page === 1
+        ? await RefereeAccrualDocument.findAndCountAll({
+            where,
+            include,
+            attributes: ['id', 'total_amount_rub'],
+            order: [
+              ['match_date_snapshot', 'DESC'],
+              ['created_at', 'DESC'],
+            ],
+            offset,
+            limit: FILTERED_SELECTION_PAGE_LIMIT,
+            distinct: true,
+            subQuery: false,
+          })
+        : {
+            count: total,
+            rows: await RefereeAccrualDocument.findAll({
+              where,
+              include,
+              attributes: ['id', 'total_amount_rub'],
+              order: [
+                ['match_date_snapshot', 'DESC'],
+                ['created_at', 'DESC'],
+              ],
+              offset,
+              limit: FILTERED_SELECTION_PAGE_LIMIT,
+              subQuery: false,
+            }),
+          };
     if (!total) {
       total = Number(response.count || 0);
-      totalAmountRub = String(response.summary?.total_amount_rub || '0.00');
     }
     for (const row of response.rows || []) {
       selectedIds.push(row.id);
+      const amount = Number(String(row.total_amount_rub || 0));
+      if (Number.isFinite(amount)) {
+        totalAmountRub = (Number(totalAmountRub) + amount).toFixed(2);
+      }
     }
     if (selectedIds.length >= total || !(response.rows || []).length) break;
     page += 1;
@@ -1033,19 +933,48 @@ async function loadFilteredSelectionClosingDocumentIds(
   tournamentId,
   filters = {}
 ) {
+  const requestedStatus = normalizeString(filters.status || '');
+  if (requestedStatus && requestedStatus !== 'DRAFT') {
+    throw new ServiceError('closing_document_no_draft_documents', 409);
+  }
+
   const selectedIds = [];
   let page = 1;
   let total = 0;
 
   while (true) {
-    const data = await listClosingDocuments(tournamentId, {
-      page,
+    const data = await RefereeClosingDocument.findAndCountAll({
+      where: buildClosingDocumentWhere(
+        tournamentId,
+        {
+          ...filters,
+          status: 'DRAFT',
+        },
+        { statusOverride: 'DRAFT' }
+      ),
+      attributes: ['id', 'status'],
+      include: [
+        {
+          model: User,
+          as: 'Referee',
+          attributes: [],
+          required: false,
+        },
+        {
+          model: Document,
+          as: 'Document',
+          attributes: [],
+          required: false,
+        },
+      ],
+      distinct: true,
+      subQuery: false,
+      order: [['created_at', 'DESC']],
+      offset: (page - 1) * FILTERED_SELECTION_PAGE_LIMIT,
       limit: FILTERED_SELECTION_PAGE_LIMIT,
-      search: filters.search,
-      status: filters.status || 'DRAFT',
     });
     if (!total) {
-      total = Number(data.total || 0);
+      total = Number(data.count || 0);
     }
     for (const row of data.rows || []) {
       if (row.status === 'DRAFT') {
@@ -1788,6 +1717,9 @@ async function mapClosingDocument(act) {
   return {
     id: act.id,
     status: act.status,
+    pdf_status: act.pdf_status || 'READY',
+    pdf_error_code: act.pdf_error_code || null,
+    pdf_generated_at: act.pdf_generated_at || null,
     sent_at: act.sent_at,
     posted_at: act.posted_at,
     canceled_at: act.canceled_at,
@@ -2004,180 +1936,169 @@ async function previewClosingDocuments(tournamentId, payload) {
   return buildPreviewResult(tournamentId, selection.accrualIds, selection);
 }
 
-async function createClosingDocuments(tournamentId, payload, actorId) {
-  const selection = await resolveSelectionAccrualIds(tournamentId, payload);
-  const preview = await buildPreviewResult(
-    tournamentId,
-    selection.accrualIds,
-    selection
-  );
+async function processCreateClosingDocumentGroup(
+  tournamentId,
+  accrualIds,
+  actorId,
+  options = {}
+) {
+  const preview = await buildPreviewResult(tournamentId, accrualIds, {
+    selectionMode: 'explicit',
+    total: accrualIds.length,
+  });
   if (!preview.ready_groups.length) {
     throw new ServiceError('closing_document_no_ready_groups', 409);
   }
-
+  const group =
+    preview.ready_groups.find((item) =>
+      (item.selected_accrual_ids || []).some((id) =>
+        (accrualIds || []).map(String).includes(String(id))
+      )
+    ) || preview.ready_groups[0];
   const [documentType, createdStatus, simpleSignType] = await Promise.all([
     ensureDocumentType(CLOSING_DOC_ALIAS),
     ensureDocumentStatus('CREATED'),
     ensureSimpleSignType(),
   ]);
 
-  const createdActs = [];
-  const updatedDraftStates = [];
-  const preparedActIds = [];
-  for (const group of preview.ready_groups) {
-    let created = null;
-    let previousDraftState = null;
-    let placeholderFile = null;
-    try {
-      if (group.draft_document_id) {
-        previousDraftState = await sequelize.transaction(async (tx) => {
-          const act = await RefereeClosingDocument.findOne({
-            where: {
-              id: group.draft_document_id,
-              tournament_id: tournamentId,
-              deleted_at: null,
-            },
-            include: [
-              {
-                model: Document,
-                as: 'Document',
-                attributes: ['id', 'description'],
-                required: true,
-              },
-            ],
-            transaction: tx,
-            lock: tx.LOCK.UPDATE,
-          });
-          if (!act) throw new ServiceError('closing_document_not_found', 404);
-          if (act.status !== 'DRAFT') {
-            throw new ServiceError(
-              'closing_document_create_invalid_status',
-              409
-            );
-          }
-
-          act.Items = await loadClosingDocumentItems(act.id, tx);
-
-          const previousState = buildClosingDocumentPreviousState(act);
-          const before = act.get({ plain: true });
-          const selectedAccrualIds = (group.selected_accrual_ids || [])
-            .map((id) => normalizeString(id))
-            .filter(Boolean);
-          const currentDraftAccrualIds = (act.Items || [])
-            .map((item) => resolveItemAccrualId(item))
-            .filter(Boolean);
-          const currentAccrualSnapshotById = await loadAccrualSnapshotMap(
-            tournamentId,
-            [...currentDraftAccrualIds, ...selectedAccrualIds],
-            tx
-          );
-          const mergedItems = mergeDraftItems(
-            act.Items || [],
-            selectedAccrualIds,
-            currentAccrualSnapshotById
-          );
-
-          await RefereeClosingDocumentItem.destroy({
-            where: { closing_document_id: act.id },
-            transaction: tx,
-          });
-          await act.update(
+  let result;
+  try {
+    if (group.draft_document_id) {
+      result = await sequelize.transaction(async (tx) => {
+        const act = await RefereeClosingDocument.findOne({
+          where: {
+            id: group.draft_document_id,
+            tournament_id: tournamentId,
+            deleted_at: null,
+          },
+          include: [
             {
-              customer_snapshot_json: group.customer_snapshot,
-              performer_snapshot_json: group.performer_snapshot,
-              contract_snapshot_json: group.contract_snapshot,
-              fhmo_signer_snapshot_json: group.fhmo_signer_snapshot,
-              totals_json: buildTotalsFromItems(mergedItems),
+              model: Document,
+              as: 'Document',
+              attributes: ['id', 'description'],
+              required: true,
+            },
+          ],
+          transaction: tx,
+          lock: tx.LOCK.UPDATE,
+        });
+        if (!act) throw new ServiceError('closing_document_not_found', 404);
+        if (act.status !== 'DRAFT') {
+          throw new ServiceError('closing_document_create_invalid_status', 409);
+        }
+
+        act.Items = await loadClosingDocumentItems(act.id, tx);
+
+        const previousState = buildClosingDocumentPreviousState(act);
+        const before = act.get({ plain: true });
+        const selectedAccrualIds = (group.selected_accrual_ids || [])
+          .map((id) => normalizeString(id))
+          .filter(Boolean);
+        const currentDraftAccrualIds = (act.Items || [])
+          .map((item) => resolveItemAccrualId(item))
+          .filter(Boolean);
+        const currentAccrualSnapshotById = await loadAccrualSnapshotMap(
+          tournamentId,
+          [...currentDraftAccrualIds, ...selectedAccrualIds],
+          tx
+        );
+        const mergedItems = mergeDraftItems(
+          act.Items || [],
+          selectedAccrualIds,
+          currentAccrualSnapshotById
+        );
+
+        await RefereeClosingDocumentItem.destroy({
+          where: { closing_document_id: act.id },
+          transaction: tx,
+        });
+        await act.update(
+          {
+            customer_snapshot_json: group.customer_snapshot,
+            performer_snapshot_json: group.performer_snapshot,
+            contract_snapshot_json: group.contract_snapshot,
+            fhmo_signer_snapshot_json: group.fhmo_signer_snapshot,
+            totals_json: buildTotalsFromItems(mergedItems),
+            pdf_status: 'GENERATING',
+            pdf_error_code: null,
+            updated_by: actorId,
+          },
+          { transaction: tx, returning: false }
+        );
+        for (const item of mergedItems) {
+          await RefereeClosingDocumentItem.create(
+            {
+              closing_document_id: act.id,
+              accrual_document_id: item.accrual_id,
+              line_no: item.line_no,
+              snapshot_json: item,
+              created_by: actorId,
               updated_by: actorId,
             },
-            { transaction: tx, returning: false }
+            { transaction: tx }
           );
-          for (const item of mergedItems) {
-            await RefereeClosingDocumentItem.create(
-              {
-                closing_document_id: act.id,
-                accrual_document_id: item.accrual_id,
-                line_no: item.line_no,
-                snapshot_json: item,
-                created_by: actorId,
-                updated_by: actorId,
-              },
-              { transaction: tx }
-            );
-          }
+        }
 
-          await act.Document.update(
+        await act.Document.update(
+          {
+            description: buildClosingDocumentDescriptionPayload(
+              {
+                ...group,
+                items: mergedItems,
+                totals: buildTotalsFromItems(mergedItems),
+                accrual_ids: mergedItems
+                  .map((item) => item.accrual_id)
+                  .filter(Boolean),
+              },
+              act.id
+            ),
+            updated_by: actorId,
+          },
+          { transaction: tx, returning: false }
+        );
+        const updatedAct = await RefereeClosingDocument.findOne({
+          where: { id: act.id },
+          include: [
             {
-              description: buildClosingDocumentDescriptionPayload(
-                {
-                  ...group,
-                  items: mergedItems,
-                  totals: buildTotalsFromItems(mergedItems),
-                  accrual_ids: mergedItems
-                    .map((item) => item.accrual_id)
-                    .filter(Boolean),
-                },
-                act.id
-              ),
-              updated_by: actorId,
+              model: RefereeClosingDocumentItem,
+              as: 'Items',
+              attributes: [
+                'id',
+                'accrual_document_id',
+                'line_no',
+                'snapshot_json',
+              ],
+              required: false,
             },
-            { transaction: tx, returning: false }
-          );
-          const updatedAct = await RefereeClosingDocument.findOne({
-            where: { id: act.id },
-            include: [
-              {
-                model: RefereeClosingDocumentItem,
-                as: 'Items',
-                attributes: [
-                  'id',
-                  'accrual_document_id',
-                  'line_no',
-                  'snapshot_json',
-                ],
-                required: false,
-              },
-            ],
-            transaction: tx,
-          });
-
-          await writeAuditEvent({
-            entityType: 'REFEREE_CLOSING_DOCUMENT',
-            entityId: act.id,
-            action: 'UPDATE',
-            before,
-            after: updatedAct?.get({ plain: true }) || act.get({ plain: true }),
-            actorId,
-            transaction: tx,
-          });
-
-          return previousState;
+          ],
+          transaction: tx,
         });
 
-        const { default: documentService } =
-          await import('./documentService.js');
-        await documentService.regenerate(
-          previousDraftState.documentId,
-          actorId
-        );
-        updatedDraftStates.push(previousDraftState);
-        preparedActIds.push(previousDraftState.actId);
-        continue;
-      }
+        await writeAuditEvent({
+          entityType: 'REFEREE_CLOSING_DOCUMENT',
+          entityId: act.id,
+          action: 'UPDATE',
+          before,
+          after: updatedAct?.get({ plain: true }) || act.get({ plain: true }),
+          actorId,
+          transaction: tx,
+        });
 
-      placeholderFile = await fileService.saveGeneratedPdf(
-        Buffer.from('closing-act-draft'),
-        'referee-closing-act.pdf',
-        actorId
-      );
-
-      created = await sequelize.transaction(async (tx) => {
+        return {
+          actId: act.id,
+          documentId: act.document_id,
+          previousState,
+          updated: true,
+        };
+      });
+    } else {
+      result = await sequelize.transaction(async (tx) => {
         const document = await Document.create(
           {
             recipient_id: group.referee.id,
             document_type_id: documentType.id,
             status_id: createdStatus.id,
-            file_id: placeholderFile.id,
+            file_id: null,
             sign_type_id: simpleSignType.id,
             name: 'Акт об оказании услуг',
             description: buildClosingDocumentDescriptionPayload(group),
@@ -2199,6 +2120,8 @@ async function createClosingDocuments(tournamentId, payload, actorId) {
             contract_snapshot_json: group.contract_snapshot,
             fhmo_signer_snapshot_json: group.fhmo_signer_snapshot,
             totals_json: group.totals,
+            pdf_status: 'GENERATING',
+            pdf_error_code: null,
             created_by: actorId,
             updated_by: actorId,
           },
@@ -2240,42 +2163,60 @@ async function createClosingDocuments(tournamentId, payload, actorId) {
         return {
           actId: act.id,
           documentId: document.id,
-          placeholderFileId: placeholderFile.id,
+          updated: false,
         };
       });
-
-      const { default: documentService } = await import('./documentService.js');
-      await documentService.regenerate(created.documentId, actorId);
-      createdActs.push(created.actId);
-      preparedActIds.push(created.actId);
-    } catch (error) {
-      const rollbackIds = [...createdActs];
-      const rollbackUpdatedStates = [...updatedDraftStates];
-      if (created?.actId) {
-        rollbackIds.push(created.actId);
-      } else if (placeholderFile?.id) {
-        await safeRemoveGeneratedFile(placeholderFile.id);
-      }
-      if (previousDraftState?.actId) {
-        rollbackUpdatedStates.push(previousDraftState);
-      }
-      if (rollbackIds.length) {
-        await rollbackCreatedClosingDocumentsBatch(rollbackIds, actorId);
-      }
-      if (rollbackUpdatedStates.length) {
-        await rollbackUpdatedClosingDocumentsBatch(
-          rollbackUpdatedStates,
-          actorId
-        );
-      }
-      throw error;
     }
-  }
 
-  return listClosingDocuments(tournamentId, {
-    ids: preparedActIds,
-    page: 1,
-    limit: preparedActIds.length,
+    const { default: documentService } = await import('./documentService.js');
+    await documentService.regenerate(result.documentId, actorId);
+    await RefereeClosingDocument.update(
+      {
+        pdf_status: 'READY',
+        pdf_error_code: null,
+        pdf_generated_at: new Date(),
+        updated_by: actorId,
+      },
+      {
+        where: { id: result.actId },
+      }
+    );
+    return {
+      id: result.actId,
+      closing_document_id: result.actId,
+      document_id: result.documentId,
+      updated: result.updated,
+    };
+  } catch (error) {
+    if (isUniqueConstraintError(error) && !options.retryAfterUnique) {
+      return processCreateClosingDocumentGroup(
+        tournamentId,
+        accrualIds,
+        actorId,
+        {
+          retryAfterUnique: true,
+        }
+      );
+    }
+    if (result?.actId) {
+      await RefereeClosingDocument.update(
+        {
+          pdf_status: 'FAILED',
+          pdf_error_code: errorCode(error, 'closing_document_pdf_failed'),
+          updated_by: actorId,
+        },
+        { where: { id: result.actId } }
+      );
+    }
+    throw error;
+  }
+}
+
+async function createClosingDocuments(tournamentId, payload, actorId) {
+  return createClosingDocumentJob(tournamentId, {
+    operation: CLOSING_JOB_OPERATION_CREATE,
+    payload,
+    actorId,
   });
 }
 
@@ -2433,7 +2374,7 @@ async function sendClosingDocumentWithSigner(
           {
             model: Document,
             as: 'Document',
-            attributes: ['id', 'status_id'],
+            attributes: ['id', 'status_id', 'file_id'],
             include: [{ model: DocumentStatus, attributes: ['alias', 'name'] }],
           },
         ],
@@ -2460,48 +2401,27 @@ async function sendClosingDocumentWithSigner(
           warnings: [],
         };
       }
-      if (act.status !== 'DRAFT') {
+      if (!['DRAFT', 'SENDING'].includes(act.status)) {
         throw new ServiceError('closing_document_send_invalid_status', 409);
       }
+      if (!act.Document?.file_id || act.pdf_status !== 'READY') {
+        throw new ServiceError('document_file_not_ready', 409);
+      }
       act.Items = await loadClosingDocumentItems(act.id, tx);
-      const previousActStatus = act.status;
-      const previousSentAt = act.sent_at || null;
-      const previousSignerSnapshot = act.fhmo_signer_snapshot_json || null;
-      const previousDocumentStatusId = act.Document?.status_id || null;
       const accrualIds = act.Items.map((item) => item.accrual_document_id);
       const before = act.get({ plain: true });
       await act.update(
         {
-          status: 'AWAITING_SIGNATURE',
-          sent_at: new Date(),
+          status: 'SENDING',
           fhmo_signer_snapshot_json: buildSignerSnapshot(signerCandidate),
           updated_by: actorId,
         },
         { transaction: tx, returning: false }
       );
-      await act.Document.update(
-        {
-          status_id: awaitingDocStatus.id,
-          updated_by: actorId,
-        },
-        { transaction: tx, returning: false }
-      );
-      await RefereeAccrualDocument.update(
-        {
-          document_status_id: awaitingAccrualStatus.id,
-          updated_by: actorId,
-        },
-        {
-          where: {
-            id: { [Op.in]: act.Items.map((item) => item.accrual_document_id) },
-          },
-          transaction: tx,
-        }
-      );
       await writeAuditEvent({
         entityType: 'REFEREE_CLOSING_DOCUMENT',
         entityId: act.id,
-        action: 'SEND',
+        action: 'SEND_START',
         before,
         after: act.get({ plain: true }),
         actorId,
@@ -2510,11 +2430,12 @@ async function sendClosingDocumentWithSigner(
       return {
         actId: act.id,
         documentId: act.document_id,
-        previousDocumentStatusId,
-        previousActStatus,
-        previousSentAt,
-        previousSignerSnapshot,
         accrualIds,
+        rollbackStatus: 'DRAFT',
+        rollbackFhmoSignerSnapshot:
+          before.status === 'DRAFT'
+            ? (before.fhmo_signer_snapshot_json ?? null)
+            : null,
         warnings: [],
       };
     });
@@ -2586,32 +2507,82 @@ async function sendClosingDocumentWithSigner(
     }
   } catch (error) {
     const mapped = mapClosingSendError(error, 'rollback');
-    logClosingSend('error', 'rollback', transitionLogMeta, mapped);
+    logClosingSend('error', 'send_step_failed', transitionLogMeta, mapped);
     try {
-      await rollbackClosingDocumentSend({
-        actId: transition.actId,
+      await restoreClosingDocumentDraftAfterSendFailure({
+        tournamentId,
+        transition,
         actorId,
-        signerId: signerCandidate.signer.id,
-        previousDocumentStatusId: transition.previousDocumentStatusId,
-        previousActStatus: transition.previousActStatus,
-        previousSentAt: transition.previousSentAt,
-        previousSignerSnapshot: transition.previousSignerSnapshot,
-        accrualIds: transition.accrualIds,
+        error: mapped,
       });
     } catch (rollbackError) {
       logClosingSend(
         'error',
-        'rollback_failed',
+        'send_rollback_failed',
         transitionLogMeta,
         rollbackError
       );
-      mapped.details = {
-        rollback_failed: true,
-        rollback_code: errorCode(rollbackError),
-      };
     }
     throw mapped;
   }
+
+  await sequelize.transaction(async (tx) => {
+    const act = await RefereeClosingDocument.findOne({
+      where: {
+        id: transition.actId,
+        tournament_id: tournamentId,
+        deleted_at: null,
+      },
+      include: [
+        {
+          model: Document,
+          as: 'Document',
+          attributes: ['id', 'status_id'],
+          required: true,
+        },
+      ],
+      transaction: tx,
+      lock: { level: tx.LOCK.UPDATE, of: RefereeClosingDocument },
+    });
+    if (!act) throw new ServiceError('closing_document_not_found', 404);
+    const before = act.get({ plain: true });
+    await act.update(
+      {
+        status: 'AWAITING_SIGNATURE',
+        sent_at: new Date(),
+        updated_by: actorId,
+      },
+      { transaction: tx, returning: false }
+    );
+    await act.Document.update(
+      {
+        status_id: awaitingDocStatus.id,
+        updated_by: actorId,
+      },
+      { transaction: tx, returning: false }
+    );
+    await RefereeAccrualDocument.update(
+      {
+        document_status_id: awaitingAccrualStatus.id,
+        updated_by: actorId,
+      },
+      {
+        where: {
+          id: { [Op.in]: transition.accrualIds },
+        },
+        transaction: tx,
+      }
+    );
+    await writeAuditEvent({
+      entityType: 'REFEREE_CLOSING_DOCUMENT',
+      entityId: act.id,
+      action: 'SEND',
+      before,
+      after: act.get({ plain: true }),
+      actorId,
+      transaction: tx,
+    });
+  });
 
   const result = await getClosingDocument(tournamentId, transition.actId);
   if (transition.warnings.length) {
@@ -2620,23 +2591,67 @@ async function sendClosingDocumentWithSigner(
   return result;
 }
 
+async function restoreClosingDocumentDraftAfterSendFailure({
+  tournamentId,
+  transition,
+  actorId,
+  error,
+}) {
+  if (!transition?.actId) return;
+  await sequelize.transaction(async (tx) => {
+    const act = await RefereeClosingDocument.findOne({
+      where: {
+        id: transition.actId,
+        tournament_id: tournamentId,
+        deleted_at: null,
+      },
+      transaction: tx,
+      lock: { level: tx.LOCK.UPDATE, of: RefereeClosingDocument },
+    });
+    if (!act || act.status !== 'SENDING') return;
+    const before = act.get({ plain: true });
+    await act.update(
+      {
+        status: transition.rollbackStatus || 'DRAFT',
+        fhmo_signer_snapshot_json:
+          transition.rollbackFhmoSignerSnapshot ?? null,
+        updated_by: actorId,
+      },
+      { transaction: tx, returning: false }
+    );
+    await writeAuditEvent({
+      entityType: 'REFEREE_CLOSING_DOCUMENT',
+      entityId: act.id,
+      action: 'SEND_ROLLBACK',
+      before,
+      after: act.get({ plain: true }),
+      actorId,
+      transaction: tx,
+    });
+    logClosingSend('warn', 'send_rollback_to_draft', {
+      tournamentId,
+      closingDocumentId: transition.actId,
+      actorId,
+      errorCode: errorCode(error, 'closing_document_send_failed'),
+    });
+  });
+}
+
 async function sendClosingDocument(
   tournamentId,
   closingDocumentId,
   actorId,
   options = {}
 ) {
-  const signerCandidate = await findActiveFhmoSigner();
-  if (!signerCandidate)
-    throw new ServiceError('federation_signer_not_found', 409);
-
-  return sendClosingDocumentWithSigner(
-    tournamentId,
-    closingDocumentId,
+  return createClosingDocumentJob(tournamentId, {
+    operation: CLOSING_JOB_OPERATION_SEND,
+    payload: {
+      selection_mode: 'single',
+      closing_document_ids: [closingDocumentId],
+    },
     actorId,
-    signerCandidate,
-    options
-  );
+    requestId: options?.requestId || null,
+  });
 }
 
 async function sendClosingDocumentsBatch(
@@ -2645,51 +2660,165 @@ async function sendClosingDocumentsBatch(
   actorId,
   options = {}
 ) {
-  const signerCandidate = await findActiveFhmoSigner();
-  if (!signerCandidate)
-    throw new ServiceError('federation_signer_not_found', 409);
+  return createClosingDocumentJob(tournamentId, {
+    operation: CLOSING_JOB_OPERATION_SEND,
+    payload,
+    actorId,
+    requestId: options?.requestId || null,
+  });
+}
 
-  const selection = await resolveSelectionClosingDocumentIds(
-    tournamentId,
-    payload
-  );
-  const sentIds = [];
-  const failures = [];
-
-  for (const documentId of selection.documentIds) {
-    try {
-      await sendClosingDocumentWithSigner(
-        tournamentId,
-        documentId,
-        actorId,
-        signerCandidate,
-        options
-      );
-      sentIds.push(documentId);
-    } catch (error) {
-      failures.push({
-        id: documentId,
-        code: errorCode(error),
-      });
-    }
+async function createClosingDocumentJob(
+  tournamentId,
+  { operation, payload = {}, actorId = null, requestId = null }
+) {
+  await ensureTournamentExists(tournamentId);
+  const isCreate = operation === CLOSING_JOB_OPERATION_CREATE;
+  const isSend = operation === CLOSING_JOB_OPERATION_SEND;
+  if (!isCreate && !isSend) {
+    throw new ServiceError('invalid_closing_document_job_operation', 400);
   }
 
-  const sentDocuments = sentIds.length
-    ? await listClosingDocuments(tournamentId, {
-        ids: sentIds,
-        page: 1,
-        limit: sentIds.length,
-      })
-    : { rows: [] };
-
-  return {
-    documents: sentDocuments.rows,
-    failures,
-    summary: {
-      selection_mode: selection.selectionMode,
+  let selection;
+  let items;
+  let selectionSnapshot;
+  if (isCreate) {
+    selection = await resolveSelectionAccrualIds(tournamentId, payload);
+    const preview = await buildPreviewResult(
+      tournamentId,
+      selection.accrualIds,
+      selection
+    );
+    if (!preview.ready_groups.length) {
+      throw new ServiceError('closing_document_no_ready_groups', 409);
+    }
+    items = preview.ready_groups.map((group) => ({
+      item_type: 'REFEREE_CLOSING_DRAFT',
+      target_type: 'USER',
+      target_id: group.referee?.id || null,
+      target_ref_json: {
+        referee_id: group.referee?.id || null,
+        draft_document_id: group.draft_document_id || null,
+        accrual_ids: group.accrual_ids || [],
+      },
+      payload_json: {
+        accrual_ids: group.accrual_ids || [],
+      },
+    }));
+    selectionSnapshot = {
+      selection_mode: normalizeJobSelectionMode(payload.selection_mode),
       selected_total: selection.total,
-      sent_total: sentIds.length,
-      failed_total: failures.length,
+      selected_amount_rub: selection.totalAmountRub || null,
+      ready_groups: preview.ready_groups.length,
+      blocked_groups: preview.blocked_groups.length,
+    };
+  } else {
+    const signerCandidate = await findActiveFhmoSigner();
+    if (!signerCandidate) {
+      throw new ServiceError('federation_signer_not_found', 409);
+    }
+    selection = await resolveSelectionClosingDocumentIds(tournamentId, payload);
+    items = selection.documentIds.map((documentId) => ({
+      item_type: 'REFEREE_CLOSING_SEND',
+      target_type: 'REFEREE_CLOSING_DOCUMENT',
+      target_id: documentId,
+      target_ref_json: {
+        closing_document_id: documentId,
+      },
+    }));
+    selectionSnapshot = {
+      selection_mode: normalizeJobSelectionMode(payload.selection_mode),
+      selected_total: selection.total,
+    };
+  }
+
+  const selectionMode = normalizeJobSelectionMode(
+    payload.selection_mode,
+    items.length === 1 ? 'SINGLE' : 'SELECTED'
+  );
+  const dedupeKey = buildAsyncJobDedupeKey({
+    jobType: CLOSING_JOB_TYPE,
+    operation,
+    tournamentId,
+    actorId,
+    selectionMode,
+    payload: isCreate
+      ? { accrualIds: selection.accrualIds }
+      : { closingDocumentIds: selection.documentIds },
+  });
+
+  return asyncJobService.createAsyncJob({
+    jobType: CLOSING_JOB_TYPE,
+    operation,
+    queue: CLOSING_JOB_QUEUE,
+    scopeType: 'TOURNAMENT',
+    scopeId: tournamentId,
+    payload: {
+      selection_mode: selectionMode,
+      request_id: requestId || null,
+      request: isCreate
+        ? {
+            filters: selection.filters || {},
+            accrual_ids: selection.accrualIds,
+          }
+        : { closing_document_ids: selection.documentIds },
+    },
+    selection: selectionSnapshot,
+    items,
+    dedupeKey,
+    requestedByUserId: actorId,
+  });
+}
+
+async function processCreateClosingJobItem({ job, item }) {
+  const accrualIds =
+    item.target_ref_json?.accrual_ids || item.payload_json?.accrual_ids || [];
+  const result = await processCreateClosingDocumentGroup(
+    job.scope_id,
+    accrualIds,
+    job.requested_by_user_id
+  );
+  return {
+    target_id: result.closing_document_id,
+    target_ref_json: {
+      ...(item.target_ref_json || {}),
+      closing_document_id: result.closing_document_id,
+    },
+    result_json: {
+      closing_document_id: result.closing_document_id,
+      document_id: result.document_id,
+      updated: Boolean(result.updated),
+    },
+  };
+}
+
+async function processSendClosingJobItem({ job, item }) {
+  const signerCandidate = await findActiveFhmoSigner();
+  if (!signerCandidate) {
+    throw new ServiceError('federation_signer_not_found', 409);
+  }
+  const closingDocumentId =
+    item.target_id || item.target_ref_json?.closing_document_id || null;
+  const result = await sendClosingDocumentWithSigner(
+    job.scope_id,
+    closingDocumentId,
+    job.requested_by_user_id,
+    signerCandidate,
+    {
+      jobId: job.id,
+      itemId: item.id,
+      requestId: job.payload_json?.request_id || null,
+    }
+  );
+  return {
+    target_id: closingDocumentId,
+    target_ref_json: {
+      ...(item.target_ref_json || {}),
+      closing_document_id: closingDocumentId,
+    },
+    result_json: {
+      closing_document_id: closingDocumentId,
+      warnings: result?.warnings || [],
     },
   };
 }
@@ -2931,6 +3060,16 @@ async function isClosingDocumentCanceled(documentId) {
   });
   return act?.status === 'CANCELED';
 }
+
+registerAsyncJobHandler(CLOSING_JOB_TYPE, CLOSING_JOB_OPERATION_CREATE, {
+  processItem: processCreateClosingJobItem,
+  isRetryableError: isRetryableClosingJobError,
+});
+
+registerAsyncJobHandler(CLOSING_JOB_TYPE, CLOSING_JOB_OPERATION_SEND, {
+  processItem: processSendClosingJobItem,
+  isRetryableError: isRetryableClosingJobError,
+});
 
 export default {
   listClosingTournaments,

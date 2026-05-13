@@ -1,6 +1,7 @@
 import { body, query } from 'express-validator';
 
-const closingStatusRule = /^(DRAFT|AWAITING_SIGNATURE|POSTED|CANCELED)$/;
+const closingStatusRule =
+  /^(DRAFT|SENDING|AWAITING_SIGNATURE|POSTED|CANCELED)$/;
 const closingSelectionModeRule = /^(explicit|filtered)$/;
 
 export const closingTournamentListRules = [

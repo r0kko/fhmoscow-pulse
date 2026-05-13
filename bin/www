@@ -43,6 +43,9 @@ const { setReady, setSyncing } = await import('../src/config/readiness.js');
 const { seedJobMetrics } = await import('../src/config/metrics.js');
 const { startEmailWorker, stopEmailWorker } =
   await import('../src/services/emailService.js');
+const { default: asyncJobService } =
+  await import('../src/services/asyncJobService.js');
+await import('../src/services/refereeClosingDocumentService.js');
 
 const debug = debugLib('fhmoscow-pulse:server');
 
@@ -91,6 +94,7 @@ app.set('port', port);
  * Create HTTP or HTTPS server.
  */
 let stopEmailQueue = async () => {};
+let stopAsyncJobWorker = async () => {};
 let server;
 if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
   try {
@@ -126,6 +130,17 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
     }
   } catch (err) {
     console.warn('Email worker failed to start:', err?.message || err);
+  }
+  try {
+    const maybeStop = asyncJobService.startAsyncJobWorker();
+    if (typeof maybeStop === 'function') {
+      stopAsyncJobWorker = maybeStop;
+    }
+  } catch (err) {
+    console.warn(
+      'Async job worker failed to start:',
+      err?.message || err
+    );
   }
   await connectLegacyDatabase(); // continue even if legacy DB is unreachable
   await connectExternalMariaDb(); // optional external MariaDB
@@ -169,6 +184,8 @@ if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
       'matchAgreementReminders',
       'taxation',
       'refereeAccrualGeneration',
+      'asyncJob.REFEREE_CLOSING_DOCUMENTS.CREATE_DRAFTS',
+      'asyncJob.REFEREE_CLOSING_DOCUMENTS.SEND_TO_SIGNATURE',
     ]);
   } catch {}
 
@@ -232,10 +249,13 @@ async function shutdown(signal) {
     await new Promise((resolve) => server.close(resolve));
   } catch {}
   try {
-    await closeDatabase();
+    await stopAsyncJobWorker();
   } catch {}
   try {
     await stopEmailQueue();
+  } catch {}
+  try {
+    await closeDatabase();
   } catch {}
   try {
     await closeRedis();

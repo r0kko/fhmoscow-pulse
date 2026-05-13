@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
 
 import { apiFetch } from '../../api';
 import PageNav from '../PageNav.vue';
@@ -151,6 +158,9 @@ interface PreviewResponse {
 interface ClosingDocumentRow {
   id: string;
   status: string;
+  pdf_status?: string | null;
+  pdf_error_code?: string | null;
+  pdf_generated_at?: string | null;
   number?: string | null;
   sent_at?: string | null;
   posted_at?: string | null;
@@ -183,9 +193,37 @@ interface ClosingListResponse {
   } | null;
 }
 
-interface SendClosingDocumentResponse {
-  document?: ClosingDocumentRow;
-  warnings?: string[];
+interface ClosingDocumentJobResponse {
+  job_id: string;
+  job_type?: string;
+  operation: 'CREATE_DRAFTS' | 'SEND_TO_SIGNATURE';
+  queue?: string;
+  scope_type?: string;
+  scope_id?: string | null;
+  status: string;
+  total_count: number;
+  processed_count: number;
+  success_count: number;
+  skipped_count: number;
+  failure_count: number;
+  progress_percent: number;
+  error_code?: string | null;
+  error_message?: string | null;
+  poll_url?: string | null;
+}
+
+interface ClosingDocumentJobItemsResponse {
+  items?: Array<{
+    id: string;
+    status: string;
+    error_code?: string | null;
+    error_message?: string | null;
+    target_id?: string | null;
+    target_ref?: {
+      closing_document_id?: string | null;
+      referee_id?: string | null;
+    };
+  }>;
 }
 
 const props = defineProps<{
@@ -194,6 +232,16 @@ const props = defineProps<{
 }>();
 
 const { showToast } = useToast();
+const CLOSING_PREVIEW_TIMEOUT_MS = 60_000;
+const CLOSING_MUTATION_TIMEOUT_MS = 30_000;
+const CLOSING_SINGLE_SEND_TIMEOUT_MS = 30_000;
+const CLOSING_JOB_POLL_INTERVAL_MS = 2500;
+const CLOSING_JOB_TERMINAL_STATUSES = new Set([
+  'COMPLETED',
+  'PARTIAL_FAILED',
+  'FAILED',
+  'CANCELED',
+]);
 
 const activeTab = ref<ClosingTabKey>('prepare');
 const tabs = [
@@ -224,6 +272,7 @@ const accrualFilters = reactive({
   dateTo: '',
 });
 const selectedIds = ref<string[]>([]);
+const selectedRowsById = ref<Record<string, AccrualRow>>({});
 const selectionMode = ref<'explicit' | 'filtered'>('explicit');
 const filteredSelection = ref<{
   count: number;
@@ -263,6 +312,10 @@ const selectedDocument = computed(
 );
 const actionLoading = ref('');
 const bulkSendLoading = ref(false);
+const activeJob = ref<ClosingDocumentJobResponse | null>(null);
+const activeJobFailures = ref<ClosingDocumentJobItemsResponse['items']>([]);
+const activeJobError = ref('');
+let activeJobPollTimer: number | null = null;
 
 const accrualTotalPages = computed(() =>
   Math.max(1, Math.ceil(Number(accrualTotal.value || 0) / accrualLimit.value))
@@ -276,7 +329,9 @@ const documentsTotalPages = computed(() =>
 const explicitSelectedSummary = computed(() => ({
   count: selectedIds.value.length,
   total: selectedIds.value.reduce((sum, id) => {
-    const row = accrualRows.value.find((item) => item.id === id);
+    const row =
+      selectedRowsById.value[id] ||
+      accrualRows.value.find((item) => item.id === id);
     const amount = Number(String(row?.total_amount_rub ?? 0).replace(',', '.'));
     return Number.isFinite(amount) ? sum + amount : sum;
   }, 0),
@@ -360,6 +415,11 @@ const canSelectAllSendFiltered = computed(
   () =>
     sendSelectionMode.value === 'explicit' && sendableDocumentsTotal.value > 0
 );
+const activeJobRunning = computed(
+  () =>
+    Boolean(activeJob.value) &&
+    !CLOSING_JOB_TERMINAL_STATUSES.has(activeJob.value?.status || '')
+);
 
 function fullName(
   person: AccrualRow['referee'] | ClosingDocumentRow['referee']
@@ -429,6 +489,7 @@ function issueLabel(issue: string) {
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     DRAFT: 'Черновик',
+    SENDING: 'Отправляется',
     AWAITING_SIGNATURE: 'Ожидает подписания',
     POSTED: 'Проведен',
     CANCELED: 'Отменен',
@@ -439,6 +500,108 @@ function statusLabel(status: string) {
 
 function closingSendFailureLabel(code: string | null | undefined) {
   return translateError(code) || code || 'Неизвестная ошибка';
+}
+
+function jobOperationLabel(operation: string | null | undefined) {
+  const labels: Record<string, string> = {
+    CREATE_DRAFTS: 'Создание актов',
+    SEND_TO_SIGNATURE: 'Отправка на подпись',
+  };
+  return labels[String(operation || '')] || 'Операция с актами';
+}
+
+function jobStatusLabel(status: string | null | undefined) {
+  const labels: Record<string, string> = {
+    QUEUED: 'В очереди',
+    RUNNING: 'Выполняется',
+    COMPLETED: 'Завершено',
+    PARTIAL_FAILED: 'Завершено с ошибками',
+    FAILED: 'Ошибка',
+    CANCELED: 'Отменено',
+  };
+  return labels[String(status || '')] || status || '—';
+}
+
+function clearActiveJobTimer() {
+  if (!activeJobPollTimer) return;
+  window.clearTimeout(activeJobPollTimer);
+  activeJobPollTimer = null;
+}
+
+async function loadActiveJobFailures(jobId: string) {
+  try {
+    const response = (await apiFetch(
+      `/admin/async-jobs/${jobId}/items?status=FAILED&limit=5`
+    )) as ClosingDocumentJobItemsResponse;
+    activeJobFailures.value = response.items || [];
+  } catch {
+    activeJobFailures.value = [];
+  }
+}
+
+async function pollClosingJob(jobId: string) {
+  clearActiveJobTimer();
+  try {
+    const response = (await apiFetch(
+      `/admin/async-jobs/${jobId}`
+    )) as ClosingDocumentJobResponse;
+    activeJob.value = response;
+    if (Number(response.failure_count || 0) > 0) {
+      await loadActiveJobFailures(jobId);
+    } else {
+      activeJobFailures.value = [];
+    }
+    if (!CLOSING_JOB_TERMINAL_STATUSES.has(response.status)) {
+      activeJobPollTimer = window.setTimeout(
+        () => void pollClosingJob(jobId),
+        CLOSING_JOB_POLL_INTERVAL_MS
+      );
+      return;
+    }
+    createLoading.value = false;
+    bulkSendLoading.value = false;
+    actionLoading.value = '';
+    if (response.status === 'COMPLETED') {
+      showToast(`${jobOperationLabel(response.operation)}: завершено`);
+    } else if (response.status === 'PARTIAL_FAILED') {
+      showToast(
+        `${jobOperationLabel(response.operation)}: есть ошибки`,
+        'warning'
+      );
+    }
+    clearSelection();
+    clearSendSelection();
+    preview.value = null;
+    activeTab.value = 'documents';
+    await Promise.all([loadAccruals(), loadDocuments()]);
+  } catch (err: any) {
+    activeJobError.value = err?.message || 'Не удалось обновить статус задачи';
+    activeJobPollTimer = window.setTimeout(
+      () => void pollClosingJob(jobId),
+      CLOSING_JOB_POLL_INTERVAL_MS
+    );
+  }
+}
+
+function startClosingJobPolling(job: ClosingDocumentJobResponse) {
+  activeJob.value = job;
+  activeJobFailures.value = [];
+  activeJobError.value = '';
+  void pollClosingJob(job.job_id);
+}
+
+async function retryFailedJob() {
+  if (!activeJob.value?.job_id || activeJobRunning.value) return;
+  activeJobError.value = '';
+  try {
+    const response = (await apiFetch(
+      `/admin/async-jobs/${activeJob.value.job_id}/retry-failed`,
+      { method: 'POST' }
+    )) as ClosingDocumentJobResponse;
+    startClosingJobPolling(response);
+  } catch (err: any) {
+    activeJobError.value = err?.message || 'Не удалось повторить ошибки';
+  }
 }
 
 function snapshotTitle(
@@ -546,6 +709,7 @@ function clearSelection() {
   selectionMode.value = 'explicit';
   filteredSelection.value = null;
   selectedIds.value = [];
+  selectedRowsById.value = {};
 }
 
 function clearSendSelection() {
@@ -641,6 +805,12 @@ async function loadAccruals() {
       `/tournaments/${props.tournamentId}/referee-accruals?${buildAccrualQuery().toString()}`
     )) as AccrualListResponse;
     accrualRows.value = response.accruals || [];
+    if (selectedIds.value.length) {
+      selectedRowsById.value = {
+        ...selectedRowsById.value,
+        ...Object.fromEntries(accrualRows.value.map((row) => [row.id, row])),
+      };
+    }
     accrualTotal.value = Number(response.total || 0);
     accrualTotalAmountRub.value = String(
       response.summary?.total_amount_rub || '0.00'
@@ -696,9 +866,17 @@ async function loadDocuments() {
 function toggleSelection(id: string) {
   if (selectionMode.value === 'filtered') return;
   const set = new Set(selectedIds.value);
-  if (set.has(id)) set.delete(id);
-  else set.add(id);
+  const nextRows = { ...selectedRowsById.value };
+  if (set.has(id)) {
+    set.delete(id);
+    delete nextRows[id];
+  } else {
+    set.add(id);
+    const row = accrualRows.value.find((item) => item.id === id);
+    if (row) nextRows[id] = row;
+  }
   selectedIds.value = [...set];
+  selectedRowsById.value = nextRows;
 }
 
 function toggleSelectAllOnPage() {
@@ -706,11 +884,21 @@ function toggleSelectAllOnPage() {
   if (allRowsSelected.value) {
     const idsOnPage = new Set(accrualRows.value.map((item) => item.id));
     selectedIds.value = selectedIds.value.filter((id) => !idsOnPage.has(id));
+    selectedRowsById.value = Object.fromEntries(
+      Object.entries(selectedRowsById.value).filter(
+        ([id]) => !idsOnPage.has(id)
+      )
+    );
     return;
   }
   const set = new Set(selectedIds.value);
-  for (const row of accrualRows.value) set.add(row.id);
+  const nextRows = { ...selectedRowsById.value };
+  for (const row of accrualRows.value) {
+    set.add(row.id);
+    nextRows[row.id] = row;
+  }
   selectedIds.value = [...set];
+  selectedRowsById.value = nextRows;
 }
 
 function selectAllFiltered() {
@@ -736,6 +924,7 @@ async function runPreview() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildSelectionPayload()),
+        timeoutMs: CLOSING_PREVIEW_TIMEOUT_MS,
       }
     )) as PreviewResponse;
   } catch (err: any) {
@@ -747,31 +936,32 @@ async function runPreview() {
 }
 
 async function createDocuments() {
-  if (!preview.value?.ready_groups?.length) return;
+  if (!preview.value?.ready_groups?.length || activeJobRunning.value) return;
   createLoading.value = true;
   try {
-    await apiFetch(
+    const response = (await apiFetch(
       `/tournaments/${props.tournamentId}/referee-closing-documents`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildSelectionPayload()),
+        timeoutMs: CLOSING_MUTATION_TIMEOUT_MS,
       }
-    );
-    showToast('Черновики актов подготовлены');
-    clearSelection();
-    preview.value = null;
-    activeTab.value = 'documents';
-    await Promise.all([loadAccruals(), loadDocuments()]);
+    )) as ClosingDocumentJobResponse;
+    showToast('Создание актов поставлено в очередь');
+    startClosingJobPolling(response);
   } catch (err: any) {
     previewError.value = err?.message || 'Не удалось создать акты';
-  } finally {
     createLoading.value = false;
+  } finally {
+    if (!activeJobRunning.value) createLoading.value = false;
   }
 }
 
 async function sendDocument(id: string) {
-  if (actionLoading.value || bulkSendLoading.value) return;
+  if (actionLoading.value || bulkSendLoading.value || activeJobRunning.value) {
+    return;
+  }
   actionLoading.value = `send:${id}`;
   documentsError.value = '';
   try {
@@ -779,24 +969,19 @@ async function sendDocument(id: string) {
       `/tournaments/${props.tournamentId}/referee-closing-documents/${id}/send`,
       {
         method: 'POST',
+        timeoutMs: CLOSING_SINGLE_SEND_TIMEOUT_MS,
       }
-    )) as SendClosingDocumentResponse;
-    if (response.warnings?.includes('closing_document_notification_failed')) {
-      showToast(
-        closingSendFailureLabel('closing_document_notification_failed'),
-        'warning'
-      );
-    } else {
-      showToast('Акт отправлен на подпись');
-    }
+    )) as ClosingDocumentJobResponse;
+    showToast('Отправка акта поставлена в очередь');
     selectedSendDocumentIds.value = selectedSendDocumentIds.value.filter(
       (item) => item !== id
     );
-    await Promise.all([loadAccruals(), loadDocuments()]);
+    startClosingJobPolling(response);
   } catch (err: any) {
     documentsError.value = err?.message || 'Не удалось отправить акт';
-  } finally {
     actionLoading.value = '';
+  } finally {
+    if (!activeJobRunning.value) actionLoading.value = '';
   }
 }
 
@@ -835,7 +1020,9 @@ function selectAllSendFiltered() {
 }
 
 async function sendSelectedDocuments() {
-  if (bulkSendLoading.value || actionLoading.value) return;
+  if (bulkSendLoading.value || actionLoading.value || activeJobRunning.value) {
+    return;
+  }
   if (!selectedSendSummary.value.count) {
     documentsError.value = 'Выберите хотя бы один черновик акта';
     return;
@@ -849,47 +1036,17 @@ async function sendSelectedDocuments() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildDocumentSelectionPayload()),
+        timeoutMs: CLOSING_MUTATION_TIMEOUT_MS,
       }
-    )) as {
-      failures?: Array<{ id?: string; code?: string }>;
-      summary?: {
-        sent_total?: number;
-        failed_total?: number;
-      };
-    };
-    const sentTotal = Number(response.summary?.sent_total || 0);
-    const failedTotal = Number(response.summary?.failed_total || 0);
-    if (sentTotal) {
-      showToast(
-        failedTotal
-          ? `Отправлено актов: ${sentTotal}. Ошибок: ${failedTotal}.`
-          : `Отправлено актов: ${sentTotal}`
-      );
-    }
-    let partialFailureMessage = '';
-    if (failedTotal) {
-      const failureLabels = [
-        ...new Set(
-          (response.failures || []).map((item) =>
-            closingSendFailureLabel(item.code)
-          )
-        ),
-      ];
-      const reason = failureLabels.length
-        ? ` Причина: ${failureLabels.join('; ')}.`
-        : '';
-      partialFailureMessage = `Не удалось отправить ${failedTotal} ${failedTotal === 1 ? 'акт' : 'акта(ов)'}.${reason} Обновите журнал и повторите попытку для оставшихся черновиков.`;
-    }
-    clearSendSelection();
-    await Promise.all([loadAccruals(), loadDocuments()]);
-    if (partialFailureMessage) {
-      documentsError.value = partialFailureMessage;
-    }
+    )) as ClosingDocumentJobResponse;
+    showToast('Массовая отправка поставлена в очередь');
+    startClosingJobPolling(response);
   } catch (err: any) {
     documentsError.value =
       err?.message || 'Не удалось выполнить массовую отправку актов';
-  } finally {
     bulkSendLoading.value = false;
+  } finally {
+    if (!activeJobRunning.value) bulkSendLoading.value = false;
   }
 }
 
@@ -941,6 +1098,10 @@ watch(activeTab, (value) => {
 onMounted(async () => {
   await Promise.all([loadProfile(), loadAccruals()]);
 });
+
+onBeforeUnmount(() => {
+  clearActiveJobTimer();
+});
 </script>
 
 <template>
@@ -953,6 +1114,82 @@ onMounted(async () => {
         (value) => (activeTab = String(value) as ClosingTabKey)
       "
     />
+
+    <section
+      v-if="activeJob"
+      class="border rounded-3 p-3 detail-card"
+      aria-live="polite"
+    >
+      <div class="d-flex flex-wrap justify-content-between gap-2">
+        <div>
+          <div class="fw-semibold">
+            {{ jobOperationLabel(activeJob.operation) }}
+          </div>
+          <div class="small text-muted">
+            {{ jobStatusLabel(activeJob.status) }} ·
+            {{ activeJob.processed_count }} из {{ activeJob.total_count }}
+          </div>
+        </div>
+        <button
+          v-if="
+            !activeJobRunning &&
+            activeJob.failure_count > 0 &&
+            activeJob.status !== 'CANCELED'
+          "
+          type="button"
+          class="btn btn-outline-brand btn-sm"
+          @click="retryFailedJob"
+        >
+          Повторить ошибки
+        </button>
+      </div>
+      <div
+        class="progress mt-3"
+        role="progressbar"
+        :aria-valuenow="activeJob.progress_percent"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <div
+          class="progress-bar"
+          :style="{ width: `${activeJob.progress_percent}%` }"
+        >
+          {{ activeJob.progress_percent }}%
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-3 small">
+        <span class="badge bg-success-subtle text-success border">
+          Успешно: {{ activeJob.success_count }}
+        </span>
+        <span class="badge text-bg-light border">
+          Пропущено: {{ activeJob.skipped_count }}
+        </span>
+        <span
+          class="badge border"
+          :class="
+            activeJob.failure_count
+              ? 'bg-danger-subtle text-danger'
+              : 'text-bg-light'
+          "
+        >
+          Ошибок: {{ activeJob.failure_count }}
+        </span>
+      </div>
+      <div v-if="activeJobError" class="alert alert-warning py-2 mt-3 mb-0">
+        {{ activeJobError }}
+      </div>
+      <div v-if="activeJobFailures?.length" class="small mt-3">
+        <div class="fw-semibold mb-1">Первые ошибки</div>
+        <ul class="mb-0 ps-3">
+          <li v-for="failure in activeJobFailures" :key="failure.id">
+            {{ closingSendFailureLabel(failure.error_code) }}
+            <span v-if="failure.error_message" class="text-muted">
+              · {{ failure.error_message }}
+            </span>
+          </li>
+        </ul>
+      </div>
+    </section>
 
     <div class="border rounded-3 p-3 sticky-panel">
       <div
@@ -986,7 +1223,11 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-if="profileError" class="alert alert-danger mt-3 mb-0 py-2">
+      <div
+        v-if="profileError"
+        class="alert alert-danger mt-3 mb-0 py-2"
+        role="alert"
+      >
         {{ profileError }}
       </div>
       <BrandSpinner
@@ -1026,6 +1267,7 @@ onMounted(async () => {
             <div
               v-if="organizerLookupError"
               class="alert alert-danger py-2 mb-2"
+              role="alert"
             >
               {{ organizerLookupError }}
             </div>
@@ -1159,7 +1401,11 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-if="accrualError" class="alert alert-danger py-2 mb-2">
+            <div
+              v-if="accrualError"
+              class="alert alert-danger py-2 mb-2"
+              role="alert"
+            >
               {{ accrualError }}
             </div>
             <BrandSpinner
@@ -1288,7 +1534,11 @@ onMounted(async () => {
               </button>
             </div>
 
-            <div v-if="previewError" class="alert alert-danger mt-3 mb-0 py-2">
+            <div
+              v-if="previewError"
+              class="alert alert-danger mt-3 mb-0 py-2"
+              role="alert"
+            >
               {{ previewError }}
             </div>
             <BrandSpinner
@@ -1445,16 +1695,22 @@ onMounted(async () => {
                   type="button"
                   class="btn btn-brand"
                   :disabled="
-                    createLoading || !(preview.ready_groups || []).length
+                    createLoading ||
+                    activeJobRunning ||
+                    !(preview.ready_groups || []).length
                   "
                   @click="createDocuments"
                 >
-                  Создать или обновить черновики
+                  {{
+                    createLoading
+                      ? 'Создаем черновики...'
+                      : 'Создать или обновить черновики'
+                  }}
                 </button>
                 <button
                   type="button"
                   class="btn btn-outline-secondary"
-                  :disabled="createLoading"
+                  :disabled="createLoading || activeJobRunning"
                   @click="preview = null"
                 >
                   Очистить preview
@@ -1490,6 +1746,7 @@ onMounted(async () => {
           <button
             type="button"
             class="btn btn-brand btn-sm"
+            :disabled="previewLoading || createLoading"
             @click="runPreview"
           >
             Проверить пакет
@@ -1559,7 +1816,9 @@ onMounted(async () => {
                 v-if="canSelectAllSendFiltered"
                 type="button"
                 class="btn btn-outline-brand btn-sm"
-                :disabled="bulkSendLoading || actionLoading !== ''"
+                :disabled="
+                  bulkSendLoading || actionLoading !== '' || activeJobRunning
+                "
                 @click="selectAllSendFiltered"
               >
                 Выбрать все черновики ({{ sendableDocumentsTotal }})
@@ -1574,7 +1833,9 @@ onMounted(async () => {
                 v-if="selectedSendSummary.count"
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
-                :disabled="bulkSendLoading || actionLoading !== ''"
+                :disabled="
+                  bulkSendLoading || actionLoading !== '' || activeJobRunning
+                "
                 @click="clearSendSelection"
               >
                 Снять выбор
@@ -1583,13 +1844,32 @@ onMounted(async () => {
                 v-if="selectedSendSummary.count"
                 type="button"
                 class="btn btn-brand btn-sm"
-                :disabled="bulkSendLoading || actionLoading !== ''"
+                :disabled="
+                  bulkSendLoading || actionLoading !== '' || activeJobRunning
+                "
                 @click="sendSelectedDocuments"
               >
-                Подписать и отправить выбранные
+                {{
+                  bulkSendLoading
+                    ? 'Подписываем и отправляем...'
+                    : 'Подписать и отправить выбранные'
+                }}
               </button>
             </div>
-            <div v-if="documentsError" class="alert alert-danger py-2 mb-2">
+            <div
+              v-if="bulkSendLoading"
+              class="alert alert-info py-2 mb-2"
+              role="status"
+              aria-live="polite"
+            >
+              Массовая отправка выполняется. Для больших турниров это может
+              занять несколько минут; не закрывайте вкладку до завершения.
+            </div>
+            <div
+              v-if="documentsError"
+              class="alert alert-danger py-2 mb-2"
+              role="alert"
+            >
               {{ documentsError }}
             </div>
             <BrandSpinner v-else-if="documentsLoading" label="Загрузка актов" />
@@ -1608,7 +1888,8 @@ onMounted(async () => {
                             sendSelectionMode === 'filtered' ||
                             !sendableDocumentsOnPage.length ||
                             bulkSendLoading ||
-                            actionLoading !== ''
+                            actionLoading !== '' ||
+                            activeJobRunning
                           "
                           aria-label="Выбрать все черновики актов на странице"
                           @change="toggleSelectAllSendableOnPage"
@@ -1630,7 +1911,12 @@ onMounted(async () => {
                       :class="{
                         'table-active': selectedDocumentId === item.id,
                       }"
+                      tabindex="0"
+                      role="button"
+                      :aria-selected="selectedDocumentId === item.id"
                       @click="selectedDocumentId = item.id"
+                      @keydown.enter.prevent="selectedDocumentId = item.id"
+                      @keydown.space.prevent="selectedDocumentId = item.id"
                     >
                       <td class="text-center" @click.stop>
                         <input
@@ -1645,7 +1931,8 @@ onMounted(async () => {
                             item.status !== 'DRAFT' ||
                             sendSelectionMode === 'filtered' ||
                             bulkSendLoading ||
-                            actionLoading !== ''
+                            actionLoading !== '' ||
+                            activeJobRunning
                           "
                           :aria-label="`Выбрать акт ${item.number || item.id}`"
                           @change="toggleSendSelection(item.id)"
@@ -1854,7 +2141,11 @@ onMounted(async () => {
                     v-if="selectedDocument.status === 'DRAFT'"
                     type="button"
                     class="btn btn-brand btn-sm"
-                    :disabled="bulkSendLoading || actionLoading !== ''"
+                    :disabled="
+                      bulkSendLoading ||
+                      actionLoading !== '' ||
+                      activeJobRunning
+                    "
                     @click="sendDocument(selectedDocument.id)"
                   >
                     Отправить на подпись
@@ -1914,7 +2205,7 @@ onMounted(async () => {
             :disabled="bulkSendLoading || actionLoading !== ''"
             @click="sendSelectedDocuments"
           >
-            Подписать и отправить
+            {{ bulkSendLoading ? 'Отправляем...' : 'Подписать и отправить' }}
           </button>
         </div>
       </div>

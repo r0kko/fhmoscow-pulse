@@ -8,8 +8,14 @@ const closingDocumentFindOne = jest.fn();
 const closingDocumentFindAll = jest.fn();
 const closingDocumentFindAndCountAll = jest.fn();
 const closingDocumentCount = jest.fn();
+const createAsyncJob = jest.fn();
+const registeredClosingJobHandlers = new Map();
+const registerAsyncJobHandler = jest.fn((jobType, operation, handler) => {
+  registeredClosingJobHandlers.set(`${jobType}:${operation}`, handler);
+});
 const accrualStatusFindOne = jest.fn();
 const accrualFindAll = jest.fn();
+const accrualFindAndCountAll = jest.fn();
 const userSignTypeFindAll = jest.fn();
 const userSignTypeFindOne = jest.fn();
 const documentTypeFindOne = jest.fn();
@@ -66,6 +72,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   TournamentGroup: {},
   RefereeAccrualDocument: {
     findAll: accrualFindAll,
+    findAndCountAll: accrualFindAndCountAll,
     update: refereeAccrualUpdate,
   },
   RefereeAccrualDocumentStatus: { findOne: accrualStatusFindOne },
@@ -113,6 +120,29 @@ jest.unstable_mockModule('../src/services/refereeAccountingService.js', () => ({
   },
 }));
 
+jest.unstable_mockModule('../src/utils/redisLock.js', () => ({
+  __esModule: true,
+  buildJobLockKey: (name) => `job:${name}`,
+  withRedisLock: async (_key, _ttl, fn) => fn(),
+}));
+
+jest.unstable_mockModule('../src/services/asyncJobService.js', () => ({
+  __esModule: true,
+  buildAsyncJobDedupeKey: (payload) => JSON.stringify(payload),
+  createAsyncJob,
+  default: {
+    createAsyncJob,
+  },
+}));
+
+jest.unstable_mockModule('../src/services/asyncJobRegistry.js', () => ({
+  __esModule: true,
+  registerAsyncJobHandler,
+  default: {
+    registerAsyncJobHandler,
+  },
+}));
+
 jest.unstable_mockModule('../src/services/documentService.js', () => ({
   __esModule: true,
   default: {
@@ -132,6 +162,7 @@ beforeEach(() => {
   closingDocumentCreate.mockReset();
   accrualStatusFindOne.mockReset();
   accrualFindAll.mockReset();
+  accrualFindAndCountAll.mockReset();
   userSignTypeFindAll.mockReset();
   userSignTypeFindOne.mockReset();
   documentTypeFindOne.mockReset();
@@ -149,6 +180,7 @@ beforeEach(() => {
   closingDocumentFindAll.mockReset();
   closingDocumentFindAndCountAll.mockReset();
   closingDocumentCount.mockReset();
+  createAsyncJob.mockReset();
   refereeAccrualUpdate.mockReset();
   closingItemDestroy.mockReset();
   closingItemUpdate.mockReset();
@@ -169,6 +201,21 @@ beforeEach(() => {
   closingDocumentFindAll.mockResolvedValue([]);
   closingDocumentFindAndCountAll.mockResolvedValue({ rows: [], count: 0 });
   closingDocumentCount.mockResolvedValue(0);
+  createAsyncJob.mockImplementation(async (payload) => ({
+    job_id: 'closing-job-1',
+    job_type: payload.jobType,
+    operation: 'CREATE_DRAFTS',
+    queue: payload.queue,
+    scope_type: payload.scopeType,
+    scope_id: payload.scopeId,
+    status: 'QUEUED',
+    total_count: payload.items?.length || 0,
+    processed_count: 0,
+    success_count: 0,
+    skipped_count: 0,
+    failure_count: 0,
+    progress_percent: 0,
+  }));
   closingItemFindAll.mockResolvedValue([]);
 });
 
@@ -195,87 +242,12 @@ function mockFhmoSigner() {
   ]);
 }
 
-function mockClosingSendStatuses() {
-  documentStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
-    id: `doc-status-${String(alias).toLowerCase()}`,
-  }));
-  accrualStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
-    id: `accrual-status-${String(alias).toLowerCase()}`,
-  }));
-}
-
-function buildSendAct(overrides = {}) {
-  const documentUpdate =
-    overrides.documentUpdate || jest.fn().mockResolvedValue({});
-  const actUpdate = overrides.actUpdate || jest.fn().mockResolvedValue({});
-  const status = overrides.status || 'DRAFT';
-  return {
-    id: overrides.id || 'closing-1',
-    document_id: overrides.documentId || 'doc-1',
-    status,
-    sent_at: overrides.sentAt ?? null,
-    fhmo_signer_snapshot_json: overrides.signerSnapshot ?? null,
-    get: jest.fn().mockReturnValue({
-      id: overrides.id || 'closing-1',
-      status,
-    }),
-    update: actUpdate,
-    Document: {
-      id: overrides.documentId || 'doc-1',
-      status_id: overrides.documentStatusId || 'doc-status-created',
-      update: documentUpdate,
-      DocumentStatus: {
-        alias: overrides.documentStatusAlias || 'CREATED',
-        name: 'Создан',
-      },
-    },
-  };
-}
-
-function mockClosingListResult(overrides = {}) {
-  tournamentFindByPk.mockResolvedValue({
-    id: 'tour-1',
-    name: 'Кубок Москвы',
-  });
-  closingDocumentFindAndCountAll.mockResolvedValue({
-    rows: [
-      {
-        id: overrides.id || 'closing-1',
-        status: overrides.status || 'AWAITING_SIGNATURE',
-        sent_at: overrides.sentAt || new Date('2026-03-13T12:00:00Z'),
-        posted_at: null,
-        canceled_at: null,
-        referee_id: 'ref-closing-1',
-        totals_json: { total_amount_rub: '3100.00' },
-        customer_snapshot_json: null,
-        performer_snapshot_json: null,
-        contract_snapshot_json: null,
-        fhmo_signer_snapshot_json: null,
-        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
-        Referee: {
-          id: 'ref-closing-1',
-          email: 'judge1@example.com',
-          last_name: 'Судья',
-          first_name: 'Один',
-          patronymic: 'Тестовый',
-        },
-        Document: {
-          id: overrides.documentId || 'doc-1',
-          number: '26.03/2001',
-          name: 'Акт об оказании услуг',
-          document_date: '2026-03-13',
-          DocumentStatus: {
-            alias: overrides.documentStatusAlias || 'AWAITING_SIGNATURE',
-            name: 'Ожидает подписания',
-          },
-          File: null,
-          DocumentUserSigns: [],
-        },
-        Items: [],
-      },
-    ],
-    count: 1,
-  });
+function getRegisteredClosingJobHandler(operation) {
+  return (
+    registeredClosingJobHandlers.get(
+      `REFEREE_CLOSING_DOCUMENTS:${operation}`
+    ) || null
+  );
 }
 
 test('preview blocks act creation when referee address is missing', async () => {
@@ -391,14 +363,14 @@ test('preview blocks act creation when referee address is missing', async () => 
 });
 
 test('preview supports filtered selection mode', async () => {
-  listRefereeAccrualDocuments.mockResolvedValue({
+  accrualFindAndCountAll.mockResolvedValue({
     rows: [
       {
         id: 'acc-1',
+        total_amount_rub: '1500.00',
       },
     ],
     count: 1,
-    summary: { total_amount_rub: '1500.00' },
   });
   tournamentFindByPk.mockResolvedValue({
     id: 'tour-1',
@@ -507,13 +479,11 @@ test('preview supports filtered selection mode', async () => {
     },
   });
 
-  expect(listRefereeAccrualDocuments).toHaveBeenCalledWith(
+  expect(accrualFindAndCountAll).toHaveBeenCalledWith(
     expect.objectContaining({
-      tournamentId: 'tour-1',
-      status: 'ACCRUED',
-      search: 'Иванов',
-      dateFrom: '2026-03-01',
-      dateTo: '2026-03-31',
+      attributes: ['id', 'total_amount_rub'],
+      limit: 1000,
+      offset: 0,
     })
   );
   expect(result.summary).toEqual(
@@ -908,1350 +878,215 @@ test('cancel keeps item snapshots readable while freeing accruals', async () => 
   ]);
 });
 
-test('create rolls back draft artifacts when regenerate fails after commit', async () => {
+test('single send enqueues an async closing document job', async () => {
   tournamentFindByPk.mockResolvedValue({
     id: 'tour-1',
     name: 'Кубок Москвы',
   });
-  closingProfileFindOne.mockResolvedValue({
-    id: 'profile-1',
-    organizer_inn: '7708046206',
-    organizer_name: 'Федерация хоккея Москвы',
-    organizer_address: 'Москва',
+  mockFhmoSigner();
+  createAsyncJob.mockResolvedValueOnce({
+    job_id: 'job-send-1',
+    job_type: 'REFEREE_CLOSING_DOCUMENTS',
+    operation: 'SEND_TO_SIGNATURE',
+    status: 'QUEUED',
+    total_count: 1,
+    processed_count: 0,
+    success_count: 0,
+    skipped_count: 0,
+    failure_count: 0,
   });
-  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
-  accrualFindAll.mockResolvedValue([
-    {
-      id: 'acc-1',
-      referee_id: 'ref-1',
-      document_status_id: 'status-accrued',
-      accrual_number: 'A-001',
-      match_date_snapshot: '2026-03-01',
-      fare_code_snapshot: 'RPOT',
-      total_amount_rub: '1500.00',
-      base_amount_rub: '1500.00',
-      meal_amount_rub: '0.00',
-      travel_amount_rub: '0.00',
-      Referee: {
-        id: 'ref-1',
-        email: 'judge@example.com',
-        last_name: 'Судья',
-        first_name: 'Иван',
-        patronymic: 'Иванович',
-      },
-      RefereeRole: { name: 'Главный судья' },
-      Tournament: { name: 'Кубок Москвы' },
-      TournamentGroup: null,
-      Ground: null,
-      Match: {
-        date_start: '2026-03-01T12:00:00.000Z',
-        HomeTeam: { name: 'Команда А' },
-        AwayTeam: { name: 'Команда Б' },
-      },
-      ClosingItem: null,
-    },
-  ]);
-  userSignTypeFindAll
-    .mockResolvedValueOnce([
-      {
-        User: {
-          id: 'fhmo-1',
-          email: 'fhmo@example.com',
-          last_name: 'Дробот',
-          first_name: 'Алексей',
-          patronymic: 'Андреевич',
-          Roles: [
-            {
-              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
-              name: 'Ведущий специалист по судейству',
-              departmentName: 'Судейский департамент',
-              displayOrder: 1,
-            },
-          ],
-        },
-      },
-    ])
-    .mockResolvedValueOnce([
-      {
-        user_id: 'ref-1',
-        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
-      },
-    ]);
-  documentFindAll
-    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
-    .mockResolvedValueOnce([
-      {
-        id: 'contract-1',
-        recipient_id: 'ref-1',
-        number: '26.03/1024',
-        document_date: '2026-03-12',
-        name: 'Заявление о присоединении',
-        DocumentType: { name: 'Заявление о присоединении' },
-      },
-    ]);
-  userAddressFindAll.mockResolvedValue([
-    {
-      user_id: 'ref-1',
-      Address: {
-        result: 'г. Москва, ул. Тестовая, д. 1',
-        postal_code: '109000',
-      },
-      AddressType: { alias: 'REGISTRATION' },
-    },
-  ]);
-  innFindAll.mockResolvedValue([{ user_id: 'ref-1', number: '132612908997' }]);
-  taxationFindAll.mockResolvedValue([
-    {
-      user_id: 'ref-1',
-      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
-    },
-  ]);
-  documentTypeFindOne.mockResolvedValue({ id: 'doc-type-1' });
-  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-created' });
-  signTypeFindOne.mockResolvedValue({ id: 'sign-type-1' });
-  saveGeneratedPdf.mockResolvedValue({ id: 'placeholder-file-1' });
-  const documentUpdate = jest.fn().mockResolvedValue({});
-  const documentDestroy = jest.fn().mockResolvedValue({});
-  documentCreate.mockResolvedValue({
-    id: 'doc-1',
-    update: documentUpdate,
-  });
-  const actUpdate = jest.fn().mockResolvedValue({});
-  const actDestroy = jest.fn().mockResolvedValue({});
-  closingDocumentCreate.mockResolvedValue({
-    id: 'closing-1',
-    update: actUpdate,
-    destroy: actDestroy,
-    get: jest.fn().mockReturnValue({ id: 'closing-1', status: 'DRAFT' }),
-  });
-  closingItemCreate.mockResolvedValue({});
-  closingDocumentFindOne.mockResolvedValue({
-    id: 'closing-1',
-    document_id: 'doc-1',
-    update: actUpdate,
-    destroy: actDestroy,
-    Document: {
-      id: 'doc-1',
-      file_id: 'placeholder-file-1',
-      update: documentUpdate,
-      destroy: documentDestroy,
-    },
-  });
-  documentServiceRegenerate.mockRejectedValue(new Error('s3 down'));
 
-  await expect(
-    closingService.createClosingDocuments(
-      'tour-1',
-      { accrual_ids: ['acc-1'] },
-      'actor-1'
-    )
-  ).rejects.toThrow('s3 down');
+  const result = await closingService.sendClosingDocument(
+    'tour-1',
+    'closing-1',
+    'actor-1'
+  );
 
-  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'actor-1');
-  expect(closingItemDestroy).toHaveBeenCalledWith(
+  expect(result).toEqual(
     expect.objectContaining({
-      where: { closing_document_id: 'closing-1' },
+      job_id: 'job-send-1',
+      operation: 'SEND_TO_SIGNATURE',
+      status: 'QUEUED',
+      total_count: 1,
     })
   );
-  expect(documentDestroy).toHaveBeenCalled();
-  expect(actUpdate).toHaveBeenCalledWith(
+  expect(createAsyncJob).toHaveBeenCalledWith(
     expect.objectContaining({
-      deleted_by: 'actor-1',
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({ silent: true })
-  );
-  expect(actDestroy).toHaveBeenCalled();
-  expect(removeFile).toHaveBeenCalledWith('placeholder-file-1');
-  expect(removeFile).toHaveBeenCalledTimes(1);
-});
-
-test('create updates an existing draft act instead of creating a new one', async () => {
-  tournamentFindByPk.mockResolvedValue({
-    id: 'tour-1',
-    name: 'Кубок Москвы',
-  });
-  closingProfileFindOne.mockResolvedValue({
-    id: 'profile-1',
-    organizer_inn: '7708046206',
-    organizer_name: 'Федерация хоккея Москвы',
-    organizer_address: 'Москва',
-  });
-  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
-  accrualFindAll
-    .mockResolvedValueOnce([
-      {
-        id: 'acc-1',
-        referee_id: 'ref-1',
-        document_status_id: 'status-accrued',
-        accrual_number: 'A-001',
-        match_date_snapshot: '2026-03-01',
-        fare_code_snapshot: 'RPOT',
-        total_amount_rub: '1500.00',
-        base_amount_rub: '1500.00',
-        meal_amount_rub: '0.00',
-        travel_amount_rub: '0.00',
-        Referee: {
-          id: 'ref-1',
-          email: 'judge@example.com',
-          last_name: 'Судья',
-          first_name: 'Иван',
-          patronymic: 'Иванович',
-        },
-        RefereeRole: { name: 'Главный судья' },
-        Tournament: { name: 'Кубок Москвы' },
-        TournamentGroup: null,
-        Ground: null,
-        Match: {
-          date_start: '2026-03-01T12:00:00.000Z',
-          HomeTeam: { name: 'Команда А' },
-          AwayTeam: { name: 'Команда Б' },
-        },
-        ClosingItem: null,
-      },
-    ])
-    .mockResolvedValueOnce([
-      {
-        id: 'acc-old',
-        referee_id: 'ref-1',
-        document_status_id: 'status-accrued',
-        accrual_number: 'A-000',
-        match_date_snapshot: '2026-02-28',
-        fare_code_snapshot: 'RPOT',
-        total_amount_rub: '1100.00',
-        base_amount_rub: '1100.00',
-        meal_amount_rub: '0.00',
-        travel_amount_rub: '0.00',
-        Referee: {
-          id: 'ref-1',
-          email: 'judge@example.com',
-          last_name: 'Судья',
-          first_name: 'Иван',
-          patronymic: 'Иванович',
-        },
-        RefereeRole: { name: 'Главный судья' },
-        Tournament: { name: 'Кубок Москвы' },
-        TournamentGroup: null,
-        Ground: null,
-        Match: {
-          date_start: '2026-02-28T15:00:00.000Z',
-          HomeTeam: { name: 'Команда С' },
-          AwayTeam: { name: 'Команда D' },
-        },
-        ClosingItem: null,
-      },
-    ])
-    .mockResolvedValueOnce([
-      {
-        id: 'acc-old',
-        referee_id: 'ref-1',
-        document_status_id: 'status-accrued',
-        accrual_number: 'A-000',
-        match_date_snapshot: '2026-02-28',
-        fare_code_snapshot: 'RPOT',
-        total_amount_rub: '1100.00',
-        base_amount_rub: '1100.00',
-        meal_amount_rub: '0.00',
-        travel_amount_rub: '0.00',
-        Referee: {
-          id: 'ref-1',
-          email: 'judge@example.com',
-          last_name: 'Судья',
-          first_name: 'Иван',
-          patronymic: 'Иванович',
-        },
-        RefereeRole: { name: 'Главный судья' },
-        Tournament: { name: 'Кубок Москвы' },
-        TournamentGroup: null,
-        Ground: null,
-        Match: {
-          date_start: '2026-02-28T15:00:00.000Z',
-          HomeTeam: { name: 'Команда С' },
-          AwayTeam: { name: 'Команда D' },
-        },
-        ClosingItem: null,
-      },
-      {
-        id: 'acc-extra',
-        referee_id: 'ref-1',
-        document_status_id: 'status-accrued',
-        accrual_number: 'A-050',
-        match_date_snapshot: '2026-02-27',
-        fare_code_snapshot: 'RPOT',
-        total_amount_rub: '700.00',
-        base_amount_rub: '700.00',
-        meal_amount_rub: '0.00',
-        travel_amount_rub: '0.00',
-        Referee: {
-          id: 'ref-1',
-          email: 'judge@example.com',
-          last_name: 'Судья',
-          first_name: 'Иван',
-          patronymic: 'Иванович',
-        },
-        RefereeRole: { name: 'Линейный судья' },
-        Tournament: { name: 'Кубок Москвы' },
-        TournamentGroup: null,
-        Ground: null,
-        Match: {
-          date_start: '2026-02-27T16:00:00.000Z',
-          HomeTeam: { name: 'Команда E' },
-          AwayTeam: { name: 'Команда F' },
-        },
-        ClosingItem: null,
-      },
-      {
-        id: 'acc-1',
-        referee_id: 'ref-1',
-        document_status_id: 'status-accrued',
-        accrual_number: 'A-001',
-        match_date_snapshot: '2026-03-01',
-        fare_code_snapshot: 'RPOT',
-        total_amount_rub: '1500.00',
-        base_amount_rub: '1500.00',
-        meal_amount_rub: '0.00',
-        travel_amount_rub: '0.00',
-        Referee: {
-          id: 'ref-1',
-          email: 'judge@example.com',
-          last_name: 'Судья',
-          first_name: 'Иван',
-          patronymic: 'Иванович',
-        },
-        RefereeRole: { name: 'Главный судья' },
-        Tournament: { name: 'Кубок Москвы' },
-        TournamentGroup: null,
-        Ground: null,
-        Match: {
-          date_start: '2026-03-01T12:00:00.000Z',
-          HomeTeam: { name: 'Команда А' },
-          AwayTeam: { name: 'Команда Б' },
-        },
-        ClosingItem: null,
-      },
-    ]);
-  closingDocumentFindAll.mockResolvedValue([
-    {
-      id: 'closing-1',
-      referee_id: 'ref-1',
-      status: 'DRAFT',
-      Items: [
-        {
-          id: 'item-legacy',
-          accrual_document_id: 'acc-old',
-          line_no: 1,
-          snapshot_json: {
-            accrual_id: 'acc-old',
-            service_datetime: '28.02.2026, 18:00',
-            total_amount_rub: '900.00',
-            base_amount_rub: '900.00',
-            meal_amount_rub: '0.00',
-            travel_amount_rub: '0.00',
-          },
-        },
+      jobType: 'REFEREE_CLOSING_DOCUMENTS',
+      operation: 'SEND_TO_SIGNATURE',
+      queue: 'documents',
+      scopeType: 'TOURNAMENT',
+      scopeId: 'tour-1',
+      requestedByUserId: 'actor-1',
+      items: [
+        expect.objectContaining({
+          item_type: 'REFEREE_CLOSING_SEND',
+          target_type: 'REFEREE_CLOSING_DOCUMENT',
+          target_id: 'closing-1',
+          target_ref_json: expect.objectContaining({
+            closing_document_id: 'closing-1',
+          }),
+        }),
       ],
-    },
-  ]);
-  userSignTypeFindAll
-    .mockResolvedValueOnce([
-      {
-        User: {
-          id: 'fhmo-1',
-          email: 'fhmo@example.com',
-          last_name: 'Дробот',
-          first_name: 'Алексей',
-          patronymic: 'Андреевич',
-          Roles: [
-            {
-              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
-              name: 'Ведущий специалист по судейству',
-              departmentName: 'Судейский департамент',
-              displayOrder: 1,
-            },
-          ],
-        },
-      },
-    ])
-    .mockResolvedValueOnce([
-      {
-        user_id: 'ref-1',
-        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
-      },
-    ]);
-  documentFindAll
-    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
-    .mockResolvedValueOnce([
-      {
-        id: 'contract-1',
-        recipient_id: 'ref-1',
-        number: '26.03/1024',
-        document_date: '2026-03-12',
-        name: 'Заявление о присоединении',
-        DocumentType: { name: 'Заявление о присоединении' },
-      },
-    ]);
-  userAddressFindAll.mockResolvedValue([
-    {
-      user_id: 'ref-1',
-      Address: {
-        result: 'г. Москва, ул. Тестовая, д. 1',
-        postal_code: '109000',
-      },
-      AddressType: { alias: 'REGISTRATION' },
-    },
-  ]);
-  innFindAll.mockResolvedValue([{ user_id: 'ref-1', number: '132612908997' }]);
-  taxationFindAll.mockResolvedValue([
-    {
-      user_id: 'ref-1',
-      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
-    },
-  ]);
-  documentTypeFindOne.mockResolvedValue({ id: 'doc-type-1' });
-  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-created' });
-  signTypeFindOne.mockResolvedValue({ id: 'sign-type-1' });
-
-  const documentUpdate = jest.fn().mockResolvedValue({});
-  const actUpdate = jest.fn().mockResolvedValue({});
-  const existingDraftItems = [
-    {
-      id: 'item-legacy',
-      accrual_document_id: 'acc-old',
-      line_no: 1,
-      snapshot_json: { accrual_id: 'acc-old' },
-    },
-    {
-      id: 'item-extra',
-      accrual_document_id: 'acc-extra',
-      line_no: 2,
-      snapshot_json: { accrual_id: 'acc-extra' },
-    },
-  ];
-  closingItemFindAll.mockResolvedValueOnce(existingDraftItems);
-  closingDocumentFindOne
-    .mockResolvedValueOnce({
-      id: 'closing-1',
-      tournament_id: 'tour-1',
-      document_id: 'doc-1',
-      status: 'DRAFT',
-      customer_snapshot_json: { name: 'Старый заказчик' },
-      performer_snapshot_json: { full_name: 'Старый судья' },
-      contract_snapshot_json: { number: '26.03/0001' },
-      fhmo_signer_snapshot_json: { full_name: 'Старый подписант' },
-      totals_json: { total_amount_rub: '1200.00', items_count: 1 },
-      sent_at: null,
-      posted_at: null,
-      canceled_at: null,
-      get: jest.fn().mockReturnValue({
-        id: 'closing-1',
-        status: 'DRAFT',
-      }),
-      update: actUpdate,
-      Document: {
-        id: 'doc-1',
-        description: '{"kind":"REFEREE_CLOSING_ACT"}',
-        update: documentUpdate,
-      },
-    })
-    .mockResolvedValueOnce({
-      id: 'closing-1',
-      status: 'DRAFT',
-      get: jest.fn().mockReturnValue({
-        id: 'closing-1',
-        status: 'DRAFT',
-        Items: [
-          {
-            accrual_document_id: 'acc-old',
-            line_no: 1,
-            snapshot_json: { accrual_id: 'acc-old' },
-          },
-          {
-            accrual_document_id: 'acc-extra',
-            line_no: 2,
-            snapshot_json: { accrual_id: 'acc-extra' },
-          },
-          {
-            accrual_document_id: 'acc-1',
-            line_no: 3,
-            snapshot_json: { accrual_id: 'acc-1' },
-          },
-        ],
-      }),
-    });
-  closingDocumentFindAndCountAll.mockResolvedValue({
-    rows: [
-      {
-        id: 'closing-1',
-        status: 'DRAFT',
-        sent_at: null,
-        posted_at: null,
-        canceled_at: null,
-        referee_id: 'ref-1',
-        totals_json: { total_amount_rub: '3300.00', items_count: 3 },
-        customer_snapshot_json: { name: 'Федерация хоккея Москвы' },
-        performer_snapshot_json: { full_name: 'Судья Иван Иванович' },
-        contract_snapshot_json: { number: '26.03/1024' },
-        fhmo_signer_snapshot_json: { full_name: 'Дробот Алексей Андреевич' },
-        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
-        Referee: {
-          id: 'ref-1',
-          email: 'judge@example.com',
-          last_name: 'Судья',
-          first_name: 'Иван',
-          patronymic: 'Иванович',
-        },
-        Document: {
-          id: 'doc-1',
-          number: '26.03/1501',
-          name: 'Акт об оказании услуг',
-          document_date: '2026-03-13',
-          DocumentStatus: { alias: 'CREATED', name: 'Создан' },
-          File: null,
-          DocumentUserSigns: [],
-        },
-        Items: [
-          {
-            line_no: 1,
-            snapshot_json: {
-              accrual_id: 'acc-old',
-              service_datetime: '28.02.2026, 18:00',
-            },
-          },
-          {
-            line_no: 2,
-            snapshot_json: {
-              accrual_id: 'acc-extra',
-              service_datetime: '27.02.2026, 19:00',
-            },
-          },
-          {
-            line_no: 3,
-            snapshot_json: {
-              accrual_id: 'acc-1',
-              service_datetime: '01.03.2026, 15:00',
-            },
-          },
-        ],
-      },
-    ],
-    count: 1,
-  });
-  closingDocumentCount.mockResolvedValue(1);
-  documentServiceRegenerate.mockResolvedValue({});
-
-  const result = await closingService.createClosingDocuments(
-    'tour-1',
-    { accrual_ids: ['acc-1'] },
-    'actor-1'
-  );
-
-  expect(documentCreate).not.toHaveBeenCalled();
-  expect(saveGeneratedPdf).not.toHaveBeenCalled();
-  expect(closingItemDestroy).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: { closing_document_id: 'closing-1' },
-    })
-  );
-  expect(closingItemCreate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      closing_document_id: 'closing-1',
-      accrual_document_id: 'acc-old',
-    }),
-    expect.any(Object)
-  );
-  expect(closingItemCreate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      closing_document_id: 'closing-1',
-      accrual_document_id: 'acc-extra',
-    }),
-    expect.any(Object)
-  );
-  expect(closingItemCreate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      closing_document_id: 'closing-1',
-      accrual_document_id: 'acc-1',
-    }),
-    expect.any(Object)
-  );
-  expect(documentUpdate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      description: expect.stringContaining('"closing_document_id":"closing-1"'),
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({ returning: false })
-  );
-  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'actor-1');
-  expect(result.rows).toHaveLength(1);
-  expect(result.rows[0].items).toEqual([
-    expect.objectContaining({
-      accrual_id: 'acc-old',
-    }),
-    expect.objectContaining({
-      accrual_id: 'acc-extra',
-    }),
-    expect.objectContaining({
-      accrual_id: 'acc-1',
-    }),
-  ]);
-  expect(accountingAuditCreate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      action: 'UPDATE',
-      after_json: expect.objectContaining({
-        Items: [
-          expect.objectContaining({
-            accrual_document_id: 'acc-old',
-          }),
-          expect.objectContaining({
-            accrual_document_id: 'acc-extra',
-          }),
-          expect.objectContaining({
-            accrual_document_id: 'acc-1',
-          }),
-        ],
-      }),
-    }),
-    expect.any(Object)
-  );
-});
-
-test('create rolls back earlier draft acts when a later group fails', async () => {
-  tournamentFindByPk.mockResolvedValue({
-    id: 'tour-1',
-    name: 'Кубок Москвы',
-  });
-  closingProfileFindOne.mockResolvedValue({
-    id: 'profile-1',
-    organizer_inn: '7708046206',
-    organizer_name: 'Федерация хоккея Москвы',
-    organizer_address: 'Москва',
-  });
-  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
-  accrualFindAll.mockResolvedValue([
-    {
-      id: 'acc-1',
-      referee_id: 'ref-1',
-      document_status_id: 'status-accrued',
-      accrual_number: 'A-001',
-      match_date_snapshot: '2026-03-01',
-      fare_code_snapshot: 'RPOT',
-      total_amount_rub: '1500.00',
-      base_amount_rub: '1500.00',
-      meal_amount_rub: '0.00',
-      travel_amount_rub: '0.00',
-      Referee: {
-        id: 'ref-1',
-        email: 'judge1@example.com',
-        last_name: 'Судья',
-        first_name: 'Иван',
-        patronymic: 'Первый',
-      },
-      RefereeRole: { name: 'Главный судья' },
-      Tournament: { name: 'Кубок Москвы' },
-      TournamentGroup: null,
-      Ground: null,
-      Match: {
-        date_start: '2026-03-01T12:00:00.000Z',
-        HomeTeam: { name: 'Команда А' },
-        AwayTeam: { name: 'Команда Б' },
-      },
-      ClosingItem: null,
-    },
-    {
-      id: 'acc-2',
-      referee_id: 'ref-2',
-      document_status_id: 'status-accrued',
-      accrual_number: 'A-002',
-      match_date_snapshot: '2026-03-02',
-      fare_code_snapshot: 'RPOT',
-      total_amount_rub: '1700.00',
-      base_amount_rub: '1700.00',
-      meal_amount_rub: '0.00',
-      travel_amount_rub: '0.00',
-      Referee: {
-        id: 'ref-2',
-        email: 'judge2@example.com',
-        last_name: 'Судья',
-        first_name: 'Петр',
-        patronymic: 'Второй',
-      },
-      RefereeRole: { name: 'Судья' },
-      Tournament: { name: 'Кубок Москвы' },
-      TournamentGroup: null,
-      Ground: null,
-      Match: {
-        date_start: '2026-03-02T12:00:00.000Z',
-        HomeTeam: { name: 'Команда В' },
-        AwayTeam: { name: 'Команда Г' },
-      },
-      ClosingItem: null,
-    },
-  ]);
-  userSignTypeFindAll
-    .mockResolvedValueOnce([
-      {
-        User: {
-          id: 'fhmo-1',
-          email: 'fhmo@example.com',
-          last_name: 'Дробот',
-          first_name: 'Алексей',
-          patronymic: 'Андреевич',
-          Roles: [
-            {
-              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
-              name: 'Ведущий специалист по судейству',
-              departmentName: 'Судейский департамент',
-              displayOrder: 1,
-            },
-          ],
-        },
-      },
-    ])
-    .mockResolvedValueOnce([
-      {
-        user_id: 'ref-1',
-        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
-      },
-      {
-        user_id: 'ref-2',
-        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
-      },
-    ]);
-  documentFindAll
-    .mockResolvedValueOnce([
-      { recipient_id: 'ref-1' },
-      { recipient_id: 'ref-2' },
-    ])
-    .mockResolvedValueOnce([
-      {
-        id: 'contract-1',
-        recipient_id: 'ref-1',
-        number: '26.03/1024',
-        document_date: '2026-03-12',
-        name: 'Заявление о присоединении',
-        DocumentType: { name: 'Заявление о присоединении' },
-      },
-      {
-        id: 'contract-2',
-        recipient_id: 'ref-2',
-        number: '26.03/1025',
-        document_date: '2026-03-12',
-        name: 'Заявление о присоединении',
-        DocumentType: { name: 'Заявление о присоединении' },
-      },
-    ]);
-  userAddressFindAll.mockResolvedValue([
-    {
-      user_id: 'ref-1',
-      Address: {
-        result: 'г. Москва, ул. Тестовая, д. 1',
-        postal_code: '109000',
-      },
-      AddressType: { alias: 'REGISTRATION' },
-    },
-    {
-      user_id: 'ref-2',
-      Address: {
-        result: 'г. Москва, ул. Тестовая, д. 2',
-        postal_code: '109001',
-      },
-      AddressType: { alias: 'REGISTRATION' },
-    },
-  ]);
-  innFindAll.mockResolvedValue([
-    { user_id: 'ref-1', number: '132612908997' },
-    { user_id: 'ref-2', number: '132612908998' },
-  ]);
-  taxationFindAll.mockResolvedValue([
-    {
-      user_id: 'ref-1',
-      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
-    },
-    {
-      user_id: 'ref-2',
-      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
-    },
-  ]);
-  documentTypeFindOne.mockResolvedValue({ id: 'doc-type-1' });
-  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-created' });
-  signTypeFindOne.mockResolvedValue({ id: 'sign-type-1' });
-  saveGeneratedPdf
-    .mockResolvedValueOnce({ id: 'placeholder-file-1' })
-    .mockResolvedValueOnce({ id: 'placeholder-file-2' });
-
-  const documentUpdate1 = jest.fn().mockResolvedValue({});
-  const documentDestroy1 = jest.fn().mockResolvedValue({});
-  const documentUpdate2 = jest.fn().mockResolvedValue({});
-  const documentDestroy2 = jest.fn().mockResolvedValue({});
-  documentCreate
-    .mockResolvedValueOnce({
-      id: 'doc-1',
-      update: documentUpdate1,
-    })
-    .mockResolvedValueOnce({
-      id: 'doc-2',
-      update: documentUpdate2,
-    });
-  const actUpdate1 = jest.fn().mockResolvedValue({});
-  const actDestroy1 = jest.fn().mockResolvedValue({});
-  const actUpdate2 = jest.fn().mockResolvedValue({});
-  const actDestroy2 = jest.fn().mockResolvedValue({});
-  closingDocumentCreate
-    .mockResolvedValueOnce({
-      id: 'closing-1',
-      update: actUpdate1,
-      destroy: actDestroy1,
-      get: jest.fn().mockReturnValue({ id: 'closing-1', status: 'DRAFT' }),
-    })
-    .mockResolvedValueOnce({
-      id: 'closing-2',
-      update: actUpdate2,
-      destroy: actDestroy2,
-      get: jest.fn().mockReturnValue({ id: 'closing-2', status: 'DRAFT' }),
-    });
-  closingItemCreate.mockResolvedValue({});
-  closingDocumentFindOne
-    .mockResolvedValueOnce({
-      id: 'closing-2',
-      document_id: 'doc-2',
-      update: actUpdate2,
-      destroy: actDestroy2,
-      Document: {
-        id: 'doc-2',
-        file_id: 'placeholder-file-2',
-        update: documentUpdate2,
-        destroy: documentDestroy2,
-      },
-    })
-    .mockResolvedValueOnce({
-      id: 'closing-1',
-      document_id: 'doc-1',
-      update: actUpdate1,
-      destroy: actDestroy1,
-      Document: {
-        id: 'doc-1',
-        file_id: 'placeholder-file-1',
-        update: documentUpdate1,
-        destroy: documentDestroy1,
-      },
-    });
-  documentServiceRegenerate
-    .mockResolvedValueOnce({})
-    .mockRejectedValueOnce(new Error('s3 down on second act'));
-
-  await expect(
-    closingService.createClosingDocuments(
-      'tour-1',
-      { accrual_ids: ['acc-1', 'acc-2'] },
-      'actor-1'
-    )
-  ).rejects.toThrow('s3 down on second act');
-
-  expect(documentDestroy2).toHaveBeenCalled();
-  expect(documentDestroy1).toHaveBeenCalled();
-  expect(actDestroy2).toHaveBeenCalled();
-  expect(actDestroy1).toHaveBeenCalled();
-  expect(removeFile).toHaveBeenCalledWith('placeholder-file-2');
-  expect(removeFile).toHaveBeenCalledWith('placeholder-file-1');
-});
-
-test('send rolls act back to draft when signer-side regeneration fails', async () => {
-  userSignTypeFindAll.mockResolvedValue([
-    {
-      User: {
-        id: 'fhmo-1',
-        email: 'fhmo@example.com',
-        last_name: 'Дробот',
-        first_name: 'Алексей',
-        patronymic: 'Андреевич',
-        Roles: [
-          {
-            alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
-            name: 'Ведущий специалист по судейству',
-            departmentName: 'Судейский департамент',
-            displayOrder: 1,
-          },
-        ],
-      },
-      SignType: { alias: 'SIMPLE_ELECTRONIC' },
-    },
-  ]);
-  documentStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
-    id: `doc-status-${String(alias).toLowerCase()}`,
-  }));
-  accrualStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
-    id: `accrual-status-${String(alias).toLowerCase()}`,
-  }));
-  const documentUpdate = jest.fn().mockResolvedValue({});
-  const actUpdate = jest.fn().mockResolvedValue({});
-  const act = {
-    id: 'closing-1',
-    document_id: 'doc-1',
-    status: 'DRAFT',
-    sent_at: null,
-    fhmo_signer_snapshot_json: { name: 'Старый подписант' },
-    get: jest.fn().mockReturnValue({
-      id: 'closing-1',
-      status: 'DRAFT',
-    }),
-    update: actUpdate,
-    Document: {
-      id: 'doc-1',
-      status_id: 'doc-status-created',
-      update: documentUpdate,
-      DocumentStatus: { alias: 'CREATED', name: 'Создан' },
-    },
-  };
-  closingItemFindAll.mockResolvedValueOnce([
-    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
-  ]);
-  closingDocumentFindOne.mockResolvedValueOnce(act).mockResolvedValueOnce({
-    ...act,
-    Document: {
-      id: 'doc-1',
-      status_id: 'doc-status-awaiting_signature',
-      update: documentUpdate,
-    },
-  });
-  documentServiceSign.mockResolvedValue(undefined);
-  documentServiceRegenerate
-    .mockRejectedValueOnce(new Error('smtp-or-s3 failure'))
-    .mockResolvedValueOnce({});
-
-  await expect(
-    closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
-  ).rejects.toMatchObject({
-    code: 'closing_document_pdf_failed',
-    status: 500,
-  });
-
-  expect(closingDocumentFindOne.mock.calls[0]?.[0]).toEqual(
-    expect.objectContaining({
-      transaction: expect.any(Object),
-      include: expect.arrayContaining([
-        expect.objectContaining({
-          as: 'Document',
-        }),
-      ]),
-      lock: {
-        level: 'UPDATE',
-        of: expect.objectContaining({
-          findOne: closingDocumentFindOne,
-        }),
-      },
-    })
-  );
-  expect(closingDocumentFindOne.mock.calls[0]?.[0].lock).not.toBe('UPDATE');
-  expect(documentServiceSign).toHaveBeenCalledWith(
-    { id: 'fhmo-1', token_version: 1 },
-    'doc-1',
-    { notify: false }
-  );
-  expect(documentServiceSendAwaitingNotification).not.toHaveBeenCalled();
-  expect(documentUserSignDestroy).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: {
-        document_id: 'doc-1',
-        user_id: 'fhmo-1',
-      },
-    })
-  );
-  expect(documentUpdate).toHaveBeenNthCalledWith(
-    1,
-    expect.objectContaining({
-      status_id: 'doc-status-awaiting_signature',
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({ returning: false })
-  );
-  expect(documentUpdate).toHaveBeenNthCalledWith(
-    2,
-    expect.objectContaining({
-      status_id: 'doc-status-created',
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({ returning: false })
-  );
-  expect(actUpdate).toHaveBeenNthCalledWith(
-    1,
-    expect.objectContaining({
-      status: 'AWAITING_SIGNATURE',
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({ returning: false })
-  );
-  expect(actUpdate).toHaveBeenNthCalledWith(
-    2,
-    expect.objectContaining({
-      status: 'DRAFT',
-      sent_at: null,
-      fhmo_signer_snapshot_json: { name: 'Старый подписант' },
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({ returning: false })
-  );
-  expect(refereeAccrualUpdate).toHaveBeenNthCalledWith(
-    1,
-    expect.objectContaining({
-      document_status_id: 'accrual-status-awaiting_signature',
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({
-      where: {
-        id: expect.any(Object),
-      },
-    })
-  );
-  expect(refereeAccrualUpdate).toHaveBeenNthCalledWith(
-    2,
-    expect.objectContaining({
-      document_status_id: 'accrual-status-accrued',
-      updated_by: 'actor-1',
-    }),
-    expect.objectContaining({
-      where: {
-        id: expect.any(Object),
-      },
-    })
-  );
-  expect(documentServiceRegenerate).toHaveBeenNthCalledWith(
-    1,
-    'doc-1',
-    'fhmo-1'
-  );
-  expect(documentServiceRegenerate).toHaveBeenNthCalledWith(
-    2,
-    'doc-1',
-    'actor-1'
-  );
-});
-
-test('send keeps act awaiting signature when notification queueing fails', async () => {
-  mockFhmoSigner();
-  mockClosingSendStatuses();
-  const act = buildSendAct();
-  closingItemFindAll.mockResolvedValueOnce([
-    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
-  ]);
-  closingDocumentFindOne.mockResolvedValueOnce(act);
-  documentServiceSign.mockResolvedValue(undefined);
-  documentServiceRegenerate.mockResolvedValue(undefined);
-  documentServiceSendAwaitingNotification.mockRejectedValueOnce(
-    new Error('smtp down')
-  );
-  mockClosingListResult();
-
-  const result = await closingService.sendClosingDocument(
-    'tour-1',
-    'closing-1',
-    'actor-1'
-  );
-
-  expect(result.warnings).toEqual(['closing_document_notification_failed']);
-  expect(documentServiceSign).toHaveBeenCalledWith(
-    { id: 'fhmo-1', token_version: 1 },
-    'doc-1',
-    { notify: false }
-  );
-  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'fhmo-1');
-  expect(documentServiceSendAwaitingNotification).toHaveBeenCalledWith('doc-1');
-  expect(documentUserSignDestroy).not.toHaveBeenCalled();
-  expect(act.update).toHaveBeenCalledTimes(1);
-});
-
-test('send is idempotent for already awaiting FHMO-signed act', async () => {
-  mockFhmoSigner();
-  mockClosingSendStatuses();
-  const act = buildSendAct({
-    status: 'AWAITING_SIGNATURE',
-    documentStatusId: 'doc-status-awaiting_signature',
-    documentStatusAlias: 'AWAITING_SIGNATURE',
-  });
-  documentUserSignFindOne.mockResolvedValueOnce({ id: 'sign-fhmo' });
-  closingDocumentFindOne.mockResolvedValueOnce(act);
-  mockClosingListResult();
-
-  const result = await closingService.sendClosingDocument(
-    'tour-1',
-    'closing-1',
-    'actor-1'
-  );
-
-  expect(result.document.id).toBe('closing-1');
-  expect(documentServiceSign).not.toHaveBeenCalled();
-  expect(documentServiceRegenerate).not.toHaveBeenCalled();
-  expect(documentServiceSendAwaitingNotification).not.toHaveBeenCalled();
-  expect(act.update).not.toHaveBeenCalled();
-  expect(refereeAccrualUpdate).not.toHaveBeenCalled();
-});
-
-test('send treats unique signature conflict as idempotent FHMO signature', async () => {
-  mockFhmoSigner();
-  mockClosingSendStatuses();
-  const act = buildSendAct();
-  closingItemFindAll.mockResolvedValueOnce([
-    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
-  ]);
-  closingDocumentFindOne.mockResolvedValueOnce(act);
-  documentUserSignFindOne
-    .mockResolvedValueOnce(null)
-    .mockResolvedValueOnce({ id: 'sign-fhmo' });
-  const uniqueError = Object.assign(new Error('duplicate key value'), {
-    name: 'SequelizeUniqueConstraintError',
-    parent: { code: '23505' },
-  });
-  documentServiceSign.mockRejectedValueOnce(uniqueError);
-  documentServiceRegenerate.mockResolvedValue(undefined);
-  documentServiceSendAwaitingNotification.mockResolvedValue(undefined);
-  mockClosingListResult();
-
-  const result = await closingService.sendClosingDocument(
-    'tour-1',
-    'closing-1',
-    'actor-1'
-  );
-
-  expect(result.document.id).toBe('closing-1');
-  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'fhmo-1');
-  expect(documentServiceSendAwaitingNotification).toHaveBeenCalledWith('doc-1');
-  expect(documentUserSignDestroy).not.toHaveBeenCalled();
-});
-
-test('send preserves original failure when rollback also fails', async () => {
-  mockFhmoSigner();
-  mockClosingSendStatuses();
-  const act = buildSendAct();
-  closingItemFindAll.mockResolvedValueOnce([
-    { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
-  ]);
-  closingDocumentFindOne.mockResolvedValueOnce(act).mockResolvedValueOnce({
-    ...act,
-    Document: {
-      ...act.Document,
-      status_id: 'doc-status-awaiting_signature',
-    },
-  });
-  documentUserSignDestroy.mockRejectedValueOnce(new Error('rollback-destroy'));
-  documentServiceSign.mockResolvedValue(undefined);
-  documentServiceRegenerate.mockRejectedValueOnce(
-    new Error('pdf renderer down')
-  );
-
-  await expect(
-    closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
-  ).rejects.toMatchObject({
-    code: 'closing_document_pdf_failed',
-    details: {
-      rollback_failed: true,
-      rollback_code: 'rollback-destroy',
-    },
-  });
-
-  expect(documentUserSignDestroy).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: {
-        document_id: 'doc-1',
-        user_id: 'fhmo-1',
-      },
-    })
-  );
-});
-
-test('send maps raw transition database errors to stable code', async () => {
-  mockFhmoSigner();
-  mockClosingSendStatuses();
-  const dbError = Object.assign(
-    new Error(
-      'FOR UPDATE cannot be applied to the nullable side of an outer join'
-    ),
-    { name: 'SequelizeDatabaseError' }
-  );
-  closingDocumentFindOne.mockRejectedValueOnce(dbError);
-
-  await expect(
-    closingService.sendClosingDocument('tour-1', 'closing-1', 'actor-1')
-  ).rejects.toMatchObject({
-    code: 'closing_document_transition_failed',
-    status: 500,
-  });
-
-  expect(closingDocumentFindOne.mock.calls[0]?.[0]).toEqual(
-    expect.objectContaining({
-      include: expect.arrayContaining([
-        expect.objectContaining({
-          as: 'Document',
-        }),
-      ]),
-      lock: {
-        level: 'UPDATE',
-        of: expect.objectContaining({
-          findOne: closingDocumentFindOne,
-        }),
-      },
     })
   );
   expect(documentServiceSign).not.toHaveBeenCalled();
   expect(documentServiceRegenerate).not.toHaveBeenCalled();
-  expect(documentServiceSendAwaitingNotification).not.toHaveBeenCalled();
 });
 
-test('batch send supports explicit selection of draft acts', async () => {
+test('batch send enqueues filtered draft ids without full send processing', async () => {
   tournamentFindByPk.mockResolvedValue({
     id: 'tour-1',
     name: 'Кубок Москвы',
   });
-  userSignTypeFindAll.mockResolvedValue([
-    {
-      User: {
-        id: 'fhmo-1',
-        email: 'fhmo@example.com',
-        last_name: 'Дробот',
-        first_name: 'Алексей',
-        patronymic: 'Андреевич',
-        Roles: [
-          {
-            alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
-            name: 'Ведущий специалист по судейству',
-            departmentName: 'Отдел организации судейства',
-            displayOrder: 1,
-          },
-        ],
-      },
-    },
-  ]);
-  documentStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
-    id: `doc-status-${String(alias).toLowerCase()}`,
-  }));
-  accrualStatusFindOne.mockImplementation(async ({ where: { alias } }) => ({
-    id: `accrual-status-${String(alias).toLowerCase()}`,
-  }));
-  const documentUpdate = jest.fn().mockResolvedValue({});
-  const buildAct = (id, documentId) => ({
-    id,
-    document_id: documentId,
-    status: 'DRAFT',
-    sent_at: null,
-    fhmo_signer_snapshot_json: null,
-    referee_id: `ref-${id}`,
-    get: jest.fn().mockReturnValue({
-      id,
-      status: 'DRAFT',
-    }),
-    update: jest.fn().mockResolvedValue({}),
-    Document: {
-      id: documentId,
-      status_id: 'doc-status-created',
-      update: documentUpdate,
-      DocumentStatus: { alias: 'CREATED', name: 'Создан' },
-    },
-  });
-
-  closingItemFindAll
-    .mockResolvedValueOnce([
-      { id: 'item-1', accrual_document_id: 'acc-1', snapshot_json: {} },
-    ])
-    .mockResolvedValueOnce([
-      { id: 'item-2', accrual_document_id: 'acc-2', snapshot_json: {} },
-    ]);
-  closingDocumentFindOne
-    .mockResolvedValueOnce(buildAct('closing-1', 'doc-1'))
-    .mockResolvedValueOnce(buildAct('closing-2', 'doc-2'));
-  documentServiceSign.mockResolvedValue(undefined);
-  documentServiceRegenerate.mockResolvedValue(undefined);
-  closingDocumentFindAndCountAll.mockResolvedValue({
+  mockFhmoSigner();
+  closingDocumentFindAndCountAll.mockResolvedValueOnce({
     rows: [
-      {
-        id: 'closing-1',
-        status: 'AWAITING_SIGNATURE',
-        sent_at: new Date('2026-03-13T12:00:00Z'),
-        posted_at: null,
-        canceled_at: null,
-        referee_id: 'ref-closing-1',
-        totals_json: { total_amount_rub: '3100.00' },
-        customer_snapshot_json: null,
-        performer_snapshot_json: null,
-        contract_snapshot_json: null,
-        fhmo_signer_snapshot_json: null,
-        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
-        Referee: {
-          id: 'ref-closing-1',
-          email: 'judge1@example.com',
-          last_name: 'Судья',
-          first_name: 'Один',
-          patronymic: 'Тестовый',
-        },
-        Document: {
-          id: 'doc-1',
-          number: '26.03/2001',
-          name: 'Акт об оказании услуг',
-          document_date: '2026-03-13',
-          DocumentStatus: {
-            alias: 'AWAITING_SIGNATURE',
-            name: 'Ожидает подписания',
-          },
-          File: null,
-          DocumentUserSigns: [],
-        },
-        Items: [],
-      },
-      {
-        id: 'closing-2',
-        status: 'AWAITING_SIGNATURE',
-        sent_at: new Date('2026-03-13T12:05:00Z'),
-        posted_at: null,
-        canceled_at: null,
-        referee_id: 'ref-closing-2',
-        totals_json: { total_amount_rub: '4200.00' },
-        customer_snapshot_json: null,
-        performer_snapshot_json: null,
-        contract_snapshot_json: null,
-        fhmo_signer_snapshot_json: null,
-        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
-        Referee: {
-          id: 'ref-closing-2',
-          email: 'judge2@example.com',
-          last_name: 'Судья',
-          first_name: 'Два',
-          patronymic: 'Тестовый',
-        },
-        Document: {
-          id: 'doc-2',
-          number: '26.03/2002',
-          name: 'Акт об оказании услуг',
-          document_date: '2026-03-13',
-          DocumentStatus: {
-            alias: 'AWAITING_SIGNATURE',
-            name: 'Ожидает подписания',
-          },
-          File: null,
-          DocumentUserSigns: [],
-        },
-        Items: [],
-      },
+      { id: 'closing-1', status: 'DRAFT' },
+      { id: 'closing-2', status: 'DRAFT' },
     ],
     count: 2,
+  });
+  createAsyncJob.mockResolvedValueOnce({
+    job_id: 'job-send-2',
+    job_type: 'REFEREE_CLOSING_DOCUMENTS',
+    operation: 'SEND_TO_SIGNATURE',
+    status: 'QUEUED',
+    total_count: 2,
+    processed_count: 0,
+    success_count: 0,
+    skipped_count: 0,
+    failure_count: 0,
   });
 
   const result = await closingService.sendClosingDocumentsBatch(
     'tour-1',
     {
-      selection_mode: 'explicit',
-      closing_document_ids: ['closing-1', 'closing-2'],
+      selection_mode: 'filtered',
+      filters: { status: 'DRAFT', search: 'Судья' },
     },
     'actor-1'
   );
 
-  expect(documentServiceSign).toHaveBeenCalledTimes(2);
-  expect(documentServiceRegenerate).toHaveBeenCalledTimes(2);
-  expect(documentServiceSendAwaitingNotification).toHaveBeenCalledTimes(2);
-  expect(result.summary).toEqual(
+  expect(result).toEqual(
     expect.objectContaining({
-      selected_total: 2,
-      sent_total: 2,
-      failed_total: 0,
+      job_id: 'job-send-2',
+      operation: 'SEND_TO_SIGNATURE',
+      status: 'QUEUED',
+      total_count: 2,
     })
   );
-  expect(result.failures).toEqual([]);
-  expect(result.documents).toHaveLength(2);
+  expect(closingDocumentFindAndCountAll.mock.calls[0]?.[0]).toEqual(
+    expect.objectContaining({
+      attributes: ['id', 'status'],
+      limit: 1000,
+      offset: 0,
+    })
+  );
+  expect(createAsyncJob).toHaveBeenCalledWith(
+    expect.objectContaining({
+      items: [
+        expect.objectContaining({ target_id: 'closing-1' }),
+        expect.objectContaining({ target_id: 'closing-2' }),
+      ],
+    })
+  );
+  expect(documentServiceSign).not.toHaveBeenCalled();
+});
+
+test('send job restores draft state when external send step fails', async () => {
+  mockFhmoSigner();
+  documentStatusFindOne.mockResolvedValue({
+    id: 'doc-status-awaiting',
+    alias: 'AWAITING_SIGNATURE',
+  });
+  accrualStatusFindOne.mockResolvedValue({
+    id: 'accrual-status-awaiting',
+    alias: 'AWAITING_SIGNATURE',
+  });
+  documentUserSignFindOne.mockResolvedValue(null);
+  closingItemFindAll.mockResolvedValue([
+    { accrual_document_id: 'accrual-doc-1' },
+  ]);
+  documentServiceSign.mockResolvedValue({});
+  documentServiceRegenerate.mockRejectedValue(
+    Object.assign(new Error('storage failed'), {
+      code: 'document_regenerate_failed',
+    })
+  );
+
+  const act = {
+    id: 'closing-1',
+    document_id: 'doc-1',
+    status: 'DRAFT',
+    pdf_status: 'READY',
+    fhmo_signer_snapshot_json: null,
+    Document: {
+      id: 'doc-1',
+      status_id: 'doc-status-created',
+      file_id: 'file-1',
+      DocumentStatus: { alias: 'CREATED' },
+    },
+    get: jest.fn(() => ({
+      id: act.id,
+      document_id: act.document_id,
+      status: act.status,
+      pdf_status: act.pdf_status,
+      fhmo_signer_snapshot_json: act.fhmo_signer_snapshot_json,
+    })),
+    update: jest.fn(async (values) => {
+      Object.assign(act, values);
+      return act;
+    }),
+  };
+  closingDocumentFindOne.mockResolvedValue(act);
+
+  const handler = getRegisteredClosingJobHandler('SEND_TO_SIGNATURE');
+  await expect(
+    handler.processItem({
+      job: {
+        id: 'job-1',
+        scope_id: 'tour-1',
+        requested_by_user_id: 'actor-1',
+        payload_json: {},
+      },
+      item: {
+        id: 'item-1',
+        target_id: 'closing-1',
+        target_ref_json: { closing_document_id: 'closing-1' },
+        payload_json: {},
+      },
+    })
+  ).rejects.toMatchObject({ code: 'closing_document_pdf_failed' });
+
+  expect(documentServiceSign).toHaveBeenCalledWith(
+    { id: 'fhmo-1', token_version: 1 },
+    'doc-1',
+    { notify: false }
+  );
+  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'fhmo-1');
+  expect(act.update).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({ status: 'SENDING', updated_by: 'actor-1' }),
+    expect.objectContaining({ returning: false })
+  );
+  expect(act.update).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({
+      status: 'DRAFT',
+      fhmo_signer_snapshot_json: null,
+      updated_by: 'actor-1',
+    }),
+    expect.objectContaining({ returning: false })
+  );
+  expect(accountingAuditCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      action: 'SEND_ROLLBACK',
+      entity_id: 'closing-1',
+      actor_id: 'actor-1',
+    }),
+    expect.any(Object)
+  );
 });
 
 test('list closing tournaments excludes draft-linked accrued rows from ready count', async () => {

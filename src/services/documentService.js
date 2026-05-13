@@ -2501,6 +2501,9 @@ async function sign(user, documentId, options = {}) {
   const docTypeAlias = doc.DocumentType?.alias || null;
   const requiredSignatures = getRequiredSignatureCount(docTypeAlias);
   const isClosingAct = isClosingActDocumentAlias(docTypeAlias);
+  if (isClosingAct && !doc.file_id) {
+    throw new ServiceError('document_file_not_ready', 409);
+  }
 
   if (doc.SignType?.alias === 'SIMPLE_ELECTRONIC') {
     const currentStatusAlias = doc.DocumentStatus?.alias || '';
@@ -2593,6 +2596,7 @@ async function sendSignCode(user, documentId) {
     include: [
       { model: DocumentStatus, attributes: ['alias'] },
       { model: SignType, attributes: ['alias', 'name'] },
+      { model: DocumentType, attributes: ['alias'] },
       { model: User, as: 'recipient', attributes: ['email'] },
     ],
   });
@@ -2606,6 +2610,12 @@ async function sendSignCode(user, documentId) {
     if (await closingService.isClosingDocumentCanceled(documentId)) {
       throw new ServiceError('document_status_invalid', 400);
     }
+  }
+  if (
+    doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS &&
+    !doc.file_id
+  ) {
+    throw new ServiceError('document_file_not_ready', 409);
   }
   if (doc.DocumentStatus?.alias !== 'AWAITING_SIGNATURE')
     throw new ServiceError('document_status_invalid', 400);
@@ -2737,6 +2747,12 @@ async function signWithCode(user, documentId, code) {
     if (await closingService.isClosingDocumentCanceled(documentId)) {
       throw new ServiceError('document_status_invalid', 400);
     }
+  }
+  if (
+    doc.DocumentType?.alias === REFEREE_CLOSING_ACT_DOC_ALIAS &&
+    !doc.file_id
+  ) {
+    throw new ServiceError('document_file_not_ready', 409);
   }
   if (doc.DocumentStatus?.alias === 'SIGNED') {
     return;

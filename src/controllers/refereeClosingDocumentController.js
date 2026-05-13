@@ -82,10 +82,7 @@ const controller = {
         req.body,
         req.user?.id
       );
-      return res.status(201).json({
-        documents: data.rows,
-        total: data.total,
-      });
+      return res.status(202).json(data);
     } catch (err) {
       return sendError(res, err, 400);
     }
@@ -135,7 +132,7 @@ const controller = {
         req.user?.id,
         { requestId: req.id || null }
       );
-      return res.json(data);
+      return res.status(202).json(data);
     } catch (err) {
       logClosingSendError('single_send', req, err);
       return sendError(res, err, 409);
@@ -150,7 +147,7 @@ const controller = {
         req.user?.id,
         { requestId: req.id || null }
       );
-      return res.json(data);
+      return res.status(202).json(data);
     } catch (err) {
       logClosingSendError('batch_send', req, err);
       return sendError(res, err, 409);

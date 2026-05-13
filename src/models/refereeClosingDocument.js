@@ -24,6 +24,13 @@ RefereeClosingDocument.init(
     contract_snapshot_json: { type: DataTypes.JSONB, allowNull: true },
     fhmo_signer_snapshot_json: { type: DataTypes.JSONB, allowNull: true },
     totals_json: { type: DataTypes.JSONB, allowNull: false },
+    pdf_status: {
+      type: DataTypes.STRING(32),
+      allowNull: false,
+      defaultValue: 'READY',
+    },
+    pdf_error_code: { type: DataTypes.STRING(128), allowNull: true },
+    pdf_generated_at: { type: DataTypes.DATE, allowNull: true },
     sent_at: { type: DataTypes.DATE, allowNull: true },
     posted_at: { type: DataTypes.DATE, allowNull: true },
     canceled_at: { type: DataTypes.DATE, allowNull: true },

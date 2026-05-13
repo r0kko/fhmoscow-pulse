@@ -5,6 +5,8 @@ export function documentStatusBadgeClass(alias: string | null | undefined) {
       return 'bg-success-subtle text-success border';
     case 'AWAITING_SIGNATURE':
       return 'bg-warning-subtle text-warning border';
+    case 'SENDING':
+      return 'bg-info-subtle text-info-emphasis border';
     case 'CANCELED':
       return 'bg-danger-subtle text-danger border';
     case 'CREATED':

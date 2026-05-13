@@ -134,6 +134,9 @@ import AccountingAuditEvent from './accountingAuditEvent.js';
 import RefereeClosingDocumentProfile from './refereeClosingDocumentProfile.js';
 import RefereeClosingDocument from './refereeClosingDocument.js';
 import RefereeClosingDocumentItem from './refereeClosingDocumentItem.js';
+import AsyncJob from './asyncJob.js';
+import AsyncJobItem from './asyncJobItem.js';
+import AsyncJobEvent from './asyncJobEvent.js';
 import GameEventType from './gameEventType.js';
 import PenaltyMinutes from './penaltyMinutes.js';
 import GameSituation from './gameSituation.js';
@@ -702,6 +705,39 @@ RefereeClosingDocumentItem.belongsTo(RefereeAccrualDocument, {
   as: 'AccrualDocument',
 });
 
+User.hasMany(AsyncJob, {
+  foreignKey: 'requested_by_user_id',
+  as: 'RequestedAsyncJobs',
+});
+AsyncJob.belongsTo(User, {
+  foreignKey: 'requested_by_user_id',
+  as: 'RequestedBy',
+});
+AsyncJob.hasMany(AsyncJobItem, {
+  foreignKey: 'job_id',
+  as: 'Items',
+});
+AsyncJobItem.belongsTo(AsyncJob, {
+  foreignKey: 'job_id',
+  as: 'Job',
+});
+AsyncJob.hasMany(AsyncJobEvent, {
+  foreignKey: 'job_id',
+  as: 'Events',
+});
+AsyncJobEvent.belongsTo(AsyncJob, {
+  foreignKey: 'job_id',
+  as: 'Job',
+});
+AsyncJobItem.hasMany(AsyncJobEvent, {
+  foreignKey: 'item_id',
+  as: 'Events',
+});
+AsyncJobEvent.belongsTo(AsyncJobItem, {
+  foreignKey: 'item_id',
+  as: 'Item',
+});
+
 RefereeAccrualDocumentStatus.hasMany(RefereeAccrualStatusTransition, {
   foreignKey: 'from_status_id',
   as: 'FromTransitions',
@@ -1134,6 +1170,9 @@ export {
   RefereeClosingDocumentProfile,
   RefereeClosingDocument,
   RefereeClosingDocumentItem,
+  AsyncJob,
+  AsyncJobItem,
+  AsyncJobEvent,
   GamePenalty,
   GameEventType,
   PenaltyMinutes,

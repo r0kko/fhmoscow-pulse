@@ -434,6 +434,19 @@ describe('RefereeClosingDocumentsManager', () => {
           }
           return secondSendPromise;
         }
+        if (path === '/admin/async-jobs/job-1') {
+          return {
+            job_id: 'job-1',
+            operation: 'SEND_TO_SIGNATURE',
+            status: 'COMPLETED',
+            total_count: 1,
+            processed_count: 1,
+            success_count: 1,
+            skipped_count: 0,
+            failure_count: 0,
+            progress_percent: 100,
+          };
+        }
         if (path.startsWith('/tournaments/tour-1/referee-closing-documents?')) {
           return {
             documents: [
@@ -482,7 +495,17 @@ describe('RefereeClosingDocumentsManager', () => {
     await fireEvent.click(sendButton);
     expect(sendCalls).toBe(2);
 
-    resolveSecondSend({ warnings: ['closing_document_notification_failed'] });
+    resolveSecondSend({
+      job_id: 'job-1',
+      operation: 'SEND_TO_SIGNATURE',
+      status: 'QUEUED',
+      total_count: 1,
+      processed_count: 0,
+      success_count: 0,
+      skipped_count: 0,
+      failure_count: 0,
+      progress_percent: 0,
+    });
 
     await waitFor(() => {
       expect(screen.queryByText(/req-old/)).not.toBeInTheDocument();
@@ -507,13 +530,40 @@ describe('RefereeClosingDocumentsManager', () => {
           path === '/tournaments/tour-1/referee-closing-documents/send-batch'
         ) {
           return {
-            failures: [
-              { id: 'doc-2', code: 'closing_document_storage_failed' },
+            job_id: 'job-2',
+            operation: 'SEND_TO_SIGNATURE',
+            status: 'QUEUED',
+            total_count: 2,
+            processed_count: 0,
+            success_count: 0,
+            skipped_count: 0,
+            failure_count: 0,
+            progress_percent: 0,
+          };
+        }
+        if (path === '/admin/async-jobs/job-2') {
+          return {
+            job_id: 'job-2',
+            operation: 'SEND_TO_SIGNATURE',
+            status: 'PARTIAL_FAILED',
+            total_count: 2,
+            processed_count: 2,
+            success_count: 1,
+            skipped_count: 0,
+            failure_count: 1,
+            progress_percent: 100,
+          };
+        }
+        if (path.startsWith('/admin/async-jobs/job-2/items')) {
+          return {
+            items: [
+              {
+                id: 'item-2',
+                status: 'FAILED',
+                closing_document_id: 'doc-2',
+                error_code: 'closing_document_storage_failed',
+              },
             ],
-            summary: {
-              sent_total: 1,
-              failed_total: 1,
-            },
           };
         }
         if (path.startsWith('/tournaments/tour-1/referee-closing-documents?')) {
