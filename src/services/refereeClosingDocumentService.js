@@ -30,9 +30,11 @@ import {
   Inn,
   Taxation,
   TaxationType,
+  BankAccount,
   UserAddress,
   AccountingAuditEvent,
 } from '../models/index.js';
+import { isValidAccountNumber } from '../utils/bank.js';
 
 import asyncJobService, { buildAsyncJobDedupeKey } from './asyncJobService.js';
 import { registerAsyncJobHandler } from './asyncJobRegistry.js';
@@ -904,6 +906,10 @@ function buildClosingDocumentWhere(tournamentId, filters = {}, extra = {}) {
   if (status) {
     where.status = status;
   }
+  const pdfStatus = normalizeString(extra.pdfStatus ?? '');
+  if (pdfStatus) {
+    where.pdf_status = pdfStatus;
+  }
 
   const search = normalizeString(filters.search || '');
   if (search) {
@@ -950,9 +956,9 @@ async function loadFilteredSelectionClosingDocumentIds(
           ...filters,
           status: 'DRAFT',
         },
-        { statusOverride: 'DRAFT' }
+        { statusOverride: 'DRAFT', pdfStatus: 'READY' }
       ),
-      attributes: ['id', 'status'],
+      attributes: ['id', 'status', 'pdf_status'],
       include: [
         {
           model: User,
@@ -977,7 +983,7 @@ async function loadFilteredSelectionClosingDocumentIds(
       total = Number(data.count || 0);
     }
     for (const row of data.rows || []) {
-      if (row.status === 'DRAFT') {
+      if (row.status === 'DRAFT' && row.pdf_status === 'READY') {
         selectedIds.push(row.id);
       }
     }
@@ -1014,7 +1020,31 @@ async function resolveSelectionClosingDocumentIds(tournamentId, payload = {}) {
   };
 }
 
-function buildRefereeSnapshot(user, innRecord, taxation, addressRecord) {
+function buildBankAccountSnapshot(bankAccount) {
+  if (!bankAccount) return null;
+  const number = normalizeString(bankAccount.number);
+  const bic = normalizeString(bankAccount.bic);
+  if (!isValidAccountNumber(number, bic)) return null;
+  return {
+    number,
+    bic,
+    bank_name: normalizeString(bankAccount.bank_name) || null,
+    correspondent_account:
+      normalizeString(bankAccount.correspondent_account) || null,
+    swift: normalizeString(bankAccount.swift) || null,
+    inn: normalizeString(bankAccount.inn) || null,
+    kpp: normalizeString(bankAccount.kpp) || null,
+    address: normalizeString(bankAccount.address) || null,
+  };
+}
+
+function buildRefereeSnapshot(
+  user,
+  innRecord,
+  taxation,
+  addressRecord,
+  bankAccount
+) {
   const address = addressRecord?.Address || null;
   return {
     id: user?.id || null,
@@ -1026,6 +1056,7 @@ function buildRefereeSnapshot(user, innRecord, taxation, addressRecord) {
     taxation_type_alias: taxation?.TaxationType?.alias || null,
     taxation_type_name: taxation?.TaxationType?.name || null,
     vat_label: VAT_LABEL,
+    bank_account: buildBankAccountSnapshot(bankAccount),
   };
 }
 
@@ -1252,82 +1283,101 @@ async function getRefereeSupportData(userIds = [], transaction = null) {
       contractByUserId: new Map(),
       innByUserId: new Map(),
       taxationByUserId: new Map(),
+      bankAccountByUserId: new Map(),
     };
   }
 
-  const [signs, agreements, contracts, addresses, inns, taxations] =
-    await Promise.all([
-      UserSignType.findAll({
-        where: { user_id: { [Op.in]: ids } },
-        include: [
-          {
-            model: SignType,
-            attributes: ['id', 'alias', 'name'],
-            where: { alias: SIMPLE_SIGN_ALIAS },
-            required: true,
-          },
-        ],
-        order: [['sign_created_date', 'DESC']],
-        transaction,
-      }),
-      Document.findAll({
-        where: { recipient_id: { [Op.in]: ids } },
-        include: [
-          {
-            model: DocumentType,
-            attributes: ['alias'],
-            where: { alias: 'ELECTRONIC_INTERACTION_AGREEMENT' },
-            required: true,
-          },
-          {
-            model: DocumentStatus,
-            attributes: ['alias'],
-            where: { alias: 'SIGNED' },
-            required: true,
-          },
-        ],
-        order: [['created_at', 'DESC']],
-        transaction,
-      }),
-      Document.findAll({
-        where: { recipient_id: { [Op.in]: ids } },
-        include: [
-          {
-            model: DocumentType,
-            attributes: ['alias', 'name'],
-            where: { alias: REFEREE_CONTRACT_ALIAS },
-            required: true,
-          },
-        ],
-        order: [['created_at', 'DESC']],
-        transaction,
-      }),
-      UserAddress.findAll({
-        where: { user_id: { [Op.in]: ids } },
-        include: [
-          {
-            model: Address,
-            attributes: ['result', 'postal_code'],
-            required: true,
-          },
-          {
-            model: AddressType,
-            attributes: ['alias', 'name'],
-            required: true,
-          },
-        ],
-        transaction,
-      }),
-      Inn.findAll({
-        where: { user_id: { [Op.in]: ids } },
-        transaction,
-      }),
-      Taxation.findAll({
-        where: { user_id: { [Op.in]: ids } },
-        include: [{ model: TaxationType, attributes: ['alias', 'name'] }],
-        transaction,
-      }),
-    ]);
+  const [
+    signs,
+    agreements,
+    contracts,
+    addresses,
+    inns,
+    taxations,
+    bankAccounts,
+  ] = await Promise.all([
+    UserSignType.findAll({
+      where: { user_id: { [Op.in]: ids } },
+      include: [
+        {
+          model: SignType,
+          attributes: ['id', 'alias', 'name'],
+          where: { alias: SIMPLE_SIGN_ALIAS },
+          required: true,
+        },
+      ],
+      order: [['sign_created_date', 'DESC']],
+      transaction,
+    }),
+    Document.findAll({
+      where: { recipient_id: { [Op.in]: ids } },
+      include: [
+        {
+          model: DocumentType,
+          attributes: ['alias'],
+          where: { alias: 'ELECTRONIC_INTERACTION_AGREEMENT' },
+          required: true,
+        },
+        {
+          model: DocumentStatus,
+          attributes: ['alias'],
+          where: { alias: 'SIGNED' },
+          required: true,
+        },
+      ],
+      order: [['created_at', 'DESC']],
+      transaction,
+    }),
+    Document.findAll({
+      where: { recipient_id: { [Op.in]: ids } },
+      include: [
+        {
+          model: DocumentType,
+          attributes: ['alias', 'name'],
+          where: { alias: REFEREE_CONTRACT_ALIAS },
+          required: true,
+        },
+        {
+          model: DocumentStatus,
+          attributes: ['alias'],
+          where: { alias: 'SIGNED' },
+          required: true,
+        },
+      ],
+      order: [['created_at', 'DESC']],
+      transaction,
+    }),
+    UserAddress.findAll({
+      where: { user_id: { [Op.in]: ids } },
+      include: [
+        {
+          model: Address,
+          attributes: ['result', 'postal_code'],
+          required: true,
+        },
+        {
+          model: AddressType,
+          attributes: ['alias', 'name'],
+          required: true,
+        },
+      ],
+      transaction,
+    }),
+    Inn.findAll({
+      where: { user_id: { [Op.in]: ids } },
+      transaction,
+    }),
+    Taxation.findAll({
+      where: { user_id: { [Op.in]: ids } },
+      include: [{ model: TaxationType, attributes: ['alias', 'name'] }],
+      transaction,
+    }),
+    BankAccount.findAll({
+      where: { user_id: { [Op.in]: ids } },
+      order: [['updated_at', 'DESC']],
+      transaction,
+    }),
+  ]);
 
   const signByUserId = new Map();
   for (const sign of signs) {
@@ -1358,6 +1408,14 @@ async function getRefereeSupportData(userIds = [], transaction = null) {
   const taxationByUserId = new Map(
     taxations.map((item) => [String(item.user_id), item])
   );
+  const bankAccountByUserId = new Map();
+  for (const bankAccount of bankAccounts) {
+    const key = String(bankAccount.user_id);
+    const snapshot = buildBankAccountSnapshot(bankAccount);
+    if (snapshot && !bankAccountByUserId.has(key)) {
+      bankAccountByUserId.set(key, snapshot);
+    }
+  }
   return {
     signByUserId,
     agreementByUserId,
@@ -1365,6 +1423,7 @@ async function getRefereeSupportData(userIds = [], transaction = null) {
     contractByUserId,
     innByUserId,
     taxationByUserId,
+    bankAccountByUserId,
   };
 }
 
@@ -1576,6 +1635,7 @@ async function buildPreviewResult(
     const addressRecord = support.addressByUserId.get(refereeId) || null;
     const innRecord = support.innByUserId.get(refereeId) || null;
     const taxation = support.taxationByUserId.get(refereeId) || null;
+    const bankAccount = support.bankAccountByUserId.get(refereeId) || null;
     const refereeDraftActs = draftActsByReferee.get(refereeId) || [];
     const issues = [];
     const linkedDraftIds = new Set();
@@ -1587,6 +1647,7 @@ async function buildPreviewResult(
     if (!agreement) issues.push('missing_interaction_agreement');
     if (!addressRecord?.Address) issues.push('missing_referee_address');
     if (!contract) issues.push('missing_referee_contract');
+    if (!bankAccount) issues.push('missing_referee_bank_account');
 
     for (const accrual of accruals) {
       if (String(accrual.document_status_id) !== String(accruedStatus.id)) {
@@ -1638,7 +1699,8 @@ async function buildPreviewResult(
         referee,
         innRecord,
         taxation,
-        addressRecord
+        addressRecord,
+        bankAccount
       ),
       customer_snapshot: buildProfileSnapshot(profile),
       contract_snapshot: buildContractSnapshot(contract),
@@ -2283,6 +2345,7 @@ async function listClosingDocuments(tournamentId, filters = {}) {
           normalizeString(filters.status || '') !== 'DRAFT'
             ? '__NONE__'
             : 'DRAFT',
+        pdfStatus: 'READY',
       }),
       include: [
         {
@@ -2308,10 +2371,7 @@ async function listClosingDocuments(tournamentId, filters = {}) {
     page: pagination.page,
     limit: pagination.limit,
     summary: {
-      sendable_total:
-        normalizeString(filters.status || '') === 'DRAFT'
-          ? count
-          : Number(sendableTotal || 0),
+      sendable_total: Number(sendableTotal || 0),
     },
   };
 }

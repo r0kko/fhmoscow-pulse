@@ -22,6 +22,17 @@ import { useToast } from '../../utils/toast';
 
 type ClosingTabKey = 'prepare' | 'documents';
 
+interface BankAccountSnapshot {
+  number?: string | null;
+  bic?: string | null;
+  bank_name?: string | null;
+  correspondent_account?: string | null;
+  swift?: string | null;
+  inn?: string | null;
+  kpp?: string | null;
+  address?: string | null;
+}
+
 interface PartySnapshot {
   name?: string | null;
   short_name?: string | null;
@@ -32,6 +43,7 @@ interface PartySnapshot {
   address?: string | null;
   position?: string | null;
   email?: string | null;
+  bank_account?: BankAccountSnapshot | null;
 }
 
 interface ContractSnapshot {
@@ -283,6 +295,7 @@ const filteredSelection = ref<{
 const previewLoading = ref(false);
 const previewError = ref('');
 const preview = ref<PreviewResponse | null>(null);
+const previewSelectionPayload = ref<Record<string, unknown> | null>(null);
 const createLoading = ref(false);
 
 const documentsLoading = ref(false);
@@ -388,7 +401,7 @@ const canSelectAllFiltered = computed(
   () => selectionMode.value === 'explicit' && accrualTotal.value > 0
 );
 const sendableDocumentsOnPage = computed(() =>
-  documents.value.filter((item) => item.status === 'DRAFT')
+  documents.value.filter((item) => canSendDocument(item))
 );
 const selectedSendSummary = computed(() => {
   if (sendSelectionMode.value === 'filtered' && filteredSendSelection.value) {
@@ -476,6 +489,7 @@ function issueLabel(issue: string) {
     missing_fhmo_signer: 'Не найден подписант ФХМ',
     missing_referee_email: 'У судьи нет e-mail',
     missing_referee_address: 'Не заполнен адрес судьи',
+    missing_referee_bank_account: 'Не заполнены банковские реквизиты судьи',
     missing_referee_contract: 'Нет заявления о присоединении к договору',
     missing_simple_esign: 'У судьи не подключена ПЭП',
     missing_interaction_agreement: 'Нет подписанного соглашения о ПЭП',
@@ -496,6 +510,30 @@ function statusLabel(status: string) {
     SIGNED: 'Подписан',
   };
   return labels[String(status || '')] || status || '—';
+}
+
+function pdfStatusLabel(status: string | null | undefined) {
+  const labels: Record<string, string> = {
+    READY: 'PDF готов',
+    GENERATING: 'PDF формируется',
+    FAILED: 'Ошибка PDF',
+  };
+  return labels[String(status || 'READY')] || status || 'PDF готов';
+}
+
+function pdfStatusBadgeClass(status: string | null | undefined) {
+  const normalized = String(status || 'READY');
+  if (normalized === 'READY') return 'bg-success-subtle text-success border';
+  if (normalized === 'FAILED') return 'bg-danger-subtle text-danger border';
+  return 'bg-warning-subtle text-warning border';
+}
+
+function isPdfReady(row: ClosingDocumentRow | null | undefined) {
+  return String(row?.pdf_status || 'READY') === 'READY';
+}
+
+function canSendDocument(row: ClosingDocumentRow | null | undefined) {
+  return Boolean(row && row.status === 'DRAFT' && isPdfReady(row));
 }
 
 function closingSendFailureLabel(code: string | null | undefined) {
@@ -622,6 +660,22 @@ function formatContract(contract: ContractSnapshot | null | undefined) {
   return bits.join(' ');
 }
 
+function bankRequisiteRows(bank: BankAccountSnapshot | null | undefined) {
+  if (!bank) return [];
+  const rows: Array<[string, string | null | undefined]> = [
+    ['р/с', bank.number],
+    ['Банк', bank.bank_name],
+    ['БИК', bank.bic],
+    ['к/с', bank.correspondent_account],
+    ['ИНН банка', bank.inn],
+    ['КПП банка', bank.kpp],
+    ['Адрес банка', bank.address],
+  ];
+  return rows
+    .filter(([, value]) => String(value || '').trim())
+    .map(([label, value]) => ({ label, value: String(value || '').trim() }));
+}
+
 function signaturePartyLabel(party: string | null | undefined) {
   return party === 'REFEREE' ? 'Исполнитель' : 'Заказчик';
 }
@@ -710,6 +764,13 @@ function clearSelection() {
   filteredSelection.value = null;
   selectedIds.value = [];
   selectedRowsById.value = {};
+  resetPreview();
+}
+
+function resetPreview() {
+  preview.value = null;
+  previewError.value = '';
+  previewSelectionPayload.value = null;
 }
 
 function clearSendSelection() {
@@ -865,6 +926,7 @@ async function loadDocuments() {
 
 function toggleSelection(id: string) {
   if (selectionMode.value === 'filtered') return;
+  resetPreview();
   const set = new Set(selectedIds.value);
   const nextRows = { ...selectedRowsById.value };
   if (set.has(id)) {
@@ -881,6 +943,7 @@ function toggleSelection(id: string) {
 
 function toggleSelectAllOnPage() {
   if (selectionMode.value === 'filtered') return;
+  resetPreview();
   if (allRowsSelected.value) {
     const idsOnPage = new Set(accrualRows.value.map((item) => item.id));
     selectedIds.value = selectedIds.value.filter((id) => !idsOnPage.has(id));
@@ -902,6 +965,7 @@ function toggleSelectAllOnPage() {
 }
 
 function selectAllFiltered() {
+  resetPreview();
   selectionMode.value = 'filtered';
   filteredSelection.value = {
     count: accrualTotal.value,
@@ -917,19 +981,22 @@ async function runPreview() {
   }
   previewLoading.value = true;
   previewError.value = '';
+  const payload = buildSelectionPayload();
   try {
     preview.value = (await apiFetch(
       `/tournaments/${props.tournamentId}/referee-closing-documents/preview`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildSelectionPayload()),
+        body: JSON.stringify(payload),
         timeoutMs: CLOSING_PREVIEW_TIMEOUT_MS,
       }
     )) as PreviewResponse;
+    previewSelectionPayload.value = payload;
   } catch (err: any) {
     previewError.value = err?.message || 'Не удалось собрать предпросмотр';
     preview.value = null;
+    previewSelectionPayload.value = null;
   } finally {
     previewLoading.value = false;
   }
@@ -944,7 +1011,9 @@ async function createDocuments() {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildSelectionPayload()),
+        body: JSON.stringify(
+          previewSelectionPayload.value || buildSelectionPayload()
+        ),
         timeoutMs: CLOSING_MUTATION_TIMEOUT_MS,
       }
     )) as ClosingDocumentJobResponse;
@@ -960,6 +1029,12 @@ async function createDocuments() {
 
 async function sendDocument(id: string) {
   if (actionLoading.value || bulkSendLoading.value || activeJobRunning.value) {
+    return;
+  }
+  const row = documents.value.find((item) => item.id === id) || null;
+  if (!canSendDocument(row)) {
+    documentsError.value =
+      'PDF акта еще не готов. Обновите журнал и повторите отправку после готовности файла.';
     return;
   }
   actionLoading.value = `send:${id}`;
@@ -987,6 +1062,8 @@ async function sendDocument(id: string) {
 
 function toggleSendSelection(id: string) {
   if (sendSelectionMode.value === 'filtered') return;
+  const row = documents.value.find((item) => item.id === id) || null;
+  if (!canSendDocument(row)) return;
   const set = new Set(selectedSendDocumentIds.value);
   if (set.has(id)) set.delete(id);
   else set.add(id);
@@ -1084,6 +1161,13 @@ async function deleteDocument(id: string) {
 watch([accrualPage, accrualLimit], () => {
   void loadAccruals();
 });
+
+watch(
+  () => [accrualFilters.search, accrualFilters.dateFrom, accrualFilters.dateTo],
+  () => {
+    resetPreview();
+  }
+);
 
 watch([documentsPage, documentsLimit], () => {
   void loadDocuments();
@@ -1628,6 +1712,18 @@ onBeforeUnmount(() => {
                         group.performer_snapshot?.address || 'Адрес не указан'
                       }}
                     </div>
+                    <div
+                      v-if="
+                        bankRequisiteRows(
+                          group.performer_snapshot?.bank_account
+                        ).length
+                      "
+                      class="small text-muted mt-1"
+                    >
+                      р/с
+                      {{ group.performer_snapshot?.bank_account?.number }} · БИК
+                      {{ group.performer_snapshot?.bank_account?.bic }}
+                    </div>
                     <div class="small text-muted mt-1">
                       {{ group.totals?.items_count || 0 }} начисл. ·
                       {{ formatRub(group.totals?.total_amount_rub) }} ₽
@@ -1772,6 +1868,7 @@ onBeforeUnmount(() => {
             <select v-model="documentsFilters.status" class="form-select">
               <option value="">Все</option>
               <option value="DRAFT">Черновик</option>
+              <option value="SENDING">Отправляется</option>
               <option value="AWAITING_SIGNATURE">Ожидает подписания</option>
               <option value="POSTED">Проведен</option>
               <option value="CANCELED">Отменен</option>
@@ -1923,12 +2020,12 @@ onBeforeUnmount(() => {
                           class="form-check-input"
                           type="checkbox"
                           :checked="
-                            item.status === 'DRAFT' &&
+                            canSendDocument(item) &&
                             (sendSelectionMode === 'filtered' ||
                               selectedSendDocumentIds.includes(item.id))
                           "
                           :disabled="
-                            item.status !== 'DRAFT' ||
+                            !canSendDocument(item) ||
                             sendSelectionMode === 'filtered' ||
                             bulkSendLoading ||
                             actionLoading !== '' ||
@@ -1947,6 +2044,20 @@ onBeforeUnmount(() => {
                         >
                           {{ statusLabel(item.status) }}
                         </span>
+                        <div class="mt-1">
+                          <span
+                            class="badge"
+                            :class="pdfStatusBadgeClass(item.pdf_status)"
+                          >
+                            {{ pdfStatusLabel(item.pdf_status) }}
+                          </span>
+                        </div>
+                        <div
+                          v-if="item.pdf_error_code"
+                          class="small text-danger mt-1"
+                        >
+                          {{ closingSendFailureLabel(item.pdf_error_code) }}
+                        </div>
                       </td>
                       <td>{{ formatDateTime(item.sent_at) }}</td>
                       <td>{{ item.signature_timeline?.length || 0 }}</td>
@@ -2012,6 +2123,12 @@ onBeforeUnmount(() => {
                 <span class="small text-muted">
                   № {{ selectedDocument.number || '—' }}
                 </span>
+                <span
+                  class="badge"
+                  :class="pdfStatusBadgeClass(selectedDocument.pdf_status)"
+                >
+                  {{ pdfStatusLabel(selectedDocument.pdf_status) }}
+                </span>
               </div>
 
               <div class="small d-flex flex-column gap-2">
@@ -2035,6 +2152,14 @@ onBeforeUnmount(() => {
                   }}
                 </div>
                 <div>
+                  <strong>PDF сформирован:</strong>
+                  {{ formatDateTime(selectedDocument.pdf_generated_at) }}
+                </div>
+                <div v-if="selectedDocument.pdf_error_code">
+                  <strong>Ошибка PDF:</strong>
+                  {{ closingSendFailureLabel(selectedDocument.pdf_error_code) }}
+                </div>
+                <div>
                   <strong>Отправлен:</strong>
                   {{ formatDateTime(selectedDocument.sent_at) }}
                 </div>
@@ -2049,6 +2174,34 @@ onBeforeUnmount(() => {
                 <div v-if="selectedDocument.totals?.total_amount_words">
                   <strong>Сумма прописью:</strong>
                   {{ selectedDocument.totals?.total_amount_words }}
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <div class="fw-semibold small mb-2">
+                  Банковские реквизиты исполнителя
+                </div>
+                <div
+                  v-if="
+                    bankRequisiteRows(
+                      selectedDocument.performer_snapshot?.bank_account
+                    ).length
+                  "
+                  class="small closing-requisites"
+                >
+                  <div
+                    v-for="row in bankRequisiteRows(
+                      selectedDocument.performer_snapshot?.bank_account
+                    )"
+                    :key="row.label"
+                    class="closing-requisites__row"
+                  >
+                    <span class="text-muted">{{ row.label }}</span>
+                    <span>{{ row.value }}</span>
+                  </div>
+                </div>
+                <div v-else class="small text-muted">
+                  Реквизиты не сохранены в snapshot этого акта.
                 </div>
               </div>
 
@@ -2144,7 +2297,8 @@ onBeforeUnmount(() => {
                     :disabled="
                       bulkSendLoading ||
                       actionLoading !== '' ||
-                      activeJobRunning
+                      activeJobRunning ||
+                      !canSendDocument(selectedDocument)
                     "
                     @click="sendDocument(selectedDocument.id)"
                   >
@@ -2171,6 +2325,15 @@ onBeforeUnmount(() => {
                     Скачать PDF
                   </a>
                 </div>
+                <div
+                  v-if="
+                    selectedDocument.status === 'DRAFT' &&
+                    !canSendDocument(selectedDocument)
+                  "
+                  class="alert alert-warning py-2 mt-2 mb-0"
+                >
+                  Отправка доступна только после успешной генерации PDF.
+                </div>
               </div>
             </template>
             <div v-else class="small text-muted">
@@ -2194,7 +2357,9 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
-            :disabled="bulkSendLoading || actionLoading !== ''"
+            :disabled="
+              bulkSendLoading || actionLoading !== '' || activeJobRunning
+            "
             @click="clearSendSelection"
           >
             Снять выбор
@@ -2202,7 +2367,9 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="btn btn-brand btn-sm"
-            :disabled="bulkSendLoading || actionLoading !== ''"
+            :disabled="
+              bulkSendLoading || actionLoading !== '' || activeJobRunning
+            "
             @click="sendSelectedDocuments"
           >
             {{ bulkSendLoading ? 'Отправляем...' : 'Подписать и отправить' }}
@@ -2252,6 +2419,23 @@ onBeforeUnmount(() => {
 
 .closing-competition-name {
   font-size: 0.78rem;
+}
+
+.closing-requisites {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.closing-requisites__row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 8rem) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  overflow-wrap: anywhere;
+}
+
+.closing-requisites__row span:last-child {
+  color: #141922;
 }
 
 .closing-sticky-bar {

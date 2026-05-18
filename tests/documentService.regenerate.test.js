@@ -339,7 +339,15 @@ test('regenerate uses closing act builder with signature timeline', async () => 
     description: JSON.stringify({
       payload: {
         customer: { name: 'Организатор' },
-        performer: { full_name: 'Судья', address: 'Москва' },
+        performer: {
+          full_name: 'Судья',
+          address: 'Москва',
+          bank_account: {
+            number: '40702810900000005555',
+            bic: '044525225',
+            bank_name: 'ПАО Сбербанк',
+          },
+        },
         contract: { number: '26.03/1024', document_date: '2026-03-12' },
         fhmo_signer: { full_name: 'Специалист ФХМ' },
         totals: {
@@ -387,6 +395,13 @@ test('regenerate uses closing act builder with signature timeline', async () => 
   expect(closingPdfBuilder).toHaveBeenCalledWith(
     expect.objectContaining({
       customer: { name: 'Организатор' },
+      performer: expect.objectContaining({
+        bank_account: {
+          number: '40702810900000005555',
+          bic: '044525225',
+          bank_name: 'ПАО Сбербанк',
+        },
+      }),
       contract: { number: '26.03/1024', document_date: '2026-03-12' },
       items: [{ service_name: 'Матч 1', total_amount_rub: '1500.00' }],
     }),

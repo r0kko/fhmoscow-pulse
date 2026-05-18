@@ -213,6 +213,9 @@ export const ERROR_MESSAGES = {
     'Не удалось перевести акт в ожидание подписи. Обновите журнал и повторите попытку.',
   closing_document_pdf_failed:
     'Не удалось сформировать PDF акта. Обновите журнал и повторите попытку.',
+  document_file_not_ready:
+    'PDF акта еще формируется. Обновите журнал и повторите отправку после готовности файла.',
+  missing_referee_bank_account: 'У судьи не заполнены банковские реквизиты.',
   closing_document_storage_failed:
     'Не удалось сохранить PDF акта в хранилище. Повторите попытку позже.',
   closing_document_notification_failed:

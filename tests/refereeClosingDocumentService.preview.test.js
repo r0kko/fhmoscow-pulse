@@ -28,6 +28,7 @@ const documentUserSignFindOne = jest.fn();
 const documentUserSignDestroy = jest.fn();
 const innFindAll = jest.fn();
 const taxationFindAll = jest.fn();
+const bankAccountFindAll = jest.fn();
 const userAddressFindAll = jest.fn();
 const refereeAccrualUpdate = jest.fn();
 const closingItemDestroy = jest.fn();
@@ -95,6 +96,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   Inn: { findAll: innFindAll },
   Taxation: { findAll: taxationFindAll },
   TaxationType: {},
+  BankAccount: { findAll: bankAccountFindAll },
   UserAddress: { findAll: userAddressFindAll },
   AccountingAuditEvent: { create: accountingAuditCreate },
 }));
@@ -175,6 +177,7 @@ beforeEach(() => {
   documentUserSignDestroy.mockReset();
   innFindAll.mockReset();
   taxationFindAll.mockReset();
+  bankAccountFindAll.mockReset();
   userAddressFindAll.mockReset();
   closingDocumentFindOne.mockReset();
   closingDocumentFindAll.mockReset();
@@ -217,7 +220,21 @@ beforeEach(() => {
     progress_percent: 0,
   }));
   closingItemFindAll.mockResolvedValue([]);
+  bankAccountFindAll.mockResolvedValue([]);
 });
+
+function validBankAccount(userId = 'ref-1') {
+  return {
+    user_id: userId,
+    number: '40702810900000005555',
+    bic: '044525225',
+    bank_name: 'ПАО Сбербанк',
+    correspondent_account: '30101810400000000225',
+    inn: '7707083893',
+    kpp: '773601001',
+    address: 'г. Москва, ул. Вавилова, д. 19',
+  };
+}
 
 function mockFhmoSigner() {
   userSignTypeFindAll.mockResolvedValue([
@@ -346,6 +363,7 @@ test('preview blocks act creation when referee address is missing', async () => 
       TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
     },
   ]);
+  bankAccountFindAll.mockResolvedValue([validBankAccount()]);
 
   const result = await closingService.previewClosingDocuments('tour-1', {
     accrual_ids: ['acc-1'],
@@ -360,6 +378,117 @@ test('preview blocks act creation when referee address is missing', async () => 
       number: '26.03/1024',
     })
   );
+});
+
+test('preview blocks act creation when referee bank account is missing', async () => {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  closingProfileFindOne.mockResolvedValue({
+    id: 'profile-1',
+    organizer_inn: '7708046206',
+    organizer_name: 'Федерация хоккея Москвы',
+    organizer_address: 'Москва',
+  });
+  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
+  accrualFindAll.mockResolvedValue([
+    {
+      id: 'acc-1',
+      referee_id: 'ref-1',
+      document_status_id: 'status-accrued',
+      accrual_number: 'A-001',
+      match_date_snapshot: '2026-03-01',
+      fare_code_snapshot: 'RPOT',
+      total_amount_rub: '1500.00',
+      base_amount_rub: '1500.00',
+      meal_amount_rub: '0.00',
+      travel_amount_rub: '0.00',
+      Referee: {
+        id: 'ref-1',
+        email: 'judge@example.com',
+        last_name: 'Судья',
+        first_name: 'Иван',
+        patronymic: 'Иванович',
+      },
+      RefereeRole: { name: 'Главный судья' },
+      Tournament: { name: 'Кубок Москвы' },
+      TournamentGroup: null,
+      Ground: null,
+      Match: {
+        HomeTeam: { name: 'Команда А' },
+        AwayTeam: { name: 'Команда Б' },
+      },
+      ClosingItem: null,
+    },
+  ]);
+  userSignTypeFindAll
+    .mockResolvedValueOnce([
+      {
+        User: {
+          id: 'fhmo-1',
+          email: 'fhmo@example.com',
+          last_name: 'Дробот',
+          first_name: 'Алексей',
+          patronymic: 'Андреевич',
+          Roles: [
+            {
+              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+              name: 'Ведущий специалист по судейству',
+              departmentName: 'Судейский департамент',
+              displayOrder: 1,
+            },
+          ],
+        },
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        user_id: 'ref-1',
+        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+      },
+    ]);
+  documentFindAll
+    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
+    .mockResolvedValueOnce([
+      {
+        id: 'contract-1',
+        recipient_id: 'ref-1',
+        number: '26.03/1024',
+        document_date: '2026-03-12',
+        name: 'Заявление о присоединении',
+        DocumentType: { name: 'Заявление о присоединении' },
+      },
+    ]);
+  userAddressFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
+      AddressType: { alias: 'REGISTRATION' },
+    },
+  ]);
+  innFindAll.mockResolvedValue([{ user_id: 'ref-1', number: '132612908997' }]);
+  taxationFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
+    },
+  ]);
+  bankAccountFindAll.mockResolvedValue([]);
+
+  const result = await closingService.previewClosingDocuments('tour-1', {
+    accrual_ids: ['acc-1'],
+  });
+
+  expect(result.ready_groups).toHaveLength(0);
+  expect(result.blocked_groups).toHaveLength(1);
+  expect(result.blocked_groups[0].issues).toContain(
+    'missing_referee_bank_account'
+  );
+  expect(result.blocked_groups[0].performer_snapshot?.bank_account).toBeNull();
 });
 
 test('preview supports filtered selection mode', async () => {
@@ -469,6 +598,7 @@ test('preview supports filtered selection mode', async () => {
       TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
     },
   ]);
+  bankAccountFindAll.mockResolvedValue([validBankAccount()]);
 
   const result = await closingService.previewClosingDocuments('tour-1', {
     selection_mode: 'filtered',
@@ -491,6 +621,13 @@ test('preview supports filtered selection mode', async () => {
       selection_mode: 'filtered',
       selected_total: 1,
       selected_amount_rub: '1500.00',
+    })
+  );
+  expect(result.ready_groups[0].performer_snapshot?.bank_account).toEqual(
+    expect.objectContaining({
+      number: '40702810900000005555',
+      bic: '044525225',
+      bank_name: 'ПАО Сбербанк',
     })
   );
 });
@@ -646,6 +783,7 @@ test('preview reuses referee draft and preserves existing items while formatting
       TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
     },
   ]);
+  bankAccountFindAll.mockResolvedValue([validBankAccount()]);
 
   const result = await closingService.previewClosingDocuments('tour-1', {
     accrual_ids: ['acc-1'],
@@ -942,8 +1080,8 @@ test('batch send enqueues filtered draft ids without full send processing', asyn
   mockFhmoSigner();
   closingDocumentFindAndCountAll.mockResolvedValueOnce({
     rows: [
-      { id: 'closing-1', status: 'DRAFT' },
-      { id: 'closing-2', status: 'DRAFT' },
+      { id: 'closing-1', status: 'DRAFT', pdf_status: 'READY' },
+      { id: 'closing-2', status: 'DRAFT', pdf_status: 'READY' },
     ],
     count: 2,
   });
@@ -978,7 +1116,7 @@ test('batch send enqueues filtered draft ids without full send processing', asyn
   );
   expect(closingDocumentFindAndCountAll.mock.calls[0]?.[0]).toEqual(
     expect.objectContaining({
-      attributes: ['id', 'status'],
+      attributes: ['id', 'status', 'pdf_status'],
       limit: 1000,
       offset: 0,
     })

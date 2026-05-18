@@ -210,6 +210,14 @@ test('closing act builder renders accounting layout and keeps short act on one p
       full_name: 'Тестов Никита Анатольевич',
       inn: '132612908997',
       address: '109000, Москва, ул. Тестовая, д. 1, кв. 15',
+      bank_account: {
+        number: '40702810900000005555',
+        bic: '044525225',
+        bank_name: 'ПАО Сбербанк',
+        correspondent_account: '30101810400000000225',
+        inn: '7707083893',
+        kpp: '773601001',
+      },
     },
     contract: {
       title:
@@ -279,6 +287,10 @@ test('closing act builder renders accounting layout and keeps short act on one p
   );
   expect(renderedText).toContain('Заказчик');
   expect(renderedText).toContain('Исполнитель');
+  expect(renderedText).toContain('Банковские реквизиты исполнителя');
+  expect(renderedText).toContain('40702810900000005555');
+  expect(renderedText).toContain('044525225');
+  expect(renderedText).toContain('30101810400000000225');
   const introRecord = textRecords.find((entry) =>
     entry.text.startsWith('В соответствии с заявлением')
   );

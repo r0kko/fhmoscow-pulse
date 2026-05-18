@@ -41,6 +41,46 @@ function renderManager() {
   });
 }
 
+function closingProfileFixture() {
+  return {
+    profile: {
+      organizer: {
+        inn: '7708046206',
+        name: 'ФХМ',
+        address: 'Москва',
+      },
+    },
+  };
+}
+
+function accrualsFixture() {
+  return {
+    accruals: [
+      {
+        id: 'acc-1',
+        accrual_number: 'A-1',
+        match_date_snapshot: '2026-03-10',
+        total_amount_rub: '3000.00',
+        referee: {
+          id: 'ref-1',
+          last_name: 'Иванов',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        referee_role: { name: 'Главный судья' },
+        match: {
+          home_team: { name: 'Команда 1' },
+          away_team: { name: 'Команда 2' },
+        },
+      },
+    ],
+    total: 1,
+    summary: {
+      total_amount_rub: '3000.00',
+    },
+  };
+}
+
 describe('RefereeClosingDocumentsManager', () => {
   beforeEach(() => {
     apiFetchMock.mockReset();
@@ -618,6 +658,134 @@ describe('RefereeClosingDocumentsManager', () => {
     await waitFor(() => {
       expect(
         screen.getByText(/Не удалось сохранить PDF акта в хранилище/)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('shows performer bank snapshot and disables send while PDF is not ready', async () => {
+    apiFetchMock.mockImplementation(async (path: string) => {
+      if (path === '/tournaments/tour-1/referee-closing-profile') {
+        return closingProfileFixture();
+      }
+      if (path.startsWith('/tournaments/tour-1/referee-accruals?')) {
+        return accrualsFixture();
+      }
+      if (path.startsWith('/tournaments/tour-1/referee-closing-documents?')) {
+        return {
+          documents: [
+            {
+              id: 'doc-bank',
+              status: 'DRAFT',
+              pdf_status: 'GENERATING',
+              pdf_generated_at: null,
+              number: '26.03/1500',
+              referee: { full_name: 'Тестов Никита Анатольевич' },
+              totals: {
+                total_amount_rub: '3000.00',
+                total_amount_words: 'Три тысячи рублей 00 копеек',
+              },
+              items: [],
+              signature_timeline: [],
+              can_delete: true,
+              customer_snapshot: { name: 'ФХМ', address: 'Москва' },
+              performer_snapshot: {
+                full_name: 'Тестов Никита Анатольевич',
+                address: 'Москва',
+                bank_account: {
+                  number: '40702810900000005555',
+                  bic: '044525225',
+                  bank_name: 'ПАО Сбербанк',
+                  correspondent_account: '30101810400000000225',
+                  inn: '7707083893',
+                  kpp: '773601001',
+                  address: 'Москва',
+                },
+              },
+              contract_snapshot: {
+                number: '26.03/1024',
+                document_date: '2026-03-12',
+              },
+            },
+          ],
+          total: 1,
+          summary: { sendable_total: 0 },
+        };
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
+
+    renderManager();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Акты' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('PDF формируется').length).toBeGreaterThan(0);
+    });
+    expect(
+      screen.getByText('Банковские реквизиты исполнителя')
+    ).toBeInTheDocument();
+    expect(screen.getByText('40702810900000005555')).toBeInTheDocument();
+    expect(screen.getByText('ПАО Сбербанк')).toBeInTheDocument();
+    expect(screen.getByText('30101810400000000225')).toBeInTheDocument();
+    expect(
+      screen.getByText('Отправка доступна только после успешной генерации PDF.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Отправить на подпись' })
+    ).toBeDisabled();
+  });
+
+  it('shows missing bank account blocker in preview', async () => {
+    apiFetchMock.mockImplementation(
+      async (path: string, options?: RequestInit) => {
+        if (path === '/tournaments/tour-1/referee-closing-profile') {
+          return closingProfileFixture();
+        }
+        if (path.startsWith('/tournaments/tour-1/referee-accruals?')) {
+          return accrualsFixture();
+        }
+        if (
+          path === '/tournaments/tour-1/referee-closing-documents/preview' &&
+          options?.method === 'POST'
+        ) {
+          return {
+            ready_groups: [],
+            blocked_groups: [
+              {
+                referee: {
+                  id: 'ref-1',
+                  full_name: 'Иванов Иван Иванович',
+                  email: 'judge@example.com',
+                },
+                performer_snapshot: {
+                  full_name: 'Иванов Иван Иванович',
+                  address: 'Москва',
+                  bank_account: null,
+                },
+                contract_snapshot: { number: '26.03/1024' },
+                totals: { items_count: 1, total_amount_rub: '3000.00' },
+                issues: ['missing_referee_bank_account'],
+              },
+            ],
+            summary: { selected_total: 1, ready_groups: 0, blocked_groups: 1 },
+          };
+        }
+        throw new Error(`Unexpected path ${path}`);
+      }
+    );
+
+    renderManager();
+
+    await waitFor(() => {
+      expect(screen.getByText('A-1')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByLabelText('Выбрать начисление A-1'));
+    await fireEvent.click(screen.getByRole('button', { name: 'Пересчитать' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Не заполнены банковские реквизиты судьи')
       ).toBeInTheDocument();
     });
   });
