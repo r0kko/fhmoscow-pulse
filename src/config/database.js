@@ -37,6 +37,11 @@ const sequelize = new Sequelize(
   }
 );
 
+let stopPoolCollector = null;
+const sequelizeRegistry = globalThis.__FHMO_SEQUELIZE_INSTANCES__ || new Set();
+globalThis.__FHMO_SEQUELIZE_INSTANCES__ = sequelizeRegistry;
+sequelizeRegistry.add(sequelize);
+
 /**
  * Try to establish the initial connection.
  * Call this once at app bootstrap (e.g. in app.js) and fail fast on error.
@@ -81,7 +86,8 @@ export async function connectToDatabase() {
     try {
       const m = await import('./metrics.js');
       m.setDbUp?.(true);
-      m.startSequelizePoolCollector?.(sequelize);
+      stopPoolCollector?.();
+      stopPoolCollector = m.startSequelizePoolCollector?.(sequelize) || null;
     } catch {
       /* ignore */
     }
@@ -103,7 +109,24 @@ export async function connectToDatabase() {
  * Call from process signal handlers.
  */
 export async function closeDatabase() {
+  stopPoolCollector?.();
+  stopPoolCollector = null;
   await sequelize.close();
+  sequelizeRegistry.delete(sequelize);
+}
+
+export async function closeAllDatabaseInstancesForTests() {
+  if (process.env.NODE_ENV !== 'test') return;
+  const instances = Array.from(sequelizeRegistry);
+  await Promise.allSettled(
+    instances.map(async (instance) => {
+      try {
+        await instance.close?.();
+      } finally {
+        sequelizeRegistry.delete(instance);
+      }
+    })
+  );
 }
 
 export default sequelize;

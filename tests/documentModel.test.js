@@ -1,4 +1,4 @@
-import { jest, expect, test } from '@jest/globals';
+import { afterAll, jest, expect, test } from '@jest/globals';
 
 import { Sequelize } from 'sequelize';
 
@@ -39,6 +39,7 @@ const consoleErrorSpy = jest
 
 afterAll(() => {
   consoleErrorSpy.mockRestore();
+  return sequelize.close();
 });
 
 beforeEach(() => {

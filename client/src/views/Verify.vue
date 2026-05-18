@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { API_BASE } from '../api';
 
 const loading = ref(true);
 const result = ref('invalid');
@@ -89,7 +90,6 @@ async function verifyDocument() {
 
   try {
     scrubTokenFromAddress(state);
-    const { API_BASE } = await import('../api');
     const res = await fetch(`${API_BASE}/verify`, {
       method: 'GET',
       headers: { 'X-Verify-Token': token },

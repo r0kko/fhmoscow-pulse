@@ -1,4 +1,4 @@
-import { beforeEach, expect, jest, test } from '@jest/globals';
+import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 
 const queryMock = jest.fn();
 
@@ -16,6 +16,11 @@ beforeEach(() => {
   queryMock.mockReset();
   delete process.env.BUSINESS_METRICS_REFRESH_MS;
   process.env.NODE_ENV = 'test';
+});
+
+afterEach(async () => {
+  const metrics = await import('../src/config/metrics.js');
+  metrics.stopBusinessMetricsCollector?.();
 });
 
 test('business metrics collector populates gauges from aggregated queries', async () => {
@@ -56,6 +61,7 @@ test('business metrics collector populates gauges from aggregated queries', asyn
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
   const metrics = await loadMetrics();
   await metrics.startBusinessMetricsCollector();
+  metrics.stopBusinessMetricsCollector();
   jest.clearAllTimers();
   jest.useRealTimers();
 

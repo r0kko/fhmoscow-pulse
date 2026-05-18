@@ -80,12 +80,14 @@ describe('metrics runtime state helpers', () => {
     const sequelize1 = {
       connectionManager: { pool: { size: 1, available: 1, pending: 0 } },
     };
-    startSequelizePoolCollector(sequelize1);
+    const stopCollector1 = startSequelizePoolCollector(sequelize1);
     const sequelize2 = {
       connectionManager: {
         pool: { size: () => 2, available: () => 1, pending: () => 0 },
       },
     };
-    startSequelizePoolCollector(sequelize2);
+    const stopCollector2 = startSequelizePoolCollector(sequelize2);
+    stopCollector1();
+    stopCollector2();
   });
 });

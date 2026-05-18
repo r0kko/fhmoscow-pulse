@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build & verify stage #
 ############################
-FROM node:24-alpine AS build
+FROM node:24.12.0-alpine3.23 AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -17,9 +17,9 @@ RUN npm run lint
 ###########################
 # 2️⃣  Production stage   #
 ###########################
-FROM node:24-alpine AS prod
+FROM node:24.12.0-alpine3.23 AS prod
 
-RUN apk add --no-cache postgresql-client && npm install -g npm
+RUN apk add --no-cache postgresql-client
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh

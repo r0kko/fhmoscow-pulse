@@ -1,4 +1,4 @@
-import { beforeEach, expect, jest, test } from '@jest/globals';
+import { afterAll, beforeEach, expect, jest, test } from '@jest/globals';
 import { Sequelize } from 'sequelize';
 
 const sequelize = new Sequelize('postgres://user:pass@localhost:5432/db', {
@@ -21,6 +21,8 @@ jest.unstable_mockModule('bcryptjs', () => ({
 }));
 
 const { default: User } = await import('../src/models/user.js');
+
+afterAll(() => sequelize.close());
 
 beforeEach(() => {
   hashMock.mockClear();

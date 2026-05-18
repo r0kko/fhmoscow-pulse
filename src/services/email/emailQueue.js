@@ -550,7 +550,7 @@ export async function startEmailWorker(options = {}) {
 }
 
 export async function stopEmailWorker() {
-  if (!running) return;
+  if (!running && !metricsInterval) return;
   running = false;
   if (metricsInterval) {
     clearInterval(metricsInterval);
@@ -593,6 +593,9 @@ export function getEmailQueueStats() {
 }
 
 function resetStateForTests() {
+  if (metricsInterval) {
+    clearInterval(metricsInterval);
+  }
   loops = [];
   initialized = false;
   running = false;

@@ -794,7 +794,9 @@ export function observeDbQuery(operation, ms) {
 }
 
 export function startSequelizePoolCollector(sequelize) {
-  if (!metricsAvailable || !sequelize?.connectionManager?.pool) return;
+  if (!metricsAvailable || !sequelize?.connectionManager?.pool) {
+    return () => {};
+  }
   const pool = sequelize.connectionManager.pool;
   const collect = () => {
     try {
@@ -817,6 +819,7 @@ export function startSequelizePoolCollector(sequelize) {
   collect();
   const interval = setInterval(collect, 5000);
   if (interval?.unref) interval.unref();
+  return () => clearInterval(interval);
 }
 
 export default {
@@ -825,6 +828,7 @@ export default {
   seedJobMetrics,
   getJobStats,
   startBusinessMetricsCollector,
+  stopBusinessMetricsCollector,
 };
 
 export function getRuntimeStates() {
@@ -1447,4 +1451,12 @@ export async function startBusinessMetricsCollector() {
     collectBusinessMetrics().catch(() => {});
   }, refreshMs);
   if (businessCollectorTimer?.unref) businessCollectorTimer.unref();
+}
+
+export function stopBusinessMetricsCollector() {
+  if (businessCollectorTimer) {
+    clearInterval(businessCollectorTimer);
+    businessCollectorTimer = null;
+  }
+  businessCollectorStarted = false;
 }

@@ -8,9 +8,7 @@ test('connectToDatabase and closeDatabase can be invoked (happy path)', async ()
   const authSpy = jest
     .spyOn(sequelize, 'authenticate')
     .mockResolvedValueOnce(undefined);
-  const closeSpy = jest
-    .spyOn(sequelize, 'close')
-    .mockResolvedValueOnce(undefined);
+  const closeSpy = jest.spyOn(sequelize, 'close');
 
   await expect(mod.connectToDatabase()).resolves.toBeUndefined();
   await expect(mod.closeDatabase()).resolves.toBeUndefined();

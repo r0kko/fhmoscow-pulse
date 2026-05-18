@@ -5,79 +5,7 @@ import {
   type RouteLocationNormalized,
   type RouteRecordRaw,
 } from 'vue-router';
-import Login from './views/Login.vue';
-import Register from './views/Register.vue';
-import ProfileWizard from './views/ProfileWizard.vue';
 import { auth, clearAuth, fetchCurrentUser } from './auth';
-import Home from './views/Home.vue';
-import Profile from './views/Profile.vue';
-import DocumentView from './views/DocumentView.vue';
-import Documents from './views/Documents.vue';
-import PendingSignatures from './views/PendingSignatures.vue';
-import Medical from './views/Medical.vue';
-import Camps from './views/Camps.vue';
-import Tasks from './views/Tasks.vue';
-import Availability from './views/Availability.vue';
-import RefereeAssignments from './views/RefereeAssignments.vue';
-import RefereeAssignmentMatch from './views/RefereeAssignmentMatch.vue';
-import Normatives from './views/Normatives.vue';
-import AdminUsers from './views/AdminUsers.vue';
-import AdminHome from './views/AdminHome.vue';
-import AdminUserWorkspace from './views/AdminUserWorkspace.vue';
-import AdminUserCreate from './views/AdminUserCreate.vue';
-import AdminGrounds from './views/AdminGrounds.vue';
-import SchoolGrounds from './views/SchoolGrounds.vue';
-import AdminClubsTeams from './views/AdminClubsTeams.vue';
-import AdminSportSchools from './views/AdminSportSchools.vue';
-import AdminTournaments from './views/AdminTournaments.vue';
-import AdminTournamentLayout from './views/AdminTournamentLayout.vue';
-import AdminTournamentStructureView from './views/AdminTournamentStructureView.vue';
-import AdminTournamentScheduleView from './views/AdminTournamentScheduleView.vue';
-import AdminTournamentSettingsView from './views/AdminTournamentSettingsView.vue';
-import AdminTournamentPaymentsView from './views/AdminTournamentPaymentsView.vue';
-import AdminAccountingView from './views/AdminAccountingView.vue';
-import AdminAccountingClosingDocumentsView from './views/AdminAccountingClosingDocumentsView.vue';
-import SchoolMatches from './views/SchoolMatches.vue';
-import SchoolPastMatches from './views/SchoolPastMatches.vue';
-import SchoolMatchAgreements from './views/SchoolMatchAgreements.vue';
-import SchoolMatch from './views/SchoolMatch.vue';
-import SchoolMatchLineups from './views/SchoolMatchLineups.vue';
-import SchoolMatchReferees from './views/SchoolMatchReferees.vue';
-import SchoolMatchAppeals from './views/SchoolMatchAppeals.vue';
-import SchoolPlayers from './views/SchoolPlayers.vue';
-import SchoolPlayersRoster from './views/SchoolPlayersRoster.vue';
-import SchoolPlayerPhotos from './views/SchoolPlayerPhotos.vue';
-import SchoolHome from './views/SchoolHome.vue';
-import SchoolStaffAccess from './views/SchoolStaffAccess.vue';
-import AdminCamps from './views/AdminCamps.vue';
-import AdminMedicalManagement from './views/AdminMedicalManagement.vue';
-import AdminExamRegistrations from './views/AdminExamRegistrations.vue';
-import AdminTrainingRegistrations from './views/AdminTrainingRegistrations.vue';
-import AdminCourseTrainingRegistrations from './views/AdminCourseTrainingRegistrations.vue';
-import AdminDocuments from './views/AdminDocuments.vue';
-import AdminNormatives from './views/AdminNormatives.vue';
-import Tickets from './views/Tickets.vue';
-import AdminTickets from './views/AdminTickets.vue';
-import AdminPlayerPhotoRequests from './views/AdminPlayerPhotoRequests.vue';
-import TrainingAttendance from './views/TrainingAttendance.vue';
-import AdminCourses from './views/AdminCourses.vue';
-import AdminRefereeAvailability from './views/AdminRefereeAvailability.vue';
-import AdminRefereeAssignments from './views/AdminRefereeAssignments.vue';
-import AdminProfessionalRefereeAssignments from './views/AdminProfessionalRefereeAssignments.vue';
-import AdminProfessionalLeagueReferees from './views/AdminProfessionalLeagueReferees.vue';
-import AdminProfessionalLeagueMatch from './views/AdminProfessionalLeagueMatch.vue';
-import AdminProfessionalLeagueMatchReferees from './views/AdminProfessionalLeagueMatchReferees.vue';
-import AdminSportsCalendar from './views/AdminSportsCalendar.vue';
-import AdminMatch from './views/AdminMatch.vue';
-import AdminSystemOps from './views/AdminSystemOps.vue';
-import AdminEquipment from './views/AdminEquipment.vue';
-import Qualification from './views/Qualification.vue';
-import PasswordReset from './views/PasswordReset.vue';
-import ChangePassword from './views/ChangePassword.vue';
-import NotFound from './views/NotFound.vue';
-import Forbidden from './views/Forbidden.vue';
-import ServerError from './views/ServerError.vue';
-import Verify from './views/Verify.vue';
 
 import {
   ADMIN_ROLES as adminRoles,
@@ -87,6 +15,96 @@ import {
   FHMO_MEDIA_CONTENT_ROLES as fhmoMediaContentRoles,
   isFhmoStaffOnly,
 } from './utils/roles';
+
+const Login = () => import('./views/Login.vue');
+const Register = () => import('./views/Register.vue');
+const ProfileWizard = () => import('./views/ProfileWizard.vue');
+const Home = () => import('./views/Home.vue');
+const Profile = () => import('./views/Profile.vue');
+const DocumentView = () => import('./views/DocumentView.vue');
+const Documents = () => import('./views/Documents.vue');
+const PendingSignatures = () => import('./views/PendingSignatures.vue');
+const Medical = () => import('./views/Medical.vue');
+const Camps = () => import('./views/Camps.vue');
+const Tasks = () => import('./views/Tasks.vue');
+const Availability = () => import('./views/Availability.vue');
+const RefereeAssignments = () => import('./views/RefereeAssignments.vue');
+const RefereeAssignmentMatch = () =>
+  import('./views/RefereeAssignmentMatch.vue');
+const Normatives = () => import('./views/Normatives.vue');
+const AdminUsers = () => import('./views/AdminUsers.vue');
+const AdminHome = () => import('./views/AdminHome.vue');
+const AdminUserWorkspace = () => import('./views/AdminUserWorkspace.vue');
+const AdminUserCreate = () => import('./views/AdminUserCreate.vue');
+const AdminGrounds = () => import('./views/AdminGrounds.vue');
+const SchoolGrounds = () => import('./views/SchoolGrounds.vue');
+const AdminClubsTeams = () => import('./views/AdminClubsTeams.vue');
+const AdminSportSchools = () => import('./views/AdminSportSchools.vue');
+const AdminTournaments = () => import('./views/AdminTournaments.vue');
+const AdminTournamentLayout = () => import('./views/AdminTournamentLayout.vue');
+const AdminTournamentStructureView = () =>
+  import('./views/AdminTournamentStructureView.vue');
+const AdminTournamentScheduleView = () =>
+  import('./views/AdminTournamentScheduleView.vue');
+const AdminTournamentSettingsView = () =>
+  import('./views/AdminTournamentSettingsView.vue');
+const AdminTournamentPaymentsView = () =>
+  import('./views/AdminTournamentPaymentsView.vue');
+const AdminAccountingView = () => import('./views/AdminAccountingView.vue');
+const AdminAccountingClosingDocumentsView = () =>
+  import('./views/AdminAccountingClosingDocumentsView.vue');
+const SchoolMatches = () => import('./views/SchoolMatches.vue');
+const SchoolPastMatches = () => import('./views/SchoolPastMatches.vue');
+const SchoolMatchAgreements = () => import('./views/SchoolMatchAgreements.vue');
+const SchoolMatch = () => import('./views/SchoolMatch.vue');
+const SchoolMatchLineups = () => import('./views/SchoolMatchLineups.vue');
+const SchoolMatchReferees = () => import('./views/SchoolMatchReferees.vue');
+const SchoolMatchAppeals = () => import('./views/SchoolMatchAppeals.vue');
+const SchoolPlayers = () => import('./views/SchoolPlayers.vue');
+const SchoolPlayersRoster = () => import('./views/SchoolPlayersRoster.vue');
+const SchoolPlayerPhotos = () => import('./views/SchoolPlayerPhotos.vue');
+const SchoolHome = () => import('./views/SchoolHome.vue');
+const SchoolStaffAccess = () => import('./views/SchoolStaffAccess.vue');
+const AdminCamps = () => import('./views/AdminCamps.vue');
+const AdminMedicalManagement = () =>
+  import('./views/AdminMedicalManagement.vue');
+const AdminExamRegistrations = () =>
+  import('./views/AdminExamRegistrations.vue');
+const AdminTrainingRegistrations = () =>
+  import('./views/AdminTrainingRegistrations.vue');
+const AdminCourseTrainingRegistrations = () =>
+  import('./views/AdminCourseTrainingRegistrations.vue');
+const AdminDocuments = () => import('./views/AdminDocuments.vue');
+const AdminNormatives = () => import('./views/AdminNormatives.vue');
+const Tickets = () => import('./views/Tickets.vue');
+const AdminTickets = () => import('./views/AdminTickets.vue');
+const AdminPlayerPhotoRequests = () =>
+  import('./views/AdminPlayerPhotoRequests.vue');
+const TrainingAttendance = () => import('./views/TrainingAttendance.vue');
+const AdminCourses = () => import('./views/AdminCourses.vue');
+const AdminRefereeAvailability = () =>
+  import('./views/AdminRefereeAvailability.vue');
+const AdminRefereeAssignments = () =>
+  import('./views/AdminRefereeAssignments.vue');
+const AdminProfessionalRefereeAssignments = () =>
+  import('./views/AdminProfessionalRefereeAssignments.vue');
+const AdminProfessionalLeagueReferees = () =>
+  import('./views/AdminProfessionalLeagueReferees.vue');
+const AdminProfessionalLeagueMatch = () =>
+  import('./views/AdminProfessionalLeagueMatch.vue');
+const AdminProfessionalLeagueMatchReferees = () =>
+  import('./views/AdminProfessionalLeagueMatchReferees.vue');
+const AdminSportsCalendar = () => import('./views/AdminSportsCalendar.vue');
+const AdminMatch = () => import('./views/AdminMatch.vue');
+const AdminSystemOps = () => import('./views/AdminSystemOps.vue');
+const AdminEquipment = () => import('./views/AdminEquipment.vue');
+const Qualification = () => import('./views/Qualification.vue');
+const PasswordReset = () => import('./views/PasswordReset.vue');
+const ChangePassword = () => import('./views/ChangePassword.vue');
+const NotFound = () => import('./views/NotFound.vue');
+const Forbidden = () => import('./views/Forbidden.vue');
+const ServerError = () => import('./views/ServerError.vue');
+const Verify = () => import('./views/Verify.vue');
 
 const FHMO_ALLOWED_PATHS = new Set<string>([
   '/',

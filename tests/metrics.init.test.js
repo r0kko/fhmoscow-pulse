@@ -62,6 +62,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  metrics?.stopBusinessMetricsCollector?.();
   jest.useRealTimers();
 });
 
@@ -117,8 +118,11 @@ describe('metrics bootstrap and collectors', () => {
       waitingCount: 0,
     };
     // start collector and advance timers
-    metrics.startSequelizePoolCollector({ connectionManager: { pool } });
+    const stopCollector = metrics.startSequelizePoolCollector({
+      connectionManager: { pool },
+    });
     jest.runOnlyPendingTimers();
+    stopCollector();
     const sizeGauge = gauges.find((g) => g.opts.name === 'db_pool_size');
     expect(sizeGauge.set).toHaveBeenCalledWith(5);
   });

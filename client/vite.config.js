@@ -19,7 +19,7 @@ const proxyConfig = {
   },
 };
 
-const coverageProvider = process.env.CI ? 'istanbul' : 'v8';
+const coverageProvider = 'v8';
 
 export default defineConfig({
   plugins: [vue()],
@@ -67,6 +67,17 @@ export default defineConfig({
     ],
     // Vite Preview supports proxy since v5; mirror dev proxy for parity
     proxy: proxyConfig,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/node_modules/bootstrap')) return 'vendor-bootstrap';
+          if (id.includes('/node_modules/vue')) return 'vendor-vue';
+          return undefined;
+        },
+      },
+    },
   },
   test: {
     environment: 'happy-dom',

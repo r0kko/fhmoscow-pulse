@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import Modal from 'bootstrap/js/dist/modal';
 import { useRoute } from 'vue-router';
 import Breadcrumbs from '../components/Breadcrumbs.vue';
-import { apiFetch } from '../api';
+import { apiFetch, apiFetchBlob } from '../api';
 import { useToast } from '../utils/toast';
 import { createLineupSync } from '../utils/lineupSync';
 import SyncStatus from '../components/lineups/SyncStatus.vue';
@@ -1518,7 +1518,6 @@ async function exportPlayers() {
       exportModal?.show();
       return;
     }
-    const { apiFetchBlob } = await import('../api');
     const blob = await apiFetchBlob(
       `/matches/${route.params.id}/lineups/export.pdf?team_id=${encodeURIComponent(activeTeam.value)}`
     );
@@ -1628,7 +1627,6 @@ async function exportRepresentatives() {
   try {
     // Persist staff selection before export
     await saveStaff();
-    const { apiFetchBlob } = await import('../api');
     const blob = await apiFetchBlob(
       `/matches/${route.params.id}/representatives/export.pdf?team_id=${encodeURIComponent(activeTeam.value)}`
     );
