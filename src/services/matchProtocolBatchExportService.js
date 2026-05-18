@@ -4,7 +4,7 @@ import { mkdir, rm } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import { Op } from 'sequelize';
 
 import logger from '../../logger.js';
@@ -296,7 +296,7 @@ async function createArchiveWriter() {
   await mkdir(dir, { recursive: true });
   const zipPath = path.join(dir, 'protocols.zip');
   const output = createWriteStream(zipPath);
-  const archive = archiver('zip', { zlib: { level: 6 } });
+  const archive = new ZipArchive({ zlib: { level: 6 } });
   const done = new Promise((resolve, reject) => {
     output.on('close', resolve);
     output.on('error', reject);
