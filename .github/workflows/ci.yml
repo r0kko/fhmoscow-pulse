@@ -53,6 +53,9 @@ jobs:
       - name: Audit runtime dependencies (blocking)
         run: npm run audit:prod
 
+      - name: Audit client dependencies (blocking)
+        run: npm run audit:client
+
       - name: Audit all dependencies (informational)
         continue-on-error: true
         run: npm run audit:full
