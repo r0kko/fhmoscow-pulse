@@ -127,6 +127,11 @@ jobs:
           CI: true
         run: timeout 15m npm --prefix client run test:coverage
 
+      - name: Run client integration tests
+        env:
+          CI: true
+        run: timeout 10m npm --prefix client run test:integration
+
       - name: Debug stuck client coverage process tree
         if: failure()
         run: |
