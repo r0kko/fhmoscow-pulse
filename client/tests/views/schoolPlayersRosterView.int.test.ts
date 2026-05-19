@@ -54,6 +54,7 @@ const routes: RouteRecordRaw[] = [
     path: '/school-players/season/:seasonId/year/:year',
     component: SchoolPlayersRoster,
   },
+  { path: '/documents', component: { template: '<div />' } },
   { path: '/school-players', component: { template: '<div />' } },
 ];
 

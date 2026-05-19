@@ -84,6 +84,7 @@
     "redis": "^5.12.1",
     "safe-regex": "^2.1.1",
     "sequelize": "^6.37.8",
+    "sequelize-cli": "^6.6.5",
     "sharp": "^0.34.5",
     "swagger-ui-express": "^5.0.1",
     "uuid": "file:packages/uuid",
@@ -114,7 +115,6 @@
     "jest": "^30.4.2",
     "prettier": "^3.8.3",
     "semver": "^7.8.0",
-    "sequelize-cli": "^6.6.5",
     "swagger-jsdoc": "^6.2.8"
   }
 }

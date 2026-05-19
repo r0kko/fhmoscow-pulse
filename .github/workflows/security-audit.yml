@@ -52,7 +52,7 @@ jobs:
       - name: Audit runtime and client dependencies
         run: npm run audit:full
 
-  docker-scout:
+  docker-image-scan:
     name: Docker Image Scan
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -78,37 +78,39 @@ jobs:
           tags: fhmoscow-pulse-client:${{ github.sha }}
 
       - name: Scan server image for critical and high CVEs
-        id: scout-server
-        uses: docker/scout-action@v1.20.4
+        id: trivy-server
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          command: cves
-          image: local://fhmoscow-pulse-api:${{ github.sha }}
-          only-severities: critical,high
-          exit-code: true
-          sarif-file: docker-scout-server.sarif
-          write-comment: false
+          image-ref: fhmoscow-pulse-api:${{ github.sha }}
+          format: sarif
+          output: trivy-server.sarif
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+          limit-severities-for-sarif: true
+          exit-code: '1'
 
       - name: Scan client image for critical and high CVEs
-        id: scout-client
-        uses: docker/scout-action@v1.20.4
+        id: trivy-client
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          command: cves
-          image: local://fhmoscow-pulse-client:${{ github.sha }}
-          only-severities: critical,high
-          exit-code: true
-          sarif-file: docker-scout-client.sarif
-          write-comment: false
+          image-ref: fhmoscow-pulse-client:${{ github.sha }}
+          format: sarif
+          output: trivy-client.sarif
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+          limit-severities-for-sarif: true
+          exit-code: '1'
 
-      - name: Upload server Docker SARIF
-        if: always() && hashFiles('docker-scout-server.sarif') != ''
+      - name: Upload server image SARIF
+        if: always() && hashFiles('trivy-server.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: docker-scout-server.sarif
-          category: docker-scout-server
+          sarif_file: trivy-server.sarif
+          category: trivy-server-image
 
-      - name: Upload client Docker SARIF
-        if: always() && hashFiles('docker-scout-client.sarif') != ''
+      - name: Upload client image SARIF
+        if: always() && hashFiles('trivy-client.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: docker-scout-client.sarif
-          category: docker-scout-client
+          sarif_file: trivy-client.sarif
+          category: trivy-client-image

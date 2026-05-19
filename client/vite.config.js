@@ -19,7 +19,7 @@ const proxyConfig = {
   },
 };
 
-const coverageProvider = 'v8';
+const coverageProvider = 'istanbul';
 
 export default defineConfig({
   plugins: [vue()],

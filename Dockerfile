@@ -14,6 +14,7 @@ COPY . .
 
 RUN node scripts/verifyRuntimeDependencies.mjs
 RUN npm run lint
+RUN npm prune --omit=dev
 
 ###########################
 # 2️⃣  Production stage   #
@@ -29,7 +30,15 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
 COPY --from=build /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/. .
+COPY --from=build /usr/src/app/package.json ./package.json
+COPY --from=build /usr/src/app/.sequelizerc ./.sequelizerc
+COPY --from=build /usr/src/app/app.js ./app.js
+COPY --from=build /usr/src/app/logger.js ./logger.js
+COPY --from=build /usr/src/app/assets ./assets
+COPY --from=build /usr/src/app/bin ./bin
+COPY --from=build /usr/src/app/packages ./packages
+COPY --from=build /usr/src/app/scripts ./scripts
+COPY --from=build /usr/src/app/src ./src
 
 RUN chown -R node:node /usr/src/app && chmod -R u=rwX,go=rX /usr/src/app
 RUN node scripts/verifyRuntimeDependencies.mjs

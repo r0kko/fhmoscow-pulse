@@ -14,6 +14,7 @@ RUN npm ci
 # Build Vite production bundle
 COPY . .
 RUN npm run build
+RUN npm prune --omit=dev
 
 ############################
 # 2️⃣ Production stage     #
@@ -23,7 +24,7 @@ WORKDIR /usr/src/app
 COPY --from=build /usr/src/app/vite.config.* ./
 # Copy only runtime files
 COPY --from=build /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/package*.json ./
+COPY --from=build /usr/src/app/package.json ./package.json
 COPY --from=build /usr/src/app/dist ./dist
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
