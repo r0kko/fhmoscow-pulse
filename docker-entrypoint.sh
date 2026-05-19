@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-if [ "${NODE_ENV:-development}" != "production" ]; then
+if [ "${NODE_ENV:-development}" != "production" ] && command -v npm > /dev/null 2>&1; then
   echo "🔎 Checking runtime dependencies..."
   if ! npm ls sharp pdf-lib archiver@8.0.0 pdfkit@0.18.0 pdfkit-table@0.2.11 --depth=0 > /dev/null 2>&1; then
     echo "📦 Installing missing dependencies in dev container..."
@@ -19,9 +19,9 @@ done
 echo "✅ Database is ready"
 
 echo "⚙️  Running migrations..."
-npx sequelize-cli db:migrate --env ${NODE_ENV:-development}
+./node_modules/.bin/sequelize-cli db:migrate --env ${NODE_ENV:-development}
 echo "🌱 Running seeders..."
-npx sequelize-cli db:seed:all --env ${NODE_ENV:-development}
+./node_modules/.bin/sequelize-cli db:seed:all --env ${NODE_ENV:-development}
 
 echo "🚀 Starting application..."
 exec "$@"

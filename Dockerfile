@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build & verify stage #
 ############################
-FROM node:24.12.0-alpine3.23 AS build
+FROM node:24.15.0-alpine3.23 AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -19,7 +19,7 @@ RUN npm prune --omit=dev
 ###########################
 # 2️⃣  Production stage   #
 ###########################
-FROM node:24.12.0-alpine3.23 AS prod
+FROM node:24.15.0-alpine3.23 AS prod
 
 RUN apk add --no-cache postgresql-client
 
@@ -42,6 +42,7 @@ COPY --from=build /usr/src/app/src ./src
 
 RUN chown -R node:node /usr/src/app && chmod -R u=rwX,go=rX /usr/src/app
 RUN node scripts/verifyRuntimeDependencies.mjs
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER node
 

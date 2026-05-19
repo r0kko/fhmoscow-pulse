@@ -1,7 +1,7 @@
 ############################
 # 1️⃣ Build stage          #
 ############################
-FROM node:24.12.0-alpine3.23 AS build
+FROM node:24.15.0-alpine3.23 AS build
 WORKDIR /usr/src/app
 
 ARG VITE_API_BASE=/api
@@ -19,7 +19,7 @@ RUN npm prune --omit=dev
 ############################
 # 2️⃣ Production stage     #
 ############################
-FROM node:24.12.0-alpine3.23 AS prod
+FROM node:24.15.0-alpine3.23 AS prod
 WORKDIR /usr/src/app
 COPY --from=build /usr/src/app/vite.config.* ./
 # Copy only runtime files
@@ -27,8 +27,9 @@ COPY --from=build /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/package.json ./package.json
 COPY --from=build /usr/src/app/dist ./dist
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+  rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 EXPOSE 4173
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
+CMD ["node", "node_modules/vite/bin/vite.js", "preview", "--host", "0.0.0.0"]
