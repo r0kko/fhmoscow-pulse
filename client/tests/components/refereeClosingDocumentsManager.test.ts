@@ -212,7 +212,7 @@ describe('RefereeClosingDocumentsManager', () => {
     });
   });
 
-  it('deletes a closing act from the journal before referee signature', async () => {
+  it('cancels an awaiting-signature act from the journal before referee signature', async () => {
     const confirmMock = vi.fn(() => true);
     vi.stubGlobal('confirm', confirmMock);
     let documentsCall = 0;
@@ -237,7 +237,8 @@ describe('RefereeClosingDocumentsManager', () => {
                     {
                       id: 'doc-1',
                       status: 'AWAITING_SIGNATURE',
-                      can_delete: true,
+                      can_delete: false,
+                      can_cancel: true,
                       number: '26.03/1042',
                       referee: { full_name: 'Ларин Вячеслав Дмитриевич' },
                       totals: {
@@ -302,9 +303,9 @@ describe('RefereeClosingDocumentsManager', () => {
       expect(screen.getByText('26.03/1042')).toBeInTheDocument();
     });
 
-    const [deleteButton] = screen.getAllByRole('button', { name: 'Удалить' });
-    expect(deleteButton).toBeDefined();
-    await fireEvent.click(deleteButton!);
+    const [cancelButton] = screen.getAllByRole('button', { name: 'Отменить' });
+    expect(cancelButton).toBeDefined();
+    await fireEvent.click(cancelButton!);
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalled();
@@ -315,6 +316,62 @@ describe('RefereeClosingDocumentsManager', () => {
         })
       );
     });
+  });
+
+  it('shows delete action only for draft acts', async () => {
+    apiFetchMock.mockImplementation(async (path: string) => {
+      if (path === '/tournaments/tour-1/referee-closing-profile') {
+        return { profile: null };
+      }
+      if (path.startsWith('/tournaments/tour-1/referee-accruals?')) {
+        return {
+          accruals: [],
+          total: 0,
+          summary: { total_amount_rub: '0.00' },
+        };
+      }
+      if (path.startsWith('/tournaments/tour-1/referee-closing-documents?')) {
+        return {
+          documents: [
+            {
+              id: 'draft-1',
+              status: 'DRAFT',
+              can_delete: true,
+              can_cancel: false,
+              number: '26.03/1043',
+              referee: { full_name: 'Черновик Судья' },
+              totals: { total_amount_rub: '1000.00' },
+              items: [],
+              signature_timeline: [],
+            },
+            {
+              id: 'awaiting-1',
+              status: 'AWAITING_SIGNATURE',
+              can_delete: false,
+              can_cancel: true,
+              number: '26.03/1044',
+              referee: { full_name: 'Ожидающий Судья' },
+              totals: { total_amount_rub: '2000.00' },
+              items: [],
+              signature_timeline: [],
+            },
+          ],
+          total: 2,
+          summary: { sendable_total: 1 },
+        };
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
+
+    renderManager();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Акты' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('26.03/1043')).toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('button', { name: 'Удалить' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Отменить' })).toHaveLength(1);
   });
 
   it('supports bulk sending draft acts signed by FHMO', async () => {
@@ -601,7 +658,7 @@ describe('RefereeClosingDocumentsManager', () => {
                 id: 'item-2',
                 status: 'FAILED',
                 closing_document_id: 'doc-2',
-                error_code: 'closing_document_storage_failed',
+                error_code: 'closing_document_schema_outdated',
               },
             ],
           };
@@ -657,7 +714,7 @@ describe('RefereeClosingDocumentsManager', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Не удалось сохранить PDF акта в хранилище/)
+        screen.getByText(/Схема базы данных устарела для формирования актов/)
       ).toBeInTheDocument();
     });
   });

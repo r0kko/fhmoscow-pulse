@@ -286,6 +286,20 @@ function buildJobWhere(jobId, options = {}) {
   return where;
 }
 
+async function findActiveJobWithDedupeKey(dedupeKey, excludeJobId = null) {
+  const normalizedDedupeKey = normalizeString(dedupeKey);
+  if (!normalizedDedupeKey) return null;
+  const where = {
+    dedupe_key: normalizedDedupeKey,
+    status: { [Op.in]: ACTIVE_STATUSES },
+  };
+  if (excludeJobId) where.id = { [Op.ne]: excludeJobId };
+  return AsyncJob.findOne({
+    where,
+    order: [['created_at', 'DESC']],
+  });
+}
+
 export async function getAsyncJob(jobId, options = {}) {
   const job = await AsyncJob.findOne({ where: buildJobWhere(jobId, options) });
   if (!job) throw new ServiceError('async_job_not_found', 404);
@@ -326,43 +340,61 @@ export async function retryFailedAsyncJob(jobId, actorId, options = {}) {
   if (job.status === 'CANCELED') {
     throw new ServiceError('async_job_canceled', 409);
   }
-  await sequelize.transaction(async (transaction) => {
-    await AsyncJobItem.update(
-      {
-        status: 'QUEUED',
-        attempts: 0,
-        next_attempt_at: null,
-        locked_by: null,
-        locked_at: null,
-        lock_expires_at: null,
-        error_code: null,
-        error_message: null,
-        finished_at: null,
-        updated_by: actorId || null,
-      },
-      { where: { job_id: job.id, status: 'FAILED' }, transaction }
-    );
-    await job.update(
-      {
-        status: 'QUEUED',
-        finished_at: null,
-        error_code: null,
-        error_message: null,
-        locked_by: null,
-        locked_at: null,
-        lock_expires_at: null,
-        updated_by: actorId || null,
-      },
-      { transaction }
-    );
-    await refreshJobCounters(job.id, transaction);
-    await writeJobEvent({
-      jobId: job.id,
-      eventType: 'JOB_RETRY_FAILED',
-      actorId,
-      transaction,
+
+  const activeDuplicate = await findActiveJobWithDedupeKey(
+    job.dedupe_key,
+    job.id
+  );
+  if (activeDuplicate) return serializeAsyncJob(activeDuplicate);
+
+  try {
+    await sequelize.transaction(async (transaction) => {
+      await AsyncJobItem.update(
+        {
+          status: 'QUEUED',
+          attempts: 0,
+          next_attempt_at: null,
+          locked_by: null,
+          locked_at: null,
+          lock_expires_at: null,
+          error_code: null,
+          error_message: null,
+          finished_at: null,
+          updated_by: actorId || null,
+        },
+        { where: { job_id: job.id, status: 'FAILED' }, transaction }
+      );
+      await job.update(
+        {
+          status: 'QUEUED',
+          finished_at: null,
+          error_code: null,
+          error_message: null,
+          locked_by: null,
+          locked_at: null,
+          lock_expires_at: null,
+          updated_by: actorId || null,
+        },
+        { transaction }
+      );
+      await refreshJobCounters(job.id, transaction);
+      await writeJobEvent({
+        jobId: job.id,
+        eventType: 'JOB_RETRY_FAILED',
+        actorId,
+        transaction,
+      });
     });
-  });
+  } catch (error) {
+    if (error?.parent?.code === '23505' && job.dedupe_key) {
+      const duplicateAfterRace = await findActiveJobWithDedupeKey(
+        job.dedupe_key,
+        job.id
+      );
+      if (duplicateAfterRace) return serializeAsyncJob(duplicateAfterRace);
+    }
+    throw error;
+  }
   return getAsyncJob(job.id, options);
 }
 

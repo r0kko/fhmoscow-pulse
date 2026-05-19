@@ -187,10 +187,11 @@ test('closing act builder renders accounting layout and keeps short act on one p
     __esModule: true,
     default: FakePdfDocument,
   }));
+  const applyFirstPageHeader = jest.fn();
   jest.unstable_mockModule('../src/utils/pdf.js', () => ({
     __esModule: true,
     applyFonts: () => ({ regular: 'regular', bold: 'bold' }),
-    applyFirstPageHeader: () => {},
+    applyFirstPageHeader,
     applyFooter: async () => {},
     applyESignStamp: async () => {},
   }));
@@ -277,6 +278,7 @@ test('closing act builder renders accounting layout and keeps short act on one p
   expect(renderedText).toContain('Тариф');
   expect(renderedText).toContain('Без налога (НДС)');
   expect(renderedText).toContain('Пять тысяч восемьсот рублей 00 копеек');
+  expect(renderedText).toContain('Ожидает электронной подписи');
   expect(renderedText).toContain(
     'В соответствии с заявлением о присоединении к условиям договора оказания услуг по судейству'
   );
@@ -287,10 +289,10 @@ test('closing act builder renders accounting layout and keeps short act on one p
   );
   expect(renderedText).toContain('Заказчик');
   expect(renderedText).toContain('Исполнитель');
-  expect(renderedText).toContain('Банковские реквизиты исполнителя');
-  expect(renderedText).toContain('40702810900000005555');
-  expect(renderedText).toContain('044525225');
-  expect(renderedText).toContain('30101810400000000225');
+  expect(renderedText).not.toContain('Банковские реквизиты исполнителя');
+  expect(renderedText).not.toContain('40702810900000005555');
+  expect(renderedText).not.toContain('044525225');
+  expect(renderedText).not.toContain('30101810400000000225');
   const introRecord = textRecords.find((entry) =>
     entry.text.startsWith('В соответствии с заявлением')
   );
@@ -370,6 +372,72 @@ test('closing act builder supports long multi-page registries', async () => {
     renderedText.match(/Спортивного судьи Федерации хоккея Москвы/g)?.length ||
       0
   ).toBe(1);
+});
+
+test('closing act builder keeps table rows greedy before moving final block', async () => {
+  jest.unstable_mockModule('pdfkit', () => ({
+    __esModule: true,
+    default: FakePdfDocument,
+  }));
+  const applyFirstPageHeader = jest.fn();
+  jest.unstable_mockModule('../src/utils/pdf.js', () => ({
+    __esModule: true,
+    applyFonts: () => ({ regular: 'regular', bold: 'bold' }),
+    applyFirstPageHeader,
+    applyFooter: async () => {},
+    applyESignStamp: async () => {},
+  }));
+
+  const { default: buildRefereeClosingActPdf } =
+    await import('../src/services/docBuilders/refereeClosingAct.js');
+
+  const items = Array.from({ length: 8 }, (_, index) => ({
+    line_no: index + 1,
+    service_datetime: `0${index + 1}.02.2026, 10:00`,
+    match_label: `ХК ${index + 1} - ХК ${index + 2}`,
+    competition_name: 'IX Кубок "ИнтерРАО"',
+    role_name: 'Главный',
+    tariff_label: 'RBT',
+    amount_rub: '7000.00',
+    total_amount_rub: '7000.00',
+  }));
+
+  await buildRefereeClosingActPdf(
+    {
+      customer: { name: 'ФХМ', inn: '7708046206', address: 'Москва' },
+      performer: {
+        full_name: 'Якас Константин Сергеевич',
+        inn: '504106533659',
+        address: 'Московская обл, г Реутов',
+      },
+      contract: { number: '25.09/354', document_date: '2025-09-11' },
+      totals: {
+        total_amount_rub: '48200.00',
+        total_amount_words: Array.from(
+          { length: 60 },
+          () => 'Сорок восемь тысяч двести рублей 00 копеек'
+        ).join(', '),
+        vat_label: 'Без налога (НДС)',
+        items_count: items.length,
+      },
+      items,
+      fhmo_signer: { full_name: 'Дробот Алексей Андреевич' },
+    },
+    {
+      number: '26.05/133',
+      documentDate: '2026-05-19',
+      docId: 'doc-greedy-table',
+      signatures: [],
+    }
+  );
+
+  const renderedText = textCalls.join('\n');
+  expect(lastDoc?.pages).toBeGreaterThan(1);
+  expect(renderedText).not.toContain('Акт № 26.05/133 · итоги и подписи');
+  expect(renderedText).not.toContain('продолжение');
+  expect(renderedText.match(/Дата и время/g)?.length || 0).toBe(1);
+  expect(renderedText).toContain('8');
+  expect(applyFirstPageHeader).toHaveBeenCalledTimes(1);
 });
 
 test('closing act builder keeps signature lane stable after FHMO signing', async () => {

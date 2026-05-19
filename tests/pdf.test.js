@@ -4,6 +4,7 @@ const accessMock = jest.fn();
 const registerFontMock = jest.fn();
 const imageMock = jest.fn();
 const textMock = jest.fn();
+const fontMock = jest.fn(() => docStub);
 let docStub;
 const fillColorMock = jest.fn(() => docStub);
 const fontSizeMock = jest.fn(() => docStub);
@@ -37,6 +38,7 @@ beforeEach(() => {
   registerFontMock.mockReset();
   imageMock.mockReset();
   textMock.mockReset();
+  fontMock.mockReset();
 });
 
 test('applyFonts registers provided fonts', async () => {
@@ -127,4 +129,40 @@ test('applyFirstPageHeader ignores image errors', async () => {
   expect(fillColorMock).toHaveBeenCalledWith('black');
   expect(fontSizeMock).toHaveBeenCalledWith(10);
   expect(textMock).not.toHaveBeenCalled();
+});
+
+test('applyFooter resets inherited bold font to regular', async () => {
+  const { applyFooter } = await setup({});
+  const chain = jest.fn(() => docStub);
+  const doc = {
+    page: { width: 500, height: 300 },
+    x: 10,
+    y: 20,
+    save: chain,
+    restore: chain,
+    lineWidth: chain,
+    strokeColor: chain,
+    moveTo: chain,
+    lineTo: chain,
+    stroke: chain,
+    font: fontMock,
+    fontSize: fontSizeMock,
+    fillColor: fillColorMock,
+    text: textMock,
+  };
+  docStub = doc;
+
+  await applyFooter(doc, {
+    page: 1,
+    total: 2,
+    numberText: '26.05/133',
+  });
+
+  expect(fontMock).toHaveBeenCalledWith('SB-Regular');
+  expect(textMock).toHaveBeenCalledWith(
+    '26.05/133 · Страница № 1 из 2',
+    30,
+    expect.any(Number),
+    { lineBreak: false }
+  );
 });

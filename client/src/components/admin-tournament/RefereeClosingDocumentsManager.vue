@@ -190,6 +190,7 @@ interface ClosingDocumentRow {
   }>;
   download_url?: string | null;
   can_delete?: boolean;
+  can_cancel?: boolean;
   items?: ClosingItemSnapshot[];
   customer_snapshot?: PartySnapshot | null;
   performer_snapshot?: PartySnapshot | null;
@@ -1127,12 +1128,26 @@ async function sendSelectedDocuments() {
   }
 }
 
+function mutableDocumentActionLabel(
+  row: ClosingDocumentRow | null | undefined
+) {
+  return row?.can_cancel ? 'Отменить' : 'Удалить';
+}
+
+function mutableDocumentConfirmText(
+  row: ClosingDocumentRow | null | undefined
+) {
+  if (row?.can_cancel) {
+    return 'Отменить акт и вернуть начисления в статус «Начислено»? Акт останется в журнале как отмененный.';
+  }
+  return 'Удалить черновик акта и вернуть начисления в статус «Начислено»?';
+}
+
 async function deleteDocument(id: string) {
-  if (
-    !window.confirm(
-      'Удалить акт и вернуть начисления в статус «Начислено»? Действие доступно только до подписи судьи.'
-    )
-  ) {
+  const row =
+    documents.value.find((item) => item.id === id) ||
+    (selectedDocument.value?.id === id ? selectedDocument.value : null);
+  if (!window.confirm(mutableDocumentConfirmText(row))) {
     return;
   }
   actionLoading.value = `delete:${id}`;
@@ -1143,10 +1158,12 @@ async function deleteDocument(id: string) {
         method: 'DELETE',
       }
     );
-    showToast('Акт удален');
+    showToast(row?.can_cancel ? 'Акт отменен' : 'Акт удален');
     selectedSendDocumentIds.value = selectedSendDocumentIds.value.filter(
       (item) => item !== id
     );
+    clearSendSelection();
+    resetPreview();
     if (selectedDocumentId.value === id) {
       selectedDocumentId.value = '';
     }
@@ -2067,13 +2084,13 @@ onBeforeUnmount(() => {
                       <td class="text-end">
                         <div class="d-flex justify-content-end gap-2">
                           <button
-                            v-if="item.can_delete"
+                            v-if="item.can_delete || item.can_cancel"
                             type="button"
                             class="btn btn-outline-danger btn-sm"
                             :disabled="actionLoading === `delete:${item.id}`"
                             @click.stop="deleteDocument(item.id)"
                           >
-                            Удалить
+                            {{ mutableDocumentActionLabel(item) }}
                           </button>
                           <a
                             v-if="item.download_url"
@@ -2305,7 +2322,9 @@ onBeforeUnmount(() => {
                     Отправить на подпись
                   </button>
                   <button
-                    v-if="selectedDocument.can_delete"
+                    v-if="
+                      selectedDocument.can_delete || selectedDocument.can_cancel
+                    "
                     type="button"
                     class="btn btn-outline-danger btn-sm"
                     :disabled="
@@ -2313,7 +2332,7 @@ onBeforeUnmount(() => {
                     "
                     @click="deleteDocument(selectedDocument.id)"
                   >
-                    Удалить
+                    {{ mutableDocumentActionLabel(selectedDocument) }}
                   </button>
                   <a
                     v-if="selectedDocument.download_url"

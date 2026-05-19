@@ -1,6 +1,7 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 
 const asyncJobFindByPk = jest.fn();
+const asyncJobFindOne = jest.fn();
 const asyncJobUpdate = jest.fn();
 const asyncJobItemFindAll = jest.fn();
 const asyncJobItemFindByPk = jest.fn();
@@ -52,7 +53,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
   AsyncJob: {
     findByPk: asyncJobFindByPk,
     update: asyncJobUpdate,
-    findOne: jest.fn(),
+    findOne: asyncJobFindOne,
     create: jest.fn(),
   },
   AsyncJobItem: {
@@ -69,6 +70,8 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
 
 const { startAsyncJobWorker } =
   await import('../src/services/asyncJobService.js');
+const { retryFailedAsyncJob } =
+  await import('../src/services/asyncJobService.js');
 
 function makeJob(status = 'RUNNING') {
   return {
@@ -79,9 +82,18 @@ function makeJob(status = 'RUNNING') {
     scope_type: 'TOURNAMENT',
     scope_id: 'tour-1',
     status,
+    dedupe_key: 'dedupe-1',
+    total_count: 1,
+    processed_count: 1,
+    success_count: 0,
+    skipped_count: 0,
+    failure_count: 1,
     requested_by_user_id: 'actor-1',
     created_by: 'actor-1',
-    update: jest.fn(async (values) => Object.assign(this, values)),
+    update: jest.fn(async function update(values) {
+      Object.assign(this, values);
+      return this;
+    }),
   };
 }
 
@@ -116,6 +128,7 @@ async function waitFor(assertion, timeoutMs = 1000) {
 
 beforeEach(() => {
   asyncJobFindByPk.mockReset();
+  asyncJobFindOne.mockReset();
   asyncJobUpdate.mockReset();
   asyncJobItemFindAll.mockReset();
   asyncJobItemFindByPk.mockReset();
@@ -131,6 +144,31 @@ beforeEach(() => {
   asyncJobItemUpdate.mockResolvedValue([0]);
   asyncJobItemCount.mockResolvedValue(0);
   asyncJobEventCreate.mockResolvedValue({});
+});
+
+test('retry returns active duplicate job instead of violating dedupe uniqueness', async () => {
+  const failedJob = makeJob('PARTIAL_FAILED');
+  const activeDuplicate = {
+    ...makeJob('QUEUED'),
+    id: 'job-active',
+    failure_count: 0,
+    processed_count: 0,
+  };
+  asyncJobFindOne
+    .mockResolvedValueOnce(failedJob)
+    .mockResolvedValueOnce(activeDuplicate);
+
+  const result = await retryFailedAsyncJob('job-1', 'actor-1');
+
+  expect(result).toEqual(
+    expect.objectContaining({
+      job_id: 'job-active',
+      status: 'QUEUED',
+    })
+  );
+  expect(sequelizeTransaction).not.toHaveBeenCalled();
+  expect(asyncJobItemUpdate).not.toHaveBeenCalled();
+  expect(failedJob.update).not.toHaveBeenCalled();
 });
 
 test('worker does not overwrite in-flight canceled item with success', async () => {

@@ -13,7 +13,8 @@ const TABLE_HEADER_FILL = '#F4F6F9';
 const TABLE_BORDER = '#C9D1DB';
 const TEXT_MUTED = '#6B7280';
 const TEXT_PRIMARY = '#111827';
-const TABLE_BOTTOM_GAP = 88;
+const COMPACT_ITEM_LIMIT = 8;
+const TABLE_FOOTER_GAP = 12;
 const CLAIM_TEXT =
   'Вышеперечисленные услуги оказаны полностью и в срок. Заказчик претензий по объему, качеству и срокам оказания услуг не имеет.';
 
@@ -84,6 +85,15 @@ function formatTitle(meta = {}) {
 
 function formatPartyName(party, fallback = '—') {
   return party?.full_name || party?.name || party?.short_name || fallback;
+}
+
+function formatPerformerName(party) {
+  const name = formatPartyName(party);
+  const taxStatus = normalizeText(
+    party?.taxation_type_name || party?.taxation_type_alias,
+    ''
+  );
+  return taxStatus ? `${name} (${taxStatus})` : name;
 }
 
 function splitLongToken(doc, token, width) {
@@ -238,11 +248,58 @@ function getContentBounds(doc) {
   };
 }
 
-function ensurePageSpace(doc, fonts, meta, neededHeight, y = doc.y) {
+function buildLayout(items = []) {
+  const compact = items.length <= COMPACT_ITEM_LIMIT;
+  return {
+    compact,
+    headingY: compact ? 62 : 74,
+    titleFontSize: compact ? 14.8 : 17,
+    subtitleFontSize: compact ? 9.4 : 10.5,
+    titleBottomGap: compact ? 0.38 : 0.6,
+    partyLabelWidth: compact ? 84 : 92,
+    partyValueGap: compact ? 14 : 18,
+    partyFontSize: compact ? 9.2 : 10,
+    partyDetailsFontSize: compact ? 8.8 : 10,
+    partyBottomGap: compact ? 9 : 13,
+    partiesToIntroGap: compact ? 0.55 : 0.75,
+    introFontSize: compact ? 9.5 : 10,
+    introBottomGap: compact ? 0.35 : 0.5,
+    tableHeaderHeight: compact ? 28 : 34,
+    rowMinHeight: compact ? 29 : 34,
+    tableToFinalGap: compact ? 6 : 16,
+    summaryRowHeight: compact ? 22 : 28,
+    summaryBoxWidth: compact ? 186 : 196,
+    summaryValueWidth: compact ? 74 : 78,
+    summaryFontSize: compact ? 9.1 : 9.3,
+    finalTextFontSize: compact ? 9.2 : 10,
+    signatureTitleFontSize: compact ? 9.2 : 9.6,
+    signaturePersonFontSize: compact ? 8.1 : 8.6,
+    signatureGap: compact ? 14 : 16,
+    signaturePlaceholderHeight: compact ? 20 : 26,
+  };
+}
+
+function tablePageLimit(doc) {
+  const { bottom } = getContentBounds(doc);
+  return bottom - TABLE_FOOTER_GAP;
+}
+
+function ensurePageSpace(
+  doc,
+  fonts,
+  meta,
+  neededHeight,
+  y = doc.y,
+  layout = buildLayout()
+) {
   const { bottom } = getContentBounds(doc);
   if (y + neededHeight <= bottom) return false;
   doc.addPage();
-  drawPageHeading(doc, fonts, meta, { showDocumentTitle: false });
+  drawPageHeading(doc, fonts, meta, {
+    showDocumentTitle: false,
+    continuation: true,
+    layout,
+  });
   return true;
 }
 
@@ -269,66 +326,93 @@ function sectionDivider(doc, y) {
     .restore();
 }
 
-function drawPageHeading(doc, fonts, meta, { showDocumentTitle = true } = {}) {
+function drawPageHeading(
+  doc,
+  fonts,
+  meta,
+  {
+    showDocumentTitle = true,
+    continuation = false,
+    layout = buildLayout(),
+  } = {}
+) {
+  if (continuation) {
+    doc.y = doc.page.margins.top;
+    doc.moveDown(0.45);
+    return;
+  }
   applyFirstPageHeader(doc);
-  doc.y = 74;
+  doc.y = layout.headingY;
   if (!showDocumentTitle) {
     doc.moveDown(0.15);
     return;
   }
   doc
     .font(fonts.bold)
-    .fontSize(18.5)
+    .fontSize(layout.titleFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(formatTitle(meta), {
       align: 'center',
     });
   doc.moveDown(0.1);
-  doc.font(fonts.regular).fontSize(10.5).fillColor(TEXT_MUTED).text(SUBTITLE, {
-    align: 'center',
-  });
-  doc.moveDown(0.55);
+  doc
+    .font(fonts.regular)
+    .fontSize(layout.subtitleFontSize)
+    .fillColor(TEXT_MUTED)
+    .text(SUBTITLE, {
+      align: 'center',
+    });
+  doc.moveDown(layout.titleBottomGap);
 }
 
-function drawPartySection(doc, fonts, meta, label, party) {
+function drawPartySection(doc, fonts, meta, label, party, layout) {
   const { left, width } = getContentBounds(doc);
-  const labelWidth = 92;
-  const valueWidth = width - labelWidth - 18;
-  const valueLeft = left + labelWidth + 18;
+  const labelWidth = layout.partyLabelWidth;
+  const valueWidth = width - labelWidth - layout.partyValueGap;
+  const valueLeft = left + labelWidth + layout.partyValueGap;
   const details = wrapCellText(
-    doc.font(fonts.regular).fontSize(10),
+    doc.font(fonts.regular).fontSize(layout.partyDetailsFontSize),
     formatPartyDetails(party),
     valueWidth,
     ''
   );
   const name = wrapCellText(
-    doc.font(fonts.bold).fontSize(10),
-    formatPartyName(party),
+    doc.font(fonts.bold).fontSize(layout.partyFontSize),
+    label === 'Исполнитель'
+      ? formatPerformerName(party)
+      : formatPartyName(party),
     valueWidth
   );
   const nameHeight = doc
     .font(fonts.bold)
-    .fontSize(10)
+    .fontSize(layout.partyFontSize)
     .heightOfString(name, { width: valueWidth });
   const detailsHeight = details
     ? doc
         .font(fonts.regular)
-        .fontSize(10)
+        .fontSize(layout.partyDetailsFontSize)
         .heightOfString(details, { width: valueWidth })
     : 0;
-  ensurePageSpace(doc, fonts, meta, nameHeight + detailsHeight + 18);
+  ensurePageSpace(
+    doc,
+    fonts,
+    meta,
+    nameHeight + detailsHeight + layout.partyBottomGap + 8,
+    doc.y,
+    layout
+  );
 
   const top = doc.y;
   doc
     .font(fonts.bold)
-    .fontSize(10)
+    .fontSize(layout.partyFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(label, left, top, {
       width: labelWidth,
     });
   doc
     .font(fonts.bold)
-    .fontSize(10)
+    .fontSize(layout.partyFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(name, valueLeft, top, {
       width: valueWidth,
@@ -340,7 +424,7 @@ function drawPartySection(doc, fonts, meta, label, party) {
   if (details) {
     doc
       .font(fonts.regular)
-      .fontSize(10)
+      .fontSize(layout.partyDetailsFontSize)
       .fillColor(TEXT_PRIMARY)
       .text(details, valueLeft, nextY + 2, {
         width: valueWidth,
@@ -350,101 +434,12 @@ function drawPartySection(doc, fonts, meta, label, party) {
       nextY + 2 + doc.heightOfString(details, { width: valueWidth })
     );
   }
-  doc.y = nextY + 10;
+  doc.y = nextY + layout.partyBottomGap;
 }
 
-function bankAccountRows(bankAccount) {
-  if (!bankAccount?.number || !bankAccount?.bic) return [];
-  return [
-    ['р/с', bankAccount.number],
-    ['Банк', bankAccount.bank_name],
-    ['БИК', bankAccount.bic],
-    ['к/с', bankAccount.correspondent_account],
-    ['ИНН банка', bankAccount.inn],
-    ['КПП банка', bankAccount.kpp],
-    ['Адрес банка', bankAccount.address],
-  ]
-    .filter(([, value]) => normalizeText(value, ''))
-    .map(([label, value]) => ({
-      label,
-      value: normalizeText(value, ''),
-    }));
-}
-
-function wrapBankValue(doc, value, width) {
-  const text = normalizeText(value, '');
-  if (!text) return '';
-  if (/^\d{9,20}$/.test(text) && doc.widthOfString(text) <= width) {
-    return text;
-  }
-  return wrapCellText(doc, text, width, '');
-}
-
-function drawBankAccountSection(doc, fonts, meta, bankAccount) {
-  const rows = bankAccountRows(bankAccount);
-  if (!rows.length) return;
-
-  const { left, width } = getContentBounds(doc);
-  const labelWidth = 72;
-  const valueWidth = width - labelWidth - 18;
-  const rowHeights = rows.map((row) => {
-    const valueText = wrapBankValue(
-      doc.font(fonts.regular).fontSize(8.9),
-      row.value,
-      valueWidth
-    );
-    return Math.max(
-      14,
-      doc
-        .font(fonts.regular)
-        .fontSize(8.9)
-        .heightOfString(valueText, { width: valueWidth, lineGap: 0 }) + 2
-    );
-  });
-  const totalHeight =
-    18 + rowHeights.reduce((sum, value) => sum + value, 0) + 8;
-  ensurePageSpace(doc, fonts, meta, totalHeight);
-
-  let y = doc.y;
-  doc
-    .font(fonts.bold)
-    .fontSize(9.7)
-    .fillColor(TEXT_PRIMARY)
-    .text('Банковские реквизиты исполнителя', left, y, { width });
-  y += 18;
-
-  for (const [index, row] of rows.entries()) {
-    const rowHeight = rowHeights[index];
-    const valueText = wrapBankValue(
-      doc.font(fonts.regular).fontSize(8.9),
-      row.value,
-      valueWidth
-    );
-    doc
-      .font(fonts.bold)
-      .fontSize(8.6)
-      .fillColor(TEXT_MUTED)
-      .text(row.label, left, y, {
-        width: labelWidth,
-        lineBreak: false,
-      });
-    doc
-      .font(fonts.regular)
-      .fontSize(8.9)
-      .fillColor(TEXT_PRIMARY)
-      .text(valueText, left + labelWidth + 18, y, {
-        width: valueWidth,
-        lineGap: 0,
-      });
-    y += rowHeight;
-  }
-
-  doc.y = y + 8;
-}
-
-function drawTableHeader(doc, fonts, columns, y) {
+function drawTableHeader(doc, fonts, columns, y, layout = buildLayout()) {
   let x = doc.page.margins.left;
-  const headerHeight = 34;
+  const headerHeight = layout.tableHeaderHeight;
   for (const column of columns) {
     doc
       .save()
@@ -482,7 +477,7 @@ function drawTableHeader(doc, fonts, columns, y) {
   return y + headerHeight;
 }
 
-function calcRowHeight(doc, fonts, item, columns) {
+function calcRowHeight(doc, fonts, item, columns, layout = buildLayout()) {
   doc.font(fonts.regular).fontSize(9.2);
   const matchLabel = wrapCellText(doc, item.match_label, columns[2].width - 12);
   doc.font(fonts.regular).fontSize(8.2);
@@ -525,7 +520,7 @@ function calcRowHeight(doc, fonts, item, columns) {
       });
 
   return Math.max(
-    34,
+    layout.rowMinHeight,
     doc
       .font(fonts.regular)
       .fontSize(9)
@@ -545,8 +540,8 @@ function calcRowHeight(doc, fonts, item, columns) {
   );
 }
 
-function drawTableRow(doc, fonts, item, columns, y) {
-  const rowHeight = calcRowHeight(doc, fonts, item, columns);
+function drawTableRow(doc, fonts, item, columns, y, layout = buildLayout()) {
+  const rowHeight = calcRowHeight(doc, fonts, item, columns, layout);
   let x = doc.page.margins.left;
   const serviceDateTime = wrapCellText(
     doc.font(fonts.regular).fontSize(9),
@@ -721,43 +716,79 @@ function drawTableRow(doc, fonts, item, columns, y) {
   return y + rowHeight;
 }
 
-function ensureTablePage(doc, fonts, columns, y, nextRowHeight) {
-  const limit = doc.page.height - doc.page.margins.bottom - TABLE_BOTTOM_GAP;
+function ensureTablePage(doc, fonts, meta, columns, y, nextRowHeight, layout) {
+  const limit = tablePageLimit(doc);
   if (y + nextRowHeight <= limit) return y;
   doc.addPage();
-  drawPageHeading(doc, fonts, {}, { showDocumentTitle: false });
-  return drawTableHeader(doc, fonts, columns, doc.y + 2);
+  drawPageHeading(doc, fonts, meta, {
+    showDocumentTitle: false,
+    continuation: true,
+    layout,
+  });
+  return drawTableHeader(doc, fonts, columns, doc.y + 2, layout);
 }
 
-function estimateSummaryHeight(doc, fonts, totals = {}) {
+function estimateSummaryHeight(
+  doc,
+  fonts,
+  totals = {},
+  layout = buildLayout()
+) {
   const { width } = getContentBounds(doc);
   const countLine = `Всего наименований ${Number(
     totals.items_count || 0
   )}, на сумму ${formatRub(totals.total_amount_rub)} рублей`;
+  const textFontSize = layout.finalTextFontSize;
+  if (layout.compact) {
+    const textWidth = width - layout.summaryBoxWidth - 24;
+    const textHeight =
+      doc
+        .font(fonts.regular)
+        .fontSize(textFontSize)
+        .heightOfString(countLine, { width: textWidth }) +
+      4 +
+      doc
+        .font(fonts.bold)
+        .fontSize(textFontSize)
+        .heightOfString(normalizeText(totals.total_amount_words), {
+          width: textWidth,
+        }) +
+      3 +
+      doc
+        .font(fonts.bold)
+        .fontSize(textFontSize)
+        .heightOfString(totals.vat_label || 'Без налога (НДС)', {
+          width: textWidth,
+        });
+    return Math.max(layout.summaryRowHeight * 3, textHeight) + 8;
+  }
   return (
-    28 * 3 +
-    16 +
-    doc.font(fonts.regular).fontSize(10).heightOfString(countLine, { width }) +
+    layout.summaryRowHeight * 3 +
+    (layout.compact ? 10 : 16) +
+    doc
+      .font(fonts.regular)
+      .fontSize(textFontSize)
+      .heightOfString(countLine, { width }) +
     4 +
     doc
       .font(fonts.bold)
-      .fontSize(10)
+      .fontSize(textFontSize)
       .heightOfString(normalizeText(totals.total_amount_words), { width }) +
     3 +
     doc
       .font(fonts.bold)
-      .fontSize(10)
+      .fontSize(textFontSize)
       .heightOfString(totals.vat_label || 'Без налога (НДС)', { width }) +
     8
   );
 }
 
-function drawSummary(doc, fonts, totals = {}) {
+function drawSummary(doc, fonts, totals = {}, layout = buildLayout()) {
   const contentLeft = doc.page.margins.left;
   const contentWidth =
     doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const boxWidth = 196;
-  const valueWidth = 78;
+  const boxWidth = layout.summaryBoxWidth;
+  const valueWidth = layout.summaryValueWidth;
   const boxLeft = doc.page.width - doc.page.margins.right - boxWidth;
   const rows = [
     { label: 'Итого', value: formatRub(totals.total_amount_rub) },
@@ -766,12 +797,83 @@ function drawSummary(doc, fonts, totals = {}) {
   ];
   let y = doc.y;
 
+  if (layout.compact) {
+    const top = y;
+    const textWidth = boxLeft - contentLeft - 24;
+    doc
+      .font(fonts.regular)
+      .fontSize(layout.finalTextFontSize)
+      .fillColor(TEXT_PRIMARY)
+      .text(
+        `Всего наименований ${Number(totals.items_count || 0)}, на сумму ${formatRub(
+          totals.total_amount_rub
+        )} рублей`,
+        contentLeft,
+        top,
+        {
+          width: textWidth,
+        }
+      );
+    doc.moveDown(0.15);
+    doc
+      .font(fonts.bold)
+      .fontSize(layout.finalTextFontSize)
+      .fillColor(TEXT_PRIMARY)
+      .text(normalizeText(totals.total_amount_words), contentLeft, doc.y, {
+        width: textWidth,
+      });
+    doc.moveDown(0.08);
+    doc
+      .font(fonts.bold)
+      .fontSize(layout.finalTextFontSize)
+      .fillColor(TEXT_PRIMARY)
+      .text(totals.vat_label || 'Без налога (НДС)', contentLeft, doc.y, {
+        width: textWidth,
+      });
+    const textBottom = doc.y;
+
+    let boxY = top;
+    for (const row of rows) {
+      doc
+        .font(fonts.bold)
+        .fontSize(layout.summaryFontSize)
+        .fillColor(TEXT_PRIMARY)
+        .text(row.label, boxLeft, boxY + 6, {
+          width: boxWidth - valueWidth - 8,
+          align: 'right',
+        });
+      doc
+        .save()
+        .lineWidth(0.8)
+        .strokeColor(TABLE_BORDER)
+        .rect(
+          boxLeft + boxWidth - valueWidth,
+          boxY,
+          valueWidth,
+          layout.summaryRowHeight
+        )
+        .stroke()
+        .restore();
+      doc
+        .font(fonts.bold)
+        .fontSize(layout.summaryFontSize)
+        .fillColor(TEXT_PRIMARY)
+        .text(row.value, boxLeft + boxWidth - valueWidth + 6, boxY + 6, {
+          width: valueWidth - 12,
+          align: 'right',
+        });
+      boxY += layout.summaryRowHeight;
+    }
+    doc.y = Math.max(textBottom, boxY) + 8;
+    return;
+  }
+
   for (const row of rows) {
     doc
       .font(fonts.bold)
-      .fontSize(9.3)
+      .fontSize(layout.summaryFontSize)
       .fillColor(TEXT_PRIMARY)
-      .text(row.label, boxLeft, y + 7, {
+      .text(row.label, boxLeft, y + (layout.compact ? 6 : 7), {
         width: boxWidth - valueWidth - 8,
         align: 'right',
       });
@@ -779,24 +881,34 @@ function drawSummary(doc, fonts, totals = {}) {
       .save()
       .lineWidth(0.8)
       .strokeColor(TABLE_BORDER)
-      .rect(boxLeft + boxWidth - valueWidth, y, valueWidth, 28)
+      .rect(
+        boxLeft + boxWidth - valueWidth,
+        y,
+        valueWidth,
+        layout.summaryRowHeight
+      )
       .stroke()
       .restore();
     doc
       .font(fonts.bold)
-      .fontSize(9.3)
+      .fontSize(layout.summaryFontSize)
       .fillColor(TEXT_PRIMARY)
-      .text(row.value, boxLeft + boxWidth - valueWidth + 6, y + 7, {
-        width: valueWidth - 12,
-        align: 'right',
-      });
-    y += 28;
+      .text(
+        row.value,
+        boxLeft + boxWidth - valueWidth + 6,
+        y + (layout.compact ? 6 : 7),
+        {
+          width: valueWidth - 12,
+          align: 'right',
+        }
+      );
+    y += layout.summaryRowHeight;
   }
 
-  doc.y = y + 16;
+  doc.y = y + (layout.compact ? 10 : 16);
   doc
     .font(fonts.regular)
-    .fontSize(10)
+    .fontSize(layout.finalTextFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(
       `Всего наименований ${Number(totals.items_count || 0)}, на сумму ${formatRub(
@@ -811,7 +923,7 @@ function drawSummary(doc, fonts, totals = {}) {
   doc.moveDown(0.15);
   doc
     .font(fonts.bold)
-    .fontSize(10)
+    .fontSize(layout.finalTextFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(normalizeText(totals.total_amount_words), contentLeft, doc.y, {
       width: contentWidth,
@@ -819,42 +931,51 @@ function drawSummary(doc, fonts, totals = {}) {
   doc.moveDown(0.08);
   doc
     .font(fonts.bold)
-    .fontSize(10)
+    .fontSize(layout.finalTextFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(totals.vat_label || 'Без налога (НДС)', contentLeft, doc.y, {
       width: contentWidth,
     });
 }
 
-function signatureLaneMetrics(doc, fonts, customer, performer, signatures) {
+function signatureLaneMetrics(
+  doc,
+  fonts,
+  customer,
+  performer,
+  signatures,
+  layout = buildLayout()
+) {
   const { width } = getContentBounds(doc);
-  const gap = 16;
+  const gap = layout.signatureGap;
   const laneWidth = Math.floor((width - gap) / 2);
   const titleHeight = doc
     .font(fonts.bold)
-    .fontSize(9.6)
+    .fontSize(layout.signatureTitleFontSize)
     .heightOfString('Заказчик', { width: laneWidth });
   const customerHeight = doc
     .font(fonts.regular)
-    .fontSize(8.6)
+    .fontSize(layout.signaturePersonFontSize)
     .heightOfString(formatPartyName(customer), { width: laneWidth });
   const performerHeight = doc
     .font(fonts.regular)
-    .fontSize(8.6)
+    .fontSize(layout.signaturePersonFontSize)
     .heightOfString(formatPartyName(performer), { width: laneWidth });
   const metaHeight =
     titleHeight + 3 + Math.max(customerHeight, performerHeight);
-  const stampTopOffset = Math.max(42, metaHeight + 12);
+  const stampTopOffset = Math.max(layout.compact ? 30 : 42, metaHeight + 10);
   const hasFhmoSignature = signatures.some((item) => item.party === 'FHMO');
   const hasRefereeSignature = signatures.some(
     (item) => item.party === 'REFEREE'
   );
+  const placeholderHeight = layout.signaturePlaceholderHeight;
   const stampHeight = Math.max(
     hasFhmoSignature ? 82 : 0,
     hasRefereeSignature ? 68 : 0,
-    34
+    !hasFhmoSignature || !hasRefereeSignature ? placeholderHeight : 0
   );
   return {
+    gap,
     laneWidth,
     metaHeight,
     stampTopOffset,
@@ -867,17 +988,45 @@ function estimateClaimAndSignatureHeight(
   fonts,
   customer,
   performer,
-  signatures
+  signatures,
+  layout = buildLayout()
 ) {
   const { width } = getContentBounds(doc);
   return (
-    8 +
-    doc.font(fonts.regular).fontSize(10).heightOfString(CLAIM_TEXT, {
-      width,
-      align: 'justify',
-    }) +
-    14 +
-    signatureLaneMetrics(doc, fonts, customer, performer, signatures).height
+    (layout.compact ? 6 : 8) +
+    doc
+      .font(fonts.regular)
+      .fontSize(layout.finalTextFontSize)
+      .heightOfString(CLAIM_TEXT, {
+        width,
+        align: 'justify',
+      }) +
+    (layout.compact ? 10 : 14) +
+    signatureLaneMetrics(doc, fonts, customer, performer, signatures, layout)
+      .height
+  );
+}
+
+function estimateFinalBlockHeight(
+  doc,
+  fonts,
+  totals,
+  customer,
+  performer,
+  signatures,
+  layout
+) {
+  return (
+    estimateSummaryHeight(doc, fonts, totals, layout) +
+    (layout.compact ? 9 : 14) +
+    estimateClaimAndSignatureHeight(
+      doc,
+      fonts,
+      customer,
+      performer,
+      signatures,
+      layout
+    )
   );
 }
 
@@ -888,16 +1037,17 @@ async function drawSignatureLane(
   customer,
   performer,
   signatures,
-  signerSnapshot
+  signerSnapshot,
+  layout = buildLayout()
 ) {
   const { left } = getContentBounds(doc);
-  const gap = 16;
-  const { laneWidth, stampTopOffset } = signatureLaneMetrics(
+  const { gap, laneWidth, stampTopOffset, metaHeight } = signatureLaneMetrics(
     doc,
     fonts,
     customer,
     performer,
-    signatures
+    signatures,
+    layout
   );
   const laneTop = doc.y;
   const fhmoSignature =
@@ -908,18 +1058,45 @@ async function drawSignatureLane(
   const drawLaneMeta = (x, title, person) => {
     const titleHeight = doc
       .font(fonts.bold)
-      .fontSize(9.6)
+      .fontSize(layout.signatureTitleFontSize)
       .heightOfString(title, { width: laneWidth });
     doc
       .font(fonts.bold)
-      .fontSize(9.6)
+      .fontSize(layout.signatureTitleFontSize)
       .fillColor(TEXT_PRIMARY)
       .text(title, x, laneTop, { width: laneWidth });
     doc
       .font(fonts.regular)
-      .fontSize(8.6)
+      .fontSize(layout.signaturePersonFontSize)
       .fillColor(TEXT_MUTED)
       .text(person, x, laneTop + titleHeight + 3, { width: laneWidth });
+  };
+
+  const drawPlaceholder = (x, signerName = '—') => {
+    const lineY = laneTop + metaHeight + (layout.compact ? 15 : 18);
+    doc
+      .save()
+      .lineWidth(0.8)
+      .strokeColor(TABLE_BORDER)
+      .moveTo(x, lineY)
+      .lineTo(x + laneWidth, lineY)
+      .stroke()
+      .restore();
+    doc
+      .font(fonts.regular)
+      .fontSize(layout.signaturePersonFontSize)
+      .fillColor(TEXT_MUTED)
+      .text(signerName, x, lineY + 4, {
+        width: laneWidth,
+      });
+    doc
+      .font(fonts.bold)
+      .fontSize(layout.signaturePersonFontSize)
+      .fillColor(TEXT_MUTED)
+      .text('Ожидает электронной подписи', x, lineY + 16, {
+        width: laneWidth,
+        lineBreak: false,
+      });
   };
 
   drawLaneMeta(left, 'Заказчик', formatPartyName(customer));
@@ -984,9 +1161,20 @@ async function drawSignatureLane(
     });
   }
 
+  if (!fhmoSignature) {
+    drawPlaceholder(
+      left,
+      signerSnapshot?.full_name || 'Уполномоченный представитель ФХМ'
+    );
+  }
+
+  if (!refereeSignature) {
+    drawPlaceholder(left + laneWidth + gap, formatPartyName(performer));
+  }
+
   const renderedStampHeight = Math.max(
-    fhmoStampHeight,
-    refereeStampHeight,
+    fhmoSignature ? fhmoStampHeight : layout.signaturePlaceholderHeight,
+    refereeSignature ? refereeStampHeight : layout.signaturePlaceholderHeight,
     Number(fhmoStamp?.height || 0),
     Number(refereeStamp?.height || 0)
   );
@@ -1013,6 +1201,18 @@ export default async function buildRefereeClosingActPdf(
   const contract = payload?.contract || payload?.contract_snapshot || null;
   const totals = payload?.totals || {};
   const items = Array.isArray(payload?.items) ? payload.items : [];
+  const normalizedItems = items.map((item, index) => ({
+    ...item,
+    line_no: item?.line_no || index + 1,
+    service_datetime:
+      item?.service_datetime || formatDateTime(item?.match_date_snapshot),
+    match_label: normalizeText(item?.match_label || item?.service_name, '—'),
+    competition_name: normalizeText(item?.competition_name, ''),
+    role_name: normalizeText(item?.role_name || item?.referee_role_name, '—'),
+    tariff_label: normalizeText(item?.tariff_label, '—'),
+    amount_rub: item?.amount_rub || item?.total_amount_rub || item?.price_rub,
+  }));
+  const layout = buildLayout(normalizedItems);
   const signerSnapshot =
     payload?.fhmo_signer || payload?.fhmo_signer_snapshot || null;
   const signatures = Array.isArray(meta?.signatures) ? meta.signatures : [];
@@ -1020,33 +1220,34 @@ export default async function buildRefereeClosingActPdf(
   const contentWidth =
     doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  drawPageHeading(doc, fonts, meta);
-  drawPartySection(doc, fonts, meta, 'Исполнитель', performer);
-  drawPartySection(doc, fonts, meta, 'Заказчик', customer);
-  drawBankAccountSection(doc, fonts, meta, performer?.bank_account || null);
-  sectionDivider(doc, doc.y - 2);
-  doc.moveDown(0.35);
+  drawPageHeading(doc, fonts, meta, { layout });
+  drawPartySection(doc, fonts, meta, 'Исполнитель', performer, layout);
+  drawPartySection(doc, fonts, meta, 'Заказчик', customer, layout);
+  sectionDivider(doc, doc.y);
+  doc.moveDown(layout.partiesToIntroGap);
   ensurePageSpace(
     doc,
     fonts,
     meta,
     doc
       .font(fonts.regular)
-      .fontSize(10)
+      .fontSize(layout.introFontSize)
       .heightOfString(buildIntroText(contract), {
         width: contentWidth,
         align: 'justify',
-      }) + 12
+      }) + 12,
+    doc.y,
+    layout
   );
   doc
     .font(fonts.regular)
-    .fontSize(10)
+    .fontSize(layout.introFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(buildIntroText(contract), contentLeft, doc.y, {
       width: contentWidth,
       align: 'justify',
     });
-  doc.moveDown(0.45);
+  doc.moveDown(layout.introBottomGap);
 
   const columns = [
     { key: 'line_no', label: '№', width: 28, align: 'center' },
@@ -1057,51 +1258,56 @@ export default async function buildRefereeClosingActPdf(
     { key: 'amount_rub', label: 'Сумма', width: 80, align: 'right' },
   ];
 
-  let cursorY = drawTableHeader(doc, fonts, columns, doc.y);
-  for (const [index, item] of items.entries()) {
-    const normalizedItem = {
-      ...item,
-      line_no: item?.line_no || index + 1,
-      service_datetime:
-        item?.service_datetime || formatDateTime(item?.match_date_snapshot),
-      match_label: normalizeText(item?.match_label || item?.service_name, '—'),
-      competition_name: normalizeText(item?.competition_name, ''),
-      role_name: normalizeText(item?.role_name || item?.referee_role_name, '—'),
-      tariff_label: normalizeText(item?.tariff_label, '—'),
-      amount_rub: item?.amount_rub || item?.total_amount_rub || item?.price_rub,
-    };
+  let cursorY = drawTableHeader(doc, fonts, columns, doc.y, layout);
+  const rowHeights = normalizedItems.map((item) =>
+    calcRowHeight(doc, fonts, item, columns, layout)
+  );
+  const finalBlockHeight = estimateFinalBlockHeight(
+    doc,
+    fonts,
+    totals,
+    customer,
+    performer,
+    signatures,
+    layout
+  );
+
+  for (const [index, normalizedItem] of normalizedItems.entries()) {
     cursorY = ensureTablePage(
       doc,
       fonts,
+      meta,
       columns,
       cursorY,
-      calcRowHeight(doc, fonts, normalizedItem, columns)
+      rowHeights[index],
+      layout
     );
-    cursorY = drawTableRow(doc, fonts, normalizedItem, columns, cursorY);
+    cursorY = drawTableRow(
+      doc,
+      fonts,
+      normalizedItem,
+      columns,
+      cursorY,
+      layout
+    );
   }
 
-  doc.y = cursorY + 16;
-  ensurePageSpace(doc, fonts, meta, estimateSummaryHeight(doc, fonts, totals));
+  doc.y = cursorY + layout.tableToFinalGap;
+  ensurePageSpace(doc, fonts, meta, finalBlockHeight, doc.y, layout);
 
-  drawSummary(doc, fonts, totals);
-  doc.moveDown(0.4);
-  ensurePageSpace(
-    doc,
-    fonts,
-    meta,
-    estimateClaimAndSignatureHeight(doc, fonts, customer, performer, signatures)
-  );
+  drawSummary(doc, fonts, totals, layout);
+  doc.moveDown(layout.compact ? 0.3 : 0.4);
   sectionDivider(doc, doc.y);
-  doc.moveDown(0.65);
+  doc.moveDown(layout.compact ? 0.45 : 0.65);
   doc
     .font(fonts.regular)
-    .fontSize(10)
+    .fontSize(layout.finalTextFontSize)
     .fillColor(TEXT_PRIMARY)
     .text(CLAIM_TEXT, contentLeft, doc.y, {
       width: contentWidth,
       align: 'justify',
     });
-  doc.moveDown(0.7);
+  doc.moveDown(layout.compact ? 0.45 : 0.7);
 
   const rangeBefore = doc.bufferedPageRange();
   await drawSignatureLane(
@@ -1115,7 +1321,8 @@ export default async function buildRefereeClosingActPdf(
     customer,
     performer,
     signatures,
-    signerSnapshot
+    signerSnapshot,
+    layout
   );
 
   const range = doc.bufferedPageRange();

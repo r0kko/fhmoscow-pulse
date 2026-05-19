@@ -218,6 +218,8 @@ export const ERROR_MESSAGES = {
   missing_referee_bank_account: 'У судьи не заполнены банковские реквизиты.',
   closing_document_storage_failed:
     'Не удалось сохранить PDF акта в хранилище. Повторите попытку позже.',
+  closing_document_schema_outdated:
+    'Схема базы данных устарела для формирования актов. Примените миграции и повторите операцию.',
   closing_document_notification_failed:
     'Акт подготовлен, но уведомление судье не удалось поставить в очередь.',
   invalid_clear_flag: 'Некорректный параметр отмены назначения',

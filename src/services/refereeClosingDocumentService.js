@@ -123,6 +123,46 @@ function isUniqueConstraintError(error) {
   );
 }
 
+function isDocumentFileIdNotNullError(error) {
+  const parentCode = normalizeString(
+    error?.parent?.code || error?.original?.code
+  );
+  const column = normalizeString(
+    error?.parent?.column || error?.original?.column
+  );
+  const table = normalizeString(error?.parent?.table || error?.original?.table);
+  const message = normalizeString(error?.message).toLowerCase();
+  return (
+    parentCode === '23502' &&
+    (column === 'file_id' || message.includes('column "file_id"')) &&
+    (table === 'documents' || message.includes('relation "documents"'))
+  );
+}
+
+function logDocumentFileIdSchemaMismatch(error) {
+  logger.error('Referee closing document schema mismatch', {
+    error_code: 'closing_document_schema_outdated',
+    schema_mismatch: true,
+    table: 'documents',
+    column: 'file_id',
+    constraint:
+      normalizeString(
+        error?.parent?.constraint || error?.original?.constraint
+      ) || null,
+    db_code:
+      normalizeString(error?.parent?.code || error?.original?.code) || null,
+  });
+}
+
+function mapClosingCreateError(error) {
+  if (error instanceof ServiceError) return error;
+  if (isDocumentFileIdNotNullError(error)) {
+    logDocumentFileIdSchemaMismatch(error);
+    return new ServiceError('closing_document_schema_outdated', 500);
+  }
+  return error;
+}
+
 function mapClosingSendError(error, stage) {
   if (error instanceof ServiceError) {
     if (['s3_upload_failed', 's3_not_configured'].includes(error.code)) {
@@ -1809,9 +1849,9 @@ async function mapClosingDocument(act) {
     totals: act.totals_json,
     items: (act.Items || []).map((item) => item.snapshot_json),
     signature_timeline: timeline,
-    can_delete:
-      ['DRAFT', 'AWAITING_SIGNATURE'].includes(String(act.status || '')) &&
-      !refereeSigned,
+    can_delete: String(act.status || '') === 'DRAFT' && !refereeSigned,
+    can_cancel:
+      String(act.status || '') === 'AWAITING_SIGNATURE' && !refereeSigned,
     download_url: await buildActDownloadUrl(document),
   };
 }
@@ -2260,17 +2300,18 @@ async function processCreateClosingDocumentGroup(
         }
       );
     }
+    const mapped = mapClosingCreateError(error);
     if (result?.actId) {
       await RefereeClosingDocument.update(
         {
           pdf_status: 'FAILED',
-          pdf_error_code: errorCode(error, 'closing_document_pdf_failed'),
+          pdf_error_code: errorCode(mapped, 'closing_document_pdf_failed'),
           updated_by: actorId,
         },
         { where: { id: result.actId } }
       );
     }
-    throw error;
+    throw mapped;
   }
 }
 
@@ -3000,6 +3041,19 @@ async function deleteClosingDocument(tournamentId, closingDocumentId, actorId) {
   });
   if (refereeSignature) {
     throw new ServiceError('closing_document_delete_forbidden_signed', 409);
+  }
+
+  if (act.status === 'AWAITING_SIGNATURE') {
+    const canceled = await cancelClosingDocument(
+      tournamentId,
+      closingDocumentId,
+      actorId
+    );
+    return {
+      canceled: true,
+      id: closingDocumentId,
+      document: canceled.document,
+    };
   }
 
   const before = act.get({ plain: true });

@@ -124,6 +124,17 @@ function formatRuDateTime(d) {
   }
 }
 
+function applyRegularFont(doc) {
+  for (const fontName of ['SB-Regular', 'Default-Regular', 'Helvetica']) {
+    try {
+      doc.font(fontName);
+      return;
+    } catch {
+      /* try next registered font */
+    }
+  }
+}
+
 export async function applyFooter(
   doc,
   { page, total, barcodeText, numberText }
@@ -155,6 +166,7 @@ export async function applyFooter(
     const prevX = doc.x;
     const prevY = doc.y;
     doc.save();
+    applyRegularFont(doc);
     doc.fontSize(size).fillColor('#666666');
     const leftLine = numberText
       ? `${String(numberText)} · ${pageLabel}`
@@ -208,6 +220,7 @@ export async function applyFooter(
       const prevX = doc.x;
       const prevY = doc.y;
       doc.save();
+      applyRegularFont(doc);
       doc.fontSize(size).fillColor('#999999');
       const ustr = String(barcodeText);
       const uwidth = doc.widthOfString(ustr);

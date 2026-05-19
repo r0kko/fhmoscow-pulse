@@ -4,6 +4,7 @@ const tournamentFindByPk = jest.fn();
 const tournamentFindAll = jest.fn();
 const closingProfileFindOne = jest.fn();
 const closingDocumentCreate = jest.fn();
+const closingDocumentUpdate = jest.fn();
 const closingDocumentFindOne = jest.fn();
 const closingDocumentFindAll = jest.fn();
 const closingDocumentFindAndCountAll = jest.fn();
@@ -44,6 +45,18 @@ const listRefereeAccrualDocuments = jest.fn();
 const documentServiceRegenerate = jest.fn();
 const documentServiceSign = jest.fn();
 const documentServiceSendAwaitingNotification = jest.fn();
+const loggerError = jest.fn();
+const loggerWarn = jest.fn();
+const loggerInfo = jest.fn();
+
+jest.unstable_mockModule('../logger.js', () => ({
+  __esModule: true,
+  default: {
+    error: loggerError,
+    warn: loggerWarn,
+    info: loggerInfo,
+  },
+}));
 
 jest.unstable_mockModule('../src/models/index.js', () => ({
   __esModule: true,
@@ -84,6 +97,7 @@ jest.unstable_mockModule('../src/models/index.js', () => ({
     count: closingDocumentCount,
     findOne: closingDocumentFindOne,
     create: closingDocumentCreate,
+    update: closingDocumentUpdate,
   },
   RefereeClosingDocumentItem: {
     findAll: closingItemFindAll,
@@ -162,6 +176,7 @@ beforeEach(() => {
   tournamentFindAll.mockReset();
   closingProfileFindOne.mockReset();
   closingDocumentCreate.mockReset();
+  closingDocumentUpdate.mockReset();
   accrualStatusFindOne.mockReset();
   accrualFindAll.mockReset();
   accrualFindAndCountAll.mockReset();
@@ -198,6 +213,9 @@ beforeEach(() => {
   documentServiceRegenerate.mockReset();
   documentServiceSign.mockReset();
   documentServiceSendAwaitingNotification.mockReset();
+  loggerError.mockReset();
+  loggerWarn.mockReset();
+  loggerInfo.mockReset();
   sequelizeTransaction.mockImplementation(async (callback) =>
     callback({ LOCK: { UPDATE: 'UPDATE' } })
   );
@@ -265,6 +283,107 @@ function getRegisteredClosingJobHandler(operation) {
       `REFEREE_CLOSING_DOCUMENTS:${operation}`
     ) || null
   );
+}
+
+function mockReadyClosingPreviewData() {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  closingProfileFindOne.mockResolvedValue({
+    id: 'profile-1',
+    organizer_inn: '7708046206',
+    organizer_name: 'Федерация хоккея Москвы',
+    organizer_address: 'Москва',
+  });
+  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
+  accrualFindAll.mockResolvedValue([
+    {
+      id: 'acc-1',
+      referee_id: 'ref-1',
+      document_status_id: 'status-accrued',
+      accrual_number: 'A-001',
+      match_date_snapshot: '2026-03-01',
+      fare_code_snapshot: 'RPOT',
+      total_amount_rub: '1500.00',
+      base_amount_rub: '1500.00',
+      meal_amount_rub: '0.00',
+      travel_amount_rub: '0.00',
+      Referee: {
+        id: 'ref-1',
+        email: 'judge@example.com',
+        last_name: 'Судья',
+        first_name: 'Иван',
+        patronymic: 'Иванович',
+      },
+      RefereeRole: { name: 'Главный судья' },
+      Tournament: { name: 'Кубок Москвы' },
+      TournamentGroup: null,
+      Ground: null,
+      Match: {
+        date_start: '2026-03-01T12:00:00.000Z',
+        HomeTeam: { name: 'Команда А' },
+        AwayTeam: { name: 'Команда Б' },
+      },
+      ClosingItem: null,
+    },
+  ]);
+  userSignTypeFindAll
+    .mockResolvedValueOnce([
+      {
+        User: {
+          id: 'fhmo-1',
+          email: 'fhmo@example.com',
+          last_name: 'Дробот',
+          first_name: 'Алексей',
+          patronymic: 'Андреевич',
+          Roles: [
+            {
+              alias: 'FHMO_JUDGING_LEAD_SPECIALIST',
+              name: 'Ведущий специалист по судейству',
+              departmentName: 'Судейский департамент',
+              displayOrder: 1,
+            },
+          ],
+        },
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        user_id: 'ref-1',
+        SignType: { alias: 'SIMPLE_ELECTRONIC', name: 'ПЭП' },
+      },
+    ]);
+  documentFindAll
+    .mockResolvedValueOnce([{ recipient_id: 'ref-1' }])
+    .mockResolvedValueOnce([
+      {
+        id: 'contract-1',
+        recipient_id: 'ref-1',
+        number: '26.03/1024',
+        document_date: '2026-03-12',
+        name: 'Заявление о присоединении',
+        DocumentType: { name: 'Заявление о присоединении' },
+      },
+    ]);
+  userAddressFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      Address: {
+        result: 'г. Москва, ул. Тестовая, д. 1',
+        postal_code: '109000',
+      },
+      AddressType: { alias: 'REGISTRATION' },
+    },
+  ]);
+  innFindAll.mockResolvedValue([{ user_id: 'ref-1', number: '132612908997' }]);
+  taxationFindAll.mockResolvedValue([
+    {
+      user_id: 'ref-1',
+      TaxationType: { alias: 'NPD', name: 'Налог на профессиональный доход' },
+    },
+  ]);
+  bankAccountFindAll.mockResolvedValue([validBankAccount()]);
 }
 
 test('preview blocks act creation when referee address is missing', async () => {
@@ -816,6 +935,130 @@ test('preview reuses referee draft and preserves existing items while formatting
   );
 });
 
+test('create job creates document draft without file before PDF regeneration', async () => {
+  mockReadyClosingPreviewData();
+  documentTypeFindOne.mockResolvedValue({ id: 'type-closing' });
+  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-created' });
+  signTypeFindOne.mockResolvedValue({ id: 'sign-simple' });
+  const documentUpdate = jest.fn().mockResolvedValue({});
+  documentCreate.mockResolvedValue({
+    id: 'doc-1',
+    number: '26.03/1500',
+    update: documentUpdate,
+  });
+  closingDocumentCreate.mockResolvedValue({
+    id: 'closing-1',
+    document_id: 'doc-1',
+    get: jest.fn().mockReturnValue({ id: 'closing-1', document_id: 'doc-1' }),
+  });
+  documentServiceRegenerate.mockResolvedValue({
+    file: { id: 'file-1', url: 'https://files.test/act.pdf' },
+  });
+
+  const handler = getRegisteredClosingJobHandler('CREATE_DRAFTS');
+  const result = await handler.processItem({
+    job: {
+      id: 'job-1',
+      scope_id: 'tour-1',
+      requested_by_user_id: 'actor-1',
+      payload_json: {},
+    },
+    item: {
+      id: 'item-1',
+      target_ref_json: { accrual_ids: ['acc-1'] },
+      payload_json: {},
+    },
+  });
+
+  expect(documentCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      recipient_id: 'ref-1',
+      document_type_id: 'type-closing',
+      status_id: 'doc-status-created',
+      file_id: null,
+      sign_type_id: 'sign-simple',
+    }),
+    expect.any(Object)
+  );
+  expect(documentUpdate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      description: expect.stringContaining('closing_document_id'),
+      updated_by: 'actor-1',
+    }),
+    expect.objectContaining({ returning: false })
+  );
+  expect(documentServiceRegenerate).toHaveBeenCalledWith('doc-1', 'actor-1');
+  expect(closingDocumentUpdate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      pdf_status: 'READY',
+      pdf_error_code: null,
+      updated_by: 'actor-1',
+    }),
+    expect.objectContaining({ where: { id: 'closing-1' } })
+  );
+  expect(result).toEqual(
+    expect.objectContaining({
+      target_id: 'closing-1',
+      result_json: expect.objectContaining({
+        closing_document_id: 'closing-1',
+        document_id: 'doc-1',
+      }),
+    })
+  );
+});
+
+test('create job maps outdated documents.file_id schema error to stable code', async () => {
+  mockReadyClosingPreviewData();
+  documentTypeFindOne.mockResolvedValue({ id: 'type-closing' });
+  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-created' });
+  signTypeFindOne.mockResolvedValue({ id: 'sign-simple' });
+  documentCreate.mockRejectedValue(
+    Object.assign(
+      new Error(
+        'null value in column "file_id" of relation "documents" violates not-null constraint'
+      ),
+      {
+        parent: {
+          code: '23502',
+          table: 'documents',
+          column: 'file_id',
+        },
+      }
+    )
+  );
+
+  const handler = getRegisteredClosingJobHandler('CREATE_DRAFTS');
+  await expect(
+    handler.processItem({
+      job: {
+        id: 'job-1',
+        scope_id: 'tour-1',
+        requested_by_user_id: 'actor-1',
+        payload_json: {},
+      },
+      item: {
+        id: 'item-1',
+        target_ref_json: { accrual_ids: ['acc-1'] },
+        payload_json: {},
+      },
+    })
+  ).rejects.toMatchObject({ code: 'closing_document_schema_outdated' });
+  expect(closingDocumentUpdate).not.toHaveBeenCalled();
+  expect(loggerError).toHaveBeenCalledWith(
+    'Referee closing document schema mismatch',
+    expect.objectContaining({
+      error_code: 'closing_document_schema_outdated',
+      schema_mismatch: true,
+      table: 'documents',
+      column: 'file_id',
+      db_code: '23502',
+    })
+  );
+  expect(JSON.stringify(loggerError.mock.calls)).not.toContain(
+    'violates not-null constraint'
+  );
+});
+
 test('delete removes draft closing act and returns accruals to accrued status', async () => {
   accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
   documentUserSignFindOne.mockResolvedValue(null);
@@ -828,10 +1071,10 @@ test('delete removes draft closing act and returns accruals to accrued status', 
     tournament_id: 'tour-1',
     referee_id: 'ref-1',
     document_id: 'doc-1',
-    status: 'AWAITING_SIGNATURE',
+    status: 'DRAFT',
     get: jest.fn().mockReturnValue({
       id: 'closing-1',
-      status: 'AWAITING_SIGNATURE',
+      status: 'DRAFT',
     }),
     update: actUpdate,
     destroy: actDestroy,
@@ -876,6 +1119,103 @@ test('delete removes draft closing act and returns accruals to accrued status', 
   expect(result).toEqual({ deleted: true, id: 'closing-1' });
 });
 
+test('delete cancels awaiting-signature closing act and keeps it in journal', async () => {
+  tournamentFindByPk.mockResolvedValue({
+    id: 'tour-1',
+    name: 'Кубок Москвы',
+  });
+  accrualStatusFindOne.mockResolvedValue({ id: 'status-accrued' });
+  documentStatusFindOne.mockResolvedValue({ id: 'doc-status-canceled' });
+  documentUserSignFindOne.mockResolvedValue(null);
+  const documentUpdate = jest.fn().mockResolvedValue({});
+  const actUpdate = jest.fn().mockResolvedValue({});
+  const actDestroy = jest.fn().mockResolvedValue({});
+  const act = {
+    id: 'closing-1',
+    tournament_id: 'tour-1',
+    referee_id: 'ref-1',
+    document_id: 'doc-1',
+    status: 'AWAITING_SIGNATURE',
+    get: jest.fn().mockReturnValue({
+      id: 'closing-1',
+      status: 'AWAITING_SIGNATURE',
+    }),
+    update: actUpdate,
+    destroy: actDestroy,
+    Document: {
+      id: 'doc-1',
+      file_id: 'file-1',
+      update: documentUpdate,
+    },
+    Items: [{ id: 'item-1', accrual_document_id: 'acc-1' }],
+  };
+  closingDocumentFindOne.mockResolvedValue(act);
+  closingDocumentFindAndCountAll.mockResolvedValue({
+    rows: [
+      {
+        id: 'closing-1',
+        status: 'CANCELED',
+        canceled_at: new Date('2026-03-13T12:00:00Z'),
+        posted_at: null,
+        sent_at: null,
+        document_id: 'doc-1',
+        referee_id: 'ref-1',
+        totals_json: { total_amount_rub: '1500.00' },
+        customer_snapshot_json: null,
+        performer_snapshot_json: null,
+        contract_snapshot_json: null,
+        fhmo_signer_snapshot_json: null,
+        Tournament: { id: 'tour-1', name: 'Кубок Москвы' },
+        Referee: {
+          id: 'ref-1',
+          email: 'judge@example.com',
+          last_name: 'Судья',
+          first_name: 'Иван',
+          patronymic: 'Иванович',
+        },
+        Document: {
+          id: 'doc-1',
+          number: '26.03/1111',
+          name: 'Акт',
+          document_date: '2026-03-13',
+          DocumentStatus: { alias: 'CANCELED', name: 'Отменен' },
+          File: null,
+          DocumentUserSigns: [],
+        },
+        Items: [],
+      },
+    ],
+    count: 1,
+  });
+
+  const result = await closingService.deleteClosingDocument(
+    'tour-1',
+    'closing-1',
+    'actor-1'
+  );
+
+  expect(result).toEqual(
+    expect.objectContaining({
+      canceled: true,
+      id: 'closing-1',
+    })
+  );
+  expect(documentUpdate).toHaveBeenCalledWith(
+    { status_id: 'doc-status-canceled', updated_by: 'actor-1' },
+    expect.objectContaining({ returning: false })
+  );
+  expect(closingItemUpdate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      accrual_document_id: null,
+      updated_by: 'actor-1',
+    }),
+    expect.objectContaining({ where: { closing_document_id: 'closing-1' } })
+  );
+  expect(closingItemDestroy).not.toHaveBeenCalled();
+  expect(actDestroy).not.toHaveBeenCalled();
+  expect(removeFile).not.toHaveBeenCalled();
+});
+
 test('delete returns success even if file cleanup fails after commit', async () => {
   const consoleErrorSpy = jest
     .spyOn(console, 'error')
@@ -891,10 +1231,10 @@ test('delete returns success even if file cleanup fails after commit', async () 
     tournament_id: 'tour-1',
     referee_id: 'ref-1',
     document_id: 'doc-1',
-    status: 'AWAITING_SIGNATURE',
+    status: 'DRAFT',
     get: jest.fn().mockReturnValue({
       id: 'closing-1',
-      status: 'AWAITING_SIGNATURE',
+      status: 'DRAFT',
     }),
     update: actUpdate,
     destroy: actDestroy,
