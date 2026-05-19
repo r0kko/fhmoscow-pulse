@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run tests/components/baseTile.test.ts tests/components/emptyState.test.ts tests/components/inlineError.test.ts tests/components/menuTile.test.ts tests/components/navBar.test.ts tests/components/pagination.test.ts tests/components/passwordInput.test.ts tests/components/passwordStrengthMeter.test.ts tests/components/upcomingEventCard.test.ts tests/unit --coverage --reporter=dot --reporter=hanging-process --pool=forks --maxWorkers=1 --no-file-parallelism",
-    "test:integration": "vitest run tests/views tests/components/adminSportsCalendar.a11y.test.ts tests/components/refereeClosingDocumentsManager.test.ts tests/components/usersFilterModal.test.ts tests/composables tests/utils --reporter=dot --reporter=hanging-process --pool=forks --maxWorkers=1 --no-file-parallelism"
+    "test:integration": "vitest run tests/views tests/components/adminSportsCalendar.a11y.test.ts tests/components/refereeClosingDocumentsManager.test.ts tests/components/usersFilterModal.test.ts tests/composables tests/utils --reporter=dot --reporter=hanging-process --pool=forks --maxWorkers=1 --no-file-parallelism --teardownTimeout=100"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",

@@ -104,6 +104,7 @@ let refreshFailed =
 const DEFAULT_TIMEOUT_MS = 20000; // general API
 const DEFAULT_REFRESH_TIMEOUT_MS = 12000; // token refresh
 const DEFAULT_CSRF_TIMEOUT_MS = 8000; // CSRF bootstrap
+const TEST_TIMEOUT_MS = 250;
 
 function unrefRuntimeTimer(timer: RuntimeTimer) {
   timer.unref?.();
@@ -172,7 +173,8 @@ function withTimeout(
   signal: Nullable<AbortSignal>,
   ms = DEFAULT_TIMEOUT_MS
 ): TimeoutResult {
-  const nodeTimeout = createNodeTimeout(signal, ms);
+  const timeoutMs = isVitestRuntime() ? Math.min(ms, TEST_TIMEOUT_MS) : ms;
+  const nodeTimeout = createNodeTimeout(signal, timeoutMs);
   if (nodeTimeout) return nodeTimeout;
 
   if (typeof AbortController === 'undefined') {
@@ -181,7 +183,7 @@ function withTimeout(
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(new DOMException('TimeoutError', 'AbortError')),
-    ms
+    timeoutMs
   ) as RuntimeTimer;
   unrefRuntimeTimer(timer);
   if (signal) {
