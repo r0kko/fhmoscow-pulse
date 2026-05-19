@@ -11,6 +11,10 @@ type TimeoutResult = {
   cancelTimeout?: () => void;
 };
 
+type RuntimeTimer = ReturnType<typeof setTimeout> & {
+  unref?: () => void;
+};
+
 export type ApiError = Error & {
   code?: string | null;
   requestId?: string | null;
@@ -96,6 +100,10 @@ const DEFAULT_TIMEOUT_MS = 20000; // general API
 const DEFAULT_REFRESH_TIMEOUT_MS = 12000; // token refresh
 const DEFAULT_CSRF_TIMEOUT_MS = 8000; // CSRF bootstrap
 
+function unrefRuntimeTimer(timer: RuntimeTimer) {
+  timer.unref?.();
+}
+
 function withTimeout(
   signal: Nullable<AbortSignal>,
   ms = DEFAULT_TIMEOUT_MS
@@ -107,7 +115,8 @@ function withTimeout(
   const timer = setTimeout(
     () => controller.abort(new DOMException('TimeoutError', 'AbortError')),
     ms
-  );
+  ) as RuntimeTimer;
+  unrefRuntimeTimer(timer);
   if (signal) {
     try {
       signal.addEventListener('abort', () => controller.abort(signal.reason));
@@ -262,6 +271,7 @@ function scheduleCsrfReprime(token: Nullable<string>) {
   csrfTimerId = setTimeout(() => {
     initCsrf().catch(() => {});
   }, delay);
+  unrefRuntimeTimer(csrfTimerId as RuntimeTimer);
 }
 
 function decodeJwt(token: Nullable<string>): Record<string, unknown> | null {
@@ -300,6 +310,7 @@ function scheduleProactiveRefresh() {
       /* ignore */
     }
   }, delay);
+  unrefRuntimeTimer(refreshTimerId as RuntimeTimer);
 }
 
 export function setAccessToken(token: string | null) {
