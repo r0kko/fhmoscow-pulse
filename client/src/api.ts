@@ -15,6 +15,11 @@ type RuntimeTimer = ReturnType<typeof setTimeout> & {
   unref?: () => void;
 };
 
+type NodeTimersRuntime = {
+  clearTimeout: typeof clearTimeout;
+  setTimeout: typeof setTimeout;
+};
+
 export type ApiError = Error & {
   code?: string | null;
   requestId?: string | null;
@@ -104,10 +109,72 @@ function unrefRuntimeTimer(timer: RuntimeTimer) {
   timer.unref?.();
 }
 
+function isVitestRuntime() {
+  return (
+    typeof import.meta !== 'undefined' &&
+    import.meta.env &&
+    import.meta.env['MODE'] === 'test'
+  );
+}
+
+function getNodeTimers(): NodeTimersRuntime | null {
+  type ProcessWithBuiltinModule = {
+    getBuiltinModule?: (id: string) => Partial<NodeTimersRuntime> | undefined;
+  };
+
+  const getBuiltinModule = (
+    globalThis as { process?: ProcessWithBuiltinModule }
+  ).process?.getBuiltinModule;
+  if (typeof getBuiltinModule !== 'function') return null;
+
+  try {
+    const timers = getBuiltinModule('timers');
+    if (
+      typeof timers?.setTimeout === 'function' &&
+      typeof timers?.clearTimeout === 'function'
+    ) {
+      return timers as NodeTimersRuntime;
+    }
+  } catch {}
+
+  return null;
+}
+
+function createNodeTimeout(
+  signal: Nullable<AbortSignal>,
+  ms: number
+): TimeoutResult | null {
+  const timers = isVitestRuntime() ? getNodeTimers() : null;
+  if (!timers || typeof AbortController === 'undefined') return null;
+
+  const controller = new AbortController();
+  const timer = timers.setTimeout(
+    () => controller.abort(new DOMException('TimeoutError', 'AbortError')),
+    ms
+  ) as RuntimeTimer;
+  unrefRuntimeTimer(timer);
+
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+    } else {
+      signal.addEventListener('abort', () => controller.abort(signal.reason));
+    }
+  }
+
+  return {
+    signal: controller.signal,
+    cancelTimeout: () => timers.clearTimeout(timer),
+  };
+}
+
 function withTimeout(
   signal: Nullable<AbortSignal>,
   ms = DEFAULT_TIMEOUT_MS
 ): TimeoutResult {
+  const nodeTimeout = createNodeTimeout(signal, ms);
+  if (nodeTimeout) return nodeTimeout;
+
   if (typeof AbortController === 'undefined') {
     return signal ? { signal } : {};
   }

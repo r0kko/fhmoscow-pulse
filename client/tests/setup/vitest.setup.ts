@@ -4,6 +4,11 @@ import { cleanup } from '@testing-library/vue';
 import { clearAuth } from '@/auth';
 import { resetApiRuntimeForTests } from '@/api';
 
+Object.defineProperty(window.navigator, 'userAgent', {
+  configurable: true,
+  value: `${window.navigator.userAgent} jsdom`,
+});
+
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
